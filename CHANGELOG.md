@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this application adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+## [3.2.x (13xx)] - 2026-04-03
+### Added:
+- Add support for Send intents that allow sharing of Zcash uris via text or image directly with the app. 
 
 ## [3.2.1 (1605)] - 2025-03-28
 
@@ -191,15 +194,6 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - We implemented a feature to allow you to fetch transaction data
 
 ## [2.4.8 (1321)] - 2025-11-20
-
-### Changed:
-- We updated Swap and Pay features to use shielded addresses instead of transparent ones. Shields up!
-
-### Fixed:
-- We also fixed a few user reported issues.
-
-
-## [2.4.8 (1319)] - 2025-11-14
 
 ### Changed:
 - We updated Swap and Pay features to use shielded addresses instead of transparent ones. Shields up!

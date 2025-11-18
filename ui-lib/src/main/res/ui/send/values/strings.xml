@@ -28,4 +28,6 @@
     <string name="send_address_book_hint">Add contact by tapping on Address Book icon.</string>
     <string name="send_address_book_content_description">Open address book</string>
 
+    <string name="send_shared_content_invalid">Shared content does not contain a valid Zcash payment.</string>
+
 </resources>
