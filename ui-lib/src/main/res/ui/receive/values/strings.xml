@@ -23,6 +23,6 @@
     <string name="receive_info_transparent_title">Zcash Transparent Address (Static)</string>
     <string name="receive_info_transparent_bullet_1">This addresses type works just like Bitcoin addresses and offers NO PRIVACY. The details of transactions sent to this address will be public and visible on the blockchain.</string>
     <string name="receive_info_transparent_bullet_2">We don\'t recommend using this address type unless the wallet or exchange from which %s is being sent doesn’t support sending funds to shielded Zcash addresses.</string>
-    <string name="receive_info_transparent_bullet_3">To protect your privacy, Zashi will guide you to shield any transparent %s you receive with just one click.</string>
+    <string name="receive_info_transparent_bullet_3">To protect your privacy, Zodl will guide you to shield any transparent %s you receive with just one click.</string>
     <string name="receive_info_transparent_bullet_4">You won\'t be able to spend your transparent %s until you shield it.</string>
 </resources>

@@ -144,8 +144,10 @@ internal class SwapQuoteVMMapper {
                     is DynamicSwapAsset -> asset.chainIcon
                     is ZecSwapAsset -> asset.getQuoteChainIcon(isShielded = true)
                 },
-            title = stringResByDynamicNumber(quote.amountInFormatted),
-            subtitle = stringResByDynamicCurrencyNumber(quote.amountInUsd, FiatCurrency.USD.symbol)
+            amount = stringResByDynamicNumber(quote.amountInFormatted),
+            fiatAmount = stringResByDynamicCurrencyNumber(quote.amountInUsd, FiatCurrency.USD.symbol),
+            token = stringRes(quote.originAsset.tokenTicker),
+            chain = quote.originAsset.chainName
         )
 
     private fun SwapQuoteInternalState.createToState(): SwapTokenAmountState =
@@ -156,10 +158,12 @@ internal class SwapQuoteVMMapper {
                     is DynamicSwapAsset -> asset.chainIcon
                     is ZecSwapAsset -> asset.getQuoteChainIcon(isShielded = true)
                 },
-            title =
+            amount =
                 stringResByDynamicNumber(
                     quote.amountOutFormatted.setScale(quote.destinationAsset.decimals, RoundingMode.DOWN),
                 ),
-            subtitle = stringResByDynamicCurrencyNumber(quote.amountOutUsd, FiatCurrency.USD.symbol)
+            fiatAmount = stringResByDynamicCurrencyNumber(quote.amountOutUsd, FiatCurrency.USD.symbol),
+            token = stringRes(quote.destinationAsset.tokenTicker),
+            chain = quote.destinationAsset.chainName
         )
 }

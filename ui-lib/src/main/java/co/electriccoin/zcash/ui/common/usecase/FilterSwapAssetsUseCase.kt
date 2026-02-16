@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.common.usecase
 import android.content.Context
 import co.electriccoin.zcash.ui.common.model.SimpleSwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapAsset
+import co.electriccoin.zcash.ui.common.model.isSame
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
 import co.electriccoin.zcash.ui.design.util.getString
 
@@ -15,7 +16,7 @@ class FilterSwapAssetsUseCase(
         text: String,
         onlyChainTicker: String?,
     ): SwapAssetsData {
-        if (assets.data == null) return assets.copy(data = null)
+        if (assets.data == null) return assets
 
         val result =
             if (text.isEmpty()) {
@@ -24,9 +25,10 @@ class FilterSwapAssetsUseCase(
                         if (onlyChainTicker == null) {
                             true
                         } else {
-                            it.chainTicker.lowercase() == onlyChainTicker.lowercase()
+                            it.chainTicker.equals(onlyChainTicker, ignoreCase = true)
                         }
-                    }.reorderByLatestAssets(latestUsedAssets)
+                    }.reorderByTrending()
+                    .reorderByLatestAssets(latestUsedAssets)
             } else {
                 val sorted =
                     assets.data
@@ -34,9 +36,10 @@ class FilterSwapAssetsUseCase(
                             if (onlyChainTicker == null) {
                                 true
                             } else {
-                                it.chainTicker.lowercase() == onlyChainTicker.lowercase()
+                                it.chainTicker.equals(onlyChainTicker, ignoreCase = true)
                             }
                         }.sortedBy { it.tokenTicker.replace("$", "") }
+                        .reorderByTrending()
                         .reorderByLatestAssets(latestUsedAssets)
 
                 buildSet {
@@ -54,6 +57,25 @@ class FilterSwapAssetsUseCase(
         return assets.copy(data = result)
     }
 
+    private fun List<SwapAsset>.reorderByTrending(): List<SwapAsset> {
+        val mutable = this.toMutableList()
+        listOfNotNull(
+            find { it.isSame("btc", "btc") },
+            find { it.isSame("eth", "eth") },
+            find { it.isSame("sol", "sol") },
+            find { it.isSame("usdc", "eth") },
+            find { it.isSame("usdt", "eth") },
+            find { it.isSame("usdc", "arb") },
+            find { it.isSame("usdc", "sol") },
+            find { it.isSame("usdt", "sol") },
+            find { it.isSame("usdt", "bsc") },
+            find { it.isSame("usdt", "tron") },
+            find { it.isSame("usdc", "sui") },
+            find { it.isSame("usdc", "base") },
+        ).forEachIndexed { index, asset -> mutable.move(asset, index) }
+        return mutable.toList()
+    }
+
     @Suppress("ReturnCount")
     private fun List<SwapAsset>.reorderByLatestAssets(simpleAssets: Set<SimpleSwapAsset>?): List<SwapAsset> {
         if (simpleAssets.isNullOrEmpty()) return this
@@ -62,19 +84,14 @@ class FilterSwapAssetsUseCase(
             simpleAssets
                 .mapNotNull { latest ->
                     this.find { asset ->
-                        asset.tokenTicker.lowercase() == latest.tokenTicker.lowercase() &&
-                            asset.chainTicker.lowercase() == latest.chainTicker.lowercase()
+                        asset.tokenTicker.equals(latest.tokenTicker, ignoreCase = true) &&
+                            asset.chainTicker.equals(latest.chainTicker, ignoreCase = true)
                     }
                 }
 
         if (foundSwapAssets.isEmpty()) return this
-
         val mutable = this.toMutableList()
-
-        foundSwapAssets.forEachIndexed { index, asset ->
-            mutable.move(asset, index)
-        }
-
+        foundSwapAssets.forEachIndexed { index, asset -> mutable.move(asset, index) }
         return mutable.toList()
     }
 

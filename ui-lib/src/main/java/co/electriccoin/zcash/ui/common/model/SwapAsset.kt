@@ -25,6 +25,11 @@ sealed interface SwapAsset {
         get() = blockchain.chainIcon
 }
 
+fun SwapAsset.isSame(
+    token: String,
+    chain: String
+): Boolean = tokenTicker.equals(token, true) && chainTicker.equals(chain, true)
+
 data class DynamicSwapAsset(
     override val tokenTicker: String,
     override val tokenName: StringResource,
@@ -46,7 +51,7 @@ data class ZecSwapAsset(
 ) : SwapAsset {
     val alternativeTokenIcon: ImageResource = imageRes(R.drawable.ic_zec_round_full)
 
-    fun getQuoteChainIcon(isShielded: Boolean): ImageResource? =
+    fun getQuoteChainIcon(isShielded: Boolean): ImageResource =
         if (isShielded) {
             imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_shielded)
         } else {

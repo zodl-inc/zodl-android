@@ -2,6 +2,7 @@
 <resources>
     <string name="account_list_title">Wallets &amp; Hardware</string>
     <string name="account_list_keystone_promo_title">Keystone Hardware Wallet</string>
-    <string name="account_list_keystone_promo_subtitle">Get 5%% off airgapped hardware wallet. Promo code “Zashi”.</string>
+    <string name="account_list_keystone_promo_subtitle">Get 5%% off airgapped hardware wallet. Promo code “Zashi”
+        .</string>
     <string name="account_list_keystone_primary">Connect Hardware Wallet</string>
 </resources>

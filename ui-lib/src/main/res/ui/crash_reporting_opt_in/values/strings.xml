@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="crash_reporting_opt_in_title">
-        Help Improve <xliff:g id="app_name" example="Zashi">%1$s</xliff:g>
-    </string>
+    <string name="crash_reporting_opt_in_title">Help Improve Zodl</string>
     <string name="crash_reporting_opt_in_subtitle">Crash reports are an essential tool for developers to improve the
         quality and reliability of apps. They are very useful in practice to help with fixing bugs that cause
         crashes.</string>
@@ -10,8 +8,8 @@
         when the crash happened, and stack trace so it\’s clear where in the app the crash happened. The data
         collected is completely anonymized.</string>
     <string name="crash_reporting_opt_in_positive">Opt in</string>
-    <string name="crash_reporting_opt_in_positive_desc">Share crash reports with Zashi developers.</string>
+    <string name="crash_reporting_opt_in_positive_desc">Share crash reports with Zodl developers.</string>
     <string name="crash_reporting_opt_in_negative">Opt out</string>
-    <string name="crash_reporting_opt_in_negative_desc">Don’t share crash reports with Zashi developers.</string>
+    <string name="crash_reporting_opt_in_negative_desc">Don’t share crash reports with Zodl developers.</string>
     <string name="crash_reporting_opt_in_save">Save changes</string>
 </resources>

@@ -5,7 +5,7 @@ import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.OldHomeViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
 import co.electriccoin.zcash.ui.screen.ScreenTimeoutVM
-import co.electriccoin.zcash.ui.screen.accountlist.viewmodel.AccountListViewModel
+import co.electriccoin.zcash.ui.screen.accountlist.AccountListVM
 import co.electriccoin.zcash.ui.screen.addressbook.AddressBookVM
 import co.electriccoin.zcash.ui.screen.addressbook.SelectABRecipientVM
 import co.electriccoin.zcash.ui.screen.advancedsettings.AdvancedSettingsVM
@@ -44,7 +44,7 @@ import co.electriccoin.zcash.ui.screen.request.viewmodel.RequestVM
 import co.electriccoin.zcash.ui.screen.restore.date.RestoreBDDateVM
 import co.electriccoin.zcash.ui.screen.restore.estimation.RestoreBDEstimationVM
 import co.electriccoin.zcash.ui.screen.restore.height.RestoreBDHeightVM
-import co.electriccoin.zcash.ui.screen.restore.seed.RestoreSeedViewModel
+import co.electriccoin.zcash.ui.screen.restore.seed.RestoreSeedVM
 import co.electriccoin.zcash.ui.screen.restore.tor.RestoreTorVM
 import co.electriccoin.zcash.ui.screen.restoresuccess.RestoreSuccessViewModel
 import co.electriccoin.zcash.ui.screen.resync.confirm.ConfirmResyncVM
@@ -93,7 +93,7 @@ val viewModelModule =
         viewModelOf(::AuthenticationViewModel)
         viewModelOf(::OldHomeViewModel)
         viewModelOf(::StorageCheckViewModel)
-        viewModelOf(::RestoreSeedViewModel)
+        viewModelOf(::RestoreSeedVM)
         viewModelOf(::MoreVM)
         viewModelOf(::AdvancedSettingsVM)
         viewModelOf(::SupportViewModel)
@@ -112,7 +112,7 @@ val viewModelModule =
         viewModelOf(::WalletBackupViewModel)
         viewModelOf(::FeedbackVM)
         viewModelOf(::SignKeystoneTransactionVM)
-        viewModelOf(::AccountListViewModel)
+        viewModelOf(::AccountListVM)
         viewModelOf(::ZashiTopAppBarVM)
         viewModelOf(::SelectKeystoneAccountViewModel)
         viewModelOf(::ReviewTransactionVM)

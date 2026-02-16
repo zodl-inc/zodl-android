@@ -9,10 +9,10 @@
     <string name="restore_dialog_message_1_bold_part">The Secret Recovery Phrase</string>
     <string name="restore_dialog_message_1">is a unique set of 24 words, appearing in a
         precise order. It can be used to gain full control of your funds from any device via any Zcash wallet app.
-        Think of it as the master key to your wallet. It is stored in Zashi’s Advanced Settings.</string>
+        Think of it as the master key to your wallet. It is stored in Zodl’s Advanced Settings.</string>
     <string name="restore_dialog_message_2_bold_part">The Wallet Birthday Height</string>
     <string name="restore_dialog_message_2">is the block height (block # in the
-        blockchain) at which your wallet was created. If you ever lose access to your Zashi app and need to recover
+        blockchain) at which your wallet was created. If you ever lose access to your Zodl app and need to recover
         your funds, providing the block height along with your recovery phrase can significantly speed up the process.
     </string>
     <string name="restore_dialog_button">Got it!</string>
@@ -33,7 +33,7 @@
     <string name="restore_bd_date_next">Next</string>
 
     <string name="restore_bd_estimation_subtitle">Estimated Block Height</string>
-    <string name="restore_bd_estimation_message">Zashi will scan and recover all transactions made after the following block number.</string>
+    <string name="restore_bd_estimation_message">Zodl will scan and recover all transactions made after the following block number.</string>
     <string name="restore_bd_estimation_copy">Copy</string>
     <string name="restore_bd_estimation_restore">Restore</string>
 
@@ -46,18 +46,18 @@
 
     <string name="resync_title">Resync Wallet</string>
     <string name="resync_bd_date_subtitle">First Wallet Transaction</string>
-    <string name="resync_bd_date_message">Decide how far Zashi should resync. Enter a date before your first received transaction.</string>
+    <string name="resync_bd_date_message">Decide how far Zodl should resync. Enter a date before your first received transaction.</string>
     <string name="resync_bd_date_note">If you\'re not sure, choose an earlier date.</string>
 
     <string name="resync_bd_estimation_subtitle">Estimated Block Height</string>
-    <string name="resync_bd_estimation_message">Zashi will scan and recover all transactions made after the following block number.</string>
+    <string name="resync_bd_estimation_message">Zodl will scan and recover all transactions made after the following block number.</string>
     <string name="resync_bd_estimation_btn">Set this height</string>
 
     <string name="confirm_resync_title">Confirm Resync</string>
     <string name="confirm_resync_subtitle">Resync the current wallet without resetting the app. This can be used to
         troubleshoot issues that would normally require restoring your wallet like fixing your Keystone balance
-        .\n\nUnless you specify otherwise below, Zashi will resync from the date displayed. </string>
-    <string name="confirm_resync_message">Unless you specify otherwise below, Zashi will resync from the date displayed.</string>
+        .\n\nUnless you specify otherwise below, Zodl will resync from the date displayed. </string>
+    <string name="confirm_resync_message">Unless you specify otherwise below, Zodl will resync from the date displayed.</string>
     <string name="confirm_resync_info">Your wallet will be resynced from %1$s (%2$s blocks). Use the button below if you wish to change it.</string>
     <string name="confirm_resync_change">Change</string>
     <string name="confirm_resync_confirm">Confirm</string>

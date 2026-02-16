@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="exchange_rate_info_title_1">Protección de dirección IP</string>
-    <string name="exchange_rate_info_subtitle_1">Si la Protección Tor está activada (Configuración Avanzada), Zashi protege tu dirección IP.</string>
+    <string name="exchange_rate_info_subtitle_1">Si la Protección Tor está activada (Configuración Avanzada), Zodl protege tu dirección IP.</string>
     <string name="exchange_rate_info_subtitle_1_no_cmc">Las tasas de cambio son obtenidas a travez de Tor para proteger tu dirección IP. Verifica si el uso de Tor esta permitido en tu region.</string>
     <string name="exchange_rate_info_title_2">Actualización de tasa</string>
     <string name="exchange_rate_info_subtitle_2">La tasa se actualiza automáticamente y también se puede actualizar manualmente.</string>

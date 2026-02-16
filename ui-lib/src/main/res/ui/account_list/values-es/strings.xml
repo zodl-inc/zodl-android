@@ -2,6 +2,7 @@
 <resources>
     <string name="account_list_title">Billeteras y Dispositivos</string>
     <string name="account_list_keystone_promo_title">Billetera de Hardware Keystone</string>
-    <string name="account_list_keystone_promo_subtitle">Obtén un 5%% de descuento en la billetera de hardware aislada. Código promocional “Zashi”.</string>
+    <string name="account_list_keystone_promo_subtitle">Obtén un 5%% de descuento en la billetera de hardware
+        aislada. Código promocional “Zashi”.</string>
     <string name="account_list_keystone_primary">Conectar Billetera de Hardware</string>
 </resources>

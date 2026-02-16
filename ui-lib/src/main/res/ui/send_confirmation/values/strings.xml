@@ -37,20 +37,19 @@
     <string name="send_confirmation_failure_report_button">Report</string>
 
     <string name="send_confirmation_failure_grpc_title">Connection Issue</string>
-    <string name="send_confirmation_failure_grpc_subtitle">Zashi encountered connection issues when submitting the
+    <string name="send_confirmation_failure_grpc_subtitle">Zodl encountered connection issues when submitting the
         transaction. It will retry in the next few minutes.</string>
     <string name="send_confirmation_failure_grpc_close_button">Close</string>
 
     <string name="send_confirmation_multiple_trx_failure_title">Send Failed</string>
-    <string name="send_confirmation_multiple_trx_failure_text_1">Send to this recipient required multiple
+    <string name="send_confirmation_multiple_trx_failure_text">Send to this recipient required multiple
         transactions but only some of them succeeded and the rest failed. Your funds are safe but need to be
-        recovered with assistance from our side.</string>
-    <string name="send_confirmation_multiple_trx_failure_text_2">Please use the button below to contact us. it
+        recovered with assistance from our side.\n\nPlease use the button below to contact us. it
         automatically prepares all the data we need in order to help you restore your funds.</string>
     <string name="send_confirmation_multiple_trx_failure_copy_button">Copy transaction IDs</string>
     <string name="send_confirmation_multiple_trx_failure_report_button">Contact Support</string>
     <string name="send_confirmation_multiple_trx_failure_ids_title">Transaction IDs</string>
-    <string name="send_confirmation_multiple_report_text">Hi, Zashi Team.\n\nWhile sending a transaction to a TEX
+    <string name="send_confirmation_multiple_report_text">Hi, Zodl Team.\n\nWhile sending a transaction to a TEX
         address, I encountered an error state. I\'m reaching out to get guidance on how to recover my funds.\n\nThank
         you.</string>
     <string name="send_confirmation_multiple_report_statuses" formatted="true">Transaction statuses:</string>

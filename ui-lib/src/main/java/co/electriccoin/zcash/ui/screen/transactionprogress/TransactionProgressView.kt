@@ -3,6 +3,7 @@
 package co.electriccoin.zcash.ui.screen.transactionprogress
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,15 +13,19 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
@@ -29,8 +34,11 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.GradientBgScaffold
 import co.electriccoin.zcash.ui.design.component.OldZashiBottomBar
+import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
+import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
+import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -43,6 +51,7 @@ import co.electriccoin.zcash.ui.design.util.loadingImageRes
 import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState.Background.ERROR
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState.Background.PENDING
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressState.Background.SUCCESS
 import com.airbnb.lottie.compose.LottieAnimation
@@ -59,9 +68,11 @@ fun TransactionProgressView(state: TransactionProgressState) {
                 null -> ZashiColors.Surfaces.bgPrimary
                 SUCCESS -> ZashiColors.Utility.SuccessGreen.utilitySuccess100
                 PENDING -> ZashiColors.Utility.Indigo.utilityIndigo100
+                ERROR -> ZashiColors.Utility.ErrorRed.utilityError100
             },
         endColor = ZashiColors.Surfaces.bgPrimary,
         bottomBar = { BottomBar(state) },
+        topBar = { TopBar(state) },
         content = {
             Content(
                 state = state,
@@ -69,6 +80,21 @@ fun TransactionProgressView(state: TransactionProgressState) {
             )
         }
     )
+}
+
+@Composable
+private fun TopBar(state: TransactionProgressState) {
+    if (state.showAppBar) {
+        ZashiSmallTopAppBar(
+            colors =
+                ZcashTheme.colors.topAppBarColors.copyColors(
+                    containerColor = Color.Transparent
+                ),
+            navigationAction = {
+                ZashiTopAppBarCloseNavigation(onBack = state.onBack)
+            }
+        )
+    }
 }
 
 @Composable
@@ -95,6 +121,7 @@ private fun BottomBar(state: TransactionProgressState) {
     }
 }
 
+@Suppress("MagicNumber")
 @Composable
 private fun Content(state: TransactionProgressState, modifier: Modifier = Modifier) {
     ConstraintLayout(modifier = modifier.fillMaxSize()) {
@@ -103,12 +130,18 @@ private fun Content(state: TransactionProgressState, modifier: Modifier = Modifi
         Spacer(
             modifier =
                 Modifier.constrainAs(spaceTop) {
-                    height = Dimension.percent(TOP_BLANK_SPACE_RATIO)
                     width = Dimension.fillToConstraints
                     top.linkTo(parent.top)
-                    bottom.linkTo(content.top)
                     start.linkTo(parent.start)
                     end.linkTo(parent.end)
+                    bottom.linkTo(content.top)
+
+                    height =
+                        if (state.transactionIds == null) {
+                            Dimension.percent(.45f)
+                        } else {
+                            Dimension.value(12.dp)
+                        }
                 }
         )
 
@@ -141,6 +174,42 @@ private fun Content(state: TransactionProgressState, modifier: Modifier = Modifi
                 textAlign = TextAlign.Center,
                 color = ZashiColors.Text.textPrimary
             )
+
+            if (state.transactionIds != null) {
+                Spacer(32.dp)
+                Text(
+                    modifier = Modifier.fillMaxWidth(),
+                    text = stringResource(id = R.string.send_confirmation_multiple_trx_failure_ids_title),
+                    fontWeight = FontWeight.Medium,
+                    style = ZashiTypography.textSm,
+                    color = ZashiColors.Inputs.Default.label
+                )
+                Spacer(6.dp)
+                state.transactionIds.forEachIndexed { index, item ->
+                    if (index != 0) {
+                        Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingMd))
+                    }
+
+                    Text(
+                        text = item.getValue(),
+                        maxLines = 1,
+                        style = ZashiTypography.textMd,
+                        color = ZashiColors.Inputs.Default.text,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    shape = RoundedCornerShape(ZashiDimensions.Radius.radiusLg),
+                                    color = ZashiColors.Inputs.Default.bg
+                                ).padding(
+                                    horizontal = ZashiDimensions.Spacing.spacingLg,
+                                    vertical = ZashiDimensions.Spacing.spacingMd
+                                ),
+                        overflow = TextOverflow.MiddleEllipsis
+                    )
+                }
+            }
+
             Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
             if (state.middleButton != null) {
                 ZashiButton(
@@ -188,7 +257,6 @@ private fun ImageOrLoading(imageResource: ImageResource) {
     }
 }
 
-private const val TOP_BLANK_SPACE_RATIO = .45f
 private const val LOTTIE_ANIM_SCALE = 1.54f
 
 @PreviewScreens
@@ -219,7 +287,13 @@ private fun Preview() =
                         ),
                     onBack = {},
                     background = SUCCESS,
-                    image = imageRes(listOf(R.drawable.ic_fist_punch, R.drawable.ic_face_star).random())
+                    image = imageRes(listOf(R.drawable.ic_fist_punch, R.drawable.ic_face_star).random()),
+                    transactionIds =
+                        listOf(
+                            stringRes("adasdasdasdasdadwq123132adasdasdasdasdadwq123132"),
+                            stringRes("adasdasdasdasdadwq123132adasdasdasdasdadwq123132"),
+                        ),
+                    showAppBar = true
                 )
         )
     }
@@ -238,7 +312,7 @@ private fun SendingPreview() =
                     primaryButton = null,
                     onBack = {},
                     background = null,
-                    image = loadingImageRes()
+                    image = loadingImageRes(),
                 )
         )
     }

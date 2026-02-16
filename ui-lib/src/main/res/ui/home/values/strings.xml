@@ -10,7 +10,7 @@
     <string name="home_message_backup_required_subtitle">Prevent potential loss of funds</string>
     <string name="home_message_backup_required_button">Start</string>
     <string name="home_message_wallet_disconnected_title">Wallet Disconnected</string>
-    <string name="home_message_wallet_disconnected_subtitle">Check your connection and reload Zashi</string>
+    <string name="home_message_wallet_disconnected_subtitle">Check your connection and reload Zodl</string>
     <string name="home_message_transparent_balance_subtitle">%1$s %2$s</string>
     <string name="home_message_transparent_balance_title">Transparent Balance Detected</string>
     <string name="home_message_transparent_balance_button">Shield</string>
@@ -20,7 +20,7 @@
     <string name="home_message_wallet_updating_title">Updating Balance…</string>
     <string name="home_message_wallet_updating_subtitle">Waiting for last transaction to process</string>
     <string name="home_message_restoring_title">Restoring Wallet • %1$.1f%% Complete</string>
-    <string name="home_message_restoring_subtitle">Keep Zashi open on active phone screen</string>
+    <string name="home_message_restoring_subtitle">Keep Zodl open on active phone screen</string>
     <string name="home_message_restoring_subtitle_spendable">Your funds are ready to be used now</string>
     <string name="home_message_syncing_title">Syncing • %1$.1f%% Complete</string>
     <string name="home_message_syncing_subtitle">Your wallet is updating</string>
@@ -44,41 +44,41 @@
     <string name="home_info_transparent_checkbox">Do not show this message again.</string>
     <string name="home_info_transparent_balance_shield">Shield</string>
     <string name="home_info_transparent_title">Always Shield Transparent Funds</string>
-    <string name="home_info_transparent_subtitle">To protect user privacy, Zashi doesn\'t support spending transparent
-        %s. Tap the \"Shield\" button below to make your transparent funds spendable and your total Zashi balance private. </string>
+    <string name="home_info_transparent_subtitle">To protect user privacy, Zodl doesn\'t support spending transparent
+        %s. Tap the \"Shield\" button below to make your transparent funds spendable and your total Zodl balance private. </string>
     <string name="home_info_transparent_message">This will create a shielding in-wallet transaction, consolidating your
         transparent and shielded funds. (Typical fee: %1$s %2$s)</string>
     <string name="home_info_transparent_subheader">Transparent</string>
     <string name="home_info_disconnected_title">Wallet Disconnected</string>
     <string name="home_info_disconnected_subtitle">You appear to be offline. Please restore your internet connection
-        to use Zashi wallet.</string>
+        to use Zodl wallet.</string>
     <string name="home_info_restoring_title">Wallet Restore in Progress</string>
-    <string name="home_info_restoring_message">Zashi is scanning the blockchain to retrieve your transactions. Older
+    <string name="home_info_restoring_message">Zodl is scanning the blockchain to retrieve your transactions. Older
         wallets can take hours to restore. Follow these steps to prevent interruption:</string>
-    <string name="home_info_restoring_bullet_1">Keep the Zashi app open on an active phone screen.</string>
+    <string name="home_info_restoring_bullet_1">Keep the Zodl app open on an active phone screen.</string>
     <string name="home_info_restoring_bullet_2">To prevent your phone screen from going dark, turn off power-saving
         mode and keep your phone plugged in.</string>
     <string name="home_info_restoring_note">Funds cannot be spent until your wallet is restored.</string>
     <string name="home_info_syncing_title">Wallet Sync in Progress</string>
-    <string name="home_info_syncing_message">Zashi is scanning the blockchain for your latest transactions to make sure
-        your balances are displayed correctly. Keep the Zashi app open on an active phone screen to avoid interruptions.</string>
+    <string name="home_info_syncing_message">Zodl is scanning the blockchain for your latest transactions to make sure
+        your balances are displayed correctly. Keep the Zodl app open on an active phone screen to avoid interruptions.</string>
     <string name="home_info_updating_title">Updating Balance</string>
     <string name="home_info_updating_message">Your last transaction is getting mined and confirmed.</string>
-    <string name="crash_report_detail_title">Help Improve Zashi</string>
-    <string name="crash_report_detail_subtitle">Crash reports are an essential tool for developers to improve the quality and reliability of apps. They are very useful in practice to help with fixing bugs that cause crashes.</string>
+    <string name="crash_report_detail_title">Help Improve Zodl</string>
+    <string name="crash_report_detail_subtitle">Crash reports are an essential developer tool used to improve the quality and reliability of apps. Their sole purpose is to fix bugs that cause crashes.</string>
     <string name="crash_report_detail_item_title_2">What is not shared?</string>
     <string name="crash_report_detail_item_subtitle_1">We use Firebase Crashlytics to collect crash reports. They include information about app version, time when the crash happened, and stack trace so it’s clear where in the app the crash happened.</string>
-    <string name="crash_report_detail_item_subtitle_2">No information is available (cannot be seen or collected) to Zashi about individual users, their devices, transactions or their in-app activity.\nThe data collected is completely anonymized.</string>
+    <string name="crash_report_detail_item_subtitle_2">Zodl does not and cannot access or collect information about individual users, their devices, transactions, or their in-app activity. The data is completely anonymized.</string>
     <string name="crash_report_detail_item_title_1">What is shared?</string>
     <string name="crash_report_detail_opt_out">Opt out</string>
     <string name="crash_report_detail_opt_in">Opt in</string>
-    <string name="home_message_crash_reporting_title">Help improve Zashi</string>
+    <string name="home_message_crash_reporting_title">Help improve Zodl</string>
     <string name="home_message_crash_reporting_subtitle">Allow sharing crash reports</string>
     <string name="home_message_crash_reporting_button">Review</string>
     <string name="balance_action_title">Spendable Balance</string>
     <string name="balance_action_all_shielded">All your funds are shielded and spendable.</string>
     <string name="balance_action_pending">Pending receipt of change from a prior transaction.</string>
-    <string name="balance_action_syncing">Zashi is scanning the blockchain to make sure your balances are displayed correctly.</string>
+    <string name="balance_action_syncing">Zodl is scanning the blockchain to make sure your balances are displayed correctly.</string>
     <string name="balance_action_shield_message">Shield your transparent %1$s to make it spendable and private. Doing so will create a shielding in-wallet transaction, consolidating your transparent and shielded funds. (Typical fee: %2$s %3$s)</string>
     <string name="balance_action_info_shielded">Shielded (Spendable)</string>
     <string name="balance_action_info_pending">Pending</string>

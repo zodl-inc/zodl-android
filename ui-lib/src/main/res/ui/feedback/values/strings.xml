@@ -2,16 +2,16 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="support_header">Support</string>
     <string name="support_title">Send Us Feedback</string>
-    <string name="support_experience_title">How is your Zashi experience?</string>
+    <string name="support_experience_title">How is your Zodl experience?</string>
     <string name="support_help_title">How can we help you?</string>
     <string name="support_hint">I would like to ask about…</string>
     <string name="support_send">Send</string>
     <string name="support_confirmation_dialog_ok">OK</string>
     <string name="support_confirmation_dialog_cancel">Cancel</string>
     <string name="support_confirmation_dialog_title">Open e-mail app</string>
-    <string name="support_confirmation_explanation">Zashi is about to
+    <string name="support_confirmation_explanation">Zodl is about to
         open your e-mail app with a pre-filled message.\n\nBe sure to hit send within your e-mail app.</string>
     <string name="support_information">Please let us know about any problems you have had, or features you want to see in the future.</string>
-    <string name="support_email_part_1">How is your Zashi experience?\n<xliff:g id="emoji_encoding" example="😍">%1$s</xliff:g> <xliff:g id="emoji_order" example="5">%2$s</xliff:g>/5</string>
+    <string name="support_email_part_1">How is your Zodl experience?\n<xliff:g id="emoji_encoding" example="😍">%1$s</xliff:g> <xliff:g id="emoji_order" example="5">%2$s</xliff:g>/5</string>
     <string name="support_email_part_2">How can we help you?\n%s</string>
 </resources>

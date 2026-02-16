@@ -58,17 +58,11 @@ class ProcessSwapTransactionUseCase(
             }
         }
 
-        val txIds: List<String> =
-            when (result) {
-                is SubmitResult.GrpcFailure -> result.txIds
-                is SubmitResult.Failure -> emptyList()
-                is SubmitResult.Partial -> result.txIds
-                is SubmitResult.Success -> result.txIds
-            }.filter { it.isNotEmpty() }
-
-        txIds.forEach {
-            submit(it, transactionProposal)
-            yield()
-        }
+        result.txIds
+            .filter { it.isNotEmpty() }
+            .forEach {
+                submit(it, transactionProposal)
+                yield()
+            }
     }
 }

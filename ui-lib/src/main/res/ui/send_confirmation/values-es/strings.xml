@@ -36,16 +36,17 @@
     <string name="send_confirmation_failure_report_button">Reportar</string>
 
     <string name="send_confirmation_failure_grpc_title">Problema de Conexión</string>
-    <string name="send_confirmation_failure_grpc_subtitle">Zashi encontró problemas de conexión al enviar la transacción. Reintentará en los próximos minutos.</string>
+    <string name="send_confirmation_failure_grpc_subtitle">Zodl encontró problemas de conexión al enviar la transacción. Reintentará en los próximos minutos.</string>
     <string name="send_confirmation_failure_grpc_close_button">Cerrar</string>
 
     <string name="send_confirmation_multiple_trx_failure_title">Error al Enviar</string>
-    <string name="send_confirmation_multiple_trx_failure_text_1">Enviar a este destinatario requirió múltiples transacciones, pero solo algunas tuvieron éxito y las demás fallaron. Tus fondos están seguros, pero necesitan ser recuperados con nuestra asistencia.</string>
-    <string name="send_confirmation_multiple_trx_failure_text_2">Por favor, usa el botón de abajo para contactarnos. Preparará automáticamente toda la información que necesitamos para ayudarte a restaurar tus fondos.</string>
+    <string name="send_confirmation_multiple_trx_failure_text">Enviar a este destinatario requirió múltiples
+        transacciones, pero solo algunas tuvieron éxito y las demás fallaron. Tus fondos están seguros, pero
+        necesitan ser recuperados con nuestra asistencia.\n\nPor favor, usa el botón de abajo para contactarnos. Preparará automáticamente toda la información que necesitamos para ayudarte a restaurar tus fondos.</string>
     <string name="send_confirmation_multiple_trx_failure_copy_button">Copiar IDs de transacción</string>
     <string name="send_confirmation_multiple_trx_failure_report_button">Contactar Soporte</string>
     <string name="send_confirmation_multiple_trx_failure_ids_title">IDs de Transacción</string>
-    <string name="send_confirmation_multiple_report_text">Hola, equipo de Zashi.\n\nAl enviar una transacción a una dirección TEX, encontré un error. Me comunico para recibir orientación sobre cómo recuperar mis fondos.\n\nGracias.</string>
+    <string name="send_confirmation_multiple_report_text">Hola, equipo de Zodl.\n\nAl enviar una transacción a una dirección TEX, encontré un error. Me comunico para recibir orientación sobre cómo recuperar mis fondos.\n\nGracias.</string>
     <string name="send_confirmation_multiple_report_statuses" formatted="true">Estatus de transacciones:</string>
     <string name="send_confirmation_multiple_report_status_success">
         <xliff:g example="1" id="index">%1$d</xliff:g>: Éxito

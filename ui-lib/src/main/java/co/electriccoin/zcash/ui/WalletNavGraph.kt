@@ -10,8 +10,8 @@ import androidx.navigation.navArgument
 import androidx.navigation.toRoute
 import co.electriccoin.zcash.ui.screen.about.AboutArgs
 import co.electriccoin.zcash.ui.screen.about.AboutScreen
-import co.electriccoin.zcash.ui.screen.accountlist.AccountList
-import co.electriccoin.zcash.ui.screen.accountlist.AndroidAccountList
+import co.electriccoin.zcash.ui.screen.accountlist.AccountListArgs
+import co.electriccoin.zcash.ui.screen.accountlist.AccountListScreen
 import co.electriccoin.zcash.ui.screen.addressbook.AddressBookArgs
 import co.electriccoin.zcash.ui.screen.addressbook.AddressBookScreen
 import co.electriccoin.zcash.ui.screen.addressbook.SelectABRecipientArgs
@@ -28,8 +28,8 @@ import co.electriccoin.zcash.ui.screen.balances.spendable.SpendableBalanceArgs
 import co.electriccoin.zcash.ui.screen.balances.spendable.SpendableBalanceScreen
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerArgs
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerScreen
-import co.electriccoin.zcash.ui.screen.connectkeystone.AndroidConnectKeystone
-import co.electriccoin.zcash.ui.screen.connectkeystone.ConnectKeystone
+import co.electriccoin.zcash.ui.screen.connectkeystone.ConnectKeystoneArgs
+import co.electriccoin.zcash.ui.screen.connectkeystone.ConnectKeystoneScreen
 import co.electriccoin.zcash.ui.screen.contact.AddGenericABContactArgs
 import co.electriccoin.zcash.ui.screen.contact.AddGenericABContactScreen
 import co.electriccoin.zcash.ui.screen.contact.AddZashiABContactArgs
@@ -196,7 +196,7 @@ fun NavGraphBuilder.walletNavGraph(
         composable<ScanKeystoneSignInRequest> { WrapScanKeystoneSignInRequest() }
         composable<ScanKeystonePCZTRequest> { WrapScanKeystonePCZTRequest() }
         composable<SignKeystoneTransactionArgs> { SignKeystoneTransactionScreen() }
-        dialogComposable<AccountList> { AndroidAccountList() }
+        dialogComposable<AccountListArgs> { AccountListScreen() }
         composable<ScanArgs> { ScanZashiAddressScreen(it.toRoute()) }
         composable(NavigationTargets.EXPORT_PRIVATE_DATA) { WrapExportPrivateData() }
         composable(NavigationTargets.NOT_ENOUGH_SPACE) {
@@ -224,7 +224,7 @@ fun NavGraphBuilder.walletNavGraph(
                 backStackEntry.arguments?.getInt(NavigationArgs.ADDRESS_TYPE) ?: ReceiveAddressType.Unified.ordinal
             RequestScreen(addressType)
         }
-        composable<ConnectKeystone> { AndroidConnectKeystone() }
+        composable<ConnectKeystoneArgs> { ConnectKeystoneScreen() }
         composable<SelectKeystoneAccount> { AndroidSelectKeystoneAccount(it.toRoute()) }
         composable<ReviewTransactionArgs> { AndroidReviewTransaction() }
         composable<TransactionProgressArgs> { TransactionProgressScreen(it.toRoute()) }

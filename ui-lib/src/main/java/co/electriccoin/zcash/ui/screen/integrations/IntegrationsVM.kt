@@ -20,7 +20,7 @@ import co.electriccoin.zcash.ui.common.usecase.Status.UNAVAILABLE
 import co.electriccoin.zcash.ui.design.component.listitem.ListItemState
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.connectkeystone.ConnectKeystone
+import co.electriccoin.zcash.ui.screen.connectkeystone.ConnectKeystoneArgs
 import co.electriccoin.zcash.ui.screen.flexa.Flexa
 import co.electriccoin.zcash.ui.screen.more.MoreArgs
 import kotlinx.coroutines.flow.SharingStarted
@@ -107,7 +107,7 @@ class IntegrationsVM(
 
     private fun onBack() = navigationRouter.back()
 
-    private fun onConnectKeystoneClick() = viewModelScope.launch { navigationRouter.replace(ConnectKeystone) }
+    private fun onConnectKeystoneClick() = viewModelScope.launch { navigationRouter.replace(ConnectKeystoneArgs) }
 
     private fun onFlexaClicked() = navigationRouter.replace(Flexa)
 

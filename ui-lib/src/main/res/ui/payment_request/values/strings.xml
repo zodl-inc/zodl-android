@@ -21,7 +21,7 @@
     <string name="payment_request_dialog_error_report_btn">Report</string>
 
     <string name="payment_request_dialog_error_grpc_title">Connection Error</string>
-    <string name="payment_request_dialog_error_grpc_text">Zashi encountered some connection issues when submitting
+    <string name="payment_request_dialog_error_grpc_text">Zodl encountered some connection issues when submitting
         the transaction to the network. It will retry during the next few minutes.</string>
     <string name="payment_request_dialog_error_grpc_btn">OK</string>
 

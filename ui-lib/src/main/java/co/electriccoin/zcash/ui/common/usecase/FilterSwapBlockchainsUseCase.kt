@@ -14,7 +14,7 @@ class FilterSwapBlockchainsUseCase(
         val blockchains =
             assets.data
                 ?.map { it.blockchain }
-                ?.distinctBy { it.chainTicker } ?: blockchainProvider.getHardcodedBlockchains()
+                ?.distinctBy { it.chainName.getString(context) } ?: blockchainProvider.getHardcodedBlockchains()
         val sorted = blockchains.sortedBy { it.chainTicker }
         val filtered =
             buildSet {

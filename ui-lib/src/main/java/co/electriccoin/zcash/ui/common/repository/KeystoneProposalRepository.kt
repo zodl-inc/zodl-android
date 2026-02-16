@@ -216,30 +216,16 @@ class KeystoneProposalRepositoryImpl(
                 val pcztWithSignatures = pcztWithSignatures
 
                 if (transactionProposal == null || pcztWithSignatures == null) {
-                    submitState.update {
-                        SubmitProposalState.Result(
-                            SubmitResult.Failure(
-                                txIds = emptyList(),
-                                code = 0,
-                                description = "Transaction proposal is null"
-                            )
-                        )
-                    }
-                    throw IllegalStateException("Transaction proposal is null")
+                    val cause = IllegalStateException("Transaction proposal is null")
+                    submitState.update { SubmitProposalState.Result(SubmitResult.Error(cause)) }
+                    throw cause
                 } else {
                     submitState.update { SubmitProposalState.Submitting }
                     val pcztWithProofs = pcztWithProofs.filter { !it.isLoading }.first().pczt
                     if (pcztWithProofs == null) {
-                        submitState.update {
-                            SubmitProposalState.Result(
-                                SubmitResult.Failure(
-                                    txIds = emptyList(),
-                                    code = 0,
-                                    description = "PCZT with proofs is null"
-                                )
-                            )
-                        }
-                        throw IllegalStateException("PCZT with proofs is null")
+                        val cause = IllegalStateException("PCZT with proofs is null")
+                        submitState.update { SubmitProposalState.Result(SubmitResult.Error(cause)) }
+                        throw cause
                     } else {
                         try {
                             val result =
@@ -250,12 +236,7 @@ class KeystoneProposalRepositoryImpl(
                             submitState.update { SubmitProposalState.Result(result) }
                             result
                         } catch (e: Exception) {
-                            val result =
-                                SubmitResult.Failure(
-                                    txIds = emptyList(),
-                                    code = 0,
-                                    description = e.message
-                                )
+                            val result = SubmitResult.Error(e)
                             submitState.update { SubmitProposalState.Result(result) }
                             throw e
                         }

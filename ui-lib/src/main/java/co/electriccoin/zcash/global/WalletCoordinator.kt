@@ -17,7 +17,7 @@ fun WalletCoordinator.Companion.newInstance(
         context = context,
         persistableWallet = persistableWalletProvider.persistableWallet,
         accountName = context.getString(R.string.zashi_wallet_name),
-        keySource = "zashi",
+        keySource = "zodl",
         isTorEnabled = isTorEnabledStorageProvider.observe(),
         isExchangeRateEnabled = isExchangeRateEnabledStorageProvider.observe()
     )

@@ -92,14 +92,14 @@ fun CrashReportingOptInContent(state: CrashReportingOptInState) {
                 .fillMaxHeight()
                 .verticalScroll(rememberScrollState())
     ) {
-        Image(painter = painterResource(R.drawable.crash_reporting_opt_in_all_icons), contentDescription = null)
+        Image(
+            modifier = Modifier.height(48.dp),
+            painter = painterResource(R.drawable.crash_report_detail),
+            contentDescription = null
+        )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text =
-                stringResource(
-                    id = R.string.crash_reporting_opt_in_title,
-                    stringResource(R.string.app_name)
-                ),
+            text = stringResource(R.string.crash_reporting_opt_in_title),
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.header6,
             fontWeight = FontWeight.SemiBold

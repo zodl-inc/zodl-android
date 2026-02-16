@@ -1,13 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="crash_reporting_opt_in_title">
-        Ayuda a Mejorar <xliff:g id="app_name" example="Zashi">%1$s</xliff:g>
-    </string>
+    <string name="crash_reporting_opt_in_title">Ayuda a Mejorar Zodl</string>
     <string name="crash_reporting_opt_in_subtitle">Los reportes de fallos son una herramienta esencial para que los desarrolladores mejoren la calidad y confiabilidad de las aplicaciones. Son muy útiles en la práctica para ayudar a corregir errores que provocan cierres inesperados.</string>
     <string name="crash_reporting_opt_in_info">Nota: Los reportes de fallos incluyen información sobre la versión de la app, la hora en que ocurrió el fallo y la traza del error, lo cual permite identificar en qué parte de la app ocurrió el problema. Los datos recopilados están completamente anonimizados.</string>
     <string name="crash_reporting_opt_in_positive">Participar</string>
-    <string name="crash_reporting_opt_in_positive_desc">Compartir reportes de fallos con los desarrolladores de Zashi.</string>
+    <string name="crash_reporting_opt_in_positive_desc">Compartir reportes de fallos con los desarrolladores de Zodl.</string>
     <string name="crash_reporting_opt_in_negative">Cancelar participación</string>
-    <string name="crash_reporting_opt_in_negative_desc">No compartir reportes de fallos con los desarrolladores de Zashi.</string>
+    <string name="crash_reporting_opt_in_negative_desc">No compartir reportes de fallos con los desarrolladores de Zodl.</string>
     <string name="crash_reporting_opt_in_save">Guardar cambios</string>
 </resources>

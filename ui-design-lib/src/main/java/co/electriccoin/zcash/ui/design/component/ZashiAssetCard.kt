@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -27,9 +28,11 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.util.StringResourceColor
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.design.util.styledStringResource
 import com.valentinilk.shimmer.shimmer
 
 @Composable
@@ -61,16 +64,23 @@ private fun Content(state: AssetCardState) {
     }
 }
 
+@Suppress("CyclomaticComplexMethod")
 @Composable
 private fun Data(state: AssetCardState.Data, modifier: Modifier = Modifier) {
+    val verticalPadding =
+        when {
+            state.bigIcon != null && state.isSingleLine -> 6.dp
+            state.bigIcon != null -> 2.dp
+            else -> 8.dp
+        }
     Row(
         modifier =
             modifier then
                 Modifier.padding(
-                    start = if (state.bigIcon is ImageResource.ByDrawable) 4.dp else 14.dp,
-                    top = if (state.bigIcon is ImageResource.ByDrawable) 4.dp else 8.dp,
-                    end = 12.dp,
-                    bottom = if (state.bigIcon is ImageResource.ByDrawable) 4.dp else 8.dp,
+                    start = if (state.bigIcon is ImageResource.ByDrawable) 6.dp else 14.dp,
+                    top = verticalPadding,
+                    end = if (state.isEnabled) 6.dp else 12.dp,
+                    bottom = verticalPadding,
                 ),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -114,19 +124,75 @@ private fun Data(state: AssetCardState.Data, modifier: Modifier = Modifier) {
                     }
                 }
             }
-            Spacer(8.dp)
+            Spacer(12.dp)
         }
-        ZashiAutoSizeText(
-            text = state.ticker.getValue(),
-            style = ZashiTypography.textSm,
-            color = ZashiColors.Text.textPrimary,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-        )
-        Spacer(4.dp)
+
+        if (!state.isSingleLine) {
+            Column(
+                modifier = Modifier.weight(1f, false)
+            ) {
+                ZashiAutoSizeText(
+                    text = state.token.getValue(),
+                    style = ZashiTypography.textXs,
+                    color = ZashiColors.Text.textPrimary,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+                if (state.chain != null) {
+                    ZashiAutoSizeText(
+                        text = state.chain.getValue(),
+                        style = ZashiTypography.textXs,
+                        color = ZashiColors.Text.textTertiary,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                    )
+                }
+            }
+        } else {
+            val text =
+                if (state.chain != null) {
+                    val space =
+                        styledStringResource(
+                            stringRes(" "),
+                            color = StringResourceColor.TERTIARY,
+                            fontWeight = FontWeight.Medium
+                        )
+                    styledStringResource(
+                        state.token,
+                        color = StringResourceColor.PRIMARY,
+                        fontWeight = FontWeight.SemiBold
+                    ) + space +
+                        styledStringResource(
+                            stringRes(R.string.general_on),
+                            color = StringResourceColor.TERTIARY,
+                            fontWeight = FontWeight.Medium
+                        ) + space +
+                        styledStringResource(
+                            state.chain,
+                            color = StringResourceColor.TERTIARY,
+                            fontWeight = FontWeight.Medium
+                        )
+                } else {
+                    styledStringResource(
+                        state.token,
+                        color = StringResourceColor.PRIMARY,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+            ZashiAutoSizeText(
+                modifier = Modifier.weight(1f, false),
+                text = text,
+                style = ZashiTypography.textMd,
+                color = ZashiColors.Text.textPrimary,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+        }
         if (state.onClick != null && state.isEnabled) {
+            Spacer(12.dp)
             Image(
-                painter = painterResource(R.drawable.ic_chevron_down_small),
+                painter = painterResource(R.drawable.ic_chevron_circle_down_small),
                 contentDescription = null
             )
         }
@@ -201,9 +267,11 @@ sealed interface AssetCardState {
 
     @Immutable
     data class Data(
-        val ticker: StringResource,
-        val bigIcon: ImageResource?,
-        val smallIcon: ImageResource?,
+        val token: StringResource,
+        val chain: StringResource? = null,
+        val bigIcon: ImageResource? = null,
+        val smallIcon: ImageResource? = null,
+        val isSingleLine: Boolean = false,
         override val isEnabled: Boolean = true,
         override val onClick: (() -> Unit)?,
     ) : AssetCardState
@@ -223,7 +291,9 @@ private fun ClickablePreview() =
             ZashiAssetCard(
                 state =
                     AssetCardState.Data(
-                        ticker = stringRes("USDT"),
+                        token = stringRes("USDT"),
+                        chain = stringRes("Ethereum"),
+                        isSingleLine = true,
                         bigIcon = imageRes(R.drawable.ic_token_zec),
                         smallIcon = imageRes(R.drawable.ic_chain_zec),
                         onClick = {}
@@ -240,7 +310,7 @@ private fun UnclickablePreview() =
             ZashiAssetCard(
                 state =
                     AssetCardState.Data(
-                        ticker = stringRes("USDT"),
+                        token = stringRes("USDT"),
                         bigIcon = imageRes(R.drawable.ic_token_zec),
                         smallIcon = imageRes(R.drawable.ic_chain_zec),
                         onClick = null

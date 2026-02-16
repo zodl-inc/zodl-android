@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="not_enough_space_title">Not enough free space</string>
-    <string name="not_enough_space_description_1">Zashi requires <xliff:g example="1" id="required_gigabytes">%1$d</xliff:g> GB of space to synchronize the Zcash blockchain but there is only</string>
+    <string name="not_enough_space_description_1">Zodl requires <xliff:g example="1" id="required_gigabytes">%1$d</xliff:g> GB of space to synchronize the Zcash blockchain but there is only</string>
     <string name="not_enough_space_description_2"><xliff:g example="300" id="available_megabytes">%1$d</xliff:g> MB available</string>
     <string name="not_enough_space_description_3">. Syncing will stay paused until more space is available.\n\n~<xliff:g example="300" id="required_megabytes">%1$d</xliff:g> MB of additional space required to continue</string>
     <string name="not_enough_space_system_settings_btn">System settings</string>

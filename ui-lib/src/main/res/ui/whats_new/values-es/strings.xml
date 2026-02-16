@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="whats_new_title">Novedades</string>
-    <string name="whats_new_version">Versión de Zashi <xliff:g example="1" id="version">%s</xliff:g></string>
+    <string name="whats_new_version">Versión de Zodl <xliff:g example="1" id="version">%s</xliff:g></string>
 </resources>

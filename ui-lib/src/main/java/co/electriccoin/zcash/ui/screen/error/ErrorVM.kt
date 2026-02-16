@@ -82,6 +82,7 @@ class ErrorVM(
             title = stringRes(R.string.error_shielding_title),
             message =
                 when (args.error) {
+                    is SubmitResult.Error,
                     is SubmitResult.GrpcFailure -> stringRes(R.string.error_shielding_message_grpc)
                     is SubmitResult.Failure ->
                         stringRes(
@@ -165,6 +166,7 @@ class ErrorVM(
                     is SubmitResult.Failure -> sendEmailUseCase(args.error)
                     is SubmitResult.GrpcFailure -> sendEmailUseCase(args.error)
                     is SubmitResult.Partial -> sendEmailUseCase(args.error)
+                    is SubmitResult.Error -> sendEmailUseCase(args.error)
                     is SubmitResult.Success -> {
                         // do nothing
                     }

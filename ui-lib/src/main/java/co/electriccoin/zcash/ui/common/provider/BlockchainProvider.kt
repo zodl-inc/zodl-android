@@ -6,7 +6,6 @@ import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
 
 interface BlockchainProvider {
     fun getBlockchain(ticker: String): SwapBlockchain
@@ -25,28 +24,35 @@ class BlockchainProviderImpl(
             chainTicker = ticker,
             chainName =
                 when (ticker.lowercase()) {
+                    "adi" -> stringRes("Adi")
                     "aptos" -> stringRes("Aptos")
                     "arb" -> stringRes("Arbitrum")
                     "avax" -> stringRes("Avalanche")
                     "base" -> stringRes("Base")
                     "bera" -> stringRes("Bera")
-                    "bsc" -> stringRes("BNB Chain")
+                    "bch" -> stringRes("Bitcoin Cash")
+                    "bsc" -> stringRes("Binance Smart Chain")
                     "btc" -> stringRes("Bitcoin")
                     "cardano" -> stringRes("Cardano")
                     "doge" -> stringRes("Doge")
                     "eth" -> stringRes("Ethereum")
                     "gnosis" -> stringRes("Gnosis")
+                    "ltc" -> stringRes("Litecoin")
+                    "monad" -> stringRes("Monad")
                     "near" -> stringRes("Near")
                     "op" -> stringRes("Optimism")
+                    "plasma" -> stringRes("Plasma")
                     "pol" -> stringRes("Polygon")
                     "sol" -> stringRes("Solana")
+                    "starknet" -> stringRes("Starknet")
                     "stellar" -> stringRes("Stellar")
-                    "sui" -> stringRes("SUI")
-                    "ton" -> stringRes("TON")
+                    "sui" -> stringRes("Sui")
+                    "ton" -> stringRes("Ton")
                     "tron" -> stringRes("Tron")
-                    "xrp" -> stringRes("Ripple")
-                    "zec" -> stringRes(CURRENCY_TICKER)
-                    else -> stringRes(ticker)
+                    "xrp" -> stringRes("XRP")
+                    "xlayer" -> stringRes("X Layer")
+                    "zec" -> stringRes("Zcash")
+                    else -> stringRes(ticker.replaceFirstChar { it.uppercase() })
                 },
             chainIcon = getChainIcon(ticker)
         )

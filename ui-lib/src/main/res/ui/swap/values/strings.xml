@@ -8,7 +8,7 @@
     <string name="swap_select_chain">Select Chain</string>
     <string name="swap_search_hint">Search by name or ticker…</string>
     <string name="swap_slippage_title">Slippage</string>
-    <string name="swap_slippage_subtitle">This setting determines the maximum allowable difference between the expected price of a swap and the actual price you pay, which is outside of Zashi\'s control.</string>
+    <string name="swap_slippage_subtitle">This setting determines the maximum allowable difference between the expected price of a swap and the actual price you pay, which is outside of Zodl\'s control.</string>
     <string name="swap_slippage_max_threshold">Please enter maximum slippage of 30%%.</string>
     <string name="swap_slippage_info">You may receive up to %s less than quoted.</string>
     <string name="pay_slippage_info">You may pay up to %s more, in addition to transaction fees.</string>
@@ -39,7 +39,7 @@
     <string name="swap_quote_total_fees">Total fees</string>
     <string name="swap_quote_max_slippage">Max slippage %s</string>
     <string name="swap_quote_total_amount">Total Amount</string>
-    <string name="swap_quote_zashi">Zashi</string>
+    <string name="swap_quote_zashi">Zodl</string>
     <string name="swap_quote_info">You could receive up to %s less based on the %s slippage you set.</string>
     <string name="swap_confirm">Get a quote</string>
     <string name="swap_picker_select_chain">Select chain</string>
@@ -50,7 +50,7 @@
     <string name="swap_to_zec_footer">Use your %s wallet \n to deposit funds. Depositing other assets may result in
         loss of funds.</string>
     <string name="swap_to_zec_footer_bold">%s on %s</string>
-    <string name="swap_to_zec_share_text">Deposit address for %1$s %2$s on %3$s swap to %4$s in Zashi</string>
+    <string name="swap_to_zec_share_text">Deposit address for %1$s %2$s on %3$s swap to %4$s in Zodl</string>
     <string name="swap_refund_address">Refund Address</string>
     <string name="swap_refund_address_info_title">Refund Address</string>
     <string name="swap_refund_address_info_message_empty">If the swap fails or market conditions change, your

@@ -160,7 +160,7 @@ private fun AppBar(state: RestoreSeedState) {
     )
 }
 
-@Suppress("ComplexCondition")
+@Suppress("ComplexCondition", "CyclomaticComplexMethod")
 @Composable
 private fun BottomBar(
     state: RestoreSeedState,
@@ -172,13 +172,12 @@ private fun BottomBar(
         derivedStateOf { getFilteredSuggestions(suggestionsState, handle) }
     }
     var previousIndex by remember { mutableIntStateOf(handle.selectedIndex) }
-    var previousText by remember { mutableStateOf(handle.selectedText) }
+
     LaunchedEffect(handle.selectedIndex, handle.selectedText) {
         if (
+            suggestions.size == 1 &&
             previousIndex == handle.selectedIndex &&
-            previousText != handle.selectedText &&
-            suggestions.contains(handle.selectedText) &&
-            suggestions.size == 1
+            suggestions.contains(handle.selectedText)
         ) {
             val nextIndex =
                 state.seed.values
@@ -190,7 +189,6 @@ private fun BottomBar(
             handle.setSelectedIndex(nextIndex)
         }
         previousIndex = handle.selectedIndex
-        previousText = handle.selectedText
     }
 
     if (suggestionsState.isVisible &&
@@ -221,13 +219,23 @@ private fun BottomBar(
                                 ChipButtonState(
                                     text = stringRes(it),
                                     onClick = {
-                                        if (handle.selectedIndex >= 0) {
-                                            state.seed.values[handle.selectedIndex].onValueChange(
-                                                SeedWordInnerTextFieldState(
-                                                    value = it,
-                                                    selection = TextSelection.End
-                                                )
+                                        val selectedIndex = handle.selectedIndex
+                                        if (selectedIndex >= 0) {
+                                            state.seed.values[selectedIndex].onValueChange(
+                                                SeedWordInnerTextFieldState(value = it, selection = TextSelection.End)
                                             )
+
+                                            val nextIndex =
+                                                state.seed.values
+                                                    .withIndex()
+                                                    .indexOfFirst { (index, field) ->
+                                                        index >= selectedIndex &&
+                                                            (field.innerState.value.isBlank() || field.isError)
+                                                    }
+
+                                            if (nextIndex != -1) {
+                                                handle.setSelectedIndex(nextIndex)
+                                            }
                                         }
                                     }
                                 ),

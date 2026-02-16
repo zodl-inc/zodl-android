@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="advanced_settings_title">Advanced Settings</string>
-    <string name="advanced_settings_recovery">Zashi Recovery Phrase</string>
+    <string name="advanced_settings_recovery">Zodl Recovery Phrase</string>
     <string name="advanced_settings_export">Export Private Data</string>
     <string name="advanced_settings_choose_server">Choose a Server</string>
     <string name="advanced_settings_privacy">Beta: Tor Protection</string>
     <string name="advanced_settings_currency_conversion">Currency Conversion</string>
     <string name="advanced_settings_crash_reporting">Crash Reporting</string>
     <string name="advanced_settings_info">You will be asked to confirm on the next screen</string>
-    <string name="advanced_settings_delete_button">Reset Zashi</string>
+    <string name="advanced_settings_delete_button">Reset Zodl</string>
     <string name="advanced_settings_tax">Export Tax File</string>
     <string name="advanced_settings_resync_wallet">Resync Wallet</string>
 </resources>
