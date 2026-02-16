@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui
 
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraphBuilder
@@ -8,6 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
 import androidx.navigation.toRoute
+import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
 import co.electriccoin.zcash.ui.screen.about.AboutArgs
 import co.electriccoin.zcash.ui.screen.about.AboutScreen
 import co.electriccoin.zcash.ui.screen.accountlist.AccountListArgs
@@ -87,6 +89,8 @@ import co.electriccoin.zcash.ui.screen.pay.PayScreen
 import co.electriccoin.zcash.ui.screen.pay.info.PayInfoArgs
 import co.electriccoin.zcash.ui.screen.pay.info.PayInfoScreen
 import co.electriccoin.zcash.ui.screen.qrcode.QrCodeScreen
+import co.electriccoin.zcash.ui.screen.rebrand.RebrandArgs
+import co.electriccoin.zcash.ui.screen.rebrand.RebrandScreen
 import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressType
 import co.electriccoin.zcash.ui.screen.receive.ReceiveArgs
 import co.electriccoin.zcash.ui.screen.receive.ReceiveScreen
@@ -171,11 +175,20 @@ import co.electriccoin.zcash.ui.screen.whatsnew.WrapWhatsNew
 
 fun NavGraphBuilder.walletNavGraph(
     storageCheckViewModel: StorageCheckViewModel,
+    walletViewModel: WalletViewModel,
     navigationRouter: NavigationRouter,
 ) {
     navigation<MainAppGraph>(startDestination = HomeArgs) {
         composable<HomeArgs> {
             AndroidHome()
+
+            val isRebrandAcknowledged by walletViewModel.isRebrandAcknowledged.collectAsStateWithLifecycle()
+            LaunchedEffect(isRebrandAcknowledged) {
+                if (isRebrandAcknowledged == false) {
+                    navigationRouter.forward(RebrandArgs)
+                }
+            }
+
             val isEnoughSpace by storageCheckViewModel.isEnoughSpace.collectAsStateWithLifecycle()
             if (isEnoughSpace == false) {
                 navigationRouter.forward(NavigationTargets.NOT_ENOUGH_SPACE)
@@ -281,5 +294,6 @@ fun NavGraphBuilder.walletNavGraph(
         composable<ConfirmResyncArgs> { ConfirmResyncScreen() }
         composable<ResyncBDDateArgs> { ResyncBDDateScreen(it.toRoute()) }
         composable<ResyncBDEstimationArgs> { ResyncBDEstimationScreen(it.toRoute()) }
+        composable<RebrandArgs> { RebrandScreen() }
     }
 }

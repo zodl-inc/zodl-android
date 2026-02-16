@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rebrand_title">Zashi is now Zodl</string>
+    <string name="rebrand_desc">We’ve rebranded, but everything you love stays the same. Zodl is the same app under a
+        new banner.</string>
+    <string name="rebrand_security">Your funds and seed phrase remain secure and unchanged.</string>
+    <string name="rebrand_info_title">Everything works just like before:</string>
+    <string name="rebrand_info_title_1">Same development team</string>
+    <string name="rebrand_info_title_2">Same mission</string>
+    <string name="rebrand_info_title_3">Same app</string>
+    <string name="rebrand_button_more">Learn more</string>
+    <string name="rebrand_button_next">Go to Zodl</string>
+</resources>
