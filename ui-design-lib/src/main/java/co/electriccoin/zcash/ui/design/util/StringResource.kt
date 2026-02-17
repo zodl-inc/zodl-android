@@ -350,18 +350,27 @@ private const val ADDRESS_MAX_LENGTH_ABBREVIATED = 20
 
 enum class TickerLocation { BEFORE, AFTER, HIDDEN }
 
+/**
+ * Formats a [BigDecimal] with the minimum number of decimal places >= 2 such that
+ * the error relative to the original value is less than 0.05%. The scale of the
+ * returned value is at least 8, so that subsequent arithmetic operations will not
+ * lose precision.
+ */
 @Suppress("ReturnCount", "MagicNumber")
 private fun BigDecimal.stripFractionsDynamically(): BigDecimal {
-    val tolerance = BigDecimal(".005")
+    val tolerance = BigDecimal(".0005")
     val minDecimals = 2
     val maxDecimals = 8
 
     val original = this.stripTrailingZeros()
     val originalScale = original.scale()
-    if (originalScale <= minDecimals) return original.setScale(maxDecimals, RoundingMode.HALF_EVEN)
+    if (originalScale <= minDecimals) return original.setScale(maxDecimals, RoundingMode.UNNECESSARY)
 
     for (scale in minDecimals..maxDecimals) {
-        val rounded = original.setScale(scale, RoundingMode.HALF_EVEN)
+        val rounded =
+            original
+                .setScale(scale, RoundingMode.HALF_EVEN)
+                .setScale(maxDecimals, RoundingMode.UNNECESSARY)
 
         val diff =
             original
@@ -372,5 +381,5 @@ private fun BigDecimal.stripFractionsDynamically(): BigDecimal {
         if (diff <= tolerance) return rounded
     }
 
-    return original.setScale(maxDecimals, RoundingMode.HALF_EVEN)
+    return original
 }
