@@ -245,7 +245,7 @@ androidComponents {
     onVariants { variant ->
         for (output in variant.outputs) {
             // Configure strict mode in runtime
-            variant.buildConfigFields.put(
+            variant.buildConfigFields?.put(
                 "IS_STRICT_MODE_CRASH_ENABLED",
                 BuildConfigField(
                     type = "boolean",
