@@ -28,6 +28,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.ButtonState
+import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
@@ -53,7 +54,7 @@ fun RebrandView(state: RebrandState, modifier: Modifier = Modifier) {
                         .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(60.dp))
+                Spacer(60.dp)
 
                 Image(
                     painter = painterResource(R.drawable.ic_rebrand),
@@ -61,7 +62,7 @@ fun RebrandView(state: RebrandState, modifier: Modifier = Modifier) {
                     modifier = Modifier.height(60.dp)
                 )
 
-                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXs))
+                Spacer(ZashiDimensions.Spacing.spacingXs)
 
                 Text(
                     text = stringResource(R.string.rebrand_title),
@@ -71,7 +72,7 @@ fun RebrandView(state: RebrandState, modifier: Modifier = Modifier) {
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(22.dp))
+                Spacer(22.dp)
 
                 Text(
                     text = stringResource(R.string.rebrand_desc),
@@ -80,7 +81,7 @@ fun RebrandView(state: RebrandState, modifier: Modifier = Modifier) {
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(modifier = Modifier.height(22.dp))
+                Spacer(22.dp)
 
                 Surface(
                     color = ZashiColors.Utility.SuccessGreen.utilitySuccess50,
@@ -96,7 +97,7 @@ fun RebrandView(state: RebrandState, modifier: Modifier = Modifier) {
                     )
                 }
 
-                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing5xl))
+                Spacer(ZashiDimensions.Spacing.spacing5xl)
 
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -108,7 +109,7 @@ fun RebrandView(state: RebrandState, modifier: Modifier = Modifier) {
                         style = ZashiTypography.textSm,
                         fontWeight = FontWeight.Medium
                     )
-                    Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXs))
+                    Spacer(ZashiDimensions.Spacing.spacingXs)
                     ListPoint(stringResource(R.string.rebrand_info_title_1))
                     ListPoint(stringResource(R.string.rebrand_info_title_2))
                     ListPoint(stringResource(R.string.rebrand_info_title_3))
@@ -122,7 +123,7 @@ fun RebrandView(state: RebrandState, modifier: Modifier = Modifier) {
                     defaultPrimaryColors = ZashiButtonDefaults.tertiaryColors(),
                 )
 
-                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingLg))
+                Spacer(ZashiDimensions.Spacing.spacingLg)
 
                 ZashiButton(
                     modifier = Modifier.fillMaxWidth(),
