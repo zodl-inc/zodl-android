@@ -8,7 +8,7 @@
     <string name="about_description">Zodl is a Zcash-powered mobile wallet, built for unstoppable private payments.
         It’s optimized for storage and real-world use of shielded $ZEC—the truly private cryptocurrency.\n\nDeveloped by the team that set the industry standard for onchain privacy, the original developers of the Zcash protocol.
     </string>
-    <string name="terms_of_use">Términos de uso</string>
+    <string name="terms_of_use">Términos de servicio</string>
 
     <string name="about_unable_to_web_browser">No se pudo encontrar una aplicación de navegador web.</string>
     <string name="about_button_privacy_policy">Política de privacidad</string>
