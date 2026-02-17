@@ -15,22 +15,24 @@ class RebrandVM(
     private val navigationRouter: NavigationRouter,
     private val walletRepository: WalletRepository,
 ) : ViewModel() {
-
-    internal val state = MutableStateFlow(
-        RebrandState(
-            info = ButtonState(
-                text = stringRes(R.string.rebrand_button_more),
-            ) {
-                navigationRouter.forward(ExternalUrl("https://zodl.com/zashi-is-becoming-zodl/"))
-            },
-            next = ButtonState(
-                text = stringRes(R.string.rebrand_button_next),
-            ) {
-                viewModelScope.launch {
-                    walletRepository.acknowledgeRebrand()
-                    navigationRouter.back()
-                }
-            },
+    internal val state =
+        MutableStateFlow(
+            RebrandState(
+                info =
+                    ButtonState(
+                        text = stringRes(R.string.rebrand_button_more),
+                    ) {
+                        navigationRouter.forward(ExternalUrl("https://zodl.com/zashi-is-becoming-zodl/"))
+                    },
+                next =
+                    ButtonState(
+                        text = stringRes(R.string.rebrand_button_next),
+                    ) {
+                        viewModelScope.launch {
+                            walletRepository.acknowledgeRebrand()
+                            navigationRouter.back()
+                        }
+                    },
+            )
         )
-    )
 }

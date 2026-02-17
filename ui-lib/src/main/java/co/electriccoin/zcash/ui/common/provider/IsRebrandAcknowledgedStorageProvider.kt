@@ -8,5 +8,6 @@ interface IsRebrandAcknowledgedStorageProvider : NullableBooleanStorageProvider
 class IsRebrandAcknowledgedStorageProviderImpl(
     override val preferenceHolder: StandardPreferenceProvider,
 ) : BaseNullableBooleanStorageProvider(
-    key = PreferenceKey("is_rebrand_acknowledged"),
-), IsRebrandAcknowledgedStorageProvider
+        key = PreferenceKey("is_rebrand_acknowledged"),
+    ),
+    IsRebrandAcknowledgedStorageProvider

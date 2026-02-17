@@ -39,10 +39,10 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 
 @Composable
 fun RebrandView(state: RebrandState, modifier: Modifier = Modifier) {
-    Scaffold { paddingValues ->
+    Scaffold(modifier = modifier) { paddingValues ->
         Column(
             modifier =
-                modifier
+                Modifier
                     .fillMaxSize()
                     .scaffoldPadding(paddingValues)
         ) {
