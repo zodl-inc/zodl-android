@@ -1,7 +1,7 @@
-# Zashi Android Wallet
+# Zodl Android Wallet
 
-This is the official home of the Zashi Zcash wallet for Android, a no-frills
-Zcash mobile wallet leveraging the [Zcash Android SDK](https://github.com/Electric-Coin-Company/zcash-android-wallet-sdk).  
+This is the official home of the Zodl Zcash wallet for Android, a no-frills
+Zcash mobile wallet leveraging the [Zcash Android SDK](https://github.com/zcash/zcash-android-wallet-sdk).
 
 # Download
 
@@ -12,25 +12,26 @@ Zcash mobile wallet leveraging the [Zcash Android SDK](https://github.com/Electr
      alt="Get it on Google Play"
      height="80">](https://play.google.com/store/apps/details?id=co.electriccoin.zcash)
 
-Or download the latest APK from the [Releases Section](https://github.com/Electric-Coin-Company/zashi-android/releases/latest).
+Or download the latest APK from the [Releases Section](https://github.com/zodl-inc/zashi-android/releases/latest).
 
-# Zashi Discord
+# Zodl Discord
 
-Join the Zashi community on ECC Discord server, report bugs, share ideas, request new features, and help shape Zashi's journey!
+Join the Zodl community on Discord to report bugs, share ideas, request new
+features, and help shape Zodl's journey!
 
 https://discord.gg/jQPU7aXe7A
 
 # Reporting an issue
 
 If you'd like to report a technical issue or feature request for the Android
-Wallet, please file a GitHub issue [here](https://github.com/Electric-Coin-Company/zashi-android/issues/new/choose).
+Wallet, please file a GitHub issue [here](https://github.com/zodl-inc/zodl-android/issues/new/choose).
 
-For feature requests and issues related to the Zashi user interface that are
-not Android-specific, please file a GitHub issue [here](https://github.com/Electric-Coin-Company/zashi/issues/new/choose).
+For feature requests and issues related to the Zodl user interface that are
+not Android-specific, please file a GitHub issue [here](https://github.com/zodl-inc/zodl-project/issues/new/choose).
 
-If you wish to report a security issue, please follow our 
-[Responsible Disclosure guidelines](https://github.com/Electric-Coin-Company/zashi/blob/master/responsible_disclosure.md).
-See the [Wallet App Threat Model](https://github.com/Electric-Coin-Company/zashi/blob/master/wallet_threat_model.md) 
+If you wish to report a security issue, please follow our
+[Responsible Disclosure guidelines](https://github.com/zodl-inc/zodl-project/blob/master/responsible_disclosure.md).
+See the [Wallet App Threat Model](https://github.com/zodl-inc/zodl-project/blob/master/wallet_threat_model.md)
 for more information about the security and privacy limitations of the wallet.
 
 General Zcash questions and/or support requests and are best directed to either:
@@ -39,11 +40,13 @@ General Zcash questions and/or support requests and are best directed to either:
 
 # Contributing
 
-Contributions are very much welcomed!  Please read our [Contributing Guidelines](docs/CONTRIBUTING.md) to learn about our process.
+Contributions are very much welcomed!  Please read our 
+[Contributing Guidelines](docs/CONTRIBUTING.md) to learn about our process.
 
 # Getting Started
 
-If you'd like to compile this application from source, please see our [Setup Documentation](docs/Setup.md) to get started.
+If you'd like to compile this application from source, please see our 
+[Setup Documentation](docs/Setup.md) to get started.
 
 # Forking
 
@@ -75,5 +78,5 @@ the project, these steps are not necessary.)
    APK cannot be run.  The coverage flag should therefore only be set when
    running automated tests.
 1. Test coverage for Compose code will be low, due to [known limitations](https://github.com/jacoco/jacoco/issues/1208) in the interaction between Compose and Jacoco.
-1. Adding the `espresso-contrib` dependency will cause builds to fail, due to conflicting classes.  This is a [known issue](https://github.com/Electric-Coin-Company/zcash-android-wallet-sdk/issues/306) with the Zcash Android SDK.
+1. Adding the `espresso-contrib` dependency will cause builds to fail, due to conflicting classes.  This is a [known issue](https://github.com/zcash/zcash-android-wallet-sdk/issues/306) with the Zcash Android SDK.
 1. During app first launch, the following exception starting with `AndroidKeysetManager: keyset not found, will generate a new one` is printed twice.  This exception is not an error, and the code is not being invoked twice.
