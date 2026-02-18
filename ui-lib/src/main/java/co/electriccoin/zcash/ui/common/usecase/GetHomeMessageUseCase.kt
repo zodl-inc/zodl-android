@@ -78,33 +78,34 @@ class GetHomeMessageUseCase(
             .distinctUntilChanged()
             .map { message -> prioritizeMessage(message) }
 
+    private fun observeShieldFundsMessage() =
+        accountDataSource.selectedAccount.flatMapLatest { account ->
+            when {
+                account == null -> flowOf(null)
+                account.isShieldingAvailable ->
+                    messageAvailabilityDataSource.canShowShieldMessage
+                        .map { canShowShieldMessage ->
+                            when {
+                                !canShowShieldMessage -> null
+                                else -> HomeMessageData.ShieldFunds(account.transparent.balance)
+                            }
+                        }
+
+                else -> flowOf(null)
+            }
+        }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeRuntimeMessage(): Flow<RuntimeMessage?> {
-        fun observeShieldFundsMessage() =
-            accountDataSource.selectedAccount.flatMapLatest { account ->
-                when {
-                    account == null -> flowOf(null)
-                    account.isShieldingAvailable ->
-                        messageAvailabilityDataSource.canShowShieldMessage
-                            .map { canShowShieldMessage ->
-                                when {
-                                    !canShowShieldMessage -> null
-                                    else -> HomeMessageData.ShieldFunds(account.transparent.balance)
-                                }
-                            }
-
-                    else -> flowOf(null)
-                }
-            }
-
         return channelFlow {
             var firstSyncingMessage: HomeMessageData.Syncing? = null
             combine(
                 observeShieldFundsMessage(),
+                accountDataSource.selectedAccount,
                 walletSnapshotDataSource.observe().filterNotNull()
-            ) { availability, walletSnapshot ->
-                availability to walletSnapshot
-            }.collect { (shieldFundsMessage, walletSnapshot) ->
+            ) { availability, account, walletSnapshot ->
+                Triple(availability, account, walletSnapshot)
+            }.collect { (shieldFundsMessage, account, walletSnapshot) ->
                 if (walletSnapshot.status in listOf(Synchronizer.Status.STOPPED, Synchronizer.Status.INITIALIZING)) {
                     return@collect
                 }
@@ -112,7 +113,11 @@ class GetHomeMessageUseCase(
                 val message =
                     createSynchronizerErrorMessage(walletSnapshot)
                         ?: createDisconnectedMessage(walletSnapshot)
-                        ?: createSyncingMessage(walletSnapshot, syncMessageShownBefore = firstSyncingMessage != null)
+                        ?: createSyncingMessage(
+                            walletSnapshot,
+                            syncMessageShownBefore = firstSyncingMessage != null,
+                            someBalance = (account?.spendableShieldedBalance?.value ?: 0) > 0
+                        )
                         ?: shieldFundsMessage
 
                 if (message is HomeMessageData.Syncing && firstSyncingMessage == null) {
@@ -204,13 +209,14 @@ class GetHomeMessageUseCase(
     @Suppress("MagicNumber")
     private fun createSyncingMessage(
         walletSnapshot: WalletSnapshot,
-        syncMessageShownBefore: Boolean
+        syncMessageShownBefore: Boolean,
+        someBalance: Boolean,
     ): RuntimeMessage? {
         if (walletSnapshot.status != Synchronizer.Status.SYNCING) return null
 
         val progress = walletSnapshot.progress.decimal * 100f
         return if (walletSnapshot.restoringState == WalletRestoringState.RESTORING) {
-            HomeMessageData.Restoring(walletSnapshot.isSpendable, progress)
+            HomeMessageData.Restoring(walletSnapshot.isSpendable && someBalance, progress)
         } else {
             if (!syncMessageShownBefore) {
                 if (progress >= .98f || progress == 0f) null else HomeMessageData.Syncing(progress = progress)
