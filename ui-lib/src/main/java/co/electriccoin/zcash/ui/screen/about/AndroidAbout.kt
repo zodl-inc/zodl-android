@@ -28,12 +28,10 @@ internal fun AboutScreen() {
         onBack = { navigationRouter.back() },
         configInfo = configInfo,
         versionInfo = versionInfo,
-        onPrivacyPolicy = { navigationRouter.forward(ExternalUrl(URL)) },
-        onTermsOfUse = { navigationRouter.forward(ExternalUrl(URL)) }
+        onPrivacyPolicy = { navigationRouter.forward(ExternalUrl("https://zodl.com/privacy-policy/#policy")) },
+        onTermsOfUse = { navigationRouter.forward(ExternalUrl("https://zodl.com/privacy-policy/")) }
     )
 }
-
-private const val URL = "https://zodl.com/privacy-policy/"
 
 @Serializable
 data object AboutArgs
