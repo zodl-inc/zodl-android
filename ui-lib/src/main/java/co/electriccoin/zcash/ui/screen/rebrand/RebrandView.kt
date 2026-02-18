@@ -167,8 +167,8 @@ private fun RebrandPreview() {
     ZcashTheme {
         RebrandView(
             RebrandState(
-                ButtonState(stringRes("Learn more")),
-                ButtonState(stringRes("Go to Zodl")),
+                ButtonState.preview,
+                ButtonState.preview,
             )
         )
     }
