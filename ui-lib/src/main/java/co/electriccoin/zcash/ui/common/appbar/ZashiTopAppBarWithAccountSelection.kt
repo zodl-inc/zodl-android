@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
@@ -21,7 +22,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import co.electriccoin.zcash.ui.common.appbar.ZashiMainTopAppBarState.AccountType
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.IconButtonState
@@ -87,20 +93,19 @@ private fun AccountSwitch(state: AccountSwitchState) {
             contentDescription = null
         )
         Spacer(8.dp)
-        Image(
-            modifier =
-                when (state.accountType) {
-                    AccountType.ZASHI -> Modifier.padding(bottom = 0.dp)
-                    AccountType.KEYSTONE -> Modifier.padding(top = 4.dp)
-                },
-            painter =
-                painterResource(
-                    when (state.accountType) {
-                        AccountType.ZASHI -> R.drawable.ic_app_bar_zashi
-                        AccountType.KEYSTONE -> R.drawable.ic_app_bar_keystone
-                    }
-                ),
-            contentDescription = null
+        Text(
+            when (state.accountType) {
+                AccountType.ZASHI -> stringResource(co.electriccoin.zcash.ui.R.string.zashi_wallet_name)
+                AccountType.KEYSTONE -> stringResource(co.electriccoin.zcash.ui.R.string.keystone_wallet_name)
+            },
+            style =
+                TextStyle(
+                    fontSize = 24.sp,
+                    lineHeight = 24.sp,
+                    fontWeight = FontWeight.W600,
+                    color = ZashiColors.Text.textPrimary,
+                    textAlign = TextAlign.Center,
+                )
         )
         if (state.onAccountTypeClick != null) {
             Spacer(Modifier.width(8.dp))
