@@ -72,12 +72,7 @@ class ZashiTopAppBarVM(
                             is ZashiAccount -> ZashiMainTopAppBarState.AccountType.ZASHI
                             else -> ZashiMainTopAppBarState.AccountType.ZASHI
                         },
-                    onAccountTypeClick =
-                        if (accounts.orEmpty().size <= 1) {
-                            null
-                        } else {
-                            ::onAccountTypeClicked
-                        },
+                    onAccountTypeClick = ::onAccountTypeClicked,
                 ),
             balanceVisibilityButton =
                 IconButtonState(
