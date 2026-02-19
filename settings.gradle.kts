@@ -7,7 +7,9 @@ pluginManagement {
         val googleGroups = listOf(
             "androidx.navigation",
             "com.android",
-            "com.google.testing.platform"
+            "com.google.testing.platform",
+            "com.google.firebase",
+            "com.google.firebase.appdistribution"
         )
         val googleRegexes = listOf(
             "androidx\\..*",
@@ -57,6 +59,7 @@ pluginManagement {
         id("com.android.application") version (androidGradlePluginVersion) apply false
         id("com.android.library") version (androidGradlePluginVersion) apply false
         id("com.android.test") version (androidGradlePluginVersion) apply false
+        id("com.google.firebase.appdistribution") version (extra["FIREBASE_APP_DISTRIBUTION_GRADLE_PLUGIN_VERSION"].toString()) apply false
         id("com.github.ben-manes.versions") version (extra["GRADLE_VERSIONS_PLUGIN_VERSION"].toString()) apply false
         id("com.osacky.fulladle") version (extra["FULLADLE_VERSION"].toString()) apply false
         id("org.jetbrains.kotlinx.kover") version (extra["KOVER_VERSION"].toString()) apply false

@@ -46,6 +46,11 @@ sed -i -e '/com.google.gms/d' -e '/com.google.android.gms/d' -e '/com.google.fir
 sed -i -e '/libs.google.services/d' -e '/libs.firebase/d' build.gradle.kts
 sed -i -e '/com.google.gms/d' -e '/com.google.android.gms/d' -e '/com.google.firebase/d' buildscript-gradle.lockfile
 sed -i -e '/libs.google.services/d' -e '/libs.firebase/d' buildscript-gradle.lockfile
-sed -i -e '/com.google.gms.google-services/d' -e '/com.google.firebase.crashlytics/d' */build.gradle.kts
+# Remove Google Services, Crashlytics and App Distribution from build scripts
+sed -i -e '/com.google.gms.google-services/d' -e '/com.google.firebase.crashlytics/d' -e '/com.google.firebase.appdistribution/d' */build.gradle.kts
+
+# Remove App Distribution configuration blocks and master task
+sed -i -e '/firebaseAppDistribution {/,/}/d' */build.gradle.kts
+sed -i -e '/tasks.register("deployAllVariants") {/,/}/d' */build.gradle.kts
 
 echo "FOSS build preparation completed successfully"

@@ -1,6 +1,7 @@
 import co.electriccoin.zcash.Git
 import com.android.build.api.variant.BuildConfigField
 import com.android.build.api.variant.ResValue
+import com.google.firebase.appdistribution.gradle.firebaseAppDistribution
 import model.BuildType
 import model.DistributionDimension
 import model.NetworkDimension
@@ -14,18 +15,21 @@ plugins {
     id("wtf.emulator.gradle")
     id("secant.emulator-wtf-conventions")
     id("publish.secant.publish-conventions")
+    id("com.google.firebase.appdistribution")
 }
 
 val hasFirebaseApiKeys = run {
     val srcDir = File(project.projectDir, "src")
     val releaseApiKey = File(File(srcDir, "release"), "google-services.json")
     val debugApiKey = File(File(srcDir, "debug"), "google-services.json")
+    val fossApiKey = File(File(srcDir, "foss"), "google-services.json")
 
-    val result = releaseApiKey.exists() && debugApiKey.exists()
+    val result = releaseApiKey.exists() || debugApiKey.exists() || fossApiKey.exists()
 
     if (!result) {
         project.logger.info("Firebase API keys not found. Crashlytics will not be enabled. To enable " +
-            "Firebase, add the API keys for ${releaseApiKey.path} and ${debugApiKey.path}.")
+            "Firebase, add the API keys for ${releaseApiKey.path}, ${debugApiKey.path} or ${fossApiKey.path}."
+        )
     }
 
     result
@@ -76,12 +80,22 @@ android {
             applicationId = packageName
             applicationIdSuffix = ".testnet"
             matchingFallbacks.addAll(listOf(NetworkDimension.TESTNET.value, BuildType.DEBUG.value))
+
+            // App ID pre Testnet (Debug projekt)
+            firebaseAppDistribution {
+                appId = "1:72075012504:android:2707ebbc1c0074e74ba3ed"
+            }
         }
 
         create(NetworkDimension.MAINNET.value) {
             dimension = NetworkDimension.DIMENSION_NAME
             applicationId = packageName
             matchingFallbacks.addAll(listOf(NetworkDimension.MAINNET.value, BuildType.RELEASE.value))
+
+            // App ID pre Mainnet (Debug projekt)
+            firebaseAppDistribution {
+                appId = "1:72075012504:android:235e485f5bd5fc0d4ba3ed"
+            }
         }
 
         create(DistributionDimension.STORE.value) {
@@ -96,6 +110,11 @@ android {
             matchingFallbacks.addAll(listOf(DistributionDimension.FOSS.value, BuildType.RELEASE.value))
             versionNameSuffix = "-foss"
             applicationIdSuffix = ".foss"
+
+            // FOSS projekt (všetky varianty)
+            firebaseAppDistribution {
+                appId = "1:228274394465:android:d88850a8c32907477a2120"
+            }
         }
     }
 
@@ -155,7 +174,44 @@ android {
                 // Warning: in this case is the release build signed with the debug key
                 signingConfig = signingConfigs.getByName(BuildType.DEBUG.value)
             }
+
+            // Prepíšeme App ID pre STORE Release varianty na Release projekt
+            // Poznámka: FOSS Release ostáva vo FOSS projekte, lebo appId je definované vo flavori FOSS
+            firebaseAppDistribution {
+                appId = "1:1004234202961:android:b6826581ab87b8020bbd70"
+            }
         }
+    }
+
+    firebaseAppDistribution {
+        artifactType = "APK"
+        val credentialsPath = project.findProperty("ZCASH_FIREBASE_CREDENTIALS_PATH")?.toString() ?: ""
+        if (credentialsPath.isNotEmpty()) {
+            serviceCredentialsFile = credentialsPath
+        }
+        groups = project.findProperty("ZCASH_FIREBASE_GROUPS")?.toString() ?: "EC, Zodl"
+        releaseNotes = project.findProperty("ZCASH_RELEASE_NOTES")?.toString() ?: "Manual multi-variant build"
+    }
+
+    // Master task pre "one-click" deploy všetkých dôležitých verzií
+    tasks.register("deployAllVariants") {
+        group = "publishing"
+        description = "Builds and uploads all major variants (Store Release/Debug, Testnet, FOSS)"
+
+        dependsOn(
+            // "appDistributionUploadZcashmainnetStoreRelease",
+            // "appDistributionUploadZcashtestnetStoreRelease",
+            "appDistributionUploadZcashmainnetStoreDebug",
+            "appDistributionUploadZcashtestnetStoreDebug",
+            // "appDistributionUploadZcashmainnetFossDebug",
+            // "appDistributionUploadZcashtestnetFossDebug"
+        )
+    }
+
+    // Zabezpečíme, aby každý upload task automaticky spustil assemble pre daný variant
+    tasks.matching { it.name.startsWith("appDistributionUpload") }.all {
+        val variantName = name.removePrefix("appDistributionUpload")
+        dependsOn("assemble$variantName")
     }
 
     // Resolve final app name
