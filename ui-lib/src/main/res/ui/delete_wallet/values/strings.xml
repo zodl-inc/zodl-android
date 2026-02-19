@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="delete_wallet_title">Reset Zashi</string>
+    <string name="delete_wallet_title">Reset Zodl</string>
     <string name="delete_wallet_text_1">Make sure you have both your secret recovery phrase and wallet birthday height saved before you proceed.</string>
-    <string name="delete_wallet_text_2">Resetting the Zashi app will delete the Zashi database and cache, and will disconnect all connected hardware wallets.</string>
-    <string name="delete_wallet_text_3">Once you Reset Zashi, the only way to access your funds is through a wallet restore process that requires your Zashi Recovery Phrase and Wallet Birthday Height.</string>
+    <string name="delete_wallet_text_2">Resetting the Zodl app will delete the Zodl database and cache, and will disconnect all connected hardware wallets.</string>
+    <string name="delete_wallet_text_3">Once you Reset Zodl, the only way to access your funds is through a wallet restore process that requires your Zodl Recovery Phrase and Wallet Birthday Height.</string>
     <string name="delete_wallet_checkbox_title">Keep encrypted metadata backup - which includes contacts, notes, bookmarks, and swap/payment details.</string>
     <string name="delete_wallet_checkbox_warning_checked">This data cannot be recovered during Restore.</string>
     <string name="delete_wallet_checkbox_warning_unchecked">This data cannot be recovered during Restore.</string>
     <string name="delete_wallet_button">Confirm</string>
     <string name="delete_wallet_confirmation_title">Are you sure?</string>
     <string name="delete_wallet_confirmation_subtitle">Resetting the app cannot be undone. You will need to restore your wallet using your secret recovery phrase.</string>
-    <string name="delete_wallet_confirmation_button">Reset Zashi</string>
+    <string name="delete_wallet_confirmation_button">Reset Zodl</string>
     <string name="delete_wallet_confirmation_cancel">Cancel</string>
     <string name="delete_wallet_failed">Wallet deletion failed. Try it again, please.</string>
 </resources>

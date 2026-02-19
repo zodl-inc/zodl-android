@@ -68,6 +68,7 @@ class SubmitIncreaseEphemeralGapLimitUseCase(
 
     private suspend fun invalidateEphemeralAddress(result: SubmitResult) {
         when (result) {
+            is SubmitResult.Error,
             is SubmitResult.Failure,
             is SubmitResult.GrpcFailure,
             is SubmitResult.Success -> ephemeralAddressRepository.invalidate()

@@ -15,9 +15,8 @@ import co.electriccoin.zcash.ui.common.repository.FlexaRepository
 import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepository
 import co.electriccoin.zcash.ui.common.repository.MetadataRepository
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.error.ErrorArgs
-import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import kotlinx.coroutines.flow.first
+import okhttp3.internal.closeQuietly
 
 class ResetZashiUseCase(
     private val walletCoordinator: WalletCoordinator,
@@ -29,54 +28,57 @@ class ResetZashiUseCase(
     private val biometricRepository: BiometricRepository,
     private val addressBookRepository: AddressBookRepository,
     private val metadataRepository: MetadataRepository,
-    private val navigateToError: NavigateToErrorUseCase
 ) {
     @Suppress("TooGenericExceptionCaught", "ThrowsCount")
     suspend operator fun invoke(keepFiles: Boolean) {
         try {
-            biometricRepository.requestBiometrics(
-                BiometricRequest(
-                    message =
-                        stringRes(
-                            R.string.authentication_system_ui_subtitle,
-                            stringRes(R.string.authentication_use_case_delete_wallet)
-                        )
-                )
-            )
-
+            requestBiometrics()
             flexaRepository.disconnect()
-            (synchronizerProvider.getSynchronizer() as SdkSynchronizer).closeFlow().first()
-            if (!clearSDK()) throw ResetZashiException("Wallet deletion failed")
-            if (!keepFiles) {
-                addressBookRepository.delete()
-                metadataRepository.delete()
-            }
-            if (!clearSharedPrefs()) throw ResetZashiException("Failed to clear shared preferences")
+            deleteLocalFiles(keepFiles)
+            closeSynchronizer()
+            clearSDK()
+            clearSharedPrefs()
             clearInMemoryData()
         } catch (_: BiometricsFailureException) {
             // do nothing
         } catch (_: BiometricsCancelledException) {
             // do nothing
-        } catch (e: ResetZashiException) {
-            navigateToError.invoke(ErrorArgs.General(e))
-        } catch (e: Exception) {
-            navigateToError.invoke(ErrorArgs.General(e))
         }
     }
 
-    private suspend fun clearSDK(): Boolean = walletCoordinator.deleteSdkDataFlow().first()
+    private suspend fun requestBiometrics() {
+        biometricRepository.requestBiometrics(
+            BiometricRequest(
+                message =
+                    stringRes(
+                        R.string.authentication_system_ui_subtitle,
+                        stringRes(R.string.authentication_use_case_delete_wallet)
+                    )
+            )
+        )
+    }
 
-    private suspend fun clearSharedPrefs(): Boolean {
-        val standardPrefsCleared = standardPreferenceProvider().clearPreferences()
-        val encryptedPrefsCleared = encryptedPreferenceProvider().clearPreferences()
-        return standardPrefsCleared && encryptedPrefsCleared
+    private suspend fun closeSynchronizer() {
+        (synchronizerProvider.getSynchronizer() as SdkSynchronizer).closeQuietly()
+    }
+
+    private fun deleteLocalFiles(keepFiles: Boolean) {
+        if (!keepFiles) {
+            addressBookRepository.delete()
+            metadataRepository.delete()
+        }
+    }
+
+    private suspend fun clearSDK() {
+        walletCoordinator.deleteSdkDataFlow().first()
+    }
+
+    private suspend fun clearSharedPrefs() {
+        standardPreferenceProvider().clearPreferences()
+        encryptedPreferenceProvider().clearPreferences()
     }
 
     private fun clearInMemoryData() {
         homeMessageCacheRepository.reset()
     }
 }
-
-private class ResetZashiException(
-    message: String
-) : Exception(message)

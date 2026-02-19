@@ -72,7 +72,7 @@ fun SendSwap(state: SendSwapState, modifier: Modifier = Modifier) {
                         status = state.status
                     )
             )
-            ZashiHorizontalDivider()
+            ZashiHorizontalDivider(thickness = 2.dp)
             TransactionDetailInfoRow(
                 modifier = Modifier.fillMaxWidth(),
                 state =
@@ -90,7 +90,7 @@ fun SendSwap(state: SendSwapState, modifier: Modifier = Modifier) {
             ) {
                 Column {
                     if (state.status == SwapStatus.REFUNDED) {
-                        ZashiHorizontalDivider()
+                        ZashiHorizontalDivider(thickness = 2.dp)
                         TransactionDetailInfoRow(
                             modifier = Modifier.fillMaxWidth(),
                             state =
@@ -101,7 +101,7 @@ fun SendSwap(state: SendSwapState, modifier: Modifier = Modifier) {
                         )
                     }
                     if (state.status != SwapStatus.REFUNDED) {
-                        ZashiHorizontalDivider()
+                        ZashiHorizontalDivider(thickness = 2.dp)
                         TransactionDetailInfoRow(
                             modifier = Modifier.fillMaxWidth(),
                             state =
@@ -113,7 +113,7 @@ fun SendSwap(state: SendSwapState, modifier: Modifier = Modifier) {
                                 )
                         )
                     }
-                    ZashiHorizontalDivider()
+                    ZashiHorizontalDivider(thickness = 2.dp)
                     TransactionDetailInfoRow(
                         modifier = Modifier.fillMaxWidth(),
                         state =
@@ -124,7 +124,7 @@ fun SendSwap(state: SendSwapState, modifier: Modifier = Modifier) {
                                 onClick = state.onTransactionIdClick
                             )
                     )
-                    ZashiHorizontalDivider()
+                    ZashiHorizontalDivider(thickness = 2.dp)
                     TransactionDetailInfoRow(
                         modifier = Modifier.fillMaxWidth(),
                         state =
@@ -133,7 +133,7 @@ fun SendSwap(state: SendSwapState, modifier: Modifier = Modifier) {
                                 message = state.totalFees,
                             )
                     )
-                    ZashiHorizontalDivider()
+                    ZashiHorizontalDivider(thickness = 2.dp)
                     CompositionLocalProvider(LocalBalancesAvailable provides true) {
                         TransactionDetailInfoRow(
                             modifier = Modifier.fillMaxWidth(),
@@ -149,7 +149,7 @@ fun SendSwap(state: SendSwapState, modifier: Modifier = Modifier) {
                                 )
                         )
                     }
-                    ZashiHorizontalDivider()
+                    ZashiHorizontalDivider(thickness = 2.dp)
                     TransactionDetailInfoRow(
                         modifier = Modifier.fillMaxWidth(),
                         state =
@@ -161,7 +161,7 @@ fun SendSwap(state: SendSwapState, modifier: Modifier = Modifier) {
                 }
             }
             if (state.note != null) {
-                ZashiHorizontalDivider()
+                ZashiHorizontalDivider(thickness = 2.dp)
                 TransactionDetailInfoColumn(
                     modifier = Modifier.fillMaxWidth(),
                     state =

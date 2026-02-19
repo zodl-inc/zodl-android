@@ -14,19 +14,21 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.time.Duration.Companion.seconds
 
 interface AddressBookRepository {
     val contacts: Flow<List<EnhancedABContact>?>
@@ -71,7 +73,7 @@ class AddressBookRepositoryImpl(
 
     private val mutex = Mutex()
 
-    @Suppress("TooGenericExceptionCaught")
+    @Suppress("TooGenericExceptionCaught", "MagicNumber")
     @OptIn(ExperimentalCoroutinesApi::class)
     private val addressBook =
         accountDataSource
@@ -80,8 +82,9 @@ class AddressBookRepositoryImpl(
             .map { getAddressBookKey(it ?: return@map null) }
             .distinctUntilChanged()
             .flatMapLatest { if (it == null) flowOf(null) else addressBookDataSource.observe(it) }
-            .catch {
-                // do nothing
+            .retryWhen { _, attempt ->
+                delay(attempt.coerceAtMost(3).seconds)
+                true
             }.shareIn(
                 scope = scope,
                 started = SharingStarted.WhileSubscribed(0, 0),

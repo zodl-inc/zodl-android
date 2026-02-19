@@ -322,7 +322,7 @@ private fun ZashiPreview() =
                         listOf(
                             ReceiveAddressState(
                                 icon = R.drawable.ic_zec_round_full,
-                                title = stringRes("Zashi"),
+                                title = stringRes("Zodl"),
                                 subtitle = stringRes("subtitle"),
                                 isShielded = true,
                                 onCopyClicked = {},
@@ -339,7 +339,7 @@ private fun ZashiPreview() =
                             ),
                             ReceiveAddressState(
                                 icon = R.drawable.ic_zec_round_full,
-                                title = stringRes("Zashi"),
+                                title = stringRes("Zodl"),
                                 subtitle = stringRes("subtitle"),
                                 isShielded = false,
                                 onCopyClicked = {},
@@ -373,7 +373,7 @@ private fun KeystonePreview() =
                         listOf(
                             ReceiveAddressState(
                                 icon = co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone,
-                                title = stringRes("Zashi"),
+                                title = stringRes("Zodl"),
                                 subtitle = stringRes("subtitle"),
                                 isShielded = true,
                                 onCopyClicked = {},
@@ -390,7 +390,7 @@ private fun KeystonePreview() =
                             ),
                             ReceiveAddressState(
                                 icon = co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone,
-                                title = stringRes("Zashi"),
+                                title = stringRes("Zodl"),
                                 subtitle = stringRes("subtitle"),
                                 isShielded = false,
                                 onCopyClicked = {},

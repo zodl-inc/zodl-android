@@ -6,6 +6,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -44,9 +45,9 @@ fun ZashiVersion(
                 }
     ) {
         Image(
-            modifier = Modifier.align(CenterHorizontally),
+            modifier = Modifier.align(CenterHorizontally).width(79.dp),
             painter =
-                painterResource(id = R.drawable.img_zashi_version),
+                painterResource(id = R.drawable.app_logo),
             contentDescription = version.getValue()
         )
         Spacer(modifier = Modifier.height(16.dp))

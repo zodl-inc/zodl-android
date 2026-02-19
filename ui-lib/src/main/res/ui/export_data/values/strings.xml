@@ -6,14 +6,14 @@
         By clicking “I Agree” below, you give your consent to export all of your wallets’ private data such as the
         entire history of your wallet(s), including any connected hardware wallets. All private information, memos,
         amounts, and recipient addresses, even for your shielded activity will be exported.*\n\nThe private data also
-        gives the ability to see certain future actions you take with Zashi.\n\nSharing this private data is
+        gives the ability to see certain future actions you take with Zodl.\n\nSharing this private data is
         irrevocable - once you have shared this private data with someone, there is no way to revoke their
         access.\n\n*Note that this private data does not give them the ability to spend your funds, only the ability
         to see what you do with your funds.
     </string>
     <string name="export_data_confirm">Export Private Data</string>
-    <string name="export_data_agree">I agree to Zashi\'s Export Private Data Policies and Privacy Policy</string>
-    <string name="export_data_export_data_chooser_title">Share internal Zashi data with:</string>
+    <string name="export_data_agree">I agree to Zodl\'s Export Private Data Policies and Privacy Policy</string>
+    <string name="export_data_export_data_chooser_title">Share internal Zodl data with:</string>
     <string name="export_data_unable_to_share">Unable to find an application to share with.</string>
     <string name="export_data_share_text">Export Tax File</string>
 </resources>

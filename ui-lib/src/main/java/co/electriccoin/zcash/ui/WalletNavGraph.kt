@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui
 
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraphBuilder
@@ -8,10 +9,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
 import androidx.navigation.toRoute
+import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
 import co.electriccoin.zcash.ui.screen.about.AboutArgs
 import co.electriccoin.zcash.ui.screen.about.AboutScreen
-import co.electriccoin.zcash.ui.screen.accountlist.AccountList
-import co.electriccoin.zcash.ui.screen.accountlist.AndroidAccountList
+import co.electriccoin.zcash.ui.screen.accountlist.AccountListArgs
+import co.electriccoin.zcash.ui.screen.accountlist.AccountListScreen
 import co.electriccoin.zcash.ui.screen.addressbook.AddressBookArgs
 import co.electriccoin.zcash.ui.screen.addressbook.AddressBookScreen
 import co.electriccoin.zcash.ui.screen.addressbook.SelectABRecipientArgs
@@ -28,8 +30,8 @@ import co.electriccoin.zcash.ui.screen.balances.spendable.SpendableBalanceArgs
 import co.electriccoin.zcash.ui.screen.balances.spendable.SpendableBalanceScreen
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerArgs
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerScreen
-import co.electriccoin.zcash.ui.screen.connectkeystone.AndroidConnectKeystone
-import co.electriccoin.zcash.ui.screen.connectkeystone.ConnectKeystone
+import co.electriccoin.zcash.ui.screen.connectkeystone.ConnectKeystoneArgs
+import co.electriccoin.zcash.ui.screen.connectkeystone.ConnectKeystoneScreen
 import co.electriccoin.zcash.ui.screen.contact.AddGenericABContactArgs
 import co.electriccoin.zcash.ui.screen.contact.AddGenericABContactScreen
 import co.electriccoin.zcash.ui.screen.contact.AddZashiABContactArgs
@@ -87,6 +89,8 @@ import co.electriccoin.zcash.ui.screen.pay.PayScreen
 import co.electriccoin.zcash.ui.screen.pay.info.PayInfoArgs
 import co.electriccoin.zcash.ui.screen.pay.info.PayInfoScreen
 import co.electriccoin.zcash.ui.screen.qrcode.QrCodeScreen
+import co.electriccoin.zcash.ui.screen.rebrand.RebrandArgs
+import co.electriccoin.zcash.ui.screen.rebrand.RebrandScreen
 import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressType
 import co.electriccoin.zcash.ui.screen.receive.ReceiveArgs
 import co.electriccoin.zcash.ui.screen.receive.ReceiveScreen
@@ -171,11 +175,20 @@ import co.electriccoin.zcash.ui.screen.whatsnew.WrapWhatsNew
 
 fun NavGraphBuilder.walletNavGraph(
     storageCheckViewModel: StorageCheckViewModel,
+    walletViewModel: WalletViewModel,
     navigationRouter: NavigationRouter,
 ) {
     navigation<MainAppGraph>(startDestination = HomeArgs) {
         composable<HomeArgs> {
             AndroidHome()
+
+            val isRebrandAcknowledged by walletViewModel.isRebrandAcknowledged.collectAsStateWithLifecycle()
+            LaunchedEffect(isRebrandAcknowledged) {
+                if (isRebrandAcknowledged == false) {
+                    navigationRouter.forward(RebrandArgs)
+                }
+            }
+
             val isEnoughSpace by storageCheckViewModel.isEnoughSpace.collectAsStateWithLifecycle()
             if (isEnoughSpace == false) {
                 navigationRouter.forward(NavigationTargets.NOT_ENOUGH_SPACE)
@@ -196,7 +209,7 @@ fun NavGraphBuilder.walletNavGraph(
         composable<ScanKeystoneSignInRequest> { WrapScanKeystoneSignInRequest() }
         composable<ScanKeystonePCZTRequest> { WrapScanKeystonePCZTRequest() }
         composable<SignKeystoneTransactionArgs> { SignKeystoneTransactionScreen() }
-        dialogComposable<AccountList> { AndroidAccountList() }
+        dialogComposable<AccountListArgs> { AccountListScreen() }
         composable<ScanArgs> { ScanZashiAddressScreen(it.toRoute()) }
         composable(NavigationTargets.EXPORT_PRIVATE_DATA) { WrapExportPrivateData() }
         composable(NavigationTargets.NOT_ENOUGH_SPACE) {
@@ -224,7 +237,7 @@ fun NavGraphBuilder.walletNavGraph(
                 backStackEntry.arguments?.getInt(NavigationArgs.ADDRESS_TYPE) ?: ReceiveAddressType.Unified.ordinal
             RequestScreen(addressType)
         }
-        composable<ConnectKeystone> { AndroidConnectKeystone() }
+        composable<ConnectKeystoneArgs> { ConnectKeystoneScreen() }
         composable<SelectKeystoneAccount> { AndroidSelectKeystoneAccount(it.toRoute()) }
         composable<ReviewTransactionArgs> { AndroidReviewTransaction() }
         composable<TransactionProgressArgs> { TransactionProgressScreen(it.toRoute()) }
@@ -281,5 +294,6 @@ fun NavGraphBuilder.walletNavGraph(
         composable<ConfirmResyncArgs> { ConfirmResyncScreen() }
         composable<ResyncBDDateArgs> { ResyncBDDateScreen(it.toRoute()) }
         composable<ResyncBDEstimationArgs> { ResyncBDEstimationScreen(it.toRoute()) }
+        composable<RebrandArgs> { RebrandScreen() }
     }
 }

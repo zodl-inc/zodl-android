@@ -11,7 +11,7 @@ sealed interface SubmitResult {
         override val txIds: List<String>,
         val code: Int,
         val description: String?
-    ) : SubmitResult
+    ) : NonResubmittableError
 
     data class GrpcFailure(
         override val txIds: List<String>
@@ -21,4 +21,12 @@ sealed interface SubmitResult {
         override val txIds: List<String>,
         val statuses: List<String>
     ) : SubmitResult
+
+    data class Error(
+        val cause: Exception
+    ) : NonResubmittableError {
+        override val txIds: List<String> = emptyList()
+    }
+
+    sealed interface NonResubmittableError : SubmitResult
 }

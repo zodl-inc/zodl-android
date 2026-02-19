@@ -202,23 +202,27 @@ private fun Preview() =
                                 SwapTokenAmountState(
                                     bigIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_chain_placeholder),
                                     smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_shielded),
-                                    title = stringResByDynamicNumber(0.000000421423154),
-                                    subtitle =
+                                    amount = stringResByDynamicNumber(0.000000421423154),
+                                    fiatAmount =
                                         stringResByDynamicCurrencyNumber(
                                             0.0000000000000021312,
                                             "$",
-                                        )
+                                        ),
+                                    token = stringRes("ZEC"),
+                                    chain = stringRes("Chain"),
                                 ),
                             to =
                                 SwapTokenAmountState(
                                     bigIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_chain_placeholder),
                                     smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_shielded),
-                                    title = stringResByDynamicNumber(0.000000421423154),
-                                    subtitle =
+                                    amount = stringResByDynamicNumber(0.000000421423154),
+                                    fiatAmount =
                                         stringResByDynamicCurrencyNumber(
                                             0.0000000000000021312,
                                             "$",
-                                        )
+                                        ),
+                                    token = stringRes("ZEC"),
+                                    chain = stringRes("Chain"),
                                 )
                         ),
                     transactionHeader =

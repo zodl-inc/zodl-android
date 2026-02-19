@@ -2,6 +2,6 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="tax_export_title">Data Export</string>
     <string name="tax_export_subtitle">Export Tax File</string>
-    <string name="tax_export_message">Download your <xliff:g example="Zashi" id="account_name">%s</xliff:g> transaction history from the previous calendar year in a .csv format.</string>
+    <string name="tax_export_message">Download your <xliff:g example="Zodl" id="account_name">%s</xliff:g> transaction history from the previous calendar year in a .csv format.</string>
     <string name="tax_export_export_button">Download</string>
 </resources>

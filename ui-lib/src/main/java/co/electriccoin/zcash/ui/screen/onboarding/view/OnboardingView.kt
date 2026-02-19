@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Scaffold
@@ -24,13 +24,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import cash.z.ecc.sdk.type.ZcashCurrency
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.MINIMAL_WEIGHT
 import co.electriccoin.zcash.ui.design.component.ZashiButton
@@ -114,34 +111,19 @@ private fun OnboardingMainContent(
                 .then(modifier),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        val imageModifier =
-            Modifier
-                .height(ZcashTheme.dimens.inScreenZcashLogoHeight)
-                .width(ZcashTheme.dimens.inScreenZcashLogoWidth)
-
         Spacer(Modifier.weight(1f))
 
         Image(
-            painter = painterResource(id = co.electriccoin.zcash.ui.design.R.drawable.zashi_logo_without_text),
+            modifier = Modifier.size(203.dp, 164.dp),
+            painter = painterResource(id = co.electriccoin.zcash.ui.design.R.drawable.app_logo),
             colorFilter = ColorFilter.tint(color = ZcashTheme.colors.secondaryColor),
             contentDescription = stringResource(R.string.zcash_logo_content_description),
-            modifier = imageModifier
         )
 
-        Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingSm))
-
-        Image(
-            modifier = Modifier.width(220.dp),
-            painter = painterResource(id = co.electriccoin.zcash.ui.design.R.drawable.zashi_text_logo),
-            colorFilter = ColorFilter.tint(color = ZcashTheme.colors.secondaryColor),
-            contentDescription = null,
-            contentScale = ContentScale.FillWidth,
-        )
-
-        Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing3xl))
+        Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing5xl))
 
         Text(
-            text = stringResource(R.string.onboarding_header, ZcashCurrency.getLocalizedName(LocalContext.current)),
+            text = stringResource(R.string.onboarding_header),
             style = ZashiTypography.textXl,
             textAlign = TextAlign.Center,
             color = ZashiColors.Text.textSecondary

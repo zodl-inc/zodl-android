@@ -1,45 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
-    <!-- TODO [#1183]: Rework the way we grant access to file provider -->
-    <!-- TODO [#1183]: https://github.com/Electric-Coin-Company/zashi-android/issues/1183 -->
-
-    <!-- Android Studio complains about root-path. Search for an alternative way of approaching no_backup folder -->
-
-    <root-path
-        name="root_mainnet_store_release"
-        path="/data/data/co.electriccoin.zcash/."
-    />
-    <root-path
-        name="root_mainnet_store_debug"
-        path="/data/data/co.electriccoin.zcash.debug/."
-    />
-    <root-path
-        name="root_testnet_store_release"
-        path="/data/data/co.electriccoin.zcash.testnet/."
-    />
-    <root-path
-        name="root_testnet_store_debug"
-        path="/data/data/co.electriccoin.zcash.testnet.debug/."
-    />
-
-    <root-path
-        name="root_mainnet_foss_release"
-        path="/data/data/co.electriccoin.zcash.foss/."
-        />
-    <root-path
-        name="root_mainnet_foss_debug"
-        path="/data/data/co.electriccoin.zcash.foss.debug/."
-        />
-    <root-path
-        name="root_testnet_foss_release"
-        path="/data/data/co.electriccoin.zcash.testnet.foss/."
-        />
-    <root-path
-        name="root_testnet_foss_debug"
-        path="/data/data/co.electriccoin.zcash.testnet.foss.debug/."
-        />
+    <files-path
+        name="no_backup"
+        path="../no_backup/" />
 
     <files-path
         name="files"
+        path="."/>
+
+    <cache-path
+        name="cache"
         path="."/>
 </paths>

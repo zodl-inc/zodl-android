@@ -57,6 +57,7 @@ class ShieldFundsUseCase(
             when (val result = zashiProposalRepository.submit()) {
                 is SubmitResult.Failure,
                 is SubmitResult.GrpcFailure,
+                is SubmitResult.Error,
                 is SubmitResult.Partial -> navigateToError(ErrorArgs.ShieldingError(result))
 
                 is SubmitResult.Success -> {

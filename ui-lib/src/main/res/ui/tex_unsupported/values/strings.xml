@@ -5,10 +5,10 @@
     <string name="tex_unsupported_description_part2">Please use the steps below to complete your transaction.</string>
     <string name="tex_unsupported_workaround_title">Workaround Steps</string>
     <string name="tex_unsupported_step_1_badge">Step 1</string>
-    <string name="tex_unsupported_step_1_title">Send to Zashi first</string>
-    <string name="tex_unsupported_step_1_description">Transfer ZEC to your Zashi shielded address</string>
+    <string name="tex_unsupported_step_1_title">Send to Zodl first</string>
+    <string name="tex_unsupported_step_1_description">Transfer ZEC to your Zodl shielded address</string>
     <string name="tex_unsupported_step_2_badge">Step 2</string>
-    <string name="tex_unsupported_step_2_title">Send from Zashi to TEX address</string>
-    <string name="tex_unsupported_step_2_description">Once received in Zashi, send the tokens to your final TEX destination address</string>
+    <string name="tex_unsupported_step_2_title">Send from Zodl to TEX address</string>
+    <string name="tex_unsupported_step_2_description">Once received in Zodl, send the tokens to your final TEX destination address</string>
     <string name="tex_unsupported_button">Got it</string>
 </resources>

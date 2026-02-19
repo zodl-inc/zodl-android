@@ -327,7 +327,11 @@ data class ButtonState(
     val isLoading: Boolean = false,
     val hapticFeedbackType: HapticFeedbackType? = null,
     val onClick: () -> Unit = {},
-)
+) {
+    companion object {
+        val preview = ButtonState(stringRes("Test"))
+    }
+}
 
 enum class ButtonStyle {
     PRIMARY,

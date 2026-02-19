@@ -57,7 +57,7 @@ class EphemeralHotfixVM(
                 title = stringRes("Discover Funds"),
                 message =
                     stringRes(
-                        "If you confirm, Zashi will scan the transparent address you provide and " +
+                        "If you confirm, Zodl will scan the transparent address you provide and " +
                             "discover its funds. This may take a few minutes up to a few hours."
                     ),
                 subtitle = stringRes("Transparent Address"),

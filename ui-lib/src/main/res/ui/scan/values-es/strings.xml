@@ -6,7 +6,7 @@
     <string name="scan_settings_button">Abrir Configuración</string>
     <string name="scan_settings_open_failed">No se pudo iniciar la aplicación de Configuración.</string>
 
-    <string name="scan_state_permission">La cámara no está autorizada. Por favor, ve a la configuración del sistema de Zashi y actívala.</string>
+    <string name="scan_state_permission">La cámara no está autorizada. Por favor, ve a la configuración del sistema de Zodl y actívala.</string>
     <string name="scan_state_failed">Falló la inicialización de la cámara. Inténtalo de nuevo, por favor.</string>
     <string name="scan_address_validation_failed">Este código QR no es una dirección válida de Zcash.</string>
 
@@ -15,6 +15,6 @@
 
     <string name="third_party_scan_title">¡Hola!</string>
     <string name="third_party_scan_subtitle">Parece que utilizaste una aplicación de terceros para escanear un pago.</string>
-    <string name="third_party_scan_message">Para mayor seguridad y protección, vuelve a escanear el código QR con Zashi.</string>
-    <string name="third_party_scan_button">Reescanear en Zashi</string>
+    <string name="third_party_scan_message">Para mayor seguridad y protección, vuelve a escanear el código QR con Zodl.</string>
+    <string name="third_party_scan_button">Reescanear en Zodl</string>
 </resources>

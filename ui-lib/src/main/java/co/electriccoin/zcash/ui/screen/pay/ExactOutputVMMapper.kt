@@ -248,7 +248,9 @@ internal class ExactOutputVMMapper {
             )
         } else {
             AssetCardState.Data(
-                ticker = state.asset.tokenTicker.let { stringRes(it) },
+                token = state.asset.tokenTicker.let { stringRes(it) },
+                chain = state.asset.chainName,
+                isSingleLine = true,
                 bigIcon = state.asset.tokenIcon,
                 smallIcon = state.asset.chainIcon,
                 onClick = onSwapAssetPickerClick,

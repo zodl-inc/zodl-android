@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="restore_success_title">Keep Zashi open!</string>
+    <string name="restore_success_title">Keep Zodl open!</string>
     <string name="restore_success_subtitle">Your wallet is being restored.</string>
-    <string name="restore_success_description">Zashi is scanning the blockchain to retrieve your transactions. Older wallets can take hours to restore. Follow these steps to prevent interruption:</string>
+    <string name="restore_success_description">Zodl is scanning the blockchain to retrieve your transactions. Older wallets can take hours to restore. Follow these steps to prevent interruption:</string>
     <string name="restoring_initial_dialog_checkbox">Keep screen on while restoring.</string>
     <string name="restore_success_note_part_1">Note:</string>
-    <string name="restore_success_note_part_2">Your funds cannot be spent with Zashi until your wallet is fully restored.</string>
+    <string name="restore_success_note_part_2">Your funds cannot be spent with Zodl until your wallet is fully restored.</string>
     <string name="restore_success_button">Got it!</string>
-    <string name="restore_success_bullet_1">Keep the Zashi app open on an active phone screen.</string>
+    <string name="restore_success_bullet_1">Keep the Zodl app open on an active phone screen.</string>
     <string name="restore_success_bullet_2">To prevent your phone screen from going dark, turn off power-saving mode and keep your phone plugged in.</string>
 </resources>

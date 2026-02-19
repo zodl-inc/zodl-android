@@ -1,15 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="about_title">Acerca de</string>
-    <string name="about_subtitle">Presentando Zashi</string>
-    <string name="about_version_format" formatted="true">Versión de Zashi <xliff:g example="1" id="version">%s</xliff:g></string>
-    <string name="about_debug_menu_app_name">Nombre de la app:<xliff:g example="Zashi" id="app_name">%1$s</xliff:g></string>
+    <string name="about_subtitle">Presentando Zodl</string>
+    <string name="about_version_format" formatted="true">Versión de Zodl <xliff:g example="1" id="version">%s</xliff:g></string>
+    <string name="about_debug_menu_app_name">Nombre de la app:<xliff:g example="Zodl" id="app_name">%1$s</xliff:g></string>
     <string name="about_debug_menu_build">Compilación: <xliff:g example="635dac0eb9ddc2bc6da5177f0dd495d8b76af4dc" id="git_commit_hash">%1$s</xliff:g></string>
-    <string name="about_description">Zashi es una wallet móvil impulsada por Zcash, creada para pagos privados imparables.
-        Está optimizada para almacenar y usar en el mundo real $%s protegido: la criptomoneda verdaderamente privada.\n\nDesarrollada
-        por el equipo que continúa marcando el estándar de la industria en privacidad blockchain, los desarrolladores originales del protocolo Zcash en Electric Coin Company.
+    <string name="about_description">Zodl is a Zcash-powered mobile wallet, built for unstoppable private payments.
+        It’s optimized for storage and real-world use of shielded $ZEC—the truly private cryptocurrency.\n\nDeveloped by the team that set the industry standard for onchain privacy, the original developers of the Zcash protocol.
     </string>
-    <string name="terms_of_use">Términos de uso</string>
+    <string name="terms_of_use">Términos de servicio</string>
 
     <string name="about_unable_to_web_browser">No se pudo encontrar una aplicación de navegador web.</string>
     <string name="about_button_privacy_policy">Política de privacidad</string>

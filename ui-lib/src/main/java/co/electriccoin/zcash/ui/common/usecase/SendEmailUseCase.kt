@@ -153,4 +153,49 @@ class SendEmailUseCase(
             context.startActivity(mailIntent)
         }
     }
+
+    @Suppress("MagicNumber")
+    operator fun invoke(submitResult: SubmitResult.Error) {
+        val fullMessage =
+            EmailUtil.formatMessage(
+                body = "Error submitting transaction",
+                supportInfo =
+                    buildString {
+                        appendLine(context.getString(R.string.send_confirmation_multiple_report_statuses))
+                        appendLine(
+                            context.getString(
+                                R.string.send_confirmation_multiple_report_status_failure,
+                                0,
+                                false.toString(),
+                                -1,
+                                submitResult.cause.stackTraceToLimitedString(250),
+                            )
+                        )
+                    }
+            )
+
+        val mailIntent =
+            EmailUtil
+                .newMailActivityIntent(
+                    context.getString(R.string.support_email_address),
+                    context.getString(R.string.app_name),
+                    fullMessage
+                ).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+
+        runCatching {
+            context.startActivity(mailIntent)
+        }
+    }
 }
+
+private fun Throwable.stackTraceToLimitedString(limit: Int) =
+    if (stackTraceToString().isNotEmpty()) {
+        stackTraceToString()
+            .substring(
+                0..(stackTraceToString().length - 1).coerceAtMost(limit)
+            )
+    } else {
+        null
+    }

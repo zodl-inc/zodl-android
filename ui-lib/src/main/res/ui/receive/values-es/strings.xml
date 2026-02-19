@@ -23,6 +23,6 @@
     <string name="receive_info_transparent_title">Dirección transparente de Zcash (estática)</string>
     <string name="receive_info_transparent_bullet_1">Este tipo de dirección funciona como una dirección de Bitcoin y NO OFRECE PRIVACIDAD. Los detalles de las transacciones enviadas a esta dirección serán públicos y visibles en la blockchain.</string>
     <string name="receive_info_transparent_bullet_2">No recomendamos usar este tipo de dirección a menos que la billetera o casa de cambio desde donde se envían los %s no admita direcciones protegidas de Zcash.</string>
-    <string name="receive_info_transparent_bullet_3">Para proteger tu privacidad, Zashi te guiará para proteger cualquier %s transparente que recibas con un solo clic.</string>
+    <string name="receive_info_transparent_bullet_3">Para proteger tu privacidad, Zodl te guiará para proteger cualquier %s transparente que recibas con un solo clic.</string>
     <string name="receive_info_transparent_bullet_4">No podrás gastar tus %s transparentes hasta que los protejas.</string>
 </resources>

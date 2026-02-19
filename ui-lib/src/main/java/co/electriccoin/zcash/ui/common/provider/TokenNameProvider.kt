@@ -15,10 +15,11 @@ class TokenNameProviderImpl : TokenNameProvider {
             "near" -> stringRes("Near")
             "sol" -> stringRes("Solana")
             "tron" -> stringRes("Tron")
-            "xrp" -> stringRes("Ripple")
+            "xrp" -> stringRes("XRP")
             "zec" -> stringRes("Zcash")
             "op" -> stringRes("Optimism")
             "pol" -> stringRes("Polygon")
+            "SUI" -> stringRes("SUI")
             "\$wif" -> stringRes("dogwifhat")
             else -> stringRes(ticker)
         }

@@ -21,7 +21,7 @@
     <string name="payment_request_dialog_error_report_btn">Reportar</string>
 
     <string name="payment_request_dialog_error_grpc_title">Error de Conexión</string>
-    <string name="payment_request_dialog_error_grpc_text">Zashi encontró algunos problemas de conexión al enviar la transacción a la red. Volverá a intentarlo durante los próximos minutos.</string>
+    <string name="payment_request_dialog_error_grpc_text">Zodl encontró algunos problemas de conexión al enviar la transacción a la red. Volverá a intentarlo durante los próximos minutos.</string>
     <string name="payment_request_dialog_error_grpc_btn">OK</string>
 
     <string name="payment_request_send_failed_report_unable_open_email">No se pudo iniciar la aplicación de correo.</string>

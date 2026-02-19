@@ -40,7 +40,6 @@ import co.electriccoin.zcash.ui.design.theme.balances.LocalBalancesAvailable
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.ImageResource
-import co.electriccoin.zcash.ui.design.util.TickerLocation
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -250,27 +249,25 @@ private fun SuccessPreview() =
                         SwapTokenAmountState(
                             bigIcon = imageRes(R.drawable.ic_zec_round_full),
                             smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_shielded),
-                            title =
-                                stringResByDynamicCurrencyNumber(
-                                    0.0000000000000000000004214,
-                                    "",
-                                    TickerLocation
-                                        .HIDDEN
-                                ),
-                            subtitle = stringResByDynamicCurrencyNumber(21312, "$")
+                            amount = stringRes("0.0000004214"),
+                            fiatAmount = stringResByDynamicCurrencyNumber(21312, "$"),
+                            chain = stringRes("Chain"),
+                            token = stringRes("Token")
                         ),
                     to =
                         SwapTokenAmountState(
                             bigIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_token_btc),
                             smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_token_btc),
-                            title = stringResByDynamicCurrencyNumber(2.4214, "", TickerLocation.HIDDEN),
-                            subtitle = stringResByDynamicCurrencyNumber(21312, "$")
+                            amount = stringRes("0.0000004214"),
+                            fiatAmount = stringResByDynamicCurrencyNumber(21312, "$"),
+                            chain = stringRes("Chain"),
+                            token = stringRes("Token")
                         ),
                     items =
                         listOf(
                             SwapQuoteInfoItem(
                                 description = stringRes("Pay from"),
-                                title = stringRes("Zashi"),
+                                title = stringRes("Zodl"),
                                 subtitle = null
                             ),
                             SwapQuoteInfoItem(

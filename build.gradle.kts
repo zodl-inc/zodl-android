@@ -96,7 +96,7 @@ tasks {
             "IS_MINIFY_ENABLED" to "true",
             "NDK_DEBUG_SYMBOL_LEVEL" to "symbol_table",
 
-            "ZCASH_RELEASE_APP_NAME" to "Zashi",
+            "ZCASH_RELEASE_APP_NAME" to "Zodl",
             "ZCASH_RELEASE_PACKAGE_NAME" to "co.electriccoin.zcash",
             "IS_SECURE_SCREEN_PROTECTION_ACTIVE" to "true",
             "IS_SCREEN_ROTATION_ENABLED" to "false",

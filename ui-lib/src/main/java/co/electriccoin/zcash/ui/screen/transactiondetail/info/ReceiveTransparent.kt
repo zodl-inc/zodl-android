@@ -51,7 +51,7 @@ fun ReceiveTransparent(
                         onClick = state.onTransactionIdClick
                     )
             )
-            ZashiHorizontalDivider()
+            ZashiHorizontalDivider(thickness = 2.dp)
             CompositionLocalProvider(
                 LocalBalancesAvailable provides
                     (state.isPending || LocalBalancesAvailable.current)
@@ -72,7 +72,7 @@ fun ReceiveTransparent(
             }
 
             if (state.note != null) {
-                ZashiHorizontalDivider()
+                ZashiHorizontalDivider(thickness = 2.dp)
                 TransactionDetailInfoColumn(
                     modifier = Modifier.fillMaxWidth(),
                     state =

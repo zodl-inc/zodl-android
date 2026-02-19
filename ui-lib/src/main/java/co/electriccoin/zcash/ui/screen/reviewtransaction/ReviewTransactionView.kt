@@ -648,25 +648,29 @@ private fun PayPreview() =
                                         SwapTokenAmountState(
                                             bigIcon = imageRes(R.drawable.ic_chain_placeholder),
                                             smallIcon = imageRes(R.drawable.ic_token_placeholder),
-                                            title =
+                                            amount =
                                                 stringResByDynamicCurrencyNumber(
                                                     amount = 0.4,
                                                     ticker = "",
                                                     tickerLocation = TickerLocation.HIDDEN
                                                 ),
-                                            subtitle = stringResByDynamicCurrencyNumber(0.2, "$")
+                                            fiatAmount = stringResByDynamicCurrencyNumber(0.2, "$"),
+                                            token = stringRes("ZEC"),
+                                            chain = stringRes("Chain"),
                                         ),
                                     to =
                                         SwapTokenAmountState(
                                             bigIcon = imageRes(R.drawable.ic_chain_placeholder),
                                             smallIcon = imageRes(R.drawable.ic_token_placeholder),
-                                            title =
+                                            amount =
                                                 stringResByDynamicCurrencyNumber(
                                                     amount = 0.4,
                                                     ticker = "",
                                                     tickerLocation = TickerLocation.HIDDEN
                                                 ),
-                                            subtitle = stringResByDynamicCurrencyNumber(0.2, "$")
+                                            fiatAmount = stringResByDynamicCurrencyNumber(0.2, "$"),
+                                            token = stringRes("ZEC"),
+                                            chain = stringRes("Chain"),
                                         )
                                 )
                             ),

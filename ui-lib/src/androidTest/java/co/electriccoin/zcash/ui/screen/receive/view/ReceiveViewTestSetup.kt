@@ -33,7 +33,7 @@ class ReceiveViewTestSetup(
                                     listOf(
                                         ReceiveAddressState(
                                             icon = R.drawable.ic_zec_round_full,
-                                            title = stringRes("Zashi"),
+                                            title = stringRes("Zodl"),
                                             subtitle =
                                                 stringRes(
                                                     "${WalletAddressFixture.UNIFIED_ADDRESS_STRING.take(20)}...",
