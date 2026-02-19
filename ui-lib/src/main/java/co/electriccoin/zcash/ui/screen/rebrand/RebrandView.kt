@@ -8,14 +8,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -71,32 +68,25 @@ fun RebrandView(state: RebrandState, modifier: Modifier = Modifier) {
                     textAlign = TextAlign.Center
                 )
 
-                Spacer(22.dp)
+                Spacer(26.dp)
+
+                Text(
+                    text = stringResource(R.string.rebrand_subtitle),
+                    color = ZashiColors.Text.textPrimary,
+                    style = ZashiTypography.textMd,
+                    fontWeight = FontWeight.SemiBold,
+                )
+
+                Spacer(32.dp)
 
                 Text(
                     text = stringResource(R.string.rebrand_desc),
-                    color = ZashiColors.Text.textTertiary,
+                    color = ZashiColors.Text.textPrimary,
                     style = ZashiTypography.textSm,
-                    textAlign = TextAlign.Center
+                    fontWeight = FontWeight.Medium,
                 )
 
-                Spacer(22.dp)
-
-                Surface(
-                    color = ZashiColors.Utility.SuccessGreen.utilitySuccess50,
-                    shape = RoundedCornerShape(ZashiDimensions.Spacing.spacingXl),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = stringResource(R.string.rebrand_security),
-                        color = ZashiColors.Utility.SuccessGreen.utilitySuccess700,
-                        style = ZashiTypography.textMd,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(ZashiDimensions.Spacing.spacingXl)
-                    )
-                }
-
-                Spacer(ZashiDimensions.Spacing.spacing5xl)
+                Spacer(24.dp)
 
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -115,7 +105,7 @@ fun RebrandView(state: RebrandState, modifier: Modifier = Modifier) {
                 }
             }
 
-            Column(modifier = Modifier.padding(vertical = 24.dp)) {
+            Column {
                 ZashiButton(
                     modifier = Modifier.fillMaxWidth(),
                     state = state.info,
