@@ -74,7 +74,7 @@ sealed interface WalletAccount : Comparable<WalletAccount> {
 
 data class ZashiAccount(
     override val sdkAccount: Account,
-    override val unified: UnifiedInfo,
+    override val unified: UnifiedInfo, // TODO [#26]: technical debt, its only ORCHARD, sync with iOS
     override val sapling: SaplingInfo,
     override val transparent: TransparentInfo,
     override val isSelected: Boolean,
