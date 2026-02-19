@@ -214,7 +214,7 @@ private fun AmountTextFields(state: PayState) {
             placeholder =
                 if (!isAmountFocused) {
                     {
-                        val assetTicker = (state.asset as? AssetCardState.Data)?.ticker
+                        val assetTicker = (state.asset as? AssetCardState.Data)?.token
                         val placeholderText = assetTicker ?: stringResByDynamicNumber(0)
                         ZashiNumberTextFieldDefaults.Placeholder(
                             modifier = Modifier.fillMaxWidth(),
@@ -397,7 +397,7 @@ private fun Preview() {
                 PayState(
                     asset =
                         AssetCardState.Data(
-                            ticker = stringRes("USDT"),
+                            token = stringRes("USDT"),
                             bigIcon = null,
                             smallIcon = null,
                             isEnabled = true,
@@ -454,7 +454,7 @@ private fun ErrorPreview() {
                 PayState(
                     asset =
                         AssetCardState.Data(
-                            ticker = stringRes("USDT"),
+                            token = stringRes("USDT"),
                             bigIcon = null,
                             smallIcon = null,
                             isEnabled = true,

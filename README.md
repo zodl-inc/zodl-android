@@ -60,7 +60,7 @@ the project, these steps are not necessary.)
     1. See `ZCASH_RELEASE_PACKAGE_NAME`
 1. Change the support email address under [strings.xml](ui-lib/src/main/res/ui/non_translatable/values/strings.xml)
     1. See `support_email_address`
-1. Remove any copyrighted ZCash or Electric Coin Company icons, logos, or assets
+1. Remove any copyrighted ZCash icons, logos, or assets
     1. ui-lib/src/main/res/common/ - All of the the ic_launcher assets
 1. Optional
     1. Configure secrets and variables for [Continuous Integration](docs/CI.md)

@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="update_title_available">Zashi here.</string>
+    <string name="update_title_available">Zodl here.</string>
     <string name="update_title_required">It\'s not you, it\'s us.</string>
     <string name="update_description_required">
-        There is a required update\nfor Zashi that makes major improvements to\nperformance and/or security.
+        There is a required update\nfor Zodl that makes major improvements to\nperformance and/or security.
     </string>
     <string name="update_description_available">
-        There is a new version of Zashi that makes minor updates to
+        There is a new version of Zodl that makes minor updates to
         improve performance and/or security.\n\nPlease take a moment to update to the latest version.
     </string>
     <string name="update_link_text">Learn more about this update here.</string>

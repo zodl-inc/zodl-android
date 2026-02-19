@@ -3,11 +3,11 @@
     <string name="export_data_title">Exportar Datos</string>
     <string name="export_data_header">Consentimiento para Exportar Datos Privados</string>
     <string name="export_data_text">
-        Al hacer clic en “Estoy de acuerdo” a continuación, das tu consentimiento para exportar todos los datos privados de tus billeteras, como el historial completo de tus billeteras, incluidas las billeteras de hardware conectadas. Toda la información privada, como notas, montos y direcciones de destinatarios, incluso para tu actividad protegida, será exportada.*\n\nEstos datos privados también permiten la capacidad de ver ciertas acciones futuras que realices con Zashi.\n\nCompartir estos datos privados es irrevocable: una vez que hayas compartido estos datos privados con alguien, no hay forma de revocar su acceso.\n\n*Ten en cuenta que estos datos privados no les dan la capacidad de gastar tus fondos, solo la posibilidad de ver lo que haces con ellos.
+        Al hacer clic en “Estoy de acuerdo” a continuación, das tu consentimiento para exportar todos los datos privados de tus billeteras, como el historial completo de tus billeteras, incluidas las billeteras de hardware conectadas. Toda la información privada, como notas, montos y direcciones de destinatarios, incluso para tu actividad protegida, será exportada.*\n\nEstos datos privados también permiten la capacidad de ver ciertas acciones futuras que realices con Zodl.\n\nCompartir estos datos privados es irrevocable: una vez que hayas compartido estos datos privados con alguien, no hay forma de revocar su acceso.\n\n*Ten en cuenta que estos datos privados no les dan la capacidad de gastar tus fondos, solo la posibilidad de ver lo que haces con ellos.
     </string>
     <string name="export_data_confirm">Exportar Datos Privados</string>
-    <string name="export_data_agree">Estoy de acuerdo con las Políticas de Exportación de Datos Privados y la Política de Privacidad de Zashi</string>
-    <string name="export_data_export_data_chooser_title">Compartir datos internos de Zashi con:</string>
+    <string name="export_data_agree">Estoy de acuerdo con las Políticas de Exportación de Datos Privados y la Política de Privacidad de Zodl</string>
+    <string name="export_data_export_data_chooser_title">Compartir datos internos de Zodl con:</string>
     <string name="export_data_unable_to_share">No se encontró una aplicación con la cual compartir.</string>
     <string name="export_data_share_text">Exportar Archivo de Impuestos</string>
 </resources>

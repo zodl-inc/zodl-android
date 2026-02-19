@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rebrand_title">Zashi ahora es Zodl</string>
+    <string name="rebrand_subtitle">Misma billetera, diferente nombre y logotipo.</string>
+    <string name="rebrand_desc">Hemos renovado nuestra marca, pero todo lo que te gusta sigue igual. Zodl es la misma app con una nueva identidad.</string>
+    <string name="rebrand_info_title">Todo funciona igual que antes:</string>
+    <string name="rebrand_info_title_1">La misma app</string>
+    <string name="rebrand_info_title_2">La misma misión</string>
+    <string name="rebrand_info_title_3">El mismo equipo de desarrollo</string>
+    <string name="rebrand_button_more">Más información</string>
+    <string name="rebrand_button_next">Ir a Zodl</string>
+</resources>

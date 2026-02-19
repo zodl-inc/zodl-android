@@ -185,7 +185,7 @@ internal class ExactInputVMMapper {
                 when (state.mode) {
                     SWAP_FROM_ZEC ->
                         AssetCardState.Data(
-                            ticker = stringRes(cash.z.ecc.sdk.ext.R.string.zcash_token_zec),
+                            token = stringRes(cash.z.ecc.sdk.ext.R.string.zcash_token_zec),
                             bigIcon = imageRes(R.drawable.ic_zec_round_full),
                             smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_shielded),
                             onClick = null
@@ -199,7 +199,8 @@ internal class ExactInputVMMapper {
                             )
                         } else {
                             AssetCardState.Data(
-                                ticker = state.swapAsset.tokenTicker.let { stringRes(it) },
+                                token = state.swapAsset.tokenTicker.let { stringRes(it) },
+                                chain = state.swapAsset.chainName,
                                 bigIcon = state.swapAsset.tokenIcon,
                                 smallIcon = state.swapAsset.chainIcon,
                                 onClick = onSwapAssetPickerClick,
@@ -344,7 +345,8 @@ internal class ExactInputVMMapper {
                             )
                         } else {
                             AssetCardState.Data(
-                                ticker = state.swapAsset.tokenTicker.let { stringRes(it) },
+                                token = state.swapAsset.tokenTicker.let { stringRes(it) },
+                                chain = state.swapAsset.chainName,
                                 bigIcon = state.swapAsset.tokenIcon,
                                 smallIcon = state.swapAsset.chainIcon,
                                 onClick = onSwapAssetPickerClick,
@@ -354,7 +356,7 @@ internal class ExactInputVMMapper {
 
                     SWAP_INTO_ZEC ->
                         AssetCardState.Data(
-                            ticker = stringRes(cash.z.ecc.sdk.ext.R.string.zcash_token_zec),
+                            token = stringRes(cash.z.ecc.sdk.ext.R.string.zcash_token_zec),
                             bigIcon = imageRes(R.drawable.ic_zec_round_full),
                             smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_shielded),
                             onClick = null

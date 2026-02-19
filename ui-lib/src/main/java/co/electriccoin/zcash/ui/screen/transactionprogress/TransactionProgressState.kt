@@ -14,7 +14,9 @@ data class TransactionProgressState(
     val middleButton: ButtonState?,
     val primaryButton: ButtonState?,
     val secondaryButton: ButtonState?,
-    val onBack: () -> Unit
+    val onBack: () -> Unit,
+    val transactionIds: List<StringResource>? = null,
+    val showAppBar: Boolean = false,
 ) {
-    enum class Background { SUCCESS, PENDING }
+    enum class Background { SUCCESS, PENDING, ERROR }
 }

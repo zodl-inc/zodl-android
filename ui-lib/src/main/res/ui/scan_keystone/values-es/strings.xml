@@ -6,7 +6,7 @@
     <string name="scan_keystone_settings_button">Abrir Configuración</string>
     <string name="scan_keystone_settings_open_failed">No se pudo abrir la aplicación de Configuración.</string>
     <string name="scan_keystone_state_permission">La cámara no está autorizada. Por favor, ve a la configuración del sistema de
-        Zashi y actívala.</string>
+        Zodl y actívala.</string>
     <string name="scan_keystone_state_failed">La inicialización de la cámara falló. Por favor, inténtalo nuevamente.</string>
     <string name="scan_keystone_address_validation_failed">Este código QR no es una dirección Zcash válida.</string>
     <string name="scan_keystone_torch_content_description">Alternar linterna de la cámara</string>

@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="restore_success_title">¡Mantén Zashi abierto!</string>
+    <string name="restore_success_title">¡Mantén Zodl abierto!</string>
     <string name="restore_success_subtitle">Tu billetera se está restaurando.</string>
-    <string name="restore_success_description">Zashi está escaneando la cadena de bloques para recuperar tus transacciones. Las billeteras más antiguas pueden tardar horas en restaurarse. Sigue estos pasos para evitar interrupciones:</string>
+    <string name="restore_success_description">Zodl está escaneando la cadena de bloques para recuperar tus transacciones. Las billeteras más antiguas pueden tardar horas en restaurarse. Sigue estos pasos para evitar interrupciones:</string>
     <string name="restoring_initial_dialog_checkbox">Mantener la pantalla encendida mientras se restaura.</string>
     <string name="restore_success_note_part_1">Nota:</string>
-    <string name="restore_success_note_part_2">No podrás usar tus fondos en Zashi hasta que la restauración de la billetera se complete por completo.</string>
+    <string name="restore_success_note_part_2">No podrás usar tus fondos en Zodl hasta que la restauración de la billetera se complete por completo.</string>
     <string name="restore_success_button">¡Entendido!</string>
-    <string name="restore_success_bullet_1">Mantén la app de Zashi abierta con la pantalla del teléfono activa.</string>
+    <string name="restore_success_bullet_1">Mantén la app de Zodl abierta con la pantalla del teléfono activa.</string>
     <string name="restore_success_bullet_2">Para evitar que la pantalla se apague, desactiva el modo de ahorro de energía y mantén el teléfono conectado a la corriente.</string>
 </resources>

@@ -26,8 +26,8 @@ import co.electriccoin.zcash.ui.screen.restore.height.AndroidRestoreBDHeight
 import co.electriccoin.zcash.ui.screen.restore.height.RestoreBDHeight
 import co.electriccoin.zcash.ui.screen.restore.info.AndroidSeedInfo
 import co.electriccoin.zcash.ui.screen.restore.info.SeedInfo
-import co.electriccoin.zcash.ui.screen.restore.seed.AndroidRestoreSeed
-import co.electriccoin.zcash.ui.screen.restore.seed.RestoreSeed
+import co.electriccoin.zcash.ui.screen.restore.seed.RestoreSeedArgs
+import co.electriccoin.zcash.ui.screen.restore.seed.RestoreSeedScreen
 import co.electriccoin.zcash.ui.screen.restore.tor.RestoreTorArgs
 import co.electriccoin.zcash.ui.screen.restore.tor.RestoreTorScreen
 import co.electriccoin.zcash.ui.screen.scan.thirdparty.AndroidThirdPartyScan
@@ -53,7 +53,7 @@ fun NavGraphBuilder.onboardingNavGraph(
                                 .getBirthday(ZcashNetwork.Companion.fromResources(activity.applicationContext))
                         )
                     } else {
-                        navigationRouter.forward(RestoreSeed)
+                        navigationRouter.forward(RestoreSeedArgs)
                     }
                 },
                 onCreateWallet = {
@@ -74,7 +74,7 @@ fun NavGraphBuilder.onboardingNavGraph(
                 }
             )
         }
-        composable<RestoreSeed> { AndroidRestoreSeed() }
+        composable<RestoreSeedArgs> { RestoreSeedScreen() }
         composable<RestoreBDHeight> { AndroidRestoreBDHeight(it.toRoute()) }
         composable<RestoreBDDateArgs> { RestoreBDDateScreen(it.toRoute()) }
         composable<RestoreBDEstimationArgs> { RestoreBDEstimationScreen(it.toRoute()) }

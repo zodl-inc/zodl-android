@@ -13,7 +13,7 @@
     <string name="qr_code_copy_btn">Copiar Dirección</string>
     <string name="qr_code_clipboard_tag">Dirección de Wallet Zcash</string>
     <string name="qr_code_data_unable_to_share">No se pudo encontrar una aplicación para compartir el código QR.</string>
-    <string name="qr_code_share_chooser_title">Mi Dirección %s en Zashi</string>
+    <string name="qr_code_share_chooser_title">Mi Dirección %s en Zodl</string>
     <string name="qr_code_share_chooser_text">Hola, ¡escanea este código QR para enviarme un pago en %s! Enlace de descarga:
         https://play.google.com/store/apps/details?id=co.electriccoin.zcash</string>
     <string name="qr_code_wallet_address_shielded_keystone">Dirección Protegida de Keystone</string>

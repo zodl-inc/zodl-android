@@ -72,7 +72,7 @@ fun SendShielded(
                 exit = shrinkVertically(shrinkTowards = Alignment.Top)
             ) {
                 Column {
-                    ZashiHorizontalDivider()
+                    ZashiHorizontalDivider(thickness = 2.dp)
                     TransactionDetailInfoRow(
                         modifier = Modifier.fillMaxWidth(),
                         state =
@@ -83,7 +83,7 @@ fun SendShielded(
                                 onClick = state.onTransactionIdClick
                             )
                     )
-                    ZashiHorizontalDivider()
+                    ZashiHorizontalDivider(thickness = 2.dp)
                     CompositionLocalProvider(
                         LocalBalancesAvailable provides (state.isPending || LocalBalancesAvailable.current)
                     ) {
@@ -101,7 +101,7 @@ fun SendShielded(
                                 )
                         )
                     }
-                    ZashiHorizontalDivider()
+                    ZashiHorizontalDivider(thickness = 2.dp)
                     TransactionDetailInfoRow(
                         modifier = Modifier.fillMaxWidth(),
                         state =
@@ -114,7 +114,7 @@ fun SendShielded(
                 }
             }
             if (state.note != null) {
-                ZashiHorizontalDivider()
+                ZashiHorizontalDivider(thickness = 2.dp)
                 TransactionDetailInfoColumn(
                     modifier = Modifier.fillMaxWidth(),
                     state =

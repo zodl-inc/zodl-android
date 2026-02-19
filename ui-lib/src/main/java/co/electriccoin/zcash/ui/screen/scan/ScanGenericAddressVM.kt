@@ -28,11 +28,9 @@ internal class ScanGenericAddressVM(
             mutex.withLock {
                 if (!hasBeenScannedSuccessfully) {
                     runCatching {
-                        when (val zip321ValidationResult = parseZip321(result)) {
-                            is Zip321ParseUriValidation.Valid ->
-                                onZip321Scanned(zip321ValidationResult)
-                            is Zip321ParseUriValidation.SingleAddress ->
-                                onZip321SingleAddressScanned(zip321ValidationResult)
+                        when (val zip321Result = parseZip321(result)) {
+                            is Zip321ParseUriValidation.Valid -> onZip321Scanned(zip321Result)
+                            is Zip321ParseUriValidation.SingleAddress -> onZip321SingleAddressScanned(zip321Result)
                             else -> onAddressScanned(result)
                         }
                     }
@@ -70,11 +68,7 @@ internal class ScanGenericAddressVM(
                 .nonNegativeAmount
                 ?.toZecValueString()
                 ?.toBigDecimal() ?: BigDecimal.ZERO
-        navigateToScanAddress.onScanned(
-            address = address,
-            amount = amount,
-            args = args
-        )
+        navigateToScanAddress.onScanned(address, amount, args)
         hasBeenScannedSuccessfully = true
     }
 
@@ -87,8 +81,5 @@ internal class ScanGenericAddressVM(
             }
         }
 
-    fun onBack() =
-        viewModelScope.launch {
-            navigateToScanAddress.onScanCancelled(args)
-        }
+    fun onBack() = viewModelScope.launch { navigateToScanAddress.onScanCancelled(args) }
 }

@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="delete_wallet_title">Restablecer Zashi</string>
+    <string name="delete_wallet_title">Restablecer Zodl</string>
     <string name="delete_wallet_text_1">Asegúrate de haber guardado tanto tu frase de recuperación secreta como la altura de cumpleaños de la billetera antes de continuar.</string>
-    <string name="delete_wallet_text_2">Restablecer la aplicación Zashi eliminará la base de datos y los datos en
+    <string name="delete_wallet_text_2">Restablecer la aplicación Zodl eliminará la base de datos y los datos en
         caché de la aplicación, además de desconectar todas las billeteras de hardware conectadas.</string>
-    <string name="delete_wallet_text_3">Una vez que restablezcas Zashi, la única forma de acceder a tus fondos será mediante un proceso de restauración de billetera que requiere tu Frase de Recuperación de Zashi y la Altura de Cumpleaños de la Billetera.</string>
+    <string name="delete_wallet_text_3">Una vez que restablezcas Zodl, la única forma de acceder a tus fondos será mediante un proceso de restauración de billetera que requiere tu Frase de Recuperación de Zodl y la Altura de Cumpleaños de la Billetera.</string>
     <string name="delete_wallet_checkbox_title">Conserva la copia de seguridad cifrada de los metadatos, que incluye contactos, notas, marcadores y detalles de intercambios/pagos.</string>
     <string name="delete_wallet_checkbox_warning_checked">Estos datos no se podrán recuperar durante la restauración.</string>
     <string name="delete_wallet_checkbox_warning_unchecked">Estos datos no se pueden recuperar durante la Restauración.</string>
     <string name="delete_wallet_button">Confirmar</string>
     <string name="delete_wallet_confirmation_title">¿Estás seguro?</string>
     <string name="delete_wallet_confirmation_subtitle">Restablecer la app no se puede deshacer. Necesitarás restaurar tu billetera usando tu frase secreta de recuperación.</string>
-    <string name="delete_wallet_confirmation_button">Restablecer Zashi</string>
+    <string name="delete_wallet_confirmation_button">Restablecer Zodl</string>
     <string name="delete_wallet_confirmation_cancel">Cancelar</string>
     <string name="delete_wallet_failed">Error al eliminar la billetera. Inténtalo nuevamente, por favor.</string>
 </resources>

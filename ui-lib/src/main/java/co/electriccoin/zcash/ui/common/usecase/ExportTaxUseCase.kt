@@ -49,7 +49,7 @@ class ExportTaxUseCase(
                     context.cacheDir,
                     when (accountDataSource.getSelectedAccount()) {
                         is KeystoneAccount -> "Keystone_Transaction_History_$previousYear.csv"
-                        is ZashiAccount -> "Zashi_Transaction_History_$previousYear.csv"
+                        is ZashiAccount -> "Zodl_Transaction_History_$previousYear.csv"
                     }
                 )
 

@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.common.appbar.ZashiMainTopAppBarState.AccountType
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.IconButtonState
+import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiIconButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
@@ -75,7 +76,7 @@ private fun AccountSwitch(state: AccountSwitchState) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
-            modifier = Modifier.size(24.dp),
+            modifier = Modifier.size(32.dp),
             painter =
                 painterResource(
                     when (state.accountType) {
@@ -85,11 +86,11 @@ private fun AccountSwitch(state: AccountSwitchState) {
                 ),
             contentDescription = null
         )
-        Spacer(Modifier.width(4.dp))
+        Spacer(8.dp)
         Image(
             modifier =
                 when (state.accountType) {
-                    AccountType.ZASHI -> Modifier.padding(bottom = 4.dp)
+                    AccountType.ZASHI -> Modifier.padding(bottom = 0.dp)
                     AccountType.KEYSTONE -> Modifier.padding(top = 4.dp)
                 },
             painter =

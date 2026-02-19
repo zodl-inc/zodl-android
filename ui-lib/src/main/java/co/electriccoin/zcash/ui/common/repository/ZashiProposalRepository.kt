@@ -14,7 +14,6 @@ import co.electriccoin.zcash.ui.common.datasource.ZashiSpendingKeyDataSource
 import co.electriccoin.zcash.ui.common.datasource.Zip321TransactionProposal
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.SwapQuote
-import co.electriccoin.zcash.ui.common.repository.SubmitProposalState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -118,14 +117,9 @@ class ZashiProposalRepositoryImpl(
             .async {
                 val transactionProposal = transactionProposal.value
                 if (transactionProposal == null) {
-                    val submitResult =
-                        SubmitResult.Failure(
-                            txIds = emptyList(),
-                            code = 0,
-                            description = "Transaction proposal is null"
-                        )
-                    submitState.update { SubmitProposalState.Result(submitResult) }
-                    throw IllegalStateException("Transaction proposal is null")
+                    val cause = IllegalStateException("Transaction proposal is null")
+                    submitState.update { SubmitProposalState.Result(SubmitResult.Error(cause)) }
+                    throw cause
                 } else {
                     submitState.update { SubmitProposalState.Submitting }
                     try {
@@ -137,13 +131,7 @@ class ZashiProposalRepositoryImpl(
                         submitState.update { SubmitProposalState.Result(result) }
                         result
                     } catch (e: Exception) {
-                        val result =
-                            SubmitResult.Failure(
-                                txIds = emptyList(),
-                                code = 0,
-                                description = e.message
-                            )
-                        submitState.update { SubmitProposalState.Result(result) }
+                        submitState.update { SubmitProposalState.Result(SubmitResult.Error(e)) }
                         throw e
                     }
                 }

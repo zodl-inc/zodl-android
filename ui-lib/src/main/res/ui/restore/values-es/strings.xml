@@ -7,9 +7,9 @@
 
     <string name="restore_dialog_title">¿Necesitas más información?</string>
     <string name="restore_dialog_message_1_bold_part">La Frase Secreta de Recuperación</string>
-    <string name="restore_dialog_message_1">es un conjunto único de 24 palabras que aparecen en un orden preciso. Puede usarse para obtener control total de tus fondos desde cualquier dispositivo a través de cualquier app de billetera Zcash. Piénsala como la llave maestra de tu billetera. Está guardada en la Configuración Avanzada de Zashi.</string>
+    <string name="restore_dialog_message_1">es un conjunto único de 24 palabras que aparecen en un orden preciso. Puede usarse para obtener control total de tus fondos desde cualquier dispositivo a través de cualquier app de billetera Zcash. Piénsala como la llave maestra de tu billetera. Está guardada en la Configuración Avanzada de Zodl.</string>
     <string name="restore_dialog_message_2_bold_part">La Altura de Cumpleaños de la Billetera</string>
-    <string name="restore_dialog_message_2">es la altura de bloque (número de bloque en la cadena de bloques) en la que se creó tu billetera. Si alguna vez pierdes acceso a tu app de Zashi y necesitas recuperar tus fondos, proporcionar esta altura junto con tu frase de recuperación puede acelerar significativamente el proceso.</string>
+    <string name="restore_dialog_message_2">es la altura de bloque (número de bloque en la cadena de bloques) en la que se creó tu billetera. Si alguna vez pierdes acceso a tu app de Zodl y necesitas recuperar tus fondos, proporcionar esta altura junto con tu frase de recuperación puede acelerar significativamente el proceso.</string>
     <string name="restore_dialog_button">¡Entendido!</string>
 
     <string name="restore_bd_height_btn">Estimar mi altura de bloque</string>
@@ -27,7 +27,7 @@
     <string name="restore_bd_date_next">Siguiente</string>
 
     <string name="restore_bd_estimation_subtitle">Altura de Bloque Estimada</string>
-    <string name="restore_bd_estimation_message">Zashi escaneará y recuperará todas las transacciones realizadas después del siguiente número de bloque.</string>
+    <string name="restore_bd_estimation_message">Zodl escaneará y recuperará todas las transacciones realizadas después del siguiente número de bloque.</string>
     <string name="restore_bd_estimation_copy">Copiar</string>
     <string name="restore_bd_estimation_restore">Restaurar</string>
 
@@ -40,18 +40,18 @@
 
     <string name="resync_title">Resincronizar Billetera</string>
     <string name="resync_bd_date_subtitle">Primera Transacción de la Billetera</string>
-    <string name="resync_bd_date_message">Decide hasta qué punto Zashi debe resincronizar. Ingresa una fecha anterior a tu primera transacción recibida.</string>
+    <string name="resync_bd_date_message">Decide hasta qué punto Zodl debe resincronizar. Ingresa una fecha anterior a tu primera transacción recibida.</string>
     <string name="resync_bd_date_note">Si no estás seguro, elige una fecha anterior.</string>
 
     <string name="resync_bd_estimation_subtitle">Altura de Bloque Estimada</string>
-    <string name="resync_bd_estimation_message">Zashi escaneará y recuperará todas las transacciones realizadas después del siguiente número de bloque.</string>
+    <string name="resync_bd_estimation_message">Zodl escaneará y recuperará todas las transacciones realizadas después del siguiente número de bloque.</string>
     <string name="resync_bd_estimation_btn">Establecer esta altura</string>
 
     <string name="confirm_resync_title">Confirmar Resincronización</string>
     <string name="confirm_resync_subtitle">Resync the current wallet without resetting the app. This can be used to
         troubleshoot issues that would normally require restoring your wallet like fixing your Keystone balance
-        .\n\nUnless you specify otherwise below, Zashi will resync from the date displayed. </string>
-    <string name="confirm_resync_message">A menos que especifiques lo contrario a continuación, Zashi se resincronizará desde la fecha mostrada.</string>
+        .\n\nUnless you specify otherwise below, Zodl will resync from the date displayed. </string>
+    <string name="confirm_resync_message">A menos que especifiques lo contrario a continuación, Zodl se resincronizará desde la fecha mostrada.</string>
     <string name="confirm_resync_info">Tu billetera se resincronizará desde %1$s (%2$s bloques). Usa el botón a continuación si deseas cambiarlo.</string>
     <string name="confirm_resync_change">Cambiar</string>
     <string name="confirm_resync_confirm">Confirmar</string>

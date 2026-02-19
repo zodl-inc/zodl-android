@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="onboarding_header">A Zcash (%s) wallet built for private payments</string>
-
+    <string name="onboarding_header">Zcash-powered mobile wallet built for financial sovereignty.</string>
     <string name="onboarding_create_new_wallet">Create New Wallet</string>
     <string name="onboarding_import_existing_wallet">Restore Existing Wallet</string>
 </resources>

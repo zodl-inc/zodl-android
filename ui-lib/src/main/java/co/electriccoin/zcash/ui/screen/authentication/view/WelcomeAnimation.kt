@@ -37,8 +37,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
@@ -86,25 +87,6 @@ fun WelcomeAnimationAutostart(
         currentAnimationState = false
     }
 }
-
-@Preview
-@Composable
-private fun WelcomeScreenPreview() {
-    ZcashTheme {
-        WelcomeAnimationAutostart(false, {})
-    }
-}
-
-@Preview
-@Composable
-private fun WelcomeScreenAuthLogoPreview() {
-    ZcashTheme {
-        WelcomeAnimationAutostart(true, {})
-    }
-}
-
-private const val LOGO_RELATIVE_LOCATION = 0.2f
-private const val AUTH_FAILED_WIDGET_RELATIVE_LOCATION = 0.65f
 
 @Composable
 @Suppress("LongMethod")
@@ -167,6 +149,7 @@ fun WelcomeScreenView(
                     Spacer(modifier = Modifier.fillMaxHeight(LOGO_RELATIVE_LOCATION))
 
                     Image(
+                        modifier = Modifier.height(48.dp),
                         painter = painterResource(id = co.electriccoin.zcash.ui.design.R.drawable.logo_with_hi),
                         contentDescription = null,
                     )
@@ -220,5 +203,16 @@ fun WelcomeScreenView(
                 }
             }
         }
+    }
+}
+
+private const val AUTH_FAILED_WIDGET_RELATIVE_LOCATION = 0.65f
+private const val LOGO_RELATIVE_LOCATION = 0.4f
+
+@PreviewScreens
+@Composable
+private fun WelcomeScreenPreview() {
+    ZcashTheme {
+        WelcomeAnimationAutostart(false, {})
     }
 }

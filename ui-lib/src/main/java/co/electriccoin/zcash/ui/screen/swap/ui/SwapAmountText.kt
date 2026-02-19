@@ -116,7 +116,7 @@ private fun Preview() =
                     SwapAmountTextState(
                         token =
                             AssetCardState.Data(
-                                ticker = stringRes(value = "ZEC"),
+                                token = stringRes(value = "ZEC"),
                                 bigIcon = null,
                                 smallIcon = null,
                                 isEnabled = true,

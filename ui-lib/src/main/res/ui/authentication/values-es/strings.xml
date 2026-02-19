@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="authentication_system_ui_title">
-        Autenticación para <xliff:g id="app_name" example="Zashi">%1$s</xliff:g>
+        Autenticación para <xliff:g id="app_name" example="Zodl">%1$s</xliff:g>
     </string>
     <string name="authentication_system_ui_subtitle">
         Usa biometría o credenciales del dispositivo para acceder a <xliff:g id="use_case" example="Frase de Recuperación">%1$s</xliff:g>.
@@ -32,7 +32,7 @@
     <string name="authentication_failed_button_retry">Reintentar</string>
     <string name="authentication_failed_button_support">Contactar Soporte</string>
 
-    <string name="authentication_failed_welcome_icon_cont_desc">Toca para desbloquear la aplicación <xliff:g id="app_name" example="Zashi">%1$s</xliff:g></string>
-    <string name="authentication_failed_welcome_title">Tu cuenta de Zashi está protegida.</string>
+    <string name="authentication_failed_welcome_icon_cont_desc">Toca para desbloquear la aplicación <xliff:g id="app_name" example="Zodl">%1$s</xliff:g></string>
+    <string name="authentication_failed_welcome_title">Tu cuenta de Zodl está protegida.</string>
     <string name="authentication_failed_welcome_subtitle">Toca el ícono de la llave para desbloquearla.</string>
 </resources>

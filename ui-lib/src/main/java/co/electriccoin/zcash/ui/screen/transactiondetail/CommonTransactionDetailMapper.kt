@@ -73,23 +73,26 @@ class CommonTransactionDetailMapper {
         originAsset: SwapAsset?,
         destinationAsset: SwapAsset?
     ): SwapQuoteHeaderState {
-        if (swap == null) return SwapQuoteHeaderState(null, null)
+        if (swap == null || originAsset == null || destinationAsset == null) {
+            return SwapQuoteHeaderState(null, null)
+        }
         return SwapQuoteHeaderState(
             from =
                 SwapTokenAmountState(
-                    bigIcon = originAsset?.getQuoteTokenIcon(),
+                    bigIcon = originAsset.getQuoteTokenIcon(),
                     smallIcon =
                         when (originAsset) {
                             is DynamicSwapAsset -> originAsset.chainIcon
                             is ZecSwapAsset -> originAsset.getQuoteChainIcon(isShielded = true)
-                            null -> null
                         },
-                    title = stringResByNumber(swap.amountInFormatted),
-                    subtitle = stringResByDynamicCurrencyNumber(swap.amountInUsd, FiatCurrency.USD.symbol)
+                    amount = stringResByNumber(swap.amountInFormatted),
+                    fiatAmount = stringResByDynamicCurrencyNumber(swap.amountInUsd, FiatCurrency.USD.symbol),
+                    token = stringRes(originAsset.tokenTicker),
+                    chain = originAsset.chainName
                 ),
             to =
                 SwapTokenAmountState(
-                    bigIcon = destinationAsset?.getQuoteTokenIcon(),
+                    bigIcon = destinationAsset.getQuoteTokenIcon(),
                     smallIcon =
                         when (destinationAsset) {
                             is DynamicSwapAsset -> destinationAsset.chainIcon
@@ -97,11 +100,11 @@ class CommonTransactionDetailMapper {
                                 destinationAsset.getQuoteChainIcon(
                                     isShielded = swap.quote.destinationAddress is ZcashShieldedSwapAddress
                                 )
-
-                            null -> null
                         },
-                    title = stringResByNumber(swap.amountOutFormatted),
-                    subtitle = stringResByDynamicCurrencyNumber(swap.amountOutUsd, FiatCurrency.USD.symbol)
+                    amount = stringResByNumber(swap.amountOutFormatted),
+                    fiatAmount = stringResByDynamicCurrencyNumber(swap.amountOutUsd, FiatCurrency.USD.symbol),
+                    token = stringRes(destinationAsset.tokenTicker),
+                    chain = destinationAsset.chainName
                 )
         )
     }

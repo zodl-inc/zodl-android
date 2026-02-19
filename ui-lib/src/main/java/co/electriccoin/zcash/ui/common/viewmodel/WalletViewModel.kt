@@ -1,12 +1,14 @@
 package co.electriccoin.zcash.ui.common.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.SeedPhrase
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.WalletRepository
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 // To make this more multiplatform compatible, we need to remove the dependency on Context
 // for loading the preferences.
@@ -20,8 +22,16 @@ class WalletViewModel(
 
     val secretState: StateFlow<SecretState> = walletRepository.secretState
 
+    val isRebrandAcknowledged: StateFlow<Boolean?> = walletRepository.isRebrandAcknowledged
+
     fun createNewWallet() {
         walletRepository.createNewWallet()
+    }
+
+    fun acknowledgeRebrand() {
+        viewModelScope.launch {
+            walletRepository.acknowledgeRebrand()
+        }
     }
 
     fun persistExistingWalletWithSeedPhrase(

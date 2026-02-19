@@ -13,7 +13,7 @@
     <string name="qr_code_copy_btn">Copy Address</string>
     <string name="qr_code_clipboard_tag">Zcash Wallet Address</string>
     <string name="qr_code_data_unable_to_share">Unable to find an application for sharing the QR code.</string>
-    <string name="qr_code_share_chooser_title">My Zashi %s Address</string>
+    <string name="qr_code_share_chooser_title">My Zodl %s Address</string>
     <string name="qr_code_share_chooser_text">Hi, scan this QR code to send me a %s payment! Download Link:
         https://play.google.com/store/apps/details?id=co.electriccoin.zcash</string>
     <string name="qr_code_wallet_address_shielded_keystone">Keystone Shielded Address</string>

@@ -8,6 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import co.electriccoin.zcash.ui.R
@@ -27,6 +29,7 @@ fun CrashReportOptInView(state: CrashReportOptInState) {
     ZashiBaseSettingsOptIn(
         header = stringResource(R.string.crash_report_detail_title),
         image = R.drawable.crash_report_detail,
+        imageSize = DpSize(Dp.Unspecified, 48.dp),
         onDismiss = state.onBack,
         content = {
             Spacer(modifier = Modifier.height(20.dp))

@@ -18,7 +18,7 @@ import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.IconButtonState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.preference.StandardPreferenceKeys
-import co.electriccoin.zcash.ui.screen.accountlist.AccountList
+import co.electriccoin.zcash.ui.screen.accountlist.AccountListArgs
 import co.electriccoin.zcash.ui.screen.integrations.IntegrationsArgs
 import co.electriccoin.zcash.ui.screen.more.MoreArgs
 import kotlinx.coroutines.flow.SharingStarted
@@ -105,7 +105,7 @@ class ZashiTopAppBarVM(
         )
     }
 
-    private fun onAccountTypeClicked() = navigationRouter.forward(AccountList)
+    private fun onAccountTypeClicked() = navigationRouter.forward(AccountListArgs)
 
     private fun onInfoClick(accounts: List<WalletAccount>?) =
         viewModelScope.launch {

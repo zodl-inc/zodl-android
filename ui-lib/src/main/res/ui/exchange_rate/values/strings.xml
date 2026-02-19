@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="exchange_rate_info_title_1">IP Address Protection</string>
-    <string name="exchange_rate_info_subtitle_1">If Tor Protection is enabled (Advanced Settings), Zashi protects your IP address.</string>
+    <string name="exchange_rate_info_subtitle_1">If Tor Protection is enabled (Advanced Settings), Zodl protects your IP address.</string>
     <string name="exchange_rate_info_subtitle_1_no_cmc">Exchange rates are fetched over Tor to protect your IP address. Ensure Tor use is allowed in your region.</string>
     <string name="exchange_rate_info_title_2">Rate Refresh</string>
     <string name="exchange_rate_info_subtitle_2">The rate is refreshed automatically and can also be refreshed manually.</string>

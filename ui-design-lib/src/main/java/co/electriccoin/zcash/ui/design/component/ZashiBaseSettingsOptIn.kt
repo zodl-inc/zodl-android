@@ -21,19 +21,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 
-@Suppress("LongMethod")
+@Suppress("LongMethod", "ComposableParamOrder")
 @Composable
 fun ZashiBaseSettingsOptIn(
     header: String,
     @DrawableRes image: Int,
     info: String?,
     onDismiss: () -> Unit,
+    imageSize: DpSize? = null,
     footer: @Composable ColumnScope.() -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -69,7 +71,11 @@ fun ZashiBaseSettingsOptIn(
                         .weight(1f)
                         .verticalScroll(rememberScrollState())
             ) {
-                Image(painter = painterResource(image), contentDescription = null)
+                Image(
+                    modifier = if (imageSize != null) Modifier.size(imageSize) else Modifier,
+                    painter = painterResource(image),
+                    contentDescription = null
+                )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = header,

@@ -6,7 +6,7 @@
     <string name="swap_select_chain">Seleccionar red</string>
     <string name="swap_search_hint">Buscar por nombre o ticker…</string>
     <string name="swap_slippage_title">Slippage</string>
-    <string name="swap_slippage_subtitle">Esta configuración determina la diferencia máxima permitida entre el precio esperado de un swap y el precio real que pagas, lo cual está fuera del control de Zashi.</string>
+    <string name="swap_slippage_subtitle">Esta configuración determina la diferencia máxima permitida entre el precio esperado de un swap y el precio real que pagas, lo cual está fuera del control de Zodl.</string>
     <string name="swap_slippage_max_threshold">Por favor, ingresa un slippage máximo de 30%%.</string>
     <string name="swap_slippage_info">Podrías recibir hasta %s menos de lo cotizado.</string>
     <string name="pay_slippage_info">Podrías pagar hasta %s más, además de las comisiones de transacción.</string>
@@ -39,7 +39,7 @@
     <string name="swap_quote_total_fees">Comisiones totales</string>
     <string name="swap_quote_max_slippage">Slippage máximo %s</string>
     <string name="swap_quote_total_amount">Monto total</string>
-    <string name="swap_quote_zashi">Zashi</string>
+    <string name="swap_quote_zashi">Zodl</string>
     <string name="swap_quote_info">Podrías recibir hasta %s menos según el deslizamiento %s que configuraste.</string>
     <string name="swap_confirm">Obtener cotización</string>
     <string name="swap_picker_select_chain">Seleccionar red</string>
@@ -49,7 +49,7 @@
     <string name="pay_to">Pagar a</string>
     <string name="swap_to_zec_footer">Usa tu wallet %s \n para depositar fondos. Depositar otros activos puede resultar en pérdida de fondos.</string>
     <string name="swap_to_zec_footer_bold">%s en %s</string>
-    <string name="swap_to_zec_share_text">Dirección de depósito para %1$s %2$s en %3$s swap a %4$s en Zashi</string>
+    <string name="swap_to_zec_share_text">Dirección de depósito para %1$s %2$s en %3$s swap a %4$s en Zodl</string>
     <string name="swap_refund_address">Dirección de reembolso</string>
     <string name="swap_refund_address_info_title">Dirección de reembolso</string>
     <string name="swap_refund_address_info_message_empty">Si el swap falla o cambian las condiciones del mercado, tu transacción puede ser reembolsada menos las comisiones de transacción.\n\nEl monto reembolsado será devuelto a tu wallet en la moneda de origen. Por favor, ingresa una dirección válida para evitar la pérdida de fondos.</string>

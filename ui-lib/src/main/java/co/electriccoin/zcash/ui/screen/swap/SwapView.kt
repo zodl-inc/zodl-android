@@ -383,7 +383,7 @@ private fun Preview() {
                             error = null,
                             token =
                                 AssetCardState.Data(
-                                    ticker = stringRes("USDT"),
+                                    token = stringRes("USDT"),
                                     bigIcon = null,
                                     smallIcon = null,
                                     isEnabled = false,
@@ -407,7 +407,7 @@ private fun Preview() {
                         SwapAmountTextState(
                             token =
                                 AssetCardState.Data(
-                                    ticker = stringRes("ZEC"),
+                                    token = stringRes("ZEC"),
                                     bigIcon = null,
                                     smallIcon = null,
                                     isEnabled = false,
@@ -476,7 +476,7 @@ private fun UnexpectedErrorPreview() {
                             error = null,
                             token =
                                 AssetCardState.Data(
-                                    ticker = stringRes("USDT"),
+                                    token = stringRes("USDT"),
                                     bigIcon = null,
                                     smallIcon = null,
                                     isEnabled = false,
@@ -500,7 +500,7 @@ private fun UnexpectedErrorPreview() {
                         SwapAmountTextState(
                             token =
                                 AssetCardState.Data(
-                                    ticker = stringRes("ZEC"),
+                                    token = stringRes("ZEC"),
                                     bigIcon = null,
                                     smallIcon = null,
                                     isEnabled = false,
@@ -564,7 +564,7 @@ private fun ServiceUnavailableErrorPreview() {
                             error = null,
                             token =
                                 AssetCardState.Data(
-                                    ticker = stringRes("USDT"),
+                                    token = stringRes("USDT"),
                                     bigIcon = null,
                                     smallIcon = null,
                                     isEnabled = false,
@@ -588,7 +588,7 @@ private fun ServiceUnavailableErrorPreview() {
                         SwapAmountTextState(
                             token =
                                 AssetCardState.Data(
-                                    ticker = stringRes("ZEC"),
+                                    token = stringRes("ZEC"),
                                     bigIcon = null,
                                     smallIcon = null,
                                     isEnabled = false,

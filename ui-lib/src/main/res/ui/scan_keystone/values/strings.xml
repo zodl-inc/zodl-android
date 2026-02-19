@@ -6,7 +6,7 @@
     <string name="scan_keystone_settings_button">Open Settings</string>
     <string name="scan_keystone_settings_open_failed">Unable to launch Settings app.</string>
     <string name="scan_keystone_state_permission">The camera is not authorized. Please go to the system settings of
-        Zashi and turn in on.</string>
+        Zodl and turn in on.</string>
     <string name="scan_keystone_state_failed">Camera initialization failed. Try it again, please.</string>
     <string name="scan_keystone_address_validation_failed">This QR code is not a valid Zcash Address.</string>
     <string name="scan_keystone_torch_content_description">Camera torch toggle</string>
