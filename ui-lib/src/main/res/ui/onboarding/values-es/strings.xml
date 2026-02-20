@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="onboarding_header">Zcash-powered mobile wallet built for financial sovereignty.</string>
+    <string name="onboarding_header">Billetera móvil impulsada por Zcash, diseñada para la soberanía financiera.</string>
     <string name="onboarding_create_new_wallet">Crear Nueva Billetera</string>
     <string name="onboarding_import_existing_wallet">Restaurar Billetera Existente</string>
 </resources>

@@ -4,13 +4,13 @@
     <string name="integrations_coinbase">Compra <xliff:g id="currency" example="ZEC">%1$s</xliff:g> con Coinbase</string>
     <string name="integrations_coinbase_subtitle">Una manera fácil de comprar <xliff:g id="currency" example="ZEC">%1$s</xliff:g> y recibirlo directamente en tu wallet Zodl.</string>
     <string name="integrations_info">Las integraciones de Zodl brindan acceso a servicios de terceros. Las funciones e información compartida con ellos están fuera de nuestro control y sujetas a sus políticas de privacidad.</string>
-    <string name="integrations_dialog_info">La información compartida con las integraciones de Zodl está sujeta a sus políticas de privacidad.</string>
+    <string name="integrations_dialog_info">La información que compartas con los socios de integración de Zodl está sujeta a sus políticas de privacidad.</string>
     <string name="integrations_disabled_info">Durante el proceso de restauración no es posible usar integraciones de pago.</string>
     <string name="integrations_flexa">Pagar con Flexa</string>
-    <string name="integrations_flexa_subtitle">Spend ZEC at thousands of retail locations.</string>
+    <string name="integrations_flexa_subtitle">Gasta ZEC en miles de establecimientos comerciales.</string>
     <string name="integrations_flexa_biometric_message">Autentícate para pagar con Flexa</string>
     <string name="integrations_keystone">Conectar Keystone</string>
-    <string name="integrations_keystone_subtitle">Connect airgapped hardware wallet to store shielded ZEC.</string>
+    <string name="integrations_keystone_subtitle">Conecta una billetera de hardware aislada (air-gapped) para almacenar ZEC protegidos.</string>
     <string name="integrations_disabled_info_flexa">Cambia de Keystone a Zodl para usar Flexa.</string>
     <string name="integrations_dialog_more_options">Más opciones</string>
     <string name="integrations_near_swap">Haz swap de %s con NEAR Intents</string>
