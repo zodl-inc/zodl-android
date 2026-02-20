@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -157,9 +159,12 @@ private fun ShimmerableText(
             )
         ) {
             ShimmerRectangle(
-                width = size.widthDp,
-                height = size.heightDp - 1.dp,
-                color = ZashiColors.Surfaces.bgTertiary
+                modifier =
+                    Modifier
+                        .width(size.widthDp)
+                        .height(size.heightDp)
+                        .padding(1.dp),
+                color = ZashiColors.Surfaces.bgTertiary,
             )
         }
     } else {
@@ -277,7 +282,7 @@ private fun Preview() =
                     state =
                         SwapTokenAmountState(
                             token = stringRes("ZEC"),
-                            chain = stringRes("Chain asd fads fads fasd fsadfas df"),
+                            chain = stringRes("Chain"),
                             bigIcon = imageRes(R.drawable.ic_chain_placeholder),
                             smallIcon = imageRes(R.drawable.ic_zec_shielded),
                             amount = stringRes("0.1231231"),
