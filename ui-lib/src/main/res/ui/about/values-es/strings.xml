@@ -5,10 +5,10 @@
     <string name="about_version_format" formatted="true">Versión de Zodl <xliff:g example="1" id="version">%s</xliff:g></string>
     <string name="about_debug_menu_app_name">Nombre de la app:<xliff:g example="Zodl" id="app_name">%1$s</xliff:g></string>
     <string name="about_debug_menu_build">Compilación: <xliff:g example="635dac0eb9ddc2bc6da5177f0dd495d8b76af4dc" id="git_commit_hash">%1$s</xliff:g></string>
-    <string name="about_description">Zodl is a Zcash-powered mobile wallet, built for unstoppable private payments.
-        It’s optimized for storage and real-world use of shielded $ZEC—the truly private cryptocurrency.\n\nDeveloped by the team that set the industry standard for onchain privacy, the original developers of the Zcash protocol.
+    <string name="about_description">Zodl es una wallet móvil impulsada por Zcash, creada para pagos privados imparables.
+        Está optimizada para almacenar y usar en el mundo real $ZEC protegido: la criptomoneda verdaderamente privada.\n\nDesarrollada por el equipo que estableció el estándar de la industria en privacidad en cadena (on-chain), los desarrolladores originales del protocolo Zcash.
     </string>
-    <string name="terms_of_use">Términos de servicio</string>
+    <string name="terms_of_use">Términos del Servicio</string>
 
     <string name="about_unable_to_web_browser">No se pudo encontrar una aplicación de navegador web.</string>
     <string name="about_button_privacy_policy">Política de privacidad</string>
