@@ -150,12 +150,14 @@ fun ZashiAutoSizeText(
         }
     val textColor = color.takeOrElse { style.color.takeOrElse { LocalContentColor.current } }
 
+    val actualTextAlign = textAlign ?: contentAlignment.toTextAlign()
+
     val normalizedStyle =
         style.merge(
             color = textColor,
             fontSize = fontSize,
             fontWeight = fontWeight,
-            textAlign = textAlign ?: TextAlign.Unspecified,
+            textAlign = actualTextAlign,
             lineHeight = lineHeight,
             fontFamily = fontFamily,
             textDecoration = textDecoration,
@@ -175,6 +177,7 @@ fun ZashiAutoSizeText(
     ) {
         BasicText(
             text = text,
+            modifier = Modifier.align(contentAlignment),
             style = normalizedStyle,
             onTextLayout = onTextLayout,
             overflow = overflow,
@@ -186,3 +189,11 @@ fun ZashiAutoSizeText(
         )
     }
 }
+
+private fun Alignment.toTextAlign(): TextAlign =
+    when (this) {
+        Alignment.TopStart, Alignment.CenterStart, Alignment.BottomStart -> TextAlign.Start
+        Alignment.TopCenter, Alignment.Center, Alignment.BottomCenter -> TextAlign.Center
+        Alignment.TopEnd, Alignment.CenterEnd, Alignment.BottomEnd -> TextAlign.End
+        else -> TextAlign.Start
+    }

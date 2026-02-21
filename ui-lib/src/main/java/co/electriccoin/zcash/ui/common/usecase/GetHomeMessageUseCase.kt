@@ -78,6 +78,7 @@ class GetHomeMessageUseCase(
             .distinctUntilChanged()
             .map { message -> prioritizeMessage(message) }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeShieldFundsMessage() =
         accountDataSource.selectedAccount.flatMapLatest { account ->
             when {

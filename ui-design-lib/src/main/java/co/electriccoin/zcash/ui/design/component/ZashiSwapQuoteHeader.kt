@@ -3,10 +3,7 @@ package co.electriccoin.zcash.ui.design.component
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -31,63 +28,37 @@ fun ZashiSwapQuoteHeader(
     state: SwapQuoteHeaderState,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(ZashiDimensions.Radius.radius2xl),
+        color = ZashiColors.Surfaces.bgSecondary
     ) {
-        Row {
-            Surface(
-                modifier = Modifier.weight(1f),
-                shape =
-                    RoundedCornerShape(
-                        bottomStart = ZashiDimensions.Radius.radius2xl,
-                        topStart = ZashiDimensions.Radius.radius2xl
-                    ),
-                color = ZashiColors.Surfaces.bgSecondary
-            ) {
-                ZashiSwapQuoteAmount(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(end = 16.dp),
-                    state = state.from
-                )
-            }
-            Spacer(1.dp)
-            Surface(
-                modifier = Modifier.weight(1f),
-                shape =
-                    RoundedCornerShape(
-                        bottomEnd = ZashiDimensions.Radius.radius2xl,
-                        topEnd = ZashiDimensions.Radius.radius2xl
-                    ),
-                color = ZashiColors.Surfaces.bgSecondary
-            ) {
-                ZashiSwapQuoteAmount(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(start = 16.dp),
-                    state = state.to
-                )
-            }
-        }
-        Surface(
-            modifier =
-                Modifier
-                    .size(32.dp)
-                    .align(Alignment.Center),
-            shape = CircleShape,
-            color = ZashiColors.Surfaces.bgPrimary,
-            shadowElevation = 2.dp
+        Row(
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                contentAlignment = Alignment.Center
+            ZashiSwapQuoteAmount(
+                modifier = Modifier.weight(1f),
+                state = state.from
+            )
+            Surface(
+                modifier = Modifier.size(32.dp),
+                shape = RoundedCornerShape(8.dp),
+                color = ZashiColors.Btns.Secondary.btnSecondaryBg
             ) {
-                Image(
-                    painter = painterResource(R.drawable.ic_arrow_right),
-                    contentDescription = null
-                )
+                Box(
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_arrow_right),
+                        contentDescription = null
+                    )
+                }
             }
+            ZashiSwapQuoteAmount(
+                modifier = Modifier.weight(1f),
+                state = state.to,
+                isMirrored = true,
+            )
         }
     }
 }
