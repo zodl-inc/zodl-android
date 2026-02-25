@@ -335,7 +335,7 @@ class TransactionDetailVM(
             }
         }
 
-    private fun getMessage(swap: SwapQuoteStatusData): ZashiMessageState? = getSwapMessage(swap)
+    private fun getMessage(swap: SwapQuoteStatusData): ZashiMessageState? = getSwapMessage(swap)?.message
 
     private fun createFeeStringRes(data: DetailedTransactionData): StringResource {
         val feePaid =

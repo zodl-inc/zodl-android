@@ -71,7 +71,7 @@
     <string name="swap_detail_title_swap_completed">Swapped</string>
     <string name="swap_detail_title_swap_refunded">Swap Refunded</string>
     <string name="swap_detail_title_swap_failed">Swap Failed</string>
-    <string name="swap_detail_title_swap_processing">Swap Processing</string>
+    <string name="swap_detail_title_swap_processing">Swap processing</string>
     <string name="swap_confirmation_title">Swap</string>
     <string name="swap_confirmation_subtitle">Deposit Amount</string>
     <string name="swap_confirmation_primary_button">I’ve sent the funds</string>

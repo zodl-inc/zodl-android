@@ -63,12 +63,19 @@ fun ZashiMessage(state: ZashiMessageState) {
 data class ZashiMessageState(
     val title: StringResource,
     val text: StyledStringResource,
+    val type: Type = Type.WARNING
 ) {
+    enum class Type {
+        WARNING,
+        INFO
+    }
+
     companion object {
-        val preview = ZashiMessageState(
-            stringRes("Title"),
-            styledStringResource( stringRes("Text")),
-        )
+        val preview =
+            ZashiMessageState(
+                stringRes("Title"),
+                styledStringResource(stringRes("Text")),
+            )
     }
 }
 

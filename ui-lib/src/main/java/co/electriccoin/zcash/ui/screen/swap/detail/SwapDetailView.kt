@@ -288,7 +288,7 @@ private fun Preview() =
                             stringRes("Subtitle"),
                         ),
                     infoFooter = stringRes("Info"),
-                    primaryButton = ButtonState(stringRes("Primary"), ButtonStyle.DESTRUCTIVE1),
+                    primaryButton = ButtonState(stringRes("Contact Support"), ButtonStyle.PRIMARY),
                     onBack = {},
                 ),
             appBarState = ZashiMainTopAppBarStateFixture.new()

@@ -65,6 +65,7 @@ import co.electriccoin.zcash.ui.screen.swap.SwapVM
 import co.electriccoin.zcash.ui.screen.swap.ab.AddSwapABContactVM
 import co.electriccoin.zcash.ui.screen.swap.ab.SelectSwapABRecipientVM
 import co.electriccoin.zcash.ui.screen.swap.detail.SwapDetailVM
+import co.electriccoin.zcash.ui.screen.swap.detail.support.SwapSupportVM
 import co.electriccoin.zcash.ui.screen.swap.info.SwapRefundAddressInfoVM
 import co.electriccoin.zcash.ui.screen.swap.lock.EphemeralLockVM
 import co.electriccoin.zcash.ui.screen.swap.orconfirmation.ORSwapConfirmationVM
@@ -162,6 +163,7 @@ val viewModelModule =
         viewModelOf(::UpdateGenericABContactVM)
         viewModelOf(::ORSwapConfirmationVM)
         viewModelOf(::SwapDetailVM)
+        viewModelOf(::SwapSupportVM)
         viewModelOf(::SwapRefundAddressInfoVM)
         viewModelOf(::ScreenTimeoutVM)
         viewModelOf(::EphemeralHotfixVM)
