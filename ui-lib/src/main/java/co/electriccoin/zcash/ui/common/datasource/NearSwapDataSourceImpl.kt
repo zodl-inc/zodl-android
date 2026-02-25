@@ -195,5 +195,5 @@ class NearSwapDataSourceImpl(
         }
 }
 
-const val AFFILIATE_FEE_BPS = 67
+const val AFFILIATE_FEE_BPS = 50
 private const val QUOTE_WAITING_TIME = 3000
