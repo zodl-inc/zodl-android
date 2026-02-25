@@ -12,6 +12,15 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.0.0 (1466)] - 2026-02-25
+
+### Changed:
+- Zashi -> Zodl branding update - we rebranded Zashi to Zodl, without impacting the user experience.
+- We implemented Swap/Pay UX/UI improvements.
+
+### Fixed:
+- We fixed a range of bugs and user reported issues.
+
 ## [2.4.11 (1424)] - 2026-01-21
 
 ### Added:
