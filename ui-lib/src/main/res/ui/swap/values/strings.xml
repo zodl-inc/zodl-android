@@ -11,6 +11,10 @@
     <string name="swap_slippage_subtitle">This setting determines the maximum allowable difference between the expected price of a swap and the actual price you pay, which is outside of Zodl\'s control.</string>
     <string name="swap_slippage_max_threshold">Please enter maximum slippage of 30%%.</string>
     <string name="swap_slippage_info">You may receive up to %s less than quoted.</string>
+    <string name="swap_slippage_low_warning">%1$s Slippage %2$s increases the chance your swap will be unsuccessful and refunded. Consider using %3$s, especially for larger amounts.</string>
+    <string name="swap_slippage_low_warning_1">Warning:</string>
+    <string name="swap_slippage_low_warning_2">under 2%%</string>
+    <string name="swap_slippage_low_warning_3">2%% or higher</string>
     <string name="pay_slippage_info">You may pay up to %s more, in addition to transaction fees.</string>
     <string name="swap_title">Swap</string>
     <string name="swap_from">From</string>

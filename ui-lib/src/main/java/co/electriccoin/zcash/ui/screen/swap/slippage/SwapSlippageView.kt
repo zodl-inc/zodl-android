@@ -38,6 +38,7 @@ import co.electriccoin.zcash.ui.design.util.asScaffoldPaddingValues
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.design.util.styledStringResource
 import co.electriccoin.zcash.ui.screen.swap.slippage.SwapSlippageInfoState.Mode.HIGH
 import co.electriccoin.zcash.ui.screen.swap.slippage.SwapSlippageInfoState.Mode.LOW
 import co.electriccoin.zcash.ui.screen.swap.slippage.SwapSlippageInfoState.Mode.MEDIUM
@@ -86,6 +87,23 @@ fun SwapSlippageView(state: SwapSlippageState?) {
                             style = ZashiTypography.textXs,
                             color = ZashiColors.Text.textTertiary
                         )
+                    }
+                    if (innerState.warning != null) {
+                        Spacer(20.dp)
+                        ZashiCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors =
+                                CardDefaults.cardColors(
+                                    containerColor = ZashiColors.Utility.WarningYellow.utilityOrange100
+                                ),
+                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp)
+                        ) {
+                            Text(
+                                text = innerState.warning.getValue(),
+                                style = ZashiTypography.textXs,
+                                color = ZashiColors.Utility.WarningYellow.utilityOrange800
+                            )
+                        }
                     }
                     Spacer(24.dp)
                     ZashiButton(
@@ -167,11 +185,19 @@ private fun Preview() =
                             title = stringRes("Title"),
                             mode = SwapSlippageInfoState.Mode.HIGH,
                         ),
+                    warning =
+                        styledStringResource(
+                            R.string.swap_slippage_low_warning,
+                            null as androidx.compose.ui.text.font.FontWeight?,
+                            "Warning",
+                            "under 2%",
+                            "2% or higher"
+                        ),
                     primary =
                         ButtonState(
                             text = stringRes("Confirm")
                         ),
-                    footer = null
+                    footer = stringRes("Footer"),
                 )
         )
     }

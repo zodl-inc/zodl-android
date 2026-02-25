@@ -233,4 +233,4 @@ class SwapRepositoryImpl(
     }
 }
 
-private val DEFAULT_SLIPPAGE = BigDecimal("1")
+private val DEFAULT_SLIPPAGE = BigDecimal("2")

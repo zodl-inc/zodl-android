@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.swap.slippage
 
+import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.sdk.model.FiatCurrency
@@ -11,9 +12,12 @@ import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
 import co.electriccoin.zcash.ui.common.usecase.GetSlippageUseCase
 import co.electriccoin.zcash.ui.common.usecase.SetSlippageUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
+import co.electriccoin.zcash.ui.design.util.StringResourceColor
+import co.electriccoin.zcash.ui.design.util.StyledStringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByDynamicCurrencyNumber
 import co.electriccoin.zcash.ui.design.util.stringResByNumber
+import co.electriccoin.zcash.ui.design.util.styledStringResource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -66,13 +70,47 @@ class SwapSlippageVM(
                 initialValue = createButtonState(slippageSelection.value)
             )
 
+    private val slippageWarning =
+        slippageSelection
+            .map {
+                if (it != null && it < BigDecimal("2")) {
+                    styledStringResource(
+                        R.string.swap_slippage_low_warning,
+                        StringResourceColor.WARNING,
+                        null,
+                        styledStringResource(
+                            R.string.swap_slippage_low_warning_1,
+                            color = StringResourceColor.WARNING,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        styledStringResource(
+                            R.string.swap_slippage_low_warning_2,
+                            color = StringResourceColor.WARNING,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        styledStringResource(
+                            R.string.swap_slippage_low_warning_3,
+                            color = StringResourceColor.WARNING,
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                } else {
+                    null
+                }
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(),
+                initialValue = null
+            )
+
     val state: StateFlow<SwapSlippageState> =
         combine(
             slippagePickerState,
             slippageInfoState,
+            slippageWarning,
             confirmButtonState
-        ) { slippagePickerState, slippageInfoState, confirmButtonState ->
-            createState(slippagePickerState, slippageInfoState, confirmButtonState)
+        ) { slippagePickerState, slippageInfoState, slippageWarning, confirmButtonState ->
+            createState(slippagePickerState, slippageInfoState, slippageWarning, confirmButtonState)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
@@ -80,6 +118,7 @@ class SwapSlippageVM(
                 createState(
                     slippagePickerState = slippagePickerState.value,
                     slippageInfoState = slippageInfoState.value,
+                    slippageWarning = slippageWarning.value,
                     confirmButtonState = confirmButtonState.value
                 )
         )
@@ -87,10 +126,12 @@ class SwapSlippageVM(
     private fun createState(
         slippagePickerState: SlippagePickerState,
         slippageInfoState: SwapSlippageInfoState?,
+        slippageWarning: StyledStringResource?,
         confirmButtonState: ButtonState
     ) = SwapSlippageState(
         picker = slippagePickerState,
         info = slippageInfoState,
+        warning = slippageWarning,
         primary = confirmButtonState,
         onBack = ::onBack,
         footer = stringRes(R.string.pay_slippage_footer).takeIf { args.mode == EXACT_OUTPUT }

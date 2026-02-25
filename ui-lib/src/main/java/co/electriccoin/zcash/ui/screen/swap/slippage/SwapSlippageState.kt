@@ -4,11 +4,13 @@ import androidx.compose.runtime.Immutable
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ModalBottomSheetState
 import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.util.StyledStringResource
 
 @Immutable
 data class SwapSlippageState(
     val picker: SlippagePickerState,
     val info: SwapSlippageInfoState?,
+    val warning: StyledStringResource?,
     val footer: StringResource?,
     val primary: ButtonState,
     override val onBack: () -> Unit
