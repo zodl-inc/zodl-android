@@ -1,0 +1,5 @@
+Cambiado:
+- Actualización de la marca Zashi -> Zodl: cambiamos la marca de Zashi a Zodl, sin afectar la experiencia del usuario.
+- Implementamos mejoras en la experiencia de usuario (UX/UI) de Swap/Pago.
+Corregido:
+- Corregimos diversos errores y problemas reportados por los usuarios.

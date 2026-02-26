@@ -17,6 +17,12 @@ class PrefillSendUseCase {
 
     operator fun invoke() = bus.receiveAsFlow()
 
+    fun clear() {
+        while (bus.tryReceive().isSuccess) {
+            // Drain the channel
+        }
+    }
+
     fun requestFromTransactionDetail(value: DetailedTransactionData) =
         scope.launch {
             bus.send(

@@ -8,10 +8,12 @@ class ViewTransactionsAfterSuccessfulProposalUseCase(
     private val keystoneProposalRepository: KeystoneProposalRepository,
     private val zashiProposalRepository: ZashiProposalRepository,
     private val navigationRouter: NavigationRouter,
+    private val prefillSend: PrefillSendUseCase,
 ) {
     operator fun invoke() {
         zashiProposalRepository.clear()
         keystoneProposalRepository.clear()
+        prefillSend.clear()
         navigationRouter.backToRoot()
     }
 }

@@ -16,6 +16,7 @@ class SubmitKSProposalUseCase(
     private val navigationRouter: NavigationRouter,
     private val swapRepository: SwapRepository,
     private val processSwapTransaction: ProcessSwapTransactionUseCase,
+    private val prefillSend: PrefillSendUseCase,
 ) {
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
@@ -38,6 +39,8 @@ class SubmitKSProposalUseCase(
                 }
             } catch (_: Exception) {
                 // do nothing
+            } finally {
+                prefillSend.clear()
             }
         }
     }
