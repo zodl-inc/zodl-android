@@ -1,8 +1,6 @@
 package co.electriccoin.zcash.ui
 
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavType
@@ -186,12 +184,9 @@ fun NavGraphBuilder.walletNavGraph(
 
             val isRebrandAcknowledged by walletViewModel.isRebrandAcknowledged.collectAsStateWithLifecycle()
             val secretState by walletViewModel.secretState.collectAsStateWithLifecycle()
-            val isInitialReady = remember { secretState == SecretState.READY }
 
-            LaunchedEffect(isRebrandAcknowledged, secretState) {
-                if (isInitialReady && !isRebrandAcknowledged) {
-                    navigationRouter.forward(RebrandArgs)
-                }
+            if (secretState == SecretState.READY && !isRebrandAcknowledged) {
+                RebrandScreen()
             }
 
             val isEnoughSpace by storageCheckViewModel.isEnoughSpace.collectAsStateWithLifecycle()

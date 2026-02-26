@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.preference.StandardPreferenceProvider
 import co.electriccoin.zcash.preference.model.entry.BooleanPreferenceDefault
+import co.electriccoin.zcash.ui.BuildConfig
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.model.DistributionDimension
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
@@ -95,7 +96,7 @@ class ZashiTopAppBarVM(
                 IconButtonState(
                     icon = co.electriccoin.zcash.ui.R.drawable.ic_home_more,
                     onClick = { onInfoClick(accounts) },
-                    onDoubleClick = { navigationRouter.forward(MoreArgs) },
+                    onDoubleClick = { navigationRouter.forward(MoreArgs) }.takeIf { BuildConfig.DEBUG },
                     contentDescription = stringRes(R.string.general_more)
                 )
         )

@@ -30,7 +30,6 @@ class RebrandVM(
                     ) {
                         viewModelScope.launch {
                             walletRepository.acknowledgeRebrand()
-                            navigationRouter.back()
                         }
                     },
             )
