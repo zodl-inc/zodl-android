@@ -6,6 +6,12 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [3.0.0 (1468)] - 2026-02-26
+
+### Fixed:
+- Rebrand to Zodl
+- Bugfixes
+
 ## [3.0.0 (1467)] - 2026-02-25
 
 ### Fixed:

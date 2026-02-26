@@ -1,0 +1,5 @@
+Changed:
+- Zashi -> Zodl branding update - we rebranded Zashi to Zodl, without impacting the user experience.
+- We implemented Swap/Pay UX/UI improvements.
+Fixed:
+- We fixed a range of bugs and user reported issues.
