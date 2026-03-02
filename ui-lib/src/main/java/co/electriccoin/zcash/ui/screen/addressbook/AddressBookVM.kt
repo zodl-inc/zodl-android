@@ -52,7 +52,7 @@ class AddressBookVM(
                         AddressBookItem.Contact(
                             ContactListItemState(
                                 bigIcon = getContactInitials(contact),
-                                smallIcon = contact.blockchain?.chainIcon ?: zcashBlockchain.chainIcon,
+                                smallIcon = contact.blockchain?.chainIcon,
                                 isShielded = false,
                                 name = stringRes(contact.name),
                                 address = stringResByAddress(value = contact.address),
