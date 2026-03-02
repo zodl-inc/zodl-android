@@ -12,6 +12,15 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.0.1 (1470)] - 2026-03-02
+
+### Cambiado:
+- Actualización de la marca Zashi -> Zodl: cambiamos la marca de Zashi a Zodl, sin afectar la experiencia del usuario.
+- Implementamos mejoras en la experiencia de usuario (UX/UI) de Swap/Pago.
+
+### Corregido:
+- Corregimos diversos errores y problemas reportados por los usuarios.
+
 ## [3.0.1 (1469)] - 2026-02-27
 
 ### Cambiado:
