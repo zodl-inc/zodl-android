@@ -91,7 +91,7 @@ private fun StatusChip(state: TransactionDetailSwapStatusRowState) {
         text =
             when (state.status) {
                 EXPIRED -> stringResource(R.string.swap_detail_expired)
-                INCOMPLETE_DEPOSIT,
+                INCOMPLETE_DEPOSIT -> stringResource(R.string.swap_detail_incomplete_deposit)
                 PENDING ->
                     if (state.mode == SWAP_INTO_ZEC) {
                         stringResource(R.string.swap_detail_pending_deposit)

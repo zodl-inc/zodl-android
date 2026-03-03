@@ -38,6 +38,10 @@ interface SwapQuoteStatus {
     val amountOutFormatted: BigDecimal
     val amountOutUsd: BigDecimal
 
+    val depositedAmount: BigDecimal?
+    val depositedAmountFormatted: BigDecimal?
+    val depositedAmountUsd: BigDecimal?
+
     val refunded: BigDecimal?
     val refundedFormatted: BigDecimal?
 
@@ -119,6 +123,12 @@ data class NearSwapQuoteStatus(
         response.swapDetails?.amountOutFormatted ?: quote.amountOutFormatted
 
     override val amountOutUsd: BigDecimal = response.swapDetails?.amountOutUsd ?: quote.amountOutUsd
+
+    override val depositedAmount: BigDecimal? = response.swapDetails?.depositedAmount
+
+    override val depositedAmountFormatted: BigDecimal? = response.swapDetails?.depositedAmountFormatted
+
+    override val depositedAmountUsd: BigDecimal? = response.swapDetails?.depositedAmountUsd
 
     override val refunded: BigDecimal? = response.swapDetails?.refundedAmount
 

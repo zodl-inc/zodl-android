@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.screen.transactiondetail.info
 import androidx.compose.runtime.Immutable
 import co.electriccoin.zcash.ui.common.model.SwapStatus
 import co.electriccoin.zcash.ui.design.component.SwapQuoteHeaderState
+import co.electriccoin.zcash.ui.design.component.ZashiMessageState
 import co.electriccoin.zcash.ui.design.util.StringResource
 
 @Immutable
@@ -25,6 +26,7 @@ data class SendShieldedState(
 @Immutable
 data class SendSwapState(
     val status: SwapStatus?,
+    val message: ZashiMessageState?,
     val quoteHeader: SwapQuoteHeaderState,
     val depositAddress: StringResource,
     val totalFees: StringResource?,
