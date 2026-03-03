@@ -90,6 +90,9 @@ class SwapDetailVM(
                         ),
                     message = getSwapMessage(swapData.data),
                     errorFooter = mapper.createTransactionDetailErrorFooter(swapData.error),
+                    infoFooter =
+                        stringRes(R.string.transaction_detail_info_pending)
+                            .takeIf { swapData.status?.status == PENDING },
                     primaryButton = createPrimaryButtonState(swapData, swapData.error),
                     onBack = ::onBack
                 )

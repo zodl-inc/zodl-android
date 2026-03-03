@@ -34,6 +34,7 @@
     <string name="transaction_detail_info_timestamp">Timestamp</string>
     <string name="transaction_detail_info_refunded_message">Your deposit transaction was sent but the swap was unsuccessful. The payment amount has been refunded, minus transaction fees.</string>
     <string name="transaction_detail_info_refunded_title">Payment Refunded</string>
+    <string name="transaction_detail_info_pending">Deposits may take several minutes to confirm.</string>
     <string name="swap_detail_incomplete_deposit">Incomplete deposit</string>
     <string name="swap_detail_pending">Pending</string>
     <string name="swap_detail_completed">Completed</string>
