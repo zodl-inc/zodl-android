@@ -37,6 +37,7 @@ import co.electriccoin.zcash.ui.design.component.ZashiBottomBar
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiHorizontalDivider
 import co.electriccoin.zcash.ui.design.component.ZashiIconButton
+import co.electriccoin.zcash.ui.design.component.ZashiInfoText
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiSwapQuoteHeader
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
@@ -44,8 +45,10 @@ import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.balances.LocalBalancesAvailable
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
+import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.TickerLocation.HIDDEN
 import co.electriccoin.zcash.ui.design.util.asScaffoldPaddingValues
+import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
@@ -152,11 +155,20 @@ private fun BottomBar(
     state: SwapDetailState
 ) {
     ZashiBottomBar(
+        modifier = Modifier.fillMaxWidth(),
         isElevated = scrollState.value > 0,
         contentPadding = paddingValues.asScaffoldPaddingValues(top = 0.dp, bottom = 0.dp)
     ) {
-        if (state.errorFooter != null) {
-            TransactionErrorFooter(state.errorFooter)
+        state.errorFooter?.let {
+            TransactionErrorFooter(it)
+        }
+        state.infoFooter?.let {
+            ZashiInfoText(
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+                text = it.getValue(),
+                style = ZashiTypography.textXs,
+                color = ZashiColors.Text.textTertiary
+            )
         }
 
         state.primaryButton?.let {
@@ -273,6 +285,7 @@ private fun Preview() =
                             stringRes("Title"),
                             stringRes("Subtitle"),
                         ),
+                    infoFooter = stringRes("Info"),
                     primaryButton = ButtonState(stringRes("Primary"), ButtonStyle.DESTRUCTIVE1),
                     onBack = {},
                 ),
