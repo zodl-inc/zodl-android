@@ -1,3 +1,6 @@
+import io.netty.util.concurrent.RejectedExecutionHandlers.reject
+import org.gradle.api.internal.artifacts.ivyservice.resolveengine.graph.conflicts.DefaultCapabilitiesConflictHandler.candidate
+
 buildscript {
     dependencyLocking {
         // This property is treated specially, as it is not defined by default in the root gradle.properties
@@ -119,6 +122,7 @@ tasks {
 
             "ZCASH_FLEXA_KEY" to "",
             "ZCASH_CMC_KEY" to "",
+            "ZCASH_NEAR_AFFILIATE_ADDRESS" to "",
             "SDK_INCLUDED_BUILD_PATH" to "",
             "BIP_39_INCLUDED_BUILD_PATH" to ""
         )

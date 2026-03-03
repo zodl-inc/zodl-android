@@ -142,6 +142,14 @@ androidComponents {
                 comment = "Publishable key of the CMC integration"
             )
         )
+        variant.buildConfigFields.put(
+            "ZCASH_NEAR_AFFILIATE_ADDRESS",
+            BuildConfigField(
+                type = "String",
+                value = "\"${project.property("ZCASH_NEAR_AFFILIATE_ADDRESS")?.toString().orEmpty()}\"",
+                comment = "Near affiliate address"
+            )
+        )
         // To configure screen orientation in runtime
         variant.buildConfigFields.put(
             "IS_SCREEN_ROTATION_ENABLED",
