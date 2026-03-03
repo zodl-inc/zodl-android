@@ -15,6 +15,7 @@ import co.electriccoin.zcash.ui.common.model.SwapStatus.SUCCESS
 import co.electriccoin.zcash.ui.common.model.ZecSwapAsset
 import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetORSwapQuoteUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetSwapMessageUseCase
 import co.electriccoin.zcash.ui.common.usecase.SwapData
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.imageRes
@@ -41,7 +42,8 @@ class SwapDetailVM(
     private val args: SwapDetailArgs,
     private val navigationRouter: NavigationRouter,
     private val copyToClipboard: CopyToClipboardUseCase,
-    private val mapper: CommonTransactionDetailMapper
+    private val mapper: CommonTransactionDetailMapper,
+    private val getSwapMessage: GetSwapMessageUseCase,
 ) : ViewModel() {
     val state: StateFlow<SwapDetailState?> =
         getORSwapQuote
@@ -86,6 +88,7 @@ class SwapDetailVM(
                                         )
                                     },
                         ),
+                    message = getSwapMessage(swapData.data),
                     errorFooter = mapper.createTransactionDetailErrorFooter(swapData.error),
                     primaryButton = createPrimaryButtonState(swapData, swapData.error),
                     onBack = ::onBack

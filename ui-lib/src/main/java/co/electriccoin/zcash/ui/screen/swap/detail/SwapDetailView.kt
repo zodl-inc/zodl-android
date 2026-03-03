@@ -37,6 +37,8 @@ import co.electriccoin.zcash.ui.design.component.ZashiBottomBar
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiHorizontalDivider
 import co.electriccoin.zcash.ui.design.component.ZashiIconButton
+import co.electriccoin.zcash.ui.design.component.ZashiMessage
+import co.electriccoin.zcash.ui.design.component.ZashiMessageState
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiSwapQuoteHeader
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
@@ -57,7 +59,6 @@ import co.electriccoin.zcash.ui.screen.transactiondetail.ErrorFooter
 import co.electriccoin.zcash.ui.screen.transactiondetail.TransactionDetailHeader
 import co.electriccoin.zcash.ui.screen.transactiondetail.TransactionDetailHeaderState
 import co.electriccoin.zcash.ui.screen.transactiondetail.TransactionErrorFooter
-import co.electriccoin.zcash.ui.screen.transactiondetail.info.SwapRefundedInfo
 import co.electriccoin.zcash.ui.screen.transactiondetail.infoitems.TransactionDetailInfoContainer
 import co.electriccoin.zcash.ui.screen.transactiondetail.infoitems.TransactionDetailInfoRow
 import co.electriccoin.zcash.ui.screen.transactiondetail.infoitems.TransactionDetailInfoRowState
@@ -131,9 +132,9 @@ fun SwapDetailView(
                     ZashiHorizontalDivider()
                     TransactionDetailInfoRow(state = state.timestamp)
                 }
-                if (state.status.status == SwapStatus.REFUNDED) {
+                state.message?.let {
                     Spacer(8.dp)
-                    SwapRefundedInfo()
+                    ZashiMessage(it)
                 }
             }
             BottomBar(
@@ -268,6 +269,7 @@ private fun Preview() =
                             title = stringRes("Timestamp"),
                             message = stringRes("timestamp"),
                         ),
+                    message = ZashiMessageState.preview,
                     errorFooter =
                         ErrorFooter(
                             stringRes("Title"),

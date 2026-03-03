@@ -23,11 +23,14 @@ import co.electriccoin.zcash.ui.common.repository.ShieldTransaction
 import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
 import co.electriccoin.zcash.ui.common.usecase.DetailedTransactionData
 import co.electriccoin.zcash.ui.common.usecase.FlipTransactionBookmarkUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetSwapMessageUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetTransactionDetailByIdUseCase
 import co.electriccoin.zcash.ui.common.usecase.MarkTxMemoAsReadUseCase
 import co.electriccoin.zcash.ui.common.usecase.SendTransactionAgainUseCase
+import co.electriccoin.zcash.ui.common.usecase.SwapQuoteStatusData
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.IconButtonState
+import co.electriccoin.zcash.ui.design.component.ZashiMessageState
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.TickerLocation.HIDDEN
 import co.electriccoin.zcash.ui.design.util.imageRes
@@ -69,7 +72,8 @@ class TransactionDetailVM(
     private val navigationRouter: NavigationRouter,
     private val sendTransactionAgain: SendTransactionAgainUseCase,
     private val flipTransactionBookmark: FlipTransactionBookmarkUseCase,
-    private val mapper: CommonTransactionDetailMapper
+    private val mapper: CommonTransactionDetailMapper,
+    private val getSwapMessage: GetSwapMessageUseCase,
 ) : ViewModel() {
     private val transaction =
         getTransactionDetailById
@@ -165,6 +169,7 @@ class TransactionDetailVM(
                                 ?.address
                         SendSwapState(
                             status = transaction.swap.status?.status,
+                            message = getMessage(transaction.swap),
                             quoteHeader =
                                 mapper.createTransactionDetailQuoteHeaderState(
                                     swap = transaction.swap.status,
@@ -329,6 +334,8 @@ class TransactionDetailVM(
                 )
             }
         }
+
+    private fun getMessage(swap: SwapQuoteStatusData): ZashiMessageState? = getSwapMessage(swap)
 
     private fun createFeeStringRes(data: DetailedTransactionData): StringResource {
         val feePaid =

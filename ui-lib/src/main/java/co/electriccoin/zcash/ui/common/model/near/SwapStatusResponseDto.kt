@@ -71,7 +71,16 @@ data class SwapDetails(
     @Serializable(NullableBigDecimalSerializer::class)
     val refundedAmountFormatted: BigDecimal? = null,
     @SerialName("refundedAmountUsd")
-    val refundedAmountUsd: String? = null
+    val refundedAmountUsd: String? = null,
+    @SerialName("depositedAmount")
+    @Serializable(NullableBigDecimalSerializer::class)
+    val depositedAmount: BigDecimal? = null,
+    @SerialName("depositedAmountFormatted")
+    @Serializable(NullableBigDecimalSerializer::class)
+    val depositedAmountFormatted: BigDecimal? = null,
+    @SerialName("depositedAmountUsd")
+    @Serializable(NullableBigDecimalSerializer::class)
+    val depositedAmountUsd: BigDecimal? = null
 )
 
 enum class SwapStatus(

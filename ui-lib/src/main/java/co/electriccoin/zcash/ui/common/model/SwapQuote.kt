@@ -36,6 +36,7 @@ interface SwapQuote {
     val affiliateFeeUsd: BigDecimal
 
     val timestamp: Instant
+    val deadline: Instant
 
     val slippage: BigDecimal
 
@@ -115,6 +116,8 @@ data class NearSwapQuote(
             )
 
     override val timestamp: Instant = response.timestamp
+
+    override val deadline: Instant = response.quote.deadline
 
     override fun getTotal(proposal: Proposal?) = amountInFormatted + (getZecFee(proposal) ?: BigDecimal.ZERO)
 
