@@ -86,8 +86,7 @@ class SwapSupportMapper {
         }
 
     private fun createIncompleteDepositMessage(quoteStatus: SwapQuoteStatus): ZashiMessageState {
-        val missingAmount =
-            (quoteStatus.amountInUsd - (quoteStatus.depositedAmountUsd ?: BigDecimal.ZERO))
+        val missingAmount = (quoteStatus.amountInFormatted - (quoteStatus.depositedAmountFormatted ?: BigDecimal.ZERO))
                 .coerceAtLeast(BigDecimal.ZERO)
 
         val deadline =
@@ -102,7 +101,7 @@ class SwapSupportMapper {
                 color = StringResourceColor.WARNING,
                 fontWeight = null,
                 styledStringResource(
-                    stringResByDynamicCurrencyNumber(missingAmount, "USDC"),
+                    stringResByDynamicCurrencyNumber(missingAmount, quoteStatus.quote.originAsset.tokenTicker),
                     color = StringResourceColor.WARNING,
                     fontWeight = FontWeight.Bold
                 ),
@@ -119,6 +118,10 @@ class SwapSupportMapper {
         val now = Instant.now()
         val timestamp = quoteStatus.timestamp
         val duration = Duration.between(timestamp, now)
-        return duration.toMinutes() >= 60
+        return duration.toMinutes() >= PROCESSING_SUPPORT_DELAY
+    }
+
+    companion object{
+        const val PROCESSING_SUPPORT_DELAY = 60
     }
 }

@@ -55,10 +55,10 @@
     <string name="swap_detail_expired">Expired</string>
     <string name="swap_detail_pending_deposit">Pending deposit</string>
     <string name="swap_detail_processing">Processing</string>
-    <string name="swap_detail_incomplete">Swap Incomplete</string>
     <string name="transaction_detail_swapping">Swapping</string>
-    <string name="transaction_detail_pay_incomplete">Payment Incomplete</string>
     <string name="transaction_detail_paying">Paying</string>
+    <string name="swap_detail_incomplete">Swap Incomplete</string>
+    <string name="transaction_detail_pay_incomplete">Payment Incomplete</string>
     <string name="transaction_detail_info_incomplete_deposit_title">Incomplete Deposit</string>
     <string name="transaction_detail_info_incomplete_deposit_message">Deposit an additional %1$s to complete this swap before %2$s, or your deposit will be refunded.</string>
 </resources>

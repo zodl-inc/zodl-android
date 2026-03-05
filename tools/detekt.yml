@@ -39,6 +39,10 @@ style:
       - 'Preview'
       - 'PreviewScreens'
       - 'PreviewScreenSizes'
+  ForbiddenImport:
+    active: true
+    imports:
+      - 'co.electriccoin.zcash.ui.util.loggable'
 
 complexity:
   LongMethod:

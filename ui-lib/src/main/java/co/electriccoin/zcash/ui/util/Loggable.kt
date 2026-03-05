@@ -6,7 +6,9 @@ interface Loggable {
     operator fun invoke(message: String, excetion: Exception? = null)
 }
 
-fun loggable(tag: String, enabled: Boolean = !BuildConfig.DEBUG) =
+fun loggableNot(tag: String) = loggable(tag)
+
+fun loggable(tag: String, enabled: Boolean = BuildConfig.DEBUG) =
     object : Loggable {
         override fun invoke(message: String, excetion: Exception?) {
             if (enabled) {

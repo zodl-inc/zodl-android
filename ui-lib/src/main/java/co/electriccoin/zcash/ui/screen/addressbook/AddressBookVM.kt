@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
-import co.electriccoin.zcash.ui.common.provider.BlockchainProvider
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
 import co.electriccoin.zcash.ui.common.usecase.GetABContactsUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToScanGenericAddressUseCase
@@ -25,13 +24,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class AddressBookVM(
-    blockchainProvider: BlockchainProvider,
     getAddressBookContacts: GetABContactsUseCase,
     private val navigationRouter: NavigationRouter,
     private val navigateToScanGenericAddressUseCase: NavigateToScanGenericAddressUseCase
 ) : ViewModel() {
-    private val zcashBlockchain = blockchainProvider.getZcashBlockchain()
-
     val state =
         getAddressBookContacts
             .observe(zcashContactsOnly = false)

@@ -9,6 +9,10 @@
     <string name="swap_slippage_subtitle">Esta configuración determina la diferencia máxima permitida entre el precio esperado de un swap y el precio real que pagas, lo cual está fuera del control de Zodl.</string>
     <string name="swap_slippage_max_threshold">Por favor, ingresa un slippage máximo de 30%%.</string>
     <string name="swap_slippage_info">Podrías recibir hasta %s menos de lo cotizado.</string>
+    <string name="swap_slippage_low_warning">%1$s Slippage %2$s increases the chance your swap will be unsuccessful and refunded. Consider using %3$s, especially for larger amounts.</string>
+    <string name="swap_slippage_low_warning_1">Warning:</string>
+    <string name="swap_slippage_low_warning_2">under %s%%</string>
+    <string name="swap_slippage_low_warning_3">%s%% or higher</string>
     <string name="pay_slippage_info">Podrías pagar hasta %s más, además de las comisiones de transacción.</string>
     <string name="swap_title">Swap</string>
     <string name="swap_from">De</string>
@@ -26,14 +30,14 @@
     <string name="swap_quote_error_too_low_try_at_least">El monto es muy bajo para el puente, intenta al menos %s</string>
     <string name="swap_quote_error_too_low_try_higher">El monto es muy bajo para el puente, intenta con un monto mayor.</string>
     <string name="swap_quote_error_getting_quote">Intentamos, pero no pudimos obtener una cotización para un pago con tus parámetros. Puedes ajustar el slippage o intentarlo más tarde.</string>
-    <string name="swap_quote_error_getting_quote_swap">Intentamos, pero no pudimos obtener una cotización para un swap
-        con tus parámetros. Puedes ajustar el slippage o intentarlo más tarde.</string>
+    <string name="swap_quote_error_getting_quote_swap">Intentamos, pero no pudimos obtener una cotización para un swap con tus parámetros. Puedes ajustar el slippage o intentarlo más tarde.</string>
     <string name="swap_quote_unavailable">Cotización no disponible</string>
     <string name="swap_quote_cancel_payment">Cancelar pago</string>
     <string name="swap_quote_edit_payment">Editar pago</string>
     <string name="swap_quote_cancel_swap">Cancelar swap</string>
     <string name="swap_quote_edit_swap">Editar swap</string>
     <string name="swap_quote_title">Hacer swap ahora</string>
+    <string name="swap_quote_review">Revisar cotización</string>
     <string name="swap_quote_from">Swap de</string>
     <string name="swap_quote_to">Swap a</string>
     <string name="swap_quote_total_fees">Comisiones totales</string>
@@ -65,5 +69,11 @@
     <string name="swap_confirmation_title">Swap</string>
     <string name="swap_confirmation_subtitle">Monto a depositar</string>
     <string name="swap_confirmation_primary_button">Ya envié los fondos</string>
-    <string name="swap_quote_review">Revisar cotización</string>
+    <string name="swap_confirmation_dialog_title">Are you sure you want to exit?</string>
+    <string name="swap_confirmation_dialog_message">If you\'ve sent or intend to send the funds, tap \'I\'ve sent the funds.\' Or cancel the swap to return to the previous screen.</string>
+    <string name="swap_deposit_info_title">Deposit Funds</string>
+    <string name="swap_deposit_info_step_1">Swap into ZEC with any NEAR-supported asset.</string>
+    <string name="swap_deposit_info_step_2">Send the exact amount of the asset displayed. Sending less will result in a refund.</string>
+    <string name="swap_deposit_info_step_3">Double-check that you are sending the correct asset on the correct network (e.g., USDC on Solana).</string>
+    <string name="swap_deposit_info_step_4">It’s best to send from a wallet you own. Sending from an exchange may result in delays or refunds. Funds cannot be spent until your wallet is restored.</string>
 </resources>

@@ -24,7 +24,7 @@ import co.electriccoin.zcash.ui.common.provider.NearApiProvider
 import co.electriccoin.zcash.ui.common.provider.ResponseWithNearErrorException
 import co.electriccoin.zcash.ui.common.provider.SwapAssetProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
-import co.electriccoin.zcash.ui.util.loggable
+import co.electriccoin.zcash.ui.util.loggableNot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.datetime.Clock
@@ -38,7 +38,7 @@ class NearSwapDataSourceImpl(
     private val swapAssetProvider: SwapAssetProvider,
     private val synchronizerProvider: SynchronizerProvider,
 ) : SwapDataSource {
-    private val log = loggable("NearSwapDataSourceImpl")
+    private val log = loggableNot("NearSwapDataSourceImpl")
 
     override suspend fun getSupportedTokens(): List<SwapAsset> =
         withContext(Dispatchers.Default) {

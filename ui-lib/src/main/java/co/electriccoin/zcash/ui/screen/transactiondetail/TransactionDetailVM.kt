@@ -51,7 +51,7 @@ import co.electriccoin.zcash.ui.screen.transactiondetail.info.TransactionDetailM
 import co.electriccoin.zcash.ui.screen.transactiondetail.info.TransactionDetailMemosState
 import co.electriccoin.zcash.ui.screen.transactionnote.TransactionNote
 import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
-import co.electriccoin.zcash.ui.util.loggable
+import co.electriccoin.zcash.ui.util.loggableNot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
@@ -75,7 +75,7 @@ class TransactionDetailVM(
     private val mapper: CommonTransactionDetailMapper,
     private val getSwapMessage: SwapSupportMapper,
 ) : ViewModel() {
-    val log = loggable("TransactionDetailVM")
+    val log = loggableNot("TransactionDetailVM")
     private val transaction =
         getTransactionDetailById
             .observe(transactionDetailArgs.transactionId)
