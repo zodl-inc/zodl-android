@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.mapper.SwapSupportMapper
 import co.electriccoin.zcash.ui.common.model.SwapStatus.EXPIRED
 import co.electriccoin.zcash.ui.common.model.SwapStatus.FAILED
 import co.electriccoin.zcash.ui.common.model.SwapStatus.INCOMPLETE_DEPOSIT
@@ -24,6 +25,7 @@ import co.electriccoin.zcash.ui.design.util.stringResByAddress
 import co.electriccoin.zcash.ui.design.util.stringResByCurrencyNumber
 import co.electriccoin.zcash.ui.design.util.stringResByDateTime
 import co.electriccoin.zcash.ui.design.util.stringResByNumber
+import co.electriccoin.zcash.ui.screen.swap.detail.support.SwapSupportArgs
 import co.electriccoin.zcash.ui.screen.transactiondetail.CommonTransactionDetailMapper
 import co.electriccoin.zcash.ui.screen.transactiondetail.TransactionDetailHeaderState
 import co.electriccoin.zcash.ui.screen.transactiondetail.infoitems.TransactionDetailInfoRowState
@@ -41,7 +43,8 @@ class SwapDetailVM(
     private val args: SwapDetailArgs,
     private val navigationRouter: NavigationRouter,
     private val copyToClipboard: CopyToClipboardUseCase,
-    private val mapper: CommonTransactionDetailMapper
+    private val mapper: CommonTransactionDetailMapper,
+    private val getSwapMessage: SwapSupportMapper,
 ) : ViewModel() {
     val state: StateFlow<SwapDetailState?> =
         getORSwapQuote
@@ -86,15 +89,23 @@ class SwapDetailVM(
                                         )
                                     },
                         ),
+                    message = getSwapMessage.getMessage(swapData.status),
                     errorFooter = mapper.createTransactionDetailErrorFooter(swapData.error),
+                    infoFooter =
+                        stringRes(R.string.transaction_detail_info_pending)
+                            .takeIf { swapData.status?.status == PENDING },
                     primaryButton = createPrimaryButtonState(swapData, swapData.error),
-                    onBack = ::onBack
+                    onBack = ::onBack,
                 )
             }.stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
                 initialValue = null
             )
+
+    private fun onContactSupport(depositAddress: String) {
+        navigationRouter.forward(SwapSupportArgs(depositAddress))
+    }
 
     private fun createTotalFeesState(swapData: SwapData): TransactionDetailInfoRowState =
         TransactionDetailInfoRowState(
@@ -152,26 +163,32 @@ class SwapDetailVM(
     private fun createPrimaryButtonState(
         swapData: SwapData,
         error: Exception?
-    ): ButtonState? =
-        if (swapData.error != null && swapData.status == null) {
-            mapper.createTransactionDetailErrorButtonState(
-                error = error,
-                reloadHandle = swapData.handle
-            )
-        } else {
-            null
+    ): ButtonState? {
+        val supportButton =
+            getSwapMessage.getButton(swapData.status) {
+                onContactSupport(it)
+            }
+        return when {
+            supportButton != null -> supportButton
+            swapData.error != null && swapData.status == null -> {
+                return mapper.createTransactionDetailErrorButtonState(
+                    error = error,
+                    reloadHandle = swapData.handle
+                )
+            }
+
+            else -> null
         }
+    }
 
     private fun createTransactionHeaderState(swapData: SwapData): TransactionDetailHeaderState =
         TransactionDetailHeaderState(
             title =
                 when (swapData.status?.status) {
                     EXPIRED -> stringRes(R.string.swap_detail_title_swap_expired)
-
-                    INCOMPLETE_DEPOSIT,
-                    PROCESSING,
-                    PENDING -> stringRes(R.string.swap_detail_title_swap_pending)
-
+                    PENDING -> stringRes(R.string.swap_detail_pending_deposit)
+                    INCOMPLETE_DEPOSIT -> stringRes(R.string.swap_detail_incomplete)
+                    PROCESSING -> stringRes(R.string.swap_detail_title_swap_processing)
                     SUCCESS -> stringRes(R.string.swap_detail_title_swap_completed)
                     REFUNDED -> stringRes(R.string.swap_detail_title_swap_refunded)
                     FAILED -> stringRes(R.string.swap_detail_title_swap_failed)

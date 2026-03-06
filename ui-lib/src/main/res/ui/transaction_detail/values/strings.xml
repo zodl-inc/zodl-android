@@ -32,8 +32,21 @@
     <string name="transaction_detail_info_realized_slippage">Realized slippage</string>
     <string name="transaction_detail_info_max_slippage">Max slippage</string>
     <string name="transaction_detail_info_timestamp">Timestamp</string>
-    <string name="transaction_detail_info_refunded_message">Your deposit transaction was sent but the swap was unsuccessful. The payment amount has been refunded, minus transaction fees.</string>
-    <string name="transaction_detail_info_refunded_title">Payment Refunded</string>
+    <string name="transaction_detail_info_refunded_message">Your deposit was detected but the swap could not be completed. Your funds have been returned, minus transaction fees. If you haven\'t received them, contact the Zodl support team.</string>
+    <string name="transaction_detail_info_refunded_title">Funds Returned</string>
+    <string name="transaction_detail_info_pending_deposit_message">Your swap has been delayed. Swaps typically complete in minutes but may take longer depending on market conditions.</string>
+    <string name="transaction_detail_info_pending_deposit_title">Swap processing</string>
+    <string name="transaction_detail_info_failed_message">This swap could not be completed. If you deposited funds and didn\'t receive your swap, contact support so we can help resolve it.</string>
+    <string name="transaction_detail_info_failed_title">Swap Failed</string>
+    <string name="transaction_detail_info_expired_message">This swap expired after its 24-hour validity window. If you didn\'t send funds, no action is needed. If you did send funds, contact support so we can help.</string>
+    <string name="transaction_detail_info_expired_title">Swap Expired</string>
+    <string name="transaction_detail_contact_support">Contact Support</string>
+    <string name="transaction_detail_report_issue">Report Issue</string>
+    <string name="transaction_detail_support_disclaimer_title">Report Swap Issue</string>
+    <string name="transaction_detail_support_disclaimer_message">Tapping the button below will send details about this swap (like the deposit address and target asset) to the Zodl support team so they can help resolve your issue. The transaction info is included automatically.</string>
+    <string name="transaction_detail_support_email_subject">Swap Transaction Issue</string>
+    <string name="transaction_detail_support_email_body">Please describe your issue here:\n\nSwap Details:\nDeposit Address: %1$s\nSource Asset: %2$s\nTarget Asset: %3$s</string>
+    <string name="transaction_detail_info_pending">Deposits may take several minutes to confirm.</string>
     <string name="swap_detail_incomplete_deposit">Incomplete deposit</string>
     <string name="swap_detail_pending">Pending</string>
     <string name="swap_detail_completed">Completed</string>
@@ -44,4 +57,8 @@
     <string name="swap_detail_processing">Processing</string>
     <string name="transaction_detail_swapping">Swapping</string>
     <string name="transaction_detail_paying">Paying</string>
+    <string name="swap_detail_incomplete">Swap Incomplete</string>
+    <string name="transaction_detail_pay_incomplete">Payment Incomplete</string>
+    <string name="transaction_detail_info_incomplete_deposit_title">Incomplete Deposit</string>
+    <string name="transaction_detail_info_incomplete_deposit_message">Deposit an additional %1$s to complete this swap before %2$s, or your deposit will be refunded.</string>
 </resources>

@@ -20,5 +20,5 @@
 
     <string name="tor_opt_in_btn">Activar</string>
     <string name="tor_opt_out_btn">Desactivar</string>
-    <string name="tor_settings_share_feedback">Share feedback</string>
+    <string name="tor_settings_share_feedback">Compartir comentarios</string>
 </resources>

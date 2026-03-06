@@ -13,6 +13,7 @@ data class TransactionDetailState(
     val header: TransactionDetailHeaderState,
     val info: TransactionDetailInfoState?,
     val errorFooter: ErrorFooter?,
+    val infoFooter: StringResource?,
     val primaryButton: ButtonState?,
     val secondaryButton: ButtonState?
 )

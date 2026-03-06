@@ -25,12 +25,15 @@ import co.electriccoin.zcash.ui.design.util.stringResByAddress
 import co.electriccoin.zcash.ui.design.util.stringResByDynamicCurrencyNumber
 import co.electriccoin.zcash.ui.design.util.stringResByNumber
 import co.electriccoin.zcash.ui.design.util.styledStringResource
-import co.electriccoin.zcash.ui.screen.swap.info.SwapInfoArgs
+import co.electriccoin.zcash.ui.screen.error.ErrorState
+import co.electriccoin.zcash.ui.screen.swap.info.DepositSwapInfoArgs
 import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -46,6 +49,9 @@ class ORSwapConfirmationVM(
     private val shareQR: ShareQRUseCase,
     private val context: Context
 ) : ViewModel() {
+    private val _dialogState = MutableStateFlow<ErrorState?>(null)
+    val dialogState = _dialogState.asStateFlow()
+
     val state: StateFlow<ORSwapConfirmationState?> =
         swapRepository.quote
             .filterIsInstance<SwapQuoteData.Success>()
@@ -64,7 +70,7 @@ class ORSwapConfirmationVM(
                     amountFiat = stringResByDynamicCurrencyNumber(quote.amountInUsd, FiatCurrency.USD.symbol),
                     onAmountClick = { onAmountClick(quote.amountInFormatted) },
                     qr = quote.depositAddress.address,
-                    address = stringResByAddress(quote.depositAddress.address),
+                    address = stringResByAddress(quote.depositAddress.address, true),
                     copyButton =
                         BigIconButtonState(
                             text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_copy),
@@ -115,15 +121,40 @@ class ORSwapConfirmationVM(
 
     private fun onBack() {
         if (onSentFundsClickJob?.isActive == true) return
+        if (_dialogState.value != null) {
+            _dialogState.value = null
+        } else {
+            _dialogState.value =
+                ErrorState(
+                    title = stringRes(R.string.swap_confirmation_dialog_title),
+                    message = stringRes(R.string.swap_confirmation_dialog_message),
+                    positive =
+                        ButtonState(
+                            text = stringRes(R.string.swap_confirmation_primary_button),
+                            onClick = ::onSentFundsClick
+                        ),
+                    negative =
+                        ButtonState(
+                            text = stringRes(R.string.swap_quote_cancel_swap),
+                            onClick = ::onCancelSwapClick
+                        ),
+                    onBack = { _dialogState.value = null }
+                )
+        }
+    }
+
+    private fun onCancelSwapClick() {
+        _dialogState.value = null
         cancelSwapQuote()
     }
 
     private fun onSentFundsClick() {
         if (onSentFundsClickJob?.isActive == true) return
+        _dialogState.value = null
         onSentFundsClickJob = viewModelScope.launch { saveORSwap() }
     }
 
-    private fun onInfoClick() = navigationRouter.forward(SwapInfoArgs)
+    private fun onInfoClick() = navigationRouter.forward(DepositSwapInfoArgs)
 
     private fun onShareClick(
         qrData: String,

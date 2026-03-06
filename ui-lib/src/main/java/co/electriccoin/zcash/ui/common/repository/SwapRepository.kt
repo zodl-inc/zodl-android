@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.repository
 
+import co.electriccoin.zcash.ui.common.datasource.AFFILIATE_ADDRESS
 import co.electriccoin.zcash.ui.common.datasource.SwapDataSource
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapMode
@@ -176,7 +177,7 @@ class SwapRepositoryImpl(
                             destinationAddress = destinationAddress,
                             destinationAsset = destinationAsset,
                             slippage = slippage.value,
-                            affiliateAddress = "zodlswaps.near"
+                            affiliateAddress = AFFILIATE_ADDRESS
                         )
                     quote.update { SwapQuoteData.Success(quote = result) }
                 } catch (e: Exception) {
@@ -202,11 +203,7 @@ class SwapRepositoryImpl(
                             destinationAddress = address,
                             destinationAsset = destinationAsset,
                             slippage = slippage.value,
-                            affiliateAddress =
-                                when (mode) {
-                                    EXACT_INPUT -> "zodlswaps.near"
-                                    EXACT_OUTPUT -> "crosspay.near"
-                                }
+                            affiliateAddress = AFFILIATE_ADDRESS
                         )
                     quote.update { SwapQuoteData.Success(quote = result) }
                 } catch (e: Exception) {
@@ -233,4 +230,4 @@ class SwapRepositoryImpl(
     }
 }
 
-private val DEFAULT_SLIPPAGE = BigDecimal("1")
+public val DEFAULT_SLIPPAGE = BigDecimal("2")

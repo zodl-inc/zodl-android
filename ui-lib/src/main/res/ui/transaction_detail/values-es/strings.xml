@@ -32,8 +32,21 @@
     <string name="transaction_detail_info_realized_slippage">Slippage realizado</string>
     <string name="transaction_detail_info_max_slippage">Slippage máximo</string>
     <string name="transaction_detail_info_timestamp">Marca de tiempo</string>
-    <string name="transaction_detail_info_refunded_message">Tu transacción de depósito fue enviada pero el swap no tuvo éxito. El monto del pago ha sido reembolsado, menos las comisiones de transacción.</string>
-    <string name="transaction_detail_info_refunded_title">Pago reembolsado</string>
+    <string name="transaction_detail_info_refunded_message">Tu depósito fue detectado pero el swap no pudo completarse. Tus fondos han sido devueltos, descontando las tarifas de transacción. Si aún no los recibiste, contacta al equipo de soporte de Zodl.</string>
+    <string name="transaction_detail_info_refunded_title">Fondos devueltos</string>
+    <string name="transaction_detail_info_pending_deposit_message">Tu swap se ha demorado. Los swaps generalmente se completan en minutos, pero pueden tardar más según las condiciones del mercado.</string>
+    <string name="transaction_detail_info_pending_deposit_title">Procesando swap</string>
+    <string name="transaction_detail_info_failed_message">Este swap no pudo completarse. Si depositaste fondos y no recibiste tu swap, contacta a soporte para que podamos resolverlo.</string>
+    <string name="transaction_detail_info_failed_title">Swap fallido</string>
+    <string name="transaction_detail_info_expired_message">Este swap venció tras su ventana de validez de 24 horas. Si no enviaste fondos, no es necesario hacer nada. Si enviaste fondos, contacta a soporte para que podamos ayudarte.</string>
+    <string name="transaction_detail_info_expired_title">Swap expirado</string>
+    <string name="transaction_detail_contact_support">Contactar soporte</string>
+    <string name="transaction_detail_report_issue">Reportar problema</string>
+    <string name="transaction_detail_support_disclaimer_title">Reportar problema con swap</string>
+    <string name="transaction_detail_support_disclaimer_message">Al tocar el botón de abajo, se enviarán detalles de este swap (como la dirección de depósito y el activo destino) al equipo de soporte de Zodl para que puedan ayudarte a resolver tu problema. La información de la transacción se incluye automáticamente.</string>
+    <string name="transaction_detail_support_email_subject">Problema con transacción de swap</string>
+    <string name="transaction_detail_support_email_body">Por favor describe tu problema aquí:\n\nDetalles del swap:\nDirección de depósito: %1$s\nActivo de origen: %2$s\nActivo destino: %3$s</string>
+    <string name="transaction_detail_info_pending">Los depósitos pueden tardar varios minutos en confirmarse.</string>
     <string name="swap_detail_incomplete_deposit">Depósito incompleto</string>
     <string name="swap_detail_pending">Pendiente</string>
     <string name="swap_detail_completed">Completado</string>
@@ -44,4 +57,8 @@
     <string name="swap_detail_processing">Procesando</string>
     <string name="transaction_detail_swapping">Haciendo swap</string>
     <string name="transaction_detail_paying">Pagando</string>
+    <string name="swap_detail_incomplete">Swap incompleto</string>
+    <string name="transaction_detail_pay_incomplete">Pago incompleto</string>
+    <string name="transaction_detail_info_incomplete_deposit_title">Depósito incompleto</string>
+    <string name="transaction_detail_info_incomplete_deposit_message">Deposita %1$s adicionales para completar este swap antes del %2$s, o tu depósito será reembolsado.</string>
 </resources>

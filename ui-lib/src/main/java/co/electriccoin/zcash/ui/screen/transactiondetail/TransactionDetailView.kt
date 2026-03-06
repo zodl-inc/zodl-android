@@ -34,6 +34,7 @@ import co.electriccoin.zcash.ui.design.component.ZashiBottomBar
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiIconButton
+import co.electriccoin.zcash.ui.design.component.ZashiInfoText
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
@@ -162,8 +163,16 @@ private fun BottomBar(
         isElevated = scrollState.value > 0,
         contentPadding = paddingValues.asScaffoldPaddingValues(top = 0.dp, bottom = 0.dp)
     ) {
-        if (state.errorFooter != null) {
-            TransactionErrorFooter(state.errorFooter)
+        state.errorFooter?.let {
+            TransactionErrorFooter(it)
+        }
+        state.infoFooter?.let {
+            ZashiInfoText(
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+                text = it.getValue(),
+                style = ZashiTypography.textXs,
+                color = ZashiColors.Text.textTertiary
+            )
         }
 
         Row(
@@ -274,7 +283,8 @@ private fun SendShieldPreview() =
                         ErrorFooter(
                             stringRes("Title"),
                             stringRes("Subtitle"),
-                        )
+                        ),
+                    infoFooter = stringRes("Info")
                 ),
             mainAppBarState = ZashiMainTopAppBarStateFixture.new(),
         )
@@ -298,7 +308,8 @@ private fun SendTransparentPreview() =
                     primaryButton = ButtonState(stringRes("Primary")),
                     secondaryButton = ButtonState(stringRes("Secondary")),
                     bookmarkButton = IconButtonState(R.drawable.ic_transaction_detail_no_bookmark) {},
-                    errorFooter = null
+                    errorFooter = null,
+                    infoFooter = null
                 ),
             mainAppBarState = ZashiMainTopAppBarStateFixture.new(),
         )
@@ -322,7 +333,8 @@ private fun ReceiveShieldPreview() =
                     primaryButton = ButtonState(stringRes("Primary")),
                     secondaryButton = ButtonState(stringRes("Secondary")),
                     bookmarkButton = IconButtonState(R.drawable.ic_transaction_detail_no_bookmark) {},
-                    errorFooter = null
+                    errorFooter = null,
+                    infoFooter = null
                 ),
             mainAppBarState = ZashiMainTopAppBarStateFixture.new(),
         )
@@ -346,7 +358,8 @@ private fun ReceiveTransparentPreview() =
                     primaryButton = ButtonState(stringRes("Primary")),
                     secondaryButton = ButtonState(stringRes("Secondary")),
                     bookmarkButton = IconButtonState(R.drawable.ic_transaction_detail_no_bookmark) {},
-                    errorFooter = null
+                    errorFooter = null,
+                    infoFooter = null
                 ),
             mainAppBarState = ZashiMainTopAppBarStateFixture.new(),
         )
@@ -370,7 +383,8 @@ private fun ShieldingPreview() =
                     primaryButton = ButtonState(stringRes("Primary")),
                     secondaryButton = ButtonState(stringRes("Secondary")),
                     bookmarkButton = IconButtonState(R.drawable.ic_transaction_detail_no_bookmark) {},
-                    errorFooter = null
+                    errorFooter = null,
+                    infoFooter = null
                 ),
             mainAppBarState = ZashiMainTopAppBarStateFixture.new(),
         )
@@ -400,6 +414,7 @@ private fun EmptyPreview() =
                     errorFooter = null,
                     primaryButton = null,
                     secondaryButton = null,
+                    infoFooter = null
                 ),
             mainAppBarState = ZashiMainTopAppBarStateFixture.new(),
         )

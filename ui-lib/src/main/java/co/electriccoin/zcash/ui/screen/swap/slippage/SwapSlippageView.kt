@@ -26,7 +26,6 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiCard
-import co.electriccoin.zcash.ui.design.component.ZashiInfoText
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
@@ -38,6 +37,7 @@ import co.electriccoin.zcash.ui.design.util.asScaffoldPaddingValues
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.design.util.styledStringResource
 import co.electriccoin.zcash.ui.screen.swap.slippage.SwapSlippageInfoState.Mode.HIGH
 import co.electriccoin.zcash.ui.screen.swap.slippage.SwapSlippageInfoState.Mode.LOW
 import co.electriccoin.zcash.ui.screen.swap.slippage.SwapSlippageInfoState.Mode.MEDIUM
@@ -79,13 +79,22 @@ fun SwapSlippageView(state: SwapSlippageState?) {
                         SlippageInfoCard(innerState.info)
                     }
                     Spacer(1f)
-                    if (innerState.footer != null) {
+                    if (innerState.warning != null) {
                         Spacer(20.dp)
-                        ZashiInfoText(
-                            text = innerState.footer.getValue(),
-                            style = ZashiTypography.textXs,
-                            color = ZashiColors.Text.textTertiary
-                        )
+                        ZashiCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors =
+                                CardDefaults.cardColors(
+                                    containerColor = ZashiColors.Utility.WarningYellow.utilityOrange100
+                                ),
+                            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp)
+                        ) {
+                            Text(
+                                text = innerState.warning.getValue(),
+                                style = ZashiTypography.textXs,
+                                color = ZashiColors.Utility.WarningYellow.utilityOrange800
+                            )
+                        }
                     }
                     Spacer(24.dp)
                     ZashiButton(
@@ -112,7 +121,7 @@ private fun SlippageInfoCard(state: SwapSlippageInfoState) {
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp)
     ) {
         Text(
-            text = state.title.getValue(),
+            text = state.title.getValue() + state.additional?.let { " " + it.getValue() }.orEmpty(),
             style = ZashiTypography.textSm,
             fontWeight = FontWeight.SemiBold,
             color = titleColor
@@ -165,13 +174,21 @@ private fun Preview() =
                     info =
                         SwapSlippageInfoState(
                             title = stringRes("Title"),
+                            additional = stringRes("Title"),
                             mode = SwapSlippageInfoState.Mode.HIGH,
+                        ),
+                    warning =
+                        styledStringResource(
+                            R.string.swap_slippage_low_warning,
+                            null as androidx.compose.ui.text.font.FontWeight?,
+                            "Warning",
+                            "under 2%",
+                            "2% or higher"
                         ),
                     primary =
                         ButtonState(
                             text = stringRes("Confirm")
                         ),
-                    footer = null
                 )
         )
     }

@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="swap_info_message">Swap %1$s with any NEAR-supported token.\n\nIf swapping TO %2$s, you will send
-        funds from a 3rd party wallet and provide an address where change can be refunded.\n\nIf swapping FROM %3$s, you
-        must provide a valid address for the asset you are swapping to.</string>
+    <string name="swap_info_message">Swap %1$s with any NEAR-supported token.\n\nIf swapping TO %2$s, you will send funds from a 3rd party wallet and provide an address where change can be refunded.\n\nIf swapping FROM %3$s, you must provide a valid address for the asset you are swapping to.</string>
     <string name="swap_info_title">Swap with</string>
     <string name="swap_select_token">Select Token</string>
     <string name="swap_select_chain">Select Chain</string>
@@ -11,6 +9,10 @@
     <string name="swap_slippage_subtitle">This setting determines the maximum allowable difference between the expected price of a swap and the actual price you pay, which is outside of Zodl\'s control.</string>
     <string name="swap_slippage_max_threshold">Please enter maximum slippage of 30%%.</string>
     <string name="swap_slippage_info">You may receive up to %s less than quoted.</string>
+    <string name="swap_slippage_low_warning">%1$s Slippage %2$s increases the chance your swap will be unsuccessful and refunded. Consider using %3$s, especially for larger amounts.</string>
+    <string name="swap_slippage_low_warning_1">Warning:</string>
+    <string name="swap_slippage_low_warning_2">under %s%%</string>
+    <string name="swap_slippage_low_warning_3">%s%% or higher</string>
     <string name="pay_slippage_info">You may pay up to %s more, in addition to transaction fees.</string>
     <string name="swap_title">Swap</string>
     <string name="swap_from">From</string>
@@ -27,13 +29,15 @@
     <string name="swap_cancel_positive">Don\’t cancel</string>
     <string name="swap_quote_error_too_low_try_at_least">Amount is too low for bridge, try at least %s</string>
     <string name="swap_quote_error_too_low_try_higher">Amount is too low for bridge, try higher amount.</string>
-    <string name="swap_quote_error_getting_quote">We tried but couldn\’t get a quote for a payment with your
-        parameters. You can try to adjust the slippage or try again later.</string>
+    <string name="swap_quote_error_getting_quote">We tried but couldn\’t get a quote for a payment with your parameters. You can try to adjust the slippage or try again later.</string>
+    <string name="swap_quote_error_getting_quote_swap">We tried but couldn\’t get a quote for a swap with your parameters. You can try to adjust the slippage or try again later.</string>
     <string name="swap_quote_unavailable">Quote Unavailable</string>
     <string name="swap_quote_cancel_payment">Cancel payment</string>
     <string name="swap_quote_edit_payment">Edit payment</string>
-    <string name="swap_quote_review">Review Quote</string>
+    <string name="swap_quote_cancel_swap">Cancel swap</string>
+    <string name="swap_quote_edit_swap">Edit swap</string>
     <string name="swap_quote_title">Swap Now</string>
+    <string name="swap_quote_review">Review Quote</string>
     <string name="swap_quote_from">Swap from</string>
     <string name="swap_quote_to">Swap to</string>
     <string name="swap_quote_total_fees">Total fees</string>
@@ -47,19 +51,13 @@
     <string name="pay_quote_title">Pay Now</string>
     <string name="pay_from">Pay from</string>
     <string name="pay_to">Pay to</string>
-    <string name="swap_to_zec_footer">Use your %s wallet \n to deposit funds. Depositing other assets may result in
-        loss of funds.</string>
+    <string name="swap_to_zec_footer">Use your %s wallet \n to deposit funds. Depositing other assets may result in loss of funds.</string>
     <string name="swap_to_zec_footer_bold">%s on %s</string>
     <string name="swap_to_zec_share_text">Deposit address for %1$s %2$s on %3$s swap to %4$s in Zodl</string>
     <string name="swap_refund_address">Refund Address</string>
     <string name="swap_refund_address_info_title">Refund Address</string>
-    <string name="swap_refund_address_info_message_empty">If the swap fails or market conditions change, your
-        transaction
-        may be refunded minus the transaction fees.\n\nThe refunded amount will be returned to your wallet in the
-        source currency. Please enter a valid address to avoid loss of funds.</string>
-    <string name="swap_refund_address_info_message">If the swap fails or market conditions change, your transaction
-        may be refunded minus the transaction fees.\n\nThe refunded amount will be returned to your wallet in the
-        source currency - %s on %s. Please enter a valid address to avoid loss of funds.</string>
+    <string name="swap_refund_address_info_message_empty">If the swap fails or market conditions change, your transaction may be refunded minus the transaction fees.\n\nThe refunded amount will be returned to your wallet in the source currency. Please enter a valid address to avoid loss of funds.</string>
+    <string name="swap_refund_address_info_message">If the swap fails or market conditions change, your transaction may be refunded minus the transaction fees.\n\nThe refunded amount will be returned to your wallet in the source currency - %s on %s. Please enter a valid address to avoid loss of funds.</string>
     <string name="swap_detail_row_header">Swap Details</string>
     <string name="swap_detail_row_deposit_to">Deposit to</string>
     <string name="swap_detail_title_swap_expired">Swap Expired</string>
@@ -67,12 +65,15 @@
     <string name="swap_detail_title_swap_completed">Swapped</string>
     <string name="swap_detail_title_swap_refunded">Swap Refunded</string>
     <string name="swap_detail_title_swap_failed">Swap Failed</string>
-    <string name="swap_detail_title_swap_processing">Swap Processing</string>
+    <string name="swap_detail_title_swap_processing">Swap processing</string>
     <string name="swap_confirmation_title">Swap</string>
     <string name="swap_confirmation_subtitle">Deposit Amount</string>
     <string name="swap_confirmation_primary_button">I’ve sent the funds</string>
-    <string name="swap_quote_error_getting_quote_swap">We tried but couldn\’t get a quote for a swap with your
-        parameters. You can try to adjust the slippage or try again later.</string>
-    <string name="swap_quote_cancel_swap">Cancel swap</string>
-    <string name="swap_quote_edit_swap">Edit swap</string>
+    <string name="swap_confirmation_dialog_title">Are you sure you want to exit?</string>
+    <string name="swap_confirmation_dialog_message">If you\'ve sent or intend to send the funds, tap \'I\'ve sent the funds.\' Or cancel the swap to return to the previous screen.</string>
+    <string name="swap_deposit_info_title">Deposit Funds</string>
+    <string name="swap_deposit_info_step_1">Swap into ZEC with any NEAR-supported asset.</string>
+    <string name="swap_deposit_info_step_2">Send the exact amount of the asset displayed. Sending less will result in a refund.</string>
+    <string name="swap_deposit_info_step_3">Double-check that you are sending the correct asset on the correct network (e.g., USDC on Solana).</string>
+    <string name="swap_deposit_info_step_4">It’s best to send from a wallet you own. Sending from an exchange may result in delays or refunds.</string>
 </resources>

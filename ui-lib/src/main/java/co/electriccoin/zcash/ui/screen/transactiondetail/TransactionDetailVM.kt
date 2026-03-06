@@ -8,6 +8,7 @@ import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.mapper.SwapSupportMapper
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
 import co.electriccoin.zcash.ui.common.model.SwapStatus.EXPIRED
@@ -38,6 +39,7 @@ import co.electriccoin.zcash.ui.design.util.stringResByCurrencyNumber
 import co.electriccoin.zcash.ui.design.util.stringResByNumber
 import co.electriccoin.zcash.ui.design.util.stringResByTransactionId
 import co.electriccoin.zcash.ui.screen.contact.AddZashiABContactArgs
+import co.electriccoin.zcash.ui.screen.swap.detail.support.SwapSupportArgs
 import co.electriccoin.zcash.ui.screen.transactiondetail.info.ReceiveShieldedState
 import co.electriccoin.zcash.ui.screen.transactiondetail.info.ReceiveTransparentState
 import co.electriccoin.zcash.ui.screen.transactiondetail.info.SendShieldedState
@@ -49,6 +51,7 @@ import co.electriccoin.zcash.ui.screen.transactiondetail.info.TransactionDetailM
 import co.electriccoin.zcash.ui.screen.transactiondetail.info.TransactionDetailMemosState
 import co.electriccoin.zcash.ui.screen.transactionnote.TransactionNote
 import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
+import co.electriccoin.zcash.ui.util.loggableNot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
@@ -69,8 +72,10 @@ class TransactionDetailVM(
     private val navigationRouter: NavigationRouter,
     private val sendTransactionAgain: SendTransactionAgainUseCase,
     private val flipTransactionBookmark: FlipTransactionBookmarkUseCase,
-    private val mapper: CommonTransactionDetailMapper
+    private val mapper: CommonTransactionDetailMapper,
+    private val getSwapMessage: SwapSupportMapper,
 ) : ViewModel() {
+    val log = loggableNot("TransactionDetailVM")
     private val transaction =
         getTransactionDetailById
             .observe(transactionDetailArgs.transactionId)
@@ -108,7 +113,10 @@ class TransactionDetailVM(
                                     HapticFeedbackType.ToggleOn
                                 }
                         ),
-                    errorFooter = createErrorFooter(transaction)
+                    errorFooter = createErrorFooter(transaction),
+                    infoFooter =
+                        stringRes(R.string.transaction_detail_info_pending)
+                            .takeIf { transaction.swap?.status?.status == PENDING }
                 )
             }.stateIn(
                 scope = viewModelScope,
@@ -144,6 +152,7 @@ class TransactionDetailVM(
                 ),
             info = null,
             errorFooter = null,
+            infoFooter = null,
             primaryButton = null,
             secondaryButton = null,
         )
@@ -153,8 +162,9 @@ class TransactionDetailVM(
     }
 
     @Suppress("CyclomaticComplexMethod")
-    private fun createTransactionInfoState(transaction: DetailedTransactionData): TransactionDetailInfoState =
-        when (transaction.transaction) {
+    private fun createTransactionInfoState(transaction: DetailedTransactionData): TransactionDetailInfoState {
+        log("createTransactionInfoState ${transaction.transaction}")
+        return when (transaction.transaction) {
             is SendTransaction -> {
                 when {
                     transaction.swap != null -> {
@@ -165,6 +175,7 @@ class TransactionDetailVM(
                                 ?.address
                         SendSwapState(
                             status = transaction.swap.status?.status,
+                            message = getSwapMessage.getMessage(transaction.swap.status),
                             quoteHeader =
                                 mapper.createTransactionDetailQuoteHeaderState(
                                     swap = transaction.swap.status,
@@ -329,6 +340,7 @@ class TransactionDetailVM(
                 )
             }
         }
+    }
 
     private fun createFeeStringRes(data: DetailedTransactionData): StringResource {
         val feePaid =
@@ -352,8 +364,13 @@ class TransactionDetailVM(
     private fun createErrorFooter(data: DetailedTransactionData): ErrorFooter? =
         mapper.createTransactionDetailErrorFooter(data.swap?.error)
 
-    private fun createPrimaryButtonState(data: DetailedTransactionData): ButtonState? =
-        when {
+    private fun createPrimaryButtonState(data: DetailedTransactionData): ButtonState? {
+        val supportButton =
+            getSwapMessage.getButton(data.swap?.status) {
+                onContactSupport(it)
+            }
+        return when {
+            supportButton != null -> supportButton
             data.swap?.error != null && data.swap.status == null ->
                 mapper.createTransactionDetailErrorButtonState(
                     error = data.swap.error,
@@ -382,6 +399,11 @@ class TransactionDetailVM(
                     null
                 }
         }
+    }
+
+    private fun onContactSupport(depositAddress: String) {
+        navigationRouter.forward(SwapSupportArgs(depositAddress))
+    }
 
     private fun createSecondaryButtonState(transaction: DetailedTransactionData): ButtonState? {
         fun createAddNoteButtonState() =
@@ -396,7 +418,11 @@ class TransactionDetailVM(
             )
 
         return when {
-            transaction.swap != null && transaction.swap.error == null -> createAddNoteButtonState()
+            transaction.swap != null &&
+                transaction.swap.error == null &&
+                transaction.swap.status?.status == SUCCESS
+            -> createAddNoteButtonState()
+
             transaction.swap != null -> null
             else -> createAddNoteButtonState()
         }
@@ -443,10 +469,10 @@ class TransactionDetailVM(
                                 when (data.metadata.swapMetadata.mode) {
                                     EXACT_INPUT ->
                                         when (data.metadata.swapMetadata.status) {
-                                            INCOMPLETE_DEPOSIT,
                                             PROCESSING,
                                             PENDING -> stringRes(R.string.transaction_detail_swapping)
 
+                                            INCOMPLETE_DEPOSIT -> stringRes(R.string.swap_detail_incomplete)
                                             SUCCESS -> stringRes(R.string.transaction_history_swapped)
                                             REFUNDED -> stringRes(R.string.transaction_history_swap_refunded)
                                             FAILED -> stringRes(R.string.transaction_history_swap_failed)
@@ -455,10 +481,10 @@ class TransactionDetailVM(
 
                                     EXACT_OUTPUT ->
                                         when (data.metadata.swapMetadata.status) {
-                                            INCOMPLETE_DEPOSIT,
                                             PROCESSING,
                                             PENDING -> stringRes(R.string.transaction_detail_paying)
 
+                                            INCOMPLETE_DEPOSIT -> stringRes(R.string.transaction_detail_pay_incomplete)
                                             SUCCESS -> stringRes(R.string.transaction_history_paid)
                                             REFUNDED -> stringRes(R.string.transaction_history_payment_refunded)
                                             FAILED -> stringRes(R.string.transaction_history_payment_failed)

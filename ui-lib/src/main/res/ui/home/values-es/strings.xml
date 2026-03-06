@@ -55,10 +55,10 @@
     <string name="home_info_updating_title">Actualizando Balance</string>
     <string name="home_info_updating_message">Tu última transacción se está minando y confirmando.</string>
     <string name="crash_report_detail_title">Ayuda a Mejorar Zodl</string>
-    <string name="crash_report_detail_subtitle">Crash reports are an essential developer tool used to improve the quality and reliability of apps. Their sole purpose is to fix bugs that cause crashes.</string>
+    <string name="crash_report_detail_subtitle">Los reportes de fallos son una herramienta esencial para los desarrolladores, utilizada para mejorar la calidad y confiabilidad de las apps. Su único propósito es corregir errores que causan cierres inesperados.</string>
     <string name="crash_report_detail_item_title_2">¿Qué no se comparte?</string>
     <string name="crash_report_detail_item_subtitle_1">Usamos Firebase Crashlytics para recopilar reportes de fallos. Incluyen información sobre la versión de la app, la hora del fallo y el stack trace para identificar dónde ocurrió dentro de la app.</string>
-    <string name="crash_report_detail_item_subtitle_2">Zodl does not and cannot access or collect information about individual users, their devices, transactions, or their in-app activity. The data is completely anonymized.</string>
+    <string name="crash_report_detail_item_subtitle_2">Zodl no accede ni puede acceder a información sobre usuarios individuales, sus dispositivos, transacciones o su actividad dentro de la app. Los datos son completamente anónimos.</string>
     <string name="crash_report_detail_item_title_1">¿Qué se comparte?</string>
     <string name="crash_report_detail_opt_out">No aceptar</string>
     <string name="crash_report_detail_opt_in">Aceptar</string>
