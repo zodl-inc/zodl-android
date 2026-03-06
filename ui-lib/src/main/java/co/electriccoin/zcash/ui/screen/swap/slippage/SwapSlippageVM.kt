@@ -180,8 +180,8 @@ class SwapSlippageVM(
             additional = stringRes(R.string.pay_slippage_footer).takeIf { args.mode == EXACT_OUTPUT },
             mode =
                 when {
-                    percent <= BigDecimal("1") -> SwapSlippageInfoState.Mode.LOW
-                    percent <= BigDecimal("2") -> SwapSlippageInfoState.Mode.MEDIUM
+                    percent <= BigDecimal("2") -> SwapSlippageInfoState.Mode.LOW
+                    percent <= BigDecimal("3") -> SwapSlippageInfoState.Mode.MEDIUM
                     else -> SwapSlippageInfoState.Mode.HIGH
                 }
         )
