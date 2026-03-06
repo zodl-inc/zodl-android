@@ -12,6 +12,23 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.1.0 (1516)] - 2026-03-06
+
+### Añadido:
+- Creamos un mecanismo para contactarnos en caso de problemas con Swap/Pago.
+- Añadimos una advertencia de deslizamiento bajo.
+- Implementamos la gestión de depósitos incompletos.
+- Añadimos más información a los flujos de Swap/Pago.
+
+### Cambiado:
+- Actualizamos el deslizamiento predeterminado al 2%.
+- Cambiamos el servidor predeterminado.
+- Mejoramos UX de la pantalla de depósito.
+- Realizamos otras mejoras de UX/UI.
+
+### Corregido:
+- Corregimos un error en el árbol de compromiso de notas.
+
 ## [3.1.0 (1514)] - 2026-03-06
 
 ### Añadido:

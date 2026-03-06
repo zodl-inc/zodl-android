@@ -1,0 +1,12 @@
+Añadido:
+- Creamos un mecanismo para contactarnos en caso de problemas con Swap/Pago.
+- Añadimos una advertencia de deslizamiento bajo.
+- Implementamos la gestión de depósitos incompletos.
+- Añadimos más información a los flujos de Swap/Pago.
+Cambiado:
+- Actualizamos el deslizamiento predeterminado al 2%.
+- Cambiamos el servidor predeterminado.
+- Mejoramos UX de la pantalla de depósito.
+- Realizamos otras mejoras de UX/UI.
+Corregido:
+- Corregimos un error en el árbol de compromiso de notas.

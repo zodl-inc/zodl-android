@@ -12,6 +12,23 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.1.0 (1516)] - 2026-03-06
+
+### Added:
+- We built in-app mechanism for contacting support in case of Swap/Pay issues.
+- We added a low slippage warning.
+- We implemented handling for incomplete deposits.
+- We also added more information to the Swap/Pay status flows.
+
+### Changed:
+- We updated default slippage to 2% for faster execution of swaps.
+- We changed the default server.
+- We also improved UX of the Swap to ZEC deposit screen.
+- We made other UX/UI improvements.
+
+### Fixed:
+- We fixed a note commitment tree error.
+
 ## [3.1.0 (1514)] - 2026-03-06
 
 ### Added:
