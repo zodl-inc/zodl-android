@@ -45,7 +45,7 @@
     <string name="transaction_detail_support_disclaimer_title">Report Swap Issue</string>
     <string name="transaction_detail_support_disclaimer_message">Tapping the button below will send details about this swap (like the deposit address and target asset) to the Zodl support team so they can help resolve your issue. The transaction info is included automatically.</string>
     <string name="transaction_detail_support_email_subject">Swap Transaction Issue</string>
-    <string name="transaction_detail_support_email_body">Please describe your issue here:\n\nSwap Details:\nDeposit Address: %1$s\nSource Asset: %2$s\nTarget Asset: %3$s</string>
+    <string name="transaction_detail_support_email_body">Please describe your issue here:\n\n\n\nSwap Details:\nDeposit Address: %1$s\nSource Asset: %2$s\nTarget Asset: %3$s</string>
     <string name="transaction_detail_info_pending">Deposits may take several minutes to confirm.</string>
     <string name="swap_detail_incomplete_deposit">Incomplete deposit</string>
     <string name="swap_detail_pending">Pending</string>

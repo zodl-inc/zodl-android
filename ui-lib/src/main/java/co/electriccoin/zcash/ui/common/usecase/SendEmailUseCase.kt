@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.Intent
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.SubmitResult
+import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SynchronizerError
+import co.electriccoin.zcash.ui.common.provider.BlockchainProvider
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getString
 import co.electriccoin.zcash.ui.screen.support.model.SupportInfoType
@@ -12,7 +14,8 @@ import co.electriccoin.zcash.ui.util.EmailUtil
 
 class SendEmailUseCase(
     private val context: Context,
-    private val getSupport: GetSupportUseCase
+    private val getSupport: GetSupportUseCase,
+    private val blockchainProvider: BlockchainProvider,
 ) {
     operator fun invoke(
         address: StringResource,
@@ -188,6 +191,49 @@ class SendEmailUseCase(
             context.startActivity(mailIntent)
         }
     }
+
+    @Suppress("MagicNumber")
+    suspend operator fun invoke(swapData: SwapData) {
+        val status = swapData.status ?: return
+        val fullMessage =
+            EmailUtil.formatMessage(
+                body =
+                    context.getString(
+                        R.string.transaction_detail_support_email_body,
+                        status.quote.depositAddress.address,
+                        status.quote.originAsset.value(),
+                        status.quote.destinationAsset.value(),
+                    ),
+                supportInfo =
+                    getSupport().toSupportString(
+                        setOf(
+                            SupportInfoType.Time,
+                            SupportInfoType.Os,
+                            SupportInfoType.Device,
+                            SupportInfoType.Environment,
+                            SupportInfoType.Permission
+                        )
+                    )
+            )
+
+        val mailIntent =
+            EmailUtil
+                .newMailActivityIntent(
+                    context.getString(R.string.support_email_address),
+                    context.getString(R.string.transaction_detail_support_email_subject),
+                    fullMessage
+                ).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+
+        runCatching {
+            context.startActivity(mailIntent)
+        }
+    }
+
+    private fun SwapAsset.value() =
+        "$tokenTicker - " +
+            blockchainProvider.getBlockchain(chainTicker).chainName.getString(context)
 }
 
 private fun Throwable.stackTraceToLimitedString(limit: Int) =
