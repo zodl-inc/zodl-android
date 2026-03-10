@@ -15,7 +15,8 @@ object ChangelogParser {
     private const val DEBUG_LOGS_ENABLED = false
 
     private const val CHANGELOG_TITLE_POSITION = 0
-    private const val UNRELEASED_TITLE_POSITION = 6
+    private const val UNRELEASED_TITLE_POSITION_BLOCK = 3
+    private const val UNRELEASED_TITLE_POSITION_LINE = 6
 
     internal const val ENGLISH_TAG = "EN"
     internal const val SPANISH_TAG = "ES"
@@ -56,7 +57,10 @@ object ChangelogParser {
         // Validate content
         check(
             nodes[CHANGELOG_TITLE_POSITION].contains("# Changelog") &&
-                nodes[UNRELEASED_TITLE_POSITION].contains("## [Unreleased]")
+                (
+                    nodes[UNRELEASED_TITLE_POSITION_BLOCK].contains("## [Unreleased]") ||
+                        nodes[UNRELEASED_TITLE_POSITION_LINE].contains("## [Unreleased]")
+                )
         ) {
             "Provided changelog file is incorrect or its structure is malformed."
         }

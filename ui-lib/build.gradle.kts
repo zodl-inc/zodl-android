@@ -118,7 +118,7 @@ android {
 androidComponents {
     onVariants { variant ->
         // Configure SecureScreen for protecting screens with sensitive data in runtime
-        variant.buildConfigFields.put(
+        variant.buildConfigFields?.put(
             "IS_SECURE_SCREEN_ENABLED",
             BuildConfigField(
                 type = "boolean",
@@ -126,7 +126,7 @@ androidComponents {
                 comment = "Whether is the SecureScreen sensitive data protection enabled"
             )
         )
-        variant.buildConfigFields.put(
+        variant.buildConfigFields?.put(
             "ZCASH_FLEXA_KEY",
             BuildConfigField(
                 type = "String",
@@ -134,7 +134,7 @@ androidComponents {
                 comment = "Publishable key of the Flexa integration"
             )
         )
-        variant.buildConfigFields.put(
+        variant.buildConfigFields?.put(
             "ZCASH_CMC_KEY",
             BuildConfigField(
                 type = "String",
@@ -143,7 +143,7 @@ androidComponents {
             )
         )
         // To configure screen orientation in runtime
-        variant.buildConfigFields.put(
+        variant.buildConfigFields?.put(
             "IS_SCREEN_ROTATION_ENABLED",
             BuildConfigField(
                 type = "boolean",
