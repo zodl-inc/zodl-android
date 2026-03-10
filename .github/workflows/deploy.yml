@@ -1,9 +1,8 @@
 # Expected secrets
-# GOOGLE_PLAY_CLOUD_PROJECT - Google Cloud project associated with Google Play
-# GOOGLE_PLAY_SERVICE_ACCOUNT - Email address of service account
-# GOOGLE_PLAY_SERVICE_ACCOUNT_KEY - Google Play Service Account key to authorize on Google Play
+# GOOGLE_PLAY_CLOUD_PROJECT - Google Cloud project associated with Google Play (e.g. zcash-android-appstore)
+# GOOGLE_PLAY_SERVICE_ACCOUNT - Email address of service account for Google Play API
+# GOOGLE_PLAY_WORKLOAD_IDENTITY_PROVIDER - Workload Identity provider for temporary credentials
 # GOOGLE_PLAY_PUBLISHER_API_KEY - Google Play Publisher API key to authorize the publisher on Google Play API
-# GOOGLE_PLAY_WORKLOAD_IDENTITY_PROVIDER - Workload identity provider to generate temporary service account key
 # UPLOAD_KEYSTORE_BASE_64 - The upload signing key for the app
 # UPLOAD_KEYSTORE_PASSWORD - The password for UPLOAD_KEYSTORE_BASE_64
 # UPLOAD_KEY_ALIAS - The key alias inside UPLOAD_KEYSTORE_BASE_64
@@ -51,15 +50,12 @@ jobs:
       - id: check_secrets
         env:
           GOOGLE_PLAY_CLOUD_PROJECT: ${{ secrets.GOOGLE_PLAY_CLOUD_PROJECT }}
-          # TODO [#1033]: Use token-based authorization on Google Play for automated deployment
-          # TODO [#1033]: https://github.com/Electric-Coin-Company/zashi-android/issues/1033
-          # Note that these properties are not currently used due to #1033
-          # GOOGLE_PLAY_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
-          # GOOGLE_PLAY_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GOOGLE_PLAY_WORKLOAD_IDENTITY_PROVIDER }}
-          GOOGLE_PLAY_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_KEY }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+          GOOGLE_PLAY_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GOOGLE_PLAY_WORKLOAD_IDENTITY_PROVIDER }}
           GOOGLE_PLAY_PUBLISHER_API_KEY: ${{ secrets.GOOGLE_PLAY_PUBLISHER_API_KEY }}
-        if: "${{ env.GOOGLE_PLAY_CLOUD_PROJECT != '' &&  
-          env.GOOGLE_PLAY_SERVICE_ACCOUNT_KEY != '' && 
+        if: "${{ env.GOOGLE_PLAY_CLOUD_PROJECT != '' &&
+          env.GOOGLE_PLAY_SERVICE_ACCOUNT != '' &&
+          env.GOOGLE_PLAY_WORKLOAD_IDENTITY_PROVIDER != '' &&
           env.GOOGLE_PLAY_PUBLISHER_API_KEY != ''
         }}"
         run: echo "defined=true" >> $GITHUB_OUTPUT
@@ -99,10 +95,6 @@ jobs:
           echo ${FIREBASE_DEBUG_JSON_BASE64} | base64 --decode > app/src/debug/google-services.json
           echo ${FIREBASE_RELEASE_JSON_BASE64} | base64 --decode > app/src/release/google-services.json
       - name: Authenticate to Google Cloud for Google Play
-        # TODO [#1033]: Use token-based authorization on Google Play for automated deployment
-        # TODO [#1033]: https://github.com/Electric-Coin-Company/zashi-android/issues/1033
-        # Note that this step is not currently used due to #1033
-        if: false
         id: auth_google_play
         uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
         with:
@@ -202,6 +194,15 @@ jobs:
         timeout-minutes: 10
         with:
           gradle-home-cache-cleanup: true
+      - name: Authenticate to Google Cloud for Google Play
+        id: auth_google_play
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
+        with:
+          create_credentials_file: true
+          project_id: ${{ secrets.GOOGLE_PLAY_CLOUD_PROJECT }}
+          service_account: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets.GOOGLE_PLAY_WORKLOAD_IDENTITY_PROVIDER }}
+          access_token_lifetime: '1500s'
       - name: Set Env
         shell: bash
         run: |
@@ -224,9 +225,7 @@ jobs:
       - name: Upload to Play Store
         timeout-minutes: 10
         env:
-          # TODO [#1033]: Use token-based authorization on Google Play for automated deployment
-          # TODO [#1033]: https://github.com/Electric-Coin-Company/zashi-android/issues/1033
-          ORG_GRADLE_PROJECT_ZCASH_GOOGLE_PLAY_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_KEY }}
+          ORG_GRADLE_PROJECT_ZCASH_GOOGLE_PLAY_SERVICE_KEY_FILE_PATH: ${{ steps.auth_google_play.outputs.credentials_file_path }}
           ORG_GRADLE_PROJECT_ZCASH_GOOGLE_PLAY_PUBLISHER_API_KEY: ${{ secrets.GOOGLE_PLAY_PUBLISHER_API_KEY }}
           ORG_GRADLE_PROJECT_ZCASH_GOOGLE_PLAY_DEPLOY_TRACK: internal
           ORG_GRADLE_PROJECT_ZCASH_GOOGLE_PLAY_DEPLOY_STATUS: completed
