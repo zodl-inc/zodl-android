@@ -3,4 +3,8 @@
     <string name="update_contact_title">Contacto Guardado</string>
     <string name="update_contact_primary_btn">Guardar</string>
     <string name="update_contact_secondary_btn">Eliminar</string>
+    <string name="delete_contact_confirmation_title">Are you sure?</string>
+    <string name="delete_contact_confirmation_message">You are about to delete this contact. This cannot be undone        .</string>
+    <string name="delete_contact_confirmation_confirm">Confirm</string>
+    <string name="delete_contact_confirmation_cancel">Cancel</string>
 </resources>

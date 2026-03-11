@@ -23,9 +23,11 @@ import co.electriccoin.zcash.ui.design.component.PickerState
 import co.electriccoin.zcash.ui.design.component.TextFieldState
 import co.electriccoin.zcash.ui.design.util.combine
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.error.ErrorState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -54,6 +56,9 @@ class UpdateGenericABContactVM(
     private val isUpdatingContact = MutableStateFlow(false)
     private val isDeletingContact = MutableStateFlow(false)
     private val isLoadingContact = MutableStateFlow(true)
+
+    private val _dialogState = MutableStateFlow<ErrorState?>(null)
+    val dialogState = _dialogState.asStateFlow()
 
     private val blockChainPickerState =
         selectedBlockchain
@@ -201,7 +206,7 @@ class UpdateGenericABContactVM(
             updateButtonState,
             deleteButtonState,
             isLoadingContact,
-            blockChainPickerState
+            blockChainPickerState,
         ) { address, name, saveButton, deleteButton, isLoadingContact, blockchainPicker ->
             ABContactState(
                 info = null,
@@ -262,8 +267,32 @@ class UpdateGenericABContactVM(
             }
         }
 
-    private fun onDeleteButtonClick() =
+    private fun onDeleteButtonClick() {
+        if (_dialogState.value != null) {
+            _dialogState.value = null
+        } else {
+            _dialogState.value =
+                ErrorState(
+                    title = stringRes(R.string.delete_contact_confirmation_title),
+                    message = stringRes(R.string.delete_contact_confirmation_message),
+                    positive =
+                        ButtonState(
+                            text = stringRes(R.string.delete_contact_confirmation_confirm),
+                            onClick = ::onDeleteConfirmed
+                        ),
+                    negative =
+                        ButtonState(
+                            text = stringRes(R.string.delete_contact_confirmation_cancel),
+                            onClick = ::onDeleteCancelled
+                        ),
+                    onBack = { _dialogState.value = null }
+                )
+        }
+    }
+
+    private fun onDeleteConfirmed() =
         viewModelScope.launch {
+            _dialogState.value = null
             if (isDeletingContact.value || isUpdatingContact.value) return@launch
             originalContact.value?.let {
                 isDeletingContact.update { true }
@@ -271,6 +300,10 @@ class UpdateGenericABContactVM(
                 isDeletingContact.update { false }
             }
         }
+
+    private fun onDeleteCancelled() {
+        _dialogState.value = null
+    }
 
     private fun onBlockchainClick() =
         viewModelScope.launch {
