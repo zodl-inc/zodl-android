@@ -3,6 +3,7 @@
 package co.electriccoin.zcash.ui.screen.authentication.view
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideOutVertically
@@ -143,62 +144,71 @@ fun WelcomeScreenView(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .height(screenHeight.overallScreenHeight()),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                            .height(screenHeight.overallScreenHeight())
+                            .animateContentSize(
+                                animationSpec =
+                                    tween(
+                                        durationMillis = ANIMATION_DURATION,
+                                        easing = FastOutLinearInEasing
+                                    )
+                            ),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    Spacer(modifier = Modifier.fillMaxHeight(LOGO_RELATIVE_LOCATION))
-
                     Image(
-                        modifier = Modifier.height(48.dp),
+                        modifier = Modifier.height(60.dp),
                         painter = painterResource(id = co.electriccoin.zcash.ui.design.R.drawable.logo_with_hi),
                         contentDescription = null,
                     )
+                    Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing10xl))
 
-                    if (showAuthLogo) {
-                        Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
+                    AnimatedVisibility(visible = showAuthLogo) {
                         Column(
-                            modifier =
-                                Modifier
-                                    .fillMaxHeight(AUTH_FAILED_WIDGET_RELATIVE_LOCATION)
-                                    .padding(horizontal = ZashiDimensions.Spacing.spacing3xl),
-                            verticalArrangement = Arrangement.Center,
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.ic_auth_key),
-                                contentDescription =
-                                    stringResource(
-                                        id = R.string.authentication_failed_welcome_icon_cont_desc,
-                                        stringResource(R.string.app_name)
-                                    ),
+                            Column(
                                 modifier =
-                                    Modifier.clickable {
-                                        onRetry()
-                                    }
-                            )
+                                    Modifier
+                                        .padding(horizontal = ZashiDimensions.Spacing.spacing3xl),
+                                verticalArrangement = Arrangement.Center,
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.ic_auth_key),
+                                    contentDescription =
+                                        stringResource(
+                                            id = R.string.authentication_failed_welcome_icon_cont_desc,
+                                            stringResource(R.string.app_name)
+                                        ),
+                                    modifier =
+                                        Modifier.clickable {
+                                            onRetry()
+                                        }
+                                )
 
+                                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
+
+                                Text(
+                                    stringResource(id = R.string.authentication_failed_welcome_title),
+                                    style = ZashiTypography.textXl,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = ZashiColors.NoTheme.welcomeText,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
+
+                                Text(
+                                    stringResource(id = R.string.authentication_failed_welcome_subtitle),
+                                    style = ZashiTypography.textSm,
+                                    color = ZashiColors.NoTheme.welcomeText,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                             Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
-
-                            Text(
-                                stringResource(id = R.string.authentication_failed_welcome_title),
-                                style = ZashiTypography.textXl,
-                                fontWeight = FontWeight.SemiBold,
-                                color = ZashiColors.NoTheme.welcomeText,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
-
-                            Text(
-                                stringResource(id = R.string.authentication_failed_welcome_subtitle),
-                                style = ZashiTypography.textSm,
-                                color = ZashiColors.NoTheme.welcomeText,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
                         }
-                        Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
                     }
                 }
             }
@@ -206,13 +216,18 @@ fun WelcomeScreenView(
     }
 }
 
-private const val AUTH_FAILED_WIDGET_RELATIVE_LOCATION = 0.65f
-private const val LOGO_RELATIVE_LOCATION = 0.4f
-
 @PreviewScreens
 @Composable
 private fun WelcomeScreenPreview() {
     ZcashTheme {
         WelcomeAnimationAutostart(false, {})
+    }
+}
+
+@PreviewScreens
+@Composable
+private fun WelcomeScreenAuthPreview() {
+    ZcashTheme {
+        WelcomeAnimationAutostart(true, {})
     }
 }
