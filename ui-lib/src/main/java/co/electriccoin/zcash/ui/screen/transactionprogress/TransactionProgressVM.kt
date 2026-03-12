@@ -103,7 +103,9 @@ class TransactionProgressVM(
             },
             subtitle =
                 when (proposal) {
-                    is ShieldTransactionProposal -> stringRes(R.string.send_confirmation_sending_subtitle_transparent).withStyle()
+                    is ShieldTransactionProposal ->
+                        stringRes(R.string.send_confirmation_sending_subtitle_transparent).withStyle()
+
                     is SwapTransactionProposal ->
                         stringRes(R.string.send_confirmation_swapping_subtitle_transparent).withStyle()
 
