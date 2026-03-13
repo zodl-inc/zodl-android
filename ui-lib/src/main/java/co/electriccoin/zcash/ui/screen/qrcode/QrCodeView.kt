@@ -33,7 +33,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
 import cash.z.ecc.android.sdk.model.WalletAddress
@@ -51,7 +50,11 @@ import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.design.util.stringResByAddress
+import co.electriccoin.zcash.ui.design.util.styleAsAddress
 import kotlinx.coroutines.runBlocking
 
 @Composable
@@ -68,11 +71,13 @@ private fun QrCodeLoadingPreview() =
 @PreviewScreens
 private fun ZashiPreview() =
     ZcashTheme(forceDarkMode = false) {
+        val address = runBlocking { WalletAddressFixture.unified() }
         QrCodeView(
             state =
                 QrCodeState.Prepared(
                     qrCodeType = QrCodeType.ZASHI,
-                    walletAddress = runBlocking { WalletAddressFixture.unified() },
+                    walletAddress = address,
+                    formatterAddress = stringResByAddress(address.address, true),
                     onAddressCopy = {},
                     onQrCodeShare = {},
                     onBack = {},
@@ -85,11 +90,13 @@ private fun ZashiPreview() =
 @PreviewScreens
 private fun KeystonePreview() =
     ZcashTheme(forceDarkMode = false) {
+        val address = runBlocking { WalletAddressFixture.unified() }
         QrCodeView(
             state =
                 QrCodeState.Prepared(
                     qrCodeType = QrCodeType.KEYSTONE,
-                    walletAddress = runBlocking { WalletAddressFixture.unified() },
+                    walletAddress = address,
+                    formatterAddress = stringResByAddress(address.address, true),
                     onAddressCopy = {},
                     onQrCodeShare = {},
                     onBack = {},
@@ -107,6 +114,7 @@ internal fun QrCodeView(
         QrCodeState.Loading -> {
             CircularScreenProgressIndicator()
         }
+
         is QrCodeState.Prepared -> {
             BlankBgScaffold(
                 topBar = {
@@ -168,15 +176,17 @@ private fun QrCodeTopAppBar(
 private fun QrCodeBottomBar(
     state: QrCodeState.Prepared,
 ) {
+    val buttonModifier =
+        Modifier
+            .padding(horizontal = 24.dp)
+            .fillMaxWidth()
+
     OldZashiBottomBar {
         ZashiButton(
             text = stringResource(id = R.string.qr_code_share_btn),
             icon = R.drawable.ic_share,
             onClick = { state.onQrCodeShare(state.walletAddress.address) },
-            modifier =
-                Modifier
-                    .padding(horizontal = 24.dp)
-                    .fillMaxWidth()
+            modifier = buttonModifier
         )
 
         Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingTiny))
@@ -186,10 +196,7 @@ private fun QrCodeBottomBar(
             icon = R.drawable.ic_qr_copy,
             onClick = { state.onAddressCopy(state.walletAddress.address) },
             colors = ZashiButtonDefaults.secondaryColors(),
-            modifier =
-                Modifier
-                    .padding(horizontal = 24.dp)
-                    .fillMaxWidth()
+            modifier = buttonModifier
         )
     }
 }
@@ -208,24 +215,12 @@ private fun QrCodeContents(
     ) {
         Spacer(Modifier.height(ZcashTheme.dimens.spacingDefault))
 
-        when (state.walletAddress) {
-            // We use the same design for the Sapling address for the Testnet app variant
-            is WalletAddress.Unified, is WalletAddress.Sapling -> {
-                UnifiedQrCodePanel(state)
-            }
-            is WalletAddress.Transparent -> {
-                TransparentQrCodePanel(state)
-            }
-            else -> {
-                error("Unsupported address type: ${state.walletAddress}")
-            }
-        }
+        QrCodePanel(state)
     }
 }
 
 @Composable
-@Suppress("LongMethod")
-fun UnifiedQrCodePanel(
+private fun QrCodePanel(
     state: QrCodeState.Prepared,
     modifier: Modifier = Modifier
 ) {
@@ -246,34 +241,38 @@ fun UnifiedQrCodePanel(
 
         Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingUpLarge))
 
+        val addressType = state.walletAddress.toAddressType()
+
         ZashiBadge(
-            text = stringResource(id = R.string.qr_code_privacy_level_shielded),
-            leadingIconVector = painterResource(id = R.drawable.ic_solid_check),
-            colors =
-                ZashiBadgeColors(
-                    border = ZashiColors.Utility.Purple.utilityPurple200,
-                    text = ZashiColors.Utility.Purple.utilityPurple700,
-                    container = ZashiColors.Utility.Purple.utilityPurple50,
-                )
+            text = stringResource(id = addressType.badgeText),
+            leadingIconVector = painterResource(id = addressType.badgeIcon),
+            colors = addressType.badgeColors()
         )
 
         Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingDefault))
 
         Text(
             text =
-                when (state.walletAddress) {
-                    is WalletAddress.Unified ->
-                        when (state.qrCodeType) {
-                            QrCodeType.ZASHI -> stringResource(R.string.qr_code_wallet_address_shielded)
-                            QrCodeType.KEYSTONE -> stringResource(R.string.qr_code_wallet_address_shielded_keystone)
+                stringResource(
+                    id =
+                        when (state.walletAddress) {
+                            is WalletAddress.Unified ->
+                                when (state.qrCodeType) {
+                                    QrCodeType.ZASHI -> R.string.qr_code_wallet_address_shielded
+                                    QrCodeType.KEYSTONE -> R.string.qr_code_wallet_address_shielded_keystone
+                                }
+
+                            is WalletAddress.Sapling ->
+                                when (state.qrCodeType) {
+                                    QrCodeType.ZASHI -> R.string.qr_code_wallet_address_sapling
+                                    QrCodeType.KEYSTONE -> R.string.qr_code_wallet_address_sapling_keystone
+                                }
+
+                            is WalletAddress.Transparent -> R.string.qr_code_wallet_address_transparent
+
+                            else -> error("Unsupported address type: ${state.walletAddress}")
                         }
-                    is WalletAddress.Sapling ->
-                        when (state.qrCodeType) {
-                            QrCodeType.ZASHI -> stringResource(id = R.string.qr_code_wallet_address_sapling)
-                            QrCodeType.KEYSTONE -> stringResource(id = R.string.qr_code_wallet_address_sapling_keystone)
-                        }
-                    else -> error("Unsupported address type: ${state.walletAddress}")
-                },
+                ),
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.textXl,
             fontWeight = FontWeight.SemiBold,
@@ -284,7 +283,12 @@ fun UnifiedQrCodePanel(
 
         @OptIn(ExperimentalFoundationApi::class)
         Text(
-            text = state.walletAddress.address,
+            text =
+                if (expandedAddress) {
+                    StringResource.ByString(state.walletAddress.address).styleAsAddress()
+                } else {
+                    state.formatterAddress
+                }.getValue(),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textSm,
             textAlign = TextAlign.Center,
@@ -294,79 +298,6 @@ fun UnifiedQrCodePanel(
                 } else {
                     2
                 },
-            overflow = TextOverflow.Ellipsis,
-            modifier =
-                Modifier
-                    .animateContentSize()
-                    .combinedClickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() },
-                        onClick = { expandedAddress = !expandedAddress },
-                        onLongClick = { state.onAddressCopy(state.walletAddress.address) }
-                    )
-        )
-    }
-}
-
-@Composable
-@Suppress("LongMethod")
-fun TransparentQrCodePanel(
-    state: QrCodeState.Prepared,
-    modifier: Modifier = Modifier
-) {
-    var expandedAddress by rememberSaveable { mutableStateOf(false) }
-
-    Column(
-        modifier =
-            modifier
-                .padding(vertical = ZcashTheme.dimens.spacingDefault),
-        horizontalAlignment = CenterHorizontally
-    ) {
-        QrCode(
-            state = state,
-            modifier =
-                Modifier
-                    .padding(horizontal = 24.dp),
-        )
-
-        Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingUpLarge))
-
-        ZashiBadge(
-            text = stringResource(id = R.string.qr_code_privacy_level_transparent),
-            leadingIconVector = painterResource(id = R.drawable.ic_alert_circle),
-            colors =
-                ZashiBadgeColors(
-                    border = ZashiColors.Utility.WarningYellow.utilityOrange200,
-                    text = ZashiColors.Utility.WarningYellow.utilityOrange700,
-                    container = ZashiColors.Utility.WarningYellow.utilityOrange50,
-                )
-        )
-
-        Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingDefault))
-
-        Text(
-            text = stringResource(id = R.string.qr_code_wallet_address_transparent),
-            color = ZashiColors.Text.textPrimary,
-            style = ZashiTypography.textXl,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingDefault))
-
-        @OptIn(ExperimentalFoundationApi::class)
-        Text(
-            text = state.walletAddress.address,
-            color = ZashiColors.Text.textTertiary,
-            style = ZashiTypography.textSm,
-            textAlign = TextAlign.Center,
-            maxLines =
-                if (expandedAddress) {
-                    Int.MAX_VALUE
-                } else {
-                    2
-                },
-            overflow = TextOverflow.Ellipsis,
             modifier =
                 Modifier
                     .animateContentSize()
@@ -385,25 +316,74 @@ private fun ColumnScope.QrCode(
     state: QrCodeState.Prepared,
     modifier: Modifier = Modifier
 ) {
+    val addressType = state.walletAddress.toAddressType()
     ZashiQr(
         state =
             state.toQrState(
-                contentDescription =
-                    stringRes(
-                        when (state.walletAddress) {
-                            is WalletAddress.Unified -> R.string.qr_code_unified_content_description
-                            is WalletAddress.Sapling -> R.string.qr_code_sapling_content_description
-                            is WalletAddress.Transparent -> R.string.qr_code_transparent_content_description
-                            else -> error("Unsupported address type: ${state.walletAddress}")
-                        }
-                    ),
-                centerImageResId =
-                    if (state.walletAddress is WalletAddress.Transparent) {
-                        R.drawable.ic_zec_qr_transparent
-                    } else {
-                        R.drawable.ic_zec_qr_shielded
-                    }
+                contentDescription = stringRes(addressType.qrContentDescription),
+                centerImageResId = addressType.qrCenterImage
             ),
         modifier = modifier.align(CenterHorizontally),
     )
 }
+
+private enum class AddressType {
+    UNIFIED,
+    SAPLING,
+    TRANSPARENT;
+
+    val badgeText: Int
+        get() =
+            when (this) {
+                UNIFIED, SAPLING -> R.string.qr_code_privacy_level_shielded
+                TRANSPARENT -> R.string.qr_code_privacy_level_transparent
+            }
+
+    val badgeIcon: Int
+        get() =
+            when (this) {
+                UNIFIED, SAPLING -> R.drawable.ic_solid_check
+                TRANSPARENT -> R.drawable.ic_alert_circle
+            }
+
+    @Composable
+    fun badgeColors() =
+        when (this) {
+            UNIFIED, SAPLING ->
+                ZashiBadgeColors(
+                    border = ZashiColors.Utility.Purple.utilityPurple200,
+                    text = ZashiColors.Utility.Purple.utilityPurple700,
+                    container = ZashiColors.Utility.Purple.utilityPurple50,
+                )
+
+            TRANSPARENT ->
+                ZashiBadgeColors(
+                    border = ZashiColors.Utility.WarningYellow.utilityOrange200,
+                    text = ZashiColors.Utility.WarningYellow.utilityOrange700,
+                    container = ZashiColors.Utility.WarningYellow.utilityOrange50,
+                )
+        }
+
+    val qrContentDescription: Int
+        get() =
+            when (this) {
+                UNIFIED -> R.string.qr_code_unified_content_description
+                SAPLING -> R.string.qr_code_sapling_content_description
+                TRANSPARENT -> R.string.qr_code_transparent_content_description
+            }
+
+    val qrCenterImage: Int
+        get() =
+            when (this) {
+                UNIFIED, SAPLING -> R.drawable.ic_zec_qr_shielded
+                TRANSPARENT -> R.drawable.ic_zec_qr_transparent
+            }
+}
+
+private fun WalletAddress.toAddressType() =
+    when (this) {
+        is WalletAddress.Unified -> AddressType.UNIFIED
+        is WalletAddress.Sapling -> AddressType.SAPLING
+        is WalletAddress.Transparent -> AddressType.TRANSPARENT
+        else -> error("Unsupported address type: $this")
+    }

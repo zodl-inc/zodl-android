@@ -2,6 +2,7 @@
 
 package co.electriccoin.zcash.ui.design.util
 
+import android.R.attr.resource
 import android.content.Context
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
@@ -164,10 +165,10 @@ fun stringRes(yearMonth: YearMonth): StringResource =
 
 @Stable
 fun stringResByAddress(value: String, middle: Boolean = false): StyledStringResource =
-    StyledStringResource.ByStringResource(
-        StringResource.ByAddress(value, middle),
-        StyledStringStyle(font = StyledStringFont.ROBOTO_MONO)
-    )
+    StringResource.ByAddress(value, middle).styleAsAddress()
+
+fun StringResource.styleAsAddress(): StyledStringResource =
+    StyledStringResource.ByStringResource(this, StyledStringStyle(font = StyledStringFont.ROBOTO_MONO))
 
 @Stable
 fun stringResByTransactionId(value: String, abbreviated: Boolean): StringResource =
@@ -325,14 +326,11 @@ private fun StringResource.ByYearMonth.convertYearMonth(locale: Locale): String 
 
 private fun StringResource.ByAddress.convertAddress(): String =
     when {
-        middle && address.length > ADDRESS_MAX_LENGTH_ABBREVIATED -> {
-            val fromSide = ADDRESS_MAX_LENGTH_ABBREVIATED / 2
-            "${address.take(fromSide)}...${address.takeLast(fromSide)}"
-        }
+        middle && address.length > ADDRESS_MAX_LENGTH_ABBREVIATED ->
+            address.ellipsizeMiddle(ADDRESS_MAX_LENGTH_ABBREVIATED / 2)
 
-        address.length > ADDRESS_MAX_LENGTH_ABBREVIATED -> {
-            "${address.take(ADDRESS_MAX_LENGTH_ABBREVIATED)}..."
-        }
+        address.length > ADDRESS_MAX_LENGTH_ABBREVIATED ->
+            address.ellipsizeEnd(ADDRESS_MAX_LENGTH_ABBREVIATED)
 
         else -> {
             address
@@ -341,13 +339,16 @@ private fun StringResource.ByAddress.convertAddress(): String =
 
 private fun StringResource.ByTransactionId.convertTransactionId(): String =
     if (abbreviated) {
-        "${transactionId.take(TRANSACTION_MAX_PREFIX_SUFFIX_LENGHT)}...${
-            transactionId.takeLast(TRANSACTION_MAX_PREFIX_SUFFIX_LENGHT)
-        }"
+        transactionId.ellipsizeMiddle(TRANSACTION_MAX_PREFIX_SUFFIX_LENGHT)
     } else {
         transactionId
     }
 
+private fun String.ellipsizeMiddle(size: Int) = "${this.take(size)}$DOTS${this.takeLast(size)}"
+
+private fun String.ellipsizeEnd(size: Int) = "${this.take(size)}$DOTS"
+
+private const val DOTS = "..."
 private const val TRANSACTION_MAX_PREFIX_SUFFIX_LENGHT = 5
 
 private const val ADDRESS_MAX_LENGTH_ABBREVIATED = 20
