@@ -167,7 +167,7 @@ jobs:
         timeout-minutes: 1
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       - name: Download release artifact
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           name: Binaries
       - name: Unzip artifacts
@@ -214,7 +214,7 @@ jobs:
         run: |
           echo ${SIGNING_KEYSTORE_BASE_64} | base64 --decode > ${SIGNING_KEY_PATH}
       - name: Download release artifact
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           name: Binaries
       - name: Unzip artifacts
