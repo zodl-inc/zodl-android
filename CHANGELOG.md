@@ -6,9 +6,6 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
-### Changed:
-- Remove rebrand
-
 ## [3.2.0 (1600)] - 2025-03-24
 
 ### Added:
