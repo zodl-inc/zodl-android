@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.util
 
 import co.electriccoin.zcash.ui.BuildConfig
+import java.util.concurrent.atomic.AtomicInteger
 
 interface Loggable {
     operator fun invoke(message: String, excetion: Exception? = null)

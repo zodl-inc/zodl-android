@@ -8,8 +8,10 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.NavigationTargets
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.DistributionDimension
+import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
 import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
+import co.electriccoin.zcash.ui.common.usecase.GetWalletAccountsUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetWalletRestoringStateUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToExportPrivateDataUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToResetWalletUseCase
@@ -21,40 +23,52 @@ import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.advancedsettings.debug.DebugArgs
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerArgs
+import co.electriccoin.zcash.ui.screen.disconnect.DisconnectArgs
 import co.electriccoin.zcash.ui.screen.resync.confirm.ConfirmResyncArgs
 import co.electriccoin.zcash.ui.screen.tor.settings.TorSettingsArgs
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 @Suppress("TooManyFunctions")
 class AdvancedSettingsVM(
     getWalletRestoringState: GetWalletRestoringStateUseCase,
+    getWalletAccounts: GetWalletAccountsUseCase,
     private val navigationRouter: NavigationRouter,
     private val navigateToTaxExport: NavigateToTaxExportUseCase,
     private val navigateToWalletBackup: NavigateToWalletBackupUseCase,
     private val getVersionInfo: GetVersionInfoProvider,
     private val navigateToResetWallet: NavigateToResetWalletUseCase,
-    private val navigateToExportPrivateData: NavigateToExportPrivateDataUseCase
+    private val navigateToExportPrivateData: NavigateToExportPrivateDataUseCase,
 ) : ViewModel() {
     private val versionInfo by lazy { getVersionInfo() }
 
     val state: StateFlow<AdvancedSettingsState> =
-        getWalletRestoringState
-            .observe()
-            .map { walletState ->
-                createState(walletState)
-            }.stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
-                initialValue = createState(getWalletRestoringState.observe().value)
-            )
+        combine(
+            getWalletRestoringState.observe(),
+            getWalletAccounts.observe()
+        ) { walletState, accounts ->
+            createState(walletState, accounts)
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
+            initialValue =
+                createState(
+                    getWalletRestoringState.observe().value,
+                    getWalletAccounts.observe().value
+                )
+        )
 
-    private fun createState(walletRestoringState: WalletRestoringState) =
-        AdvancedSettingsState(
+    private fun createState(
+        walletRestoringState: WalletRestoringState,
+        accounts: List<WalletAccount>?
+    ): AdvancedSettingsState {
+        val hasKeystoneAccount = accounts?.any { it is co.electriccoin.zcash.ui.common.model.KeystoneAccount } == true
+
+        return AdvancedSettingsState(
             onBack = ::onBack,
             items =
                 listOfNotNull(
@@ -92,6 +106,11 @@ class AdvancedSettingsVM(
                         onClick = ::onResyncWalletClick
                     ),
                     ListItemState(
+                        title = stringRes(R.string.advanced_settings_disconnect_hw_wallet),
+                        bigIcon = imageRes(R.drawable.ic_advanced_settings_disconnect_hw),
+                        onClick = ::onDisconnectHwWalletClick
+                    ).takeIf { hasKeystoneAccount },
+                    ListItemState(
                         title = stringRes(R.string.advanced_settings_privacy),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_privacy),
                         onClick = ::onPrivacyClick
@@ -112,6 +131,7 @@ class AdvancedSettingsVM(
                     onClick = ::onResetWalletClick,
                 ),
         )
+    }
 
     private fun onPrivacyClick() = navigationRouter.forward(TorSettingsArgs)
 
@@ -133,6 +153,10 @@ class AdvancedSettingsVM(
     private fun onExportPrivateDataClick() = viewModelScope.launch { navigateToExportPrivateData() }
 
     private fun onResetWalletClick() = viewModelScope.launch { navigateToResetWallet() }
+
+    private fun onDisconnectHwWalletClick() {
+        navigationRouter.forward(DisconnectArgs)
+    }
 
     private fun onResyncWalletClick() = navigationRouter.forward(ConfirmResyncArgs)
 }

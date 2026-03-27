@@ -20,6 +20,7 @@ import co.electriccoin.zcash.ui.screen.contact.UpdateGenericABContactVM
 import co.electriccoin.zcash.ui.screen.crashreporting.viewmodel.CrashReportingViewModel
 import co.electriccoin.zcash.ui.screen.deletewallet.ResetZashiConfirmationVM
 import co.electriccoin.zcash.ui.screen.deletewallet.ResetZashiVM
+import co.electriccoin.zcash.ui.screen.disconnect.DisconnectVM
 import co.electriccoin.zcash.ui.screen.error.ErrorVM
 import co.electriccoin.zcash.ui.screen.error.SyncErrorVM
 import co.electriccoin.zcash.ui.screen.exchangerate.optin.ExchangeRateOptInVM
@@ -175,4 +176,5 @@ val viewModelModule =
         viewModelOf(::RestoreTorVM)
         viewModelOf(::ResetZashiVM)
         viewModelOf(::ResetZashiConfirmationVM)
+        viewModelOf(::DisconnectVM)
     }

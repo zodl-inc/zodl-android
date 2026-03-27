@@ -69,6 +69,8 @@ interface AccountDataSource {
     suspend fun importKeystoneAccount(ufvk: String, seedFingerprint: String, index: Long): Account
 
     suspend fun requestNextShieldedAddress()
+
+    suspend fun deleteAccount(account: WalletAccount)
 }
 
 @Suppress("TooManyFunctions")
@@ -192,6 +194,25 @@ class AccountDataSourceImpl(
             }.join()
     }
 
+    @Suppress("TooGenericExceptionCaught")
+    override suspend fun deleteAccount(account: WalletAccount) =
+        withContext(Dispatchers.IO) {
+            try {
+                val synchronizer = synchronizerProvider.getSynchronizer()
+                // Reset selected account to null if the deleted account was selected
+                if (account.isSelected) {
+                    selectedAccountUUIDProvider.clearUUID()
+                }
+                val deleted = synchronizer.deleteAccount(account.sdkAccount.accountUuid)
+                if (!deleted) {
+                    throw AccountDeletionException("Failed to delete account")
+                }
+            } catch (e: Exception) {
+                // Re-throw as specific exception
+                throw AccountDeletionException("Failed to delete account: ${e.message}", e)
+            }
+        }
+
     private fun observeIsSelected(sdkAccount: Account, allAccounts: List<Account>) =
         selectedAccountUUIDProvider
             .uuid
@@ -278,3 +299,8 @@ private data class AddressRequest(
 
 private const val RETRY_DELAY = 3L
 private const val KEYSTONE_KEYSOURCE = "keystone"
+
+class AccountDeletionException(
+    message: String,
+    cause: Throwable? = null
+) : Exception(message, cause)

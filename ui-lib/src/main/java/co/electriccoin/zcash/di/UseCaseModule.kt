@@ -17,6 +17,7 @@ import co.electriccoin.zcash.ui.common.usecase.CreateProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.DeleteABContactUseCase
 import co.electriccoin.zcash.ui.common.usecase.DeleteTransactionNoteUseCase
 import co.electriccoin.zcash.ui.common.usecase.DeriveKeystoneAccountUnifiedAddressUseCase
+import co.electriccoin.zcash.ui.common.usecase.DisconnectUseCase
 import co.electriccoin.zcash.ui.common.usecase.EnsureSwapAssetsLoadedUseCase
 import co.electriccoin.zcash.ui.common.usecase.ExportTaxUseCase
 import co.electriccoin.zcash.ui.common.usecase.FilterSwapAssetsUseCase
@@ -211,6 +212,7 @@ val useCaseModule =
         factoryOf(::GetTransactionMetadataUseCase)
         factoryOf(::FlipTransactionBookmarkUseCase)
         factoryOf(::DeleteTransactionNoteUseCase)
+        factoryOf(::DisconnectUseCase)
         factoryOf(::CreateOrUpdateTransactionNoteUseCase)
         factoryOf(::MarkTxMemoAsReadUseCase)
         factoryOf(::ExportTaxUseCase)

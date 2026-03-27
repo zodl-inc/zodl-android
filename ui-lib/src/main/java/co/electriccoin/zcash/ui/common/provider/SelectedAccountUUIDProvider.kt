@@ -17,6 +17,8 @@ interface SelectedAccountUUIDProvider {
     suspend fun getUUID(): AccountUuid?
 
     suspend fun setUUID(uuid: AccountUuid)
+
+    suspend fun clearUUID()
 }
 
 class SelectedAccountUUIDProviderImpl(
@@ -33,6 +35,10 @@ class SelectedAccountUUIDProviderImpl(
 
     override suspend fun setUUID(uuid: AccountUuid) {
         default.putValue(encryptedPreferenceProvider(), uuid)
+    }
+
+    override suspend fun clearUUID() {
+        default.putValue(encryptedPreferenceProvider(), null)
     }
 }
 
