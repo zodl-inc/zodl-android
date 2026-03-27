@@ -12,6 +12,20 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.2.1 (1601)] - 2025-03-27
+
+### Added:
+- We fixed the Show/Hide feature and added it to Swap from ZEC.
+- We added Wallet Status Widget prompt for Tor protection.
+
+### Changed:
+- We switched Swap from ZEC to use FLEX_INPUT to allow for undersent swaps to still be executed.
+- We updated and unified UX/UI elements and behaviour across both platforms.
+
+### Fixed:
+- We fixed several issues with handling ZIP321 payment requests.
+- Fixed app name to display as "Zodl" without suffix for FOSS builds.
+
 ## [3.2.0 (1600)] - 2025-03-24
 
 ### Added:

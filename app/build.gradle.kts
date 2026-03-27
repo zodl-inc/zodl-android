@@ -194,7 +194,7 @@ android {
                 resValue("string", "app_name", "$defaultAppName [RFT]")
             }
             "zcashmainnetFossRelease" -> {
-                resValue("string", "app_name", "$defaultAppName [RFM]")
+                resValue("string", "app_name", defaultAppName)
             }
             "zcashmainnetInternalRelease" -> {
                 resValue("string", "app_name", "$defaultAppName [RIM]")

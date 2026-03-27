@@ -12,6 +12,20 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.2.1 (1601)] - 2025-03-27
+
+### Añadido:
+- Corregimos la función de Mostrar/Ocultar y la hemos añadido a Swap desde ZEC.
+- Añadimos un aviso al widget de estado de la billetera para la protección Tor.
+
+### Cambiado:
+- Cambiamos Swap desde ZEC para que utilice FLEX_INPUT y así permitir que se ejecuten los intercambios incompletos.
+- Actualizamos y unificamos los elementos y el comportamiento de la interfaz de usuario en ambas plataformas.
+
+### Corregido:
+- Solucionamos varios problemas con el manejo de las solicitudes de pago ZIP321.
+- Se corrigió el nombre de la aplicación para que se muestre como "Zodl" sin sufijo para las compilaciones FOSS.
+
 ## [3.2.0 (1600)] - 2025-03-24
 
 ### Añadido:
