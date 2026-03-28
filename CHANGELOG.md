@@ -6,7 +6,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
-## [3.2.1 (1601)] - 2025-03-27
+## [3.2.1 (1602)] - 2025-03-28
 
 ### Added:
 - We fixed the Show/Hide feature and added it to Swap from ZEC.
@@ -18,7 +18,6 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Fixed:
 - We fixed several issues with handling ZIP321 payment requests.
-- Fixed app name to display as "Zodl" without suffix for FOSS builds.
 
 ## [3.2.0 (1600)] - 2025-03-24
 

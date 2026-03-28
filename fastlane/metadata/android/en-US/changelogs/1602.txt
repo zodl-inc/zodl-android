@@ -6,4 +6,3 @@ Changed:
 - We updated and unified UX/UI elements and behaviour across both platforms.
 Fixed:
 - We fixed several issues with handling ZIP321 payment requests.
-- Fixed app name to display as "Zodl" without suffix for FOSS builds.
