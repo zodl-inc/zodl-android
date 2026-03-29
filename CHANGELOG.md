@@ -6,6 +6,9 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Added:
+- Deep link support for the Receive screen (`zcash:///home/receive`), enabling external apps and webpages to open Zodl directly to the receive flow.
+
 ## [3.2.0 (1600)] - 2025-03-24
 
 ### Added:
