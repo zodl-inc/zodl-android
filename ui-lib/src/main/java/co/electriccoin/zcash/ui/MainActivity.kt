@@ -5,6 +5,7 @@ package co.electriccoin.zcash.ui
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
 import androidx.activity.enableEdgeToEdge
@@ -27,6 +28,7 @@ import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.compose.BindCompLocalProvider
 import co.electriccoin.zcash.ui.common.compose.DisableScreenTimeout
 import co.electriccoin.zcash.ui.common.extension.setContentCompat
+import co.electriccoin.zcash.ui.common.usecase.NavigateToReceiveUseCase
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationUIState
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.OldHomeViewModel
@@ -74,6 +76,8 @@ class MainActivity : FragmentActivity() {
 
     private val navigationRouter: NavigationRouter by inject()
 
+    private val navigateToReceive: NavigateToReceiveUseCase by inject()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Twig.debug { "Activity state: Create" }
@@ -86,16 +90,20 @@ class MainActivity : FragmentActivity() {
 
         monitorForBackgroundSync()
 
-        if (intent.data != null) {
-            navigationRouter.forward(ThirdPartyScan)
-        }
+        intent.data?.let { handleDeeplink(it) }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
 
-        if (intent.data != null) {
-            navigationRouter.forward(ThirdPartyScan)
+        intent.data?.let { handleDeeplink(it) }
+    }
+
+    @VisibleForTesting
+    internal fun handleDeeplink(uri: Uri) {
+        when (uri.path) {
+            DEEPLINK_PATH_RECEIVE -> lifecycleScope.launch { navigateToReceive() }
+            else -> navigationRouter.forward(ThirdPartyScan)
         }
     }
 
@@ -283,5 +291,7 @@ class MainActivity : FragmentActivity() {
     companion object {
         @VisibleForTesting
         internal val SPLASH_SCREEN_DELAY = 0.seconds
+
+        private const val DEEPLINK_PATH_RECEIVE = "/home/receive"
     }
 }
