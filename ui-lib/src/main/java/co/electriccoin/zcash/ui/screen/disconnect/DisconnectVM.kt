@@ -1,24 +1,21 @@
 package co.electriccoin.zcash.ui.screen.disconnect
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.mutableLce
+import co.electriccoin.zcash.ui.common.model.stateIn
+import co.electriccoin.zcash.ui.common.model.toConfirmationState
 import co.electriccoin.zcash.ui.common.usecase.DisconnectUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 
 class DisconnectVM(
     private val disconnect: DisconnectUseCase,
@@ -26,6 +23,7 @@ class DisconnectVM(
 ) : ViewModel() {
     private val keystoneAccountFlow = MutableStateFlow<KeystoneAccount?>(null)
     private val confirmationDialogFlow = MutableStateFlow<ZashiConfirmationState?>(null)
+    private val disconnectLce = mutableLce<Unit>()
 
     val state: StateFlow<DisconnectState?> =
         combine(
@@ -39,18 +37,22 @@ class DisconnectVM(
                     emit(null)
                 }
             },
-            confirmationDialogFlow
-        ) { keystoneAccount, confirmationDialog ->
-            keystoneAccount?.let { createState(it, confirmationDialog) }
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
-            initialValue = null
-        )
+            confirmationDialogFlow,
+            disconnectLce.state,
+        ) { keystoneAccount, confirmationDialog, lce ->
+            keystoneAccount?.let {
+                createState(
+                    keystoneAccount = it,
+                    confirmationDialog = lce.error?.toConfirmationState() ?: confirmationDialog,
+                    isLoading = lce.loading != null,
+                )
+            }
+        }.stateIn(this)
 
     private fun createState(
         keystoneAccount: KeystoneAccount,
-        confirmationDialog: ZashiConfirmationState?
+        confirmationDialog: ZashiConfirmationState?,
+        isLoading: Boolean,
     ): DisconnectState =
         DisconnectState(
             header = stringRes(R.string.disconnect_hardware_wallet_header),
@@ -70,6 +72,7 @@ class DisconnectVM(
                 ButtonState(
                     text = stringRes(R.string.disconnect_hardware_wallet_button),
                     style = ButtonStyle.DESTRUCTIVE1,
+                    isLoading = isLoading,
                     onClick = { onDisconnectClick(keystoneAccount) }
                 ),
             confirmationDialog = confirmationDialog,
@@ -104,7 +107,7 @@ class DisconnectVM(
 
     private fun onConfirmDisconnect(keystoneAccount: KeystoneAccount) {
         confirmationDialogFlow.value = null
-        viewModelScope.launch {
+        disconnectLce.execute {
             disconnect(keystoneAccount)
         }
     }

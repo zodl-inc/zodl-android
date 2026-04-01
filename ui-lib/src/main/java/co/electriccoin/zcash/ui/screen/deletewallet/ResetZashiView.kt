@@ -23,6 +23,7 @@ import co.electriccoin.zcash.ui.design.component.CheckboxTextStyles
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiCheckbox
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
@@ -52,6 +53,7 @@ fun ResetZashiView(state: ResetZashiState) {
                     .verticalScroll(rememberScrollState())
         )
     }
+    ZashiConfirmationBottomSheet(state = state.confirmationDialog)
 }
 
 @Composable
@@ -159,6 +161,7 @@ private fun ResetZashiViewPreview() =
                             text = stringRes("Confirm"),
                             onClick = {}
                         ),
+                    confirmationDialog = null,
                 )
         )
     }

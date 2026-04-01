@@ -11,8 +11,8 @@ import org.koin.androidx.compose.koinViewModel
 internal fun ResetZashiScreen() {
     val vm = koinViewModel<ResetZashiVM>()
     val state by vm.state.collectAsStateWithLifecycle()
-    BackHandler { state.onBack() }
-    ResetZashiView(state)
+    BackHandler { state?.onBack() }
+    state?.let { ResetZashiView(it) }
 }
 
 @Serializable

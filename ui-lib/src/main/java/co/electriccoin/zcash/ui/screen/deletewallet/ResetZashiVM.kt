@@ -1,60 +1,99 @@
 package co.electriccoin.zcash.ui.screen.deletewallet
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.mutableLce
+import co.electriccoin.zcash.ui.common.model.stateIn
+import co.electriccoin.zcash.ui.common.model.toConfirmationState
 import co.electriccoin.zcash.ui.design.component.ButtonState
+import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.CheckboxState
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.stringRes
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.WhileSubscribed
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 
 class ResetZashiVM(
-    private val navigationRouter: NavigationRouter
+    private val navigationRouter: NavigationRouter,
+    private val resetZashi: ResetZashiUseCase,
 ) : ViewModel() {
     private val isKeepFilesChecked = MutableStateFlow(true)
+    private val confirmationDialogFlow = MutableStateFlow<ZashiConfirmationState?>(null)
+    private val resetLce = mutableLce<Unit>()
 
-    val state: StateFlow<ResetZashiState> =
-        isKeepFilesChecked
-            .map {
-                createState(
-                    isKeepFilesChecked = it
-                )
-            }.stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
-                initialValue =
-                    createState(
-                        isKeepFilesChecked = isKeepFilesChecked.value,
-                    )
+    val state: StateFlow<ResetZashiState?> =
+        combine(
+            isKeepFilesChecked,
+            confirmationDialogFlow,
+            resetLce.state,
+        ) { isKeepFilesChecked, confirmationDialog, lce ->
+            createState(
+                isKeepFilesChecked = isKeepFilesChecked,
+                confirmationDialog = lce.error?.toConfirmationState() ?: confirmationDialog,
+                isLoading = lce.loading != null,
             )
+        }.stateIn(this)
 
-    private fun createState(isKeepFilesChecked: Boolean) =
-        ResetZashiState(
-            onBack = { navigationRouter.back() },
-            checkboxState =
-                CheckboxState(
-                    title = stringRes(R.string.delete_wallet_checkbox_title),
-                    subtitle = stringRes(R.string.delete_wallet_checkbox_warning_checked),
-                    isChecked = isKeepFilesChecked,
-                    onClick = ::onCheckboxToggled
-                ),
-            buttonState =
-                ButtonState(
-                    text = stringRes(R.string.delete_wallet_button),
-                    onClick = ::onConfirmClicked
-                ),
-        )
+    private fun createState(
+        isKeepFilesChecked: Boolean,
+        confirmationDialog: ZashiConfirmationState?,
+        isLoading: Boolean,
+    ) = ResetZashiState(
+        onBack = { navigationRouter.back() },
+        checkboxState =
+            CheckboxState(
+                title = stringRes(R.string.delete_wallet_checkbox_title),
+                subtitle = stringRes(R.string.delete_wallet_checkbox_warning_checked),
+                isChecked = isKeepFilesChecked,
+                onClick = ::onCheckboxToggled
+            ),
+        buttonState =
+            ButtonState(
+                text = stringRes(R.string.delete_wallet_button),
+                isLoading = isLoading,
+                onClick = ::onConfirmClicked
+            ),
+        confirmationDialog = confirmationDialog,
+    )
 
     private fun onCheckboxToggled() = isKeepFilesChecked.update { !it }
 
-    private fun onConfirmClicked() =
-        navigationRouter.forward(ResetZashiConfirmationArgs(isKeepFilesChecked.value))
+    private fun onConfirmClicked() {
+        confirmationDialogFlow.value = createConfirmationState()
+    }
+
+    private fun createConfirmationState(): ZashiConfirmationState =
+        ZashiConfirmationState(
+            icon = R.drawable.ic_reset_zashi_warning,
+            title = stringRes(R.string.delete_wallet_confirmation_title),
+            message = stringRes(R.string.delete_wallet_confirmation_subtitle),
+            primaryAction =
+                ButtonState(
+                    text = stringRes(R.string.delete_wallet_confirmation_button),
+                    style = ButtonStyle.DESTRUCTIVE2,
+                    onClick = ::onConfirmReset
+                ),
+            secondaryAction =
+                ButtonState(
+                    text = stringRes(R.string.delete_wallet_confirmation_cancel),
+                    style = ButtonStyle.PRIMARY,
+                    onClick = ::onDismissConfirmation
+                ),
+            onBack = ::onDismissConfirmation
+        )
+
+    private fun onDismissConfirmation() {
+        confirmationDialogFlow.value = null
+    }
+
+    private fun onConfirmReset() {
+        confirmationDialogFlow.value = null
+        resetLce.execute {
+            resetZashi(keepFiles = isKeepFilesChecked.value)
+        }
+    }
 }
