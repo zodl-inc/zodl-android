@@ -11,4 +11,29 @@
     <string name="advanced_settings_delete_button">Restablecer Zodl</string>
     <string name="advanced_settings_tax">Exportar archivo fiscal</string>
     <string name="advanced_settings_resync_wallet">Resincronizar Billetera</string>
+
+    <!-- Disconnect Hardware Wallet Screen -->
+    <string name="advanced_settings_disconnect_hw_wallet">Desconectar Hardware</string>
+    <string name="disconnect_hardware_wallet_biometric_message">Confirma para desconectar tu hardware wallet</string>
+    <string name="disconnect_hardware_wallet_header">DESCONECTAR</string>
+    <string name="disconnect_hardware_wallet_title">Desconectar Keystone</string>
+    <string name="disconnect_hardware_wallet_subtitle">Desconectar tu hardware wallet eliminará permanentemente algunos datos locales que no pueden recuperarse de la blockchain.</string>
+    <string name="disconnect_hardware_wallet_warning_title">Esto puede incluir:</string>
+    <string name="disconnect_hardware_wallet_warning_item_1">Envíos fallidos o vencidos</string>
+    <string name="disconnect_hardware_wallet_warning_item_2">Transacciones en el mempool que nunca se confirmaron</string>
+    <string name="disconnect_hardware_wallet_warning_item_3">Transacciones revertidas posteriormente en una reorganización de cadena</string>
+    <string name="disconnect_hardware_wallet_connected_title">Hardware Keystone</string>
+    <string name="disconnect_hardware_wallet_connected_status">Conectado actualmente</string>
+    <string name="disconnect_hardware_wallet_info">Si desconectas ahora, tu Keystone dejará de estar vinculado con tu billetera Zodl.</string>
+    <string name="disconnect_hardware_wallet_button">Desconectar</string>
+
+    <!-- Disconnect Hardware Wallet Confirmation Dialog -->
+    <string name="disconnect_hardware_wallet_confirmation_title">¿Estás seguro?</string>
+    <string name="disconnect_hardware_wallet_confirmation_message">Desconectar el hardware wallet no se puede deshacer.</string>
+    <string name="disconnect_hardware_wallet_confirmation_confirm">Desconectar</string>
+    <string name="disconnect_hardware_wallet_confirmation_cancel">Cancelar</string>
+
+    <!-- Disconnect Hardware Wallet Error Dialog -->
+    <string name="disconnect_hardware_wallet_error_title">Error al Desconectar</string>
+    <string name="disconnect_hardware_wallet_error_message">No se pudo finalizar la desconexión del hardware wallet.</string>
 </resources>

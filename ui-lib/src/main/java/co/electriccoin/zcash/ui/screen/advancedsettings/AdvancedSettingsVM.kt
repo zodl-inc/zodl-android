@@ -100,11 +100,11 @@ class AdvancedSettingsVM(
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_choose_server),
                         onClick = ::onChooseServerClick
                     ),
-                    ListItemState(
-                        title = stringRes(R.string.advanced_settings_resync_wallet),
-                        bigIcon = imageRes(R.drawable.ic_advanced_settings_resync),
-                        onClick = ::onResyncWalletClick
-                    ),
+                    // ListItemState(
+                    //     title = stringRes(R.string.advanced_settings_resync_wallet),
+                    //     bigIcon = imageRes(R.drawable.ic_advanced_settings_resync),
+                    //     onClick = ::onResyncWalletClick
+                    // ),
                     ListItemState(
                         title = stringRes(R.string.advanced_settings_disconnect_hw_wallet),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_disconnect_hw),

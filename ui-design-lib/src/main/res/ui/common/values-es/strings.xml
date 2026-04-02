@@ -12,6 +12,7 @@
     <string name="general_error_title">Algo salió mal</string>
     <string name="general_error_message">No pudimos cargar los activos. Verifica tu conexión e inténtalo de nuevo.</string>
     <string name="general_try_again">Intentar de nuevo</string>
+    <string name="general_contact_support">Contactar Soporte</string>
     <string name="general_show">Mostrar</string>
     <string name="general_hide">Ocultar</string>
     <string name="general_more">Más</string>

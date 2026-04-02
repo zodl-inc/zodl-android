@@ -12,6 +12,7 @@
     <string name="general_error_title">Something went wrong</string>
     <string name="general_error_message">We couldn\’t load the assets. Please check your connection and try again.</string>
     <string name="general_try_again">Try again</string>
+    <string name="general_contact_support">Contact Support</string>
     <string name="general_show">Show</string>
     <string name="general_hide">Hide</string>
     <string name="general_more">More</string>

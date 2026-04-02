@@ -1,11 +1,12 @@
 package co.electriccoin.zcash.ui.screen.deletewallet
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.mutableLce
 import co.electriccoin.zcash.ui.common.model.stateIn
-import co.electriccoin.zcash.ui.common.model.toConfirmationState
+import co.electriccoin.zcash.ui.common.usecase.CreateLceErrorConfirmationStateUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.CheckboxState
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.update
 class ResetZashiVM(
     private val navigationRouter: NavigationRouter,
     private val resetZashi: ResetZashiUseCase,
+    private val createLceErrorConfirmationState: CreateLceErrorConfirmationStateUseCase,
 ) : ViewModel() {
     private val isKeepFilesChecked = MutableStateFlow(true)
     private val confirmationDialogFlow = MutableStateFlow<ZashiConfirmationState?>(null)
@@ -32,7 +34,9 @@ class ResetZashiVM(
         ) { isKeepFilesChecked, confirmationDialog, lce ->
             createState(
                 isKeepFilesChecked = isKeepFilesChecked,
-                confirmationDialog = lce.error?.toConfirmationState() ?: confirmationDialog,
+                confirmationDialog =
+                    lce.error?.let { createLceErrorConfirmationState(it, viewModelScope) }
+                        ?: confirmationDialog,
                 isLoading = lce.loading,
             )
         }.stateIn(this)

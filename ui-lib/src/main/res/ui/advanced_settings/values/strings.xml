@@ -11,10 +11,10 @@
     <string name="advanced_settings_delete_button">Reset Zodl</string>
     <string name="advanced_settings_tax">Export Tax File</string>
     <string name="advanced_settings_resync_wallet">Resync Wallet</string>
-    <string name="advanced_settings_disconnect_hw_wallet">Disconnect Hardware</string>
-    <string name="disconnect_hardware_wallet_biometric_message">Confirm to disconnect your hardware wallet</string>
 
     <!-- Disconnect Hardware Wallet Confirmation Screen -->
+    <string name="advanced_settings_disconnect_hw_wallet">Disconnect Hardware</string>
+    <string name="disconnect_hardware_wallet_biometric_message">Confirm to disconnect your hardware wallet</string>
     <string name="disconnect_hardware_wallet_header">DISCONNECT</string>
     <string name="disconnect_hardware_wallet_title">Disconnect Keystone</string>
     <string name="disconnect_hardware_wallet_subtitle">Disconnecting your hardware wallet will permanently delete some local data that can\'t be recovered from the blockchain.</string>
@@ -32,4 +32,8 @@
     <string name="disconnect_hardware_wallet_confirmation_message">Disconnecting the hardware wallet cannot be undone.</string>
     <string name="disconnect_hardware_wallet_confirmation_confirm">Disconnect</string>
     <string name="disconnect_hardware_wallet_confirmation_cancel">Cancel</string>
+
+    <!-- Disconnect Hardware Wallet Error Dialog -->
+    <string name="disconnect_hardware_wallet_error_title">Disconnect Failed</string>
+    <string name="disconnect_hardware_wallet_error_message">Disconnecting the hardware wallet couldn\'t be finalized.</string>
 </resources>

@@ -1,12 +1,13 @@
 package co.electriccoin.zcash.ui.screen.disconnect
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.mutableLce
 import co.electriccoin.zcash.ui.common.model.stateIn
-import co.electriccoin.zcash.ui.common.model.toConfirmationState
+import co.electriccoin.zcash.ui.common.usecase.CreateLceErrorConfirmationStateUseCase
 import co.electriccoin.zcash.ui.common.usecase.DisconnectUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.flow
 class DisconnectVM(
     private val disconnect: DisconnectUseCase,
     private val navigationRouter: NavigationRouter,
+    private val createLceErrorConfirmationState: CreateLceErrorConfirmationStateUseCase,
 ) : ViewModel() {
     private val keystoneAccountFlow = MutableStateFlow<KeystoneAccount?>(null)
     private val confirmationDialogFlow = MutableStateFlow<ZashiConfirmationState?>(null)
@@ -44,7 +46,15 @@ class DisconnectVM(
             keystoneAccount?.let {
                 createState(
                     keystoneAccount = it,
-                    confirmationDialog = lce.error?.toConfirmationState() ?: confirmationDialog,
+                    confirmationDialog =
+                        lce.error?.let {
+                            createLceErrorConfirmationState(
+                                error = it,
+                                scope = viewModelScope,
+                                title = stringRes(R.string.disconnect_hardware_wallet_error_title),
+                                message = stringRes(R.string.disconnect_hardware_wallet_error_message),
+                            )
+                        } ?: confirmationDialog,
                     isLoading = lce.loading,
                 )
             }
@@ -109,7 +119,9 @@ class DisconnectVM(
     private fun onConfirmDisconnect(keystoneAccount: KeystoneAccount) {
         confirmationDialogFlow.value = null
         disconnectLce.execute {
-            disconnect(keystoneAccount)
+            delay(5000)
+            throw RuntimeException("Bad")
+            // disconnect(keystoneAccount)
         }
     }
 
