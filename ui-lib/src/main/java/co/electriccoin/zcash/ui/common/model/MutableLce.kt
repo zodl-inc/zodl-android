@@ -40,24 +40,24 @@ class MutableLce<T>(
 
     fun execute(block: suspend () -> T) {
         job?.cancel()
-        _state.update { it.copy(loading = LceLoading, error = null) }
+        _state.update { it.copy(loading = true, content = it.content.takeUnless { c -> c is LceContent.Error }) }
         job =
             scope.launch {
                 try {
                     val result = block()
-                    _state.value = Lce(content = result)
+                    _state.value = Lce(loading = false, content = LceContent.Success(result))
                 } catch (e: CancellationException) {
-                    _state.update { it.copy(loading = null) }
+                    _state.update { it.copy(loading = false) }
                     throw e
                 } catch (e: Throwable) {
                     _state.update {
                         it.copy(
-                            loading = null,
-                            error =
-                                LceError(
+                            loading = false,
+                            content =
+                                LceContent.Error(
                                     cause = e,
                                     restart = { execute(block) },
-                                    dismiss = { _state.update { it.copy(error = null) } }
+                                    dismiss = { _state.update { it.copy(content = null) } }
                                 )
                         )
                     }

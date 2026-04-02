@@ -3,7 +3,6 @@ package co.electriccoin.zcash.ui.design.component
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -23,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -139,13 +139,9 @@ fun ZashiButton(
             @Composable
             override fun Loading() {
                 if (state.isLoading) {
+                    val isLightContent = LocalContentColor.current.luminance() > 0.5f
                     LottieProgress(
-                        loadingRes =
-                            if (isSystemInDarkTheme()) {
-                                R.raw.lottie_loading
-                            } else {
-                                R.raw.lottie_loading_white
-                            }
+                        loadingRes = if (isLightContent) R.raw.lottie_loading_white else R.raw.lottie_loading
                     )
                 }
             }
@@ -403,6 +399,7 @@ private fun DestroyPreview() =
                 modifier = Modifier.fillMaxWidth(),
                 text = "Primary",
                 colors = ZashiButtonDefaults.destructive1Colors(),
+                isLoading = true,
                 onClick = {},
             )
         }

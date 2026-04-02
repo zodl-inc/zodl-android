@@ -6,7 +6,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.stringRes
 
-fun LceError.toConfirmationState(): ZashiConfirmationState =
+fun LceContent.Error.toConfirmationState(): ZashiConfirmationState =
     ZashiConfirmationState(
         icon = R.drawable.ic_reset_zashi_warning,
         title = stringRes(co.electriccoin.zcash.ui.design.R.string.general_error_title),

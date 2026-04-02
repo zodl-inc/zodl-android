@@ -1,15 +1,21 @@
 package co.electriccoin.zcash.ui.common.model
 
-data object LceLoading
+sealed interface LceContent<out T> {
+    data class Success<out T>(
+        val value: T
+    ) : LceContent<T>
 
-data class LceError(
-    val cause: Throwable,
-    val restart: () -> Unit,
-    val dismiss: () -> Unit,
-)
+    data class Error(
+        val cause: Throwable,
+        val restart: () -> Unit,
+        val dismiss: () -> Unit,
+    ) : LceContent<Nothing>
+}
 
 data class Lce<out T>(
-    val content: T? = null,
-    val loading: LceLoading? = null,
-    val error: LceError? = null,
-)
+    val loading: Boolean = false,
+    val content: LceContent<T>? = null,
+) {
+    val success: T? = (content as? LceContent.Success<T>)?.value
+    val error: LceContent.Error? = content as? LceContent.Error
+}

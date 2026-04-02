@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.stringRes
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -44,7 +45,7 @@ class DisconnectVM(
                 createState(
                     keystoneAccount = it,
                     confirmationDialog = lce.error?.toConfirmationState() ?: confirmationDialog,
-                    isLoading = lce.loading != null,
+                    isLoading = lce.loading,
                 )
             }
         }.stateIn(this)
@@ -108,7 +109,9 @@ class DisconnectVM(
     private fun onConfirmDisconnect(keystoneAccount: KeystoneAccount) {
         confirmationDialogFlow.value = null
         disconnectLce.execute {
-            disconnect(keystoneAccount)
+            delay(5000)
+            throw RuntimeException("Error disconnecting")
+            // disconnect(keystoneAccount)
         }
     }
 

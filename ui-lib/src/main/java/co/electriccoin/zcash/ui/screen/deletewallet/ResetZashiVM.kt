@@ -11,7 +11,6 @@ import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.CheckboxState
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.stringRes
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -34,7 +33,7 @@ class ResetZashiVM(
             createState(
                 isKeepFilesChecked = isKeepFilesChecked,
                 confirmationDialog = lce.error?.toConfirmationState() ?: confirmationDialog,
-                isLoading = lce.loading != null,
+                isLoading = lce.loading,
             )
         }.stateIn(this)
 
