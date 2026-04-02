@@ -13,7 +13,7 @@ class ConfirmResyncUseCase(
 ) {
     suspend operator fun invoke(blockHeight: BlockHeight) {
         val synchronizer = synchronizerProvider.getSynchronizer()
-        synchronizer.rescanFromHeight(blockHeight)
+        // synchronizer.rescanFromHeight(blockHeight)
         synchronizerProvider.resetSynchronizer()
         isKeepScreenOnDuringRestoreProvider.clear()
         navigationRouter.replaceAll(WrapRestoreSuccessArgs)

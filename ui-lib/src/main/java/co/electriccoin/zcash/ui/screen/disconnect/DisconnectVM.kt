@@ -109,9 +109,7 @@ class DisconnectVM(
     private fun onConfirmDisconnect(keystoneAccount: KeystoneAccount) {
         confirmationDialogFlow.value = null
         disconnectLce.execute {
-            delay(5000)
-            throw RuntimeException("Error disconnecting")
-            // disconnect(keystoneAccount)
+            disconnect(keystoneAccount)
         }
     }
 
