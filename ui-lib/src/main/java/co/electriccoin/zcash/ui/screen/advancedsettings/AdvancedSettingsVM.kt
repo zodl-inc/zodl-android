@@ -158,5 +158,5 @@ class AdvancedSettingsVM(
         navigationRouter.forward(DisconnectArgs)
     }
 
-    private fun onResyncWalletClick() = navigationRouter.forward(ConfirmResyncArgs)
+    // private fun onResyncWalletClick() = navigationRouter.forward(ConfirmResyncArgs)
 }

@@ -38,6 +38,7 @@ class MutableLce<T>(
 
     private var job: Job? = null
 
+    @Suppress("TooGenericExceptionCaught")
     fun execute(block: suspend () -> T) {
         job?.cancel()
         _state.update { it.copy(loading = true, content = it.content.takeUnless { c -> c is LceContent.Error }) }

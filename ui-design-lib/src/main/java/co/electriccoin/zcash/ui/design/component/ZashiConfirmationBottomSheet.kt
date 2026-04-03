@@ -24,15 +24,6 @@ import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.stringRes
 
-data class ZashiConfirmationState(
-    val icon: Int,
-    val title: StringResource,
-    val message: StringResource,
-    val primaryAction: ButtonState,
-    val secondaryAction: ButtonState,
-    override val onBack: () -> Unit
-) : ModalBottomSheetState
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ZashiConfirmationBottomSheet(state: ZashiConfirmationState?) {
@@ -44,6 +35,15 @@ fun ZashiConfirmationBottomSheet(state: ZashiConfirmationState?) {
         )
     }
 }
+
+data class ZashiConfirmationState(
+    val icon: Int,
+    val title: StringResource,
+    val message: StringResource,
+    val primaryAction: ButtonState,
+    val secondaryAction: ButtonState,
+    override val onBack: () -> Unit
+) : ModalBottomSheetState
 
 @Composable
 private fun ConfirmationContent(

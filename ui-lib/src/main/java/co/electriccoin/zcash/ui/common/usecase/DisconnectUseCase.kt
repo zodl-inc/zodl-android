@@ -9,7 +9,7 @@ import co.electriccoin.zcash.ui.common.repository.BiometricRequest
 import co.electriccoin.zcash.ui.common.repository.BiometricsCancelledException
 import co.electriccoin.zcash.ui.common.repository.BiometricsFailureException
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.util.loggable
+import co.electriccoin.zcash.ui.util.loggableNot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -18,7 +18,7 @@ class DisconnectUseCase(
     private val biometricRepository: BiometricRepository,
     private val navigationRouter: NavigationRouter,
 ) {
-    private val logger = loggable("DisconnectUseCase")
+    private val logger = loggableNot("DisconnectUseCase")
 
     @Suppress("TooGenericExceptionCaught")
     suspend operator fun invoke(keystoneAccount: KeystoneAccount) =

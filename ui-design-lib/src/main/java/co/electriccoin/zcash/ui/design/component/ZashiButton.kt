@@ -139,7 +139,7 @@ fun ZashiButton(
             @Composable
             override fun Loading() {
                 if (state.isLoading) {
-                    val isLightContent = LocalContentColor.current.luminance() > 0.5f
+                    val isLightContent = LocalContentColor.current.luminance() > ZashiButtonDefaults.IS_LIGHT_THRESHOLD
                     LottieProgress(
                         loadingRes = if (isLightContent) R.raw.lottie_loading_white else R.raw.lottie_loading
                     )
@@ -214,6 +214,8 @@ object ZashiButtonDefaults {
 
     val shape: Shape
         get() = RoundedCornerShape(12.dp)
+
+    const val IS_LIGHT_THRESHOLD = 0.5f
 
     @Composable
     fun primaryColors(
