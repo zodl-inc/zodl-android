@@ -28,7 +28,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -151,7 +150,7 @@ private fun Switch(state: CheckboxState) {
             Spacer(22.dp)
             val switchColor by animateColorAsState(
                 if (state.isChecked) {
-                    Color(0xFF34C759)
+                    ZashiColors.Utility.SuccessGreen.utilitySuccess600
                 } else {
                     ZashiColors.Utility.Gray.utilityGray200
                 }
