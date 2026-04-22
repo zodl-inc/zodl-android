@@ -141,7 +141,7 @@ class RequestSwapQuoteUseCase(
         val send =
             ZecSend(
                 destination = getWalletAddress(quote.depositAddress.address),
-                amount = Zatoshi(quote.amountIn.toLong()),
+                amount = quote.amountIn.toExactQuoteZatoshi(),
                 memo = Memo(""),
                 proposal = null
             )
@@ -173,3 +173,15 @@ class RequestSwapQuoteUseCase(
             is AddressType.Invalid -> throw IllegalStateException(result.reason)
         }
 }
+
+internal fun BigDecimal.toExactQuoteZatoshi(): Zatoshi =
+    try {
+        Zatoshi(longValueExact())
+    } catch (e: ArithmeticException) {
+        throw InvalidSwapQuoteAmountException(this, e)
+    }
+
+internal class InvalidSwapQuoteAmountException(
+    val amount: BigDecimal,
+    cause: ArithmeticException
+) : IllegalArgumentException("Swap quote amount must be an exact zatoshi value: $amount", cause)
