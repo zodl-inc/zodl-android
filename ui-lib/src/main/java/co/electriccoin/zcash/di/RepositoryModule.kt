@@ -1,5 +1,7 @@
 package co.electriccoin.zcash.di
 
+import cash.z.ecc.android.sdk.internal.TypesafeVotingBackend
+import cash.z.ecc.android.sdk.internal.TypesafeVotingBackendImpl
 import co.electriccoin.zcash.ui.common.repository.ApplicationStateRepository
 import co.electriccoin.zcash.ui.common.repository.ApplicationStateRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.BiometricRepository
@@ -22,6 +24,8 @@ import co.electriccoin.zcash.ui.common.repository.TransactionFilterRepository
 import co.electriccoin.zcash.ui.common.repository.TransactionFilterRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.TransactionRepository
 import co.electriccoin.zcash.ui.common.repository.TransactionRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.VotingSessionRepository
+import co.electriccoin.zcash.ui.common.repository.VotingSessionRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.WalletRepository
 import co.electriccoin.zcash.ui.common.repository.WalletRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.WalletSnapshotRepository
@@ -48,4 +52,6 @@ val repositoryModule =
         singleOf(::ApplicationStateRepositoryImpl) bind ApplicationStateRepository::class
         singleOf(::SwapRepositoryImpl) bind SwapRepository::class
         singleOf(::EphemeralAddressRepositoryImpl) bind EphemeralAddressRepository::class
+        singleOf(::VotingSessionRepositoryImpl) bind VotingSessionRepository::class
+        singleOf(::TypesafeVotingBackendImpl) bind TypesafeVotingBackend::class
     }

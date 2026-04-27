@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network security config for zcashmainnetInternalDebug only.
+  Allows cleartext HTTP to the Android emulator host (10.0.2.2) so the app
+  can reach the local shielded-Vote-workspace chain on port 1317.
+  NOT included in release builds.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

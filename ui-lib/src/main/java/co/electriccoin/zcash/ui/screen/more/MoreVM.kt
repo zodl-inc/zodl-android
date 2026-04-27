@@ -6,6 +6,7 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.NavigationTargets.WHATS_NEW
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
+import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteStorageProvider
 import co.electriccoin.zcash.ui.common.usecase.NavigateToAddressBookUseCase
 import co.electriccoin.zcash.ui.design.component.listitem.ListItemState
 import co.electriccoin.zcash.ui.design.util.imageRes
@@ -16,6 +17,8 @@ import co.electriccoin.zcash.ui.screen.exchangerate.settings.ExchangeRateSetting
 import co.electriccoin.zcash.ui.screen.feedback.FeedbackArgs
 import co.electriccoin.zcash.ui.screen.hotfix.enhancement.EnhancementHotfixArgs
 import co.electriccoin.zcash.ui.screen.hotfix.ephemeral.EphemeralHotfixArgs
+import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
+import co.electriccoin.zcash.ui.screen.voting.howtovote.VoteHowToVoteArgs
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +28,7 @@ class MoreVM(
     private val getVersionInfo: GetVersionInfoProvider,
     private val navigationRouter: NavigationRouter,
     private val navigateToAddressBook: NavigateToAddressBookUseCase,
+    private val hasSeenHowToVote: HasSeenHowToVoteStorageProvider,
 ) : ViewModel() {
     val state: StateFlow<MoreState> = MutableStateFlow(createState())
 
@@ -43,6 +47,11 @@ class MoreVM(
                         title = stringRes(R.string.advanced_settings_currency_conversion),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_currency_conversion),
                         onClick = ::onCurrencyConversionClick
+                    ),
+                    ListItemState(
+                        title = stringRes(R.string.settings_voting),
+                        bigIcon = imageRes(R.drawable.ic_settings_voting),
+                        onClick = ::onVotingClick
                     ),
                     ListItemState(
                         title = stringRes(R.string.settings_advanced_settings),
@@ -76,6 +85,16 @@ class MoreVM(
     private fun onVersionDoubleClick() = navigationRouter.forward(EnhancementHotfixArgs)
 
     private fun onBack() = navigationRouter.back()
+
+    private fun onVotingClick() {
+        viewModelScope.launch {
+            if (hasSeenHowToVote.get()) {
+                navigationRouter.forward(VoteCoinholderPollingArgs)
+            } else {
+                navigationRouter.forward(VoteHowToVoteArgs)
+            }
+        }
+    }
 
     private fun onAdvancedSettingsClick() = navigationRouter.forward(AdvancedSettingsArgs)
 

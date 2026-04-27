@@ -88,9 +88,31 @@ import co.electriccoin.zcash.ui.screen.transactionhistory.ActivityHistoryVM
 import co.electriccoin.zcash.ui.screen.transactionhistory.widget.ActivityWidgetVM
 import co.electriccoin.zcash.ui.screen.transactionnote.viewmodel.TransactionNoteViewModel
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressVM
+import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingVM
+import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionArgs
+import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionVM
+import co.electriccoin.zcash.ui.screen.voting.delegationsigning.VoteDelegationSigningArgs
+import co.electriccoin.zcash.ui.screen.voting.delegationsigning.VoteDelegationSigningVM
+import co.electriccoin.zcash.ui.screen.voting.howtovote.VoteHowToVoteVM
+import co.electriccoin.zcash.ui.screen.voting.ineligible.VoteIneligibleArgs
+import co.electriccoin.zcash.ui.screen.voting.ineligible.VoteIneligibleVM
+import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailArgs
+import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailVM
+import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
+import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListVM
+import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsArgs
+import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsVM
+import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingArgs
+import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingVM
+import co.electriccoin.zcash.ui.screen.voting.votingerror.VoteConfigErrorArgs
+import co.electriccoin.zcash.ui.screen.voting.votingerror.VoteConfigErrorVM
+import co.electriccoin.zcash.ui.screen.voting.votingerror.VoteErrorArgs
+import co.electriccoin.zcash.ui.screen.voting.votingerror.VoteErrorVM
+import co.electriccoin.zcash.ui.screen.voting.walletsyncing.VoteWalletSyncingVM
 import co.electriccoin.zcash.ui.screen.walletbackup.WalletBackupViewModel
 import co.electriccoin.zcash.ui.screen.warning.viewmodel.StorageCheckViewModel
 import co.electriccoin.zcash.ui.screen.whatsnew.viewmodel.WhatsNewViewModel
+import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
@@ -181,6 +203,18 @@ val viewModelModule =
         viewModelOf(::RestoreTorVM)
         viewModelOf(::ResetZashiVM)
         viewModelOf(::DisconnectVM)
+        viewModelOf(::VoteCoinholderPollingVM)
+        viewModelOf(::VoteProposalListVM)
+        viewModelOf(::VoteProposalDetailVM)
+        viewModelOf(::VoteIneligibleVM)
+        viewModelOf(::VoteHowToVoteVM)
+        viewModelOf(::VoteWalletSyncingVM)
+        viewModelOf(::VoteDelegationSigningVM)
+        viewModelOf(::VoteConfirmSubmissionVM)
+        viewModelOf(::VoteTallyingVM)
+        viewModelOf(::VoteResultsVM)
+        viewModelOf(::VoteErrorVM)
+        viewModelOf(::VoteConfigErrorVM)
         viewModelOf(::KeystoneConnectVM)
         viewModelOf(::KeystoneNewOrActiveVM)
         viewModelOf(::KeystoneDateVM)

@@ -185,6 +185,30 @@ import co.electriccoin.zcash.ui.screen.transactionnote.AndroidTransactionNote
 import co.electriccoin.zcash.ui.screen.transactionnote.TransactionNote
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressArgs
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressScreen
+import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
+import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingScreen
+import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionArgs
+import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionScreen
+import co.electriccoin.zcash.ui.screen.voting.delegationsigning.VoteDelegationSigningArgs
+import co.electriccoin.zcash.ui.screen.voting.delegationsigning.VoteDelegationSigningScreen
+import co.electriccoin.zcash.ui.screen.voting.howtovote.VoteHowToVoteArgs
+import co.electriccoin.zcash.ui.screen.voting.howtovote.VoteHowToVoteScreen
+import co.electriccoin.zcash.ui.screen.voting.ineligible.VoteIneligibleArgs
+import co.electriccoin.zcash.ui.screen.voting.ineligible.VoteIneligibleScreen
+import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailArgs
+import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailScreen
+import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
+import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListScreen
+import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsArgs
+import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsScreen
+import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingArgs
+import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingScreen
+import co.electriccoin.zcash.ui.screen.voting.votingerror.VoteConfigErrorArgs
+import co.electriccoin.zcash.ui.screen.voting.votingerror.VoteConfigErrorScreen
+import co.electriccoin.zcash.ui.screen.voting.votingerror.VoteErrorArgs
+import co.electriccoin.zcash.ui.screen.voting.votingerror.VoteErrorScreen
+import co.electriccoin.zcash.ui.screen.voting.walletsyncing.VoteWalletSyncingArgs
+import co.electriccoin.zcash.ui.screen.voting.walletsyncing.VoteWalletSyncingScreen
 import co.electriccoin.zcash.ui.screen.walletbackup.AndroidWalletBackup
 import co.electriccoin.zcash.ui.screen.walletbackup.WalletBackup
 import co.electriccoin.zcash.ui.screen.warning.WrapNotEnoughSpace
@@ -315,5 +339,35 @@ fun NavGraphBuilder.walletNavGraph(
         composable<ResyncEstimationArgs> { ResyncEstimationScreen(it.toRoute()) }
         composable<ResyncHeightArgs> { ResyncHeightScreen() }
         composable<DisconnectArgs> { DisconnectScreen() }
+        composable<VoteCoinholderPollingArgs> { VoteCoinholderPollingScreen() }
+        composable<VoteProposalListArgs> { backStackEntry ->
+            VoteProposalListScreen(backStackEntry.toRoute())
+        }
+        composable<VoteProposalDetailArgs> { backStackEntry ->
+            VoteProposalDetailScreen(backStackEntry.toRoute())
+        }
+        composable<VoteIneligibleArgs> { backStackEntry ->
+            VoteIneligibleScreen(backStackEntry.toRoute())
+        }
+        composable<VoteHowToVoteArgs> { VoteHowToVoteScreen() }
+        composable<VoteWalletSyncingArgs> { VoteWalletSyncingScreen() }
+        composable<VoteDelegationSigningArgs> { backStackEntry ->
+            VoteDelegationSigningScreen(backStackEntry.toRoute())
+        }
+        composable<VoteConfirmSubmissionArgs> { backStackEntry ->
+            VoteConfirmSubmissionScreen(backStackEntry.toRoute())
+        }
+        composable<VoteTallyingArgs> { backStackEntry ->
+            VoteTallyingScreen(backStackEntry.toRoute())
+        }
+        composable<VoteResultsArgs> { backStackEntry ->
+            VoteResultsScreen(backStackEntry.toRoute())
+        }
+        composable<VoteErrorArgs> { backStackEntry ->
+            VoteErrorScreen(backStackEntry.toRoute())
+        }
+        composable<VoteConfigErrorArgs> { backStackEntry ->
+            VoteConfigErrorScreen(backStackEntry.toRoute())
+        }
     }
 }

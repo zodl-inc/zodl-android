@@ -304,6 +304,13 @@ internal class MockSynchronizer : CloseableSynchronizer {
         error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
     }
 
+    override val fullyScannedHeight: StateFlow<BlockHeight?>
+        get() = error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
+
+    override suspend fun getTreeState(height: BlockHeight): ByteArray {
+        error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
+    }
+
     companion object {
         fun new() = MockSynchronizer()
     }

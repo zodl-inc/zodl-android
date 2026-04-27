@@ -12,6 +12,7 @@ import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.serialization.json.Json
 
 interface HttpClientProvider {
     suspend fun create(): HttpClient
@@ -43,7 +44,9 @@ class HttpClientProviderImpl(
         }
 
     private fun <T : HttpClientEngineConfig> HttpClientConfig<T>.configureHttpClient() {
-        install(ContentNegotiation) { json() }
+        install(ContentNegotiation) {
+            json(Json { ignoreUnknownKeys = true })
+        }
         install(Logging) {
             logger = KtorLogger()
             level = LogLevel.ALL
