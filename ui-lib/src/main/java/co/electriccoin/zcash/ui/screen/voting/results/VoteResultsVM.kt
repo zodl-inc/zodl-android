@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.voting.results
 
 import androidx.lifecycle.ViewModel
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.groupLce
 import co.electriccoin.zcash.ui.common.model.mutableLce
@@ -56,8 +57,8 @@ class VoteResultsVM(
             }.withLce(groupLce(dataLce)) {
                 errorStateMapper.mapToState(
                     error = it,
-                    title = stringRes("Results unavailable"),
-                    message = stringRes("Could not load voting results. Please try again."),
+                    title = stringRes(R.string.vote_error_results_unavailable_title),
+                    message = stringRes(R.string.vote_error_results_unavailable_message),
                     primaryStyle = ButtonStyle.PRIMARY,
                 )
             }.stateIn(this)
@@ -107,7 +108,7 @@ class VoteResultsVM(
                         val isWinner = hasVotes && weight == maxWeight
                         VoteOptionResultState(
                             label = stringRes(voteOption.label),
-                            amountZEC = stringRes("%.2f ZEC".format(weight / 100_000_000.0)),
+                            amountZEC = stringRes(R.string.vote_results_amount_zec, weight / 100_000_000.0),
                             fraction = fraction,
                             color = color,
                             isWinner = isWinner,
@@ -129,7 +130,7 @@ class VoteResultsVM(
                     title = stringRes(proposal.title),
                     description = stringRes(proposal.description),
                     options = optionResults,
-                    totalZEC = stringRes("Total: %.2f ZEC".format(totalZatoshi / 100_000_000.0)),
+                    totalZEC = stringRes(R.string.vote_results_total_zec, totalZatoshi / 100_000_000.0),
                     winnerLabel = winnerOption?.let { stringRes(it.label) },
                     winnerColor = optionResults.firstOrNull { it.isWinner }?.color ?: VoteOptionColor.OTHER,
                 )
@@ -143,7 +144,7 @@ class VoteResultsVM(
             isLoadingResults = tally == null,
             doneButton =
                 ButtonState(
-                    text = stringRes("Done"),
+                    text = stringRes(R.string.vote_done),
                     style = ButtonStyle.PRIMARY,
                     onClick = ::onDone,
                 ),

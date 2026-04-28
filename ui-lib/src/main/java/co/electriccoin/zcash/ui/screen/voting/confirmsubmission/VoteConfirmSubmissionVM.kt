@@ -1,11 +1,14 @@
 package co.electriccoin.zcash.ui.screen.voting.confirmsubmission
 
+import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.sdk.internal.TypesafeVotingBackend
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.ZcashNetwork
+import cash.z.ecc.sdk.type.fromResources
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.VotingStorageDataSource
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
@@ -25,6 +28,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
+import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIconsState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -35,6 +39,7 @@ import java.security.SecureRandom
 
 class VoteConfirmSubmissionVM(
     private val args: VoteConfirmSubmissionArgs,
+    private val application: Application,
     private val getAllRounds: GetAllVotingRoundsUseCase,
     private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
     private val navigationRouter: NavigationRouter,
@@ -76,8 +81,8 @@ class VoteConfirmSubmissionVM(
         }.withLce(groupLce(dataLce)) {
             errorStateMapper.mapToState(
                 error = it,
-                title = stringRes("Confirmation unavailable"),
-                message = stringRes("Could not load poll details. Please try again."),
+                title = stringRes(R.string.vote_error_confirmation_unavailable_title),
+                message = stringRes(R.string.vote_error_confirmation_unavailable_message),
                 primaryStyle = ButtonStyle.PRIMARY,
             )
         }.stateIn(this)
@@ -99,23 +104,23 @@ class VoteConfirmSubmissionVM(
         val ctaLabel =
             when (status) {
                 is VoteSubmissionStatus.Idle -> {
-                    if (data.isKeystone) "Confirm with Keystone" else "Confirm"
+                    if (data.isKeystone) stringRes(R.string.vote_confirm_cta_keystone) else stringRes(R.string.vote_confirm_cta)
                 }
 
                 is VoteSubmissionStatus.Authorizing -> {
-                    "Authorizing…"
+                    stringRes(R.string.vote_confirm_cta_authorizing)
                 }
 
                 is VoteSubmissionStatus.Submitting -> {
-                    "Submitting vote ${status.current} of ${status.total}…"
+                    stringRes(R.string.vote_confirm_cta_submitting, status.current, status.total)
                 }
 
                 is VoteSubmissionStatus.Completed -> {
-                    "Done"
+                    stringRes(R.string.vote_done)
                 }
 
                 is VoteSubmissionStatus.Failed -> {
-                    "Dismiss"
+                    stringRes(R.string.vote_dismiss)
                 }
             }
         val ctaEnabled =
@@ -135,11 +140,11 @@ class VoteConfirmSubmissionVM(
             roundTitle = stringRes(data.roundTitle),
             votingWeightZEC = stringRes(weightZEC),
             hotkeyAddress = stringRes(hotkey),
-            isKeystoneUser = data.isKeystone,
+            walletHeaderIcons = VoteWalletHeaderIconsState(isKeystone = data.isKeystone),
             memo = stringRes(memo),
             ctaButton =
                 ButtonState(
-                    text = stringRes(ctaLabel),
+                    text = ctaLabel,
                     style = ButtonStyle.PRIMARY,
                     isEnabled = ctaEnabled,
                     onClick = ctaAction,
@@ -173,8 +178,7 @@ class VoteConfirmSubmissionVM(
                 // voting.rs convention: 0 = MainNetwork, 1 = TestNetwork
                 // ZcashNetwork convention: Mainnet.id = 1, Testnet.id = 0 — inverse!
                 val zcashNetwork =
-                    (synchronizer as? cash.z.ecc.android.sdk.SdkSynchronizer)
-                        ?.let { ZcashNetwork.Mainnet } ?: ZcashNetwork.Mainnet
+                    ZcashNetwork.fromResources(application)
                 val networkId = if (zcashNetwork.isMainnet()) 0 else 1
                 val pirUrl =
                     votingApiProvider
@@ -189,15 +193,23 @@ class VoteConfirmSubmissionVM(
                 // ── Step 1: Open voting DB + init round ───────────────────────
                 dbHandle = votingBackend.openVotingDb(votingDbPath)
                 votingBackend.setWalletId(dbHandle, account.sdkAccount.accountUuid.toString())
-                votingBackend.initRound(
-                    dbHandle = dbHandle,
-                    roundId = args.roundIdHex,
-                    snapshotHeight = session.snapshotHeight,
-                    eaPK = session.eaPK,
-                    ncRoot = session.ncRoot,
-                    nullifierIMTRoot = session.nullifierIMTRoot,
-                    sessionJson = null
-                )
+                try {
+                    votingBackend.initRound(
+                        dbHandle = dbHandle,
+                        roundId = args.roundIdHex,
+                        snapshotHeight = session.snapshotHeight,
+                        eaPK = session.eaPK,
+                        ncRoot = session.ncRoot,
+                        nullifierIMTRoot = session.nullifierIMTRoot,
+                        sessionJson = null
+                    )
+                } catch (e: Exception) {
+                    if (e.message?.contains("UNIQUE constraint failed") == true) {
+                        // Round already initialized in a previous attempt — safe to continue
+                    } else {
+                        throw e
+                    }
+                }
                 votingStorage.storePhase(args.roundIdHex, "INIT")
 
                 statusFlow.value = VoteSubmissionStatus.Authorizing(0.2f)
@@ -360,6 +372,7 @@ class VoteConfirmSubmissionVM(
                 votingStorage.storePhase(args.roundIdHex, "VOTED")
                 statusFlow.value = VoteSubmissionStatus.Completed
             } catch (e: Exception) {
+                e.printStackTrace()
                 statusFlow.value = VoteSubmissionStatus.Failed(e.message ?: "Unexpected error during submission")
             } finally {
                 if (dbHandle != 0L) votingBackend.closeVotingDb(dbHandle)

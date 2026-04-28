@@ -5,10 +5,7 @@ import co.electriccoin.zcash.ui.design.util.StringResource
 
 @Immutable
 data class VoteCoinholderPollingState(
-    /** Active rounds (status ACTIVE or TALLYING) — newest first. */
-    val activeRounds: List<VotePollCardState>,
-    /** Past rounds (status COMPLETED / CANCELLED / finalized) — newest first. */
-    val pastRounds: List<VotePollCardState>,
+    val items: List<VotePollCardState>,
     val onBack: () -> Unit,
 )
 

@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.screen.voting.delegationsigning
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
@@ -28,7 +29,7 @@ class VoteDelegationSigningVM(
             LceState(
                 content =
                     VoteDelegationSigningState(
-                        title = stringRes("Delegation signing"),
+                        title = stringRes(R.string.vote_delegation_signing_title),
                         body =
                             stringRes(
                                 "This step generates a zero-knowledge proof that you held ZEC at the " +
@@ -38,15 +39,15 @@ class VoteDelegationSigningVM(
                         statusLabel =
                             when {
                                 progress != null && progress < 1f -> {
-                                    stringRes("Generating proof… ${(progress * 100).toInt()}%")
+                                    stringRes(R.string.vote_delegation_signing_status_generating, (progress * 100).toInt())
                                 }
 
                                 progress == 1f -> {
-                                    stringRes("Proof complete — submitting delegation…")
+                                    stringRes(R.string.vote_delegation_signing_status_complete)
                                 }
 
                                 else -> {
-                                    stringRes("Ready to generate zero-knowledge proof")
+                                    stringRes(R.string.vote_delegation_signing_status_ready)
                                 }
                             },
                         proofProgress = progress,
@@ -54,9 +55,9 @@ class VoteDelegationSigningVM(
                             ButtonState(
                                 text =
                                     if (generating) {
-                                        stringRes("Generating…")
+                                        stringRes(R.string.vote_delegation_signing_cta_generating)
                                     } else {
-                                        stringRes("Generate delegation proof")
+                                        stringRes(R.string.vote_delegation_signing_cta)
                                     },
                                 style = ButtonStyle.PRIMARY,
                                 isEnabled = !generating,

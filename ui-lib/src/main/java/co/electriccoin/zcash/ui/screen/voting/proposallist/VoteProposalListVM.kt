@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.voting.proposallist
 
 import androidx.lifecycle.ViewModel
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.groupLce
 import co.electriccoin.zcash.ui.common.model.mutableLce
@@ -18,6 +19,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionArgs
+import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptionArgs
 import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailArgs
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -56,8 +58,8 @@ class VoteProposalListVM(
         }.withLce(groupLce(roundLce)) {
             errorStateMapper.mapToState(
                 error = it,
-                title = stringRes("Voting unavailable"),
-                message = stringRes("Could not load voting proposals. Please try again."),
+                title = stringRes(R.string.vote_error_voting_unavailable_title),
+                message = stringRes(R.string.vote_error_voting_unavailable_message),
                 primaryStyle = ButtonStyle.PRIMARY,
             )
         }.stateIn(this)
@@ -75,7 +77,18 @@ class VoteProposalListVM(
             totalCount = proposals.size,
             metaLine = if (mode == VoteProposalListMode.VOTING) buildMetaLine(round) else null,
             description = round.description.takeIf { it.isNotEmpty() }?.let { stringRes(it) },
-            discussionUrl = round.discussionUrl,
+            onViewMore =
+                round.description.takeIf { it.isNotEmpty() }?.let {
+                    {
+                        navigationRouter.forward(
+                            VotePollDescriptionArgs(
+                                title = round.title,
+                                description = it,
+                                discussionUrl = round.discussionUrl,
+                            )
+                        )
+                    }
+                },
             proposals = proposals.map { buildProposalRow(it, drafts) },
             ctaButton = buildCtaButton(mode, proposals, drafts, round.id),
             onBack = ::onBack,
@@ -115,7 +128,7 @@ class VoteProposalListVM(
     ): ButtonState? {
         if (mode == VoteProposalListMode.REVIEW) {
             return ButtonState(
-                text = stringRes("Confirm & Submit"),
+                text = stringRes(R.string.vote_proposal_list_confirm_submit),
                 style = ButtonStyle.PRIMARY,
                 onClick = { onConfirmSubmit(roundId, drafts) }
             )
@@ -126,7 +139,7 @@ class VoteProposalListVM(
         return when {
             draftCount == 0 -> {
                 ButtonState(
-                    text = stringRes("Start Voting"),
+                    text = stringRes(R.string.vote_proposal_list_start_voting),
                     style = ButtonStyle.PRIMARY,
                     onClick = { onProposalTapped(proposals.first().id) }
                 )
@@ -134,7 +147,7 @@ class VoteProposalListVM(
 
             draftCount < proposals.size -> {
                 ButtonState(
-                    text = stringRes("Continue Voting"),
+                    text = stringRes(R.string.vote_proposal_list_continue_voting),
                     style = ButtonStyle.PRIMARY,
                     onClick = { firstUnanswered?.let { onProposalTapped(it.id) } }
                 )
@@ -142,7 +155,7 @@ class VoteProposalListVM(
 
             else -> {
                 ButtonState(
-                    text = stringRes("Review & Submit"),
+                    text = stringRes(R.string.vote_proposal_list_review_submit),
                     style = ButtonStyle.PRIMARY,
                     onClick = { navigationRouter.forward(VoteProposalListArgs(roundId = roundId, isReviewMode = true)) }
                 )
@@ -162,7 +175,7 @@ class VoteProposalListVM(
                 remaining < 86400 -> "${remaining / 3600}h left"
                 else -> "${remaining / 86400} day${if (remaining / 86400 == 1L) "" else "s"} left"
             }
-        return stringRes("$dateStr  ·  $timeLeft")
+        return stringRes(R.string.vote_proposal_list_meta_line, dateStr, timeLeft)
     }
 
     private fun onProposalTapped(proposalId: Int) {

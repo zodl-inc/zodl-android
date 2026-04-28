@@ -195,6 +195,8 @@ import co.electriccoin.zcash.ui.screen.voting.howtovote.VoteHowToVoteArgs
 import co.electriccoin.zcash.ui.screen.voting.howtovote.VoteHowToVoteScreen
 import co.electriccoin.zcash.ui.screen.voting.ineligible.VoteIneligibleArgs
 import co.electriccoin.zcash.ui.screen.voting.ineligible.VoteIneligibleScreen
+import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptionArgs
+import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptionScreen
 import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailArgs
 import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailScreen
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
@@ -350,6 +352,9 @@ fun NavGraphBuilder.walletNavGraph(
             VoteIneligibleScreen(backStackEntry.toRoute())
         }
         composable<VoteHowToVoteArgs> { VoteHowToVoteScreen() }
+        dialogComposable<VotePollDescriptionArgs> { backStackEntry ->
+            VotePollDescriptionScreen(backStackEntry.toRoute())
+        }
         composable<VoteWalletSyncingArgs> { VoteWalletSyncingScreen() }
         composable<VoteDelegationSigningArgs> { backStackEntry ->
             VoteDelegationSigningScreen(backStackEntry.toRoute())

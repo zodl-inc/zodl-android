@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.voting.confirmsubmission
 
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIconsState
 
 // ─── Submission Status (mirrors iOS batchSubmissionStatus) ───────────────────
 
@@ -38,7 +39,7 @@ data class VoteConfirmSubmissionState(
     val roundTitle: StringResource,
     val votingWeightZEC: StringResource,
     val hotkeyAddress: StringResource,
-    val isKeystoneUser: Boolean,
+    val walletHeaderIcons: VoteWalletHeaderIconsState,
     // Idle-only
     val memo: StringResource,
     val ctaButton: ButtonState,

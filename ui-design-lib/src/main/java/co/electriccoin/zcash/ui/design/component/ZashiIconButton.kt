@@ -43,7 +43,8 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 @Composable
 fun ZashiIconButton(
     state: IconButtonState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    tint: Color = Color.Unspecified,
 ) {
     val haptic = LocalHapticFeedback.current
 
@@ -82,7 +83,7 @@ fun ZashiIconButton(
             Icon(
                 painter = painterResource(state.icon),
                 contentDescription = state.contentDescription?.getValue(),
-                tint = Color.Unspecified
+                tint = tint
             )
         }
         if (state.badge != null) {

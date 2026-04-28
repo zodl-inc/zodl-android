@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.voting.coinholderpolling
 
 import androidx.lifecycle.ViewModel
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.groupLce
 import co.electriccoin.zcash.ui.common.model.mutableLce
@@ -44,8 +45,8 @@ class VoteCoinholderPollingVM(
         }.withLce(groupLce(roundsLce)) {
             errorStateMapper.mapToState(
                 error = it,
-                title = stringRes("Unable to load polls"),
-                message = stringRes("Could not fetch voting rounds. Please try again."),
+                title = stringRes(R.string.vote_error_unable_to_load_polls_title),
+                message = stringRes(R.string.vote_error_unable_to_load_polls_message),
                 primaryStyle = ButtonStyle.PRIMARY,
             )
         }.stateIn(this)
@@ -54,11 +55,10 @@ class VoteCoinholderPollingVM(
         rounds: List<VotingRound>,
         voteRecords: Map<String, Int>,
     ): VoteCoinholderPollingState {
-        // Mirror iOS: ACTIVE + TALLYING rounds in the active section; everything else in past.
+        // Active (ACTIVE/TALLYING) first, then past — newest first within each group.
         val (activeSrc, pastSrc) = rounds.reversed().partition { it.status == ACTIVE || it.status == TALLYING }
         return VoteCoinholderPollingState(
-            activeRounds = activeSrc.map { buildCard(it, voteRecords[it.id]) },
-            pastRounds = pastSrc.map { buildCard(it, voteRecords[it.id]) },
+            items = (activeSrc + pastSrc).map { buildCard(it, voteRecords[it.id]) },
             onBack = ::onBack,
         )
     }
@@ -88,7 +88,7 @@ class VoteCoinholderPollingVM(
             description = if (round.description.isNotEmpty()) stringRes(round.description) else stringRes(""),
             status = status,
             dateLabel = stringRes(dateLabel),
-            votedLabel = if (votedProposalCount != null) stringRes("$count of $total voted") else null,
+            votedLabel = if (votedProposalCount != null) stringRes(R.string.vote_poll_voted_count, count, total) else null,
             proposalCount = total,
             votedCount = count,
             onAction = { onRoundTapped(round.id, status) }

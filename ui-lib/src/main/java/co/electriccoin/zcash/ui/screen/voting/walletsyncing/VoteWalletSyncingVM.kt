@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.sdk.model.BlockHeight
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.usecase.GetActiveVotingSessionUseCase
@@ -63,7 +64,7 @@ class VoteWalletSyncingVM(
                 LceState(
                     content =
                         VoteWalletSyncingState(
-                            title = stringRes("Syncing wallet"),
+                            title = stringRes(R.string.vote_wallet_syncing_title),
                             body =
                                 stringRes(
                                     "Your wallet needs to scan up to block $snapshotHeight (the snapshot height) " +
@@ -71,15 +72,20 @@ class VoteWalletSyncingVM(
                                 ),
                             progressLabel =
                                 if (isSynced) {
-                                    stringRes("Sync complete")
+                                    stringRes(R.string.vote_wallet_syncing_status_complete)
                                 } else {
-                                    stringRes("${(progress * 100).toInt()}% — block $scanned of $snapshotHeight")
+                                    stringRes(
+                                        R.string.vote_wallet_syncing_status_progress,
+                                        (progress * 100).toInt(),
+                                        scanned,
+                                        snapshotHeight
+                                    )
                                 },
                             progress = progress,
                             isSynced = isSynced,
                             continueButton =
                                 ButtonState(
-                                    text = stringRes("Continue"),
+                                    text = stringRes(R.string.vote_continue),
                                     style = ButtonStyle.PRIMARY,
                                     isEnabled = isSynced,
                                     onClick = ::onContinue

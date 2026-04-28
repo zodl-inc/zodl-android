@@ -27,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.component.SettingsListItemLeadingIcon
 import co.electriccoin.zcash.ui.common.model.VersionInfo
 import co.electriccoin.zcash.ui.design.component.ZashiHorizontalDivider
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
@@ -39,6 +40,7 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.scaffoldScrollPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -171,7 +173,14 @@ fun AboutMainContent(
                     bigIcon = imageRes(R.drawable.ic_settings_info),
                     title = stringRes(R.string.about_button_privacy_policy),
                     onClick = onPrivacyPolicy
+                ),
+            leading = { modifier ->
+                SettingsListItemLeadingIcon(
+                    modifier = modifier,
+                    drawableRes = R.drawable.ic_settings_info,
+                    contentDescription = stringResource(R.string.about_button_privacy_policy)
                 )
+            }
         )
 
         ZashiHorizontalDivider()

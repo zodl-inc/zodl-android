@@ -88,7 +88,8 @@ class MoreVM(
 
     private fun onVotingClick() {
         viewModelScope.launch {
-            if (hasSeenHowToVote.get()) {
+            // TODO: MOB-1108 revert to hasSeenHowToVote.get() after testing
+            if (false) {
                 navigationRouter.forward(VoteCoinholderPollingArgs)
             } else {
                 navigationRouter.forward(VoteHowToVoteArgs)

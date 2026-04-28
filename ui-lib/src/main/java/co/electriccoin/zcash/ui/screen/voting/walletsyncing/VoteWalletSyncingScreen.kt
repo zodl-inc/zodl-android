@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.voting.walletsyncing
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -11,7 +12,10 @@ import org.koin.androidx.compose.koinViewModel
 fun VoteWalletSyncingScreen() {
     val vm = koinViewModel<VoteWalletSyncingVM>()
     val state by vm.state.collectAsStateWithLifecycle()
-    LceRenderer(state) { VoteWalletSyncingView(it) }
+    LceRenderer(state) {
+        BackHandler { it.onBack() }
+        VoteWalletSyncingView(it)
+    }
 }
 
 @Serializable

@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.screen.voting.walletsyncing
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,7 +33,6 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 
 @Composable
 fun VoteWalletSyncingView(state: VoteWalletSyncingState) {
-    BackHandler { state.onBack() }
     BlankBgScaffold(
         topBar = { AppBar(state) },
         content = { padding ->

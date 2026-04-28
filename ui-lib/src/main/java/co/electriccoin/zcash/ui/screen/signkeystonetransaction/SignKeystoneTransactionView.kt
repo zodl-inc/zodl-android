@@ -21,6 +21,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import co.electriccoin.zcash.ui.common.component.SettingsListItemLeadingIcon
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -99,10 +100,9 @@ private fun ZashiAccountInfoListItem(
         modifier = modifier,
         contentPadding = PaddingValues(16.dp),
         leading = {
-            ZashiListItemDefaults.LeadingItem(
+            SettingsListItemLeadingIcon(
                 modifier = it,
-                icon = imageRes(state.icon),
-                badge = null,
+                drawableRes = state.icon,
                 contentDescription = state.title.getValue()
             )
         },

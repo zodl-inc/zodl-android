@@ -52,7 +52,7 @@ fun ZashiTopAppBarWithAccountSelection(
                     ZashiIconButton(state.balanceVisibilityButton, modifier = Modifier.size(40.dp))
                     Spacer(Modifier.width(4.dp))
                 }
-                ZashiIconButton(state.moreButton, modifier = Modifier.size(40.dp))
+                ZashiIconButton(state.moreButton, modifier = Modifier.size(40.dp), tint = ZashiColors.Text.textPrimary)
                 Spacer(Modifier.width(20.dp))
             },
             navigationAction = {

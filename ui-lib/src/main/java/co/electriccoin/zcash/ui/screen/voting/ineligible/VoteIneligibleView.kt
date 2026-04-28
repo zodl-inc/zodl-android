@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.screen.voting.ineligible
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,7 +32,6 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 
 @Composable
 fun VoteIneligibleView(state: VoteIneligibleState) {
-    BackHandler { state.onBack() }
     BlankBgScaffold(
         topBar = { AppBar(state) },
         content = { padding ->

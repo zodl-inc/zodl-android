@@ -49,6 +49,9 @@ import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.voting.component.VoteHeaderIconStyle
+import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIcons
+import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIconsState
 
 // ─── View ─────────────────────────────────────────────────────────────────────
 
@@ -122,9 +125,16 @@ fun VoteConfirmSubmissionView(state: VoteConfirmSubmissionState) {
 @Composable
 private fun HeaderSection(state: VoteConfirmSubmissionState) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        WalletHeaderIcons(
-            isKeystone = state.isKeystoneUser,
-            showCheckmark = state.status is VoteSubmissionStatus.Completed,
+        VoteWalletHeaderIcons(
+            state =
+                state.walletHeaderIcons.copy(
+                    style =
+                        if (state.status is VoteSubmissionStatus.Completed) {
+                            VoteHeaderIconStyle.Confirmed
+                        } else {
+                            VoteHeaderIconStyle.ThumbsUp
+                        }
+                )
         )
         Spacer(24.dp)
         Text(
@@ -153,7 +163,7 @@ private fun headerTitle(status: VoteSubmissionStatus) =
 private fun headerSubtitle(state: VoteConfirmSubmissionState) =
     when (val s = state.status) {
         is VoteSubmissionStatus.Idle -> {
-            if (state.isKeystoneUser) {
+            if (state.walletHeaderIcons.isKeystone) {
                 "Review before signing the voting authorization with your Keystone. " +
                     "This is final. Your vote will be published and cannot be changed."
             } else {
@@ -174,68 +184,6 @@ private fun headerSubtitle(state: VoteConfirmSubmissionState) =
             s.error
         }
     }
-
-// ─── Wallet Header Icons (mirrors iOS VotingHeaderIcons) ─────────────────────
-
-@Composable
-private fun WalletHeaderIcons(isKeystone: Boolean, showCheckmark: Boolean) {
-    Box(contentAlignment = Alignment.CenterStart) {
-        // Primary wallet icon
-        Surface(
-            shape = CircleShape,
-            color = ZashiColors.Text.textPrimary,
-            modifier = Modifier.size(48.dp)
-        ) {
-            if (isKeystone) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_item_keystone),
-                    contentDescription = null,
-                    tint = Color.Unspecified,
-                    modifier = Modifier.padding(8.dp)
-                )
-            } else {
-                Icon(
-                    painter = painterResource(R.drawable.zashi_logo_without_text),
-                    contentDescription = null,
-                    tint = ZashiColors.Surfaces.bgPrimary,
-                    modifier = Modifier.padding(10.dp)
-                )
-            }
-        }
-
-        // Checkmark badge (overlapping, offset right like iOS)
-        Surface(
-            shape = CircleShape,
-            color =
-                if (showCheckmark) {
-                    ZashiColors.Utility.SuccessGreen.utilitySuccess500
-                        .copy(alpha = 0.15f)
-                } else {
-                    ZashiColors.Surfaces.bgTertiary
-                },
-            modifier =
-                Modifier
-                    .size(48.dp)
-                    .offset(x = 36.dp)
-        ) {
-            if (showCheckmark) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_zashi_checkbox_checked),
-                    contentDescription = null,
-                    tint = ZashiColors.Utility.SuccessGreen.utilitySuccess500,
-                    modifier = Modifier.padding(12.dp)
-                )
-            } else {
-                Icon(
-                    painter = painterResource(R.drawable.ic_radio_button_checked),
-                    contentDescription = null,
-                    tint = ZashiColors.Text.textPrimary,
-                    modifier = Modifier.padding(12.dp)
-                )
-            }
-        }
-    }
-}
 
 // ─── Details Card ─────────────────────────────────────────────────────────────
 
@@ -377,7 +325,7 @@ private fun previewState(status: VoteSubmissionStatus) =
         roundTitle = stringRes("NU7 Sentiment Poll"),
         votingWeightZEC = stringRes("1.2500 ZEC"),
         hotkeyAddress = stringRes("zs1xk9...f7q2m"),
-        isKeystoneUser = false,
+        walletHeaderIcons = VoteWalletHeaderIconsState(isKeystone = false),
         memo = stringRes("I am authorizing this hotkey managed by my wallet to vote on NU7 Sentiment Poll with 1.2500 ZEC."),
         ctaButton = ButtonState(stringRes("Confirm"), ButtonStyle.PRIMARY) {},
         onBack = {},

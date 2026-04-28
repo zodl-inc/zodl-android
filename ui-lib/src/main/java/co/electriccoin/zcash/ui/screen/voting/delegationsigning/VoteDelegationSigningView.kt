@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.screen.voting.delegationsigning
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,7 +33,6 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 
 @Composable
 fun VoteDelegationSigningView(state: VoteDelegationSigningState) {
-    BackHandler { state.onBack() }
     BlankBgScaffold(
         topBar = { AppBar(state) },
         content = { padding ->

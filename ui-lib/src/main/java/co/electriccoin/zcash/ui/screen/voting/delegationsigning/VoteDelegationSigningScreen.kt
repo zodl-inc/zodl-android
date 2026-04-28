@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.voting.delegationsigning
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -12,7 +13,10 @@ import org.koin.core.parameter.parametersOf
 fun VoteDelegationSigningScreen(args: VoteDelegationSigningArgs) {
     val vm = koinViewModel<VoteDelegationSigningVM> { parametersOf(args) }
     val state by vm.state.collectAsStateWithLifecycle()
-    LceRenderer(state) { VoteDelegationSigningView(it) }
+    LceRenderer(state) {
+        BackHandler { it.onBack() }
+        VoteDelegationSigningView(it)
+    }
 }
 
 @Serializable

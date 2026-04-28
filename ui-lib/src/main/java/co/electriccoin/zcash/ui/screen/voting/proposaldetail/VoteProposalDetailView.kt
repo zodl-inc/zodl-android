@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.screen.voting.proposaldetail
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,7 +52,6 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 
 @Composable
 fun VoteProposalDetailView(state: VoteProposalDetailState) {
-    BackHandler { state.onBack() }
     BlankBgScaffold(
         topBar = { AppBar(state) },
         content = { padding ->

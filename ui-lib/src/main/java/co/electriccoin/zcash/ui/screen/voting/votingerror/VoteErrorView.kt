@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.Spacer
@@ -156,7 +157,7 @@ fun VoteConfigErrorView(state: VoteConfigErrorState) {
                         .scaffoldPadding(padding)
             ) {
                 Text(
-                    text = stringRes("Wallet Update Required").getValue(),
+                    text = stringRes(R.string.vote_error_wallet_update_required).getValue(),
                     style = ZashiTypography.header6,
                     color = ZashiColors.Text.textPrimary,
                     fontWeight = FontWeight.SemiBold

@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.voting.proposaldetail
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -12,7 +13,10 @@ import org.koin.core.parameter.parametersOf
 fun VoteProposalDetailScreen(args: VoteProposalDetailArgs) {
     val vm = koinViewModel<VoteProposalDetailVM> { parametersOf(args) }
     val state by vm.state.collectAsStateWithLifecycle()
-    LceRenderer(state) { VoteProposalDetailView(it) }
+    LceRenderer(state) {
+        BackHandler { it.onBack() }
+        VoteProposalDetailView(it)
+    }
 }
 
 @Serializable

@@ -18,7 +18,7 @@ data class VoteProposalListState(
     val totalCount: Int,
     val metaLine: StringResource?,
     val description: StringResource?,
-    val discussionUrl: String?,
+    val onViewMore: (() -> Unit)?,
     val proposals: List<VoteProposalRowState>,
     val ctaButton: ButtonState?,
     val onBack: () -> Unit,

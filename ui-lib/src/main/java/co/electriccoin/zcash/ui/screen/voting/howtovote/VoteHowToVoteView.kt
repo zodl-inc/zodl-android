@@ -1,6 +1,6 @@
 package co.electriccoin.zcash.ui.screen.voting.howtovote
 
-import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -42,10 +43,12 @@ import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIcons
+import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIconsState
+import co.electriccoin.zcash.ui.R as AppR
 
 @Composable
 fun VoteHowToVoteView(state: VoteHowToVoteState) {
-    BackHandler { state.onBack() }
     BlankBgScaffold(
         topBar = { AppBar(state) },
         content = { padding ->
@@ -67,7 +70,7 @@ private fun Content(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
-        HowToVoteHeaderIcons(isKeystone = state.isKeystoneUser)
+        VoteWalletHeaderIcons(state = state.walletHeaderIcons)
         Spacer(24.dp)
         Text(
             text = state.title.getValue(),
@@ -90,25 +93,29 @@ private fun Content(
             Spacer(16.dp)
         }
 
+        Spacer(1f)
+
         state.infoText?.let { info ->
-            Spacer(8.dp)
-            androidx.compose.material3.Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = ZashiColors.Surfaces.bgSecondary,
-                shape =
-                    androidx.compose.foundation.shape
-                        .RoundedCornerShape(ZashiDimensions.Radius.radiusXl)
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = ZashiDimensions.Spacing.spacing2xl),
+                verticalAlignment = Alignment.Top
             ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_info),
+                    contentDescription = null,
+                    tint = ZashiColors.Text.textTertiary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(8.dp)
                 Text(
                     text = info.getValue(),
                     style = ZashiTypography.textXs,
                     color = ZashiColors.Text.textTertiary,
-                    modifier = Modifier.padding(ZashiDimensions.Spacing.spacingMd)
+                    modifier = Modifier.weight(1f)
                 )
             }
+            Spacer(ZashiDimensions.Spacing.spacingXl)
         }
-
-        Spacer(1f)
 
         ZashiButton(
             modifier =
@@ -117,48 +124,6 @@ private fun Content(
                     .padding(bottom = ZashiDimensions.Spacing.spacingMd),
             state = state.continueButton
         )
-    }
-}
-
-@Composable
-private fun HowToVoteHeaderIcons(isKeystone: Boolean) {
-    Box(contentAlignment = Alignment.CenterStart) {
-        Surface(
-            shape = CircleShape,
-            color = ZashiColors.Text.textPrimary,
-            modifier = Modifier.size(48.dp)
-        ) {
-            if (isKeystone) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_item_keystone),
-                    contentDescription = null,
-                    tint = Color.Unspecified,
-                    modifier = Modifier.padding(8.dp)
-                )
-            } else {
-                Icon(
-                    painter = painterResource(R.drawable.zashi_logo_without_text),
-                    contentDescription = null,
-                    tint = ZashiColors.Surfaces.bgPrimary,
-                    modifier = Modifier.padding(10.dp)
-                )
-            }
-        }
-        Surface(
-            shape = CircleShape,
-            color = ZashiColors.Surfaces.bgTertiary,
-            modifier =
-                Modifier
-                    .size(48.dp)
-                    .offset(x = 36.dp)
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_radio_button_checked),
-                contentDescription = null,
-                tint = ZashiColors.Text.textPrimary,
-                modifier = Modifier.padding(12.dp)
-            )
-        }
     }
 }
 
@@ -203,7 +168,7 @@ private fun StepRow(step: VoteStep) {
 @Composable
 private fun AppBar(state: VoteHowToVoteState) {
     ZashiSmallTopAppBar(
-        title = "Coinholder Polling",
+        title = stringResource(AppR.string.vote_top_bar_title),
         navigationAction = {
             ZashiTopAppBarBackNavigation(
                 onBack = state.onBack,
@@ -256,6 +221,7 @@ private fun HowToVotePreview() =
                             "Your balance at the snapshot time determines your voting weight. " +
                                 "You don't need to move your funds anywhere."
                         ),
+                    walletHeaderIcons = VoteWalletHeaderIconsState(isKeystone = false),
                     continueButton =
                         ButtonState(
                             text = stringRes("Continue"),

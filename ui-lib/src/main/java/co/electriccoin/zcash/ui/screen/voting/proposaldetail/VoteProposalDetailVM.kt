@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.voting.proposaldetail
 
 import androidx.lifecycle.ViewModel
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.groupLce
 import co.electriccoin.zcash.ui.common.model.mutableLce
@@ -47,8 +48,8 @@ class VoteProposalDetailVM(
         }.withLce(groupLce(roundLce)) {
             errorStateMapper.mapToState(
                 error = it,
-                title = stringRes("Proposal unavailable"),
-                message = stringRes("Could not load proposal. Please try again."),
+                title = stringRes(R.string.vote_error_proposal_unavailable_title),
+                message = stringRes(R.string.vote_error_proposal_unavailable_message),
                 primaryStyle = ButtonStyle.PRIMARY,
             )
         }.stateIn(this)
@@ -67,7 +68,7 @@ class VoteProposalDetailVM(
         val unansweredCount = proposals.count { !drafts.containsKey(it.id) }
 
         return VoteProposalDetailState(
-            positionLabel = stringRes("$position OF $total"),
+            positionLabel = stringRes(R.string.vote_proposal_position, position, total),
             title = stringRes(proposal.title),
             description = stringRes(proposal.description),
             forumUrl = proposal.forumUrl,

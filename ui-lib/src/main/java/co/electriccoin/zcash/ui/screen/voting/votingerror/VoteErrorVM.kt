@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.voting.votingerror
 
 import androidx.lifecycle.ViewModel
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
@@ -18,18 +19,18 @@ class VoteErrorVM(
             LceState(
                 content =
                     VoteErrorState(
-                        title = stringRes("Something Went Wrong"),
+                        title = stringRes(R.string.vote_error_something_went_wrong),
                         message = stringRes(VotingErrorMapper.toUserFriendlyMessage(args.message)),
                         actionButton =
                             if (args.isRecoverable) {
                                 ButtonState(
-                                    text = stringRes("Retry"),
+                                    text = stringRes(R.string.vote_retry),
                                     style = ButtonStyle.PRIMARY,
                                     onClick = ::onRetry
                                 )
                             } else {
                                 ButtonState(
-                                    text = stringRes("Dismiss"),
+                                    text = stringRes(R.string.vote_dismiss),
                                     style = ButtonStyle.PRIMARY,
                                     onClick = ::onClose
                                 )
@@ -65,7 +66,7 @@ class VoteConfigErrorVM(
                             ),
                         dismissButton =
                             ButtonState(
-                                text = stringRes("Dismiss"),
+                                text = stringRes(R.string.vote_dismiss),
                                 style = ButtonStyle.PRIMARY,
                                 onClick = ::onDismiss
                             ),

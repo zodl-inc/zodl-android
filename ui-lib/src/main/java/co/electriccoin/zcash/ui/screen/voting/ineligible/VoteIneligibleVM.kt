@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.voting.ineligible
 
 import androidx.lifecycle.ViewModel
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.usecase.IneligibilityReason
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -27,11 +28,11 @@ class VoteIneligibleVM(
             LceState(
                 content =
                     VoteIneligibleState(
-                        title = stringRes("Not Eligible for This Round"),
+                        title = stringRes(R.string.vote_ineligible_title),
                         body = buildBodyMessage(),
                         closeButton =
                             ButtonState(
-                                text = stringRes("Close"),
+                                text = stringRes(R.string.vote_close),
                                 style = ButtonStyle.PRIMARY,
                                 onClick = ::onClose
                             ),
