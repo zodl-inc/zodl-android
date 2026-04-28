@@ -1,6 +1,8 @@
 package co.electriccoin.zcash.ui.screen.voting.proposaldetail
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,6 +39,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.VerticalSpacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
+import co.electriccoin.zcash.ui.design.component.ZashiCheckboxIndicator
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
@@ -68,9 +71,8 @@ fun VoteProposalDetailView(state: VoteProposalDetailState) {
                             .weight(1f)
                             .fillMaxWidth()
                             .verticalScroll(rememberScrollState())
-                            .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
                 ) {
-                    VerticalSpacer(24.dp)
+                    VerticalSpacer(12.dp)
                     Text(
                         text = state.title.getValue(),
                         style = ZashiTypography.header6,
@@ -78,11 +80,11 @@ fun VoteProposalDetailView(state: VoteProposalDetailState) {
                         fontWeight = FontWeight.SemiBold,
                     )
                     if (state.description.getValue().isNotEmpty()) {
-                        Spacer(16.dp)
+                        Spacer(8.dp)
                         Text(
                             text = state.description.getValue(),
-                            style = ZashiTypography.textMd,
-                            color = ZashiColors.Text.textSecondary,
+                            style = ZashiTypography.textSm,
+                            color = ZashiColors.Text.textPrimary,
                         )
                     }
                     if (state.forumUrl != null) {
@@ -128,46 +130,39 @@ private fun AppBar(state: VoteProposalDetailState) {
 @Composable
 private fun ForumLinkRow(url: String) {
     val uriHandler = LocalUriHandler.current
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = ZashiColors.Surfaces.bgPrimary,
-        shape = RoundedCornerShape(ZashiDimensions.Radius.radius2xl),
-        onClick = { uriHandler.openUri(url) },
-        border = BorderStroke(1.dp, ZashiColors.Surfaces.strokeSecondary),
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable { uriHandler.openUri(url) }
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+        Surface(
+            shape = CircleShape,
+            color = ZashiColors.Surfaces.bgTertiary,
+            modifier = Modifier.size(40.dp)
         ) {
-            // Circle icon badge (mirrors iOS bubble.left.and.bubble.right in circle)
-            Surface(
-                shape = CircleShape,
-                color = ZashiColors.Utility.HyperBlue.utilityBlueDark50,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_info),
-                        contentDescription = null,
-                        tint = ZashiColors.Utility.HyperBlue.utilityBlueDark700,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-            Spacer(12.dp)
-            Text(
-                text = stringRes("View Forum Discussion").getValue(),
-                style = ZashiTypography.textMd,
-                color = ZashiColors.Text.textPrimary,
-                modifier = Modifier.weight(1f)
-            )
             Icon(
-                painter = painterResource(R.drawable.ic_chevron_right),
+                painter = painterResource(co.electriccoin.zcash.ui.R.drawable.ic_vote_message_chat),
                 contentDescription = null,
-                tint = ZashiColors.Text.textTertiary,
-                modifier = Modifier.size(16.dp)
+                tint = ZashiColors.Text.textPrimary,
+                modifier = Modifier.padding(10.dp)
             )
         }
+        Spacer(16.dp)
+        Text(
+            text = stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_forum_link).getValue(),
+            style = ZashiTypography.textMd,
+            fontWeight = FontWeight.SemiBold,
+            color = ZashiColors.Text.textPrimary,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            painter = painterResource(co.electriccoin.zcash.ui.design.R.drawable.ic_chevron_right),
+            contentDescription = null,
+            tint = ZashiColors.Text.textTertiary,
+            modifier = Modifier.size(20.dp)
+        )
     }
 }
 
@@ -179,7 +174,6 @@ private fun BottomSection(state: VoteProposalDetailState) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
                 .padding(bottom = ZashiDimensions.Spacing.spacingMd)
     ) {
         VoteOptions(options = state.options)
@@ -194,88 +188,48 @@ private fun BottomSection(state: VoteProposalDetailState) {
 
 @Composable
 private fun VoteOptions(options: List<VoteVoteOptionRowState>) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = ZashiColors.Surfaces.bgPrimary,
-        shape = RoundedCornerShape(ZashiDimensions.Radius.radius2xl),
-    ) {
-        Column {
-            options.forEachIndexed { idx, option ->
-                VoteOptionRow(option = option)
-                if (idx < options.lastIndex) {
-                    val nextSelected = options[idx + 1].isSelected
-                    if (!option.isSelected && !nextSelected) {
-                        HorizontalDivider(
-                            color = ZashiColors.Surfaces.strokeSecondary,
-                            modifier = Modifier.padding(start = 16.dp)
-                        )
-                    }
-                }
-            }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { option ->
+            VoteOptionRow(option = option)
         }
     }
 }
 
 @Composable
 private fun VoteOptionRow(option: VoteVoteOptionRowState) {
-    val selectedBg = option.color.toComposeBgColor()
-    val bgColor = if (option.isSelected) selectedBg else Color.Transparent
+    val bgColor = if (option.isSelected) option.color.toComposeBgColor() else ZashiColors.Surfaces.bgSecondary
     val textColor = if (option.isSelected) Color.White else ZashiColors.Text.textPrimary
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = bgColor,
-        shape = RoundedCornerShape(ZashiDimensions.Radius.radius2xl),
+        shape = RoundedCornerShape(ZashiDimensions.Radius.radiusXl),
         onClick = { if (!option.isLocked) option.onSelect() },
         enabled = !option.isLocked,
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
         ) {
             Text(
                 text = option.label.getValue(),
                 style = ZashiTypography.textMd,
                 color = textColor,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f)
             )
-            CheckboxIndicator(isSelected = option.isSelected)
+            ZashiCheckboxIndicator(isChecked = option.isSelected)
         }
     }
 }
 
 @Composable
-private fun CheckboxIndicator(isSelected: Boolean) {
-    if (isSelected) {
-        Surface(
-            modifier = Modifier.size(22.dp),
-            shape = RoundedCornerShape(4.dp),
-            color = ZashiColors.Text.textPrimary,
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_zashi_checkbox_checked),
-                contentDescription = null,
-                tint = ZashiColors.Surfaces.bgPrimary,
-                modifier = Modifier.padding(3.dp)
-            )
-        }
-    } else {
-        Surface(
-            modifier = Modifier.size(22.dp),
-            shape = RoundedCornerShape(4.dp),
-            color = Color.Transparent,
-            border = BorderStroke(1.5.dp, ZashiColors.Surfaces.strokeSecondary),
-        ) {}
-    }
-}
-
 private fun VoteVoteOptionColor.toComposeBgColor(): Color =
     when (this) {
-        VoteVoteOptionColor.SUPPORT -> Color(0xFF22C55E)
-        VoteVoteOptionColor.OPPOSE -> Color(0xFFEF4444)
-        VoteVoteOptionColor.ABSTAIN -> Color(0xFF3B82F6)
-        VoteVoteOptionColor.OTHER -> Color(0xFF6B7280)
+        VoteVoteOptionColor.SUPPORT -> ZashiColors.Utility.SuccessGreen.utilitySuccess500
+        VoteVoteOptionColor.OPPOSE -> ZashiColors.Utility.ErrorRed.utilityError500
+        VoteVoteOptionColor.ABSTAIN -> ZashiColors.Utility.HyperBlue.utilityBlueDark500
+        VoteVoteOptionColor.OTHER -> ZashiColors.Utility.Gray.utilityGray500
     }
 
 // ─── Navigation Buttons ───────────────────────────────────────────────────────
@@ -287,23 +241,26 @@ private fun NavigationButtons(state: VoteProposalDetailState) {
             modifier = Modifier.weight(1f),
             state =
                 ButtonState(
-                    text = stringRes("Back"),
-                    style = ButtonStyle.SECONDARY,
+                    text = stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_back),
+                    style = ButtonStyle.TERTIARY,
                     onClick = state.onBack
                 )
         )
-        if (!state.isEditingFromReview) {
-            Spacer(12.dp)
-            ZashiButton(
-                modifier = Modifier.weight(1f),
-                state =
-                    ButtonState(
-                        text = stringRes("Next"),
-                        style = ButtonStyle.PRIMARY,
-                        onClick = state.onNext
-                    )
-            )
-        }
+        Spacer(12.dp)
+        ZashiButton(
+            modifier = Modifier.weight(1f),
+            state =
+                ButtonState(
+                    text =
+                        if (state.isEditingFromReview) {
+                            stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_save)
+                        } else {
+                            stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_next)
+                        },
+                    style = ButtonStyle.PRIMARY,
+                    onClick = state.onNext
+                )
+        )
     }
 }
 
@@ -404,9 +361,27 @@ private fun ProposalDetailPreviewUnvoted() =
                     forumUrl = "https://forum.zcashcommunity.com",
                     options =
                         listOf(
-                            VoteVoteOptionRowState(0, stringRes("Support"), VoteVoteOptionColor.SUPPORT, false, false) {},
-                            VoteVoteOptionRowState(1, stringRes("Oppose"), VoteVoteOptionColor.OPPOSE, false, false) {},
-                            VoteVoteOptionRowState(2, stringRes("Abstain"), VoteVoteOptionColor.ABSTAIN, false, false) {},
+                            VoteVoteOptionRowState(
+                                0,
+                                stringRes(co.electriccoin.zcash.ui.R.string.vote_option_support),
+                                VoteVoteOptionColor.SUPPORT,
+                                false,
+                                false
+                            ) {},
+                            VoteVoteOptionRowState(
+                                1,
+                                stringRes(co.electriccoin.zcash.ui.R.string.vote_option_oppose),
+                                VoteVoteOptionColor.OPPOSE,
+                                false,
+                                false
+                            ) {},
+                            VoteVoteOptionRowState(
+                                2,
+                                stringRes(co.electriccoin.zcash.ui.R.string.vote_option_abstain),
+                                VoteVoteOptionColor.ABSTAIN,
+                                false,
+                                false
+                            ) {},
                         ),
                     isLocked = false,
                     isEditingFromReview = false,
@@ -436,9 +411,27 @@ private fun ProposalDetailPreviewSupport() =
                     forumUrl = null,
                     options =
                         listOf(
-                            VoteVoteOptionRowState(0, stringRes("Support"), VoteVoteOptionColor.SUPPORT, true, false) {},
-                            VoteVoteOptionRowState(1, stringRes("Oppose"), VoteVoteOptionColor.OPPOSE, false, false) {},
-                            VoteVoteOptionRowState(2, stringRes("Abstain"), VoteVoteOptionColor.ABSTAIN, false, false) {},
+                            VoteVoteOptionRowState(
+                                0,
+                                stringRes(co.electriccoin.zcash.ui.R.string.vote_option_support),
+                                VoteVoteOptionColor.SUPPORT,
+                                true,
+                                false
+                            ) {},
+                            VoteVoteOptionRowState(
+                                1,
+                                stringRes(co.electriccoin.zcash.ui.R.string.vote_option_oppose),
+                                VoteVoteOptionColor.OPPOSE,
+                                false,
+                                false
+                            ) {},
+                            VoteVoteOptionRowState(
+                                2,
+                                stringRes(co.electriccoin.zcash.ui.R.string.vote_option_abstain),
+                                VoteVoteOptionColor.ABSTAIN,
+                                false,
+                                false
+                            ) {},
                         ),
                     isLocked = false,
                     isEditingFromReview = false,

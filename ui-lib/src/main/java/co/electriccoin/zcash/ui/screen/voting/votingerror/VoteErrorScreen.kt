@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.voting.votingerror
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -14,7 +15,10 @@ import org.koin.core.parameter.parametersOf
 fun VoteErrorScreen(args: VoteErrorArgs) {
     val vm = koinViewModel<VoteErrorVM> { parametersOf(args) }
     val state by vm.state.collectAsStateWithLifecycle()
-    LceRenderer(state) { VoteErrorView(it) }
+    LceRenderer(state) {
+        BackHandler { it.onBack() }
+        VoteErrorView(it)
+    }
 }
 
 @Serializable

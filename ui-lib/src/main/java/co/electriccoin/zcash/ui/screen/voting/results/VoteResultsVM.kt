@@ -15,6 +15,7 @@ import co.electriccoin.zcash.ui.common.usecase.GetAllVotingRoundsUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.voting.VoteOptionLabels
 import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -86,7 +87,7 @@ class VoteResultsVM(
                     proposal.options.mapIndexed { index, voteOption ->
                         val weight = tallyProposal?.options?.firstOrNull { it.optionId == voteOption.id }?.weight ?: 0L
                         val fraction = if (hasVotes) weight.toFloat() / totalWeight else 0f
-                        val isAbstain = voteOption.label.lowercase().contains("abstain")
+                        val isAbstain = voteOption.label.lowercase().contains(VoteOptionLabels.ABSTAIN)
                         val color =
                             when {
                                 isAbstain -> {

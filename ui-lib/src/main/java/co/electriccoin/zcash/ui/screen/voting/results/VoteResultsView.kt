@@ -318,14 +318,14 @@ private fun ResultsPreview() =
                                 options =
                                     listOf(
                                         VoteOptionResultState(
-                                            label = stringRes("Support"),
+                                            label = stringRes(co.electriccoin.zcash.ui.R.string.vote_option_support),
                                             amountZEC = stringRes("750.00 ZEC"),
                                             fraction = 0.75f,
                                             color = VoteOptionColor.SUPPORT,
                                             isWinner = true,
                                         ),
                                         VoteOptionResultState(
-                                            label = stringRes("Oppose"),
+                                            label = stringRes(co.electriccoin.zcash.ui.R.string.vote_option_oppose),
                                             amountZEC = stringRes("250.00 ZEC"),
                                             fraction = 0.25f,
                                             color = VoteOptionColor.OPPOSE,
@@ -333,7 +333,7 @@ private fun ResultsPreview() =
                                         ),
                                     ),
                                 totalZEC = stringRes("Total: 1000.00 ZEC"),
-                                winnerLabel = stringRes("Support"),
+                                winnerLabel = stringRes(co.electriccoin.zcash.ui.R.string.vote_option_support),
                                 winnerColor = VoteOptionColor.SUPPORT,
                             ),
                             VoteProposalResultState(
@@ -343,21 +343,21 @@ private fun ResultsPreview() =
                                 options =
                                     listOf(
                                         VoteOptionResultState(
-                                            label = stringRes("Support"),
+                                            label = stringRes(co.electriccoin.zcash.ui.R.string.vote_option_support),
                                             amountZEC = stringRes("400.00 ZEC"),
                                             fraction = 0.40f,
                                             color = VoteOptionColor.SUPPORT,
                                             isWinner = false,
                                         ),
                                         VoteOptionResultState(
-                                            label = stringRes("Oppose"),
+                                            label = stringRes(co.electriccoin.zcash.ui.R.string.vote_option_oppose),
                                             amountZEC = stringRes("500.00 ZEC"),
                                             fraction = 0.50f,
                                             color = VoteOptionColor.OPPOSE,
                                             isWinner = true,
                                         ),
                                         VoteOptionResultState(
-                                            label = stringRes("Abstain"),
+                                            label = stringRes(co.electriccoin.zcash.ui.R.string.vote_option_abstain),
                                             amountZEC = stringRes("100.00 ZEC"),
                                             fraction = 0.10f,
                                             color = VoteOptionColor.ABSTAIN,
@@ -365,7 +365,7 @@ private fun ResultsPreview() =
                                         ),
                                     ),
                                 totalZEC = stringRes("Total: 1000.00 ZEC"),
-                                winnerLabel = stringRes("Oppose"),
+                                winnerLabel = stringRes(co.electriccoin.zcash.ui.R.string.vote_option_oppose),
                                 winnerColor = VoteOptionColor.OPPOSE,
                             ),
                         ),

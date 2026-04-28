@@ -39,13 +39,14 @@ data class ChainRoundDto(
     @SerialName("nc_root") val ncRoot: String = "",
     @SerialName("nullifier_imt_root") val nullifierImtRoot: String = "",
     @SerialName("snapshot_blockhash") val snapshotBlockhash: String = "",
+    @SerialName("discussion_url") val discussionUrl: String? = null,
 ) {
     fun toVotingRound(): VotingRound =
         VotingRound(
             id = voteRoundId,
             title = title,
             description = description,
-            discussionUrl = null,
+            discussionUrl = discussionUrl?.takeIf { it.isNotEmpty() },
             snapshotHeight = snapshotHeight,
             snapshotDate = Instant.ofEpochSecond(voteEndTime),
             votingStart = Instant.EPOCH,
@@ -73,6 +74,8 @@ data class ChainProposalDto(
     @SerialName("title") val title: String,
     @SerialName("description") val description: String = "",
     @SerialName("options") val options: List<ChainVoteOptionDto> = emptyList(),
+    @SerialName("zip_number") val zipNumber: String? = null,
+    @SerialName("forum_url") val forumUrl: String? = null,
 ) {
     fun toProposal(): Proposal =
         Proposal(
@@ -80,8 +83,8 @@ data class ChainProposalDto(
             title = title,
             description = description,
             options = options.mapIndexed { idx, opt -> opt.toVoteOption(idx) },
-            zipNumber = null,
-            forumUrl = null,
+            zipNumber = zipNumber,
+            forumUrl = forumUrl,
         )
 }
 

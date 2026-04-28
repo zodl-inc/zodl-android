@@ -16,6 +16,7 @@ import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetAllVotingRoundsUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.voting.VoteOptionLabels
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -86,10 +87,10 @@ class VoteProposalDetailVM(
 
     private fun buildOptions(proposal: Proposal, selectedIdx: Int?): List<VoteVoteOptionRowState> {
         val options = proposal.options.toMutableList()
-        val hasAbstain = options.any { it.label.lowercase().contains("abstain") }
+        val hasAbstain = options.any { it.label.lowercase().contains(VoteOptionLabels.ABSTAIN) }
         if (!hasAbstain) {
             val nextIndex = (options.maxOfOrNull { it.id } ?: 0) + 1
-            options += VoteOption(id = nextIndex, label = "Abstain")
+            options += VoteOption(id = nextIndex, label = VoteOptionLabels.ABSTAIN.replaceFirstChar { it.uppercase() })
         }
         val total = options.size
         return options.map { option ->
@@ -136,7 +137,7 @@ class VoteProposalDetailVM(
 }
 
 private fun VoteOption.toVoteVoteOptionColor(total: Int): VoteVoteOptionColor {
-    if (label.lowercase().contains("abstain")) return VoteVoteOptionColor.ABSTAIN
+    if (label.lowercase().contains(VoteOptionLabels.ABSTAIN)) return VoteVoteOptionColor.ABSTAIN
     return when (total) {
         1 -> {
             VoteVoteOptionColor.SUPPORT

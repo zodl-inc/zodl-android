@@ -18,6 +18,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.voting.VoteOptionLabels
 import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionArgs
 import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptionArgs
 import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailArgs
@@ -110,11 +111,11 @@ class VoteProposalListVM(
 
     private fun buildVoteBadge(proposal: Proposal, optionIndex: Int): VoteVoteBadgeState {
         val option = proposal.options.firstOrNull { it.id == optionIndex }
-        val label = option?.label ?: "Abstain"
+        val label = option?.label ?: VoteOptionLabels.ABSTAIN.replaceFirstChar { it.uppercase() }
         val type =
             when {
-                label.lowercase().contains("support") -> VoteVoteBadgeType.SUPPORT
-                label.lowercase().contains("oppose") -> VoteVoteBadgeType.OPPOSE
+                label.lowercase().contains(VoteOptionLabels.SUPPORT) -> VoteVoteBadgeType.SUPPORT
+                label.lowercase().contains(VoteOptionLabels.OPPOSE) -> VoteVoteBadgeType.OPPOSE
                 else -> VoteVoteBadgeType.ABSTAIN
             }
         return VoteVoteBadgeState(stringRes(label), type)

@@ -447,7 +447,11 @@ private fun ProposalListVotingPreview() =
                                 zipNumber = stringRes("ZIP-227"),
                                 title = stringRes("Zcash Shielded Assets (ZSAs)"),
                                 description = stringRes("Extend the Orchard protocol to support user-defined assets."),
-                                voteBadge = VoteVoteBadgeState(stringRes("Support"), VoteVoteBadgeType.SUPPORT),
+                                voteBadge =
+                                    VoteVoteBadgeState(
+                                        stringRes(co.electriccoin.zcash.ui.R.string.vote_option_support),
+                                        VoteVoteBadgeType.SUPPORT
+                                    ),
                                 onClick = {}
                             ),
                             VoteProposalRowState(
@@ -500,7 +504,11 @@ private fun ProposalListReviewPreview() =
                                 zipNumber = stringRes("ZIP-227"),
                                 title = stringRes("Zcash Shielded Assets (ZSAs)"),
                                 description = stringRes("Extend the Orchard protocol to support user-defined assets."),
-                                voteBadge = VoteVoteBadgeState(stringRes("Support"), VoteVoteBadgeType.SUPPORT),
+                                voteBadge =
+                                    VoteVoteBadgeState(
+                                        stringRes(co.electriccoin.zcash.ui.R.string.vote_option_support),
+                                        VoteVoteBadgeType.SUPPORT
+                                    ),
                                 onClick = {}
                             ),
                             VoteProposalRowState(
@@ -508,7 +516,11 @@ private fun ProposalListReviewPreview() =
                                 zipNumber = stringRes("ZIP-235"),
                                 title = stringRes("Network Sustainability Mechanism"),
                                 description = stringRes("Redirect a portion of the block subsidy to a sustainability fund."),
-                                voteBadge = VoteVoteBadgeState(stringRes("Oppose"), VoteVoteBadgeType.OPPOSE),
+                                voteBadge =
+                                    VoteVoteBadgeState(
+                                        stringRes(co.electriccoin.zcash.ui.R.string.vote_option_oppose),
+                                        VoteVoteBadgeType.OPPOSE
+                                    ),
                                 onClick = {}
                             ),
                             VoteProposalRowState(
@@ -516,7 +528,11 @@ private fun ProposalListReviewPreview() =
                                 zipNumber = stringRes("ZIP-236"),
                                 title = stringRes("Orchard Quantum Recoverability"),
                                 description = stringRes("Add a post-quantum fallback mechanism to Orchard notes."),
-                                voteBadge = VoteVoteBadgeState(stringRes("Abstain"), VoteVoteBadgeType.ABSTAIN),
+                                voteBadge =
+                                    VoteVoteBadgeState(
+                                        stringRes(co.electriccoin.zcash.ui.R.string.vote_option_abstain),
+                                        VoteVoteBadgeType.ABSTAIN
+                                    ),
                                 onClick = {}
                             ),
                         ),

@@ -149,7 +149,14 @@ class VoteConfirmSubmissionVM(
                     isEnabled = ctaEnabled,
                     onClick = ctaAction,
                 ),
-            onBack = { if (status is VoteSubmissionStatus.Idle) navigationRouter.back() },
+            onBack = {
+                when (status) {
+                    is VoteSubmissionStatus.Idle -> navigationRouter.back()
+                    is VoteSubmissionStatus.Failed -> navigationRouter.back()
+                    is VoteSubmissionStatus.Completed -> onDone()
+                    else -> Unit // suppress during Authorizing/Submitting
+                }
+            },
         )
     }
 
