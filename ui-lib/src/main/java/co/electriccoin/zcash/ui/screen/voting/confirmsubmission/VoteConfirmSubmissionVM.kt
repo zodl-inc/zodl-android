@@ -9,6 +9,7 @@ import cash.z.ecc.android.sdk.model.ZcashNetwork
 import cash.z.ecc.sdk.type.fromResources
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.VotingStorageDataSource
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
@@ -16,9 +17,13 @@ import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.groupLce
 import co.electriccoin.zcash.ui.common.model.mutableLce
 import co.electriccoin.zcash.ui.common.model.stateIn
+import co.electriccoin.zcash.ui.common.model.voting.CastVoteSignature
 import co.electriccoin.zcash.ui.common.model.voting.DelegationRegistration
+import co.electriccoin.zcash.ui.common.model.voting.VoteCommitmentBundle
+import co.electriccoin.zcash.ui.common.model.voting.VotingErrorMapper
 import co.electriccoin.zcash.ui.common.model.withLce
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
+import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetActiveVotingSessionUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetAllVotingRoundsUseCase
@@ -26,6 +31,7 @@ import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetWalletSeedBytesUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
 import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIconsState
@@ -50,10 +56,12 @@ class VoteConfirmSubmissionVM(
     private val votingStorage: VotingStorageDataSource,
     private val getActiveVotingSession: GetActiveVotingSessionUseCase,
     private val getWalletSeedBytes: GetWalletSeedBytesUseCase,
-    private val votingApiProvider: co.electriccoin.zcash.ui.common.provider.VotingApiProvider,
+    private val votingApiProvider: VotingApiProvider,
+    private val votingSession: co.electriccoin.zcash.ui.common.repository.VotingSessionRepository,
 ) : ViewModel() {
     private data class PageData(
         val roundTitle: String,
+        val proposalCount: Int,
         val isKeystone: Boolean
     )
 
@@ -61,12 +69,13 @@ class VoteConfirmSubmissionVM(
     private val statusFlow = MutableStateFlow<VoteSubmissionStatus>(VoteSubmissionStatus.Idle)
     private val eligibleWeightZatoshiFlow = MutableStateFlow<Long?>(null)
     private val hotkeyAddressFlow = MutableStateFlow<String?>(null)
+    private val errorSheetFlow = MutableStateFlow<ZashiConfirmationState?>(null)
 
     init {
         dataLce.execute {
             val round = getAllRounds().firstOrNull { it.id == args.roundIdHex }
             val account = getSelectedWalletAccount()
-            PageData(roundTitle = round?.title ?: "", isKeystone = account is KeystoneAccount)
+            PageData(roundTitle = round?.title ?: "", proposalCount = round?.proposals?.size ?: 0, isKeystone = account is KeystoneAccount)
         }
     }
 
@@ -76,8 +85,9 @@ class VoteConfirmSubmissionVM(
             statusFlow,
             eligibleWeightZatoshiFlow,
             hotkeyAddressFlow,
-        ) { data, status, weightZatoshi, hotkeyAddr ->
-            data?.let { createState(it, status, weightZatoshi, hotkeyAddr) }
+            errorSheetFlow,
+        ) { data, status, weightZatoshi, hotkeyAddr, errorSheet ->
+            data?.let { createState(it, status, weightZatoshi, hotkeyAddr, errorSheet) }
         }.withLce(groupLce(dataLce)) {
             errorStateMapper.mapToState(
                 error = it,
@@ -92,15 +102,14 @@ class VoteConfirmSubmissionVM(
         status: VoteSubmissionStatus,
         weightZatoshi: Long?,
         hotkeyAddr: String?,
+        errorSheet: ZashiConfirmationState?,
     ): VoteConfirmSubmissionState {
         val weightZEC =
             weightZatoshi
                 ?.let { "%.4f ZEC".format(it / 100_000_000.0) }
                 ?: "0.0000 ZEC"
         val hotkey = hotkeyAddr ?: "–"
-        val memo =
-            "I am authorizing this hotkey managed by my wallet to vote on " +
-                "${data.roundTitle} with $weightZEC."
+        val memo = "I am authorizing this hotkey managed by my wallet to vote on ${data.roundTitle} with $weightZEC."
         val ctaLabel =
             when (status) {
                 is VoteSubmissionStatus.Idle -> {
@@ -141,6 +150,7 @@ class VoteConfirmSubmissionVM(
             votingWeightZEC = stringRes(weightZEC),
             hotkeyAddress = stringRes(hotkey),
             walletHeaderIcons = VoteWalletHeaderIconsState(isKeystone = data.isKeystone),
+            errorSheet = errorSheet,
             memo = stringRes(memo),
             ctaButton =
                 ButtonState(
@@ -364,11 +374,11 @@ class VoteConfirmSubmissionVM(
                             alphaV = commitment.alphaV,
                         )
                     votingApiProvider.submitVoteCommitment(
-                        co.electriccoin.zcash.ui.common.model.voting.VoteCommitmentBundle(
+                        VoteCommitmentBundle(
                             proof = commitment.voteCommitment, // voteCommitment bytes as proof
                             encryptedShares = emptyList() // shares sent separately
                         ),
-                        co.electriccoin.zcash.ui.common.model.voting.CastVoteSignature(
+                        CastVoteSignature(
                             roundIdHex = args.roundIdHex,
                             signature = sig
                         )
@@ -377,15 +387,31 @@ class VoteConfirmSubmissionVM(
                 }
 
                 votingStorage.storePhase(args.roundIdHex, "VOTED")
+                dataLce.state.value.success?.let {
+                    votingSession.markRoundVoted(args.roundIdHex, it.proposalCount)
+                }
                 statusFlow.value = VoteSubmissionStatus.Completed
             } catch (e: Exception) {
                 e.printStackTrace()
-                statusFlow.value = VoteSubmissionStatus.Failed(e.message ?: "Unexpected error during submission")
+                statusFlow.value = VoteSubmissionStatus.Idle
+                errorSheetFlow.value =
+                    ZashiConfirmationState.error(
+                        title = stringRes(R.string.vote_error_something_went_wrong),
+                        message = stringRes(VotingErrorMapper.toUserFriendlyMessage(e.message ?: "")),
+                        primaryText = stringRes(R.string.vote_dismiss),
+                        onPrimary = ::onDismissErrorSheet,
+                        onSecondary = ::onDismissErrorSheet,
+                        onBack = ::onDismissErrorSheet,
+                    )
             } finally {
                 if (dbHandle != 0L) votingBackend.closeVotingDb(dbHandle)
                 // Zero the sensitive data — handled by GC in JVM but explicit is cleaner
             }
         }
+    }
+
+    private fun onDismissErrorSheet() {
+        errorSheetFlow.value = null
     }
 
     private fun onDone() = navigationRouter.forward(VoteCoinholderPollingArgs)

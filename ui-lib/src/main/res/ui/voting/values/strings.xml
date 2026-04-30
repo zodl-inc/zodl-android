@@ -58,6 +58,8 @@
     <string name="vote_confirm_title_submitting">Submitting vote…</string>
     <string name="vote_confirm_title_confirmed">Submission Confirmed!</string>
     <string name="vote_confirm_title_failed">Submission Failed</string>
+    <string name="vote_confirm_error_submission">Vote submission failed. Please check your connection and try again.</string>
+    <string name="vote_confirm_error_auth">Authorization transaction failed. Please try again.</string>
 
     <!-- Delegation signing -->
     <string name="vote_delegation_signing_title">Delegation signing</string>
@@ -97,6 +99,8 @@
     <!-- Results -->
     <string name="vote_results_amount_zec">%1$.2f ZEC</string>
     <string name="vote_results_total_zec">Total: %1$.2f ZEC</string>
+    <string name="vote_results_ended">Ended %1$s</string>
+    <string name="vote_results_winner">Winner: %1$s</string>
 
     <!-- Wallet syncing -->
     <string name="vote_wallet_syncing_title">Syncing wallet</string>

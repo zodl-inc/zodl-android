@@ -473,7 +473,7 @@ private fun ProposalListVotingPreview() =
                         ),
                     ctaButton =
                         ButtonState(
-                            text = stringRes("Continue Voting"),
+                            text = stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_list_continue_voting),
                             style = ButtonStyle.PRIMARY,
                             onClick = {}
                         ),
@@ -538,7 +538,7 @@ private fun ProposalListReviewPreview() =
                         ),
                     ctaButton =
                         ButtonState(
-                            text = stringRes("Confirm & Submit"),
+                            text = stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_list_confirm_submit),
                             style = ButtonStyle.PRIMARY,
                             onClick = {}
                         ),

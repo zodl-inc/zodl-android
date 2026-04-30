@@ -122,13 +122,13 @@ private fun DelegationSigningIdlePreview() =
         VoteDelegationSigningView(
             state =
                 VoteDelegationSigningState(
-                    title = stringRes("Sign delegation"),
+                    title = stringRes(co.electriccoin.zcash.ui.R.string.vote_delegation_signing_title),
                     body = stringRes("Generate a zero-knowledge proof to delegate your vote anonymously."),
-                    statusLabel = stringRes("Ready to generate proof"),
+                    statusLabel = stringRes(co.electriccoin.zcash.ui.R.string.vote_delegation_signing_status_ready),
                     proofProgress = null,
                     generateButton =
                         ButtonState(
-                            text = stringRes("Generate Proof"),
+                            text = stringRes(co.electriccoin.zcash.ui.R.string.vote_delegation_signing_cta),
                             style = ButtonStyle.PRIMARY,
                             isEnabled = false
                         ) {},
@@ -144,13 +144,13 @@ private fun DelegationSigningInProgressPreview() =
         VoteDelegationSigningView(
             state =
                 VoteDelegationSigningState(
-                    title = stringRes("Sign delegation"),
+                    title = stringRes(co.electriccoin.zcash.ui.R.string.vote_delegation_signing_title),
                     body = stringRes("Generate a zero-knowledge proof to delegate your vote anonymously."),
                     statusLabel = stringRes("Generating proof… 60%"),
                     proofProgress = 0.6f,
                     generateButton =
                         ButtonState(
-                            text = stringRes("Generate Proof"),
+                            text = stringRes(co.electriccoin.zcash.ui.R.string.vote_delegation_signing_cta),
                             style = ButtonStyle.PRIMARY,
                             isLoading = true
                         ) {},

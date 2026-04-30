@@ -199,7 +199,7 @@ private fun HowToVotePreview() =
                         listOf(
                             VoteStep(
                                 number = "1",
-                                title = stringRes("Voting on Proposals"),
+                                title = stringRes(co.electriccoin.zcash.ui.R.string.vote_how_to_vote_step1_title),
                                 description =
                                     stringRes(
                                         "Vote Support, Oppose, or Abstain on each question. " +
@@ -208,7 +208,7 @@ private fun HowToVotePreview() =
                             ),
                             VoteStep(
                                 number = "2",
-                                title = stringRes("Authorize and Submit"),
+                                title = stringRes(co.electriccoin.zcash.ui.R.string.vote_how_to_vote_step2_title),
                                 description =
                                     stringRes(
                                         "When you're ready, you'll confirm a small authorization transaction " +
@@ -224,7 +224,7 @@ private fun HowToVotePreview() =
                     walletHeaderIcons = VoteWalletHeaderIconsState(isKeystone = false),
                     continueButton =
                         ButtonState(
-                            text = stringRes("Continue"),
+                            text = stringRes(co.electriccoin.zcash.ui.R.string.vote_continue),
                             style = ButtonStyle.PRIMARY
                         ) {},
                     onBack = {}

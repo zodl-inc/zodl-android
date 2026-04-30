@@ -9,7 +9,6 @@ import co.electriccoin.zcash.ui.common.model.mutableLce
 import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.withLce
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
-import co.electriccoin.zcash.ui.common.repository.VotingSessionRepository
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetAllVotingRoundsUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -19,18 +18,20 @@ import co.electriccoin.zcash.ui.screen.voting.VoteOptionLabels
 import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 class VoteResultsVM(
     private val args: VoteResultsArgs,
     private val getAllRounds: GetAllVotingRoundsUseCase,
     private val votingApiProvider: VotingApiProvider,
-    private val votingSession: VotingSessionRepository,
     private val navigationRouter: NavigationRouter,
     private val errorStateMapper: ErrorMapperUseCase,
 ) : ViewModel() {
     private data class ResultsData(
         val roundTitle: String,
         val roundDescription: String,
+        val votingEnd: java.time.Instant,
         val proposals: List<co.electriccoin.zcash.ui.common.model.voting.Proposal>,
         val tally: co.electriccoin.zcash.ui.common.model.voting.TallyResults?,
     )
@@ -43,9 +44,7 @@ class VoteResultsVM(
                 getAllRounds().firstOrNull { it.id == args.roundIdHex }
                     ?: error("Round ${args.roundIdHex} not found")
             val tally = runCatching { votingApiProvider.fetchTallyResults(args.roundIdHex) }.getOrNull()
-            // Mark round as voted so CoinholderPolling shows the Voted card state
-            votingSession.markRoundVoted(round.id, round.proposals.size)
-            ResultsData(round.title, round.description, round.proposals, tally)
+            ResultsData(round.title, round.description, round.votingEnd, round.proposals, tally)
         }
     }
 
@@ -53,7 +52,7 @@ class VoteResultsVM(
         dataLce.state
             .map { lce ->
                 lce.success?.let {
-                    buildState(it.roundTitle, it.roundDescription, it.proposals, it.tally)
+                    buildState(it.roundTitle, it.roundDescription, it.votingEnd, it.proposals, it.tally)
                 }
             }.withLce(groupLce(dataLce)) {
                 errorStateMapper.mapToState(
@@ -67,9 +66,11 @@ class VoteResultsVM(
     private fun buildState(
         roundTitle: String,
         roundDescription: String,
+        votingEnd: java.time.Instant,
         proposals: List<co.electriccoin.zcash.ui.common.model.voting.Proposal>,
         tally: co.electriccoin.zcash.ui.common.model.voting.TallyResults?,
     ): VoteResultsState {
+        val dateFormatter = DateTimeFormatter.ofPattern("MMM d").withZone(ZoneId.systemDefault())
         val proposalResults =
             proposals.map { proposal ->
                 val tallyProposal = tally?.proposals?.firstOrNull { it.proposalId == proposal.id }
@@ -140,7 +141,7 @@ class VoteResultsVM(
         return VoteResultsState(
             roundTitle = stringRes(roundTitle),
             roundDescription = stringRes(roundDescription),
-            metaLine = null,
+            metaLine = stringRes(R.string.vote_results_ended, dateFormatter.format(votingEnd)),
             proposals = proposalResults,
             isLoadingResults = tally == null,
             doneButton =
@@ -153,7 +154,7 @@ class VoteResultsVM(
         )
     }
 
-    private fun onDone() = navigationRouter.forward(VoteCoinholderPollingArgs)
+    private fun onDone() = navigationRouter.backTo(VoteCoinholderPollingArgs::class)
 
     private fun onBack() = navigationRouter.back()
 }

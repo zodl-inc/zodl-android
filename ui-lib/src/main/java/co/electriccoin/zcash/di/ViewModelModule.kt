@@ -104,10 +104,6 @@ import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsArgs
 import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsVM
 import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingArgs
 import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingVM
-import co.electriccoin.zcash.ui.screen.voting.votingerror.VoteConfigErrorArgs
-import co.electriccoin.zcash.ui.screen.voting.votingerror.VoteConfigErrorVM
-import co.electriccoin.zcash.ui.screen.voting.votingerror.VoteErrorArgs
-import co.electriccoin.zcash.ui.screen.voting.votingerror.VoteErrorVM
 import co.electriccoin.zcash.ui.screen.voting.walletsyncing.VoteWalletSyncingVM
 import co.electriccoin.zcash.ui.screen.walletbackup.WalletBackupViewModel
 import co.electriccoin.zcash.ui.screen.warning.viewmodel.StorageCheckViewModel
@@ -213,8 +209,6 @@ val viewModelModule =
         viewModelOf(::VoteConfirmSubmissionVM)
         viewModelOf(::VoteTallyingVM)
         viewModelOf(::VoteResultsVM)
-        viewModelOf(::VoteErrorVM)
-        viewModelOf(::VoteConfigErrorVM)
         viewModelOf(::KeystoneConnectVM)
         viewModelOf(::KeystoneNewOrActiveVM)
         viewModelOf(::KeystoneDateVM)

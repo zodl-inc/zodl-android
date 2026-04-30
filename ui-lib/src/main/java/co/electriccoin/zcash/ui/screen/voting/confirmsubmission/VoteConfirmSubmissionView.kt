@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -38,6 +39,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.VerticalSpacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
@@ -55,6 +57,7 @@ import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIconsSta
 
 // ─── View ─────────────────────────────────────────────────────────────────────
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VoteConfirmSubmissionView(state: VoteConfirmSubmissionState) {
     val navTitle =
@@ -62,6 +65,8 @@ fun VoteConfirmSubmissionView(state: VoteConfirmSubmissionState) {
             is VoteSubmissionStatus.Idle -> "Confirmation"
             else -> "Submission"
         }
+
+    ZashiConfirmationBottomSheet(state = state.errorSheet)
 
     BlankBgScaffold(
         topBar = {
@@ -327,7 +332,7 @@ private fun previewState(status: VoteSubmissionStatus) =
         hotkeyAddress = stringRes("zs1xk9...f7q2m"),
         walletHeaderIcons = VoteWalletHeaderIconsState(isKeystone = false),
         memo = stringRes("I am authorizing this hotkey managed by my wallet to vote on NU7 Sentiment Poll with 1.2500 ZEC."),
-        ctaButton = ButtonState(stringRes("Confirm"), ButtonStyle.PRIMARY) {},
+        ctaButton = ButtonState(stringRes(co.electriccoin.zcash.ui.R.string.vote_confirm_cta), ButtonStyle.PRIMARY) {},
         onBack = {},
     )
 

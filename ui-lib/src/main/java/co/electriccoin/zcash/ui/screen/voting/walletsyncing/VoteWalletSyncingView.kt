@@ -119,14 +119,14 @@ private fun WalletSyncingPreview() =
         VoteWalletSyncingView(
             state =
                 VoteWalletSyncingState(
-                    title = stringRes("Syncing your wallet"),
+                    title = stringRes(co.electriccoin.zcash.ui.R.string.vote_wallet_syncing_title),
                     body = stringRes("Please wait while your wallet syncs to the latest block."),
                     progressLabel = stringRes("45% complete"),
                     progress = 0.45f,
                     isSynced = false,
                     continueButton =
                         ButtonState(
-                            text = stringRes("Continue"),
+                            text = stringRes(co.electriccoin.zcash.ui.R.string.vote_continue),
                             style = ButtonStyle.PRIMARY,
                             isEnabled = false
                         ) {},
@@ -149,7 +149,7 @@ private fun WalletSyncingCompletePreview() =
                     isSynced = true,
                     continueButton =
                         ButtonState(
-                            text = stringRes("Continue"),
+                            text = stringRes(co.electriccoin.zcash.ui.R.string.vote_continue),
                             style = ButtonStyle.PRIMARY
                         ) {},
                     onBack = {}

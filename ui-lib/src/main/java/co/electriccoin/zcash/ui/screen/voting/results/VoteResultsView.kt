@@ -6,9 +6,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -160,10 +164,10 @@ private fun ProposalResultCard(state: VoteProposalResultState) {
                 }
                 Spacer(1f)
                 if (state.winnerLabel != null) {
-                    WinnerBadge(label = "Winner: ${state.winnerLabel.getValue()}", color = state.winnerColor)
+                    WinnerBadge(label = state.winnerLabel.getValue(), color = state.winnerColor, showIcon = true)
                 } else {
-                    // Show placeholder so the row height stays consistent (mirrors iOS "—" badge)
-                    WinnerBadge(label = "—", color = VoteOptionColor.OTHER)
+                    // Placeholder keeps row height consistent
+                    WinnerBadge(label = "—", color = VoteOptionColor.OTHER, showIcon = false)
                 }
             }
 
@@ -262,7 +266,7 @@ private fun ZipBadge(label: String) {
 }
 
 @Composable
-private fun WinnerBadge(label: String, color: VoteOptionColor) {
+private fun WinnerBadge(label: String, color: VoteOptionColor, showIcon: Boolean) {
     val (bgColor, textColor) =
         when (color) {
             VoteOptionColor.SUPPORT -> Color(0xFF22C55E) to Color.White
@@ -274,13 +278,26 @@ private fun WinnerBadge(label: String, color: VoteOptionColor) {
         color = bgColor,
         shape = RoundedCornerShape(50),
     ) {
-        Text(
-            text = label,
-            style = ZashiTypography.textXs,
-            color = textColor,
-            fontWeight = FontWeight.Medium,
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-        )
+        ) {
+            if (showIcon) {
+                Icon(
+                    imageVector = Icons.Outlined.CheckCircle,
+                    contentDescription = null,
+                    tint = textColor,
+                    modifier = Modifier.size(12.dp),
+                )
+                Spacer(4.dp)
+            }
+            Text(
+                text = if (showIcon) "Winner: $label" else label,
+                style = ZashiTypography.textXs,
+                color = textColor,
+                fontWeight = FontWeight.Medium,
+            )
+        }
     }
 }
 
@@ -371,7 +388,7 @@ private fun ResultsPreview() =
                         ),
                     doneButton =
                         ButtonState(
-                            text = stringRes("Done"),
+                            text = stringRes(co.electriccoin.zcash.ui.R.string.vote_done),
                             style = ButtonStyle.PRIMARY,
                             onClick = {},
                         ),

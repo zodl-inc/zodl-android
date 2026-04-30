@@ -15,12 +15,11 @@ data class VotingServiceConfig(
     )
 
     companion object {
-        // 10.0.2.2 = host machine from Android emulator; use real device IP for physical device
         val FALLBACK =
             VotingServiceConfig(
                 version = 1,
-                voteServers = listOf(ServiceEndpoint(url = "http://10.0.2.2:1317", label = "local")),
-                pirServers = listOf(ServiceEndpoint(url = "http://10.0.2.2:3000", label = "local-pir"))
+                voteServers = listOf(ServiceEndpoint(url = "https://vote-chain-primary.valargroup.org", label = "valargroup-primary")),
+                pirServers = listOf(ServiceEndpoint(url = "https://vote-chain-primary.valargroup.org", label = "valargroup-primary"))
             )
     }
 }

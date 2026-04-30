@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.voting.confirmsubmission
 
 import co.electriccoin.zcash.ui.design.component.ButtonState
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIconsState
 
@@ -40,6 +41,7 @@ data class VoteConfirmSubmissionState(
     val votingWeightZEC: StringResource,
     val hotkeyAddress: StringResource,
     val walletHeaderIcons: VoteWalletHeaderIconsState,
+    val errorSheet: ZashiConfirmationState? = null,
     // Idle-only
     val memo: StringResource,
     val ctaButton: ButtonState,

@@ -18,6 +18,8 @@ import co.electriccoin.zcash.ui.common.usecase.GetAllVotingRoundsUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
+import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsArgs
+import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingArgs
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
@@ -91,11 +93,11 @@ class VoteCoinholderPollingVM(
             votedLabel = if (votedProposalCount != null) stringRes(R.string.vote_poll_voted_count, count, total) else null,
             proposalCount = total,
             votedCount = count,
-            onAction = { onRoundTapped(round.id, status) }
+            onAction = { onRoundTapped(round.id, status, round.status) }
         )
     }
 
-    private fun onRoundTapped(roundId: String, status: VotePollCardStatus) {
+    private fun onRoundTapped(roundId: String, status: VotePollCardStatus, roundStatus: SessionStatus) {
         when (status) {
             VotePollCardStatus.ACTIVE -> {
                 navigationRouter.forward(VoteProposalListArgs(roundId = roundId))
@@ -107,7 +109,11 @@ class VoteCoinholderPollingVM(
             }
 
             VotePollCardStatus.CLOSED -> {
-                navigationRouter.forward(VoteProposalListArgs(roundId = roundId))
+                if (roundStatus == SessionStatus.TALLYING) {
+                    navigationRouter.forward(VoteTallyingArgs(roundIdHex = roundId))
+                } else {
+                    navigationRouter.forward(VoteResultsArgs(roundIdHex = roundId))
+                }
             }
         }
     }

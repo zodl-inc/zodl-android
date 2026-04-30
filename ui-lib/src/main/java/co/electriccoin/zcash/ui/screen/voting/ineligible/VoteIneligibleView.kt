@@ -103,11 +103,11 @@ private fun IneligiblePreview() =
         VoteIneligibleView(
             state =
                 VoteIneligibleState(
-                    title = stringRes("Not eligible to vote"),
+                    title = stringRes(co.electriccoin.zcash.ui.R.string.vote_ineligible_title),
                     body = stringRes("Your wallet did not hold any shielded ZEC at the snapshot height."),
                     closeButton =
                         ButtonState(
-                            text = stringRes("Close"),
+                            text = stringRes(co.electriccoin.zcash.ui.R.string.vote_close),
                             style = ButtonStyle.PRIMARY
                         ) {},
                     onBack = {}
