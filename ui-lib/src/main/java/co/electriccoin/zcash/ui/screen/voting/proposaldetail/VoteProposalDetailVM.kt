@@ -8,6 +8,7 @@ import co.electriccoin.zcash.ui.common.model.groupLce
 import co.electriccoin.zcash.ui.common.model.mutableLce
 import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.voting.Proposal
+import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.VoteOption
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
 import co.electriccoin.zcash.ui.common.model.withLce
@@ -18,6 +19,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.VoteOptionLabels
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
+import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsArgs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -33,9 +35,16 @@ class VoteProposalDetailVM(
     private val showUnansweredSheet = MutableStateFlow(false)
     private val roundLce = mutableLce<VotingRound?>()
 
+    // Captured before any edits so Cancel can restore it.
+    private var originalDraftOption: Int? = null
+
     init {
         roundLce.execute {
-            getAllRounds().firstOrNull { it.id == args.roundId }
+            val round = getAllRounds().firstOrNull { it.id == args.roundId }
+            if (args.isEditingFromReview) {
+                originalDraftOption = votingSession.draftVotes.value[args.proposalId]
+            }
+            round
         }
     }
 
@@ -67,6 +76,7 @@ class VoteProposalDetailVM(
         val position = if (proposalIndex >= 0) proposalIndex + 1 else 1
         val selectedIdx = drafts[proposal.id]
         val unansweredCount = proposals.count { !drafts.containsKey(it.id) }
+        val pollEnded = round.status != SessionStatus.ACTIVE
 
         return VoteProposalDetailState(
             positionLabel = stringRes(R.string.vote_proposal_position, position, total),
@@ -74,14 +84,17 @@ class VoteProposalDetailVM(
             description = stringRes(proposal.description),
             forumUrl = proposal.forumUrl,
             options = buildOptions(proposal, selectedIdx),
-            isLocked = false,
+            isLocked = pollEnded,
             isEditingFromReview = args.isEditingFromReview,
-            showUnansweredSheet = showSheet,
+            showUnansweredSheet = showSheet && !pollEnded,
             unansweredCount = unansweredCount,
+            showPollEndedSheet = pollEnded,
             onBack = ::onBack,
             onNext = { onNext(proposals, proposalIndex, drafts) },
             onConfirmUnanswered = { onConfirmUnanswered(round) },
             onDismissUnanswered = { showUnansweredSheet.value = false },
+            onPollEndedClose = ::onBack,
+            onPollEndedViewResults = { navigationRouter.forward(VoteResultsArgs(roundIdHex = round.id)) },
         )
     }
 
@@ -105,9 +118,20 @@ class VoteProposalDetailVM(
         }
     }
 
-    private fun onBack() = navigationRouter.back()
+    private fun onBack() {
+        if (args.isEditingFromReview) {
+            // Cancel — restore the original draft selection
+            votingSession.setDraft(args.proposalId, originalDraftOption)
+        }
+        navigationRouter.back()
+    }
 
     private fun onNext(proposals: List<Proposal>, currentIndex: Int, drafts: Map<Int, Int>) {
+        // When editing from review, Save just commits (already applied) and returns to Review
+        if (args.isEditingFromReview) {
+            navigationRouter.back()
+            return
+        }
         val isLast = currentIndex == proposals.lastIndex
         if (!isLast) {
             val next = proposals[currentIndex + 1]
@@ -136,6 +160,9 @@ class VoteProposalDetailVM(
     }
 }
 
+private const val BINARY_OPTION_COUNT = 2
+private const val COLOR_CYCLE = 3
+
 private fun VoteOption.toVoteVoteOptionColor(total: Int): VoteVoteOptionColor {
     if (label.lowercase().contains(VoteOptionLabels.ABSTAIN)) return VoteVoteOptionColor.ABSTAIN
     return when (total) {
@@ -143,12 +170,12 @@ private fun VoteOption.toVoteVoteOptionColor(total: Int): VoteVoteOptionColor {
             VoteVoteOptionColor.SUPPORT
         }
 
-        2 -> {
+        BINARY_OPTION_COUNT -> {
             if (id == 0) VoteVoteOptionColor.SUPPORT else VoteVoteOptionColor.OPPOSE
         }
 
         else -> {
-            when (id % 3) {
+            when (id % COLOR_CYCLE) {
                 0 -> VoteVoteOptionColor.SUPPORT
                 1 -> VoteVoteOptionColor.OPPOSE
                 else -> VoteVoteOptionColor.OTHER

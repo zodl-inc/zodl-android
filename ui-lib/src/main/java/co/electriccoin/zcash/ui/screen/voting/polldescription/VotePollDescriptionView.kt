@@ -175,7 +175,11 @@ private fun PollDescriptionNoUrlPreview() =
             state =
                 VotePollDescriptionState(
                     title = stringRes("NU7 Sentiment Poll"),
-                    description = stringRes("This poll gauges coinholder and community sentiment on proposed Zcash protocol features."),
+                    description =
+                        stringRes(
+                            "This poll gauges coinholder and community sentiment on " +
+                                "proposed Zcash protocol features."
+                        ),
                     discussionUrl = null,
                     onBack = {}
                 )

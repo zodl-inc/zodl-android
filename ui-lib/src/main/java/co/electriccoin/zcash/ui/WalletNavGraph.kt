@@ -189,8 +189,6 @@ import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPo
 import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingScreen
 import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionArgs
 import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionScreen
-import co.electriccoin.zcash.ui.screen.voting.delegationsigning.VoteDelegationSigningArgs
-import co.electriccoin.zcash.ui.screen.voting.delegationsigning.VoteDelegationSigningScreen
 import co.electriccoin.zcash.ui.screen.voting.howtovote.VoteHowToVoteArgs
 import co.electriccoin.zcash.ui.screen.voting.howtovote.VoteHowToVoteScreen
 import co.electriccoin.zcash.ui.screen.voting.ineligible.VoteIneligibleArgs
@@ -205,8 +203,6 @@ import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsArgs
 import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsScreen
 import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingArgs
 import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingScreen
-import co.electriccoin.zcash.ui.screen.voting.walletsyncing.VoteWalletSyncingArgs
-import co.electriccoin.zcash.ui.screen.voting.walletsyncing.VoteWalletSyncingScreen
 import co.electriccoin.zcash.ui.screen.walletbackup.AndroidWalletBackup
 import co.electriccoin.zcash.ui.screen.walletbackup.WalletBackup
 import co.electriccoin.zcash.ui.screen.warning.WrapNotEnoughSpace
@@ -350,10 +346,6 @@ fun NavGraphBuilder.walletNavGraph(
         composable<VoteHowToVoteArgs> { VoteHowToVoteScreen() }
         dialogComposable<VotePollDescriptionArgs> { backStackEntry ->
             VotePollDescriptionScreen(backStackEntry.toRoute())
-        }
-        composable<VoteWalletSyncingArgs> { VoteWalletSyncingScreen() }
-        composable<VoteDelegationSigningArgs> { backStackEntry ->
-            VoteDelegationSigningScreen(backStackEntry.toRoute())
         }
         composable<VoteConfirmSubmissionArgs> { backStackEntry ->
             VoteConfirmSubmissionScreen(backStackEntry.toRoute())

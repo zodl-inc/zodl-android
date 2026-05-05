@@ -43,9 +43,7 @@ interface VotingApiProvider {
     suspend fun fetchTxConfirmation(txHash: String): Boolean
 }
 
-// Set to empty string to skip CDN and use FALLBACK (local dev)
-private const val CONFIG_CDN_URL = ""
-
+@Suppress("TooManyFunctions")
 class KtorVotingApiProvider(
     private val httpClientProvider: HttpClientProvider
 ) : VotingApiProvider {
@@ -53,28 +51,20 @@ class KtorVotingApiProvider(
 
     override suspend fun fetchServiceConfig(): VotingServiceConfig =
         execute {
-            val config =
-                if (CONFIG_CDN_URL.isNotEmpty()) {
-                    runCatching {
-                        get(CONFIG_CDN_URL).body<VotingServiceConfig>()
-                    }.getOrNull() ?: VotingServiceConfig.FALLBACK
-                } else {
-                    VotingServiceConfig.FALLBACK
-                }
-            cachedConfig = config
-            config
+            VotingServiceConfig.SERVERS.also { cachedConfig = it }
         }
 
-    private fun baseUrl(): String =
-        cachedConfig?.voteServers?.firstOrNull()?.url
-            ?: VotingServiceConfig.FALLBACK.voteServers
-                .first()
-                .url
+    private val baseUrl: String
+        get() =
+            cachedConfig?.voteServers?.firstOrNull()?.url
+                ?: VotingServiceConfig.SERVERS.voteServers
+                    .first()
+                    .url
 
     override suspend fun fetchActiveVotingSession(): VotingSession? =
         execute {
             runCatching {
-                val resp = get("${baseUrl()}/shielded-vote/v1/rounds/active").body<ChainActiveRoundResponse>()
+                val resp = get("$baseUrl/shielded-vote/v1/rounds/active").body<ChainActiveRoundResponse>()
                 resp.round?.let { dto ->
                     VotingSession(
                         voteRoundId = dto.voteRoundId.toByteArray(),
@@ -102,24 +92,24 @@ class KtorVotingApiProvider(
 
     override suspend fun fetchAllRounds(): List<VotingRound> =
         execute {
-            val resp = get("${baseUrl()}/shielded-vote/v1/rounds").body<ChainRoundsResponse>()
+            val resp = get("$baseUrl/shielded-vote/v1/rounds").body<ChainRoundsResponse>()
             resp.rounds?.map { it.toVotingRound() } ?: emptyList()
         }
 
     override suspend fun fetchRoundById(roundIdHex: String): VotingRound =
         execute {
-            val resp = get("${baseUrl()}/shielded-vote/v1/round/$roundIdHex").body<ChainRoundResponse>()
+            val resp = get("$baseUrl/shielded-vote/v1/round/$roundIdHex").body<ChainRoundResponse>()
             resp.round.toVotingRound()
         }
 
     override suspend fun fetchTallyResults(roundIdHex: String): TallyResults =
         execute {
-            get("${baseUrl()}/shielded-vote/v1/round/$roundIdHex/results").body()
+            get("$baseUrl/shielded-vote/v1/round/$roundIdHex/results").body()
         }
 
     override suspend fun submitDelegation(registration: DelegationRegistration) =
         execute {
-            post("${baseUrl()}/shielded-vote/v1/delegate-vote") {
+            post("$baseUrl/shielded-vote/v1/delegate-vote") {
                 contentType(ContentType.Application.Json)
                 setBody(registration)
             }
@@ -128,7 +118,7 @@ class KtorVotingApiProvider(
 
     override suspend fun submitVoteCommitment(bundle: VoteCommitmentBundle, signature: CastVoteSignature) =
         execute {
-            post("${baseUrl()}/shielded-vote/v1/cast-vote") {
+            post("$baseUrl/shielded-vote/v1/cast-vote") {
                 contentType(ContentType.Application.Json)
                 setBody(mapOf("bundle" to bundle, "signature" to signature))
             }
@@ -137,7 +127,7 @@ class KtorVotingApiProvider(
 
     override suspend fun delegateShares(shares: List<SharePayload>, roundIdHex: String) =
         execute {
-            post("${baseUrl()}/shielded-vote/v1/round/$roundIdHex/shares") {
+            post("$baseUrl/shielded-vote/v1/round/$roundIdHex/shares") {
                 contentType(ContentType.Application.Json)
                 setBody(shares)
             }
@@ -147,7 +137,7 @@ class KtorVotingApiProvider(
     override suspend fun fetchTxConfirmation(txHash: String): Boolean =
         execute {
             runCatching {
-                val resp = get("${baseUrl()}/shielded-vote/v1/tx/$txHash").body<ChainTxResponse>()
+                val resp = get("$baseUrl/shielded-vote/v1/tx/$txHash").body<ChainTxResponse>()
                 resp.tx?.confirmed ?: false
             }.getOrDefault(false)
         }

@@ -1,12 +1,9 @@
 package co.electriccoin.zcash.ui.screen.voting.howtovote
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -18,7 +15,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -193,7 +189,8 @@ private fun HowToVotePreview() =
                     title = stringRes("How to vote with Zodl"),
                     subtitle =
                         stringRes(
-                            "Your ZEC gives you a voice. Shape the future of the Zcash network by voting on active proposals."
+                            "Your ZEC gives you a voice. Shape the future of the Zcash " +
+                                "network by voting on active proposals."
                         ),
                     steps =
                         listOf(
@@ -211,8 +208,9 @@ private fun HowToVotePreview() =
                                 title = stringRes(co.electriccoin.zcash.ui.R.string.vote_how_to_vote_step2_title),
                                 description =
                                     stringRes(
-                                        "When you're ready, you'll confirm a small authorization transaction " +
-                                            "and submit your vote in one step. After submission, your vote cannot be changed."
+                                        "When you're ready, you'll confirm a small authorization " +
+                                            "transaction and submit your vote in one step. " +
+                                            "After submission, your vote cannot be changed."
                                     )
                             ),
                         ),

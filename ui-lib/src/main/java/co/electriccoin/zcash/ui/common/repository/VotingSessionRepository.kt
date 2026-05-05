@@ -29,6 +29,9 @@ interface VotingSessionRepository {
 
     fun toggleDraft(proposalId: Int, optionIndex: Int)
 
+    /** Directly set (or clear when null) a proposal's draft without toggle semantics. */
+    fun setDraft(proposalId: Int, optionIndex: Int?)
+
     fun abstainUnanswered(proposals: List<Proposal>)
 
     /** Record that the user submitted votes for a round. */
@@ -52,6 +55,15 @@ class VotingSessionRepositoryImpl : VotingSessionRepository {
                 current - proposalId
             } else {
                 current + (proposalId to optionIndex)
+            }
+    }
+
+    override fun setDraft(proposalId: Int, optionIndex: Int?) {
+        _draftVotes.value =
+            if (optionIndex == null) {
+                _draftVotes.value - proposalId
+            } else {
+                _draftVotes.value + (proposalId to optionIndex)
             }
     }
 

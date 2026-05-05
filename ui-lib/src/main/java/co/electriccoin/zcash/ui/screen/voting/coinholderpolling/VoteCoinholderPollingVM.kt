@@ -62,7 +62,12 @@ class VoteCoinholderPollingVM(
         return VoteCoinholderPollingState(
             items = (activeSrc + pastSrc).map { buildCard(it, voteRecords[it.id]) },
             onBack = ::onBack,
+            onRefresh = ::onRefresh,
         )
+    }
+
+    private fun onRefresh() {
+        roundsLce.execute { getAllRounds() }
     }
 
     private fun buildCard(round: VotingRound, votedProposalCount: Int?): VotePollCardState {
@@ -87,10 +92,12 @@ class VoteCoinholderPollingVM(
         return VotePollCardState(
             roundId = round.id,
             title = stringRes(round.title),
-            description = if (round.description.isNotEmpty()) stringRes(round.description) else stringRes(""),
+            description =
+                if (round.description.isNotEmpty()) stringRes(round.description) else stringRes(""),
             status = status,
             dateLabel = stringRes(dateLabel),
-            votedLabel = if (votedProposalCount != null) stringRes(R.string.vote_poll_voted_count, count, total) else null,
+            votedLabel =
+                if (votedProposalCount != null) stringRes(R.string.vote_poll_voted_count, count, total) else null,
             proposalCount = total,
             votedCount = count,
             onAction = { onRoundTapped(round.id, status, round.status) }

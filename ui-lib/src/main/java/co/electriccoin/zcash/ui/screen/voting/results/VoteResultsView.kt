@@ -42,6 +42,9 @@ import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 
+private const val BADGE_CORNER_RADIUS = 50
+private const val CHECK_ICON_SIZE_DP = 12
+
 // ─── View ─────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -164,10 +167,15 @@ private fun ProposalResultCard(state: VoteProposalResultState) {
                 }
                 Spacer(1f)
                 if (state.winnerLabel != null) {
-                    WinnerBadge(label = state.winnerLabel.getValue(), color = state.winnerColor, showIcon = true)
+                    WinnerBadge(
+                        label = state.winnerLabel.getValue(),
+                        color = state.winnerColor,
+                        showIcon = !state.isTie,
+                        isTie = state.isTie,
+                    )
                 } else {
                     // Placeholder keeps row height consistent
-                    WinnerBadge(label = "—", color = VoteOptionColor.OTHER, showIcon = false)
+                    WinnerBadge(label = "—", color = VoteOptionColor.OTHER, showIcon = false, isTie = false)
                 }
             }
 
@@ -197,7 +205,7 @@ private fun ProposalResultCard(state: VoteProposalResultState) {
             // Result bars
             state.options.forEachIndexed { index, option ->
                 if (index > 0) Spacer(12.dp)
-                OptionResultBar(option = option, totalOptions = state.options.size)
+                OptionResultBar(option = option)
             }
 
             Spacer(8.dp)
@@ -215,7 +223,7 @@ private fun ProposalResultCard(state: VoteProposalResultState) {
 // ─── Option Result Bar ────────────────────────────────────────────────────────
 
 @Composable
-private fun OptionResultBar(option: VoteOptionResultState, totalOptions: Int) {
+private fun OptionResultBar(option: VoteOptionResultState) {
     val barColor = optionBarColor(option.color, option.isWinner)
     val trackColor = ZashiColors.Surfaces.strokeSecondary
 
@@ -253,7 +261,7 @@ private fun OptionResultBar(option: VoteOptionResultState, totalOptions: Int) {
 private fun ZipBadge(label: String) {
     Surface(
         color = ZashiColors.Surfaces.bgTertiary,
-        shape = RoundedCornerShape(50),
+        shape = RoundedCornerShape(BADGE_CORNER_RADIUS),
     ) {
         Text(
             text = label,
@@ -266,17 +274,21 @@ private fun ZipBadge(label: String) {
 }
 
 @Composable
-private fun WinnerBadge(label: String, color: VoteOptionColor, showIcon: Boolean) {
+private fun WinnerBadge(label: String, color: VoteOptionColor, showIcon: Boolean, isTie: Boolean) {
     val (bgColor, textColor) =
-        when (color) {
-            VoteOptionColor.SUPPORT -> Color(0xFF22C55E) to Color.White
-            VoteOptionColor.OPPOSE -> Color(0xFFEF4444) to Color.White
-            VoteOptionColor.ABSTAIN -> Color(0xFF3B82F6) to Color.White
-            VoteOptionColor.OTHER -> Color(0xFF6B7280) to Color.White
+        if (isTie) {
+            ZashiColors.Surfaces.bgTertiary to ZashiColors.Text.textPrimary
+        } else {
+            when (color) {
+                VoteOptionColor.SUPPORT -> VoteColorSupport to Color.White
+                VoteOptionColor.OPPOSE -> VoteColorOppose to Color.White
+                VoteOptionColor.ABSTAIN -> VoteColorAbstain to Color.White
+                VoteOptionColor.OTHER -> VoteColorNeutral to Color.White
+            }
         }
     Surface(
         color = bgColor,
-        shape = RoundedCornerShape(50),
+        shape = RoundedCornerShape(BADGE_CORNER_RADIUS),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -287,12 +299,12 @@ private fun WinnerBadge(label: String, color: VoteOptionColor, showIcon: Boolean
                     imageVector = Icons.Outlined.CheckCircle,
                     contentDescription = null,
                     tint = textColor,
-                    modifier = Modifier.size(12.dp),
+                    modifier = Modifier.size(CHECK_ICON_SIZE_DP.dp),
                 )
                 Spacer(4.dp)
             }
             Text(
-                text = if (showIcon) "Winner: $label" else label,
+                text = if (isTie || showIcon) "Winner: $label" else label,
                 style = ZashiTypography.textXs,
                 color = textColor,
                 fontWeight = FontWeight.Medium,
@@ -303,13 +315,25 @@ private fun WinnerBadge(label: String, color: VoteOptionColor, showIcon: Boolean
 
 // ─── Color helpers ────────────────────────────────────────────────────────────
 
+@Suppress("MagicNumber")
+private val VoteColorSupport = Color(0xFF22C55E)
+
+@Suppress("MagicNumber")
+private val VoteColorOppose = Color(0xFFEF4444)
+
+@Suppress("MagicNumber")
+private val VoteColorAbstain = Color(0xFF3B82F6)
+
+@Suppress("MagicNumber")
+private val VoteColorNeutral = Color(0xFF6B7280)
+
 private fun optionBarColor(color: VoteOptionColor, isWinner: Boolean): Color {
-    if (!isWinner) return Color(0xFF6B7280)
+    if (!isWinner) return VoteColorNeutral
     return when (color) {
-        VoteOptionColor.SUPPORT -> Color(0xFF22C55E)
-        VoteOptionColor.OPPOSE -> Color(0xFFEF4444)
-        VoteOptionColor.ABSTAIN -> Color(0xFF3B82F6)
-        VoteOptionColor.OTHER -> Color(0xFF6B7280)
+        VoteOptionColor.SUPPORT -> VoteColorSupport
+        VoteOptionColor.OPPOSE -> VoteColorOppose
+        VoteOptionColor.ABSTAIN -> VoteColorAbstain
+        VoteOptionColor.OTHER -> VoteColorNeutral
     }
 }
 
@@ -350,13 +374,17 @@ private fun ResultsPreview() =
                                         ),
                                     ),
                                 totalZEC = stringRes("Total: 1000.00 ZEC"),
-                                winnerLabel = stringRes(co.electriccoin.zcash.ui.R.string.vote_option_support),
+                                winnerLabel =
+                                    stringRes(co.electriccoin.zcash.ui.R.string.vote_option_support),
                                 winnerColor = VoteOptionColor.SUPPORT,
                             ),
                             VoteProposalResultState(
                                 zipNumber = stringRes("ZIP-235"),
                                 title = stringRes("Network Sustainability Mechanism"),
-                                description = stringRes("Redirect a portion of the block subsidy to a sustainability fund."),
+                                description =
+                                    stringRes(
+                                        "Redirect a portion of the block subsidy to a sustainability fund."
+                                    ),
                                 options =
                                     listOf(
                                         VoteOptionResultState(

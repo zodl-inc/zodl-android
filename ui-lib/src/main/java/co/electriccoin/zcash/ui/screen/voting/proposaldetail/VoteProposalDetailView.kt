@@ -1,9 +1,9 @@
+@file:Suppress("TooManyFunctions")
+
 package co.electriccoin.zcash.ui.screen.voting.proposaldetail
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,7 +15,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
@@ -41,7 +40,6 @@ import co.electriccoin.zcash.ui.design.component.VerticalSpacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiCheckboxIndicator
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
-import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
@@ -102,6 +100,10 @@ fun VoteProposalDetailView(state: VoteProposalDetailState) {
 
     if (state.showUnansweredSheet) {
         UnansweredBottomSheet(state = state)
+    }
+
+    if (state.showPollEndedSheet) {
+        PollEndedBottomSheet(state = state)
     }
 }
 
@@ -341,6 +343,79 @@ private fun UnansweredBottomSheet(state: VoteProposalDetailState) {
     }
 }
 
+// ─── Poll Ended Bottom Sheet ──────────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PollEndedBottomSheet(state: VoteProposalDetailState) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = state.onPollEndedClose,
+        sheetState = sheetState,
+        containerColor = ZashiColors.Surfaces.bgPrimary,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
+                    .padding(bottom = 32.dp)
+        ) {
+            Surface(
+                shape = CircleShape,
+                color =
+                    ZashiColors.Utility.ErrorRed.utilityError500
+                        .copy(alpha = 0.1f),
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_info),
+                    contentDescription = null,
+                    tint = ZashiColors.Utility.ErrorRed.utilityError500,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+            VerticalSpacer(16.dp)
+            Text(
+                text = stringRes(co.electriccoin.zcash.ui.R.string.vote_poll_ended_title).getValue(),
+                style = ZashiTypography.header6,
+                color = ZashiColors.Text.textPrimary,
+                fontWeight = FontWeight.SemiBold,
+            )
+            VerticalSpacer(8.dp)
+            Text(
+                text = stringRes(co.electriccoin.zcash.ui.R.string.vote_poll_ended_message).getValue(),
+                style = ZashiTypography.textSm,
+                color = ZashiColors.Text.textSecondary,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+            VerticalSpacer(24.dp)
+            ZashiButton(
+                modifier = Modifier.fillMaxWidth(),
+                state =
+                    ButtonState(
+                        text = stringRes(co.electriccoin.zcash.ui.R.string.vote_poll_ended_view_results),
+                        style = ButtonStyle.PRIMARY,
+                        onClick = state.onPollEndedViewResults
+                    )
+            )
+            VerticalSpacer(12.dp)
+            ZashiButton(
+                modifier = Modifier.fillMaxWidth(),
+                state =
+                    ButtonState(
+                        text = stringRes(co.electriccoin.zcash.ui.R.string.vote_close),
+                        style = ButtonStyle.TERTIARY,
+                        onClick = state.onPollEndedClose
+                    )
+            )
+        }
+    }
+}
+
 // ─── Previews ────────────────────────────────────────────────────────────────
 
 @PreviewScreens
@@ -387,10 +462,13 @@ private fun ProposalDetailPreviewUnvoted() =
                     isEditingFromReview = false,
                     showUnansweredSheet = false,
                     unansweredCount = 0,
+                    showPollEndedSheet = false,
                     onBack = {},
                     onNext = {},
                     onConfirmUnanswered = {},
                     onDismissUnanswered = {},
+                    onPollEndedClose = {},
+                    onPollEndedViewResults = {},
                 )
         )
     }
@@ -437,10 +515,13 @@ private fun ProposalDetailPreviewSupport() =
                     isEditingFromReview = false,
                     showUnansweredSheet = false,
                     unansweredCount = 0,
+                    showPollEndedSheet = false,
                     onBack = {},
                     onNext = {},
                     onConfirmUnanswered = {},
                     onDismissUnanswered = {},
+                    onPollEndedClose = {},
+                    onPollEndedViewResults = {},
                 )
         )
     }

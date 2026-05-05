@@ -9,6 +9,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.voting.ZATOSHI_PER_ZEC
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.text.NumberFormat
@@ -53,7 +54,7 @@ class VoteIneligibleVM(
             }
 
             IneligibilityReason.BALANCE_TOO_LOW -> {
-                val balanceZEC = "%.3f".format(args.balanceZatoshi / 100_000_000.0)
+                val balanceZEC = "%.3f".format(args.balanceZatoshi / ZATOSHI_PER_ZEC)
                 stringRes(
                     "Your shielded balance at the snapshot block was $balanceZEC ZEC, " +
                         "which is below the 0.125 ZEC minimum required to vote."

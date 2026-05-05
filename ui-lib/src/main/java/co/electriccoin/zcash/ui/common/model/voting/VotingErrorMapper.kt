@@ -1,46 +1,53 @@
 package co.electriccoin.zcash.ui.common.model.voting
 
-/**
- * Maps raw server/SDK error messages to user-friendly descriptions.
- */
-internal object VotingErrorMapper {
-    fun toUserFriendlyMessage(rawMessage: String): String {
+import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.util.stringRes
+
+class VotingErrorMapper {
+    @Suppress("CyclomaticComplexMethod")
+    fun toUserFriendlyMessage(rawMessage: String): StringResource {
         val lower = rawMessage.lowercase()
         return when {
             lower.contains("nullifier") && lower.contains("spent") -> {
-                "Your vote authorization has already been used. Each wallet can only vote once per round."
+                stringRes(R.string.vote_error_mapper_nullifier_spent)
             }
 
-            lower.contains("round") && (lower.contains("not active") || lower.contains("inactive") || lower.contains("closed")) -> {
-                "This voting round is no longer active. The poll may have closed while you were voting."
+            lower.contains("round") &&
+                (lower.contains("not active") || lower.contains("inactive") || lower.contains("closed")) -> {
+                stringRes(R.string.vote_error_mapper_round_closed)
             }
 
             lower.contains("pir") || lower.contains("private information retrieval") -> {
-                "Could not connect to the privacy-preserving vote server. Please check your connection and try again."
+                stringRes(R.string.vote_error_mapper_pir_connection)
             }
 
             lower.contains("insufficient") && lower.contains("fund") -> {
-                "Insufficient funds to authorize your vote. A small fee is required."
+                stringRes(R.string.vote_error_mapper_insufficient_funds)
             }
 
             lower.contains("wallet") && lower.contains("sync") -> {
-                "Your wallet is not fully synced. Please wait for syncing to complete before voting."
+                stringRes(R.string.vote_error_mapper_wallet_sync)
             }
 
             lower.contains("network") || lower.contains("timeout") || lower.contains("connect") -> {
-                "Network error. Please check your connection and try again."
+                stringRes(R.string.vote_error_mapper_network)
             }
 
             lower.contains("proof") || lower.contains("zkp") -> {
-                "Vote proof generation failed. Please try again."
+                stringRes(R.string.vote_error_mapper_proof)
             }
 
             lower.contains("config") || lower.contains("version") -> {
-                "Your app may need an update to participate in this voting round."
+                stringRes(R.string.vote_error_mapper_version)
             }
 
             else -> {
-                rawMessage.ifBlank { "An unexpected error occurred. Please try again." }
+                if (rawMessage.isBlank()) {
+                    stringRes(R.string.vote_error_mapper_unknown)
+                } else {
+                    stringRes(rawMessage)
+                }
             }
         }
     }

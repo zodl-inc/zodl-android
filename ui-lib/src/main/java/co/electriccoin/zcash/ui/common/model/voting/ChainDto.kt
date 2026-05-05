@@ -65,7 +65,8 @@ data class ChainRoundDto(
 
     fun ncRootBytes(): ByteArray = runCatching { Base64.decode(ncRoot, Base64.DEFAULT) }.getOrDefault(ByteArray(0))
 
-    fun nullifierImtRootBytes(): ByteArray = runCatching { Base64.decode(nullifierImtRoot, Base64.DEFAULT) }.getOrDefault(ByteArray(0))
+    fun nullifierImtRootBytes(): ByteArray =
+        runCatching { Base64.decode(nullifierImtRoot, Base64.DEFAULT) }.getOrDefault(ByteArray(0))
 }
 
 @Serializable

@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package co.electriccoin.zcash.ui.screen.voting.proposallist
 
 import androidx.compose.foundation.BorderStroke
@@ -18,8 +20,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -47,6 +47,8 @@ import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
+
+private const val DOT_FILL_RATIO = 0.6f
 
 @Composable
 fun VoteProposalListView(state: VoteProposalListState) {
@@ -235,7 +237,7 @@ private fun VoteProgressBar(
         androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
             val barHeight = size.height
             val barWidth = size.width
-            val dotRadius = barHeight / 2 * 0.6f
+            val dotRadius = barHeight / 2 * DOT_FILL_RATIO
 
             // Background track
             drawRoundRect(
@@ -458,7 +460,8 @@ private fun ProposalListVotingPreview() =
                                 id = 1,
                                 zipNumber = stringRes("ZIP-235"),
                                 title = stringRes("Network Sustainability Mechanism"),
-                                description = stringRes("Redirect a portion of the block subsidy to a sustainability fund."),
+                                description =
+                                    stringRes("Redirect a portion of the block subsidy to a sustainability fund."),
                                 voteBadge = null,
                                 onClick = {}
                             ),
@@ -515,7 +518,8 @@ private fun ProposalListReviewPreview() =
                                 id = 1,
                                 zipNumber = stringRes("ZIP-235"),
                                 title = stringRes("Network Sustainability Mechanism"),
-                                description = stringRes("Redirect a portion of the block subsidy to a sustainability fund."),
+                                description =
+                                    stringRes("Redirect a portion of the block subsidy to a sustainability fund."),
                                 voteBadge =
                                     VoteVoteBadgeState(
                                         stringRes(co.electriccoin.zcash.ui.R.string.vote_option_oppose),

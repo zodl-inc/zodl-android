@@ -32,7 +32,9 @@ import co.electriccoin.zcash.ui.common.usecase.GetWalletSeedBytesUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
+import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.voting.ZATOSHI_PER_ZEC
 import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
 import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIconsState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -43,6 +45,7 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.security.SecureRandom
 
+@Suppress("TooManyFunctions")
 class VoteConfirmSubmissionVM(
     private val args: VoteConfirmSubmissionArgs,
     private val application: Application,
@@ -58,6 +61,7 @@ class VoteConfirmSubmissionVM(
     private val getWalletSeedBytes: GetWalletSeedBytesUseCase,
     private val votingApiProvider: VotingApiProvider,
     private val votingSession: co.electriccoin.zcash.ui.common.repository.VotingSessionRepository,
+    private val votingErrorMapper: VotingErrorMapper,
 ) : ViewModel() {
     private data class PageData(
         val roundTitle: String,
@@ -75,7 +79,11 @@ class VoteConfirmSubmissionVM(
         dataLce.execute {
             val round = getAllRounds().firstOrNull { it.id == args.roundIdHex }
             val account = getSelectedWalletAccount()
-            PageData(roundTitle = round?.title ?: "", proposalCount = round?.proposals?.size ?: 0, isKeystone = account is KeystoneAccount)
+            PageData(
+                roundTitle = round?.title ?: "",
+                proposalCount = round?.proposals?.size ?: 0,
+                isKeystone = account is KeystoneAccount
+            )
         }
     }
 
@@ -104,16 +112,30 @@ class VoteConfirmSubmissionVM(
         hotkeyAddr: String?,
         errorSheet: ZashiConfirmationState?,
     ): VoteConfirmSubmissionState {
-        val weightZEC =
-            weightZatoshi
-                ?.let { "%.4f ZEC".format(it / 100_000_000.0) }
-                ?: "0.0000 ZEC"
-        val hotkey = hotkeyAddr ?: "–"
+        val weightZEC = weightZatoshi?.let { "%.4f ZEC".format(it / ZATOSHI_PER_ZEC) } ?: "0.0000 ZEC"
         val memo = "I am authorizing this hotkey managed by my wallet to vote on ${data.roundTitle} with $weightZEC."
-        val ctaLabel =
+        return VoteConfirmSubmissionState(
+            status = status,
+            roundTitle = stringRes(data.roundTitle),
+            votingWeightZEC = stringRes(weightZEC),
+            hotkeyAddress = stringRes(hotkeyAddr ?: "–"),
+            walletHeaderIcons = VoteWalletHeaderIconsState(isKeystone = data.isKeystone),
+            errorSheet = errorSheet,
+            memo = stringRes(memo),
+            ctaButton = buildCtaButton(data, status),
+            onBack = buildOnBack(status),
+        )
+    }
+
+    private fun buildCtaButton(data: PageData, status: VoteSubmissionStatus): ButtonState {
+        val label: StringResource =
             when (status) {
                 is VoteSubmissionStatus.Idle -> {
-                    if (data.isKeystone) stringRes(R.string.vote_confirm_cta_keystone) else stringRes(R.string.vote_confirm_cta)
+                    if (data.isKeystone) {
+                        stringRes(R.string.vote_confirm_cta_keystone)
+                    } else {
+                        stringRes(R.string.vote_confirm_cta)
+                    }
                 }
 
                 is VoteSubmissionStatus.Authorizing -> {
@@ -121,7 +143,11 @@ class VoteConfirmSubmissionVM(
                 }
 
                 is VoteSubmissionStatus.Submitting -> {
-                    stringRes(R.string.vote_confirm_cta_submitting, status.current, status.total)
+                    stringRes(
+                        R.string.vote_confirm_cta_submitting,
+                        status.current,
+                        status.total
+                    )
                 }
 
                 is VoteSubmissionStatus.Completed -> {
@@ -132,55 +158,41 @@ class VoteConfirmSubmissionVM(
                     stringRes(R.string.vote_dismiss)
                 }
             }
-        val ctaEnabled =
+        val enabled =
             status is VoteSubmissionStatus.Idle ||
                 status is VoteSubmissionStatus.Completed ||
                 status is VoteSubmissionStatus.Failed
-        val ctaAction: () -> Unit =
+        val action: () -> Unit =
             when (status) {
                 is VoteSubmissionStatus.Idle -> ::onConfirm
                 is VoteSubmissionStatus.Completed -> ::onDone
                 is VoteSubmissionStatus.Failed -> ::onDismiss
                 else -> ({})
             }
-
-        return VoteConfirmSubmissionState(
-            status = status,
-            roundTitle = stringRes(data.roundTitle),
-            votingWeightZEC = stringRes(weightZEC),
-            hotkeyAddress = stringRes(hotkey),
-            walletHeaderIcons = VoteWalletHeaderIconsState(isKeystone = data.isKeystone),
-            errorSheet = errorSheet,
-            memo = stringRes(memo),
-            ctaButton =
-                ButtonState(
-                    text = ctaLabel,
-                    style = ButtonStyle.PRIMARY,
-                    isEnabled = ctaEnabled,
-                    onClick = ctaAction,
-                ),
-            onBack = {
-                when (status) {
-                    is VoteSubmissionStatus.Idle -> navigationRouter.back()
-                    is VoteSubmissionStatus.Failed -> navigationRouter.back()
-                    is VoteSubmissionStatus.Completed -> onDone()
-                    else -> Unit // suppress during Authorizing/Submitting
-                }
-            },
-        )
+        return ButtonState(text = label, style = ButtonStyle.PRIMARY, isEnabled = enabled, onClick = action)
     }
 
-    @Suppress("LongMethod")
+    private fun buildOnBack(status: VoteSubmissionStatus): () -> Unit =
+        {
+            when (status) {
+                is VoteSubmissionStatus.Idle, is VoteSubmissionStatus.Failed -> navigationRouter.back()
+                is VoteSubmissionStatus.Completed -> onDone()
+                else -> Unit
+            }
+        }
+
+    @Suppress("LongMethod", "TooGenericExceptionCaught", "CyclomaticComplexMethod")
     private fun onConfirm() {
         viewModelScope.launch {
             var dbHandle = 0L
             try {
-                statusFlow.value = VoteSubmissionStatus.Authorizing(0.05f)
+                statusFlow.value = VoteSubmissionStatus.Authorizing(PROGRESS_START)
 
                 // ── Collect prerequisites ──────────────────────────────────────
                 val synchronizer = synchronizerProvider.getSynchronizer()
                 val walletDbPath = synchronizer.getWalletDbPath()
-                val votingDbPath = (File(walletDbPath).parent ?: File(walletDbPath).absoluteFile.parent!!) + "/voting.sqlite3"
+                val votingDbPath =
+                    (File(walletDbPath).parent ?: File(walletDbPath).absoluteFile.parent!!) + "/voting.sqlite3"
 
                 val round =
                     getAllRounds().firstOrNull { it.id == args.roundIdHex }
@@ -205,7 +217,7 @@ class VoteConfirmSubmissionVM(
                         ?.url
                         ?: "https://dev.shielded-vote.com"
 
-                statusFlow.value = VoteSubmissionStatus.Authorizing(0.1f)
+                statusFlow.value = VoteSubmissionStatus.Authorizing(PROGRESS_PREREQUISITES)
 
                 // ── Step 1: Open voting DB + init round ───────────────────────
                 dbHandle = votingBackend.openVotingDb(votingDbPath)
@@ -229,7 +241,7 @@ class VoteConfirmSubmissionVM(
                 }
                 votingStorage.storePhase(args.roundIdHex, "INIT")
 
-                statusFlow.value = VoteSubmissionStatus.Authorizing(0.2f)
+                statusFlow.value = VoteSubmissionStatus.Authorizing(PROGRESS_INIT)
 
                 // ── Step 2: Wallet notes + bundle setup ───────────────────────
                 val notesJson =
@@ -240,23 +252,23 @@ class VoteConfirmSubmissionVM(
                         accountUuidBytes
                     )
                 val bundleResult = votingBackend.setupBundles(dbHandle, args.roundIdHex, notesJson)
-                check(bundleResult.eligibleWeight > 0L) {
-                    "No eligible ZEC at snapshot height ${session.snapshotHeight}. " +
-                        "You need shielded ZEC to participate in this poll."
+                if (bundleResult.eligibleWeight <= 0L) {
+                    showInsufficientFundsError()
+                    return@launch
                 }
                 eligibleWeightZatoshiFlow.value = bundleResult.eligibleWeight
                 votingStorage.storePhase(args.roundIdHex, "BUNDLES")
 
-                statusFlow.value = VoteSubmissionStatus.Authorizing(0.3f)
+                statusFlow.value = VoteSubmissionStatus.Authorizing(PROGRESS_BUNDLES)
 
                 // ── Step 3: Generate hotkey ────────────────────────────────────
-                val hotkeyRawSeed = ByteArray(64).also { SecureRandom().nextBytes(it) }
+                val hotkeyRawSeed = ByteArray(HOTKEY_SEED_SIZE).also { SecureRandom().nextBytes(it) }
                 val hotkey = votingBackend.generateHotkey(dbHandle, args.roundIdHex, hotkeyRawSeed)
                 votingStorage.storeHotkeySecret(args.roundIdHex, hotkey.secretKey.value)
                 hotkeyAddressFlow.value = hotkey.address
                 votingStorage.storePhase(args.roundIdHex, "HOTKEY")
 
-                statusFlow.value = VoteSubmissionStatus.Authorizing(0.4f)
+                statusFlow.value = VoteSubmissionStatus.Authorizing(PROGRESS_HOTKEY)
 
                 // ── Step 4: Tree state + witnesses (bundle 0) ─────────────────
                 val snapshotBlockHeight = BlockHeight.new(session.snapshotHeight)
@@ -265,7 +277,7 @@ class VoteConfirmSubmissionVM(
                 votingBackend.generateNoteWitnesses(dbHandle, args.roundIdHex, 0, walletDbPath, notesJson)
                 votingStorage.storePhase(args.roundIdHex, "WITNESSES")
 
-                statusFlow.value = VoteSubmissionStatus.Authorizing(0.5f)
+                statusFlow.value = VoteSubmissionStatus.Authorizing(PROGRESS_WITNESSES)
 
                 // ── Step 5: ZKP1 — delegation proof ───────────────────────────
                 votingBackend.buildAndProveDelegation(
@@ -279,7 +291,7 @@ class VoteConfirmSubmissionVM(
                 )
                 votingStorage.storePhase(args.roundIdHex, "PROOF")
 
-                statusFlow.value = VoteSubmissionStatus.Authorizing(0.7f)
+                statusFlow.value = VoteSubmissionStatus.Authorizing(PROGRESS_PROOF)
 
                 // ── Step 6: Get + submit delegation ───────────────────────────
                 val delegationSubmission =
@@ -309,7 +321,7 @@ class VoteConfirmSubmissionVM(
                 )
                 votingStorage.storePhase(args.roundIdHex, "DELEGATED")
 
-                statusFlow.value = VoteSubmissionStatus.Authorizing(0.85f)
+                statusFlow.value = VoteSubmissionStatus.Authorizing(PROGRESS_DELEGATED)
 
                 // ── Step 7: Sync VAN tree + store position ────────────────────
                 // The VAN position is emitted by the delegation TX event on chain.
@@ -318,7 +330,7 @@ class VoteConfirmSubmissionVM(
                 votingBackend.syncVoteTree(dbHandle, args.roundIdHex, pirUrl)
                 votingBackend.storeVanPosition(dbHandle, args.roundIdHex, 0, 0)
 
-                statusFlow.value = VoteSubmissionStatus.Authorizing(0.95f)
+                statusFlow.value = VoteSubmissionStatus.Authorizing(PROGRESS_VAN_TREE)
 
                 // ── Step 8: ZKP2 + vote submission per proposal ───────────────
                 val choices = org.json.JSONObject(args.choicesJson)
@@ -394,15 +406,28 @@ class VoteConfirmSubmissionVM(
             } catch (e: Exception) {
                 e.printStackTrace()
                 statusFlow.value = VoteSubmissionStatus.Idle
-                errorSheetFlow.value =
-                    ZashiConfirmationState.error(
-                        title = stringRes(R.string.vote_error_something_went_wrong),
-                        message = stringRes(VotingErrorMapper.toUserFriendlyMessage(e.message ?: "")),
-                        primaryText = stringRes(R.string.vote_dismiss),
-                        onPrimary = ::onDismissErrorSheet,
-                        onSecondary = ::onDismissErrorSheet,
-                        onBack = ::onDismissErrorSheet,
-                    )
+                val msg = e.message ?: ""
+                when {
+                    isAuthorizationFailure(msg) -> {
+                        showAuthorizationFailedError()
+                    }
+
+                    isInsufficientFunds(msg) -> {
+                        showInsufficientFundsError()
+                    }
+
+                    else -> {
+                        errorSheetFlow.value =
+                            ZashiConfirmationState.error(
+                                title = stringRes(R.string.vote_error_something_went_wrong),
+                                message = votingErrorMapper.toUserFriendlyMessage(msg),
+                                primaryText = stringRes(R.string.vote_dismiss),
+                                onPrimary = ::onDismissErrorSheet,
+                                onSecondary = ::onDismissErrorSheet,
+                                onBack = ::onDismissErrorSheet,
+                            )
+                    }
+                }
             } finally {
                 if (dbHandle != 0L) votingBackend.closeVotingDb(dbHandle)
                 // Zero the sensitive data — handled by GC in JVM but explicit is cleaner
@@ -414,9 +439,68 @@ class VoteConfirmSubmissionVM(
         errorSheetFlow.value = null
     }
 
+    private fun showInsufficientFundsError() {
+        statusFlow.value = VoteSubmissionStatus.Idle
+        errorSheetFlow.value =
+            ZashiConfirmationState.error(
+                title = stringRes(R.string.vote_error_insufficient_funds_title),
+                message = stringRes(R.string.vote_error_insufficient_funds_message),
+                primaryText = stringRes(R.string.vote_error_go_back),
+                onPrimary = {
+                    onDismissErrorSheet()
+                    navigationRouter.back()
+                },
+                onSecondary = { onDismissErrorSheet() },
+                onBack = { onDismissErrorSheet() },
+            )
+    }
+
+    private fun showAuthorizationFailedError() {
+        statusFlow.value = VoteSubmissionStatus.Idle
+        errorSheetFlow.value =
+            ZashiConfirmationState.error(
+                title = stringRes(R.string.vote_error_authorization_failed_title),
+                message = stringRes(R.string.vote_error_authorization_failed_message),
+                primaryText = stringRes(R.string.vote_retry),
+                onPrimary = {
+                    onDismissErrorSheet()
+                    onConfirm()
+                },
+                onSecondary = { onDismissErrorSheet() },
+                onBack = { onDismissErrorSheet() },
+            )
+    }
+
     private fun onDone() = navigationRouter.forward(VoteCoinholderPollingArgs)
 
     private fun onDismiss() {
         statusFlow.value = VoteSubmissionStatus.Idle
     }
+
+    companion object {
+        private const val HOTKEY_SEED_SIZE = 64
+        private const val PROGRESS_START = 0.05f
+        private const val PROGRESS_PREREQUISITES = 0.1f
+        private const val PROGRESS_INIT = 0.2f
+        private const val PROGRESS_BUNDLES = 0.3f
+        private const val PROGRESS_HOTKEY = 0.4f
+        private const val PROGRESS_WITNESSES = 0.5f
+        private const val PROGRESS_PROOF = 0.7f
+        private const val PROGRESS_DELEGATED = 0.85f
+        private const val PROGRESS_VAN_TREE = 0.95f
+    }
+}
+
+private fun isInsufficientFunds(msg: String): Boolean {
+    val lower = msg.lowercase()
+    return (lower.contains("insufficient") && lower.contains("fund")) ||
+        lower.contains("no eligible zec") ||
+        lower.contains("eligible weight")
+}
+
+private fun isAuthorizationFailure(msg: String): Boolean {
+    val lower = msg.lowercase()
+    return lower.contains("delegation") || lower.contains("authorization") ||
+        (lower.contains("auth") && lower.contains("fail")) ||
+        lower.contains("spend auth") || lower.contains("spendsig")
 }

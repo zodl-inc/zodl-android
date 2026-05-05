@@ -7,6 +7,7 @@ import co.electriccoin.zcash.ui.design.util.StringResource
 data class VoteCoinholderPollingState(
     val items: List<VotePollCardState>,
     val onBack: () -> Unit,
+    val onRefresh: () -> Unit = {},
 )
 
 enum class VotePollCardStatus { ACTIVE, VOTED, CLOSED }

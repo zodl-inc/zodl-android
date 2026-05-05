@@ -21,6 +21,7 @@ data class VoteProposalResultState(
     val totalZEC: StringResource,
     val winnerLabel: StringResource?,
     val winnerColor: VoteOptionColor,
+    val isTie: Boolean = false,
 )
 
 data class VoteOptionResultState(

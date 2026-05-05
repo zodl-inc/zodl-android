@@ -15,6 +15,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.VoteOptionLabels
+import co.electriccoin.zcash.ui.screen.voting.ZATOSHI_PER_ZEC
 import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -63,6 +64,7 @@ class VoteResultsVM(
                 )
             }.stateIn(this)
 
+    @Suppress("CyclomaticComplexMethod")
     private fun buildState(
         roundTitle: String,
         roundDescription: String,
@@ -80,7 +82,7 @@ class VoteResultsVM(
                         ?.options
                         ?.sumOf { it.weight }
                         ?.toFloat()
-                        ?.coerceAtLeast(1f) ?: 1f
+                        ?.coerceAtLeast(MIN_WEIGHT_DENOMINATOR) ?: MIN_WEIGHT_DENOMINATOR
                 val maxWeight = tallyProposal?.options?.maxOfOrNull { it.weight } ?: 0L
                 val hasVotes = (tallyProposal?.options?.sumOf { it.weight } ?: 0L) > 0L
 
@@ -95,12 +97,12 @@ class VoteResultsVM(
                                     VoteOptionColor.ABSTAIN
                                 }
 
-                                optionCount == 2 -> {
+                                optionCount == BINARY_OPTION_COUNT -> {
                                     if (index == 0) VoteOptionColor.SUPPORT else VoteOptionColor.OPPOSE
                                 }
 
                                 else -> {
-                                    when (index % 3) {
+                                    when (index % COLOR_CYCLE) {
                                         0 -> VoteOptionColor.SUPPORT
                                         1 -> VoteOptionColor.OPPOSE
                                         else -> VoteOptionColor.OTHER
@@ -110,7 +112,7 @@ class VoteResultsVM(
                         val isWinner = hasVotes && weight == maxWeight
                         VoteOptionResultState(
                             label = stringRes(voteOption.label),
-                            amountZEC = stringRes(R.string.vote_results_amount_zec, weight / 100_000_000.0),
+                            amountZEC = stringRes(R.string.vote_results_amount_zec, weight / ZATOSHI_PER_ZEC),
                             fraction = fraction,
                             color = color,
                             isWinner = isWinner,
@@ -118,11 +120,13 @@ class VoteResultsVM(
                     }
 
                 val totalZatoshi = tallyProposal?.options?.sumOf { it.weight } ?: 0L
+                val winnerCount = optionResults.count { it.isWinner }
+                val isTie = winnerCount > 1
+                val finalOptions =
+                    if (isTie) optionResults.map { it.copy(isWinner = false) } else optionResults
                 val winnerOption =
-                    if (hasVotes) {
-                        proposal.options.getOrNull(
-                            optionResults.indexOfFirst { it.isWinner }
-                        )
+                    if (hasVotes && !isTie) {
+                        proposal.options.getOrNull(finalOptions.indexOfFirst { it.isWinner })
                     } else {
                         null
                     }
@@ -131,10 +135,16 @@ class VoteResultsVM(
                     zipNumber = proposal.zipNumber?.let { stringRes(it) },
                     title = stringRes(proposal.title),
                     description = stringRes(proposal.description),
-                    options = optionResults,
-                    totalZEC = stringRes(R.string.vote_results_total_zec, totalZatoshi / 100_000_000.0),
-                    winnerLabel = winnerOption?.let { stringRes(it.label) },
-                    winnerColor = optionResults.firstOrNull { it.isWinner }?.color ?: VoteOptionColor.OTHER,
+                    options = finalOptions,
+                    totalZEC = stringRes(R.string.vote_results_total_zec, totalZatoshi / ZATOSHI_PER_ZEC),
+                    winnerLabel =
+                        when {
+                            isTie -> stringRes(R.string.vote_results_tie)
+                            winnerOption != null -> stringRes(winnerOption.label)
+                            else -> null
+                        },
+                    winnerColor = finalOptions.firstOrNull { it.isWinner }?.color ?: VoteOptionColor.OTHER,
+                    isTie = isTie,
                 )
             }
 
@@ -157,4 +167,10 @@ class VoteResultsVM(
     private fun onDone() = navigationRouter.backTo(VoteCoinholderPollingArgs::class)
 
     private fun onBack() = navigationRouter.back()
+
+    companion object {
+        private const val MIN_WEIGHT_DENOMINATOR = 1f
+        private const val BINARY_OPTION_COUNT = 2
+        private const val COLOR_CYCLE = 3
+    }
 }

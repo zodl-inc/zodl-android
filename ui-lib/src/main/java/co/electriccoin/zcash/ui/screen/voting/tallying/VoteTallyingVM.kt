@@ -43,8 +43,8 @@ class VoteTallyingVM(
         viewModelScope.launch {
             // Poll round status until finalized or tallying ends
             var pollCount = 0
-            while (pollCount < 60) { // max ~5 minutes at 5s intervals
-                delay(5_000L)
+            while (pollCount < MAX_POLL_COUNT) {
+                delay(POLL_INTERVAL_MS)
                 pollCount++
                 runCatching {
                     val updatedRound = getAllRounds().firstOrNull { it.id == args.roundIdHex }
@@ -93,4 +93,9 @@ class VoteTallyingVM(
     }
 
     private fun onBack() = navigationRouter.back()
+
+    companion object {
+        private const val MAX_POLL_COUNT = 60
+        private const val POLL_INTERVAL_MS = 5_000L
+    }
 }

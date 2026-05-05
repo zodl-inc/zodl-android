@@ -14,8 +14,10 @@
     <string name="vote_how_to_vote_disclaimer">Your balance at the snapshot time determines your voting weight. You don\'t need to move your funds anywhere.</string>
 
     <!-- Poll list -->
-<string name="vote_poll_list_empty_title">No Voting Rounds</string>
-    <string name="vote_poll_list_empty_subtitle">There are no voting rounds available right now.</string>
+    <string name="vote_poll_list_empty_title">No Polls Right Now</string>
+    <string name="vote_poll_list_empty_subtitle">There aren\'t any active polls at the moment. Check back later.</string>
+    <string name="vote_poll_list_empty_got_it">Got it</string>
+    <string name="vote_poll_list_empty_refresh">Refresh</string>
     <string name="vote_poll_card_description_label">Poll Description</string>
     <string name="vote_poll_card_status_active">Active</string>
     <string name="vote_poll_card_status_voted">Voted</string>
@@ -42,6 +44,16 @@
     <string name="vote_error_unable_to_load_round_message">Could not fetch voting round data. Please try again.</string>
     <string name="vote_error_something_went_wrong">Something Went Wrong</string>
     <string name="vote_error_wallet_update_required">Wallet Update Required</string>
+    <string name="vote_error_insufficient_funds_title">Insufficient Funds</string>
+    <string name="vote_error_insufficient_funds_message">You don\'t have enough ZEC to cover the transaction fee. Add funds to your wallet and try again.</string>
+    <string name="vote_error_go_back">Go Back</string>
+    <string name="vote_error_authorization_failed_title">Authorization Failed</string>
+    <string name="vote_error_authorization_failed_message">The authorization transaction failed. Check your connection and try again.</string>
+
+    <!-- Poll ended mid-flow -->
+    <string name="vote_poll_ended_title">Poll Has Ended</string>
+    <string name="vote_poll_ended_message">The voting period closed.\nYour responses cannot be submitted.</string>
+    <string name="vote_poll_ended_view_results">View Results</string>
 
     <!-- Common actions -->
     <string name="vote_done">Done</string>
@@ -101,6 +113,18 @@
     <string name="vote_results_total_zec">Total: %1$.2f ZEC</string>
     <string name="vote_results_ended">Ended %1$s</string>
     <string name="vote_results_winner">Winner: %1$s</string>
+    <string name="vote_results_tie">Tie</string>
+
+    <!-- Error mapper messages -->
+    <string name="vote_error_mapper_nullifier_spent">Your vote authorization has already been used. Each wallet can only vote once per round.</string>
+    <string name="vote_error_mapper_round_closed">This voting round is no longer active. The poll may have closed while you were voting.</string>
+    <string name="vote_error_mapper_pir_connection">Could not connect to the privacy-preserving vote server. Please check your connection and try again.</string>
+    <string name="vote_error_mapper_insufficient_funds">Insufficient funds to authorize your vote. A small fee is required.</string>
+    <string name="vote_error_mapper_wallet_sync">Your wallet is not fully synced. Please wait for syncing to complete before voting.</string>
+    <string name="vote_error_mapper_network">Network error. Please check your connection and try again.</string>
+    <string name="vote_error_mapper_proof">Vote proof generation failed. Please try again.</string>
+    <string name="vote_error_mapper_version">Your app may need an update to participate in this voting round.</string>
+    <string name="vote_error_mapper_unknown">An unexpected error occurred. Please try again.</string>
 
     <!-- Wallet syncing -->
     <string name="vote_wallet_syncing_title">Syncing wallet</string>

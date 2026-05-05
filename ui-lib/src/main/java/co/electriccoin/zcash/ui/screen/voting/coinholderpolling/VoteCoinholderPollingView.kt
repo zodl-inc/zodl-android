@@ -32,6 +32,7 @@ import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
+import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
@@ -43,6 +44,34 @@ import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
+
+@Composable
+fun VoteCoinholderPollingLoadingView() {
+    BlankBgScaffold(
+        topBar = {
+            ZashiSmallTopAppBar(
+                title = stringResource(R.string.vote_top_bar_title),
+                colors =
+                    ZcashTheme.colors.topAppBarColors orDark
+                        ZcashTheme.colors.topAppBarColors.copyColors(
+                            containerColor = Color.Transparent
+                        ),
+            )
+        },
+        content = { padding ->
+            CommonShimmerLoadingScreen(
+                shimmerItemsCount = 4,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .scaffoldPadding(padding)
+                        .padding(top = 8.dp),
+                showDivider = false,
+            )
+        }
+    )
+}
 
 @Composable
 fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
@@ -51,6 +80,8 @@ fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
         content = { padding ->
             if (state.items.isEmpty()) {
                 NoRoundsContent(
+                    onGotIt = state.onBack,
+                    onRefresh = state.onRefresh,
                     modifier =
                         Modifier
                             .fillMaxSize()
@@ -74,7 +105,11 @@ fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
 }
 
 @Composable
-private fun NoRoundsContent(modifier: Modifier = Modifier) {
+private fun NoRoundsContent(
+    onGotIt: () -> Unit,
+    onRefresh: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
@@ -93,6 +128,24 @@ private fun NoRoundsContent(modifier: Modifier = Modifier) {
             color = ZashiColors.Text.textTertiary
         )
         Spacer(modifier = Modifier.weight(1f))
+        ZashiButton(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = ZashiDimensions.Spacing.spacingMd),
+            state =
+                ButtonState(stringRes(R.string.vote_poll_list_empty_refresh), ButtonStyle.PRIMARY, onClick = onRefresh)
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        ZashiButton(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = ZashiDimensions.Spacing.spacingMd),
+            state =
+                ButtonState(stringRes(R.string.vote_poll_list_empty_got_it), ButtonStyle.TERTIARY, onClick = onGotIt)
+        )
+        Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingMd))
     }
 }
 
@@ -173,7 +226,7 @@ private fun PollCard(state: VotePollCardState) {
 
 @Composable
 private fun StatusBadge(status: VotePollCardStatus) {
-    val (labelRes, iconTint, textColor, bgColor, borderColor) =
+    val params =
         when (status) {
             VotePollCardStatus.ACTIVE -> {
                 StatusBadgeParams(
@@ -207,8 +260,8 @@ private fun StatusBadge(status: VotePollCardStatus) {
         }
     Surface(
         shape = CircleShape,
-        color = bgColor,
-        border = BorderStroke(1.dp, borderColor)
+        color = params.bgColor,
+        border = BorderStroke(1.dp, params.borderColor)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
@@ -218,14 +271,14 @@ private fun StatusBadge(status: VotePollCardStatus) {
             Icon(
                 painter = painterResource(R.drawable.ic_vote_clock),
                 contentDescription = null,
-                tint = iconTint,
+                tint = params.iconTint,
                 modifier = Modifier.size(14.dp)
             )
             Text(
-                text = stringResource(labelRes),
+                text = stringResource(params.labelRes),
                 style = ZashiTypography.textSm,
                 fontWeight = FontWeight.Medium,
-                color = textColor
+                color = params.textColor
             )
         }
     }
@@ -289,7 +342,11 @@ private fun CoinholderPollingPreview_WithRounds() =
                             VotePollCardState(
                                 roundId = "abc123",
                                 title = stringRes("ZF Grant Funding — Q3 2026"),
-                                description = stringRes("Shielded vote on the allocation of Zcash Foundation grant funds for Q3 2026."),
+                                description =
+                                    stringRes(
+                                        "Shielded vote on the allocation of Zcash Foundation " +
+                                            "grant funds for Q3 2026."
+                                    ),
                                 status = VotePollCardStatus.ACTIVE,
                                 dateLabel = stringRes("Closes May 15"),
                                 votedLabel = null,

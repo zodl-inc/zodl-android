@@ -15,11 +15,16 @@ data class VotingServiceConfig(
     )
 
     companion object {
-        val FALLBACK =
+        val ENDPOINT =
+            ServiceEndpoint(
+                url = "https://vote-chain-primary.valargroup.org",
+                label = "valargroup-primary"
+            )
+        val SERVERS =
             VotingServiceConfig(
                 version = 1,
-                voteServers = listOf(ServiceEndpoint(url = "https://vote-chain-primary.valargroup.org", label = "valargroup-primary")),
-                pirServers = listOf(ServiceEndpoint(url = "https://vote-chain-primary.valargroup.org", label = "valargroup-primary"))
+                voteServers = listOf(ENDPOINT),
+                pirServers = listOf(ENDPOINT),
             )
     }
 }

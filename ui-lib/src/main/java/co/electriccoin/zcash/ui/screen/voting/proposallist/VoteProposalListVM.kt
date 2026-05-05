@@ -18,6 +18,9 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.voting.MINUTES_PER_HOUR
+import co.electriccoin.zcash.ui.screen.voting.SECONDS_PER_DAY
+import co.electriccoin.zcash.ui.screen.voting.SECONDS_PER_HOUR
 import co.electriccoin.zcash.ui.screen.voting.VoteOptionLabels
 import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionArgs
 import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptionArgs
@@ -126,43 +129,54 @@ class VoteProposalListVM(
         proposals: List<Proposal>,
         drafts: Map<Int, Int>,
         roundId: String,
-    ): ButtonState? {
-        if (mode == VoteProposalListMode.REVIEW) {
-            return ButtonState(
-                text = stringRes(R.string.vote_proposal_list_confirm_submit),
-                style = ButtonStyle.PRIMARY,
-                onClick = { onConfirmSubmit(roundId, drafts) }
-            )
-        }
-        if (proposals.isEmpty()) return null
-        val draftCount = proposals.count { drafts.containsKey(it.id) }
-        val firstUnanswered = proposals.firstOrNull { !drafts.containsKey(it.id) }
-        return when {
-            draftCount == 0 -> {
+    ): ButtonState? =
+        when {
+            mode == VoteProposalListMode.REVIEW -> {
                 ButtonState(
-                    text = stringRes(R.string.vote_proposal_list_start_voting),
+                    text = stringRes(R.string.vote_proposal_list_confirm_submit),
                     style = ButtonStyle.PRIMARY,
-                    onClick = { onProposalTapped(proposals.first().id) }
+                    onClick = { onConfirmSubmit(roundId, drafts) }
                 )
             }
 
-            draftCount < proposals.size -> {
-                ButtonState(
-                    text = stringRes(R.string.vote_proposal_list_continue_voting),
-                    style = ButtonStyle.PRIMARY,
-                    onClick = { firstUnanswered?.let { onProposalTapped(it.id) } }
-                )
+            proposals.isEmpty() -> {
+                null
             }
 
             else -> {
-                ButtonState(
-                    text = stringRes(R.string.vote_proposal_list_review_submit),
-                    style = ButtonStyle.PRIMARY,
-                    onClick = { navigationRouter.forward(VoteProposalListArgs(roundId = roundId, isReviewMode = true)) }
-                )
+                val draftCount = proposals.count { drafts.containsKey(it.id) }
+                val firstUnanswered = proposals.firstOrNull { !drafts.containsKey(it.id) }
+                when {
+                    draftCount == 0 -> {
+                        ButtonState(
+                            text = stringRes(R.string.vote_proposal_list_start_voting),
+                            style = ButtonStyle.PRIMARY,
+                            onClick = { onProposalTapped(proposals.first().id) }
+                        )
+                    }
+
+                    draftCount < proposals.size -> {
+                        ButtonState(
+                            text = stringRes(R.string.vote_proposal_list_continue_voting),
+                            style = ButtonStyle.PRIMARY,
+                            onClick = { firstUnanswered?.let { onProposalTapped(it.id) } }
+                        )
+                    }
+
+                    else -> {
+                        ButtonState(
+                            text = stringRes(R.string.vote_proposal_list_review_submit),
+                            style = ButtonStyle.PRIMARY,
+                            onClick = {
+                                navigationRouter.forward(
+                                    VoteProposalListArgs(roundId = roundId, isReviewMode = true)
+                                )
+                            }
+                        )
+                    }
+                }
             }
         }
-    }
 
     private fun buildMetaLine(round: VotingRound): StringResource {
         val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault())
@@ -172,9 +186,9 @@ class VoteProposalListVM(
         val timeLeft =
             when {
                 remaining <= 0 -> "Ended"
-                remaining < 3600 -> "${remaining / 60}m left"
-                remaining < 86400 -> "${remaining / 3600}h left"
-                else -> "${remaining / 86400} day${if (remaining / 86400 == 1L) "" else "s"} left"
+                remaining < SECONDS_PER_HOUR -> "${remaining / MINUTES_PER_HOUR}m left"
+                remaining < SECONDS_PER_DAY -> "${remaining / SECONDS_PER_HOUR}h left"
+                else -> "${remaining / SECONDS_PER_DAY} day${if (remaining / SECONDS_PER_DAY == 1L) "" else "s"} left"
             }
         return stringRes(R.string.vote_proposal_list_meta_line, dateStr, timeLeft)
     }

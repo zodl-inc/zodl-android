@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
+@Suppress("TooManyFunctions")
 class MoreVM(
     private val getVersionInfo: GetVersionInfoProvider,
     private val navigationRouter: NavigationRouter,
@@ -88,8 +89,7 @@ class MoreVM(
 
     private fun onVotingClick() {
         viewModelScope.launch {
-            // TODO: MOB-1108 revert to hasSeenHowToVote.get() after testing
-            if (false) {
+            if (hasSeenHowToVote.get()) {
                 navigationRouter.forward(VoteCoinholderPollingArgs)
             } else {
                 navigationRouter.forward(VoteHowToVoteArgs)
