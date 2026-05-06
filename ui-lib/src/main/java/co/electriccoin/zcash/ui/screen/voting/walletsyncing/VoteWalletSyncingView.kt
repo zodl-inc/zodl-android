@@ -48,45 +48,54 @@ fun VoteWalletSyncingView(state: VoteWalletSyncingState) {
             )
         },
         content = { padding ->
-            Column(
+            VoteWalletSyncingContent(
+                state = state,
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .scaffoldPadding(padding)
-            ) {
-                Text(
-                    text = state.title.getValue(),
-                    style = ZashiTypography.header6,
-                    color = ZashiColors.Text.textPrimary,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = state.body.getValue(),
-                    style = ZashiTypography.textMd,
-                    color = ZashiColors.Text.textTertiary
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                LinearProgressIndicator(
-                    progress = { state.progress },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = ZashiColors.Btns.Primary.btnPrimaryBg,
-                    trackColor = ZashiColors.Surfaces.bgSecondary,
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = state.progressLabel.getValue(),
-                    style = ZashiTypography.textSm,
-                    color = ZashiColors.Text.textTertiary
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                ZashiButton(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = ZashiDimensions.Spacing.spacingMd),
-                    state = state.continueButton
-                )
-            }
+            )
         }
     )
+}
+
+@Composable
+internal fun VoteWalletSyncingContent(
+    state: VoteWalletSyncingState,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = state.title.getValue(),
+            style = ZashiTypography.header6,
+            color = ZashiColors.Text.textPrimary,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = state.body.getValue(),
+            style = ZashiTypography.textMd,
+            color = ZashiColors.Text.textTertiary
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        LinearProgressIndicator(
+            progress = { state.progress },
+            modifier = Modifier.fillMaxWidth(),
+            color = ZashiColors.Btns.Primary.btnPrimaryBg,
+            trackColor = ZashiColors.Surfaces.bgSecondary,
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = state.progressLabel.getValue(),
+            style = ZashiTypography.textSm,
+            color = ZashiColors.Text.textTertiary
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        ZashiButton(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = ZashiDimensions.Spacing.spacingMd),
+            state = state.continueButton
+        )
+    }
 }
