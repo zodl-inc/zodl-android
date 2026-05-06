@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.voting.Proposal
@@ -227,7 +228,7 @@ class VoteProposalListVM(
             val allDrafted = proposals.all { drafts.containsKey(it.id) }
             return if (allDrafted) {
                 ButtonState(
-                    text = stringRes("Submit Votes"),
+                    text = stringRes(R.string.vote_proposal_list_confirm_submit),
                     style = ButtonStyle.PRIMARY,
                     onClick = {
                         navigationRouter.forward(
@@ -248,19 +249,19 @@ class VoteProposalListVM(
 
         return when {
             draftCount == 0 -> ButtonState(
-                text = stringRes("Start Voting"),
+                text = stringRes(R.string.vote_proposal_list_start_voting),
                 style = ButtonStyle.PRIMARY,
                 onClick = { onProposalTapped(roundId, proposals.first().id) }
             )
 
             draftCount < proposals.size -> ButtonState(
-                text = stringRes("Continue Voting"),
+                text = stringRes(R.string.vote_proposal_list_continue_voting),
                 style = ButtonStyle.PRIMARY,
                 onClick = { firstUnanswered?.let { onProposalTapped(roundId, it.id) } }
             )
 
             else -> ButtonState(
-                text = stringRes("Review Answers"),
+                text = stringRes(R.string.vote_proposal_list_review_submit),
                 style = ButtonStyle.PRIMARY,
                 onClick = {
                     navigationRouter.forward(

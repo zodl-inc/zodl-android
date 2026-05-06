@@ -1,7 +1,10 @@
 package co.electriccoin.zcash.ui.screen.voting.proposallist
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,8 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -26,14 +27,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
-import co.electriccoin.zcash.ui.design.component.ButtonState
-import co.electriccoin.zcash.ui.design.component.ButtonStyle
-import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.VerticalSpacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
@@ -46,10 +47,12 @@ import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
-import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
 import co.electriccoin.zcash.ui.screen.voting.accentColor
 import java.text.NumberFormat
 import java.util.Locale
+
+private const val DOT_FILL_RATIO = 0.6f
 
 @Composable
 fun VoteProposalListView(state: VoteProposalListState) {
@@ -114,13 +117,7 @@ fun VoteProposalListLoadingView() {
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
-                title = "Coinholder Polling",
-                navigationAction = {
-                    ZashiTopAppBarBackNavigation(
-                        onBack = {},
-                        modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
-                    )
-                },
+                title = stringResource(R.string.vote_top_bar_title),
                 colors = ZcashTheme.colors.topAppBarColors orDark
                     ZcashTheme.colors.topAppBarColors.copyColors(
                         containerColor = Color.Transparent
@@ -128,8 +125,14 @@ fun VoteProposalListLoadingView() {
             )
         },
         content = { padding ->
-            CircularScreenProgressIndicator(
-                modifier = Modifier.scaffoldPadding(padding)
+            CommonShimmerLoadingScreen(
+                shimmerItemsCount = 6,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .scaffoldPadding(padding)
+                        .padding(top = 8.dp),
+                showDivider = false,
             )
         }
     )
@@ -151,7 +154,7 @@ private fun VotingHeader(
         ) {
             Text(
                 text = state.roundTitle.getValue(),
-                style = ZashiTypography.header6,
+                style = ZashiTypography.textXl,
                 color = ZashiColors.Text.textPrimary,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f)
@@ -161,7 +164,7 @@ private fun VotingHeader(
                 Spacer(12.dp)
                 Text(
                     text = "#${formatSnapshotHeight(snapshotHeight)}",
-                    style = ZashiTypography.header6,
+                    style = ZashiTypography.textXl,
                     color = ZashiColors.Text.textPrimary,
                     fontWeight = FontWeight.Medium,
                 )
@@ -187,12 +190,13 @@ private fun VotingHeader(
             Spacer(8.dp)
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.End
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
                     text = description.getValue(),
                     style = ZashiTypography.textSm,
-                    color = ZashiColors.Text.textPrimary,
+                    color = ZashiColors.Text.textTertiary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.fillMaxWidth()
@@ -233,29 +237,23 @@ private fun HeaderMetaLine(state: VoteProposalMetaLineState) {
 
 @Composable
 private fun ViewMoreChip(onClick: () -> Unit) {
-    Surface(
-        color = ZashiColors.Surfaces.bgSecondary,
-        shape = RoundedCornerShape(ZashiDimensions.Radius.radiusMd),
-        onClick = onClick,
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.clickable { onClick() }
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-        ) {
-            Text(
-                text = stringRes("View more").getValue(),
-                style = ZashiTypography.textSm,
-                color = ZashiColors.Text.textTertiary,
-                fontWeight = FontWeight.Medium
-            )
-            Spacer(4.dp)
-            Icon(
-                imageVector = Icons.Outlined.ExpandMore,
-                contentDescription = null,
-                tint = ZashiColors.Text.textTertiary,
-                modifier = Modifier.size(14.dp)
-            )
-        }
+        Text(
+            text = stringResource(R.string.vote_proposal_list_view_more),
+            style = ZashiTypography.textSm,
+            color = ZashiColors.Text.textPrimary,
+            fontWeight = FontWeight.Medium
+        )
+        Spacer(4.dp)
+        Icon(
+            painter = painterResource(co.electriccoin.zcash.ui.design.R.drawable.ic_chevron_down_small),
+            contentDescription = null,
+            tint = ZashiColors.Text.textPrimary,
+            modifier = Modifier.size(16.dp)
+        )
     }
 }
 
@@ -267,14 +265,14 @@ private fun ReviewHeader() {
             .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
     ) {
         Text(
-            text = stringRes("Review your answers").getValue(),
-            style = ZashiTypography.header6,
+            text = stringResource(R.string.vote_proposal_list_review_title),
+            style = ZashiTypography.textXl,
             color = ZashiColors.Text.textPrimary,
             fontWeight = FontWeight.SemiBold,
         )
         Spacer(8.dp)
         Text(
-            text = stringRes("Tap a question to edit any of your selections.").getValue(),
+            text = stringResource(R.string.vote_proposal_list_review_subtitle),
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textSecondary,
         )
@@ -288,16 +286,16 @@ private fun VoteProgressBar(
     modifier: Modifier = Modifier,
 ) {
     val total = totalCount.coerceAtLeast(1)
-    val ratio = (votedCount.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+    val ratio = if (totalCount > 0) votedCount.toFloat() / totalCount else 0f
     val bgColor = ZashiColors.Surfaces.bgQuaternary
     val fillColor = ZashiColors.Text.textPrimary
-    val dotColor = ZashiColors.Text.textTertiary.copy(alpha = 0.35f)
+    val dotColor = ZashiColors.Utility.Gray.utilityGray300
 
     Box(modifier = modifier) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             val barHeight = size.height
             val barWidth = size.width
-            val dotRadius = barHeight / 2 * 0.6f
+            val dotRadius = barHeight / 2 * DOT_FILL_RATIO
 
             drawRoundRect(
                 color = bgColor,
@@ -315,12 +313,8 @@ private fun VoteProgressBar(
             }
 
             if (total > 1) {
-                for (index in 0 until total) {
-                    val dotX = if (total == 1) {
-                        0f
-                    } else {
-                        barWidth * index.toFloat() / (total - 1).toFloat()
-                    }
+                for (index in 1 until total) {
+                    val dotX = barWidth * index.toFloat() / total
                     if (dotX > fillWidth) {
                         drawCircle(
                             color = dotColor,
@@ -343,13 +337,15 @@ private fun ProposalCard(
         modifier = modifier,
         color = ZashiColors.Surfaces.bgPrimary,
         shape = RoundedCornerShape(ZashiDimensions.Radius.radius2xl),
+        border = BorderStroke(1.dp, ZashiColors.Surfaces.strokeSecondary),
         onClick = state.onClick,
         tonalElevation = 0.dp,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(ZashiDimensions.Spacing.spacingXl)
+                .padding(ZashiDimensions.Spacing.spacingXl),
+            verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacingLg)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -366,23 +362,21 @@ private fun ProposalCard(
                 }
             }
 
-            Spacer(12.dp)
-
-            Text(
-                text = state.title.getValue(),
-                style = ZashiTypography.textMd,
-                color = ZashiColors.Text.textPrimary,
-                fontWeight = FontWeight.SemiBold,
-            )
-
-            if (state.description.getValue().isNotEmpty()) {
-                Spacer(4.dp)
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = state.description.getValue(),
-                    style = ZashiTypography.textSm,
-                    color = ZashiColors.Text.textTertiary,
-                    maxLines = 2,
+                    text = state.title.getValue(),
+                    style = ZashiTypography.textMd,
+                    color = ZashiColors.Text.textPrimary,
+                    fontWeight = FontWeight.SemiBold,
                 )
+                if (state.description.getValue().isNotEmpty()) {
+                    Text(
+                        text = state.description.getValue(),
+                        style = ZashiTypography.textXs,
+                        color = ZashiColors.Text.textTertiary,
+                        maxLines = 2,
+                    )
+                }
             }
         }
     }
@@ -391,15 +385,16 @@ private fun ProposalCard(
 @Composable
 private fun ZipBadge(label: String) {
     Surface(
-        color = ZashiColors.Surfaces.bgTertiary,
-        shape = RoundedCornerShape(ZashiDimensions.Radius.radiusMd),
+        color = ZashiColors.Utility.Gray.utilityGray100,
+        shape = RoundedCornerShape(ZashiDimensions.Radius.radius2xl),
+        border = BorderStroke(1.dp, ZashiColors.Utility.Gray.utilityGray200),
     ) {
         Text(
             text = label,
             style = ZashiTypography.textXs,
-            color = ZashiColors.Text.textPrimary,
+            color = ZashiColors.Utility.Gray.utilityGray700,
             fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
         )
     }
 }
@@ -429,7 +424,7 @@ private fun formatSnapshotHeight(height: Long): String =
 @Composable
 private fun AppBar(state: VoteProposalListState) {
     ZashiSmallTopAppBar(
-        title = "Coinholder Polling",
+        title = stringResource(R.string.vote_top_bar_title),
         navigationAction = {
             ZashiTopAppBarBackNavigation(
                 onBack = state.onBack,
