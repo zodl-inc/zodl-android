@@ -37,29 +37,3 @@ class VoteErrorVM(
 
     private fun onBack() = navigationRouter.back()
 }
-
-class VoteConfigErrorVM(
-    private val args: VoteConfigErrorArgs,
-    private val navigationRouter: NavigationRouter,
-) : ViewModel() {
-    val state: StateFlow<LceState<VoteConfigErrorState>> =
-        MutableStateFlow(
-            LceState(
-                content = VoteConfigErrorState(
-                    title = VotingErrorMapper.toConfigErrorTitle(args.message),
-                    message = VotingErrorMapper.toConfigErrorMessage(args.message),
-                    dismissButton = ButtonState(
-                        text = stringRes(R.string.vote_dismiss),
-                        style = ButtonStyle.PRIMARY,
-                        onClick = ::onDismiss,
-                    ),
-                    onBack = ::onBack,
-                ),
-                isLoading = false,
-            )
-        )
-
-    private fun onDismiss() = navigationRouter.backToRoot()
-
-    private fun onBack() = navigationRouter.back()
-}

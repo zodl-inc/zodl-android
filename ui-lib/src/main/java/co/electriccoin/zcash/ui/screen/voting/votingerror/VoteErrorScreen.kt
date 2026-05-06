@@ -15,20 +15,8 @@ fun VoteErrorScreen(args: VoteErrorArgs) {
     LceRenderer(state) { VoteErrorView(it) }
 }
 
-@Composable
-fun VoteConfigErrorScreen(args: VoteConfigErrorArgs) {
-    val vm = koinViewModel<VoteConfigErrorVM> { parametersOf(args) }
-    val state by vm.state.collectAsStateWithLifecycle()
-    LceRenderer(state) { VoteConfigErrorView(it) }
-}
-
 @Serializable
 data class VoteErrorArgs(
     val message: String,
     val isRecoverable: Boolean = true,
-)
-
-@Serializable
-data class VoteConfigErrorArgs(
-    val message: String = "",
 )

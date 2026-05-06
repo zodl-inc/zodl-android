@@ -207,8 +207,6 @@ import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingArg
 import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingScreen
 import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingArgs
 import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingScreen
-import co.electriccoin.zcash.ui.screen.voting.votingerror.VoteConfigErrorArgs
-import co.electriccoin.zcash.ui.screen.voting.votingerror.VoteConfigErrorScreen
 import co.electriccoin.zcash.ui.screen.voting.votingerror.VoteErrorArgs
 import co.electriccoin.zcash.ui.screen.voting.votingerror.VoteErrorScreen
 import co.electriccoin.zcash.ui.screen.voting.walletsyncing.VoteWalletSyncingArgs
@@ -356,6 +354,5 @@ fun NavGraphBuilder.walletNavGraph(
         composable<VoteTallyingArgs> { VoteTallyingScreen(it.toRoute()) }
         composable<VoteResultsArgs> { VoteResultsScreen(it.toRoute()) }
         composable<VoteErrorArgs> { VoteErrorScreen(it.toRoute()) }
-        composable<VoteConfigErrorArgs> { VoteConfigErrorScreen(it.toRoute()) }
     }
 }

@@ -119,24 +119,6 @@ fun VoteErrorView(state: VoteErrorState) {
 }
 
 @Composable
-fun VoteConfigErrorView(state: VoteConfigErrorState) {
-    BlankBgScaffold(
-        topBar = { ErrorAppBar(onBack = state.onBack) },
-        content = { padding ->
-            VoteErrorContent(
-                title = state.title,
-                message = state.message,
-                actionButton = state.dismissButton,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .scaffoldPadding(padding)
-            )
-        }
-    )
-}
-
-@Composable
 internal fun VoteErrorContent(
     title: StringResource,
     message: StringResource,

@@ -9,10 +9,3 @@ data class VoteErrorState(
     val actionButton: ButtonState,
     val onBack: () -> Unit,
 )
-
-data class VoteConfigErrorState(
-    val title: StringResource,
-    val message: StringResource,
-    val dismissButton: ButtonState,
-    val onBack: () -> Unit,
-)
