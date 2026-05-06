@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R as UiR
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
+import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
@@ -72,32 +73,15 @@ fun VoteErrorView(state: VoteErrorState) {
     BlankBgScaffold(
         topBar = { ErrorAppBar(onBack = state.onBack) },
         content = { padding ->
-            Column(
+            VoteErrorContent(
+                title = state.title,
+                message = state.message,
+                actionButton = state.actionButton,
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .scaffoldPadding(padding)
-            ) {
-                Text(
-                    text = state.title.getValue(),
-                    style = ZashiTypography.header6,
-                    color = ZashiColors.Text.textPrimary,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = state.message.getValue(),
-                    style = ZashiTypography.textMd,
-                    color = ZashiColors.Text.textTertiary
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                ZashiButton(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = ZashiDimensions.Spacing.spacingMd),
-                    state = state.actionButton
-                )
-            }
+            )
         }
     )
 }
@@ -107,34 +91,47 @@ fun VoteConfigErrorView(state: VoteConfigErrorState) {
     BlankBgScaffold(
         topBar = { ErrorAppBar(onBack = state.onBack) },
         content = { padding ->
-            Column(
+            VoteErrorContent(
+                title = stringRes(UiR.string.vote_error_config_title),
+                message = state.message,
+                actionButton = state.dismissButton,
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .scaffoldPadding(padding)
-            ) {
-                Text(
-                    text = stringRes(UiR.string.vote_error_config_title).getValue(),
-                    style = ZashiTypography.header6,
-                    color = ZashiColors.Text.textPrimary,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = state.message.getValue(),
-                    style = ZashiTypography.textMd,
-                    color = ZashiColors.Text.textTertiary
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                ZashiButton(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = ZashiDimensions.Spacing.spacingMd),
-                    state = state.dismissButton
-                )
-            }
+            )
         }
     )
+}
+
+@Composable
+internal fun VoteErrorContent(
+    title: StringResource,
+    message: StringResource,
+    actionButton: ButtonState,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = title.getValue(),
+            style = ZashiTypography.header6,
+            color = ZashiColors.Text.textPrimary,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            text = message.getValue(),
+            style = ZashiTypography.textMd,
+            color = ZashiColors.Text.textTertiary
+        )
+        Spacer(modifier = Modifier.weight(1f))
+        ZashiButton(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = ZashiDimensions.Spacing.spacingMd),
+            state = actionButton
+        )
+    }
 }
 
 @Composable
