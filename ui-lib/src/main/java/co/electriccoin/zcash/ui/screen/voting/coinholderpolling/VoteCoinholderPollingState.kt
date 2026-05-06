@@ -9,6 +9,7 @@ data class VoteCoinholderPollingState(
     val activeRounds: List<VotePollCardState>,
     val pastRounds: List<VotePollCardState>,
     val onBack: () -> Unit,
+    val onRefresh: () -> Unit,
 )
 
 enum class VotePollCardStatus {

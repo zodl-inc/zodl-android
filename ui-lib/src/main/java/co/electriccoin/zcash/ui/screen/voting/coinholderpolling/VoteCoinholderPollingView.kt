@@ -1,6 +1,9 @@
 package co.electriccoin.zcash.ui.screen.voting.coinholderpolling
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -9,14 +12,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,15 +24,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
-import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
@@ -45,6 +46,7 @@ import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
 
 @Composable
 fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
@@ -54,33 +56,25 @@ fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
         content = { padding ->
             if (state.activeRounds.isEmpty() && state.pastRounds.isEmpty()) {
                 NoRoundsContent(
+                    onGotIt = state.onBack,
+                    onRefresh = state.onRefresh,
                     modifier = Modifier
                         .fillMaxSize()
                         .scaffoldPadding(padding)
                 )
             } else {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .scaffoldPadding(padding)
+                LazyColumn(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .scaffoldPadding(padding),
+                    verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing2xl)
                 ) {
-                    if (state.activeRounds.isNotEmpty()) {
-                        SectionHeader("Active")
-                        state.activeRounds.forEach { round ->
-                            PollCard(round)
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
+                    items(state.activeRounds, key = { it.roundId }) { round ->
+                        PollCard(round)
                     }
-                    if (state.pastRounds.isNotEmpty()) {
-                        if (state.activeRounds.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                        }
-                        SectionHeader("Past Rounds")
-                        state.pastRounds.forEach { round ->
-                            PollCard(round)
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
+                    items(state.pastRounds, key = { it.roundId }) { round ->
+                        PollCard(round)
                     }
                 }
             }
@@ -93,13 +87,7 @@ fun VoteCoinholderPollingLoadingView() {
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
-                title = "Coinholder Polling",
-                navigationAction = {
-                    ZashiTopAppBarBackNavigation(
-                        onBack = {},
-                        modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
-                    )
-                },
+                title = stringResource(R.string.vote_top_bar_title),
                 colors = ZcashTheme.colors.topAppBarColors orDark
                     ZcashTheme.colors.topAppBarColors.copyColors(
                         containerColor = Color.Transparent
@@ -107,8 +95,14 @@ fun VoteCoinholderPollingLoadingView() {
             )
         },
         content = { padding ->
-            CircularScreenProgressIndicator(
-                modifier = Modifier.scaffoldPadding(padding)
+            CommonShimmerLoadingScreen(
+                shimmerItemsCount = 4,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .scaffoldPadding(padding)
+                        .padding(top = 8.dp),
+                showDivider = false,
             )
         }
     )
@@ -116,7 +110,9 @@ fun VoteCoinholderPollingLoadingView() {
 
 @Composable
 private fun NoRoundsContent(
-    modifier: Modifier = Modifier
+    onGotIt: () -> Unit,
+    onRefresh: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier,
@@ -124,198 +120,203 @@ private fun NoRoundsContent(
     ) {
         Spacer(modifier = Modifier.weight(1f))
         Text(
-            text = stringRes("No Voting Rounds").getValue(),
+            text = stringResource(R.string.vote_poll_list_empty_title),
             style = ZashiTypography.header6,
             color = ZashiColors.Text.textPrimary,
             fontWeight = FontWeight.SemiBold
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = stringRes("There are no voting rounds available right now.").getValue(),
+            text = stringResource(R.string.vote_poll_list_empty_subtitle),
             style = ZashiTypography.textMd,
             color = ZashiColors.Text.textTertiary
         )
         Spacer(modifier = Modifier.weight(1f))
+        ZashiButton(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = ZashiDimensions.Spacing.spacingMd),
+            state =
+                ButtonState(
+                    text = stringRes(R.string.vote_poll_list_empty_refresh),
+                    style = ButtonStyle.PRIMARY,
+                    onClick = onRefresh
+                )
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        ZashiButton(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = ZashiDimensions.Spacing.spacingMd),
+            state =
+                ButtonState(
+                    text = stringRes(R.string.vote_poll_list_empty_got_it),
+                    style = ButtonStyle.TERTIARY,
+                    onClick = onGotIt
+                )
+        )
+        Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingMd))
     }
-}
-
-@Composable
-private fun SectionHeader(title: String) {
-    Text(
-        text = title,
-        style = ZashiTypography.textSm,
-        color = ZashiColors.Text.textTertiary,
-        fontWeight = FontWeight.Medium,
-        modifier = Modifier.padding(bottom = 12.dp)
-    )
 }
 
 @Composable
 private fun PollCard(state: VotePollCardState) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(enabled = state.isActionEnabled) { state.onAction() },
         shape = RoundedCornerShape(ZashiDimensions.Radius.radius2xl),
         color = ZashiColors.Surfaces.bgPrimary,
+        border = BorderStroke(1.dp, ZashiColors.Surfaces.strokeSecondary),
         shadowElevation = 1.dp,
         tonalElevation = 0.dp
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(ZashiDimensions.Spacing.spacingXl)
+                .padding(ZashiDimensions.Spacing.spacingXl),
+            verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacingXl)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                StatusPill(state.status)
+                StatusBadge(state.status)
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
                     text = state.dateLabel.getValue(),
                     style = ZashiTypography.textSm,
+                    fontWeight = FontWeight.Medium,
                     color = ZashiColors.Text.textTertiary
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Text(
-                text = state.title.getValue(),
-                style = ZashiTypography.textMd,
-                color = ZashiColors.Text.textPrimary,
-                fontWeight = FontWeight.SemiBold
-            )
-
-            state.votedLabel?.let { label ->
-                Spacer(modifier = Modifier.height(8.dp))
-                VotedIndicator(label = label.getValue(), votedCount = state.votedCount, total = state.proposalCount)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = state.title.getValue(),
+                    style = ZashiTypography.textMd,
+                    color = ZashiColors.Text.textPrimary,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = state.votedLabel?.getValue() ?: "${state.votedCount} of ${state.proposalCount} voted",
+                        style = ZashiTypography.textSm,
+                        fontWeight = FontWeight.Medium,
+                        color = ZashiColors.Text.textPrimary
+                    )
+                    ProgressDots(votedCount = state.votedCount, total = state.proposalCount)
+                }
             }
 
             if (state.description.getValue().isNotEmpty()) {
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = stringRes("Poll Description").getValue(),
-                    style = ZashiTypography.textSm,
-                    color = ZashiColors.Text.textTertiary
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = state.description.getValue(),
-                    style = ZashiTypography.textSm,
-                    color = ZashiColors.Text.textPrimary
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = stringResource(R.string.vote_poll_card_description_label),
+                        style = ZashiTypography.textSm,
+                        fontWeight = FontWeight.Medium,
+                        color = ZashiColors.Text.textTertiary
+                    )
+                    Text(
+                        text = state.description.getValue(),
+                        style = ZashiTypography.textSm,
+                        color = ZashiColors.Text.textPrimary
+                    )
+                }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            val (label, style) = when (state.status) {
-                VotePollCardStatus.ACTIVE -> "Enter Poll" to ButtonStyle.PRIMARY
-                VotePollCardStatus.VOTED -> "View My Votes" to ButtonStyle.PRIMARY
-                VotePollCardStatus.CLOSED ->
-                    if (state.sessionStatus == SessionStatus.TALLYING) {
-                        "View Status" to ButtonStyle.TERTIARY
-                    } else {
-                        "View Results" to ButtonStyle.TERTIARY
-                    }
-            }
-            ZashiButton(
-                state = ButtonState(
-                    text = stringRes(label),
-                    style = style,
-                    isEnabled = state.isActionEnabled,
-                    onClick = state.onAction
-                )
-            )
         }
     }
 }
 
 @Composable
-private fun StatusPill(status: VotePollCardStatus) {
-    val pillState = when (status) {
-        VotePollCardStatus.ACTIVE ->
-            PillState(
-                icon = Icons.Outlined.Schedule,
-                label = "Active",
-                foreground = ZashiColors.Utility.SuccessGreen.utilitySuccess500,
-                background = ZashiColors.Utility.SuccessGreen.utilitySuccess500.copy(alpha = 0.12f)
-            )
+private fun StatusBadge(status: VotePollCardStatus) {
+    val params =
+        when (status) {
+            VotePollCardStatus.ACTIVE ->
+                StatusBadgeParams(
+                    labelRes = R.string.vote_poll_card_status_active,
+                    iconTint = ZashiColors.Utility.SuccessGreen.utilitySuccess700,
+                    textColor = ZashiColors.Utility.SuccessGreen.utilitySuccess700,
+                    bgColor = ZashiColors.Utility.SuccessGreen.utilitySuccess50,
+                    borderColor = ZashiColors.Utility.SuccessGreen.utilitySuccess200,
+                )
 
-        VotePollCardStatus.VOTED ->
-            PillState(
-                icon = Icons.Outlined.Check,
-                label = "Voted",
-                foreground = ZashiColors.Utility.SuccessGreen.utilitySuccess500,
-                background = ZashiColors.Utility.SuccessGreen.utilitySuccess500.copy(alpha = 0.12f)
-            )
+            VotePollCardStatus.VOTED ->
+                StatusBadgeParams(
+                    labelRes = R.string.vote_poll_card_status_voted,
+                    iconTint = ZashiColors.Utility.SuccessGreen.utilitySuccess700,
+                    textColor = ZashiColors.Utility.SuccessGreen.utilitySuccess700,
+                    bgColor = ZashiColors.Utility.SuccessGreen.utilitySuccess50,
+                    borderColor = ZashiColors.Utility.SuccessGreen.utilitySuccess200,
+                )
 
-        VotePollCardStatus.CLOSED ->
-            PillState(
-                icon = Icons.Outlined.Schedule,
-                label = "Closed",
-                foreground = ZashiColors.Utility.ErrorRed.utilityError500,
-                background = ZashiColors.Utility.ErrorRed.utilityError500.copy(alpha = 0.12f)
-            )
-    }
-    Surface(shape = CircleShape, color = pillState.background) {
+            VotePollCardStatus.CLOSED ->
+                StatusBadgeParams(
+                    labelRes = R.string.vote_poll_card_status_closed,
+                    iconTint = ZashiColors.Utility.ErrorRed.utilityError700,
+                    textColor = ZashiColors.Utility.ErrorRed.utilityError700,
+                    bgColor = ZashiColors.Utility.ErrorRed.utilityError50,
+                    borderColor = ZashiColors.Utility.ErrorRed.utilityError200,
+                )
+        }
+    Surface(
+        shape = CircleShape,
+        color = params.bgColor,
+        border = BorderStroke(1.dp, params.borderColor)
+    ) {
         Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Icon(
-                imageVector = pillState.icon,
+                painter = painterResource(R.drawable.ic_vote_clock),
                 contentDescription = null,
-                tint = pillState.foreground,
+                tint = params.iconTint,
                 modifier = Modifier.size(14.dp)
             )
-            Spacer(modifier = Modifier.size(6.dp))
             Text(
-                text = pillState.label,
-                fontSize = 14.sp,
+                text = stringResource(params.labelRes),
+                style = ZashiTypography.textSm,
                 fontWeight = FontWeight.Medium,
-                color = pillState.foreground
+                color = params.textColor
             )
         }
     }
 }
 
-private data class PillState(
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
-    val label: String,
-    val foreground: Color,
-    val background: Color
+private data class StatusBadgeParams(
+    val labelRes: Int,
+    val iconTint: Color,
+    val textColor: Color,
+    val bgColor: Color,
+    val borderColor: Color,
 )
 
 @Composable
-private fun VotedIndicator(
-    label: String,
+private fun ProgressDots(
     votedCount: Int,
     total: Int
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text(
-            text = label,
-            style = ZashiTypography.textSm,
-            color = ZashiColors.Text.textPrimary
-        )
-        Spacer(modifier = Modifier.weight(1f))
-        Row {
-            repeat(total) { index ->
-                Surface(
-                    shape = CircleShape,
-                    color = if (index < votedCount) {
+    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        repeat(total) { index ->
+            Surface(
+                shape = CircleShape,
+                color =
+                    if (index < votedCount) {
                         ZashiColors.Utility.SuccessGreen.utilitySuccess500
                     } else {
-                        ZashiColors.Surfaces.bgTertiary
+                        ZashiColors.Utility.Gray.utilityGray200
                     },
-                    modifier = Modifier
-                        .padding(horizontal = 2.dp)
-                        .size(8.dp)
-                ) {}
-            }
+                modifier = Modifier.size(8.dp)
+            ) {}
         }
     }
 }
@@ -323,7 +324,7 @@ private fun VotedIndicator(
 @Composable
 private fun AppBar(state: VoteCoinholderPollingState) {
     ZashiSmallTopAppBar(
-        title = "Coinholder Polling",
+        title = stringResource(R.string.vote_top_bar_title),
         navigationAction = {
             ZashiTopAppBarBackNavigation(
                 onBack = state.onBack,
@@ -357,7 +358,7 @@ private fun CoinholderPollingPreviewWithRounds() =
                         votedLabel = null,
                         proposalCount = 2,
                         votedCount = 0,
-                        onAction = {}
+                        onAction = {},
                     ),
                 ),
                 pastRounds = listOf(
@@ -372,7 +373,7 @@ private fun CoinholderPollingPreviewWithRounds() =
                         votedLabel = stringRes("2 of 2 voted"),
                         proposalCount = 2,
                         votedCount = 2,
-                        onAction = {}
+                        onAction = {},
                     ),
                     VotePollCardState(
                         roundId = "ghi789",
@@ -385,10 +386,11 @@ private fun CoinholderPollingPreviewWithRounds() =
                         votedLabel = null,
                         proposalCount = 1,
                         votedCount = 0,
-                        onAction = {}
+                        onAction = {},
                     ),
                 ),
-                onBack = {}
+                onBack = {},
+                onRefresh = {},
             )
         )
     }
@@ -401,7 +403,8 @@ private fun CoinholderPollingPreviewEmpty() =
             state = VoteCoinholderPollingState(
                 activeRounds = emptyList(),
                 pastRounds = emptyList(),
-                onBack = {}
+                onBack = {},
+                onRefresh = {},
             )
         )
     }

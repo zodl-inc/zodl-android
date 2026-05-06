@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.Lce
 import co.electriccoin.zcash.ui.common.model.LceContent
 import co.electriccoin.zcash.ui.common.model.groupLce
@@ -120,14 +121,15 @@ class VoteCoinholderPollingVM(
                                 ?: persistedVoteCounts[round.id]
                         )
                     },
-                    onBack = ::onBack
+                    onBack = ::onBack,
+                    onRefresh = ::refreshVotingData,
                 )
             }
         }.withLce(groupLce(roundsLce)) { error ->
                 errorStateMapper.mapToState(
                     error = error,
-                    title = stringRes("Unable to load polls"),
-                    message = stringRes("Please try again."),
+                    title = stringRes(R.string.vote_error_unable_to_load_polls_title),
+                    message = stringRes(R.string.vote_error_unable_to_load_polls_message),
                     primaryStyle = ButtonStyle.PRIMARY
                 )
             }.stateIn(this)
@@ -165,7 +167,7 @@ class VoteCoinholderPollingVM(
             isActionEnabled = true,
             dateLabel = stringRes(dateLabel),
             votedLabel = if (hasConfirmedVote && total > 0) {
-                stringRes("$count of $total voted")
+                stringRes(R.string.vote_poll_voted_count, count, total)
             } else {
                 null
             },
