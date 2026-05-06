@@ -129,9 +129,13 @@
     <string name="vote_proposal_list_review_title">Review your answers</string>
     <string name="vote_proposal_list_review_subtitle">Tap on the question to edit any of your answers. After you review your answers, tap on Confirm &amp; Submit.</string>
 
-    <string name="vote_results_amount_zec">%1$.2f ZEC</string>
-    <string name="vote_results_total_zec">Total: %1$.2f ZEC</string>
+    <string name="vote_results_title">Results</string>
+    <string name="vote_results_amount_zec">%1$.3f ZEC</string>
+    <string name="vote_results_total_zec">Total: %1$.3f ZEC</string>
     <string name="vote_results_ended">Ended %1$s</string>
+    <string name="vote_results_voted">Voted %1$s</string>
+    <string name="vote_results_voting_power">Voting Power %1$.3f ZEC</string>
+    <string name="vote_results_meta_line">%1$s  &#8226;  %2$s</string>
     <string name="vote_results_winner">Winner: %1$s</string>
     <string name="vote_results_tie">Tie</string>
 

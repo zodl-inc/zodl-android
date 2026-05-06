@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.voting.results
 
 import androidx.lifecycle.ViewModel
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.groupLce
 import co.electriccoin.zcash.ui.common.model.mutableLce
 import co.electriccoin.zcash.ui.common.model.stateIn
@@ -72,8 +73,8 @@ class VoteResultsVM(
             .withLce(groupLce(resultsLce)) { error ->
                 errorStateMapper.mapToState(
                     error = error,
-                    title = stringRes("Results unavailable"),
-                    message = stringRes("We couldn't load the results for this round."),
+                    title = stringRes(R.string.vote_error_results_unavailable_title),
+                    message = stringRes(R.string.vote_error_results_unavailable_message),
                     primaryStyle = ButtonStyle.PRIMARY,
                 )
             }.stateIn(this)
@@ -94,7 +95,7 @@ class VoteResultsVM(
             proposals = proposals,
             isLoadingResults = false,
             doneButton = ButtonState(
-                text = stringRes("Done"),
+                text = stringRes(R.string.vote_done),
                 style = ButtonStyle.PRIMARY,
                 onClick = ::onDone,
             ),
@@ -120,7 +121,7 @@ class VoteResultsVM(
 
             VoteOptionResultState(
                 label = stringRes(option.label),
-                amountZec = stringRes(formatZec(weight)),
+                amountZec = stringRes(R.string.vote_results_amount_zec, weight.toZec()),
                 fraction = if (hasVotes) weight / displayWeight else 0f,
                 color = color,
                 isWinner = hasVotes && !hasTie && weight == maxWeight,
@@ -136,9 +137,9 @@ class VoteResultsVM(
             title = stringRes(proposal.title),
             description = stringRes(proposal.description),
             options = options,
-            totalZec = stringRes("Total: ${formatZec(totalWeight)}"),
+            totalZec = stringRes(R.string.vote_results_total_zec, totalWeight.toZec()),
             winnerLabel = when {
-                hasTie -> stringRes("Tie")
+                hasTie -> stringRes(R.string.vote_results_tie)
                 else -> winner?.first?.label?.let(::stringRes)
             },
             winnerColor = winner?.second?.color ?: VoteOptionDisplayColor.GRAY,
@@ -149,14 +150,19 @@ class VoteResultsVM(
     private fun buildVotedMetaLine(recovery: VotingRecoverySnapshot?): StringResource? {
         val formatter = DateTimeFormatter.ofPattern("MMM d").withZone(ZoneId.systemDefault())
         val votedAt = recovery?.submittedAtEpochSeconds?.let(Instant::ofEpochSecond)
-        val votedLabel = votedAt?.let { instant -> "Voted ${formatter.format(instant)}" }
-        val votingPowerLabel = recovery?.eligibleWeight?.let { weight ->
-            "Voting Power ${formatVotingPowerZec(weight)} ZEC"
+        val votedLabel = votedAt?.let { instant ->
+            stringRes(R.string.vote_results_voted, formatter.format(instant))
         }
-        return listOfNotNull(votedLabel, votingPowerLabel)
-            .takeIf { it.isNotEmpty() }
-            ?.joinToString("  ·  ")
-            ?.let(::stringRes)
+        val votingPowerLabel = recovery?.eligibleWeight?.let { weight ->
+            stringRes(R.string.vote_results_voting_power, weight.toZec())
+        }
+        return when {
+            votedLabel != null && votingPowerLabel != null ->
+                stringRes(R.string.vote_results_meta_line, votedLabel, votingPowerLabel)
+
+            votedLabel != null -> votedLabel
+            else -> votingPowerLabel
+        }
     }
 
     private fun onDone() = navigationRouter.backTo(VoteCoinholderPollingArgs::class)
@@ -164,6 +170,4 @@ class VoteResultsVM(
     private fun onBack() = navigationRouter.backTo(VoteCoinholderPollingArgs::class)
 }
 
-private fun formatZec(weight: Long): String = "%.3f ZEC".format(weight / 100_000_000.0)
-
-private fun formatVotingPowerZec(weight: Long): String = "%.3f".format(weight / 100_000_000.0)
+private fun Long.toZec(): Double = this / 100_000_000.0

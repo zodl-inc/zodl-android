@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.common.model.voting.VoteOptionDisplayColor
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
@@ -50,7 +51,7 @@ fun VoteResultsView(state: VoteResultsState) {
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
-                title = "Coinholder Polling",
+                title = stringRes(R.string.vote_top_bar_title).getValue(),
                 navigationAction = {
                     ZashiTopAppBarBackNavigation(
                         onBack = state.onBack,
@@ -98,7 +99,7 @@ fun VoteResultsView(state: VoteResultsState) {
 
                 Spacer(24.dp)
                 Text(
-                    text = stringRes("Results").getValue(),
+                    text = stringRes(R.string.vote_results_title).getValue(),
                     style = ZashiTypography.textMd,
                     color = ZashiColors.Text.textPrimary,
                     fontWeight = FontWeight.SemiBold,
@@ -277,7 +278,7 @@ private fun WinnerBadge(
             Text(
                 text =
                     if (isTie || showIcon) {
-                        stringRes(co.electriccoin.zcash.ui.R.string.vote_results_winner, label).getValue()
+                        stringRes(R.string.vote_results_winner, label).getValue()
                     } else {
                         label
                     },
