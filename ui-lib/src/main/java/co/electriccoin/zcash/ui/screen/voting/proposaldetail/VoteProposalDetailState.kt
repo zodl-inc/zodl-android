@@ -15,10 +15,13 @@ data class VoteProposalDetailState(
     val isEditingFromReview: Boolean,
     val showUnansweredSheet: Boolean,
     val unansweredCount: Int,
+    val showPollEndedSheet: Boolean,
     val onBack: () -> Unit,
     val onNext: () -> Unit,
     val onConfirmUnanswered: () -> Unit,
     val onDismissUnanswered: () -> Unit,
+    val onPollEndedClose: () -> Unit,
+    val onPollEndedViewResults: () -> Unit,
 )
 
 @Immutable

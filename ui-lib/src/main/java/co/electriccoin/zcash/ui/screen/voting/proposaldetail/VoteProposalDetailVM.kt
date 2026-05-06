@@ -2,9 +2,11 @@ package co.electriccoin.zcash.ui.screen.voting.proposaldetail
 
 import androidx.lifecycle.ViewModel
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.voting.Proposal
+import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.displayColor
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
 import co.electriccoin.zcash.ui.common.model.voting.optionsWithAbstain
@@ -15,6 +17,8 @@ import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCa
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListMode
+import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsArgs
+import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingArgs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.Flow
@@ -73,21 +77,25 @@ class VoteProposalDetailVM(
         val position = proposalIndex + 1
         val selectedOptionId = drafts[proposal.id]
         val unansweredCount = proposals.count { !drafts.containsKey(it.id) }
+        val pollEnded = round.status != SessionStatus.ACTIVE
 
         return VoteProposalDetailState(
-            positionLabel = stringRes("$position OF ${proposals.size}"),
+            positionLabel = stringRes(R.string.vote_proposal_position, position, proposals.size),
             title = stringRes(proposal.title),
             description = stringRes(proposal.description),
             forumUrl = proposal.forumUrl,
-            options = buildOptions(proposal, selectedOptionId, accountUuid, args.isReadOnly),
-            isLocked = args.isReadOnly,
+            options = buildOptions(proposal, selectedOptionId, accountUuid, args.isReadOnly || pollEnded),
+            isLocked = args.isReadOnly || pollEnded,
             isEditingFromReview = args.isEditingFromReview,
-            showUnansweredSheet = showSheet,
+            showUnansweredSheet = showSheet && !pollEnded,
             unansweredCount = unansweredCount,
+            showPollEndedSheet = pollEnded && !args.isReadOnly,
             onBack = ::onBack,
             onNext = { onNext(proposals, proposalIndex, drafts) },
             onConfirmUnanswered = { onConfirmUnanswered(accountUuid, round) },
             onDismissUnanswered = { showUnansweredSheet.value = false },
+            onPollEndedClose = ::onBack,
+            onPollEndedViewResults = { navigateToRoundOutcome(round) },
         )
     }
 
@@ -169,5 +177,15 @@ class VoteProposalDetailVM(
                 mode = VoteProposalListMode.REVIEW
             )
         )
+    }
+
+    private fun navigateToRoundOutcome(round: VotingRound) {
+        when (round.status) {
+            SessionStatus.TALLYING ->
+                navigationRouter.forward(VoteTallyingArgs(roundIdHex = round.id))
+
+            else ->
+                navigationRouter.forward(VoteResultsArgs(roundIdHex = round.id))
+        }
     }
 }
