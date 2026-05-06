@@ -191,6 +191,10 @@ import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmi
 import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionScreen
 import co.electriccoin.zcash.ui.screen.voting.howtovote.VoteHowToVoteArgs
 import co.electriccoin.zcash.ui.screen.voting.howtovote.VoteHowToVoteScreen
+import co.electriccoin.zcash.ui.screen.voting.ineligible.VoteIneligibleArgs
+import co.electriccoin.zcash.ui.screen.voting.ineligible.VoteIneligibleScreen
+import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptionArgs
+import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptionScreen
 import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailArgs
 import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailScreen
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
@@ -345,6 +349,8 @@ fun NavGraphBuilder.walletNavGraph(
         composable<VoteCoinholderPollingArgs> { VoteCoinholderPollingScreen() }
         composable<VoteProposalListArgs> { VoteProposalListScreen(it.toRoute()) }
         composable<VoteProposalDetailArgs> { VoteProposalDetailScreen(it.toRoute()) }
+        composable<VoteIneligibleArgs> { VoteIneligibleScreen(it.toRoute()) }
+        dialogComposable<VotePollDescriptionArgs> { VotePollDescriptionScreen(it.toRoute()) }
         composable<VoteWalletSyncingArgs> { VoteWalletSyncingScreen(it.toRoute()) }
         composable<VoteConfirmSubmissionArgs> { VoteConfirmSubmissionScreen(it.toRoute()) }
         composable<VoteTallyingArgs> { VoteTallyingScreen(it.toRoute()) }

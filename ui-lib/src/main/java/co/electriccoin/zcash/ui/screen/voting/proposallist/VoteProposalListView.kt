@@ -5,7 +5,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -13,40 +12,24 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.Forum
-import androidx.compose.material.icons.outlined.KeyboardArrowRight
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
-import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
@@ -71,7 +54,6 @@ import java.util.Locale
 @Composable
 fun VoteProposalListView(state: VoteProposalListState) {
     BackHandler { state.onBack() }
-    var showDescriptionSheet by rememberSaveable { mutableStateOf(false) }
 
     BlankBgScaffold(
         topBar = { AppBar(state) },
@@ -89,7 +71,7 @@ fun VoteProposalListView(state: VoteProposalListState) {
                             VoteProposalListMode.VOTED ->
                                 VotingHeader(
                                     state = state,
-                                    onViewMore = { showDescriptionSheet = true }
+                                    onViewMore = state.onViewMore ?: {}
                                 )
 
                             VoteProposalListMode.REVIEW -> ReviewHeader()
@@ -125,13 +107,6 @@ fun VoteProposalListView(state: VoteProposalListState) {
             }
         }
     )
-
-    if (showDescriptionSheet) {
-        DescriptionBottomSheet(
-            state = state,
-            onDismiss = { showDescriptionSheet = false }
-        )
-    }
 }
 
 @Composable
@@ -445,149 +420,6 @@ private fun VoteBadge(state: VoteVoteBadgeState) {
             fontWeight = FontWeight.Medium,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
         )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun DescriptionBottomSheet(
-    state: VoteProposalListState,
-    onDismiss: () -> Unit,
-) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val uriHandler = LocalUriHandler.current
-    val scrollState = rememberScrollState()
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = ZashiColors.Surfaces.bgPrimary,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.88f)
-                .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
-                .padding(bottom = ZashiDimensions.Spacing.spacingXl)
-        ) {
-            BottomSheetHeader(onDismiss = onDismiss)
-
-            Spacer(24.dp)
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .verticalScroll(scrollState)
-            ) {
-                Text(
-                    text = state.roundTitle.getValue(),
-                    style = ZashiTypography.header6,
-                    color = ZashiColors.Text.textPrimary,
-                    fontWeight = FontWeight.SemiBold,
-                )
-
-                Spacer(16.dp)
-
-                state.description?.let { description ->
-                    Text(
-                        text = description.getValue(),
-                        style = ZashiTypography.textMd,
-                        color = ZashiColors.Text.textPrimary,
-                    )
-                }
-
-                state.discussionUrl?.let { discussionUrl ->
-                    Spacer(24.dp)
-                    DiscussionLinkRow(
-                        onClick = { uriHandler.openUri(discussionUrl) }
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun BottomSheetHeader(onDismiss: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Surface(
-            shape = CircleShape,
-            color = ZashiColors.Surfaces.bgTertiary,
-            onClick = onDismiss,
-            modifier = Modifier.size(48.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = Icons.Outlined.Close,
-                    contentDescription = null,
-                    tint = ZashiColors.Text.textTertiary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-
-        Spacer(12.dp)
-
-        Text(
-            text = stringRes("Poll Description").getValue().uppercase(Locale.US),
-            style = ZashiTypography.textSm,
-            color = ZashiColors.Text.textPrimary,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.weight(1f)
-        )
-
-        Spacer(60.dp)
-    }
-}
-
-@Composable
-private fun DiscussionLinkRow(onClick: () -> Unit) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = Color.Transparent,
-        onClick = onClick,
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(vertical = 4.dp)
-        ) {
-            Surface(
-                shape = CircleShape,
-                color = ZashiColors.Surfaces.bgTertiary,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Outlined.Forum,
-                        contentDescription = null,
-                        tint = ZashiColors.Text.textPrimary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
-
-            Spacer(12.dp)
-
-            Text(
-                text = stringRes("View Forum Discussions").getValue(),
-                style = ZashiTypography.textMd,
-                color = ZashiColors.Text.textPrimary,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.weight(1f)
-            )
-
-            Icon(
-                painter = androidx.compose.ui.res.painterResource(R.drawable.ic_chevron_right),
-                contentDescription = null,
-                tint = ZashiColors.Text.textTertiary,
-                modifier = Modifier.size(16.dp)
-            )
-        }
     }
 }
 

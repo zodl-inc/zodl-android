@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="vote_top_bar_title">Coinholder Polling</string>
+    <string name="vote_continue">Continue</string>
+
+    <string name="vote_how_to_vote_title">How to vote with %1$s</string>
+    <string name="vote_how_to_vote_subtitle">Your ZEC gives you a voice. Shape the future of the Zcash network by voting on active proposals.</string>
+    <string name="vote_how_to_vote_step1_title">Voting on Proposals</string>
+    <string name="vote_how_to_vote_step1_description">Vote Support, Oppose, or Abstain on each question. You can skip questions and change your vote before submitting.</string>
+    <string name="vote_how_to_vote_step2_title">Authorize and Submit</string>
+    <string name="vote_how_to_vote_step2_description">When you\'re ready, you\'ll confirm a small authorization transaction and submit your vote in one step. After submission, your vote cannot be changed.</string>
+    <string name="vote_how_to_vote_disclaimer">Your balance at the snapshot time determines your voting weight. You don\'t need to move your funds anywhere.</string>
+
+    <string name="vote_poll_list_empty_title">No Polls Right Now</string>
+    <string name="vote_poll_list_empty_subtitle">There aren\'t any active polls at the moment. Check back later.</string>
+    <string name="vote_poll_list_empty_got_it">Got it</string>
+    <string name="vote_poll_list_empty_refresh">Refresh</string>
+    <string name="vote_poll_card_description_label">Poll Description</string>
+    <string name="vote_poll_card_status_active">Active</string>
+    <string name="vote_poll_card_status_voted">Voted</string>
+    <string name="vote_poll_card_status_closed">Closed</string>
+    <string name="vote_poll_card_enter">Enter Poll</string>
+    <string name="vote_poll_card_view_votes">View My Votes</string>
+    <string name="vote_poll_card_view_results">View Results</string>
+    <string name="vote_poll_voted_count">%1$d of %2$d voted</string>
+
+    <string name="vote_error_unable_to_load_polls_title">Unable to load polls</string>
+    <string name="vote_error_unable_to_load_polls_message">Could not fetch voting rounds. Please try again.</string>
+    <string name="vote_error_confirmation_unavailable_title">Confirmation unavailable</string>
+    <string name="vote_error_confirmation_unavailable_message">Could not load poll details. Please try again.</string>
+    <string name="vote_error_proposal_unavailable_title">Proposal unavailable</string>
+    <string name="vote_error_proposal_unavailable_message">Could not load proposal. Please try again.</string>
+    <string name="vote_error_voting_unavailable_title">Voting unavailable</string>
+    <string name="vote_error_voting_unavailable_message">Could not load voting proposals. Please try again.</string>
+    <string name="vote_error_results_unavailable_title">Results unavailable</string>
+    <string name="vote_error_results_unavailable_message">Could not load voting results. Please try again.</string>
+    <string name="vote_error_unable_to_load_round_title">Unable to load round</string>
+    <string name="vote_error_unable_to_load_round_message">Could not fetch voting round data. Please try again.</string>
+    <string name="vote_error_something_went_wrong">Something Went Wrong</string>
+    <string name="vote_error_wallet_update_required">Wallet Update Required</string>
+    <string name="vote_error_insufficient_funds_title">Insufficient Funds</string>
+    <string name="vote_error_insufficient_funds_message">You don\'t have enough ZEC to cover the transaction fee. Add funds to your wallet and try again.</string>
+    <string name="vote_error_go_back">Go Back</string>
+    <string name="vote_error_authorization_failed_title">Authorization Failed</string>
+    <string name="vote_error_authorization_failed_message">The authorization transaction failed. Check your connection and try again.</string>
+
+    <string name="vote_poll_ended_title">Poll Has Ended</string>
+    <string name="vote_poll_ended_message">The voting period closed.\nYour responses cannot be submitted.</string>
+    <string name="vote_poll_ended_view_results">View Results</string>
+
+    <string name="vote_done">Done</string>
+    <string name="vote_dismiss">Dismiss</string>
+    <string name="vote_retry">Retry</string>
+    <string name="vote_close">Close</string>
+
+    <string name="vote_confirm_cta_keystone">Confirm with Keystone</string>
+    <string name="vote_confirm_cta">Confirm</string>
+    <string name="vote_confirm_cta_authorizing">Authorizing...</string>
+    <string name="vote_confirm_cta_submitting">Submitting vote %1$d of %2$d...</string>
+    <string name="vote_confirm_title_idle">Confirm &amp; Submit</string>
+    <string name="vote_confirm_title_submitting">Submitting vote...</string>
+    <string name="vote_confirm_title_confirmed">Submission Confirmed!</string>
+    <string name="vote_confirm_title_failed">Submission Failed</string>
+    <string name="vote_confirm_error_submission">Vote submission failed. Please check your connection and try again.</string>
+    <string name="vote_confirm_error_auth">Authorization transaction failed. Please try again.</string>
+
+    <string name="vote_delegation_signing_title">Delegation signing</string>
+    <string name="vote_delegation_signing_status_generating">Generating proof... %1$d%%</string>
+    <string name="vote_delegation_signing_status_complete">Proof complete - submitting delegation...</string>
+    <string name="vote_delegation_signing_status_ready">Ready to generate zero-knowledge proof</string>
+    <string name="vote_delegation_signing_cta_generating">Generating...</string>
+    <string name="vote_delegation_signing_cta">Generate delegation proof</string>
+
+    <string name="vote_ineligible_title">Not Eligible for This Round</string>
+
+    <string name="vote_proposal_position">%1$d OF %2$d</string>
+    <string name="vote_proposal_list_confirm_submit">Confirm &amp; Submit</string>
+    <string name="vote_proposal_list_start_voting">Start Voting</string>
+    <string name="vote_proposal_list_continue_voting">Continue Voting</string>
+    <string name="vote_proposal_list_review_submit">Review &amp; Submit</string>
+    <string name="vote_proposal_list_meta_line">%1$s  &#8226;  %2$s</string>
+    <string name="vote_proposal_list_view_more">View more</string>
+    <string name="vote_proposal_detail_forum_discussions">View Forum Discussions</string>
+    <string name="vote_poll_description_title">POLL DESCRIPTION</string>
+
+    <string name="vote_option_support">Support</string>
+    <string name="vote_option_oppose">Oppose</string>
+    <string name="vote_option_abstain">Abstain</string>
+
+    <string name="vote_proposal_detail_back">Back</string>
+    <string name="vote_proposal_detail_next">Next</string>
+    <string name="vote_proposal_detail_save">Save</string>
+    <string name="vote_proposal_detail_forum_link">View Forum Discussion</string>
+    <string name="vote_proposal_list_review_title">Review your answers</string>
+    <string name="vote_proposal_list_review_subtitle">Tap on the question to edit any of your answers. After you review your answers, tap on Confirm &amp; Submit.</string>
+
+    <string name="vote_results_amount_zec">%1$.2f ZEC</string>
+    <string name="vote_results_total_zec">Total: %1$.2f ZEC</string>
+    <string name="vote_results_ended">Ended %1$s</string>
+    <string name="vote_results_winner">Winner: %1$s</string>
+    <string name="vote_results_tie">Tie</string>
+
+    <string name="vote_error_mapper_nullifier_spent">Your vote authorization has already been used. Each wallet can only vote once per round.</string>
+    <string name="vote_error_mapper_round_closed">This voting round is no longer active. The poll may have closed while you were voting.</string>
+    <string name="vote_error_mapper_pir_connection">Could not connect to the privacy-preserving vote server. Please check your connection and try again.</string>
+    <string name="vote_error_mapper_insufficient_funds">Insufficient funds to authorize your vote. A small fee is required.</string>
+    <string name="vote_error_mapper_wallet_sync">Your wallet is not fully synced. Please wait for syncing to complete before voting.</string>
+    <string name="vote_error_mapper_network">Network error. Please check your connection and try again.</string>
+    <string name="vote_error_mapper_proof">Vote proof generation failed. Please try again.</string>
+    <string name="vote_error_mapper_version">Your app may need an update to participate in this voting round.</string>
+    <string name="vote_error_mapper_unknown">An unexpected error occurred. Please try again.</string>
+
+    <string name="vote_wallet_syncing_title">Syncing wallet</string>
+    <string name="vote_wallet_syncing_status_complete">Sync complete</string>
+    <string name="vote_wallet_syncing_status_progress">%1$d%% - block %2$d of %3$d</string>
+</resources>

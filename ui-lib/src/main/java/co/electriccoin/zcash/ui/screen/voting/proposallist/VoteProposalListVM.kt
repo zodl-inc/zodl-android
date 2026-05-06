@@ -25,6 +25,9 @@ import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
 import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionArgs
+import co.electriccoin.zcash.ui.screen.voting.ineligible.VoteIneligibilityReason
+import co.electriccoin.zcash.ui.screen.voting.ineligible.VoteIneligibleArgs
+import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptionArgs
 import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailArgs
 import co.electriccoin.zcash.ui.screen.voting.votingerror.VoteErrorArgs
 import co.electriccoin.zcash.ui.screen.voting.walletsyncing.VoteWalletSyncingArgs
@@ -44,7 +47,7 @@ import java.time.temporal.ChronoUnit
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class VoteProposalListVM(
     private val args: VoteProposalListArgs,
-    votingApiRepository: VotingApiRepository,
+    private val votingApiRepository: VotingApiRepository,
     private val votingRecoveryRepository: VotingRecoveryRepository,
     private val votingSessionStore: VotingSessionStore,
     private val prepareVotingRound: PrepareVotingRoundUseCase,
@@ -63,9 +66,10 @@ class VoteProposalListVM(
 
                         is VotingRoundPreparationResult.Ineligible ->
                             navigationRouter.forward(
-                                VoteErrorArgs(
-                                    message = "Wallet is not eligible for this vote.",
-                                    isRecoverable = false
+                                VoteIneligibleArgs(
+                                    reason = preparation.toIneligibilityReason(),
+                                    snapshotHeight = snapshotHeightFor(args.roundId),
+                                    eligibleWeightZatoshi = preparation.eligibleWeight
                                 )
                             )
 
@@ -157,6 +161,18 @@ class VoteProposalListVM(
             },
             description = round.description.takeIf { it.isNotEmpty() }?.let(::stringRes),
             discussionUrl = round.discussionUrl,
+            onViewMore =
+                round.description.takeIf { it.isNotEmpty() }?.let { description ->
+                    {
+                        navigationRouter.forward(
+                            VotePollDescriptionArgs(
+                                title = round.title,
+                                description = description,
+                                discussionUrl = round.discussionUrl,
+                            )
+                        )
+                    }
+                },
             proposals = proposals.map { buildProposalRow(it, displayedChoices, round.id) },
             ctaButton = buildCtaButton(mode, proposals, displayedChoices, round.id),
             onBack = ::onBack,
@@ -323,9 +339,22 @@ class VoteProposalListVM(
             else -> navigationRouter.back()
         }
     }
+
+    private fun snapshotHeightFor(roundId: String): Long =
+        votingApiRepository.snapshot.value.rounds
+            .firstOrNull { it.id == roundId }
+            ?.snapshotHeight
+            ?: 0L
 }
 
 private fun Map<Int, Int>.toChoicesJson(): String =
     JSONObject(toSortedMap().mapKeys { (proposalId, _) -> proposalId.toString() }).toString()
 
 private fun Long.toVotingWeightLabel() = "%.4f ZEC".format(this / 100_000_000.0)
+
+private fun VotingRoundPreparationResult.Ineligible.toIneligibilityReason(): VoteIneligibilityReason =
+    if (bundleCount <= 0) {
+        VoteIneligibilityReason.NO_NOTES
+    } else {
+        VoteIneligibilityReason.BALANCE_TOO_LOW
+    }
