@@ -207,7 +207,8 @@ private fun PollCard(state: VotePollCardState) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = state.votedLabel?.getValue() ?: "${state.votedCount} of ${state.proposalCount} voted",
+                        text = state.votedLabel?.getValue()
+                            ?: stringResource(R.string.vote_poll_voted_count, state.votedCount, state.proposalCount),
                         style = ZashiTypography.textSm,
                         fontWeight = FontWeight.Medium,
                         color = ZashiColors.Text.textPrimary

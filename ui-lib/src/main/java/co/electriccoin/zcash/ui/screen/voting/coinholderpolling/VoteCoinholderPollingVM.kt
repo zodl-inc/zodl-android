@@ -149,9 +149,10 @@ class VoteCoinholderPollingVM(
 
         val formatter = DateTimeFormatter.ofPattern("MMM d").withZone(ZoneId.systemDefault())
         val dateLabel = when (status) {
-            VotePollCardStatus.ACTIVE -> "Closes ${formatter.format(round.votingEnd)}"
-            VotePollCardStatus.VOTED -> "Closes ${formatter.format(round.votingEnd)}"
-            VotePollCardStatus.CLOSED -> "Closed ${formatter.format(round.votingEnd)}"
+            VotePollCardStatus.ACTIVE,
+            VotePollCardStatus.VOTED -> stringRes(R.string.vote_poll_card_closes, formatter.format(round.votingEnd))
+
+            VotePollCardStatus.CLOSED -> stringRes(R.string.vote_poll_card_closed, formatter.format(round.votingEnd))
         }
 
         return VotePollCardState(
@@ -165,7 +166,7 @@ class VoteCoinholderPollingVM(
             status = status,
             sessionStatus = round.status,
             isActionEnabled = true,
-            dateLabel = stringRes(dateLabel),
+            dateLabel = dateLabel,
             votedLabel = if (hasConfirmedVote && total > 0) {
                 stringRes(R.string.vote_poll_voted_count, count, total)
             } else {

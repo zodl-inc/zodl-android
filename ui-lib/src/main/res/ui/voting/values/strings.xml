@@ -19,6 +19,8 @@
     <string name="vote_poll_card_status_active">Active</string>
     <string name="vote_poll_card_status_voted">Voted</string>
     <string name="vote_poll_card_status_closed">Closed</string>
+    <string name="vote_poll_card_closes">Closes %1$s</string>
+    <string name="vote_poll_card_closed">Closed %1$s</string>
     <string name="vote_poll_card_enter">Enter Poll</string>
     <string name="vote_poll_card_view_votes">View My Votes</string>
     <string name="vote_poll_card_view_results">View Results</string>
