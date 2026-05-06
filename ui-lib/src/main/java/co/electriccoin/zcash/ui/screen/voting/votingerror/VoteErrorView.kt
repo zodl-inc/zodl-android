@@ -66,6 +66,38 @@ object VotingErrorMapper {
                 ?: stringRes(UiR.string.vote_error_mapper_unknown)
         }
     }
+
+    fun toConfigErrorTitle(rawMessage: String): StringResource =
+        if (rawMessage.isWalletUpdateRequired()) {
+            stringRes(UiR.string.vote_error_config_title)
+        } else {
+            stringRes(UiR.string.vote_error_voting_unavailable_title)
+        }
+
+    fun toConfigErrorMessage(rawMessage: String): StringResource =
+        when {
+            rawMessage.isWalletUpdateRequired() -> stringRes(UiR.string.vote_error_mapper_version)
+            rawMessage.isNetworkError() -> stringRes(UiR.string.vote_error_mapper_network)
+            else -> stringRes(UiR.string.vote_error_voting_unavailable_message)
+        }
+
+    private fun String.isWalletUpdateRequired(): Boolean {
+        val lower = lowercase()
+        return lower.contains("update") ||
+            lower.contains("unsupported") ||
+            lower.contains("requires a newer") ||
+            lower.contains("does not support") ||
+            lower.contains("version")
+    }
+
+    private fun String.isNetworkError(): Boolean {
+        val lower = lowercase()
+        return lower.contains("network") ||
+            lower.contains("timeout") ||
+            lower.contains("connect") ||
+            lower.contains("fetch failed") ||
+            lower.contains("http")
+    }
 }
 
 @Composable
@@ -92,7 +124,7 @@ fun VoteConfigErrorView(state: VoteConfigErrorState) {
         topBar = { ErrorAppBar(onBack = state.onBack) },
         content = { padding ->
             VoteErrorContent(
-                title = stringRes(UiR.string.vote_error_config_title),
+                title = state.title,
                 message = state.message,
                 actionButton = state.dismissButton,
                 modifier = Modifier

@@ -46,10 +46,8 @@ class VoteConfigErrorVM(
         MutableStateFlow(
             LceState(
                 content = VoteConfigErrorState(
-                    message = args.message
-                        .takeIf { it.isNotBlank() }
-                        ?.let(::stringRes)
-                        ?: stringRes(R.string.vote_error_mapper_version),
+                    title = VotingErrorMapper.toConfigErrorTitle(args.message),
+                    message = VotingErrorMapper.toConfigErrorMessage(args.message),
                     dismissButton = ButtonState(
                         text = stringRes(R.string.vote_dismiss),
                         style = ButtonStyle.PRIMARY,
