@@ -136,7 +136,7 @@ private fun SignKeystoneVotingLoadingView(onBack: () -> Unit) {
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
-                title = "Confirmation",
+                title = stringResource(R.string.sign_keystone_voting_bar_title),
                 navigationAction = {
                     ZashiTopAppBarBackNavigation(
                         onBack = onBack,
@@ -154,14 +154,14 @@ private fun SignKeystoneVotingLoadingView(onBack: () -> Unit) {
 
 @Composable
 private fun SignKeystoneVotingErrorView(
-    message: String,
+    message: StringResource,
     onBack: () -> Unit,
     onRetry: () -> Unit,
 ) {
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
-                title = "Confirmation",
+                title = stringResource(R.string.sign_keystone_voting_bar_title),
                 navigationAction = {
                     ZashiTopAppBarBackNavigation(
                         onBack = onBack,
@@ -179,14 +179,14 @@ private fun SignKeystoneVotingErrorView(
             verticalArrangement = Arrangement.Center
         ) {
             Text(
-                text = "Unable to prepare Keystone signing",
+                text = stringResource(R.string.sign_keystone_voting_error_title),
                 style = ZashiTypography.header6,
                 color = ZashiColors.Text.textPrimary,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
                 modifier = Modifier.padding(top = 8.dp),
-                text = message,
+                text = message.getValue(),
                 style = ZashiTypography.textSm,
                 color = ZashiColors.Text.textSecondary
             )
@@ -195,7 +195,7 @@ private fun SignKeystoneVotingErrorView(
                     .fillMaxWidth()
                     .padding(top = 24.dp),
                 state = ButtonState(
-                    text = stringRes("Try Again"),
+                    text = stringRes(R.string.vote_try_again),
                     onClick = onRetry
                 )
             )

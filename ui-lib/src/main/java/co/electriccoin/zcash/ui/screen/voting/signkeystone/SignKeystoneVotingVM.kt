@@ -16,6 +16,7 @@ import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCa
 import co.electriccoin.zcash.ui.common.usecase.SkipRemainingKeystoneBundlesUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
+import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.addressbook.ADDRESS_MAX_LENGTH
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionBottomSheetState
@@ -56,7 +57,7 @@ class SignKeystoneVotingVM(
             )
 
     private val isLoading = MutableStateFlow(true)
-    private val errorMessage = MutableStateFlow<String?>(null)
+    private val errorMessage = MutableStateFlow<StringResource?>(null)
     private val isBottomSheetVisible = MutableStateFlow(false)
     private val isSkipBottomSheetVisible = MutableStateFlow(false)
     private val currentQrPart = MutableStateFlow<String?>(null)
@@ -75,7 +76,7 @@ class SignKeystoneVotingVM(
             )
 
     val loading: StateFlow<Boolean> = isLoading
-    val error: StateFlow<String?> = errorMessage
+    val error: StateFlow<StringResource?> = errorMessage
 
     val bottomSheetState =
         isBottomSheetVisible
@@ -126,23 +127,21 @@ class SignKeystoneVotingVM(
         ) { wallet, qrData, bundle, recovery ->
             bundle?.let {
                 SignKeystoneTransactionState(
-                    barTitle = stringRes("Confirmation"),
-                    title = stringRes("Scan with your Keystone wallet"),
-                    subtitle = stringRes(
-                        "After you have signed with Keystone, tap on the Scan Signature button below."
-                    ),
+                    barTitle = stringRes(R.string.sign_keystone_voting_bar_title),
+                    title = stringRes(R.string.sign_keystone_transaction_title),
+                    subtitle = stringRes(R.string.sign_keystone_voting_subtitle),
                     accountInfo =
                         ZashiAccountInfoListItemState(
                             icon = wallet.icon,
                             title = wallet.name,
                             subtitle = stringRes("${wallet.unified.address.address.take(ADDRESS_MAX_LENGTH)}...")
                         ),
-                    badgeText = stringRes("Hardware"),
+                    badgeText = stringRes(R.string.sign_keystone_transaction_badge),
                     generateNextQrCode = { currentQrPart.update { signingBundle?.encoder?.nextPart() } },
                     qrData = qrData,
                     positiveButton =
                         ButtonState(
-                            text = stringRes("Scan Signature"),
+                            text = stringRes(R.string.sign_keystone_voting_scan_signature),
                             onClick = ::onSignTransactionClick
                         ),
                     negativeButton =
@@ -247,7 +246,10 @@ class SignKeystoneVotingVM(
                 Log.e("SignKeystoneVoting", "Failed to skip Keystone voting bundles", throwable)
                 signingBundle = null
                 signingBundleState.value = null
-                errorMessage.value = throwable.message ?: "Unable to skip remaining Keystone bundles."
+                errorMessage.value = throwable.message
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let(::stringRes)
+                    ?: stringRes(R.string.sign_keystone_voting_error_skip_remaining)
             }
         }
     }
@@ -256,7 +258,7 @@ class SignKeystoneVotingVM(
         viewModelScope.launch {
             val accountUuid = selectedAccountUuid.value
             if (accountUuid == null) {
-                errorMessage.value = "No selected Keystone account is available."
+                errorMessage.value = stringRes(R.string.sign_keystone_voting_error_no_account)
                 isLoading.value = false
                 return@launch
             }
@@ -277,7 +279,10 @@ class SignKeystoneVotingVM(
                         throwable
                     )
                     errorMessage.value =
-                        throwable.message ?: "Failed to prepare the Keystone signing request."
+                        throwable.message
+                            ?.takeIf { it.isNotBlank() }
+                            ?.let(::stringRes)
+                            ?: stringRes(R.string.sign_keystone_voting_error_prepare_request)
                 }
             isLoading.value = false
         }

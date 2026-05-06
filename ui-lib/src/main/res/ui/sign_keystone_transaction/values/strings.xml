@@ -10,6 +10,13 @@
     <string name="sign_keystone_transaction_bottom_sheet_subtitle">Rejecting the signature will cancel the transaction, and you’ll need to start over if you want to proceed. This action cannot be undone.</string>
     <string name="sign_keystone_transaction_bottom_sheet_go_back">Go back</string>
     <string name="sign_keystone_transaction_bottom_sheet_reject">Reject Signature</string>
+    <string name="sign_keystone_voting_bar_title">Confirmation</string>
+    <string name="sign_keystone_voting_subtitle">After you have signed with Keystone, tap on the Scan Signature button below.</string>
+    <string name="sign_keystone_voting_scan_signature">Scan Signature</string>
+    <string name="sign_keystone_voting_error_title">Unable to prepare Keystone signing</string>
+    <string name="sign_keystone_voting_error_skip_remaining">Unable to skip remaining Keystone bundles.</string>
+    <string name="sign_keystone_voting_error_no_account">No selected Keystone account is available.</string>
+    <string name="sign_keystone_voting_error_prepare_request">Failed to prepare the Keystone signing request.</string>
     <string name="sign_keystone_voting_skip_remaining_bundle">Skip remaining bundle</string>
     <string name="sign_keystone_voting_skip_remaining_bundles">Skip %1$d remaining bundles</string>
     <string name="sign_keystone_voting_skip_remaining_title">Skip remaining bundles?</string>
