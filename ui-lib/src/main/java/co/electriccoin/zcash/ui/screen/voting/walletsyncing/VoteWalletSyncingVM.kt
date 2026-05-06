@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.screen.voting.walletsyncing
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.VotingConfigRepository
@@ -49,21 +50,25 @@ class VoteWalletSyncingVM(
 
                 LceState(
                     content = VoteWalletSyncingState(
-                        title = stringRes("Syncing your wallet"),
+                        title = stringRes(R.string.vote_wallet_syncing_title),
                         body = stringRes(
-                            "Your wallet needs to scan up to block $snapshotHeight before you can vote. Currently at block $scannedHeight."
+                            R.string.vote_wallet_syncing_message,
+                            snapshotHeight,
+                            scannedHeight
                         ),
-                        progressLabel = stringRes(
+                        progressLabel =
                             if (isSynced) {
-                                "100% complete"
+                                stringRes(R.string.vote_wallet_syncing_progress_complete)
                             } else {
-                                "${(progress * 100).toInt()}% complete"
-                            }
-                        ),
+                                stringRes(
+                                    R.string.vote_wallet_syncing_progress_percent,
+                                    (progress * 100).toInt()
+                                )
+                            },
                         progress = progress,
                         isSynced = isSynced,
                         continueButton = ButtonState(
-                            text = stringRes("Continue"),
+                            text = stringRes(R.string.vote_continue),
                             style = ButtonStyle.PRIMARY,
                             isEnabled = isSynced,
                             onClick = ::onContinue
