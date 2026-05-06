@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.LceError
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.voting.Proposal
@@ -22,6 +23,7 @@ import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCa
 import co.electriccoin.zcash.ui.common.usecase.PrepareVotingRoundUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
@@ -30,9 +32,11 @@ import co.electriccoin.zcash.ui.screen.voting.ineligible.VoteIneligibilityReason
 import co.electriccoin.zcash.ui.screen.voting.ineligible.VoteIneligibleArgs
 import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptionArgs
 import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailArgs
-import co.electriccoin.zcash.ui.screen.voting.votingerror.VoteErrorArgs
+import co.electriccoin.zcash.ui.screen.voting.votingerror.VotingErrorMapper
 import co.electriccoin.zcash.ui.screen.voting.walletsyncing.VoteWalletSyncingArgs
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
@@ -55,38 +59,11 @@ class VoteProposalListVM(
     private val navigationRouter: NavigationRouter,
     observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase,
 ) : ViewModel() {
+    private val preparationErrorSheet = MutableStateFlow<ZashiConfirmationState?>(null)
+    private var preparationJob: Job? = null
+
     init {
-        if (args.roundId.isNotEmpty() && args.mode == VoteProposalListMode.VOTING) {
-            viewModelScope.launch {
-                runCatching {
-                    prepareVotingRound(args.roundId)
-                }.onSuccess { preparation ->
-                    when (preparation) {
-                        is VotingRoundPreparationResult.WalletSyncing ->
-                            navigationRouter.forward(VoteWalletSyncingArgs(roundId = args.roundId))
-
-                        is VotingRoundPreparationResult.Ineligible ->
-                            navigationRouter.forward(
-                                VoteIneligibleArgs(
-                                    reason = preparation.toIneligibilityReason(),
-                                    snapshotHeight = snapshotHeightFor(args.roundId),
-                                    eligibleWeightZatoshi = preparation.eligibleWeight
-                                )
-                            )
-
-                        else -> Unit
-                    }
-                }.onFailure { throwable ->
-                    Log.e("VoteProposalList", "Failed to prepare voting round ${args.roundId}", throwable)
-                    navigationRouter.forward(
-                        VoteErrorArgs(
-                            message = throwable.message ?: "Unable to prepare this voting round.",
-                            isRecoverable = true
-                        )
-                    )
-                }
-            }
-        }
+        prepareForVoting()
     }
 
     private val selectedAccountUuid: Flow<String> =
@@ -117,15 +94,90 @@ class VoteProposalListVM(
                         recovery = recovery
                     )
                 }
-        }.map { content ->
+        }.let { contentFlow ->
+            combine(contentFlow, preparationErrorSheet) { content, errorSheet ->
+                content to errorSheet
+            }
+        }.map { (content, errorSheet) ->
             LceState(
                 content = content,
-                isLoading = content == null
+                isLoading = content == null,
+                error = errorSheet?.let(LceError::BottomSheet)
             )
         }.stateIn(
             viewModel = this,
             initialValue = LceState(content = null, isLoading = true)
         )
+
+    private fun prepareForVoting() {
+        if (args.roundId.isEmpty() || args.mode != VoteProposalListMode.VOTING) {
+            return
+        }
+        if (preparationJob?.isActive == true) {
+            return
+        }
+
+        preparationErrorSheet.value = null
+        preparationJob = viewModelScope.launch {
+            runCatching {
+                prepareVotingRound(args.roundId)
+            }.onSuccess { preparation ->
+                when (preparation) {
+                    is VotingRoundPreparationResult.WalletSyncing ->
+                        navigationRouter.forward(VoteWalletSyncingArgs(roundId = args.roundId))
+
+                    is VotingRoundPreparationResult.Ineligible ->
+                        navigationRouter.forward(
+                            VoteIneligibleArgs(
+                                reason = preparation.toIneligibilityReason(),
+                                snapshotHeight = snapshotHeightFor(args.roundId),
+                                eligibleWeightZatoshi = preparation.eligibleWeight
+                            )
+                        )
+
+                    else -> Unit
+                }
+            }.onFailure { throwable ->
+                Log.e("VoteProposalList", "Failed to prepare voting round ${args.roundId}", throwable)
+                preparationErrorSheet.value = buildPreparationErrorSheet(throwable)
+            }
+        }
+    }
+
+    private fun buildPreparationErrorSheet(throwable: Throwable): ZashiConfirmationState {
+        val rawMessage = throwable.message.orEmpty()
+        return ZashiConfirmationState(
+            icon = R.drawable.ic_reset_zashi_warning,
+            title = stringRes(R.string.vote_error_voting_unavailable_title),
+            message = rawMessage
+                .takeIf { it.isNotBlank() }
+                ?.let(VotingErrorMapper::toUserFriendlyMessage)
+                ?: stringRes(R.string.vote_error_voting_unavailable_message),
+            primaryAction = ButtonState(
+                text = stringRes(R.string.vote_try_again),
+                style = ButtonStyle.PRIMARY,
+                onClick = {
+                    preparationErrorSheet.value = null
+                    prepareForVoting()
+                }
+            ),
+            secondaryAction = ButtonState(
+                text = stringRes(R.string.vote_error_go_back),
+                style = ButtonStyle.TERTIARY,
+                onClick = ::goBackFromPreparationErrorSheet
+            ),
+            onBack = ::dismissPreparationErrorSheet
+        )
+    }
+
+    private fun dismissPreparationErrorSheet() {
+        preparationErrorSheet.value = null
+    }
+
+    private fun goBackFromPreparationErrorSheet() {
+        dismissPreparationErrorSheet()
+        onBack()
+    }
 
     private fun resolveRound(rounds: List<VotingRound>): VotingRound? {
         val targetRoundId = args.roundId
