@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import co.electriccoin.zcash.ui.R as UiR
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ZashiButton
@@ -24,40 +25,44 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 
 object VotingErrorMapper {
-    fun toUserFriendlyMessage(rawMessage: String): String {
+    fun toUserFriendlyMessage(rawMessage: String): StringResource {
         val lower = rawMessage.lowercase()
         return when {
             lower.contains("nullifier") && lower.contains("spent") ->
-                "Your vote authorization has already been used. Each wallet can only vote once per round."
+                stringRes(UiR.string.vote_error_mapper_nullifier_spent)
 
             lower.contains("round") && (lower.contains("not active") || lower.contains("inactive") || lower.contains("closed")) ->
-                "This voting round is no longer active. The poll may have closed while you were voting."
+                stringRes(UiR.string.vote_error_mapper_round_closed)
 
             lower.contains("pir") || lower.contains("private information retrieval") ->
-                "Could not connect to the privacy-preserving vote server. Please check your connection and try again."
+                stringRes(UiR.string.vote_error_mapper_pir_connection)
 
             lower.contains("insufficient") && lower.contains("fund") ->
-                "Insufficient funds to authorize your vote. A small fee is required."
+                stringRes(UiR.string.vote_error_mapper_insufficient_funds)
 
             lower.contains("wallet") && lower.contains("sync") ->
-                "Your wallet is not fully synced. Please wait for syncing to complete before voting."
+                stringRes(UiR.string.vote_error_mapper_wallet_sync)
 
             lower.contains("network") || lower.contains("timeout") || lower.contains("connect") ->
-                "Network error. Please check your connection and try again."
+                stringRes(UiR.string.vote_error_mapper_network)
 
             lower.contains("proof") || lower.contains("zkp") ->
-                "Vote proof generation failed. Please try again."
+                stringRes(UiR.string.vote_error_mapper_proof)
 
             lower.contains("config") || lower.contains("version") ->
-                "Your app may need an update to participate in this voting round."
+                stringRes(UiR.string.vote_error_mapper_version)
 
-            else -> rawMessage.ifBlank { "An unexpected error occurred. Please try again." }
+            else -> rawMessage
+                .takeIf { it.isNotBlank() }
+                ?.let(::stringRes)
+                ?: stringRes(UiR.string.vote_error_mapper_unknown)
         }
     }
 }
@@ -109,7 +114,7 @@ fun VoteConfigErrorView(state: VoteConfigErrorState) {
                     .scaffoldPadding(padding)
             ) {
                 Text(
-                    text = stringRes("Wallet update required").getValue(),
+                    text = stringRes(UiR.string.vote_error_config_title).getValue(),
                     style = ZashiTypography.header6,
                     color = ZashiColors.Text.textPrimary,
                     fontWeight = FontWeight.SemiBold
@@ -135,7 +140,7 @@ fun VoteConfigErrorView(state: VoteConfigErrorState) {
 @Composable
 private fun ErrorAppBar(onBack: () -> Unit) {
     ZashiSmallTopAppBar(
-        title = "Governance",
+        title = stringRes(UiR.string.vote_error_top_bar_title).getValue(),
         navigationAction = {
             ZashiTopAppBarBackNavigation(
                 onBack = onBack,

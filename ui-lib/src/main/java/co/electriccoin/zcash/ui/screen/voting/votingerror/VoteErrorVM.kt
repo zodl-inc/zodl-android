@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.voting.votingerror
 
 import androidx.lifecycle.ViewModel
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
@@ -17,10 +18,10 @@ class VoteErrorVM(
         MutableStateFlow(
             LceState(
                 content = VoteErrorState(
-                    title = stringRes("Something went wrong"),
-                    message = stringRes(VotingErrorMapper.toUserFriendlyMessage(args.message)),
+                    title = stringRes(R.string.vote_error_title_generic),
+                    message = VotingErrorMapper.toUserFriendlyMessage(args.message),
                     actionButton = ButtonState(
-                        text = stringRes(if (args.isRecoverable) "Try Again" else "Dismiss"),
+                        text = stringRes(if (args.isRecoverable) R.string.vote_try_again else R.string.vote_dismiss),
                         style = ButtonStyle.PRIMARY,
                         onClick = if (args.isRecoverable) ::onRetry else ::onDismiss,
                     ),
@@ -45,13 +46,12 @@ class VoteConfigErrorVM(
         MutableStateFlow(
             LceState(
                 content = VoteConfigErrorState(
-                    message = stringRes(
-                        args.message.ifBlank {
-                            "This wallet version is not compatible with the current voting round. Please update the app to participate."
-                        }
-                    ),
+                    message = args.message
+                        .takeIf { it.isNotBlank() }
+                        ?.let(::stringRes)
+                        ?: stringRes(R.string.vote_error_mapper_version),
                     dismissButton = ButtonState(
-                        text = stringRes("Dismiss"),
+                        text = stringRes(R.string.vote_dismiss),
                         style = ButtonStyle.PRIMARY,
                         onClick = ::onDismiss,
                     ),

@@ -51,6 +51,7 @@
     <string name="vote_done">Done</string>
     <string name="vote_dismiss">Dismiss</string>
     <string name="vote_retry">Retry</string>
+    <string name="vote_try_again">Try Again</string>
     <string name="vote_close">Close</string>
 
     <string name="vote_confirm_cta_keystone">Confirm with Keystone</string>
@@ -138,6 +139,9 @@
     <string name="vote_tallying_detail_ended">Ended</string>
     <string name="vote_tallying_detail_proposals">Proposals</string>
 
+    <string name="vote_error_top_bar_title">Governance</string>
+    <string name="vote_error_title_generic">Something went wrong</string>
+    <string name="vote_error_config_title">Wallet update required</string>
     <string name="vote_error_mapper_nullifier_spent">Your vote authorization has already been used. Each wallet can only vote once per round.</string>
     <string name="vote_error_mapper_round_closed">This voting round is no longer active. The poll may have closed while you were voting.</string>
     <string name="vote_error_mapper_pir_connection">Could not connect to the privacy-preserving vote server. Please check your connection and try again.</string>
