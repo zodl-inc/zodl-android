@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.screen.voting.tallying
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.groupLce
 import co.electriccoin.zcash.ui.common.model.mutableLce
 import co.electriccoin.zcash.ui.common.model.stateIn
@@ -58,8 +59,8 @@ class VoteTallyingVM(
             .withLce(groupLce(roundLce)) { error ->
                 errorStateMapper.mapToState(
                     error = error,
-                    title = stringRes("Unable to load round"),
-                    message = stringRes("We couldn't load this voting round."),
+                    title = stringRes(R.string.vote_error_unable_to_load_round_title),
+                    message = stringRes(R.string.vote_error_unable_to_load_round_message),
                     primaryStyle = ButtonStyle.PRIMARY,
                 )
             }.stateIn(this)

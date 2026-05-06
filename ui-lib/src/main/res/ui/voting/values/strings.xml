@@ -125,6 +125,14 @@
     <string name="vote_results_winner">Winner: %1$s</string>
     <string name="vote_results_tie">Tie</string>
 
+    <string name="vote_tallying_top_bar_title">Governance</string>
+    <string name="vote_tallying_title">Votes Closed</string>
+    <string name="vote_tallying_description">Results are being tallied. The election authority is decrypting the aggregate vote totals.</string>
+    <string name="vote_tallying_status">Tallying</string>
+    <string name="vote_tallying_detail_round">Round</string>
+    <string name="vote_tallying_detail_ended">Ended</string>
+    <string name="vote_tallying_detail_proposals">Proposals</string>
+
     <string name="vote_error_mapper_nullifier_spent">Your vote authorization has already been used. Each wallet can only vote once per round.</string>
     <string name="vote_error_mapper_round_closed">This voting round is no longer active. The poll may have closed while you were voting.</string>
     <string name="vote_error_mapper_pir_connection">Could not connect to the privacy-preserving vote server. Please check your connection and try again.</string>

@@ -26,6 +26,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import co.electriccoin.zcash.ui.R as UiR
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
@@ -37,6 +38,7 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
@@ -47,7 +49,7 @@ fun VoteTallyingView(state: VoteTallyingState) {
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
-                title = "Governance",
+                title = stringRes(UiR.string.vote_tallying_top_bar_title).getValue(),
                 navigationAction = {
                     ZashiTopAppBarBackNavigation(
                         onBack = state.onBack,
@@ -88,7 +90,7 @@ fun VoteTallyingView(state: VoteTallyingState) {
 
                 VerticalSpacer(24.dp)
                 Text(
-                    text = stringRes("Votes Closed").getValue(),
+                    text = stringRes(UiR.string.vote_tallying_title).getValue(),
                     style = ZashiTypography.header6,
                     color = ZashiColors.Text.textPrimary,
                     fontWeight = FontWeight.SemiBold,
@@ -97,9 +99,7 @@ fun VoteTallyingView(state: VoteTallyingState) {
 
                 VerticalSpacer(12.dp)
                 Text(
-                    text = stringRes(
-                        "Results are being tallied. The election authority is decrypting the aggregate vote totals."
-                    ).getValue(),
+                    text = stringRes(UiR.string.vote_tallying_description).getValue(),
                     style = ZashiTypography.textMd,
                     color = ZashiColors.Text.textSecondary,
                     textAlign = TextAlign.Center,
@@ -117,7 +117,7 @@ fun VoteTallyingView(state: VoteTallyingState) {
                         strokeWidth = 2.dp
                     )
                     Text(
-                        text = stringRes("Tallying").getValue(),
+                        text = stringRes(UiR.string.vote_tallying_status).getValue(),
                         style = ZashiTypography.textSm,
                         color = ZashiColors.Text.textTertiary,
                         fontWeight = FontWeight.Medium
@@ -141,9 +141,18 @@ fun VoteTallyingView(state: VoteTallyingState) {
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        DetailRow(label = "Round", value = state.roundTitle.getValue())
-                        DetailRow(label = "Ended", value = state.endedLabel.getValue())
-                        DetailRow(label = "Proposals", value = state.proposalCount.getValue())
+                        DetailRow(
+                            label = stringRes(UiR.string.vote_tallying_detail_round),
+                            value = state.roundTitle.getValue()
+                        )
+                        DetailRow(
+                            label = stringRes(UiR.string.vote_tallying_detail_ended),
+                            value = state.endedLabel.getValue()
+                        )
+                        DetailRow(
+                            label = stringRes(UiR.string.vote_tallying_detail_proposals),
+                            value = state.proposalCount.getValue()
+                        )
                     }
                 }
 
@@ -155,7 +164,7 @@ fun VoteTallyingView(state: VoteTallyingState) {
 
 @Composable
 private fun DetailRow(
-    label: String,
+    label: StringResource,
     value: String,
 ) {
     Row(
@@ -163,7 +172,7 @@ private fun DetailRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = label,
+            text = label.getValue(),
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textTertiary,
             fontWeight = FontWeight.Medium
