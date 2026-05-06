@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.screen.voting.proposallist
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -56,8 +55,6 @@ private const val DOT_FILL_RATIO = 0.6f
 
 @Composable
 fun VoteProposalListView(state: VoteProposalListState) {
-    BackHandler { state.onBack() }
-
     BlankBgScaffold(
         topBar = { AppBar(state) },
         content = { padding ->

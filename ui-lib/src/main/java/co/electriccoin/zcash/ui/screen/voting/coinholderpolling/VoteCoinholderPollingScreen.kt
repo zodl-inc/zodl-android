@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.voting.coinholderpolling
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -18,7 +19,10 @@ fun VoteCoinholderPollingScreen() {
                 VoteCoinholderPollingLoadingView()
             }
         }
-    ) { VoteCoinholderPollingView(it) }
+    ) {
+        BackHandler { it.onBack() }
+        VoteCoinholderPollingView(it)
+    }
 }
 
 @Serializable

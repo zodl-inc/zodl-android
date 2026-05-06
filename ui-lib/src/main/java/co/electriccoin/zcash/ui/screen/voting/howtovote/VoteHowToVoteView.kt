@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.screen.voting.howtovote
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -47,7 +46,6 @@ import co.electriccoin.zcash.ui.R as AppR
 
 @Composable
 fun VoteHowToVoteView(state: VoteHowToVoteState) {
-    BackHandler { state.onBack() }
     BlankBgScaffold(
         topBar = { AppBar(state) },
         content = { padding ->

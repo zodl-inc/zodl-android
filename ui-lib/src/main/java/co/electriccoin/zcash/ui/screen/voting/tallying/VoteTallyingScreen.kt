@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.voting.tallying
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -12,7 +13,10 @@ import org.koin.core.parameter.parametersOf
 fun VoteTallyingScreen(args: VoteTallyingArgs) {
     val vm = koinViewModel<VoteTallyingVM> { parametersOf(args) }
     val state by vm.state.collectAsStateWithLifecycle()
-    LceRenderer(state) { VoteTallyingView(it) }
+    LceRenderer(state) {
+        BackHandler { it.onBack() }
+        VoteTallyingView(it)
+    }
 }
 
 @Serializable

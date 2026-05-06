@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.voting.proposallist
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -19,7 +20,10 @@ fun VoteProposalListScreen(args: VoteProposalListArgs) {
                 VoteProposalListLoadingView()
             }
         }
-    ) { VoteProposalListView(it) }
+    ) {
+        BackHandler { it.onBack() }
+        VoteProposalListView(it)
+    }
 }
 
 @Serializable

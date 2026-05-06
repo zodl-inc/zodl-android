@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.voting.confirmsubmission
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -19,7 +20,10 @@ fun VoteConfirmSubmissionScreen(args: VoteConfirmSubmissionArgs) {
                 VoteConfirmSubmissionLoadingView()
             }
         }
-    ) { VoteConfirmSubmissionView(it) }
+    ) {
+        BackHandler { it.onBack() }
+        VoteConfirmSubmissionView(it)
+    }
 }
 
 @Serializable

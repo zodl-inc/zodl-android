@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.screen.voting.coinholderpolling
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -51,8 +50,6 @@ import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
 
 @Composable
 fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
-    BackHandler { state.onBack() }
-
     ZashiConfirmationBottomSheet(state = state.configErrorSheet)
 
     BlankBgScaffold(

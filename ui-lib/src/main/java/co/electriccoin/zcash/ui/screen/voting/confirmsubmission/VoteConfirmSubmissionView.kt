@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.screen.voting.confirmsubmission
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -41,8 +40,6 @@ import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIconsSta
 
 @Composable
 fun VoteConfirmSubmissionView(state: VoteConfirmSubmissionState) {
-    BackHandler { state.onBack() }
-
     ZashiConfirmationBottomSheet(state = state.errorSheet)
 
     val screenTitle = navTitle(state.status).getValue()
