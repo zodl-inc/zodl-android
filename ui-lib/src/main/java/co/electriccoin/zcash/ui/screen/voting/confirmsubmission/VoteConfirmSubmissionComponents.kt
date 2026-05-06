@@ -20,12 +20,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.VerticalSpacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.stringRes
 
 @Composable
 internal fun VoteSubmissionDetailsCard(state: VoteConfirmSubmissionState) {
@@ -114,11 +117,11 @@ internal fun VoteSubmissionBottomSection(state: VoteConfirmSubmissionState) {
                 state.status is VoteSubmissionStatus.Submitting
         when (val status = state.status) {
             is VoteSubmissionStatus.Authorizing ->
-                VoteSubmissionProgressCard("Authorizing...", submissionProgress)
+                VoteSubmissionProgressCard(stringRes(R.string.vote_confirm_cta_authorizing), submissionProgress)
 
             is VoteSubmissionStatus.Submitting ->
                 VoteSubmissionProgressCard(
-                    "Submitting vote ${status.current} of ${status.total}...",
+                    stringRes(R.string.vote_confirm_cta_submitting, status.current, status.total),
                     submissionProgress
                 )
 
@@ -155,7 +158,7 @@ private fun VoteConfirmSubmissionState.submissionProgress(): Float {
 
 @Composable
 private fun VoteSubmissionProgressCard(
-    title: String,
+    title: StringResource,
     progress: Float
 ) {
     val animatedProgress by animateFloatAsState(
@@ -170,7 +173,7 @@ private fun VoteSubmissionProgressCard(
     ) {
         Column(modifier = Modifier.padding(ZashiDimensions.Spacing.spacingXl)) {
             Text(
-                text = title,
+                text = title.getValue(),
                 style = ZashiTypography.textSm,
                 color = ZashiColors.Text.textPrimary,
                 fontWeight = FontWeight.SemiBold,

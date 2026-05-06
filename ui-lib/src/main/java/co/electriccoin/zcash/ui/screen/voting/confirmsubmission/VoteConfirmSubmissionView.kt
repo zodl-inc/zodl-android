@@ -124,9 +124,17 @@ fun VoteConfirmSubmissionLoadingView() {
 @Composable
 private fun HeaderSection(state: VoteConfirmSubmissionState) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        WalletHeaderIcons(
-            isKeystone = state.isKeystoneUser,
-            showCheckmark = state.status is VoteSubmissionStatus.Completed,
+        VoteWalletHeaderIcons(
+            state =
+                VoteWalletHeaderIconsState(
+                    isKeystone = state.isKeystoneUser,
+                    style =
+                        if (state.status is VoteSubmissionStatus.Completed) {
+                            VoteHeaderIconStyle.Confirmed
+                        } else {
+                            VoteHeaderIconStyle.ThumbsUp
+                        }
+                )
         )
         Spacer(24.dp)
         Text(
@@ -177,23 +185,6 @@ private fun headerSubtitle(state: VoteConfirmSubmissionState) = when (val status
     is VoteSubmissionStatus.ProtocolAuthFailed -> status.error
 
     is VoteSubmissionStatus.SubmissionFailed -> status.error
-}
-
-@Composable
-private fun WalletHeaderIcons(
-    isKeystone: Boolean,
-    showCheckmark: Boolean
-) {
-    VoteWalletHeaderIcons(
-        state = VoteWalletHeaderIconsState(
-            isKeystone = isKeystone,
-            style = if (showCheckmark) {
-                VoteHeaderIconStyle.Confirmed
-            } else {
-                VoteHeaderIconStyle.ThumbsUp
-            }
-        )
-    )
 }
 
 private fun previewState(status: VoteSubmissionStatus) = VoteConfirmSubmissionState(
