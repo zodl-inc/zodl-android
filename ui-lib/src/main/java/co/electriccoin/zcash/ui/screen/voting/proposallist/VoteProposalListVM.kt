@@ -280,13 +280,14 @@ class VoteProposalListVM(
         recovery: VotingRecoverySnapshot?
     ): VoteProposalMetaLineState {
         val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault())
-        val dateStr = "Ends ${formatter.format(round.votingEnd)}"
-        val votingPowerLabel = recovery?.eligibleWeight?.let { weight -> "Voting Power ${weight.toVotingWeightLabel()}" }
-        val leading = listOfNotNull(dateStr, votingPowerLabel).joinToString("  ·  ")
+        val dateLabel = stringRes(R.string.vote_proposal_list_ends, formatter.format(round.votingEnd))
+        val votingPowerLabel = recovery?.eligibleWeight?.let { weight ->
+            stringRes(R.string.vote_proposal_list_voting_power, weight.toVotingWeightLabel())
+        }
 
         return VoteProposalMetaLineState(
-            leading = stringRes(leading),
-            trailing = stringRes(buildTimeLeftLabel(round))
+            leading = combineMetaLine(dateLabel, votingPowerLabel),
+            trailing = buildTimeLeftLabel(round)
         )
     }
 
@@ -296,25 +297,39 @@ class VoteProposalListVM(
     ): VoteProposalMetaLineState? {
         val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault())
         val votedAt = recovery?.submittedAtEpochSeconds?.let(Instant::ofEpochSecond)
-        val votedLabel = votedAt?.let { instant -> "Voted ${formatter.format(instant)}" }
-        val votingPowerLabel = recovery?.eligibleWeight?.let { weight -> "Voting Power ${weight.toVotingWeightLabel()}" }
-        val dateLabel = votedLabel ?: "Ends ${formatter.format(round.votingEnd)}"
-        val leading = listOfNotNull(dateLabel, votingPowerLabel).joinToString("  ·  ")
+        val votedLabel = votedAt?.let { instant ->
+            stringRes(R.string.vote_proposal_list_voted, formatter.format(instant))
+        }
+        val votingPowerLabel = recovery?.eligibleWeight?.let { weight ->
+            stringRes(R.string.vote_proposal_list_voting_power, weight.toVotingWeightLabel())
+        }
+        val dateLabel = votedLabel ?: stringRes(R.string.vote_proposal_list_ends, formatter.format(round.votingEnd))
         val trailing = buildTimeLeftLabel(round)
 
         return VoteProposalMetaLineState(
-            leading = stringRes(leading),
-            trailing = stringRes(trailing)
+            leading = combineMetaLine(dateLabel, votingPowerLabel),
+            trailing = trailing
         )
     }
 
-    private fun buildTimeLeftLabel(round: VotingRound): String {
+    private fun combineMetaLine(
+        dateLabel: StringResource,
+        votingPowerLabel: StringResource?,
+    ): StringResource =
+        if (votingPowerLabel == null) {
+            dateLabel
+        } else {
+            stringRes(R.string.vote_proposal_list_meta_line, dateLabel, votingPowerLabel)
+        }
+
+    private fun buildTimeLeftLabel(round: VotingRound): StringResource {
         val remaining = ChronoUnit.SECONDS.between(Instant.now(), round.votingEnd)
         return when {
-            remaining <= 0 -> "Ended"
-            remaining < 3600 -> "${remaining / 60}m left"
-            remaining < 86400 -> "${remaining / 3600}h left"
-            else -> "${remaining / 86400} day${if (remaining / 86400 == 1L) "" else "s"} left"
+            remaining <= 0 -> stringRes(R.string.vote_proposal_list_time_ended)
+            remaining < 3600 -> stringRes(R.string.vote_proposal_list_time_minutes_left, remaining / 60)
+            remaining < 86400 -> stringRes(R.string.vote_proposal_list_time_hours_left, remaining / 3600)
+            remaining < 172800 -> stringRes(R.string.vote_proposal_list_time_day_left, remaining / 86400)
+            else -> stringRes(R.string.vote_proposal_list_time_days_left, remaining / 86400)
         }
     }
 

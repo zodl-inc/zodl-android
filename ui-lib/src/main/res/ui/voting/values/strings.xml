@@ -110,6 +110,14 @@
     <string name="vote_proposal_list_continue_voting">Continue Voting</string>
     <string name="vote_proposal_list_review_submit">Review &amp; Submit</string>
     <string name="vote_proposal_list_meta_line">%1$s  &#8226;  %2$s</string>
+    <string name="vote_proposal_list_ends">Ends %1$s</string>
+    <string name="vote_proposal_list_voted">Voted %1$s</string>
+    <string name="vote_proposal_list_voting_power">Voting Power %1$s</string>
+    <string name="vote_proposal_list_time_ended">Ended</string>
+    <string name="vote_proposal_list_time_minutes_left">%1$dm left</string>
+    <string name="vote_proposal_list_time_hours_left">%1$dh left</string>
+    <string name="vote_proposal_list_time_day_left">%1$d day left</string>
+    <string name="vote_proposal_list_time_days_left">%1$d days left</string>
     <string name="vote_proposal_list_view_more">View more</string>
     <string name="vote_proposal_detail_forum_discussions">View Forum Discussions</string>
     <string name="vote_poll_description_title">POLL DESCRIPTION</string>
