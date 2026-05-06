@@ -23,13 +23,15 @@ import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshActiveVotingSessionUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshVotingRoundsUseCase
+import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListMode
 import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsArgs
 import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingArgs
-import co.electriccoin.zcash.ui.screen.voting.votingerror.VoteConfigErrorArgs
+import co.electriccoin.zcash.ui.screen.voting.votingerror.VotingErrorMapper
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,6 +60,7 @@ class VoteCoinholderPollingVM(
                 ?.let { rounds -> Lce(content = LceContent.Success(rounds)) }
         )
     private var configIssue: VotingConfigException? = null
+    private val configErrorSheet = MutableStateFlow<ZashiConfirmationState?>(null)
     private val recoveryVoteCounts = MutableStateFlow<Map<String, Int>>(emptyMap())
     private var recoveryVoteCountsJob: Job? = null
     private val selectedAccountUuid =
@@ -125,14 +128,18 @@ class VoteCoinholderPollingVM(
                     onRefresh = ::refreshVotingData,
                 )
             }
+        }.let { contentFlow ->
+            combine(contentFlow, configErrorSheet) { content, sheet ->
+                content?.copy(configErrorSheet = sheet)
+            }
         }.withLce(groupLce(roundsLce)) { error ->
-                errorStateMapper.mapToState(
-                    error = error,
-                    title = stringRes(R.string.vote_error_unable_to_load_polls_title),
-                    message = stringRes(R.string.vote_error_unable_to_load_polls_message),
-                    primaryStyle = ButtonStyle.PRIMARY
-                )
-            }.stateIn(this)
+            errorStateMapper.mapToState(
+                error = error,
+                title = stringRes(R.string.vote_error_unable_to_load_polls_title),
+                message = stringRes(R.string.vote_error_unable_to_load_polls_message),
+                primaryStyle = ButtonStyle.PRIMARY
+            )
+        }.stateIn(this)
 
     private fun buildCard(
         round: VotingRound,
@@ -181,6 +188,7 @@ class VoteCoinholderPollingVM(
     private fun refreshVotingData() {
         roundsLce.execute {
             configIssue = null
+            configErrorSheet.value = null
             refreshVotingRounds()
             runCatching {
                 refreshActiveVotingSession()
@@ -238,7 +246,7 @@ class VoteCoinholderPollingVM(
                 VotePollCardStatus.ACTIVE -> {
                     val issue = configIssue
                     if (issue != null) {
-                        navigationRouter.forward(VoteConfigErrorArgs(issue.message.orEmpty()))
+                        configErrorSheet.value = buildConfigErrorSheet(issue.message.orEmpty())
                         return@launch
                     }
 
@@ -273,6 +281,33 @@ class VoteCoinholderPollingVM(
     }
 
     private fun onBack() = navigationRouter.back()
+
+    private fun buildConfigErrorSheet(rawMessage: String) =
+        ZashiConfirmationState(
+            icon = R.drawable.ic_reset_zashi_warning,
+            title = VotingErrorMapper.toConfigErrorTitle(rawMessage),
+            message = VotingErrorMapper.toConfigErrorMessage(rawMessage),
+            primaryAction = ButtonState(
+                text = stringRes(R.string.vote_dismiss),
+                style = ButtonStyle.PRIMARY,
+                onClick = ::dismissConfigErrorSheet
+            ),
+            secondaryAction = ButtonState(
+                text = stringRes(R.string.vote_error_go_back),
+                style = ButtonStyle.TERTIARY,
+                onClick = ::goBackFromConfigErrorSheet
+            ),
+            onBack = ::dismissConfigErrorSheet
+        )
+
+    private fun dismissConfigErrorSheet() {
+        configErrorSheet.value = null
+    }
+
+    private fun goBackFromConfigErrorSheet() {
+        dismissConfigErrorSheet()
+        navigationRouter.back()
+    }
 
     private fun navigateToRoundOutcome(round: VotingRound) {
         when (round.status) {

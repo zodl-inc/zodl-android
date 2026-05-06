@@ -35,6 +35,7 @@ import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiButton
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
@@ -51,6 +52,9 @@ import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
 @Composable
 fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
     BackHandler { state.onBack() }
+
+    ZashiConfirmationBottomSheet(state = state.configErrorSheet)
+
     BlankBgScaffold(
         topBar = { AppBar(state) },
         content = { padding ->
