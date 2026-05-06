@@ -1,41 +1,26 @@
 package co.electriccoin.zcash.ui.screen.voting.confirmsubmission
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
-import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.VerticalSpacer
-import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
@@ -43,7 +28,6 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
-import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -92,7 +76,7 @@ fun VoteConfirmSubmissionView(state: VoteConfirmSubmissionState) {
                     VerticalSpacer(24.dp)
                     HeaderSection(state)
                     VerticalSpacer(24.dp)
-                    DetailsCard(state)
+                    VoteSubmissionDetailsCard(state)
                     if (state.status.isInFlight()) {
                         VerticalSpacer(16.dp)
                         Text(
@@ -105,7 +89,7 @@ fun VoteConfirmSubmissionView(state: VoteConfirmSubmissionState) {
                     VerticalSpacer(24.dp)
                 }
 
-                BottomSection(state)
+                VoteSubmissionBottomSection(state)
             }
         }
     )
@@ -210,179 +194,6 @@ private fun WalletHeaderIcons(
             }
         )
     )
-}
-
-@Composable
-private fun DetailsCard(state: VoteConfirmSubmissionState) {
-    val isIdle = state.status is VoteSubmissionStatus.Idle
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = ZashiColors.Surfaces.bgSecondary,
-        shape = RoundedCornerShape(14.dp),
-    ) {
-        Column {
-            DetailRow("Poll", state.roundTitle.getValue())
-            HorizontalDivider(color = ZashiColors.Surfaces.strokeSecondary)
-            DetailRow("Voting power", state.votingWeightZEC.getValue())
-            HorizontalDivider(color = ZashiColors.Surfaces.strokeSecondary)
-            DetailRow("Voting hotkey", state.hotkeyAddress.getValue(), compactValue = true)
-            if (isIdle) {
-                HorizontalDivider(color = ZashiColors.Surfaces.strokeSecondary)
-                MemoRow(state.memo.getValue())
-            }
-        }
-    }
-}
-
-@Composable
-private fun DetailRow(
-    label: String,
-    value: String,
-    compactValue: Boolean = false,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = label,
-            style = ZashiTypography.textSm,
-            color = ZashiColors.Text.textSecondary,
-            modifier = Modifier.weight(0.95f)
-        )
-        Text(
-            text = if (compactValue) value.toCompactHotkeyLabel() else value,
-            style = ZashiTypography.textSm,
-            color = ZashiColors.Text.textPrimary,
-            fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.End,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1.35f)
-        )
-    }
-}
-
-@Composable
-private fun MemoRow(memo: String) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-    ) {
-        Text("Memo", style = ZashiTypography.textSm, color = ZashiColors.Text.textSecondary)
-        VerticalSpacer(4.dp)
-        Text(
-            memo,
-            style = ZashiTypography.textSm,
-            color = ZashiColors.Text.textPrimary,
-            fontWeight = FontWeight.Medium
-        )
-    }
-}
-
-@Composable
-private fun BottomSection(state: VoteConfirmSubmissionState) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
-            .padding(bottom = ZashiDimensions.Spacing.spacingMd)
-    ) {
-        val submissionProgress = state.submissionProgress()
-        val showsProgress = state.status is VoteSubmissionStatus.Authorizing ||
-            state.status is VoteSubmissionStatus.Submitting
-        when (val status = state.status) {
-            is VoteSubmissionStatus.Authorizing,
-            is VoteSubmissionStatus.Submitting -> {
-                val title = when (status) {
-                    is VoteSubmissionStatus.Authorizing -> "Authorizing..."
-                    is VoteSubmissionStatus.Submitting ->
-                        "Submitting vote ${status.current} of ${status.total}..."
-                }
-                ProgressCard(title, submissionProgress)
-            }
-
-            else -> Unit
-        }
-        if (showsProgress) {
-            VerticalSpacer(8.dp)
-        }
-        ZashiButton(
-            modifier = Modifier.fillMaxWidth(),
-            state = state.ctaButton
-        )
-    }
-}
-
-private fun VoteConfirmSubmissionState.submissionProgress(): Float {
-    val delegationWeight = 0.3f
-    return when (val status = status) {
-        is VoteSubmissionStatus.Authorizing ->
-            if (includesAuthorizationProgress) {
-                status.progress * delegationWeight
-            } else {
-                status.progress
-            }
-
-        is VoteSubmissionStatus.Submitting -> {
-            val offset = if (includesAuthorizationProgress) delegationWeight else 0f
-            (offset + status.progress * (1f - offset)).coerceIn(0f, 1f)
-        }
-
-        else -> 0f
-    }
-}
-
-@Composable
-private fun ProgressCard(
-    title: String,
-    progress: Float
-) {
-    val animatedProgress by animateFloatAsState(
-        targetValue = progress,
-        animationSpec = tween(durationMillis = 300),
-        label = "submission_progress"
-    )
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = ZashiColors.Surfaces.bgSecondary,
-        shape = RoundedCornerShape(ZashiDimensions.Radius.radiusXl),
-    ) {
-        Column(modifier = Modifier.padding(ZashiDimensions.Spacing.spacingXl)) {
-            Text(
-                text = title,
-                style = ZashiTypography.textSm,
-                color = ZashiColors.Text.textPrimary,
-                fontWeight = FontWeight.SemiBold,
-            )
-            VerticalSpacer(12.dp)
-            LinearProgressIndicator(
-                progress = { animatedProgress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(3.dp),
-                color = ZashiColors.Text.textPrimary,
-                trackColor = ZashiColors.Surfaces.bgTertiary,
-                strokeCap = StrokeCap.Round,
-            )
-        }
-    }
-}
-
-private fun String.toCompactHotkeyLabel(): String {
-    if (isBlank() || equals("Preparing...", ignoreCase = true)) {
-        return this
-    }
-
-    val trimmed = trim()
-    if (trimmed.length <= 18) {
-        return trimmed
-    }
-
-    return "${trimmed.take(6)}...${trimmed.takeLast(6)}"
 }
 
 private fun previewState(status: VoteSubmissionStatus) = VoteConfirmSubmissionState(
