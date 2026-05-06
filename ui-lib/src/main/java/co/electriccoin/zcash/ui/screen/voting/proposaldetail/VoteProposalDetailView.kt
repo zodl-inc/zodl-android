@@ -30,6 +30,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import co.electriccoin.zcash.ui.R as UiR
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
@@ -283,7 +284,7 @@ private fun UnansweredBottomSheet(state: VoteProposalDetailState) {
             VerticalSpacer(16.dp)
 
             Text(
-                text = stringRes("Unanswered Questions").getValue(),
+                text = stringRes(UiR.string.vote_proposal_detail_unanswered_title).getValue(),
                 style = ZashiTypography.header6,
                 color = ZashiColors.Text.textPrimary,
                 fontWeight = FontWeight.SemiBold,
@@ -291,11 +292,18 @@ private fun UnansweredBottomSheet(state: VoteProposalDetailState) {
 
             VerticalSpacer(8.dp)
 
-            val countText = if (state.unansweredCount == 1) "1 question" else "${state.unansweredCount} questions"
-            val pronounText = if (state.unansweredCount == 1) "this question" else "these questions"
+            val unansweredMessage =
+                if (state.unansweredCount == 1) {
+                    stringRes(UiR.string.vote_proposal_detail_unanswered_message_singular)
+                } else {
+                    stringRes(
+                        UiR.string.vote_proposal_detail_unanswered_message_plural,
+                        state.unansweredCount
+                    )
+                }
 
             Text(
-                text = "You have not responded to $countText. Confirm to abstain from $pronounText or go back to respond.",
+                text = unansweredMessage.getValue(),
                 style = ZashiTypography.textSm,
                 color = ZashiColors.Text.textSecondary,
                 textAlign = TextAlign.Center,
@@ -307,7 +315,7 @@ private fun UnansweredBottomSheet(state: VoteProposalDetailState) {
             ZashiButton(
                 modifier = Modifier.fillMaxWidth(),
                 state = ButtonState(
-                    text = stringRes("Confirm"),
+                    text = stringRes(UiR.string.vote_confirm_cta),
                     style = ButtonStyle.SECONDARY,
                     onClick = state.onConfirmUnanswered
                 )
@@ -318,7 +326,7 @@ private fun UnansweredBottomSheet(state: VoteProposalDetailState) {
             ZashiButton(
                 modifier = Modifier.fillMaxWidth(),
                 state = ButtonState(
-                    text = stringRes("Go back"),
+                    text = stringRes(UiR.string.vote_proposal_detail_unanswered_go_back),
                     style = ButtonStyle.PRIMARY,
                     onClick = state.onDismissUnanswered
                 )
