@@ -15,11 +15,14 @@ sealed class VoteSubmissionStatus {
 
     data object Completed : VoteSubmissionStatus()
 
-    data class LocalAuthFailed(val error: String) : VoteSubmissionStatus()
+    data class LocalAuthFailed(val error: String?) : VoteSubmissionStatus()
 
-    data class ProtocolAuthFailed(val error: String) : VoteSubmissionStatus()
+    data class ProtocolAuthFailed(val error: String?) : VoteSubmissionStatus()
 
-    data class SubmissionFailed(val error: String) : VoteSubmissionStatus()
+    data class SubmissionFailed(
+        val error: String?,
+        val defaultError: StringResource? = null,
+    ) : VoteSubmissionStatus()
 }
 
 internal fun VoteSubmissionStatus.isInFlight() =

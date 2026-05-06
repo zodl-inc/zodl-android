@@ -26,6 +26,7 @@ import co.electriccoin.zcash.ui.common.usecase.VotingSubmissionAuthorizationResu
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
+import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListMode
@@ -140,8 +141,6 @@ class VoteConfirmSubmissionVM(
         status: VoteSubmissionStatus,
         showFailureSheet: Boolean,
     ): VoteConfirmSubmissionState {
-        val weightText = recovery?.eligibleWeight?.toVotingWeightLabel() ?: "Preparing..."
-        val hotkeyAddress = recovery?.hotkeyAddress ?: "Preparing..."
         val isPrepared = recovery?.eligibleWeight != null && recovery.hotkeyAddress != null
         val keystoneSignedBundles = recovery?.keystoneBundleSignatures?.size ?: 0
         val preparedBundleCount = recovery?.bundleCount ?: 0
@@ -156,24 +155,29 @@ class VoteConfirmSubmissionVM(
         } ?: true
         val memo = if (isKeystone && !allKeystoneBundlesSigned) {
             if (hasPendingKeystoneRequest) {
-                "Resume the pending Keystone signing request, then continue signing the remaining delegation bundles."
+                stringRes(R.string.vote_confirm_memo_resume_keystone)
             } else {
-                "Sign each prepared delegation bundle with Keystone before submitting your votes."
+                stringRes(R.string.vote_confirm_memo_sign_keystone)
             }
         } else if (isPrepared) {
-            "I am authorizing this hotkey managed by my wallet to vote on ${round.title} with $weightText."
+            stringRes(
+                R.string.vote_confirm_memo_authorize,
+                round.title,
+                requireNotNull(recovery.eligibleWeight).toVotingWeightLabel()
+            )
         } else {
-            "Your wallet is still preparing the voting authorization for this poll."
+            stringRes(R.string.vote_confirm_memo_preparing)
         }
 
         return VoteConfirmSubmissionState(
             status = status,
             roundTitle = stringRes(round.title),
-            votingWeightZEC = stringRes(weightText),
-            hotkeyAddress = stringRes(hotkeyAddress),
+            votingWeightZEC = recovery?.eligibleWeight?.toVotingWeightLabel()?.let(::stringRes)
+                ?: stringRes(R.string.vote_confirm_preparing),
+            hotkeyAddress = recovery?.hotkeyAddress?.let(::stringRes) ?: stringRes(R.string.vote_confirm_preparing),
             isKeystoneUser = isKeystone,
             includesAuthorizationProgress = includesAuthorizationProgress,
-            memo = stringRes(memo),
+            memo = memo,
             ctaButton = buildButtonState(
                 isPrepared = isPrepared,
                 isKeystone = isKeystone,
@@ -208,34 +212,38 @@ class VoteConfirmSubmissionVM(
         status: VoteSubmissionStatus
     ) = when {
         status is VoteSubmissionStatus.Completed -> ButtonState(
-            text = stringRes("Done"),
+            text = stringRes(R.string.vote_done),
             style = ButtonStyle.PRIMARY,
             onClick = ::onDone
         )
 
         status.isFailure() -> ButtonState(
-            text = stringRes("Try Again"),
+            text = stringRes(R.string.vote_retry),
             style = ButtonStyle.PRIMARY,
             isEnabled = isPrepared && draftChoices.isNotEmpty(),
             onClick = if (isKeystone && keystoneSignedBundles < preparedBundleCount) ::onStartKeystoneSigning else ::onSubmit
         )
 
         else -> ButtonState(
-            text = stringRes(
+            text =
                 when {
-                    !isPrepared -> "Preparing vote..."
-                    isKeystone && keystoneSignedBundles < preparedBundleCount ->
+                    !isPrepared -> stringRes(R.string.vote_confirm_cta_preparing)
+                    isKeystone && keystoneSignedBundles < preparedBundleCount -> {
                         if (hasPendingKeystoneRequest) {
-                            "Resume Keystone signing"
+                            stringRes(R.string.vote_confirm_cta_resume_keystone_signing)
                         } else if (keystoneSignedBundles == 0) {
-                            "Sign with Keystone"
+                            stringRes(R.string.vote_confirm_cta_sign_keystone)
                         } else {
-                            "Sign bundle ${keystoneSignedBundles + 1}/$preparedBundleCount"
+                            stringRes(
+                                R.string.vote_confirm_cta_sign_bundle,
+                                keystoneSignedBundles + 1,
+                                preparedBundleCount
+                            )
                         }
-                    isSubmitting -> "Submitting..."
-                    else -> "Submit Votes"
-                }
-            ),
+                    }
+                    isSubmitting -> stringRes(R.string.vote_confirm_cta_submitting_generic)
+                    else -> stringRes(R.string.vote_confirm_cta_submit_votes)
+                },
             style = ButtonStyle.PRIMARY,
             isEnabled = isPrepared && !isSubmitting && draftChoices.isNotEmpty(),
             onClick = if (isKeystone && keystoneSignedBundles < preparedBundleCount) ::onStartKeystoneSigning else ::onSubmit
@@ -249,7 +257,12 @@ class VoteConfirmSubmissionVM(
     @Suppress("TooGenericExceptionCaught")
     private fun onSubmit() {
         if (draftChoices.isEmpty()) {
-            setFailureStatus(VoteSubmissionStatus.SubmissionFailed("No vote choices are available to submit."))
+            setFailureStatus(
+                VoteSubmissionStatus.SubmissionFailed(
+                    error = null,
+                    defaultError = stringRes(R.string.vote_confirm_error_no_choices)
+                )
+            )
             return
         }
         val previousStatus = statusFlow.value
@@ -272,7 +285,7 @@ class VoteConfirmSubmissionVM(
                 )
                 setFailureStatus(
                     VoteSubmissionStatus.LocalAuthFailed(
-                        throwable.message ?: "Authentication failed. Please try again."
+                        throwable.message
                     )
                 )
                 return@launch
@@ -287,7 +300,7 @@ class VoteConfirmSubmissionVM(
                 VotingSubmissionAuthorizationResult.Failed -> {
                     setFailureStatus(
                         VoteSubmissionStatus.LocalAuthFailed(
-                            "Authentication failed. Please try again."
+                            null
                         )
                     )
                     return@launch
@@ -397,7 +410,7 @@ class VoteConfirmSubmissionVM(
 
     private fun failureTitle(status: VoteSubmissionStatus) =
         when (status) {
-            is VoteSubmissionStatus.LocalAuthFailed -> stringRes("Authentication Failed")
+            is VoteSubmissionStatus.LocalAuthFailed -> stringRes(R.string.vote_confirm_title_auth_failed)
             is VoteSubmissionStatus.ProtocolAuthFailed -> stringRes(R.string.vote_error_authorization_failed_title)
             is VoteSubmissionStatus.SubmissionFailed -> stringRes(R.string.vote_confirm_title_failed)
             else -> stringRes(R.string.vote_error_something_went_wrong)
@@ -406,13 +419,15 @@ class VoteConfirmSubmissionVM(
     private fun failureMessage(status: VoteSubmissionStatus) =
         when (status) {
             is VoteSubmissionStatus.LocalAuthFailed ->
-                stringRes(status.error.ifBlank { "Authentication failed. Please try again." })
+                status.error.toErrorMessageOrDefault(stringRes(R.string.vote_confirm_error_authentication))
 
             is VoteSubmissionStatus.ProtocolAuthFailed ->
-                stringRes(status.error.ifBlank { "Authorization transaction failed. Please try again." })
+                status.error.toErrorMessageOrDefault(stringRes(R.string.vote_confirm_error_auth))
 
             is VoteSubmissionStatus.SubmissionFailed ->
-                stringRes(status.error.ifBlank { "Vote submission failed. Please check your connection and try again." })
+                status.error.toErrorMessageOrDefault(
+                    status.defaultError ?: stringRes(R.string.vote_confirm_error_submission)
+                )
 
             else -> stringRes(R.string.vote_error_something_went_wrong)
         }
@@ -428,6 +443,13 @@ class VoteConfirmSubmissionVM(
 }
 
 private fun Long.toVotingWeightLabel() = "%.4f ZEC".format(this / 100_000_000.0)
+
+private fun String?.toErrorMessageOrDefault(default: StringResource): StringResource =
+    if (isNullOrBlank()) {
+        default
+    } else {
+        stringRes(this)
+    }
 
 private fun String.toDraftChoices(): Map<Int, Int> {
     val json = JSONObject(this)

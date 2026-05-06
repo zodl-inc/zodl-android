@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -29,6 +30,8 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -42,15 +45,12 @@ fun VoteConfirmSubmissionView(state: VoteConfirmSubmissionState) {
 
     ZashiConfirmationBottomSheet(state = state.errorSheet)
 
-    val navTitle = when (state.status) {
-        is VoteSubmissionStatus.Idle -> "Confirmation"
-        else -> "Submission"
-    }
+    val screenTitle = navTitle(state.status).getValue()
 
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
-                title = navTitle,
+                title = screenTitle,
                 navigationAction = {
                     ZashiTopAppBarBackNavigation(
                         onBack = state.onBack,
@@ -83,8 +83,7 @@ fun VoteConfirmSubmissionView(state: VoteConfirmSubmissionState) {
                     if (state.status.isInFlight()) {
                         VerticalSpacer(16.dp)
                         Text(
-                            text = "Vote submission is in progress, please don't leave this " +
-                                "screen until it is finished.",
+                            text = stringRes(R.string.vote_confirm_subtitle_in_progress).getValue(),
                             style = ZashiTypography.textSm,
                             color = ZashiColors.Text.textSecondary,
                         )
@@ -103,7 +102,7 @@ fun VoteConfirmSubmissionLoadingView() {
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
-                title = "Submission",
+                title = stringRes(R.string.vote_confirm_nav_submission).getValue(),
                 navigationAction = {
                     ZashiTopAppBarBackNavigation(
                         onBack = {},
@@ -141,54 +140,71 @@ private fun HeaderSection(state: VoteConfirmSubmissionState) {
         )
         Spacer(24.dp)
         Text(
-            text = headerTitle(state.status),
+            text = headerTitle(state.status).getValue(),
             style = ZashiTypography.header6,
             color = ZashiColors.Text.textPrimary,
             fontWeight = FontWeight.SemiBold,
         )
         Spacer(8.dp)
         Text(
-            text = headerSubtitle(state),
+            text = headerSubtitle(state).getValue(),
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textSecondary,
         )
     }
 }
 
-private fun headerTitle(status: VoteSubmissionStatus) = when (status) {
-    is VoteSubmissionStatus.Idle -> "Confirm & Submit"
-    is VoteSubmissionStatus.LocalAuthorizing -> "Authorizing vote..."
-    is VoteSubmissionStatus.Authorizing, is VoteSubmissionStatus.Submitting -> "Submitting vote..."
-    is VoteSubmissionStatus.Completed -> "Submission Confirmed!"
-    is VoteSubmissionStatus.LocalAuthFailed -> "Authentication Failed"
-    is VoteSubmissionStatus.ProtocolAuthFailed -> "Authorization Failed"
-    is VoteSubmissionStatus.SubmissionFailed -> "Submission Failed"
+private fun navTitle(status: VoteSubmissionStatus): StringResource =
+    when (status) {
+        is VoteSubmissionStatus.Idle -> stringRes(R.string.vote_confirm_nav_confirmation)
+        else -> stringRes(R.string.vote_confirm_nav_submission)
+    }
+
+private fun headerTitle(status: VoteSubmissionStatus): StringResource = when (status) {
+    is VoteSubmissionStatus.Idle -> stringRes(R.string.vote_confirm_title_idle)
+    is VoteSubmissionStatus.LocalAuthorizing -> stringRes(R.string.vote_confirm_title_authorizing)
+    is VoteSubmissionStatus.Authorizing, is VoteSubmissionStatus.Submitting ->
+        stringRes(R.string.vote_confirm_title_submitting)
+    is VoteSubmissionStatus.Completed -> stringRes(R.string.vote_confirm_title_confirmed)
+    is VoteSubmissionStatus.LocalAuthFailed -> stringRes(R.string.vote_confirm_title_auth_failed)
+    is VoteSubmissionStatus.ProtocolAuthFailed -> stringRes(R.string.vote_error_authorization_failed_title)
+    is VoteSubmissionStatus.SubmissionFailed -> stringRes(R.string.vote_confirm_title_failed)
 }
 
-private fun headerSubtitle(state: VoteConfirmSubmissionState) = when (val status = state.status) {
+private fun headerSubtitle(state: VoteConfirmSubmissionState): StringResource = when (val status = state.status) {
     is VoteSubmissionStatus.Idle ->
         if (state.isKeystoneUser) {
-            "Review before signing the voting authorization with your Keystone. " +
-                "This is final. Your vote will be published and cannot be changed."
+            stringRes(R.string.vote_confirm_subtitle_idle_keystone)
         } else {
-            "Review before confirming the voting authorization. " +
-                "This is final. Your vote will be published and cannot be changed."
+            stringRes(R.string.vote_confirm_subtitle_idle)
         }
 
     is VoteSubmissionStatus.LocalAuthorizing,
     is VoteSubmissionStatus.Authorizing,
     is VoteSubmissionStatus.Submitting ->
-        "Vote submission is in progress, please don't leave this screen until it is finished."
+        stringRes(R.string.vote_confirm_subtitle_in_progress)
 
     is VoteSubmissionStatus.Completed ->
-        "Your vote was successfully published and cannot be changed."
+        stringRes(R.string.vote_confirm_subtitle_completed)
 
-    is VoteSubmissionStatus.LocalAuthFailed -> status.error
+    is VoteSubmissionStatus.LocalAuthFailed ->
+        status.error.toMessageOrDefault(stringRes(R.string.vote_confirm_error_authentication))
 
-    is VoteSubmissionStatus.ProtocolAuthFailed -> status.error
+    is VoteSubmissionStatus.ProtocolAuthFailed ->
+        status.error.toMessageOrDefault(stringRes(R.string.vote_confirm_error_auth))
 
-    is VoteSubmissionStatus.SubmissionFailed -> status.error
+    is VoteSubmissionStatus.SubmissionFailed ->
+        status.error.toMessageOrDefault(
+            status.defaultError ?: stringRes(R.string.vote_confirm_error_submission)
+        )
 }
+
+private fun String?.toMessageOrDefault(default: StringResource): StringResource =
+    if (isNullOrBlank()) {
+        default
+    } else {
+        stringRes(this)
+    }
 
 private fun previewState(status: VoteSubmissionStatus) = VoteConfirmSubmissionState(
     status = status,

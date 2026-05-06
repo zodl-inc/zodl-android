@@ -39,11 +39,15 @@ internal fun VoteSubmissionDetailsCard(state: VoteConfirmSubmissionState) {
         shape = RoundedCornerShape(14.dp),
     ) {
         Column {
-            VoteSubmissionDetailRow("Poll", state.roundTitle.getValue())
+            VoteSubmissionDetailRow(stringRes(R.string.vote_confirm_detail_poll), state.roundTitle.getValue())
             HorizontalDivider(color = ZashiColors.Surfaces.strokeSecondary)
-            VoteSubmissionDetailRow("Voting power", state.votingWeightZEC.getValue())
+            VoteSubmissionDetailRow(stringRes(R.string.vote_confirm_detail_voting_power), state.votingWeightZEC.getValue())
             HorizontalDivider(color = ZashiColors.Surfaces.strokeSecondary)
-            VoteSubmissionDetailRow("Voting hotkey", state.hotkeyAddress.getValue(), compactValue = true)
+            VoteSubmissionDetailRow(
+                stringRes(R.string.vote_confirm_detail_hotkey),
+                state.hotkeyAddress.getValue(),
+                compactValue = true
+            )
             if (isIdle) {
                 HorizontalDivider(color = ZashiColors.Surfaces.strokeSecondary)
                 VoteSubmissionMemoRow(state.memo.getValue())
@@ -54,7 +58,7 @@ internal fun VoteSubmissionDetailsCard(state: VoteConfirmSubmissionState) {
 
 @Composable
 private fun VoteSubmissionDetailRow(
-    label: String,
+    label: StringResource,
     value: String,
     compactValue: Boolean = false,
 ) {
@@ -65,7 +69,7 @@ private fun VoteSubmissionDetailRow(
                 .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Text(
-            text = label,
+            text = label.getValue(),
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textSecondary,
             modifier = Modifier.weight(0.95f)
@@ -91,7 +95,11 @@ private fun VoteSubmissionMemoRow(memo: String) {
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        Text("Memo", style = ZashiTypography.textSm, color = ZashiColors.Text.textSecondary)
+        Text(
+            text = stringRes(R.string.vote_confirm_detail_memo).getValue(),
+            style = ZashiTypography.textSm,
+            color = ZashiColors.Text.textSecondary
+        )
         VerticalSpacer(4.dp)
         Text(
             memo,
