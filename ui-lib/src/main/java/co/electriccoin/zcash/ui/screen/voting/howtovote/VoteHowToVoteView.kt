@@ -9,8 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,10 +18,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
+import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
@@ -40,6 +43,7 @@ import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIcons
 import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIconsState
+import co.electriccoin.zcash.ui.R as AppR
 
 @Composable
 fun VoteHowToVoteView(state: VoteHowToVoteState) {
@@ -64,9 +68,7 @@ private fun Content(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
-        VoteWalletHeaderIcons(
-            state = VoteWalletHeaderIconsState(isKeystone = state.isKeystoneUser)
-        )
+        VoteWalletHeaderIcons(state = state.walletHeaderIcons)
         Spacer(24.dp)
         Text(
             text = state.title.getValue(),
@@ -89,23 +91,32 @@ private fun Content(
             Spacer(16.dp)
         }
 
+        Spacer(1f)
+
         state.infoText?.let { info ->
-            Spacer(8.dp)
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = ZashiColors.Surfaces.bgSecondary,
-                shape = RoundedCornerShape(ZashiDimensions.Radius.radiusXl)
+            Row(
+                verticalAlignment = Alignment.Top,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = ZashiDimensions.Spacing.spacing2xl)
             ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_info),
+                    contentDescription = null,
+                    tint = ZashiColors.Text.textTertiary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(8.dp)
                 Text(
                     text = info.getValue(),
                     style = ZashiTypography.textXs,
                     color = ZashiColors.Text.textTertiary,
-                    modifier = Modifier.padding(ZashiDimensions.Spacing.spacingMd)
+                    modifier = Modifier.weight(1f)
                 )
             }
+            Spacer(ZashiDimensions.Spacing.spacingXl)
         }
-
-        Spacer(1f)
 
         ZashiButton(
             modifier = Modifier
@@ -157,7 +168,7 @@ private fun StepRow(step: VoteStep) {
 @Composable
 private fun AppBar(state: VoteHowToVoteState) {
     ZashiSmallTopAppBar(
-        title = "Coinholder Polling",
+        title = stringResource(AppR.string.vote_top_bar_title),
         navigationAction = {
             ZashiTopAppBarBackNavigation(
                 onBack = state.onBack,
@@ -203,6 +214,7 @@ private fun HowToVotePreview() =
                     "Your balance at the snapshot time determines your voting weight. " +
                         "You don't need to move your funds anywhere."
                 ),
+                walletHeaderIcons = VoteWalletHeaderIconsState(isKeystone = false),
                 continueButton = ButtonState(
                     text = stringRes("Continue"),
                     style = ButtonStyle.PRIMARY

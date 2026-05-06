@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.screen.voting.howtovote
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteStorageProvider
@@ -11,6 +12,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
+import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIconsState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -33,36 +35,24 @@ class VoteHowToVoteVM(
 
             mutableState.value = LceState(
                 content = VoteHowToVoteState(
-                    title = stringRes("How to vote with $walletName"),
-                    subtitle = stringRes(
-                        "Your ZEC gives you a voice. Shape the future of the Zcash " +
-                            "network by voting on active proposals."
-                    ),
+                    title = stringRes(R.string.vote_how_to_vote_title, walletName),
+                    subtitle = stringRes(R.string.vote_how_to_vote_subtitle),
                     steps = listOf(
                         VoteStep(
                             number = "1",
-                            title = stringRes("Voting on Proposals"),
-                            description = stringRes(
-                                "Vote Support, Oppose, or Abstain on each question. " +
-                                    "You can skip questions and change your vote before submitting."
-                            )
+                            title = stringRes(R.string.vote_how_to_vote_step1_title),
+                            description = stringRes(R.string.vote_how_to_vote_step1_description)
                         ),
                         VoteStep(
                             number = "2",
-                            title = stringRes("Authorize and Submit"),
-                            description = stringRes(
-                                "When you're ready, you'll confirm a small authorization transaction " +
-                                    "and submit your vote in one step. After submission, your vote cannot be changed."
-                            )
+                            title = stringRes(R.string.vote_how_to_vote_step2_title),
+                            description = stringRes(R.string.vote_how_to_vote_step2_description)
                         ),
                     ),
-                    infoText = stringRes(
-                        "Your balance at the snapshot time determines your voting weight. " +
-                            "You don't need to move your funds anywhere."
-                    ),
-                    isKeystoneUser = isKeystone,
+                    infoText = stringRes(R.string.vote_how_to_vote_disclaimer),
+                    walletHeaderIcons = VoteWalletHeaderIconsState(isKeystone = isKeystone),
                     continueButton = ButtonState(
-                        text = stringRes("Continue"),
+                        text = stringRes(R.string.vote_continue),
                         style = ButtonStyle.PRIMARY,
                         onClick = ::onContinue
                     ),
