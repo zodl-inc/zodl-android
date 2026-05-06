@@ -98,7 +98,6 @@ import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsVM
 import co.electriccoin.zcash.ui.screen.voting.scankeystone.viewmodel.ScanKeystoneVotingPCZTViewModel
 import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingVM
 import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingVM
-import co.electriccoin.zcash.ui.screen.voting.votingerror.VoteErrorVM
 import co.electriccoin.zcash.ui.screen.voting.walletsyncing.VoteWalletSyncingVM
 import co.electriccoin.zcash.ui.screen.walletbackup.WalletBackupViewModel
 import co.electriccoin.zcash.ui.screen.warning.viewmodel.StorageCheckViewModel
@@ -202,7 +201,6 @@ val viewModelModule =
         viewModelOf(::VoteIneligibleVM)
         viewModelOf(::VoteTallyingVM)
         viewModelOf(::VoteResultsVM)
-        viewModelOf(::VoteErrorVM)
         viewModelOf(::SignKeystoneVotingVM)
         viewModelOf(::ScanKeystoneVotingPCZTViewModel)
         viewModelOf(::KeystoneConnectVM)
