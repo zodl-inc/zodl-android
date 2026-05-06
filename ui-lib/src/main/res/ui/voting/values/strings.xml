@@ -96,7 +96,12 @@
     <string name="vote_delegation_signing_cta_generating">Generating...</string>
     <string name="vote_delegation_signing_cta">Generate delegation proof</string>
 
+    <string name="vote_ineligible_top_bar_title">Voting Eligibility</string>
     <string name="vote_ineligible_title">Not Eligible for This Round</string>
+    <string name="vote_ineligible_no_notes">Your wallet has no shielded notes from before the snapshot block. Only funds that existed at the snapshot block are eligible for this voting round.</string>
+    <string name="vote_ineligible_no_notes_at_snapshot">Your wallet has no shielded notes from before snapshot block #%1$s. Only funds that existed at the snapshot block are eligible for this voting round.</string>
+    <string name="vote_ineligible_balance_too_low">Your shielded voting weight at the snapshot block was %1$s ZEC, so this wallet is not eligible for this voting round.</string>
+    <string name="vote_ineligible_balance_too_low_at_snapshot">Your shielded voting weight at snapshot block #%1$s was %2$s ZEC, so this wallet is not eligible for this voting round.</string>
 
     <string name="vote_proposal_position">%1$d OF %2$d</string>
     <string name="vote_proposal_list_confirm_submit">Confirm &amp; Submit</string>

@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import co.electriccoin.zcash.ui.R as UiR
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -82,7 +83,7 @@ private fun VoteIneligibleContent(
 @Composable
 private fun VoteIneligibleAppBar(state: VoteIneligibleState) {
     ZashiSmallTopAppBar(
-        title = "Voting Eligibility",
+        title = stringRes(UiR.string.vote_ineligible_top_bar_title).getValue(),
         navigationAction = {
             ZashiTopAppBarBackNavigation(
                 onBack = state.onBack,
@@ -104,11 +105,11 @@ private fun IneligiblePreview() =
         VoteIneligibleView(
             state =
                 VoteIneligibleState(
-                    title = stringRes(co.electriccoin.zcash.ui.R.string.vote_ineligible_title),
-                    body = stringRes("Your wallet did not hold any shielded ZEC at the snapshot height."),
+                    title = stringRes(UiR.string.vote_ineligible_title),
+                    body = stringRes(UiR.string.vote_ineligible_no_notes),
                     closeButton =
                         ButtonState(
-                            text = stringRes(co.electriccoin.zcash.ui.R.string.vote_close),
+                            text = stringRes(UiR.string.vote_close),
                             style = ButtonStyle.PRIMARY
                         ) {},
                     onBack = {}

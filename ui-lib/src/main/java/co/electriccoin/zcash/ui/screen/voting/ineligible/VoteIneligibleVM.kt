@@ -39,26 +39,30 @@ class VoteIneligibleVM(
 
     private fun buildBodyMessage(): StringResource =
         when (args.reason) {
-            VoteIneligibilityReason.NO_NOTES ->
-                stringRes(
-                    "Your wallet has no shielded notes from before ${snapshotBlockLabel()}. " +
-                        "Only funds that existed at the snapshot block are eligible for this voting round."
-                )
+            VoteIneligibilityReason.NO_NOTES -> {
+                val snapshotHeight = snapshotHeightLabel()
+                if (snapshotHeight == null) {
+                    stringRes(R.string.vote_ineligible_no_notes)
+                } else {
+                    stringRes(R.string.vote_ineligible_no_notes_at_snapshot, snapshotHeight)
+                }
+            }
 
             VoteIneligibilityReason.BALANCE_TOO_LOW -> {
                 val eligibleWeightZec = "%.4f".format(args.eligibleWeightZatoshi / ZATOSHI_PER_ZEC)
-                stringRes(
-                    "Your shielded voting weight at ${snapshotBlockLabel()} was $eligibleWeightZec ZEC, " +
-                        "so this wallet is not eligible for this voting round."
-                )
+                val snapshotHeight = snapshotHeightLabel()
+                if (snapshotHeight == null) {
+                    stringRes(R.string.vote_ineligible_balance_too_low, eligibleWeightZec)
+                } else {
+                    stringRes(R.string.vote_ineligible_balance_too_low_at_snapshot, snapshotHeight, eligibleWeightZec)
+                }
             }
         }
 
-    private fun snapshotBlockLabel(): String =
+    private fun snapshotHeightLabel(): String? =
         args.snapshotHeight
             .takeIf { it > 0L }
-            ?.let { "snapshot block #${NumberFormat.getNumberInstance(Locale.US).format(it)}" }
-            ?: "the snapshot block"
+            ?.let { NumberFormat.getNumberInstance(Locale.US).format(it) }
 
     private fun onClose() = navigationRouter.backToRoot()
 
