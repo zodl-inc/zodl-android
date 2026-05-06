@@ -21,6 +21,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.VerticalSpacer
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
@@ -38,6 +39,8 @@ import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIconsSta
 @Composable
 fun VoteConfirmSubmissionView(state: VoteConfirmSubmissionState) {
     BackHandler { state.onBack() }
+
+    ZashiConfirmationBottomSheet(state = state.errorSheet)
 
     val navTitle = when (state.status) {
         is VoteSubmissionStatus.Idle -> "Confirmation"
@@ -200,6 +203,7 @@ private fun previewState(status: VoteSubmissionStatus) = VoteConfirmSubmissionSt
         style = ButtonStyle.PRIMARY,
         onClick = {}
     ),
+    errorSheet = null,
     onBack = {},
 )
 

@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.stateIn
@@ -23,6 +25,7 @@ import co.electriccoin.zcash.ui.common.usecase.VotingAuthorizationException
 import co.electriccoin.zcash.ui.common.usecase.VotingSubmissionAuthorizationResult
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListMode
@@ -51,6 +54,7 @@ class VoteConfirmSubmissionVM(
     private val navigationRouter: NavigationRouter,
 ) : ViewModel() {
     private val statusFlow = MutableStateFlow<VoteSubmissionStatus>(VoteSubmissionStatus.Idle)
+    private val isFailureSheetVisible = MutableStateFlow(false)
     private val draftChoices = runCatching { args.choicesJson.toDraftChoices() }
         .getOrElse { throwable ->
             Log.e("VoteConfirmSubmission", "Failed to parse draft vote choices", throwable)
@@ -106,7 +110,8 @@ class VoteConfirmSubmissionVM(
             recovery,
             isKeystoneAccount,
             statusFlow,
-        ) { apiSnapshot, recovery, isKeystone, status ->
+            isFailureSheetVisible,
+        ) { apiSnapshot, recovery, isKeystone, status, showFailureSheet ->
             apiSnapshot.rounds
                 .firstOrNull { round -> round.id == args.roundIdHex }
                 ?.let { round ->
@@ -114,7 +119,8 @@ class VoteConfirmSubmissionVM(
                         round = round,
                         recovery = recovery,
                         isKeystone = isKeystone,
-                        status = status
+                        status = status,
+                        showFailureSheet = showFailureSheet
                     )
                 }
         }.map { content ->
@@ -132,6 +138,7 @@ class VoteConfirmSubmissionVM(
         recovery: VotingRecoverySnapshot?,
         isKeystone: Boolean,
         status: VoteSubmissionStatus,
+        showFailureSheet: Boolean,
     ): VoteConfirmSubmissionState {
         val weightText = recovery?.eligibleWeight?.toVotingWeightLabel() ?: "Preparing..."
         val hotkeyAddress = recovery?.hotkeyAddress ?: "Preparing..."
@@ -175,6 +182,17 @@ class VoteConfirmSubmissionVM(
                 hasPendingKeystoneRequest = hasPendingKeystoneRequest,
                 isSubmitting = isSubmitting,
                 status = status
+            ),
+            errorSheet = buildFailureSheet(
+                status = status,
+                isVisible = showFailureSheet,
+                canRetry = isPrepared && draftChoices.isNotEmpty(),
+                retryAction =
+                    if (isKeystone && keystoneSignedBundles < preparedBundleCount) {
+                        ::onStartKeystoneSigning
+                    } else {
+                        ::onSubmit
+                    }
             ),
             onBack = ::onBack
         )
@@ -231,7 +249,7 @@ class VoteConfirmSubmissionVM(
     @Suppress("TooGenericExceptionCaught")
     private fun onSubmit() {
         if (draftChoices.isEmpty()) {
-            statusFlow.value = VoteSubmissionStatus.SubmissionFailed("No vote choices are available to submit.")
+            setFailureStatus(VoteSubmissionStatus.SubmissionFailed("No vote choices are available to submit."))
             return
         }
         val previousStatus = statusFlow.value
@@ -239,6 +257,7 @@ class VoteConfirmSubmissionVM(
             return
         }
 
+        isFailureSheetVisible.value = false
         statusFlow.value = VoteSubmissionStatus.LocalAuthorizing
         viewModelScope.launch {
             val authorizationResult = try {
@@ -251,8 +270,10 @@ class VoteConfirmSubmissionVM(
                     "Failed to authorize vote submission for round ${args.roundIdHex}",
                     throwable
                 )
-                statusFlow.value = VoteSubmissionStatus.LocalAuthFailed(
-                    throwable.message ?: "Authentication failed. Please try again."
+                setFailureStatus(
+                    VoteSubmissionStatus.LocalAuthFailed(
+                        throwable.message ?: "Authentication failed. Please try again."
+                    )
                 )
                 return@launch
             }
@@ -264,8 +285,10 @@ class VoteConfirmSubmissionVM(
                     return@launch
                 }
                 VotingSubmissionAuthorizationResult.Failed -> {
-                    statusFlow.value = VoteSubmissionStatus.LocalAuthFailed(
-                        "Authentication failed. Please try again."
+                    setFailureStatus(
+                        VoteSubmissionStatus.LocalAuthFailed(
+                            "Authentication failed. Please try again."
+                        )
                     )
                     return@launch
                 }
@@ -284,10 +307,12 @@ class VoteConfirmSubmissionVM(
                     throwable
                 )
                 val error = throwable.message ?: "Vote submission failed."
-                statusFlow.value = when (throwable) {
-                    is VotingAuthorizationException -> VoteSubmissionStatus.ProtocolAuthFailed(error)
-                    else -> VoteSubmissionStatus.SubmissionFailed(error)
-                }
+                setFailureStatus(
+                    when (throwable) {
+                        is VotingAuthorizationException -> VoteSubmissionStatus.ProtocolAuthFailed(error)
+                        else -> VoteSubmissionStatus.SubmissionFailed(error)
+                    }
+                )
             }
         }
     }
@@ -342,6 +367,63 @@ class VoteConfirmSubmissionVM(
             statusFlow.value.isInFlight() -> Unit
             else -> navigationRouter.back()
         }
+    }
+
+    private fun buildFailureSheet(
+        status: VoteSubmissionStatus,
+        isVisible: Boolean,
+        canRetry: Boolean,
+        retryAction: () -> Unit,
+    ): ZashiConfirmationState? {
+        if (!isVisible || !status.isFailure()) {
+            return null
+        }
+        return ZashiConfirmationState.error(
+            title = failureTitle(status),
+            message = failureMessage(status),
+            primaryText = stringRes(if (canRetry) R.string.vote_retry else R.string.vote_dismiss),
+            secondaryText = stringRes(R.string.vote_dismiss),
+            primaryStyle = ButtonStyle.PRIMARY,
+            onPrimary = {
+                isFailureSheetVisible.value = false
+                if (canRetry) {
+                    retryAction()
+                }
+            },
+            onSecondary = ::dismissFailureSheet,
+            onBack = ::dismissFailureSheet,
+        )
+    }
+
+    private fun failureTitle(status: VoteSubmissionStatus) =
+        when (status) {
+            is VoteSubmissionStatus.LocalAuthFailed -> stringRes("Authentication Failed")
+            is VoteSubmissionStatus.ProtocolAuthFailed -> stringRes(R.string.vote_error_authorization_failed_title)
+            is VoteSubmissionStatus.SubmissionFailed -> stringRes(R.string.vote_confirm_title_failed)
+            else -> stringRes(R.string.vote_error_something_went_wrong)
+        }
+
+    private fun failureMessage(status: VoteSubmissionStatus) =
+        when (status) {
+            is VoteSubmissionStatus.LocalAuthFailed ->
+                stringRes(status.error.ifBlank { "Authentication failed. Please try again." })
+
+            is VoteSubmissionStatus.ProtocolAuthFailed ->
+                stringRes(status.error.ifBlank { "Authorization transaction failed. Please try again." })
+
+            is VoteSubmissionStatus.SubmissionFailed ->
+                stringRes(status.error.ifBlank { "Vote submission failed. Please check your connection and try again." })
+
+            else -> stringRes(R.string.vote_error_something_went_wrong)
+        }
+
+    private fun setFailureStatus(status: VoteSubmissionStatus) {
+        statusFlow.value = status
+        isFailureSheetVisible.value = true
+    }
+
+    private fun dismissFailureSheet() {
+        isFailureSheetVisible.value = false
     }
 }
 

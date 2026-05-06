@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.voting.confirmsubmission
 
 import co.electriccoin.zcash.ui.design.component.ButtonState
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.StringResource
 
 sealed class VoteSubmissionStatus {
@@ -40,5 +41,6 @@ data class VoteConfirmSubmissionState(
     val includesAuthorizationProgress: Boolean,
     val memo: StringResource,
     val ctaButton: ButtonState,
+    val errorSheet: ZashiConfirmationState?,
     val onBack: () -> Unit,
 )
