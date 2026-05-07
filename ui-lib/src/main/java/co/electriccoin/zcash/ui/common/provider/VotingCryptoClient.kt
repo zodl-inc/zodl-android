@@ -8,6 +8,7 @@ import cash.z.ecc.android.sdk.internal.CommitmentBundleRecord
 import cash.z.ecc.android.sdk.internal.ShareDelegationRecord
 import cash.z.ecc.android.sdk.internal.TypesafeVotingBackend
 import cash.z.ecc.android.sdk.internal.VoteCommitmentResult
+import cash.z.ecc.android.sdk.internal.VoteRecord
 import cash.z.ecc.android.sdk.internal.VotingTxHashLookup as SdkVotingTxHashLookup
 import cash.z.ecc.android.sdk.internal.model.voting.FfiBundleSetupResult
 import cash.z.ecc.android.sdk.internal.model.voting.FfiRoundPhase
@@ -25,6 +26,7 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingHotkey
 import co.electriccoin.zcash.ui.common.model.voting.VotingShareDelegationRecord
 import co.electriccoin.zcash.ui.common.model.voting.VotingTxHashLookup
 import co.electriccoin.zcash.ui.common.model.voting.VotingVoteCommitment
+import co.electriccoin.zcash.ui.common.model.voting.VotingVoteRecord
 import co.electriccoin.zcash.ui.common.model.voting.toVoteCommitmentBundle
 
 @Suppress("TooManyFunctions")
@@ -55,6 +57,16 @@ interface VotingCryptoClient {
 
     suspend fun listRoundsJson(dbHandle: Long): String
 
+    suspend fun getBundleCount(
+        dbHandle: Long,
+        roundId: String
+    ): Int
+
+    suspend fun getVotes(
+        dbHandle: Long,
+        roundId: String
+    ): List<VotingVoteRecord>
+
     suspend fun clearRound(
         dbHandle: Long,
         roundId: String
@@ -71,6 +83,8 @@ interface VotingCryptoClient {
         roundId: String,
         notesJson: String
     ): VotingBundleSetupResult
+
+    suspend fun computeBundleSetup(notesJson: String): VotingBundleSetupResult
 
     suspend fun generateHotkey(
         dbHandle: Long,
@@ -366,6 +380,17 @@ class VotingCryptoClientImpl(
 
     override suspend fun listRoundsJson(dbHandle: Long): String = backend.listRoundsJson(dbHandle)
 
+    override suspend fun getBundleCount(
+        dbHandle: Long,
+        roundId: String
+    ): Int = backend.getBundleCount(dbHandle, roundId)
+
+    override suspend fun getVotes(
+        dbHandle: Long,
+        roundId: String
+    ): List<VotingVoteRecord> = backend.getVotes(dbHandle, roundId)
+        .map(VoteRecord::toAppModel)
+
     override suspend fun clearRound(
         dbHandle: Long,
         roundId: String
@@ -382,6 +407,9 @@ class VotingCryptoClientImpl(
         roundId: String,
         notesJson: String
     ): VotingBundleSetupResult = backend.setupBundles(dbHandle, roundId, notesJson).toAppModel()
+
+    override suspend fun computeBundleSetup(notesJson: String): VotingBundleSetupResult =
+        backend.computeBundleSetup(notesJson).toAppModel()
 
     override suspend fun generateHotkey(
         dbHandle: Long,
@@ -838,6 +866,14 @@ private fun CommitmentBundleRecord.toAppModel() =
         bundleJson = bundleJson,
         bundle = bundleJson.toVoteCommitmentBundle(),
         vcTreePosition = vcTreePosition
+    )
+
+private fun VoteRecord.toAppModel() =
+    VotingVoteRecord(
+        proposalId = proposalId,
+        bundleIndex = bundleIndex,
+        choice = choice,
+        submitted = submitted
     )
 
 private fun ShareDelegationRecord.toAppModel() =

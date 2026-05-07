@@ -6,6 +6,7 @@ import cash.z.ecc.android.sdk.ext.toHex
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.voting.VotingBundleSetupResult
 import co.electriccoin.zcash.ui.common.model.voting.RoundPhase
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
 import co.electriccoin.zcash.ui.common.model.voting.selectVotingBundleNotesJson
@@ -17,6 +18,7 @@ import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.repository.VotingEligibility
 import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
+import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filterNotNull
@@ -116,13 +118,17 @@ class PrepareVotingRoundUseCase(
                         )
                     }.let { setup -> setup.bundleCount to setup.eligibleWeight }
                 } else {
-                    (
-                        recoverySnapshot?.bundleCount
-                            ?: error("Voting round $roundId is missing the stored bundle count")
-                        ) to (
-                        recoverySnapshot.eligibleWeight
-                            ?: error("Voting round $roundId is missing the stored eligible weight")
+                    val setup = recoverySnapshot?.preparedBundleSetup()
+                        ?: recoverExistingBundleSetup(
+                            accountUuid = accountUuidString,
+                            roundId = roundId,
+                            dbHandle = dbHandle,
+                            walletDbPath = walletDbPath,
+                            snapshotHeight = session.snapshotHeight,
+                            networkId = networkId,
+                            accountUuidBytes = accountUuid.value
                         )
+                    setup.bundleCount to setup.eligibleWeight
                 }
 
                 if (eligibleWeight <= 0L) {
@@ -225,6 +231,60 @@ class PrepareVotingRoundUseCase(
             pendingPrecomputeRequests.forEach(votingProofPrecomputeRepository::startDelegationPirPrecompute)
             preparationResult
         }
+
+    private suspend fun recoverExistingBundleSetup(
+        accountUuid: String,
+        roundId: String,
+        dbHandle: Long,
+        walletDbPath: String,
+        snapshotHeight: Long,
+        networkId: Int,
+        accountUuidBytes: ByteArray
+    ): VotingBundleSetupResult {
+        val dbBundleCount = votingCryptoClient.getBundleCount(dbHandle, roundId)
+        require(dbBundleCount >= 0) {
+            "Failed to recover voting bundle count for round $roundId"
+        }
+
+        val notesJson = votingCryptoClient.getWalletNotesJson(
+            walletDbPath = walletDbPath,
+            snapshotHeight = snapshotHeight,
+            networkId = networkId,
+            accountUuidBytes = accountUuidBytes
+        )
+        val computedSetup = votingCryptoClient.computeBundleSetup(notesJson)
+        require(computedSetup.bundleCount >= dbBundleCount) {
+            "Voting round $roundId has $dbBundleCount DB bundles but only ${computedSetup.bundleCount} snapshot bundles"
+        }
+
+        val recoveredWeights = computedSetup.bundleWeights.take(dbBundleCount)
+        val recoveredSetup = VotingBundleSetupResult(
+            bundleCount = dbBundleCount,
+            eligibleWeight = recoveredWeights.sum(),
+            bundleWeights = recoveredWeights
+        )
+        votingRecoveryRepository.storeBundleSetup(
+            accountUuid = accountUuid,
+            roundId = roundId,
+            bundleCount = recoveredSetup.bundleCount,
+            eligibleWeight = recoveredSetup.eligibleWeight,
+            bundleWeights = recoveredSetup.bundleWeights
+        )
+        return recoveredSetup
+    }
+
+    private fun VotingRecoverySnapshot.preparedBundleSetup(): VotingBundleSetupResult? {
+        val count = bundleCount ?: return null
+        val weight = eligibleWeight ?: return null
+        if (bundleWeights.size < count) {
+            return null
+        }
+        return VotingBundleSetupResult(
+            bundleCount = count,
+            eligibleWeight = weight,
+            bundleWeights = bundleWeights.take(count)
+        )
+    }
 
     private suspend fun buildSoftwareDelegationPirPrecomputeRequests(
         accountUuid: String,

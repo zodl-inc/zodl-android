@@ -293,8 +293,22 @@ class KtorVotingApiProvider(
             return@execute emptyList()
         }
 
-        val quorum = max(1, (candidateServers.size + 1) / 2)
-        postShareToTargets(candidateServers.shuffled().take(quorum), body)
+        val shuffledCandidates = candidateServers.shuffled()
+        val quorum = max(1, (shuffledCandidates.size + 1) / 2)
+        val primaryTargets = shuffledCandidates.take(quorum)
+        val acceptedByPrimary = postShareToTargets(primaryTargets, body)
+        if (acceptedByPrimary.isNotEmpty()) {
+            return@execute acceptedByPrimary
+        }
+
+        val fallbackServers = shuffledCandidates.drop(quorum) +
+            healthyServers.filter { serverUrl -> serverUrl in excludedServers }.shuffled()
+        for (serverUrl in fallbackServers) {
+            if (postShare(serverUrl, body)) {
+                return@execute listOf(serverUrl)
+            }
+        }
+        emptyList()
     }
 
     override suspend fun fetchTxConfirmation(txHash: String): TxConfirmation? =

@@ -6,6 +6,13 @@ data class VotingCommitmentBundleRecord(
     val vcTreePosition: Long
 )
 
+data class VotingVoteRecord(
+    val proposalId: Int,
+    val bundleIndex: Int,
+    val choice: Int,
+    val submitted: Boolean
+)
+
 data class VotingShareDelegationRecord(
     val roundId: String,
     val bundleIndex: Int,

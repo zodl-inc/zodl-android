@@ -117,7 +117,7 @@ class SubmitVotesUseCase(
             }
             votingRecoveryRepository.storeVoteServerUrls(accountUuidString, roundId, voteServerUrls)
             votingRecoveryRepository.storeVoteEndEpochSeconds(accountUuidString, roundId, session.voteEndTime.epochSecond)
-            val bundleCount = recovery.bundleCount ?: error("Voting round $roundId has no prepared bundle count")
+            val recoveryBundleCount = recovery.bundleCount
             val hotkeySeed = recovery.decodeHotkeySeed() ?: error("Voting round $roundId has no stored hotkey seed")
 
             val synchronizer = synchronizerProvider.getSynchronizer()
@@ -150,6 +150,20 @@ class SubmitVotesUseCase(
             var isVotingAuthorizationPhase = false
             try {
                 votingCryptoClient.setWalletId(dbHandle, selectedAccount.sdkAccount.accountUuid.toString())
+                val bundleCount = recoveryBundleCount
+                    ?: votingCryptoClient.getBundleCount(dbHandle, roundId)
+                        .takeIf { count -> count >= 0 }
+                    ?: error("Voting round $roundId has no prepared bundle count")
+                val submittedBundleIndicesByProposal = votingCryptoClient.getVotes(
+                    dbHandle = dbHandle,
+                    roundId = roundId
+                ).filter { vote ->
+                    vote.submitted
+                }.groupBy { vote ->
+                    vote.proposalId
+                }.mapValuesTo(mutableMapOf()) { (_, votes) ->
+                    votes.mapTo(mutableSetOf()) { vote -> vote.bundleIndex }
+                }
                 val delegatedShareIndicesByTarget = votingCryptoClient.getShareDelegations(
                     dbHandle = dbHandle,
                     roundId = roundId
@@ -365,7 +379,10 @@ class SubmitVotesUseCase(
                         ?: error("Unknown proposal id $proposalId for round $roundId")
                     val progressBase = proposalIndex + 1
 
-                    if (proposalId in recovery.submittedProposalIds) {
+                    val submittedBundles = submittedBundleIndicesByProposal
+                        .getOrPut(proposalId) { mutableSetOf() }
+
+                    if (proposalId in recovery.submittedProposalIds && submittedBundles.size >= bundleCount) {
                         onProgress(
                             VotingSubmissionProgress.Submitting(
                                 current = progressBase,
@@ -394,6 +411,10 @@ class SubmitVotesUseCase(
                     }
 
                     repeat(bundleCount) { bundleIndex ->
+                        if (bundleIndex in submittedBundles) {
+                            return@repeat
+                        }
+
                         val completedBundles = proposalIndex * bundleCount + bundleIndex + 1
                         val bundleTotal = totalChoices * bundleCount.coerceAtLeast(1)
                         onProgress(
@@ -435,6 +456,14 @@ class SubmitVotesUseCase(
                             ) {
                                 "Missing stored vote commitment bundle for round $roundId bundle $bundleIndex proposal $proposalId"
                             }
+                            votingCryptoClient.storeCommitmentBundle(
+                                dbHandle = dbHandle,
+                                roundId = roundId,
+                                bundleIndex = bundleIndex,
+                                proposalId = proposalId,
+                                bundleJson = storedCommitment.bundleJson,
+                                vcTreePosition = vcTreePosition
+                            )
                             submitMissingShares(
                                 dbHandle = dbHandle,
                                 roundId = roundId,
@@ -455,6 +484,7 @@ class SubmitVotesUseCase(
                                 bundleIndex = bundleIndex,
                                 proposalId = proposalId
                             )
+                            submittedBundles += bundleIndex
                             return@repeat
                         }
 
@@ -575,6 +605,7 @@ class SubmitVotesUseCase(
                             bundleIndex = bundleIndex,
                             proposalId = proposalId
                         )
+                        submittedBundles += bundleIndex
                     }
 
                     markProposalSubmissionComplete(accountUuidString, roundId, proposalId)
