@@ -5,6 +5,7 @@ build/
 bin/
 gen/
 .gradle/
+.kotlin/
 .DS_Store
 local.properties
 *.iml
