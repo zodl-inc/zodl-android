@@ -41,6 +41,7 @@ import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
 import co.electriccoin.zcash.ui.screen.voting.accentColor
 
 private const val BADGE_CORNER_RADIUS = 50
@@ -121,6 +122,38 @@ fun VoteResultsView(state: VoteResultsState) {
                     state = state.doneButton,
                 )
             }
+        }
+    )
+}
+
+@Composable
+fun VoteResultsLoadingView(onBack: () -> Unit) {
+    BlankBgScaffold(
+        topBar = {
+            ZashiSmallTopAppBar(
+                title = stringRes(R.string.vote_top_bar_title).getValue(),
+                navigationAction = {
+                    ZashiTopAppBarBackNavigation(
+                        onBack = onBack,
+                        modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
+                    )
+                },
+                colors = ZcashTheme.colors.topAppBarColors orDark
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    )
+            )
+        },
+        content = { padding ->
+            CommonShimmerLoadingScreen(
+                shimmerItemsCount = 6,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .scaffoldPadding(padding)
+                        .padding(top = 8.dp),
+                showDivider = false,
+            )
         }
     )
 }

@@ -13,7 +13,15 @@ import org.koin.core.parameter.parametersOf
 fun VoteResultsScreen(args: VoteResultsArgs) {
     val vm = koinViewModel<VoteResultsVM> { parametersOf(args) }
     val state by vm.state.collectAsStateWithLifecycle()
-    LceRenderer(state) {
+    LceRenderer(
+        state = state,
+        loading = { isLoading ->
+            if (isLoading && state.content == null) {
+                BackHandler { vm.onBack() }
+                VoteResultsLoadingView(onBack = vm::onBack)
+            }
+        }
+    ) {
         BackHandler { it.onBack() }
         VoteResultsView(it)
     }

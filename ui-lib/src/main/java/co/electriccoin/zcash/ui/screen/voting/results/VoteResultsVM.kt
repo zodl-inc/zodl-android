@@ -167,7 +167,7 @@ class VoteResultsVM(
 
     private fun onDone() = navigationRouter.backTo(VoteCoinholderPollingArgs::class)
 
-    private fun onBack() = navigationRouter.backTo(VoteCoinholderPollingArgs::class)
+    fun onBack() = navigationRouter.backTo(VoteCoinholderPollingArgs::class)
 }
 
 private fun Long.toZec(): Double = this / 100_000_000.0
