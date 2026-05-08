@@ -13,6 +13,7 @@
     </string>
     <string name="choose_server_textfield_hint">&lt;hostname&gt;:&lt;port&gt;</string>
     <string name="choose_server_save">Save selection</string>
+    <string name="choose_server_saving">Saving selection</string>
 
     <string name="choose_server_validation_dialog_error_title">Invalid server endpoint</string>
     <string name="choose_server_validation_dialog_error_text">Error: The attempt to switch endpoints failed.
@@ -37,5 +38,6 @@
     <string name="choose_server_other_servers">Other servers</string>
     <string name="choose_server_refresh">Refresh</string>
     <string name="choose_server_active">Active</string>
+    <string name="choose_server_testing">Testing</string>
     <string name="choose_server_default">Default</string>
 </resources>

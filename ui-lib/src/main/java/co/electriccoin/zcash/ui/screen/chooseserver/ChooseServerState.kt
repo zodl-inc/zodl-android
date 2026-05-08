@@ -18,8 +18,11 @@ data class ChooseServerState(
 
 data class ServerConnectionModeState(
     val automatic: RadioButtonState,
-    val manual: RadioButtonState
-)
+    val manual: RadioButtonState,
+    val automaticBadge: StringResource? = null
+) {
+    val isManualSelected = manual.isChecked
+}
 
 sealed interface ServerListState {
     val title: StringResource

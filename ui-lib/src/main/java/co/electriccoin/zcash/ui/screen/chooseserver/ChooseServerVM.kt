@@ -96,16 +96,30 @@ class ChooseServerVM(
         }
 
     private val connectionMode =
-        selectedMode.map { selectedMode ->
+        combine(
+            selectedMode,
+            getSelectedEndpoint.observe(),
+            observeFastestServers()
+        ) { selectedMode, selectedEndpoint, fastestServers ->
+            val isAutomatic = selectedMode == ConnectionMode.AUTOMATIC
             ServerConnectionModeState(
                 automatic =
                     RadioButtonState(
                         text = stringRes(R.string.choose_server_automatic),
-                        subtitle = stringRes(R.string.choose_server_automatic_subtitle),
-                        isChecked = selectedMode == ConnectionMode.AUTOMATIC,
+                        subtitle =
+                            if (isAutomatic && selectedEndpoint != null) {
+                                stringRes(
+                                    R.string.choose_server_full_server_name,
+                                    selectedEndpoint.host,
+                                    selectedEndpoint.port
+                                )
+                            } else {
+                                null
+                            },
+                        isChecked = isAutomatic,
                         onClick = ::onAutomaticModeClicked,
                         hapticFeedbackType =
-                            if (selectedMode == ConnectionMode.AUTOMATIC) {
+                            if (isAutomatic) {
                                 null
                             } else {
                                 HapticFeedbackType.SegmentTick
@@ -114,7 +128,6 @@ class ChooseServerVM(
                 manual =
                     RadioButtonState(
                         text = stringRes(R.string.choose_server_manual),
-                        subtitle = stringRes(R.string.choose_server_manual_subtitle),
                         isChecked = selectedMode == ConnectionMode.MANUAL,
                         onClick = ::onManualModeClicked,
                         hapticFeedbackType =
@@ -123,7 +136,13 @@ class ChooseServerVM(
                             } else {
                                 HapticFeedbackType.SegmentTick
                             }
-                    )
+                    ),
+                automaticBadge =
+                    if (isAutomatic && fastestServers.isLoading) {
+                        stringRes(R.string.choose_server_testing)
+                    } else {
+                        null
+                    }
             )
         }
 
@@ -250,16 +269,25 @@ class ChooseServerVM(
                     }
                 }
 
+            val hasUnsavedSelection =
+                selectedMode != persistedServerSelection.mode ||
+                    (
+                        selectedMode == ConnectionMode.MANUAL &&
+                            saveButtonInput.endpointSelection != null &&
+                            selectedEndpoint != userSelectedEndpoint
+                    ) ||
+                    isCustomEndpointSelectedAndUpdated
+
             ButtonState(
-                text = stringRes(R.string.choose_server_save),
+                text =
+                    if (saveButtonInput.isSaveInProgress) {
+                        stringRes(R.string.choose_server_saving)
+                    } else {
+                        stringRes(R.string.choose_server_save)
+                    },
                 isEnabled =
-                    selectedMode != persistedServerSelection.mode ||
-                        (
-                            selectedMode == ConnectionMode.MANUAL &&
-                                saveButtonInput.endpointSelection != null &&
-                                selectedEndpoint != userSelectedEndpoint
-                        ) ||
-                        isCustomEndpointSelectedAndUpdated,
+                    !saveButtonInput.isSaveInProgress &&
+                        hasUnsavedSelection,
                 isLoading = saveButtonInput.isSaveInProgress,
                 onClick = ::onSaveButtonClicked,
                 hapticFeedbackType = HapticFeedbackType.Confirm
