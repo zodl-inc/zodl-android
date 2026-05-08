@@ -373,7 +373,7 @@ class PrepareVotingRoundUseCase(
     }
 
     private fun ZcashNetwork.toVotingNetworkId() =
-        if (isMainnet()) 0 else 1
+        if (isMainnet()) 1 else 0
 
     private companion object {
         const val TAG = "PrepareVotingRound"

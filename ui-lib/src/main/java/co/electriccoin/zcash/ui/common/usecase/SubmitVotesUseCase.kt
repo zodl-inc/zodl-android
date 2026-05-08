@@ -783,7 +783,7 @@ class SubmitVotesUseCase(
     }
 
     private fun ZcashNetwork.toVotingNetworkId() =
-        if (isMainnet()) 0 else 1
+        if (isMainnet()) 1 else 0
 
     private fun TxConfirmation.castVoteLeafPositions(): Pair<Int, Long> {
         val rawLeafIndex = event("cast_vote")
