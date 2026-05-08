@@ -32,9 +32,11 @@ import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListMode
 import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsArgs
 import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingArgs
 import co.electriccoin.zcash.ui.screen.voting.votingerror.VotingErrorMapper
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
@@ -81,6 +83,7 @@ class VoteCoinholderPollingVM(
                 }
         }
         refreshVotingData()
+        startVotingDataAutoRefresh()
     }
 
     val state =
@@ -187,24 +190,64 @@ class VoteCoinholderPollingVM(
 
     private fun refreshVotingData() {
         roundsLce.execute {
-            configIssue = null
-            configErrorSheet.value = null
-            refreshVotingRounds()
-            runCatching {
-                refreshActiveVotingSession()
-            }.onFailure { throwable ->
-                if (throwable is VotingConfigException) {
-                    configIssue = throwable
-                } else {
-                    Log.w("VoteCoinholderPolling", "Active round refresh failed", throwable)
+            refreshVotingDataInternal(resetVisibleConfigError = true)
+        }
+    }
+
+    private fun startVotingDataAutoRefresh() {
+        viewModelScope.launch {
+            while (true) {
+                delay(votingDataAutoRefreshIntervalMs())
+                if (roundsLce.state.value.loading) {
+                    continue
+                }
+
+                try {
+                    refreshVotingDataInternal(resetVisibleConfigError = false)
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (throwable: Throwable) {
+                    Log.w(TAG, "Round list auto refresh failed", throwable)
                 }
             }
-            selectedAccountUuid.value?.let { accountUuid ->
-                refreshRecoveryVoteCounts(votingApiRepository.snapshot.value.rounds, accountUuid)
-            } ?: run {
-                recoveryVoteCounts.value = emptyMap()
+        }
+    }
+
+    private suspend fun refreshVotingDataInternal(resetVisibleConfigError: Boolean): List<VotingRound> {
+        if (resetVisibleConfigError) {
+            configIssue = null
+            configErrorSheet.value = null
+        }
+
+        refreshVotingRounds()
+        var nextConfigIssue: VotingConfigException? = null
+        runCatching {
+            refreshActiveVotingSession()
+        }.onFailure { throwable ->
+            if (throwable is VotingConfigException) {
+                nextConfigIssue = throwable
+            } else {
+                Log.w(TAG, "Active round refresh failed", throwable)
             }
-            votingApiRepository.snapshot.value.rounds
+        }
+        configIssue = nextConfigIssue
+
+        selectedAccountUuid.value?.let { accountUuid ->
+            refreshRecoveryVoteCounts(votingApiRepository.snapshot.value.rounds, accountUuid)
+        } ?: run {
+            recoveryVoteCounts.value = emptyMap()
+        }
+        return votingApiRepository.snapshot.value.rounds
+    }
+
+    private fun votingDataAutoRefreshIntervalMs(): Long {
+        val rounds = votingApiRepository.snapshot.value.rounds
+        val hasRoundChangingStatus = rounds.isEmpty() ||
+            rounds.any { round -> round.status == SessionStatus.ACTIVE || round.status == SessionStatus.TALLYING }
+        return if (hasRoundChangingStatus) {
+            ROUND_STATUS_AUTO_REFRESH_INTERVAL_MS
+        } else {
+            ROUND_LIST_AUTO_REFRESH_INTERVAL_MS
         }
     }
 
@@ -317,5 +360,11 @@ class VoteCoinholderPollingVM(
             else ->
                 navigationRouter.forward(VoteResultsArgs(roundIdHex = round.id))
         }
+    }
+
+    private companion object {
+        const val TAG = "VoteCoinholderPolling"
+        const val ROUND_STATUS_AUTO_REFRESH_INTERVAL_MS = 5_000L
+        const val ROUND_LIST_AUTO_REFRESH_INTERVAL_MS = 30_000L
     }
 }

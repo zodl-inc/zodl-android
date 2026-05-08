@@ -33,10 +33,8 @@ import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
-import co.electriccoin.zcash.ui.design.component.IconButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
-import co.electriccoin.zcash.ui.design.component.ZashiIconButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
@@ -334,18 +332,6 @@ private fun AppBar(state: VoteCoinholderPollingState) {
                 onBack = state.onBack,
                 modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
             )
-        },
-        regularActions = {
-            ZashiIconButton(
-                state =
-                    IconButtonState(
-                        icon = R.drawable.ic_advanced_settings_resync,
-                        contentDescription = stringRes(R.string.vote_poll_list_empty_refresh),
-                        onClick = state.onRefresh
-                    ),
-                modifier = Modifier.size(40.dp)
-            )
-            Spacer(modifier = Modifier.size(20.dp))
         },
         colors = ZcashTheme.colors.topAppBarColors orDark
             ZcashTheme.colors.topAppBarColors.copyColors(
