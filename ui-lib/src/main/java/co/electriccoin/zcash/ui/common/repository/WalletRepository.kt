@@ -15,9 +15,11 @@ import co.electriccoin.zcash.preference.StandardPreferenceProvider
 import co.electriccoin.zcash.ui.common.datasource.RestoreTimestampDataSource
 import co.electriccoin.zcash.ui.common.model.FastestServersState
 import co.electriccoin.zcash.ui.common.model.OnboardingState
+import co.electriccoin.zcash.ui.common.model.ServerSelection
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
+import co.electriccoin.zcash.ui.common.provider.ServerSelectionProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.WalletBackupFlagStorageProvider
 import co.electriccoin.zcash.ui.common.provider.WalletRestoringStateProvider
@@ -72,6 +74,7 @@ class WalletRepositoryImpl(
     private val application: Application,
     private val lightWalletEndpointProvider: LightWalletEndpointProvider,
     private val persistableWalletProvider: PersistableWalletProvider,
+    private val serverSelectionProvider: ServerSelectionProvider,
     private val synchronizerProvider: SynchronizerProvider,
     private val standardPreferenceProvider: StandardPreferenceProvider,
     private val restoreTimestampDataSource: RestoreTimestampDataSource,
@@ -81,6 +84,12 @@ class WalletRepositoryImpl(
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val refreshFastestServersRequest = MutableSharedFlow<Unit>(replay = 1)
+
+    init {
+        scope.launch {
+            migrateServerSelectionIfNeeded()
+        }
+    }
 
     private val onboardingState =
         flow {
@@ -175,6 +184,7 @@ class WalletRepositoryImpl(
     override fun createNewWallet() {
         scope.launch {
             persistOnboardingStateInternal(OnboardingState.READY)
+            serverSelectionProvider.store(ServerSelection.automatic())
             val zcashNetwork = ZcashNetwork.fromResources(application)
             val newWallet =
                 PersistableWallet.new(
@@ -209,6 +219,7 @@ class WalletRepositoryImpl(
         birthday: BlockHeight
     ) {
         scope.launch {
+            serverSelectionProvider.store(ServerSelection.automatic())
             val restoredWallet =
                 PersistableWallet(
                     network = network,
@@ -223,5 +234,23 @@ class WalletRepositoryImpl(
             restoreTimestampDataSource.getOrCreate()
             persistOnboardingStateInternal(OnboardingState.READY)
         }
+    }
+
+    private suspend fun migrateServerSelectionIfNeeded() {
+        if (serverSelectionProvider.getServerSelection() != null) return
+
+        val existingWallet = persistableWalletProvider.getPersistableWallet()
+        val selection =
+            existingWallet
+                ?.endpoint
+                ?.let { endpoint ->
+                    if (lightWalletEndpointProvider.getEndpoints().contains(endpoint)) {
+                        ServerSelection.automatic()
+                    } else {
+                        ServerSelection.manual(endpoint)
+                    }
+                } ?: ServerSelection.automatic()
+
+        serverSelectionProvider.store(selection)
     }
 }

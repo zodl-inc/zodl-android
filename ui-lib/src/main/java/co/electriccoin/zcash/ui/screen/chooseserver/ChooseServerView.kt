@@ -103,6 +103,13 @@ fun ChooseServerView(state: ChooseServerState?) {
                     bottom = ZcashTheme.dimens.spacingDefault,
                 )
         ) {
+            item(
+                key = "connection_mode",
+                contentType = "connection_mode"
+            ) {
+                ConnectionModeSection(state.connectionMode)
+            }
+
             if (state.fastest.servers.isEmpty() && state.fastest.isLoading) {
                 item(
                     key = "fastest_loading",
@@ -120,6 +127,51 @@ fun ChooseServerView(state: ChooseServerState?) {
         if (state.dialogState != null) {
             ErrorDialog(dialogState = state.dialogState)
         }
+    }
+}
+
+@Composable
+private fun ConnectionModeSection(state: ServerConnectionModeState) {
+    Column {
+        Column(
+            modifier = Modifier.padding(horizontal = 24.dp)
+        ) {
+            ServerHeader(text = stringRes(R.string.choose_server_connection_mode))
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        ZashiRadioButton(
+            state = state.automatic,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp)
+                    .then(
+                        if (state.automatic.isChecked) {
+                            Modifier.background(ZashiColors.Surfaces.bgSecondary, RoundedCornerShape(12.dp))
+                        } else {
+                            Modifier
+                        }
+                    )
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        ZashiHorizontalDivider()
+        Spacer(modifier = Modifier.height(4.dp))
+        ZashiRadioButton(
+            state = state.manual,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp)
+                    .then(
+                        if (state.manual.isChecked) {
+                            Modifier.background(ZashiColors.Surfaces.bgSecondary, RoundedCornerShape(12.dp))
+                        } else {
+                            Modifier
+                        }
+                    )
+        )
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
@@ -493,6 +545,21 @@ private fun ChooseServerPreview(
     ChooseServerView(
         state =
             ChooseServerState(
+                connectionMode =
+                    ServerConnectionModeState(
+                        automatic =
+                            RadioButtonState(
+                                text = stringRes("Automatic"),
+                                isChecked = true,
+                                onClick = {}
+                            ),
+                        manual =
+                            RadioButtonState(
+                                text = stringRes("Manual"),
+                                isChecked = false,
+                                onClick = {}
+                            )
+                    ),
                 fastest = fastestServers,
                 other =
                     ServerListState.Other(
