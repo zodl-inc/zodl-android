@@ -10,7 +10,7 @@ and this library adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SDKSynchronizer.rescanFrom(height:)`: Rescans the chain from the given BlockHeight.
 - `SynchronizerState.fullyScannedHeight`: Contiguous-from-birthday scan high-water mark published on `stateStream`/`latestState`. Callers that need an authoritative view of the wallet's note and nullifier state at a specific height (for example, balance anchored at a poll snapshot) should gate on this rather than `latestBlockHeight` (chain tip) or `maxScannedHeight` (head-first scan progress, which can race ahead under Spend-before-Sync).
 - `Synchronizer.getTreeState(height:)`: Fetches the commitment tree state at the given block height from lightwalletd and returns the protobuf-serialized `TreeState` bytes, for app-layer consumers that need to hand tree state to an external component (for example, witness generation via FFI). A throwing default implementation keeps the addition source-compatible for downstream `Synchronizer` conformers.
-- `zcash_voting` dependency foundation: SDK Rust crate now depends on `zcash_voting 0.5.3` (`default-features = false`, `client-pir`, `client-tree-sync`) and exposes pure-function FFI symbols for share-nullifier computation and PIR proof validation. No Swift API surface is added in this step.
+- `zcash_voting` dependency foundation: SDK Rust crate now depends on `zcash_voting 0.5.6` (`default-features = false`, `client-pir`, `client-tree-sync`) and exposes pure-function FFI symbols for share-nullifier computation and PIR proof validation.
 - `PirSnapshotResolver`, `PirSnapshotResolverError`, `PirSnapshotProbeOutcome`, `PirSnapshotProbing`, and `HTTPPirSnapshotProbe`: Select a vote-nullifier PIR endpoint whose `/root` metadata exactly matches a voting round's expected snapshot height.
 - `Voting*` Swift types: public type contract for the shielded voting FFI boundary, in `Sources/ZcashLightClientKit/Rust/Voting/VotingTypes.swift`.
 - `VotingRustBackend`: Swift wrapper for the voting `libzcashlc` surface. A `final class` that owns an opaque `VotingDatabaseHandle` for the duration of a voting session. Exposes:
@@ -29,15 +29,15 @@ and this library adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `libzcashlc` voting wallet-notes FFI: `zcashlc_voting_get_wallet_notes`. Loads unspent Orchard notes for a wallet account at a snapshot height and returns them as a JSON-encoded `Vec<NoteInfo>`, suitable as the `notes` input to `zcashlc_voting_precompute_delegation_pir`. `account_uuid` must be a non-null pointer to exactly 16 bytes; otherwise the call fails (returns null).
 - `libzcashlc` voting key-utility FFI: `zcashlc_voting_extract_orchard_fvk_from_ufvk`. Decodes a UFVK string and returns the raw 96-byte Orchard FVK. Returns null on missing Orchard component, malformed UFVK, or invalid `network_id`.
 - `libzcashlc` voting utility FFI: `zcashlc_voting_warm_proving_caches`, `zcashlc_voting_decompose_weight`, `zcashlc_voting_generate_delegation_inputs`, `zcashlc_voting_generate_delegation_inputs_with_fvk`, `zcashlc_voting_extract_pczt_sighash`, `zcashlc_voting_extract_spend_auth_sig`, `zcashlc_voting_extract_nc_root`, and `zcashlc_voting_verify_witness`. These cover voting proof setup, PCZT/signature extraction, note-commitment root extraction, and witness verification.
-- `libzcashlc` voting FFI return structs and free helpers for round state, hotkeys, bundle setup results, round summaries, and vote records.
 - `libzcashlc` voting witness FFI: `zcashlc_voting_generate_note_witnesses`. Generates Orchard Merkle inclusion witnesses for a bundle's notes anchored at the round's snapshot height. Adds `incrementalmerkletree 0.8` as a direct Rust dependency.
+- `libzcashlc` voting round and recovery FFI: adds C-compatible return structs and free helpers, persisted round-state APIs, crash-recovery metadata helpers, and share-delegation tracking.
 
 ## Changed
 - Bumped Rust dependencies to current crates.io releases (`zcash_address` 0.10→0.11, `zcash_client_backend` 0.21→0.22, `zcash_client_sqlite` 0.19→0.20, `zcash_primitives`/`zcash_proofs` 0.26→0.27, `zcash_protocol` 0.7→0.8, `zcash_transparent` 0.6→0.7, `sapling-crypto` 0.6→0.7, `orchard` 0.12→0.13, `pczt` 0.5→0.6) and removed the `[patch.crates-io]` git-rev overrides. No public Swift API changes.
 - Pinned `orchard` to `=0.13.1` and enabled its `unstable-voting-circuits` feature, required transitively by `zcash_voting`. No public Swift API changes.
 - Enabled the `client-tree-sync` feature on `zcash_voting`, required by the new voting tree-sync FFI listed above.
 - Added `zcash_keys 0.13` (`orchard` feature) as a Rust dependency, used by the new voting wallet-notes, key-utility, and utility FFI to decode UFVKs and derive Orchard FVKs. No public Swift API changes.
-- Bumped `zcash_voting` to `0.5.3` so `network_id` matches the SDK (`0` = testnet, `1` = mainnet) end-to-end for wallet-notes JSON consumed by delegation PIR. No public Swift API changes.
+- Bumped `zcash_voting` to `0.5.6` so `network_id` matches the SDK (`0` = testnet, `1` = mainnet) end-to-end for wallet-notes JSON consumed by delegation PIR, and to pick up upstream voting submission validation fixes. No public Swift API changes.
 
 # 2.4.9 - 2026-04-04
 

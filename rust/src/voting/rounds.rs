@@ -64,6 +64,9 @@ pub unsafe extern "C" fn zcashlc_voting_init_round(
             nullifier_imt_root: nullifier_imt_root_bytes,
         };
 
+        voting::validate_round_params(&params)
+            .map_err(|e| anyhow!("invalid round params: {}", e))?;
+
         handle
             .db
             .init_round(&params, session.as_deref())
@@ -99,19 +102,21 @@ pub unsafe extern "C" fn zcashlc_voting_get_round_state(
             .map_err(|e| anyhow!("get_round_state failed: {}", e))?;
 
         let phase = round_phase_to_u32(state.phase);
-
+        let round_id =
+            CString::new(state.round_id).map_err(|e| anyhow!("invalid round_id string: {}", e))?;
+        let hotkey_address = state
+            .hotkey_address
+            .map(|addr| {
+                CString::new(addr).map_err(|e| anyhow!("invalid hotkey_address string: {}", e))
+            })
+            .transpose()?;
         let ffi_state = FfiRoundState {
-            round_id: CString::new(state.round_id)
-                .map_err(|e| anyhow!("invalid round_id string: {}", e))?
-                .into_raw(),
+            round_id: round_id.into_raw(),
             phase,
             snapshot_height: state.snapshot_height,
-            hotkey_address: match state.hotkey_address {
-                Some(addr) => CString::new(addr)
-                    .map_err(|e| anyhow!("invalid hotkey_address string: {}", e))?
-                    .into_raw(),
-                None => std::ptr::null_mut(),
-            },
+            hotkey_address: hotkey_address
+                .map(CString::into_raw)
+                .unwrap_or(std::ptr::null_mut()),
             delegated_weight: state.delegated_weight.map_or(-1, |w| w as i64),
             proof_generated: state.proof_generated,
         };
@@ -143,20 +148,36 @@ pub unsafe extern "C" fn zcashlc_voting_list_rounds(
             .list_rounds()
             .map_err(|e| anyhow!("list_rounds failed: {}", e))?;
 
-        let ffi_rounds: Vec<FfiRoundSummary> = rounds
+        struct OwnedRoundSummary {
+            round_id: CString,
+            phase: u32,
+            snapshot_height: u64,
+            created_at: u64,
+        }
+
+        let owned_rounds: Vec<OwnedRoundSummary> = rounds
             .into_iter()
             .map(|s| {
                 let phase = round_phase_to_u32(s.phase);
-                Ok(FfiRoundSummary {
+                Ok(OwnedRoundSummary {
                     round_id: CString::new(s.round_id)
-                        .map_err(|e| anyhow!("invalid round_id string: {}", e))?
-                        .into_raw(),
+                        .map_err(|e| anyhow!("invalid round_id string: {}", e))?,
                     phase,
                     snapshot_height: s.snapshot_height,
                     created_at: s.created_at,
                 })
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
+
+        let ffi_rounds: Vec<FfiRoundSummary> = owned_rounds
+            .into_iter()
+            .map(|s| FfiRoundSummary {
+                round_id: s.round_id.into_raw(),
+                phase: s.phase,
+                snapshot_height: s.snapshot_height,
+                created_at: s.created_at,
+            })
+            .collect();
 
         let (ptr, len) = crate::ptr_from_vec(ffi_rounds);
         Ok(Box::into_raw(Box::new(FfiRoundSummaries { ptr, len })))
@@ -260,4 +281,91 @@ pub unsafe extern "C" fn zcashlc_voting_delete_skipped_bundles(
         Ok(deleted as i64)
     });
     unwrap_exc_or(res, -1)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::voting::db::zcashlc_voting_db_free;
+    use crate::voting::test_helpers::open_memory_db;
+
+    fn init_round(
+        db: *mut VotingDatabaseHandle,
+        round_id: &[u8],
+        ea_pk: &[u8],
+        nc_root: &[u8],
+        nullifier_imt_root: &[u8],
+    ) -> i32 {
+        unsafe {
+            zcashlc_voting_init_round(
+                db,
+                round_id.as_ptr(),
+                round_id.len(),
+                123,
+                ea_pk.as_ptr(),
+                ea_pk.len(),
+                nc_root.as_ptr(),
+                nc_root.len(),
+                nullifier_imt_root.as_ptr(),
+                nullifier_imt_root.len(),
+                std::ptr::null(),
+                0,
+            )
+        }
+    }
+
+    fn round_exists(db: *mut VotingDatabaseHandle, round_id: &[u8]) -> bool {
+        let state =
+            unsafe { zcashlc_voting_get_round_state(db, round_id.as_ptr(), round_id.len()) };
+        if state.is_null() {
+            false
+        } else {
+            unsafe { crate::voting::ffi_types::zcashlc_voting_free_round_state(state) };
+            true
+        }
+    }
+
+    #[test]
+    fn init_round_rejects_invalid_round_param_lengths_without_persisting() {
+        let db = open_memory_db();
+        let valid = [7u8; 32];
+
+        let cases = [
+            ("bad-ea-pk".as_bytes(), &valid[..31], &valid[..], &valid[..]),
+            (
+                "bad-nc-root".as_bytes(),
+                &valid[..],
+                &valid[..31],
+                &valid[..],
+            ),
+            (
+                "bad-nullifier-root".as_bytes(),
+                &valid[..],
+                &valid[..],
+                &valid[..31],
+            ),
+        ];
+
+        for (round_id, ea_pk, nc_root, nullifier_imt_root) in cases {
+            let code = init_round(db, round_id, ea_pk, nc_root, nullifier_imt_root);
+            assert_eq!(code, -1);
+            assert!(!round_exists(db, round_id));
+        }
+
+        unsafe { zcashlc_voting_db_free(db) };
+    }
+
+    #[test]
+    fn init_round_accepts_valid_round_param_lengths() {
+        let db = open_memory_db();
+        let round_id = b"round";
+        let valid = [7u8; 32];
+
+        let code = init_round(db, round_id, &valid, &valid, &valid);
+
+        assert_eq!(code, 0);
+        assert!(round_exists(db, round_id));
+
+        unsafe { zcashlc_voting_db_free(db) };
+    }
 }

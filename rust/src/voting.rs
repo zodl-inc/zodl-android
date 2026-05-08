@@ -36,4 +36,6 @@ pub mod vote;
 pub mod share_tracking;
 pub use share_tracking::*;
 
+#[cfg(test)]
+pub(crate) mod test_helpers;
 pub mod tree;

@@ -1,4 +1,5 @@
 use std::ffi::CString;
+use std::fmt::Write;
 use std::os::raw::c_char;
 use std::panic::AssertUnwindSafe;
 
@@ -15,6 +16,8 @@ use super::helpers::{bytes_from_ptr, json_to_boxed_slice, str_from_ptr};
 // =============================================================================
 // Share delegation tracking
 // =============================================================================
+
+const SHARE_NULLIFIER_LEN: usize = 32;
 
 /// JSON representation for share delegation records crossing the FFI boundary.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -46,6 +49,14 @@ impl From<voting::ShareDelegationRecord> for JsonShareDelegationRecord {
     }
 }
 
+fn bytes_to_hex(bytes: &[u8]) -> String {
+    let mut hex = String::with_capacity(bytes.len() * 2);
+    for b in bytes {
+        write!(&mut hex, "{b:02x}").expect("writing to a String cannot fail");
+    }
+    hex
+}
+
 /// Compute the share reveal nullifier from client-known inputs.
 ///
 /// Returns the 32-byte nullifier as a hex string (64 chars), or null on error.
@@ -71,7 +82,7 @@ pub unsafe extern "C" fn zcashlc_voting_compute_share_nullifier(
         let nullifier = voting::share_tracking::compute_share_nullifier(&vc, share_index, &blind)
             .map_err(|e| anyhow!("compute_share_nullifier failed: {}", e))?;
 
-        let hex_str: String = nullifier.iter().map(|b| format!("{:02x}", b)).collect();
+        let hex_str = bytes_to_hex(&nullifier);
         let c_str = CString::new(hex_str).map_err(|e| anyhow!("null byte in hex string: {}", e))?;
         Ok(c_str.into_raw())
     });
@@ -110,6 +121,13 @@ pub unsafe extern "C" fn zcashlc_voting_record_share_delegation(
         let urls_bytes = unsafe { bytes_from_ptr(sent_to_urls_json, sent_to_urls_json_len) }?;
         let sent_to_urls: Vec<String> = serde_json::from_slice(urls_bytes)?;
         let nullifier = unsafe { bytes_from_ptr(nullifier_ptr, nullifier_len) }?;
+        if nullifier.len() != SHARE_NULLIFIER_LEN {
+            return Err(anyhow!(
+                "nullifier must be {} bytes, got {}",
+                SHARE_NULLIFIER_LEN,
+                nullifier.len()
+            ));
+        }
 
         handle
             .db
@@ -261,4 +279,78 @@ pub unsafe extern "C" fn zcashlc_voting_add_sent_servers(
         Ok(0)
     });
     unwrap_exc_or(res, -1)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ffi::zcashlc_free_boxed_slice;
+    use crate::voting::db::zcashlc_voting_db_free;
+    use crate::voting::test_helpers::{insert_round_and_bundle, open_memory_db};
+
+    #[test]
+    fn record_share_delegation_rejects_invalid_nullifier_length() {
+        let db = open_memory_db();
+        let round_id = b"round";
+        insert_round_and_bundle(db, "round");
+        let urls_json = br#"["https://helper.example"]"#;
+        let nullifier = [0xaa; SHARE_NULLIFIER_LEN - 1];
+
+        let code = unsafe {
+            zcashlc_voting_record_share_delegation(
+                db,
+                round_id.as_ptr(),
+                round_id.len(),
+                0,
+                0,
+                0,
+                urls_json.as_ptr(),
+                urls_json.len(),
+                nullifier.as_ptr(),
+                nullifier.len(),
+                0,
+            )
+        };
+
+        assert_eq!(code, -1);
+        unsafe { zcashlc_voting_db_free(db) };
+    }
+
+    #[test]
+    fn record_share_delegation_round_trips_byte_nullifier() {
+        let db = open_memory_db();
+        let round_id = b"round";
+        insert_round_and_bundle(db, "round");
+        let urls_json = br#"["https://helper.example"]"#;
+        let nullifier = (0u8..SHARE_NULLIFIER_LEN as u8).collect::<Vec<_>>();
+
+        let code = unsafe {
+            zcashlc_voting_record_share_delegation(
+                db,
+                round_id.as_ptr(),
+                round_id.len(),
+                0,
+                0,
+                0,
+                urls_json.as_ptr(),
+                urls_json.len(),
+                nullifier.as_ptr(),
+                nullifier.len(),
+                0,
+            )
+        };
+        assert_eq!(code, 0);
+
+        let result =
+            unsafe { zcashlc_voting_get_share_delegations(db, round_id.as_ptr(), round_id.len()) };
+        assert!(!result.is_null());
+        let json = unsafe { (*result).as_slice() }.to_vec();
+        let records: Vec<JsonShareDelegationRecord> =
+            serde_json::from_slice(&json).expect("share delegation records");
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].nullifier, nullifier);
+
+        unsafe { zcashlc_free_boxed_slice(result) };
+        unsafe { zcashlc_voting_db_free(db) };
+    }
 }
