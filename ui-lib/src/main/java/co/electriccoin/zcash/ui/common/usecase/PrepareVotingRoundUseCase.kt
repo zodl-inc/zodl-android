@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
 import co.electriccoin.zcash.ui.common.model.voting.selectVotingBundleNotesJson
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
+import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
 import co.electriccoin.zcash.ui.common.repository.VotingConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingDelegationPirPrecomputeRequest
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
@@ -34,6 +35,7 @@ class PrepareVotingRoundUseCase(
     private val votingRecoveryRepository: VotingRecoveryRepository,
     private val votingSessionStore: VotingSessionStore,
     private val votingCryptoClient: VotingCryptoClient,
+    private val votingHotkeySeedProvider: VotingHotkeySeedProvider,
     private val votingProofPrecomputeRepository: VotingProofPrecomputeRepository,
     private val synchronizerProvider: SynchronizerProvider,
     private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
@@ -170,15 +172,12 @@ class PrepareVotingRoundUseCase(
                     }
                 }
 
-                val storedHotkeySeed = recoverySnapshot?.decodeHotkeySeed()
-                val hotkeySeed = when {
-                    storedHotkeySeed != null -> storedHotkeySeed
-                    existingRoundState?.phase != null && existingRoundState.phase != RoundPhase.INITIALIZED -> {
-                        error("Missing stored hotkey seed for resumed round $roundId")
-                    }
-
-                    else -> ByteArray(HOTKEY_SEED_BYTES).also(secureRandom::nextBytes)
-                }
+                val hotkeySeed = getOrCreateHotkeySeed(
+                    accountUuid = accountUuidString,
+                    roundId = roundId,
+                    recoverySnapshot = recoverySnapshot,
+                    existingRoundStatePhase = existingRoundState?.phase
+                )
                 val hotkey = votingCryptoClient.generateHotkey(
                     dbHandle = dbHandle,
                     roundId = roundId,
@@ -187,7 +186,6 @@ class PrepareVotingRoundUseCase(
                 votingRecoveryRepository.storeHotkey(
                     accountUuid = accountUuidString,
                     roundId = roundId,
-                    hotkeySeed = hotkeySeed,
                     hotkeyAddress = hotkey.address
                 )
                 votingSessionStore.setEligibility(VotingEligibility.ELIGIBLE)
@@ -284,6 +282,30 @@ class PrepareVotingRoundUseCase(
             eligibleWeight = weight,
             bundleWeights = bundleWeights.take(count)
         )
+    }
+
+    private suspend fun getOrCreateHotkeySeed(
+        accountUuid: String,
+        roundId: String,
+        recoverySnapshot: VotingRecoverySnapshot?,
+        existingRoundStatePhase: RoundPhase?
+    ): ByteArray {
+        recoverySnapshot?.decodeHotkeySeed()?.let { legacySeed ->
+            if (votingHotkeySeedProvider.get(accountUuid) == null) {
+                votingHotkeySeedProvider.store(accountUuid, legacySeed)
+            }
+            return legacySeed
+        }
+
+        votingHotkeySeedProvider.get(accountUuid)?.let { return it }
+
+        if (existingRoundStatePhase != null && existingRoundStatePhase != RoundPhase.INITIALIZED) {
+            error("Missing stored hotkey seed for resumed round $roundId")
+        }
+
+        return ByteArray(HOTKEY_SEED_BYTES)
+            .also(secureRandom::nextBytes)
+            .also { seed -> votingHotkeySeedProvider.store(accountUuid, seed) }
     }
 
     private suspend fun buildSoftwareDelegationPirPrecomputeRequests(

@@ -52,6 +52,8 @@ import co.electriccoin.zcash.ui.common.provider.TokenNameProviderImpl
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClientImpl
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
+import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
+import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProviderImpl
 import co.electriccoin.zcash.ui.common.provider.KtorVotingApiProvider
 import co.electriccoin.zcash.ui.common.provider.WalletBackupConsentStorageProvider
 import co.electriccoin.zcash.ui.common.provider.WalletBackupConsentStorageProviderImpl
@@ -105,6 +107,7 @@ val providerModule =
         factoryOf(::KeystoneSDKProviderImpl) bind KeystoneSDKProvider::class
         singleOf(::TypesafeVotingBackendImpl) bind TypesafeVotingBackend::class
         singleOf(::VotingCryptoClientImpl) bind VotingCryptoClient::class
+        singleOf(::VotingHotkeySeedProviderImpl) bind VotingHotkeySeedProvider::class
         singleOf(::KtorVotingApiProvider) bind VotingApiProvider::class
         singleOf(::VotingShareTrackingScheduler)
     }

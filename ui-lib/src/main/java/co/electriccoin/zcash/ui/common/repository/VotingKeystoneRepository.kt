@@ -9,6 +9,7 @@ import co.electriccoin.zcash.ui.common.model.voting.selectVotingBundleNotesJson
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
+import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
 import com.sparrowwallet.hummingbird.UR
 import com.sparrowwallet.hummingbird.UREncoder
 import java.io.File
@@ -44,6 +45,7 @@ class VotingKeystoneRepositoryImpl(
     private val votingConfigRepository: VotingConfigRepository,
     private val votingRecoveryRepository: VotingRecoveryRepository,
     private val votingCryptoClient: VotingCryptoClient,
+    private val votingHotkeySeedProvider: VotingHotkeySeedProvider,
     private val votingProofPrecomputeRepository: VotingProofPrecomputeRepository,
     private val synchronizerProvider: SynchronizerProvider,
     private val keystoneSDKProvider: KeystoneSDKProvider
@@ -94,7 +96,7 @@ class VotingKeystoneRepositoryImpl(
                 )
             }
 
-            val hotkeySeed = recovery.decodeHotkeySeed() ?: error("Voting round $roundId has no stored hotkey seed")
+            val hotkeySeed = getHotkeySeed(accountUuid, roundId, recovery)
             val bundleIndex = nextUnsignedBundleIndex
 
             val accountIndex = selectedAccount.sdkAccount.hdAccountIndex?.index?.toInt()
@@ -242,6 +244,22 @@ class VotingKeystoneRepositoryImpl(
 
     private fun ByteArray.toLowerHex(): String =
         joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and 0xff) }
+
+    private suspend fun getHotkeySeed(
+        accountUuid: String,
+        roundId: String,
+        recovery: VotingRecoverySnapshot
+    ): ByteArray {
+        recovery.decodeHotkeySeed()?.let { legacySeed ->
+            if (votingHotkeySeedProvider.get(accountUuid) == null) {
+                votingHotkeySeedProvider.store(accountUuid, legacySeed)
+            }
+            return legacySeed
+        }
+
+        return votingHotkeySeedProvider.get(accountUuid)
+            ?: error("Voting round $roundId has no stored hotkey seed")
+    }
 
     private companion object {
         const val TAG = "VotingKeystoneRepository"

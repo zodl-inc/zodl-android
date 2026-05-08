@@ -68,6 +68,8 @@ data class VotingRecoverySnapshot(
     val skippedBundleCount: Int = 0,
     val submittedAtEpochSeconds: Long? = null,
     val voteEndEpochSeconds: Long? = null,
+    // Legacy recovery snapshots stored the voting hotkey seed inline here.
+    // New writes keep the seed in VotingHotkeySeedProvider and leave this for migration.
     val hotkeySeedBase64: String? = null,
     val hotkeyAddress: String? = null,
     val voteServerUrls: List<String> = emptyList(),
@@ -131,7 +133,6 @@ interface VotingRecoveryRepository {
     suspend fun storeHotkey(
         accountUuid: String,
         roundId: String,
-        hotkeySeed: ByteArray,
         hotkeyAddress: String
     )
 
@@ -356,7 +357,6 @@ class VotingRecoveryRepositoryImpl(
     override suspend fun storeHotkey(
         accountUuid: String,
         roundId: String,
-        hotkeySeed: ByteArray,
         hotkeyAddress: String
     ) {
         val current = get(accountUuid, roundId) ?: VotingRecoverySnapshot(
@@ -366,7 +366,6 @@ class VotingRecoveryRepositoryImpl(
         store(
             current.copy(
                 phase = VotingRecoveryPhase.HOTKEY_READY,
-                hotkeySeedBase64 = Base64.getEncoder().encodeToString(hotkeySeed),
                 hotkeyAddress = hotkeyAddress,
                 updatedAt = Instant.now()
             )

@@ -24,12 +24,14 @@ import co.electriccoin.zcash.ui.common.provider.PirSnapshotResolver
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
+import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
 import co.electriccoin.zcash.ui.common.repository.VotingConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingProposalSelection
 import co.electriccoin.zcash.ui.common.repository.VotingDelegationPirPrecomputeKey
 import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryPhase
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
+import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.work.VotingShareTrackingScheduler
@@ -55,6 +57,7 @@ class SubmitVotesUseCase(
     private val votingProofPrecomputeRepository: VotingProofPrecomputeRepository,
     private val votingApiProvider: VotingApiProvider,
     private val pirSnapshotResolver: PirSnapshotResolver,
+    private val votingHotkeySeedProvider: VotingHotkeySeedProvider,
     private val synchronizerProvider: SynchronizerProvider,
     private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
     private val getWalletSeedBytes: GetWalletSeedBytesUseCase,
@@ -118,7 +121,7 @@ class SubmitVotesUseCase(
             votingRecoveryRepository.storeVoteServerUrls(accountUuidString, roundId, voteServerUrls)
             votingRecoveryRepository.storeVoteEndEpochSeconds(accountUuidString, roundId, session.voteEndTime.epochSecond)
             val recoveryBundleCount = recovery.bundleCount
-            val hotkeySeed = recovery.decodeHotkeySeed() ?: error("Voting round $roundId has no stored hotkey seed")
+            val hotkeySeed = getHotkeySeed(accountUuidString, roundId, recovery)
 
             val synchronizer = synchronizerProvider.getSynchronizer()
             val walletDbPath = synchronizer.getWalletDbPath()
@@ -673,6 +676,22 @@ class SubmitVotesUseCase(
             roundId = roundId,
             proposalId = proposalId
         )
+    }
+
+    private suspend fun getHotkeySeed(
+        accountUuid: String,
+        roundId: String,
+        recovery: VotingRecoverySnapshot
+    ): ByteArray {
+        recovery.decodeHotkeySeed()?.let { legacySeed ->
+            if (votingHotkeySeedProvider.get(accountUuid) == null) {
+                votingHotkeySeedProvider.store(accountUuid, legacySeed)
+            }
+            return legacySeed
+        }
+
+        return votingHotkeySeedProvider.get(accountUuid)
+            ?: error("Voting round $roundId has no stored hotkey seed")
     }
 
     private suspend fun awaitTxConfirmation(txHash: String): TxConfirmation {
