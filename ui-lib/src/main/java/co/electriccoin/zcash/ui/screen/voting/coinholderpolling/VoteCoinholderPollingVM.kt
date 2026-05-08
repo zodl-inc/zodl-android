@@ -110,7 +110,9 @@ class VoteCoinholderPollingVM(
                             .thenBy { round -> round.id }
                     )
                 val (activeSrc, pastSrc) = sortedRounds
-                    .partition { round -> round.status == SessionStatus.ACTIVE }
+                    .partition { round ->
+                        round.status == SessionStatus.ACTIVE || round.status == SessionStatus.TALLYING
+                    }
 
                 VoteCoinholderPollingState(
                     activeRounds = activeSrc.map { round ->
