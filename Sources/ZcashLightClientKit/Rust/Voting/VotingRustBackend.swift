@@ -1158,6 +1158,12 @@ extension VotingRustBackend {
         shareIndex: UInt32,
         primaryBlind: [UInt8]
     ) throws -> String {
+        guard voteCommitment.count == 32, primaryBlind.count == 32 else {
+            throw VotingRustBackendError.invalidData(
+                "`voteCommitment` and `primaryBlind` must be exactly 32 bytes"
+            )
+        }
+
         let ptr = voteCommitment.withUnsafeBufferPointer { vcBuf in
             primaryBlind.withUnsafeBufferPointer { blindBuf in
                 zcashlc_voting_compute_share_nullifier(
