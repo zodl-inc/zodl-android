@@ -50,16 +50,14 @@ class VoteResultsVM(
 
     init {
         resultsLce.execute {
-            val round = getAllRounds().firstOrNull { it.id == args.roundIdHex }
+            val round = votingApiRepository.snapshot.value.rounds.firstOrNull { it.id == args.roundIdHex }
+                ?: getAllRounds().firstOrNull { it.id == args.roundIdHex }
                 ?: error("Round ${args.roundIdHex} not found")
             val cachedTally = votingApiRepository.snapshot.value.tallyResultsByRoundId[args.roundIdHex]
-            val tally = runCatching {
-                votingApiProvider.fetchTallyResults(args.roundIdHex)
-            }.onSuccess { results ->
-                votingApiRepository.storeTallyResults(args.roundIdHex, results)
-            }.getOrElse { throwable ->
-                cachedTally ?: throw throwable
-            }
+            val tally = cachedTally
+                ?: votingApiProvider.fetchTallyResults(args.roundIdHex).also { results ->
+                    votingApiRepository.storeTallyResults(args.roundIdHex, results)
+                }
             val accountUuid = getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId()
             val recovery = votingRecoveryRepository.get(accountUuid, args.roundIdHex)
 
