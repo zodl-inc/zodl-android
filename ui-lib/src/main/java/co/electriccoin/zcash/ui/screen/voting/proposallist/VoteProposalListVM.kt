@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
+import co.electriccoin.zcash.ui.common.model.voting.VoteIneligibilityReason as ModelVoteIneligibilityReason
 import co.electriccoin.zcash.ui.common.model.voting.voteBadgeInfo
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
 import co.electriccoin.zcash.ui.common.repository.effectiveChoices
@@ -466,10 +467,9 @@ private fun Map<Int, Int>.toChoicesJson(): String =
 private fun Long.toVotingWeightLabel() = "%.4f ZEC".format(this / 100_000_000.0)
 
 private fun VotingRoundPreparationResult.Ineligible.toIneligibilityReason(): VoteIneligibilityReason =
-    if (bundleCount <= 0) {
-        VoteIneligibilityReason.NO_NOTES
-    } else {
-        VoteIneligibilityReason.BALANCE_TOO_LOW
+    when (reason) {
+        ModelVoteIneligibilityReason.NO_NOTES -> VoteIneligibilityReason.NO_NOTES
+        ModelVoteIneligibilityReason.BALANCE_TOO_LOW -> VoteIneligibilityReason.BALANCE_TOO_LOW
     }
 
 private enum class PreparationGate {

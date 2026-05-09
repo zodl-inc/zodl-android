@@ -14,6 +14,7 @@ sealed interface VotingRoundPreparationResult {
     ) : VotingRoundPreparationResult
 
     data class Ineligible(
+        val reason: VoteIneligibilityReason,
         val eligibleWeight: Long,
         val bundleCount: Int
     ) : VotingRoundPreparationResult

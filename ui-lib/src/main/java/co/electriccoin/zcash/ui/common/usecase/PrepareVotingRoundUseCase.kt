@@ -6,6 +6,7 @@ import cash.z.ecc.android.sdk.ext.toHex
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.voting.VoteIneligibilityReason
 import co.electriccoin.zcash.ui.common.model.voting.VotingBundleSetupResult
 import co.electriccoin.zcash.ui.common.model.voting.RoundPhase
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import org.json.JSONArray
 import java.io.File
 import java.security.SecureRandom
 
@@ -112,7 +114,29 @@ class PrepareVotingRoundUseCase(
                     existingRoundState = null
                     effectiveRecoverySnapshot = null
                 }
+                // iOS distinguishes `noNotes` (`VotingStore+Session.swift:268`) and
+                // `balanceTooLow` (`:282`) by checking the un-bundled note count before smart
+                // bundling. Mirror that here: fetch the snapshot's notes up front, short-circuit
+                // when empty so we never write a round row we'd immediately tear down, and only
+                // bundle when there is something to bundle.
+                var freshNotesJson: String? = null
                 val (preparedBundleCount, eligibleWeight) = if (existingRoundState == null) {
+                    val notesJson = votingCryptoClient.getWalletNotesJson(
+                        walletDbPath = walletDbPath,
+                        snapshotHeight = session.snapshotHeight,
+                        networkId = networkId,
+                        accountUuidBytes = accountUuid.value
+                    )
+                    if (JSONArray(notesJson).length() == 0) {
+                        votingSessionStore.setEligibility(VotingEligibility.INELIGIBLE)
+                        return@withContext VotingRoundPreparationResult.Ineligible(
+                            reason = VoteIneligibilityReason.NO_NOTES,
+                            eligibleWeight = 0L,
+                            bundleCount = 0
+                        )
+                    }
+                    freshNotesJson = notesJson
+
                     votingCryptoClient.initializeRound(
                         dbHandle = dbHandle,
                         roundId = roundId,
@@ -123,12 +147,6 @@ class PrepareVotingRoundUseCase(
                         sessionJson = null
                     )
 
-                    val notesJson = votingCryptoClient.getWalletNotesJson(
-                        walletDbPath = walletDbPath,
-                        snapshotHeight = session.snapshotHeight,
-                        networkId = networkId,
-                        accountUuidBytes = accountUuid.value
-                    )
                     votingCryptoClient.setupBundles(
                         dbHandle = dbHandle,
                         roundId = roundId,
@@ -157,15 +175,19 @@ class PrepareVotingRoundUseCase(
                 }
 
                 if (eligibleWeight <= 0L) {
+                    // Notes existed (no-notes case short-circuited above; recovery path implies
+                    // notes existed when the round was first prepared) but smart bundling left
+                    // nothing eligible — this is the dust / sub-divisor case.
                     votingSessionStore.setEligibility(VotingEligibility.INELIGIBLE)
                     return@withContext VotingRoundPreparationResult.Ineligible(
+                        reason = VoteIneligibilityReason.BALANCE_TOO_LOW,
                         eligibleWeight = eligibleWeight,
                         bundleCount = preparedBundleCount
                     )
                 }
 
                 if (existingRoundState == null) {
-                    val notesJson = votingCryptoClient.getWalletNotesJson(
+                    val notesJson = freshNotesJson ?: votingCryptoClient.getWalletNotesJson(
                         walletDbPath = walletDbPath,
                         snapshotHeight = session.snapshotHeight,
                         networkId = networkId,
