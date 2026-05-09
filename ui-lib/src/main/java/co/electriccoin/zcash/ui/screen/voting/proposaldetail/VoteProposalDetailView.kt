@@ -39,6 +39,7 @@ import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.VerticalSpacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiCheckboxIndicator
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
@@ -53,6 +54,8 @@ import co.electriccoin.zcash.ui.screen.voting.accentColor
 
 @Composable
 fun VoteProposalDetailView(state: VoteProposalDetailState) {
+    ZashiConfirmationBottomSheet(state = state.unverifiedPollWarningSheet)
+
     BlankBgScaffold(
         topBar = { AppBar(state) },
         content = { padding ->

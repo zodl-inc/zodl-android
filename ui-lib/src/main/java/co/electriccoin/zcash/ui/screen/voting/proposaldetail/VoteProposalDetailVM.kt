@@ -10,10 +10,16 @@ import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.displayColor
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
 import co.electriccoin.zcash.ui.common.model.voting.optionsWithAbstain
+import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
+import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
+import co.electriccoin.zcash.ui.configuration.ConfigurationEntries
+import co.electriccoin.zcash.ui.design.component.ButtonState
+import co.electriccoin.zcash.ui.design.component.ButtonStyle
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListMode
@@ -28,11 +34,14 @@ import kotlinx.coroutines.flow.map
 class VoteProposalDetailVM(
     private val args: VoteProposalDetailArgs,
     votingApiRepository: VotingApiRepository,
+    private val configurationRepository: ConfigurationRepository,
+    private val votingChainConfigRepository: VotingChainConfigRepository,
     private val votingSessionStore: VotingSessionStore,
     private val navigationRouter: NavigationRouter,
     observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase,
 ) : ViewModel() {
     private val showUnansweredSheet = MutableStateFlow(false)
+    private val unverifiedPollWarningSheet = MutableStateFlow<ZashiConfirmationState?>(null)
     private val selectedAccountUuid: Flow<String> =
         observeSelectedWalletAccount.require()
             .map { account -> account.sdkAccount.accountUuid.toVotingAccountScopeId() }
@@ -43,7 +52,8 @@ class VoteProposalDetailVM(
             votingSessionStore.state,
             selectedAccountUuid,
             showUnansweredSheet,
-        ) { apiSnapshot, sessionState, accountUuid, showSheet ->
+            unverifiedPollWarningSheet,
+        ) { apiSnapshot, sessionState, accountUuid, showSheet, unverifiedSheet ->
             apiSnapshot.rounds
                 .firstOrNull { it.id == args.roundId }
                 ?.let { round ->
@@ -51,7 +61,8 @@ class VoteProposalDetailVM(
                         round = round,
                         drafts = sessionState.draftVotesFor(accountUuid, args.roundId),
                         accountUuid = accountUuid,
-                        showSheet = showSheet
+                        showSheet = showSheet,
+                        unverifiedSheet = unverifiedSheet
                     )
                 }
         }.map { content ->
@@ -69,6 +80,7 @@ class VoteProposalDetailVM(
         drafts: Map<Int, Int>,
         accountUuid: String,
         showSheet: Boolean,
+        unverifiedSheet: ZashiConfirmationState?,
     ): VoteProposalDetailState {
         val proposals = round.proposals
         val requestedIndex = proposals.indexOfFirst { it.id == args.proposalId }
@@ -90,12 +102,13 @@ class VoteProposalDetailVM(
             showUnansweredSheet = showSheet && !pollEnded,
             unansweredCount = unansweredCount,
             showPollEndedSheet = pollEnded && !args.isReadOnly,
+            unverifiedPollWarningSheet = unverifiedSheet,
             onBack = ::onBack,
             onNext = { onNext(proposals, proposalIndex, drafts) },
             onConfirmUnanswered = { onConfirmUnanswered(accountUuid, round) },
             onDismissUnanswered = { showUnansweredSheet.value = false },
             onPollEndedClose = ::onBack,
-            onPollEndedViewResults = { navigateToRoundOutcome(round) },
+            onPollEndedViewResults = { onPollEndedViewResults(round) },
         )
     }
 
@@ -187,5 +200,47 @@ class VoteProposalDetailVM(
             else ->
                 navigationRouter.forward(VoteResultsArgs(roundIdHex = round.id))
         }
+    }
+
+    private fun onPollEndedViewResults(round: VotingRound) {
+        if (!isOnDefaultConfig()) {
+            unverifiedPollWarningSheet.value = buildUnverifiedPollWarningSheet(round)
+            return
+        }
+        navigateToRoundOutcome(round)
+    }
+
+    private fun isOnDefaultConfig(): Boolean =
+        votingChainConfigRepository.state.value.isOnDefaultConfig &&
+            configurationRepository.configurationFlow.value
+                ?.let(ConfigurationEntries.VOTING_CONFIG_URL::getValue)
+                .orEmpty()
+                .isBlank()
+
+    private fun buildUnverifiedPollWarningSheet(round: VotingRound) =
+        ZashiConfirmationState(
+            icon = R.drawable.ic_reset_zashi_warning,
+            title = stringRes(R.string.vote_unverified_poll_title),
+            message = stringRes(R.string.vote_unverified_poll_message),
+            primaryAction = ButtonState(
+                text = stringRes(R.string.vote_continue),
+                style = ButtonStyle.PRIMARY,
+                onClick = { proceedFromUnverifiedPollWarning(round) }
+            ),
+            secondaryAction = ButtonState(
+                text = stringRes(R.string.vote_error_go_back),
+                style = ButtonStyle.TERTIARY,
+                onClick = ::dismissUnverifiedPollWarning
+            ),
+            onBack = ::dismissUnverifiedPollWarning
+        )
+
+    private fun proceedFromUnverifiedPollWarning(round: VotingRound) {
+        unverifiedPollWarningSheet.value = null
+        navigateToRoundOutcome(round)
+    }
+
+    private fun dismissUnverifiedPollWarning() {
+        unverifiedPollWarningSheet.value = null
     }
 }

@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.voting.proposaldetail
 
 import androidx.compose.runtime.Immutable
 import co.electriccoin.zcash.ui.common.model.voting.VoteOptionDisplayColor
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.StringResource
 
 @Immutable
@@ -16,6 +17,7 @@ data class VoteProposalDetailState(
     val showUnansweredSheet: Boolean,
     val unansweredCount: Int,
     val showPollEndedSheet: Boolean,
+    val unverifiedPollWarningSheet: ZashiConfirmationState?,
     val onBack: () -> Unit,
     val onNext: () -> Unit,
     val onConfirmUnanswered: () -> Unit,
