@@ -88,7 +88,30 @@ class PrepareVotingRoundUseCase(
 
             val preparationResult = try {
                 votingCryptoClient.setWalletId(dbHandle, accountUuid.toString())
-                val existingRoundState = votingCryptoClient.getRoundState(dbHandle, roundId)
+                var existingRoundState = votingCryptoClient.getRoundState(dbHandle, roundId)
+                var effectiveRecoverySnapshot = recoverySnapshot
+                // iOS `verifyWitnesses` (VotingStore+Delegation.swift:96-99) clears stale Rust
+                // round state plus any recovery row when no recovery hits exist before re-running
+                // the witness pipeline. The Android analog: a Rust round row is present, but
+                // neither the wallet-side recovery snapshot nor the Rust DB carries usable bundle
+                // data (e.g., `initializeRound` ran but `setupBundles` never did, or the recovery
+                // snapshot was wiped while the Rust round survived). Treat the round as
+                // unrecoverable and start fresh — otherwise we would either error out in
+                // `recoverExistingBundleSetup` or report `Ineligible` for an account that holds
+                // notes.
+                if (existingRoundState != null && !isRoundRecoverable(
+                        recoverySnapshot = effectiveRecoverySnapshot,
+                        dbHandle = dbHandle,
+                        roundId = roundId
+                    )
+                ) {
+                    Log.i(TAG, "Discarding stale voting round $roundId before fresh init")
+                    votingCryptoClient.clearRound(dbHandle, roundId)
+                    votingCryptoClient.clearRecoveryState(dbHandle, roundId)
+                    votingRecoveryRepository.clearRound(accountUuidString, roundId)
+                    existingRoundState = null
+                    effectiveRecoverySnapshot = null
+                }
                 val (preparedBundleCount, eligibleWeight) = if (existingRoundState == null) {
                     votingCryptoClient.initializeRound(
                         dbHandle = dbHandle,
@@ -120,7 +143,7 @@ class PrepareVotingRoundUseCase(
                         )
                     }.let { setup -> setup.bundleCount to setup.eligibleWeight }
                 } else {
-                    val setup = recoverySnapshot?.preparedBundleSetup()
+                    val setup = effectiveRecoverySnapshot?.preparedBundleSetup()
                         ?: recoverExistingBundleSetup(
                             accountUuid = accountUuidString,
                             roundId = roundId,
@@ -175,7 +198,7 @@ class PrepareVotingRoundUseCase(
                 val hotkeySeed = getOrCreateHotkeySeed(
                     accountUuid = accountUuidString,
                     roundId = roundId,
-                    recoverySnapshot = recoverySnapshot,
+                    recoverySnapshot = effectiveRecoverySnapshot,
                     existingRoundStatePhase = existingRoundState?.phase
                 )
                 val hotkey = votingCryptoClient.generateHotkey(
@@ -269,6 +292,20 @@ class PrepareVotingRoundUseCase(
             bundleWeights = recoveredSetup.bundleWeights
         )
         return recoveredSetup
+    }
+
+    private suspend fun isRoundRecoverable(
+        recoverySnapshot: VotingRecoverySnapshot?,
+        dbHandle: Long,
+        roundId: String
+    ): Boolean {
+        if (recoverySnapshot?.preparedBundleSetup() != null) {
+            return true
+        }
+        val dbBundleCount = runCatching {
+            votingCryptoClient.getBundleCount(dbHandle, roundId)
+        }.getOrNull() ?: return false
+        return dbBundleCount > 0
     }
 
     private fun VotingRecoverySnapshot.preparedBundleSetup(): VotingBundleSetupResult? {
