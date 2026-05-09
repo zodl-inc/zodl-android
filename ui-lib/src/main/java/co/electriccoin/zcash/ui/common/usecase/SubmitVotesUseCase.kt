@@ -5,6 +5,8 @@ import cash.z.ecc.android.sdk.ext.toHex
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.voting.CastVoteSignature
+import co.electriccoin.zcash.ui.common.model.voting.DelegatedShareInfo
+import co.electriccoin.zcash.ui.common.model.voting.SharePayload
 import co.electriccoin.zcash.ui.common.model.voting.VoteCommitmentBundle
 import co.electriccoin.zcash.ui.common.model.voting.TxConfirmation
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
@@ -739,7 +741,7 @@ class SubmitVotesUseCase(
             return
         }
 
-        val delegationResults = votingApiProvider.delegateShares(pendingPayloads, roundId)
+        val delegationResults = delegateSharesWithRetry(pendingPayloads, roundId)
         delegationResults.forEach { info ->
             val payload = pendingPayloads.firstOrNull { candidate ->
                 candidate.encShare.shareIndex == info.shareIndex &&
@@ -766,6 +768,37 @@ class SubmitVotesUseCase(
             )
             existingShareIndices += info.shareIndex
         }
+    }
+
+    private suspend fun delegateSharesWithRetry(
+        payloads: List<SharePayload>,
+        roundId: String
+    ): List<DelegatedShareInfo> {
+        var lastExhaustionError: Exception? = null
+        repeat(SHARE_DELEGATION_ATTEMPTS) { attempt ->
+            try {
+                return votingApiProvider.delegateShares(payloads, roundId)
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                if (!exception.isShareDelegationExhaustion()) {
+                    throw exception
+                }
+                lastExhaustionError = exception
+                if (attempt + 1 < SHARE_DELEGATION_ATTEMPTS) {
+                    delay(SHARE_DELEGATION_RETRY_MS)
+                }
+            }
+        }
+
+        throw lastExhaustionError ?: IllegalStateException("No voting server accepted share")
+    }
+
+    private fun Throwable.isShareDelegationExhaustion(): Boolean {
+        val lower = message.orEmpty().lowercase()
+        return lower.contains("no voting server accepted share") ||
+            lower.contains("no reachable vote servers") ||
+            lower.contains("all configured vote servers failed")
     }
 
     private fun randomSubmitAt(deadlineEpochSeconds: Long?): Long {
@@ -824,5 +857,7 @@ class SubmitVotesUseCase(
         const val TAG = "SubmitVotesUseCase"
         const val TX_CONFIRMATION_RETRIES = 45
         const val TX_CONFIRMATION_POLL_MS = 2_000L
+        const val SHARE_DELEGATION_ATTEMPTS = 3
+        const val SHARE_DELEGATION_RETRY_MS = 2_000L
     }
 }
