@@ -389,6 +389,15 @@ class SubmitVotesUseCase(
                     singleShareMode = singleShare
                 )
 
+                // Track per-proposal completion to mirror iOS `failCount == 0` gating
+                // (`VotingStore+Submission.swift` ~line 411-440). Failures throw out of
+                // this try block today, but counting explicitly keeps `submittedAt` honest
+                // if a future skip-path is added that does not throw, and makes the
+                // "every expected proposal accounted for" invariant local to this scope.
+                // A proposal already on-chain from a prior run (the idempotent recovery
+                // path below) counts as submitted — the user's previous attempt already
+                // succeeded for that proposal.
+                var processedProposalCount = 0
                 sortedChoices.entries.forEachIndexed { proposalIndex, (proposalId, choiceId) ->
                     val proposal = session.proposals.firstOrNull { it.id == proposalId }
                         ?: error("Unknown proposal id $proposalId for round $roundId")
@@ -406,6 +415,7 @@ class SubmitVotesUseCase(
                             )
                         )
                         markProposalSubmissionComplete(accountUuidString, roundId, proposalId)
+                        processedProposalCount++
                         return@forEachIndexed
                     }
 
@@ -419,6 +429,7 @@ class SubmitVotesUseCase(
                             )
                         )
                         markProposalSubmissionComplete(accountUuidString, roundId, proposalId)
+                        processedProposalCount++
                         return@forEachIndexed
                     }
                     require(hasOnWireOption) {
@@ -626,6 +637,7 @@ class SubmitVotesUseCase(
                     }
 
                     markProposalSubmissionComplete(accountUuidString, roundId, proposalId)
+                    processedProposalCount++
                 }
 
                 val completedProposalCount = votingRecoveryRepository
@@ -634,6 +646,11 @@ class SubmitVotesUseCase(
                     ?.size
                     ?: totalChoices
 
+                // Phase transitions track recovery state-machine progress and must run
+                // whenever the loop completes, so that share-tracking can resume. The
+                // user-facing "voted on this round" marker (`submittedAt` /
+                // `markRoundSubmitted`) is gated separately on every expected proposal
+                // having been accounted for, mirroring iOS `failCount == 0` semantics.
                 votingRecoveryRepository.setPhase(
                     accountUuid = accountUuidString,
                     roundId = roundId,
@@ -644,16 +661,18 @@ class SubmitVotesUseCase(
                     roundId = roundId,
                     phase = VotingRecoveryPhase.SHARES_SUBMITTED
                 )
-                votingRecoveryRepository.storeSubmittedAt(
-                    accountUuid = accountUuidString,
-                    roundId = roundId,
-                    submittedAtEpochSeconds = Instant.now().epochSecond
-                )
-                votingSessionStore.markRoundSubmitted(
-                    accountUuid = accountUuidString,
-                    roundId = roundId,
-                    proposalCount = completedProposalCount
-                )
+                if (processedProposalCount == totalChoices) {
+                    votingRecoveryRepository.storeSubmittedAt(
+                        accountUuid = accountUuidString,
+                        roundId = roundId,
+                        submittedAtEpochSeconds = Instant.now().epochSecond
+                    )
+                    votingSessionStore.markRoundSubmitted(
+                        accountUuid = accountUuidString,
+                        roundId = roundId,
+                        proposalCount = completedProposalCount
+                    )
+                }
                 votingSessionStore.clearDraftVotes(
                     accountUuid = accountUuidString,
                     roundId = roundId
