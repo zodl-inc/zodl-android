@@ -12,11 +12,18 @@ import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
 
 class VoteWalletSyncingVM(
     private val args: VoteWalletSyncingArgs,
@@ -24,26 +31,32 @@ class VoteWalletSyncingVM(
     private val synchronizerProvider: SynchronizerProvider,
     private val navigationRouter: NavigationRouter,
 ) : ViewModel() {
+    private val hasAutoAdvanced = AtomicBoolean(false)
+
     init {
         viewModelScope.launch {
             votingConfigRepository.get()
         }
+        observeForAutoAdvance()
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     val state: StateFlow<LceState<VoteWalletSyncingState>> =
         combine(
             votingConfigRepository.currentConfig,
-            synchronizerProvider.synchronizer,
-        ) { config, synchronizer ->
+            synchronizerProvider.synchronizer.flatMapLatest { synchronizer ->
+                synchronizer?.fullyScannedHeight ?: flowOf(null)
+            },
+        ) { config, fullyScannedHeight ->
             val snapshotHeight = config
                 ?.takeIf { snapshot -> snapshot.session.voteRoundId.toHex() == args.roundId }
                 ?.session
                 ?.snapshotHeight
 
-            if (snapshotHeight == null || synchronizer == null) {
+            if (snapshotHeight == null) {
                 LceState(content = null, isLoading = true)
             } else {
-                val scannedHeight = synchronizer.fullyScannedHeight.value?.value ?: 0L
+                val scannedHeight = fullyScannedHeight?.value ?: 0L
                 val progress = (scannedHeight.coerceAtMost(snapshotHeight).toFloat() / snapshotHeight.toFloat())
                     .coerceIn(0f, 1f)
                 val isSynced = scannedHeight >= snapshotHeight
@@ -84,7 +97,46 @@ class VoteWalletSyncingVM(
             initialValue = LceState(content = null, isLoading = true)
         )
 
-    private fun onContinue() = navigationRouter.replace(VoteProposalListArgs(roundId = args.roundId))
+    /**
+     * Mirrors iOS `startActiveRoundPipeline` (`VotingStore+Session.swift:317-332`): once the wallet's
+     * fully-scanned height catches up to the active round's snapshot height, automatically navigate
+     * to the proposal list without waiting for a user tap. Guarded by a one-shot flag so a re-entry
+     * (e.g. snapshot height fluctuation, recomposition) cannot trigger a second navigation. The
+     * Continue button remains as a defensive fallback.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun observeForAutoAdvance() {
+        viewModelScope.launch {
+            val snapshotHeight =
+                votingConfigRepository
+                    .currentConfig
+                    .filter { snapshot ->
+                        snapshot != null && snapshot.session.voteRoundId.toHex() == args.roundId
+                    }
+                    .first()!!
+                    .session
+                    .snapshotHeight
+
+            synchronizerProvider
+                .synchronizer
+                .flatMapLatest { synchronizer ->
+                    synchronizer?.fullyScannedHeight ?: flowOf(null)
+                }
+                .distinctUntilChanged()
+                .filter { height -> (height?.value ?: 0L) >= snapshotHeight }
+                .first()
+
+            if (hasAutoAdvanced.compareAndSet(false, true)) {
+                navigationRouter.replace(VoteProposalListArgs(roundId = args.roundId))
+            }
+        }
+    }
+
+    private fun onContinue() {
+        if (hasAutoAdvanced.compareAndSet(false, true)) {
+            navigationRouter.replace(VoteProposalListArgs(roundId = args.roundId))
+        }
+    }
 
     private fun onBack() = navigationRouter.backTo(VoteCoinholderPollingArgs::class)
 }
