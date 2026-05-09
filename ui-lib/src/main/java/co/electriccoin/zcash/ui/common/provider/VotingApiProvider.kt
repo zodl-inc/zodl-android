@@ -30,6 +30,7 @@ import co.electriccoin.zcash.ui.common.model.voting.toBase64String
 import co.electriccoin.zcash.ui.common.model.voting.toTallyResults
 import co.electriccoin.zcash.ui.common.model.voting.withSubmitAt
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
+import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.configuration.ConfigurationEntries
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -99,6 +100,7 @@ interface VotingApiProvider {
 class KtorVotingApiProvider(
     private val httpClientProvider: HttpClientProvider,
     private val configurationRepository: ConfigurationRepository,
+    private val votingChainConfigRepository: VotingChainConfigRepository,
     private val votingCryptoClient: VotingCryptoClient,
 ) : VotingApiProvider {
     private var cachedResolvedConfig: ResolvedVotingConfig? = null
@@ -338,21 +340,26 @@ class KtorVotingApiProvider(
 
     private suspend fun getResolvedConfig(forceRefresh: Boolean = false): ResolvedVotingConfig =
         configMutex.withLock {
+            val source = resolveConfigSource()
             val cached = cachedResolvedConfig
-            if (!forceRefresh && cached != null) {
+            if (!forceRefresh && cached?.source == source) {
                 cached
             } else {
-                resolveConfig().also { resolved ->
+                fetchTrustedConfig(source).also { resolved ->
                     cachedResolvedConfig = resolved
                 }
             }
         }
 
-    private suspend fun resolveConfig(): ResolvedVotingConfig {
+    private suspend fun resolveConfigSource(): PinnedConfigSource {
+        val selectedPinnedSource = votingChainConfigRepository.get().selectedPinnedSource
+        if (selectedPinnedSource != null) {
+            return resolvePinnedConfigSource(selectedPinnedSource)
+        }
+
         val configuration = configurationRepository.configurationFlow.value
         val configUrl = configuration?.let(ConfigurationEntries.VOTING_CONFIG_URL::getValue).orEmpty()
-
-        return fetchTrustedConfig(resolvePinnedConfigSource(configUrl))
+        return resolvePinnedConfigSource(configUrl)
     }
 
     private suspend fun fetchTrustedConfig(source: PinnedConfigSource): ResolvedVotingConfig {
@@ -386,6 +393,7 @@ class KtorVotingApiProvider(
         val serviceConfig = rawServiceConfig.retainingRoundsWithValidSignatures(staticConfig.trustedKeys)
 
         return ResolvedVotingConfig(
+            source = source,
             staticConfig = staticConfig,
             rawServiceConfig = rawServiceConfig,
             serviceConfig = serviceConfig
@@ -597,6 +605,7 @@ private class VotingServerHealthTracker {
 }
 
 private data class ResolvedVotingConfig(
+    val source: PinnedConfigSource,
     val staticConfig: StaticVotingConfig,
     val rawServiceConfig: VotingServiceConfig,
     val serviceConfig: VotingServiceConfig,
