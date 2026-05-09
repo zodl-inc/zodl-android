@@ -62,6 +62,30 @@ class VoteProposalListVM(
     private val preparationErrorSheet = MutableStateFlow<ZashiConfirmationState?>(null)
     private var preparationJob: Job? = null
 
+    /**
+     * Mirrors iOS `startActiveRoundPipeline` (`VotingStore+Session.swift:190-301`): the
+     * proposal list never mounts visible content until the eligibility ladder
+     * (sync gate → notes → smart-bundling → balance gate) resolves to `Ready`.
+     *
+     * Android still mounts the screen up-front (we route to it from
+     * `VoteCoinholderPollingVM.openRound` before running `PrepareVotingRoundUseCase`),
+     * but we hold the existing shimmer-loading view until prep returns `Ready`. When
+     * prep returns `WalletSyncing` or `Ineligible`, navigation forwards away and the
+     * shimmer is what the user sees during the brief transition. Either way the
+     * user never sees the proposal list flicker into a content frame before being
+     * routed elsewhere — closing parity gap G10.
+     *
+     * For non-VOTING modes (VOTED / REVIEW) prep is skipped (see [prepareForVoting]),
+     * so the gate starts in [PreparationGate.READY] and content renders immediately.
+     */
+    private val preparationGate = MutableStateFlow(
+        if (args.mode == VoteProposalListMode.VOTING && args.roundId.isNotEmpty()) {
+            PreparationGate.PREPARING
+        } else {
+            PreparationGate.READY
+        }
+    )
+
     init {
         prepareForVoting()
     }
@@ -95,13 +119,25 @@ class VoteProposalListVM(
                     )
                 }
         }.let { contentFlow ->
-            combine(contentFlow, preparationErrorSheet) { content, errorSheet ->
-                content to errorSheet
+            combine(contentFlow, preparationErrorSheet, preparationGate) { content, errorSheet, gate ->
+                Triple(content, errorSheet, gate)
             }
-        }.map { (content, errorSheet) ->
+        }.map { (content, errorSheet, gate) ->
+            // Suppress the resolved-list content frame until the eligibility ladder
+            // confirms `Ready` (or until prep surfaces a recoverable error sheet — in
+            // which case we still want to render the list underneath the sheet so the
+            // "Try again" / "Go back" controls have somewhere to live). When the gate
+            // is PREPARING, fall through to the `content = null` shimmer so the user
+            // never sees the proposal list flash before being routed to WalletSyncing
+            // or Ineligible.
+            val gatedContent = when {
+                gate == PreparationGate.READY -> content
+                errorSheet != null -> content
+                else -> null
+            }
             LceState(
-                content = content,
-                isLoading = content == null,
+                content = gatedContent,
+                isLoading = gatedContent == null,
                 error = errorSheet?.let(LceError::BottomSheet)
             )
         }.stateIn(
@@ -118,15 +154,21 @@ class VoteProposalListVM(
         }
 
         preparationErrorSheet.value = null
+        // Reset the gate so a "Try again" from the error sheet re-suppresses the list
+        // until the next prep attempt resolves; without this, the list would render
+        // while the retry is in flight.
+        preparationGate.value = PreparationGate.PREPARING
         preparationJob = viewModelScope.launch {
             runCatching {
                 prepareVotingRound(args.roundId)
             }.onSuccess { preparation ->
                 when (preparation) {
-                    is VotingRoundPreparationResult.WalletSyncing ->
+                    is VotingRoundPreparationResult.WalletSyncing -> {
                         navigationRouter.forward(VoteWalletSyncingArgs(roundId = args.roundId))
+                        preparationGate.value = PreparationGate.READY
+                    }
 
-                    is VotingRoundPreparationResult.Ineligible ->
+                    is VotingRoundPreparationResult.Ineligible -> {
                         navigationRouter.forward(
                             VoteIneligibleArgs(
                                 reason = preparation.toIneligibilityReason(),
@@ -134,12 +176,15 @@ class VoteProposalListVM(
                                 eligibleWeightZatoshi = preparation.eligibleWeight
                             )
                         )
+                        preparationGate.value = PreparationGate.READY
+                    }
 
-                    else -> Unit
+                    is VotingRoundPreparationResult.Ready -> preparationGate.value = PreparationGate.READY
                 }
             }.onFailure { throwable ->
                 Log.e("VoteProposalList", "Failed to prepare voting round ${args.roundId}", throwable)
                 preparationErrorSheet.value = buildPreparationErrorSheet(throwable)
+                preparationGate.value = PreparationGate.READY
             }
         }
     }
@@ -426,3 +471,11 @@ private fun VotingRoundPreparationResult.Ineligible.toIneligibilityReason(): Vot
     } else {
         VoteIneligibilityReason.BALANCE_TOO_LOW
     }
+
+private enum class PreparationGate {
+    /** `prepareVotingRound` is in flight; suppress proposal-list content. */
+    PREPARING,
+
+    /** Eligibility resolved to `Ready`, or prep is not applicable for this mode. */
+    READY,
+}
