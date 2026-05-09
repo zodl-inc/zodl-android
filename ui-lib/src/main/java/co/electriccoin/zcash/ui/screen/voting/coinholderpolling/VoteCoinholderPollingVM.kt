@@ -30,6 +30,8 @@ import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshActiveVotingSessionUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshVotingRoundsUseCase
+import co.electriccoin.zcash.ui.common.usecase.TrackVotingSharesUseCase
+import co.electriccoin.zcash.ui.common.usecase.VotingShareTrackingResult
 import co.electriccoin.zcash.ui.configuration.ConfigurationEntries
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
@@ -51,12 +53,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.coroutineScope
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
@@ -72,6 +76,7 @@ class VoteCoinholderPollingVM(
     private val votingSessionStore: VotingSessionStore,
     private val navigationRouter: NavigationRouter,
     private val errorStateMapper: ErrorMapperUseCase,
+    private val trackVotingShares: TrackVotingSharesUseCase,
     observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase,
 ) : ViewModel() {
     private val roundsLce =
@@ -112,6 +117,7 @@ class VoteCoinholderPollingVM(
         observeVotingChainConfigChanges()
         refreshVotingData()
         startVotingDataAutoRefresh()
+        startForegroundShareTracking()
     }
 
     @OptIn(DelicateCoroutinesApi::class)
@@ -307,6 +313,111 @@ class VoteCoinholderPollingVM(
                 } catch (throwable: Throwable) {
                     Log.w(TAG, "Round list auto refresh failed", throwable)
                 }
+            }
+        }
+    }
+
+    /**
+     * Foreground driver that mirrors iOS `pollShareStatus` (`VotingStore+Navigation.swift:267-419`).
+     *
+     * iOS starts foreground polling on `governanceTabAppeared` and cancels it on
+     * `governanceTabDisappeared` (`VotingStore+Session.swift:565-575`). The polls-list VM is the
+     * Android analogue of that lifecycle: the user's entry to (and exit from) the voting flow.
+     * Without this driver, share confirmations on a fresh launch lag until the WorkManager worker
+     * fires its scheduled run; the worker continues to handle backgrounded/killed-app coverage
+     * and is not modified here.
+     *
+     * Per-round work runs `TrackVotingSharesUseCase` in a `Pending(delayMillis) -> delay -> invoke`
+     * loop, matching the cadence the worker uses (3-30s adaptive). Each `viewModelScope.launch`
+     * is cancelled by `ViewModel.clear()` when the user navigates back out of the polls list, so
+     * no explicit teardown is required.
+     *
+     * Multi-round: tracks every round with a non-empty `submittedProposalIds` for the currently
+     * selected account, mirroring `getRoundIdsRequiringShareTracking` (the same enumeration the
+     * cold-launch resume in `HomeVM` uses). The use case is idempotent across the worker and the
+     * foreground driver — `markShareConfirmed` is a no-op when already confirmed and
+     * `addSentServers` excludes already-sent URLs — so duplicate work between the WorkManager
+     * worker and this driver is safe. Re-discovery inside the outer loop picks up rounds that
+     * become eligible while the user is on this screen (e.g. after returning from a successful
+     * submission).
+     */
+    private fun startForegroundShareTracking() {
+        viewModelScope.launch {
+            // `collectLatest` cancels the previous tracking scope when the selected account
+            // changes — `runForegroundShareTracking` never returns on its own (`while (true)`),
+            // so a plain `collect` would starve later emissions.
+            selectedAccountUuid
+                .filterNotNull()
+                .distinctUntilChanged()
+                .collectLatest { accountUuid ->
+                    runForegroundShareTracking(accountUuid)
+                }
+        }
+    }
+
+    private suspend fun runForegroundShareTracking(accountUuid: String) {
+        // `coroutineScope` makes the per-round children a structured group so a switch to a
+        // different `accountUuid` (the outer `collect` re-invokes us) cancels every in-flight
+        // round loop deterministically before the next account starts.
+        coroutineScope {
+            val activeRoundIds = mutableSetOf<String>()
+            // `Completed` is sticky for this driver's lifetime: the repo's
+            // `getRoundIdsRequiringShareTracking` only filters on `submittedProposalIds.isNotEmpty()`
+            // and does NOT exclude rounds whose shares are all confirmed, so without this set we
+            // would re-launch `TrackVotingSharesUseCase` every 15s for already-finished rounds.
+            // Mirrors the WorkManager worker which doesn't re-enqueue on `Completed`.
+            val completedRoundIds = mutableSetOf<String>()
+            while (true) {
+                val pendingRoundIds = runCatching {
+                    votingRecoveryRepository.getRoundIdsRequiringShareTracking(accountUuid)
+                }.getOrDefault(emptyList())
+                pendingRoundIds
+                    .filter { roundId ->
+                        roundId !in completedRoundIds && activeRoundIds.add(roundId)
+                    }
+                    .forEach { roundId ->
+                        launch {
+                            var completed = false
+                            try {
+                                completed = trackRoundUntilCompleted(roundId)
+                            } finally {
+                                if (completed) {
+                                    // Keep the id in `activeRoundIds` so a defensive `add(roundId)`
+                                    // would also reject it; `completedRoundIds` is the
+                                    // authoritative gate.
+                                    completedRoundIds.add(roundId)
+                                } else {
+                                    // Cancellation or non-`Completed` error: free the slot so the
+                                    // next outer tick can retry.
+                                    activeRoundIds.remove(roundId)
+                                }
+                            }
+                        }
+                    }
+                delay(FOREGROUND_REDISCOVERY_INTERVAL_MS)
+            }
+        }
+    }
+
+    /**
+     * @return `true` iff the round exited via `VotingShareTrackingResult.Completed` (terminal),
+     *         `false` if a non-cancellation error short-circuited the loop. Cancellation
+     *         propagates as `CancellationException` and never returns.
+     */
+    private suspend fun trackRoundUntilCompleted(roundId: String): Boolean {
+        while (true) {
+            val outcome = runCatching { trackVotingShares(roundId) }
+                .onFailure { throwable ->
+                    if (throwable is CancellationException) {
+                        throw throwable
+                    }
+                    Log.w(TAG, "Foreground share tracking failed for round $roundId", throwable)
+                }
+                .getOrElse { return false }
+            when (outcome) {
+                VotingShareTrackingResult.Completed -> return true
+                is VotingShareTrackingResult.Pending ->
+                    delay(outcome.delayMillis.coerceAtLeast(FOREGROUND_MIN_DELAY_MILLIS))
             }
         }
     }
@@ -637,6 +748,17 @@ class VoteCoinholderPollingVM(
         const val TAG = "VoteCoinholderPolling"
         const val ROUND_STATUS_AUTO_REFRESH_INTERVAL_MS = 5_000L
         const val ROUND_LIST_AUTO_REFRESH_INTERVAL_MS = 30_000L
+
+        // Minimum sleep between successive `TrackVotingSharesUseCase` invocations for a round.
+        // Matches `MIN_DELAY_MILLIS` inside the use case itself; duplicated here as a defensive
+        // floor in case the use case ever returns a smaller value.
+        const val FOREGROUND_MIN_DELAY_MILLIS = 3_000L
+
+        // Cadence at which the foreground driver re-checks `getRoundIdsRequiringShareTracking`
+        // to pick up newly submitted rounds. Each round-specific loop runs independently; this
+        // only governs how quickly a freshly submitted round becomes tracked while the user is
+        // already on the polls list. Aligned with the worker's default `Pending` delay.
+        const val FOREGROUND_REDISCOVERY_INTERVAL_MS = 15_000L
     }
 }
 
