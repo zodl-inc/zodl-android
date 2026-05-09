@@ -184,7 +184,7 @@
 
     <string name="vote_error_top_bar_title">Governance</string>
     <string name="vote_error_title_generic">Something went wrong</string>
-    <string name="vote_error_config_title">Wallet update required</string>
+    <string name="vote_error_config_title">Wallet Update Required</string>
     <string name="vote_error_mapper_no_reachable_vote_servers">Unable to reach any vote server. Please check your internet connection and try again.</string>
     <string name="vote_error_mapper_nullifier_spent">This wallet has already been registered for this voting round. If you have this wallet on multiple devices, please use the device where you originally started the voting process.</string>
     <string name="vote_error_mapper_round_closed">This voting round is no longer accepting votes. It may have ended or is not yet open.</string>
@@ -193,7 +193,7 @@
     <string name="vote_error_mapper_pir_invalid_proof">The nullifier service returned invalid proof data. Please try again in a few minutes.</string>
     <string name="vote_error_mapper_pir_unavailable">Unable to reach the nullifier service. Please check your internet connection and try again.</string>
     <string name="vote_error_mapper_pir_endpoints_missing">The voting configuration is missing nullifier-service endpoints. Please update the app and try again.</string>
-    <string name="vote_error_mapper_commitment_tree_not_grown">Your transaction has not been confirmed yet. The network may be congested. Please wait a moment and try again.</string>
+    <string name="vote_error_mapper_commitment_tree_not_grown">Your transaction hasn\'t been confirmed yet. The network may be congested — please wait a moment and try again.</string>
     <string name="vote_error_mapper_invalid_anchor_height">The voting state is out of sync. Please retry to use the latest data.</string>
     <string name="vote_error_mapper_invalid_proof">Your proof was rejected by the network. Please try again.</string>
     <string name="vote_error_mapper_proof_generation_failed">Proof generation failed. Please try again.</string>

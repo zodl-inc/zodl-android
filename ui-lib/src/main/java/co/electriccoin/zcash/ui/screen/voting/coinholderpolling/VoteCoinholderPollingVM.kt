@@ -165,6 +165,14 @@ class VoteCoinholderPollingVM(
 
             rounds?.let {
                 val normalizedEndorsedRoundIds = apiSnapshot.zodlEndorsedRoundIds.normalizedVotingRoundIds()
+                // Mirror iOS `RoundListItem.roundNumber` (`VotingStore+Session.swift:38-42`):
+                // assign stable 1-based numbers from `createdAtHeight` ascending order over
+                // the full unfiltered round list so numbering matches iOS and stays stable
+                // when `isOnDefaultConfig` toggles the visible subset.
+                val roundNumbersById = it
+                    .sortedBy { round -> round.createdAtHeight }
+                    .withIndex()
+                    .associate { (index, round) -> round.id to (index + 1) }
                 val visibleRounds = visibleRounds(
                     rounds = it,
                     endorsedRoundIds = normalizedEndorsedRoundIds,
@@ -186,6 +194,7 @@ class VoteCoinholderPollingVM(
                     activeRounds = activeSrc.map { round ->
                         buildCard(
                             round = round,
+                            roundNumber = roundNumbersById[round.id] ?: 0,
                             votedProposalCount = sessionState.submittedProposalCount(currentAccountUuid, round.id)
                                 ?: persistedVoteCounts[round.id],
                             trustIndicator = trustIndicatorFor(
@@ -198,6 +207,7 @@ class VoteCoinholderPollingVM(
                     pastRounds = pastSrc.map { round ->
                         buildCard(
                             round = round,
+                            roundNumber = roundNumbersById[round.id] ?: 0,
                             votedProposalCount = sessionState.submittedProposalCount(currentAccountUuid, round.id)
                                 ?: persistedVoteCounts[round.id],
                             trustIndicator = trustIndicatorFor(
@@ -230,6 +240,7 @@ class VoteCoinholderPollingVM(
 
     private fun buildCard(
         round: VotingRound,
+        roundNumber: Int,
         votedProposalCount: Int?,
         trustIndicator: VoteTrustIndicator?,
     ): VotePollCardState {
@@ -252,6 +263,7 @@ class VoteCoinholderPollingVM(
 
         return VotePollCardState(
             roundId = round.id,
+            roundNumber = roundNumber,
             title = stringRes(round.title),
             description = if (round.description.isNotEmpty()) {
                 stringRes(round.description)

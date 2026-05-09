@@ -26,6 +26,7 @@ enum class VotePollCardStatus {
 @Immutable
 data class VotePollCardState(
     val roundId: String,
+    val roundNumber: Int,
     val title: StringResource,
     val description: StringResource,
     val status: VotePollCardStatus,

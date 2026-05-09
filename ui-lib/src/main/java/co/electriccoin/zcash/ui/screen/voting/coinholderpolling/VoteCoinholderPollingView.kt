@@ -369,6 +369,7 @@ private fun CoinholderPollingPreviewWithRounds() =
                 activeRounds = listOf(
                     VotePollCardState(
                         roundId = "abc123",
+                        roundNumber = 3,
                         title = stringRes("ZF Grant Funding — Q3 2026"),
                         description = stringRes(
                             "Shielded vote on the allocation of Zcash Foundation grant funds for Q3 2026."
@@ -387,6 +388,7 @@ private fun CoinholderPollingPreviewWithRounds() =
                 pastRounds = listOf(
                     VotePollCardState(
                         roundId = "def456",
+                        roundNumber = 2,
                         title = stringRes("ZF Grant Funding — Q2 2026"),
                         description = stringRes("Completed vote on Q2 2026 grant allocation."),
                         status = VotePollCardStatus.CLOSED,
@@ -401,6 +403,7 @@ private fun CoinholderPollingPreviewWithRounds() =
                     ),
                     VotePollCardState(
                         roundId = "ghi789",
+                        roundNumber = 1,
                         title = stringRes("ZF Grant Funding — Q1 2026"),
                         description = stringRes(""),
                         status = VotePollCardStatus.CLOSED,
