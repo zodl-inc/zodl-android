@@ -51,6 +51,7 @@ import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
 @Composable
 fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
     ZashiConfirmationBottomSheet(state = state.configErrorSheet)
+    ZashiConfirmationBottomSheet(state = state.unverifiedPollWarningSheet)
 
     BlankBgScaffold(
         topBar = { AppBar(state) },
@@ -218,6 +219,10 @@ private fun PollCard(state: VotePollCardState) {
                 }
             }
 
+            state.trustIndicator?.let { indicator ->
+                TrustIndicator(indicator)
+            }
+
             if (state.description.getValue().isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
@@ -236,6 +241,53 @@ private fun PollCard(state: VotePollCardState) {
         }
     }
 }
+
+@Composable
+private fun TrustIndicator(indicator: VotePollTrustIndicator) {
+    val params =
+        when (indicator) {
+            VotePollTrustIndicator.ZODL ->
+                TrustIndicatorParams(
+                    labelRes = R.string.vote_poll_card_trust_zodl,
+                    iconRes = R.drawable.ic_vote_check_verified_solid,
+                    iconTint = ZashiColors.Utility.SuccessGreen.utilitySuccess700,
+                    textColor = ZashiColors.Text.textPrimary
+                )
+
+            VotePollTrustIndicator.UNVERIFIED ->
+                TrustIndicatorParams(
+                    labelRes = R.string.vote_poll_card_trust_unverified,
+                    iconRes = R.drawable.ic_alert_circle,
+                    iconTint = ZashiColors.Utility.WarningYellow.utilityOrange700,
+                    textColor = ZashiColors.Utility.WarningYellow.utilityOrange700
+                )
+        }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(
+            painter = painterResource(params.iconRes),
+            contentDescription = null,
+            tint = params.iconTint,
+            modifier = Modifier.size(16.dp)
+        )
+        Text(
+            text = stringResource(params.labelRes),
+            style = ZashiTypography.textSm,
+            fontWeight = FontWeight.Medium,
+            color = params.textColor
+        )
+    }
+}
+
+private data class TrustIndicatorParams(
+    val labelRes: Int,
+    val iconRes: Int,
+    val iconTint: Color,
+    val textColor: Color,
+)
 
 @Composable
 private fun StatusBadge(status: VotePollCardStatus) {
@@ -357,6 +409,7 @@ private fun CoinholderPollingPreviewWithRounds() =
                         sessionStatus = SessionStatus.ACTIVE,
                         isActionEnabled = true,
                         dateLabel = stringRes("Closes May 15"),
+                        trustIndicator = VotePollTrustIndicator.ZODL,
                         votedLabel = null,
                         proposalCount = 2,
                         votedCount = 0,
@@ -372,6 +425,7 @@ private fun CoinholderPollingPreviewWithRounds() =
                         sessionStatus = SessionStatus.COMPLETED,
                         isActionEnabled = true,
                         dateLabel = stringRes("Closed Apr 10"),
+                        trustIndicator = VotePollTrustIndicator.ZODL,
                         votedLabel = stringRes("2 of 2 voted"),
                         proposalCount = 2,
                         votedCount = 2,
@@ -385,6 +439,7 @@ private fun CoinholderPollingPreviewWithRounds() =
                         sessionStatus = SessionStatus.COMPLETED,
                         isActionEnabled = true,
                         dateLabel = stringRes("Closed Jan 20"),
+                        trustIndicator = VotePollTrustIndicator.UNVERIFIED,
                         votedLabel = null,
                         proposalCount = 1,
                         votedCount = 0,

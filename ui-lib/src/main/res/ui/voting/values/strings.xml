@@ -19,6 +19,8 @@
     <string name="vote_poll_card_status_active">Active</string>
     <string name="vote_poll_card_status_voted">Voted</string>
     <string name="vote_poll_card_status_closed">Closed</string>
+    <string name="vote_poll_card_trust_zodl">Zodl</string>
+    <string name="vote_poll_card_trust_unverified">Unverified</string>
     <string name="vote_poll_card_closes">Closes %1$s</string>
     <string name="vote_poll_card_closed">Closed %1$s</string>
     <string name="vote_poll_card_enter">Enter Poll</string>
@@ -49,6 +51,8 @@
     <string name="vote_poll_ended_title">Poll Has Ended</string>
     <string name="vote_poll_ended_message">The voting period closed.\nYour responses cannot be submitted.</string>
     <string name="vote_poll_ended_view_results">View Results</string>
+    <string name="vote_unverified_poll_title">Unverified poll</string>
+    <string name="vote_unverified_poll_message">This poll hasn\'t been verified or endorsed. We can\'t confirm its legitimacy or how results will be used.</string>
 
     <string name="vote_done">Done</string>
     <string name="vote_dismiss">Dismiss</string>

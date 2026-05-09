@@ -12,12 +12,18 @@ data class VoteCoinholderPollingState(
     val onBack: () -> Unit,
     val onRefresh: () -> Unit,
     val configErrorSheet: ZashiConfirmationState? = null,
+    val unverifiedPollWarningSheet: ZashiConfirmationState? = null,
 )
 
 enum class VotePollCardStatus {
     ACTIVE,
     VOTED,
     CLOSED
+}
+
+enum class VotePollTrustIndicator {
+    ZODL,
+    UNVERIFIED
 }
 
 @Immutable
@@ -29,6 +35,7 @@ data class VotePollCardState(
     val sessionStatus: SessionStatus,
     val isActionEnabled: Boolean,
     val dateLabel: StringResource,
+    val trustIndicator: VotePollTrustIndicator?,
     val votedLabel: StringResource?,
     val proposalCount: Int,
     val votedCount: Int,
