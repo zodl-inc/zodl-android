@@ -61,6 +61,15 @@ import kotlin.math.max
 interface VotingApiProvider {
     suspend fun validateConfigSource(source: PinnedConfigSource)
 
+    /**
+     * Drops any in-memory resolved-config cache so the next caller (typically
+     * [fetchServiceConfig]) re-fetches both the static and dynamic configs from
+     * the network. Mirrors iOS's `prepareForServiceConfigRefresh` (see
+     * `VotingStore+Session.swift:644-647`) which nulls out `serviceConfig` on
+     * every voting flow entry.
+     */
+    suspend fun invalidateConfigCache()
+
     suspend fun fetchServiceConfig(): VotingServiceConfig
 
     suspend fun fetchActiveVotingSession(): VotingSession?
@@ -111,6 +120,12 @@ class KtorVotingApiProvider(
 
     override suspend fun validateConfigSource(source: PinnedConfigSource) {
         fetchTrustedConfig(source)
+    }
+
+    override suspend fun invalidateConfigCache() {
+        configMutex.withLock {
+            cachedResolvedConfig = null
+        }
     }
 
     override suspend fun fetchServiceConfig(): VotingServiceConfig =

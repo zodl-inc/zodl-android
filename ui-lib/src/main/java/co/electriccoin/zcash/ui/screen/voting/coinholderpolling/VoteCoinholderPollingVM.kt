@@ -14,6 +14,7 @@ import co.electriccoin.zcash.ui.common.model.withLce
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.VotingConfigException
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
+import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
 import co.electriccoin.zcash.ui.common.repository.VotingApiSnapshot
@@ -61,6 +62,7 @@ class VoteCoinholderPollingVM(
     private val configurationRepository: ConfigurationRepository,
     private val votingChainConfigRepository: VotingChainConfigRepository,
     private val votingConfigRepository: VotingConfigRepository,
+    private val votingApiProvider: VotingApiProvider,
     private val votingApiRepository: VotingApiRepository,
     private val votingRecoveryRepository: VotingRecoveryRepository,
     private val votingSessionStore: VotingSessionStore,
@@ -306,6 +308,13 @@ class VoteCoinholderPollingVM(
         if (resetVisibleConfigError) {
             configIssue = null
             configErrorSheet.value = null
+            // Mirror iOS `prepareForServiceConfigRefresh` (VotingStore+Session.swift:644-647):
+            // every flow entry / user-driven refresh drops the cached resolved config so
+            // downstream callers (authenticateVotingSession, configuredVoteServerUrls,
+            // delegateShares) cannot serve a stale config across flow openings. Auto-refresh
+            // polls leave the cache intact since they already force-refresh via
+            // RefreshVotingRoundsUseCase -> fetchServiceConfig.
+            votingApiProvider.invalidateConfigCache()
         }
 
         refreshVotingRounds()

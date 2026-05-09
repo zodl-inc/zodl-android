@@ -53,6 +53,8 @@ class RefreshVotingRoundsUseCaseTest {
     ) : VotingApiProvider {
         override suspend fun validateConfigSource(source: PinnedConfigSource) = Unit
 
+        override suspend fun invalidateConfigCache() = Unit
+
         override suspend fun fetchServiceConfig(): VotingServiceConfig = VotingServiceConfig.EMPTY
 
         override suspend fun fetchActiveVotingSession(): VotingSession? = null
