@@ -12,8 +12,8 @@ class RefreshVotingRoundsUseCase(
 ) {
     suspend operator fun invoke() {
         votingApiProvider.fetchServiceConfig()
-        val rounds = votingApiProvider.fetchAllRounds()
-        votingApiRepository.storeRounds(rounds)
+        val roundsResult = votingApiProvider.fetchAllRounds()
+        votingApiRepository.storeRounds(roundsResult.rounds, roundsResult.sessionsByRoundId)
         val endorsedRoundIds = try {
             votingApiProvider.fetchZodlEndorsedRoundIds()
         } catch (exception: Exception) {

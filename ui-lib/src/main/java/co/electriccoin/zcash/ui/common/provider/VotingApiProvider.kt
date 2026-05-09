@@ -58,6 +58,15 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import kotlin.math.max
 
+data class RoundsListResult(
+    val rounds: List<VotingRound>,
+    val sessionsByRoundId: Map<String, VotingSession>
+) {
+    companion object {
+        val EMPTY = RoundsListResult(rounds = emptyList(), sessionsByRoundId = emptyMap())
+    }
+}
+
 interface VotingApiProvider {
     suspend fun validateConfigSource(source: PinnedConfigSource)
 
@@ -74,7 +83,14 @@ interface VotingApiProvider {
 
     suspend fun fetchActiveVotingSession(): VotingSession?
 
-    suspend fun fetchAllRounds(): List<VotingRound>
+    /**
+     * Fetches `/rounds` and returns both the user-facing [VotingRound] cards and
+     * the underlying authenticated [VotingSession]s keyed by lower-cased round id.
+     * The session map lets the polls-list VM build a [VotingConfigSnapshot] from
+     * the user's tap without making another network call — the iOS pattern of
+     * "rounds list is authoritative" (`VotingStore+Session.swift:69-77`, `:588-640`).
+     */
+    suspend fun fetchAllRounds(): RoundsListResult
 
     suspend fun fetchZodlEndorsedRoundIds(): Set<String>
 
@@ -147,14 +163,19 @@ class KtorVotingApiProvider(
             }
         }
 
-    override suspend fun fetchAllRounds(): List<VotingRound> =
+    override suspend fun fetchAllRounds(): RoundsListResult =
         executeWithVoteServerFailover(ROUNDS_PATH) { baseUrl ->
             val response = get("$baseUrl$ROUNDS_PATH").body<ChainRoundsResponse>()
-            response.rounds
-                ?.mapNotNull { dto ->
-                    authenticateVotingSessionOrNull(dto.toVotingSession())?.let { dto.toVotingRound() }
-                }
-                ?: emptyList()
+            val dtos = response.rounds.orEmpty()
+            val rounds = mutableListOf<VotingRound>()
+            val sessions = mutableMapOf<String, VotingSession>()
+            for (dto in dtos) {
+                val session = authenticateVotingSessionOrNull(dto.toVotingSession()) ?: continue
+                val round = dto.toVotingRound()
+                rounds += round
+                sessions[round.id.lowercase()] = session
+            }
+            RoundsListResult(rounds = rounds, sessionsByRoundId = sessions)
         }
 
     override suspend fun fetchZodlEndorsedRoundIds(): Set<String> {

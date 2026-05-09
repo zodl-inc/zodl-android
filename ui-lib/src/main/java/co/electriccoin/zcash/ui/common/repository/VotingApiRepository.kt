@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.common.repository
 
 import co.electriccoin.zcash.ui.common.model.voting.TallyResults
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
+import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -9,6 +10,12 @@ import kotlinx.coroutines.flow.update
 
 data class VotingApiSnapshot(
     val rounds: List<VotingRound> = emptyList(),
+    /**
+     * Authenticated [VotingSession]s keyed by lower-cased round id, populated by
+     * `/rounds`. Lets the polls-list VM hydrate a [VotingConfigSnapshot] for the
+     * user's tapped round without re-hitting `/rounds/active`.
+     */
+    val sessionsByRoundId: Map<String, VotingSession> = emptyMap(),
     val zodlEndorsedRoundIds: Set<String> = emptySet(),
     val tallyResultsByRoundId: Map<String, TallyResults> = emptyMap(),
     val transactionConfirmations: Map<String, Boolean> = emptyMap()
@@ -17,7 +24,10 @@ data class VotingApiSnapshot(
 interface VotingApiRepository {
     val snapshot: StateFlow<VotingApiSnapshot>
 
-    fun storeRounds(rounds: List<VotingRound>)
+    fun storeRounds(
+        rounds: List<VotingRound>,
+        sessionsByRoundId: Map<String, VotingSession> = emptyMap()
+    )
 
     fun storeZodlEndorsedRoundIds(roundIds: Set<String>)
 
@@ -41,8 +51,20 @@ class VotingApiRepositoryImpl : VotingApiRepository {
 
     override val snapshot: StateFlow<VotingApiSnapshot> = mutableSnapshot.asStateFlow()
 
-    override fun storeRounds(rounds: List<VotingRound>) {
-        mutableSnapshot.update { current -> current.copy(rounds = rounds) }
+    override fun storeRounds(
+        rounds: List<VotingRound>,
+        sessionsByRoundId: Map<String, VotingSession>
+    ) {
+        mutableSnapshot.update { current ->
+            current.copy(
+                rounds = rounds,
+                sessionsByRoundId = if (sessionsByRoundId.isEmpty()) {
+                    current.sessionsByRoundId
+                } else {
+                    sessionsByRoundId
+                }
+            )
+        }
     }
 
     override fun storeZodlEndorsedRoundIds(roundIds: Set<String>) {

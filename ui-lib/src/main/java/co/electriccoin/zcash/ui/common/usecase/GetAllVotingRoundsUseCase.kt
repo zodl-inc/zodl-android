@@ -11,6 +11,6 @@ class GetAllVotingRoundsUseCase(
     suspend operator fun invoke(): List<VotingRound> =
         withContext(Dispatchers.IO) {
             votingApiProvider.fetchServiceConfig()
-            votingApiProvider.fetchAllRounds()
+            votingApiProvider.fetchAllRounds().rounds
         }
 }

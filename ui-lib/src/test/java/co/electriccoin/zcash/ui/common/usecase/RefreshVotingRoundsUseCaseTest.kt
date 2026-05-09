@@ -10,9 +10,9 @@ import co.electriccoin.zcash.ui.common.model.voting.TallyResults
 import co.electriccoin.zcash.ui.common.model.voting.TxConfirmation
 import co.electriccoin.zcash.ui.common.model.voting.TxResult
 import co.electriccoin.zcash.ui.common.model.voting.VoteCommitmentBundle
-import co.electriccoin.zcash.ui.common.model.voting.VotingRound
 import co.electriccoin.zcash.ui.common.model.voting.VotingServiceConfig
 import co.electriccoin.zcash.ui.common.model.voting.VotingSession
+import co.electriccoin.zcash.ui.common.provider.RoundsListResult
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepositoryImpl
 import kotlin.test.Test
@@ -59,7 +59,7 @@ class RefreshVotingRoundsUseCaseTest {
 
         override suspend fun fetchActiveVotingSession(): VotingSession? = null
 
-        override suspend fun fetchAllRounds(): List<VotingRound> = emptyList()
+        override suspend fun fetchAllRounds(): RoundsListResult = RoundsListResult.EMPTY
 
         override suspend fun fetchZodlEndorsedRoundIds(): Set<String> {
             endorsedRoundFailure?.let { throw it }

@@ -20,6 +20,8 @@ import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
 import co.electriccoin.zcash.ui.common.repository.VotingApiSnapshot
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingConfigRepository
+import co.electriccoin.zcash.ui.common.repository.VotingConfigSnapshot
+import co.electriccoin.zcash.ui.common.repository.VotingConfigSource
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
 import co.electriccoin.zcash.ui.common.repository.effectiveChoices
@@ -43,8 +45,10 @@ import co.electriccoin.zcash.ui.screen.voting.VoteTrustIndicator
 import co.electriccoin.zcash.ui.screen.voting.voteTrustIndicatorFor
 import co.electriccoin.zcash.ui.screen.voting.votingerror.VotingErrorMapper
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -92,6 +96,12 @@ class VoteCoinholderPollingVM(
             )
 
     init {
+        // Each fresh polls-list entry should re-grant `/rounds/active` authority over
+        // `currentConfig`; any leftover user pin from a previous flow lifecycle would
+        // suppress auto-refresh updates incorrectly.
+        viewModelScope.launch {
+            votingConfigRepository.clearUserSelection()
+        }
         viewModelScope.launch {
             selectedAccountUuid
                 .filterNotNull()
@@ -102,6 +112,21 @@ class VoteCoinholderPollingVM(
         observeVotingChainConfigChanges()
         refreshVotingData()
         startVotingDataAutoRefresh()
+    }
+
+    @OptIn(DelicateCoroutinesApi::class)
+    override fun onCleared() {
+        // Drop the user's round pin when the polls VM is destroyed (typically via
+        // back-navigation out of the voting flow). The downstream `/rounds/active`
+        // poll will then resume authority over `currentConfig` for any future flow
+        // entries. We launch on `GlobalScope` because `viewModelScope` is already
+        // cancelled by the time `onCleared()` runs (its `CloseableCoroutineScope`
+        // is closed in `ViewModel.clear()` before `onCleared()`); the pin reset
+        // is a single mutex-guarded value write so the brief leak is acceptable.
+        GlobalScope.launch {
+            votingConfigRepository.clearUserSelection()
+        }
+        super.onCleared()
     }
 
     private val apiSnapshotWithConfig =
@@ -405,6 +430,19 @@ class VoteCoinholderPollingVM(
                     return
                 }
 
+                // iOS treats the user's tap as the active-session source of truth
+                // (`VotingStore+Session.swift:69-77`, `:588-640`). Pin the tapped round as
+                // `currentConfig` so downstream consumers (PrepareVotingRoundUseCase,
+                // SubmitVotesUseCase, VoteWalletSyncingVM) operate on the user's choice
+                // rather than whatever `/rounds/active` last returned. Without the pin,
+                // PrepareVotingRoundUseCase.kt:58-60 throws when the user-selected round
+                // diverges from the active-round endpoint result. The pin also blocks
+                // the auto-refresh poll in RefreshActiveVotingSessionUseCase from
+                // overwriting currentConfig with a different round.
+                if (!pinUserSelectedRound(round)) {
+                    return
+                }
+
                 // Re-hydrate any draft votes persisted during a prior session that was killed
                 // before reaching the confirmation screen. Mirrors iOS `loadDrafts` at
                 // `VotingStore+Session.swift:293`. The VOTED branch already does this for
@@ -443,6 +481,40 @@ class VoteCoinholderPollingVM(
 
             VotePollCardStatus.CLOSED -> navigateToRoundOutcome(round)
         }
+    }
+
+    /**
+     * Hydrate `votingConfigRepository.currentConfig` from the rounds-list session for
+     * [round] and mark the round as the user's pinned selection so the auto-refresh
+     * poll cannot wipe it. Returns `false` if we can't recover the necessary session
+     * or service config (e.g. the rounds list was filtered before the session map was
+     * populated, or the static config refresh failed); the caller should bail out.
+     */
+    private suspend fun pinUserSelectedRound(round: VotingRound): Boolean {
+        val session = votingApiRepository.snapshot.value.sessionsByRoundId[round.id.lowercase()]
+        if (session == null) {
+            // Should not happen in practice — rounds in the list always have an
+            // authenticated session — but bail out rather than constructing a broken
+            // snapshot.
+            Log.w(TAG, "Missing cached session for round ${round.id}; cannot pin user selection")
+            return false
+        }
+        val serviceConfig = votingConfigRepository.currentConfig.value?.serviceConfig
+            ?: runCatching { votingApiProvider.fetchServiceConfig() }
+                .onFailure { throwable ->
+                    Log.w(TAG, "Failed to fetch service config while pinning round ${round.id}", throwable)
+                }
+                .getOrNull()
+            ?: return false
+
+        votingConfigRepository.setUserSelected(
+            VotingConfigSnapshot(
+                session = session,
+                serviceConfig = serviceConfig,
+                source = VotingConfigSource.REMOTE
+            )
+        )
+        return true
     }
 
     private fun onBack() = navigationRouter.back()

@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -36,11 +38,56 @@ data class VotingConfigSnapshot(
 interface VotingConfigRepository {
     val currentConfig: StateFlow<VotingConfigSnapshot?>
 
+    /**
+     * The lower-cased hex round id the user explicitly selected from the polls list,
+     * or null if no user selection is pinned. While set, [currentConfig] reflects
+     * the user-selected round and [RefreshActiveVotingSessionUseCase] suppresses
+     * overwrites from `/rounds/active` whenever the active-round endpoint reports
+     * a different (or no) round.
+     *
+     * Mirrors iOS's `state.activeSession` semantics (`VotingStore+Session.swift:69-77`,
+     * `:588-640`): the user's tap is the source of truth for which round drives the
+     * downstream pipeline.
+     */
+    val userSelectedRoundId: StateFlow<String?>
+
     suspend fun get(): VotingConfigSnapshot?
 
     fun observe(): Flow<VotingConfigSnapshot?>
 
     suspend fun store(snapshot: VotingConfigSnapshot)
+
+    /**
+     * Atomically write [snapshot] (both prefs and [currentConfig]) only when
+     * no user pin is held, or when the pin matches [fetchedRoundId]. Returns
+     * `true` when the write happened, `false` when it was suppressed because
+     * the user has pinned a different round.
+     *
+     * The pin-read and the write run under the repository's mutex so a
+     * concurrent [setUserSelected] cannot land between the suppression check
+     * and the [currentConfig] update — without this guard, an auto-refresh
+     * tick whose `putString` is suspended on encrypted-prefs I/O could
+     * resume after a user tap and clobber the pinned snapshot.
+     */
+    suspend fun storeUnlessPinnedToOther(
+        snapshot: VotingConfigSnapshot,
+        fetchedRoundId: String
+    ): Boolean
+
+    /**
+     * Pin [snapshot] as the user-selected active session in memory. Does not
+     * persist to disk: the on-disk snapshot stays as whatever `/rounds/active`
+     * last returned, which is what cold-launch flows like `HomeVM`'s pending-route
+     * recovery want to see.
+     */
+    suspend fun setUserSelected(snapshot: VotingConfigSnapshot)
+
+    /**
+     * Drop the user pin without touching the persisted snapshot or the in-memory
+     * [currentConfig]. Call when leaving the polls list so the next
+     * `/rounds/active` refresh resumes authority over [currentConfig].
+     */
+    suspend fun clearUserSelection()
 
     suspend fun clear()
 }
@@ -49,8 +96,18 @@ class VotingConfigRepositoryImpl(
     private val encryptedPreferenceProvider: EncryptedPreferenceProvider
 ) : VotingConfigRepository {
     private val mutableCurrentConfig = MutableStateFlow<VotingConfigSnapshot?>(null)
+    private val mutableUserSelectedRoundId = MutableStateFlow<String?>(null)
+
+    /**
+     * Serializes the pin-read + currentConfig-write sequence so the
+     * encrypted-prefs `putString` suspension inside [store] cannot interleave
+     * with a concurrent [setUserSelected] / [clearUserSelection] / [clear].
+     */
+    private val configMutex = Mutex()
 
     override val currentConfig: StateFlow<VotingConfigSnapshot?> = mutableCurrentConfig.asStateFlow()
+
+    override val userSelectedRoundId: StateFlow<String?> = mutableUserSelectedRoundId.asStateFlow()
 
     override suspend fun get(): VotingConfigSnapshot? {
         currentConfig.value?.let { cached -> return cached }
@@ -72,16 +129,52 @@ class VotingConfigRepositoryImpl(
         }
 
     override suspend fun store(snapshot: VotingConfigSnapshot) {
+        configMutex.withLock {
+            writeSnapshotLocked(snapshot)
+        }
+    }
+
+    override suspend fun storeUnlessPinnedToOther(
+        snapshot: VotingConfigSnapshot,
+        fetchedRoundId: String
+    ): Boolean =
+        configMutex.withLock {
+            val pinnedRoundId = mutableUserSelectedRoundId.value
+            if (pinnedRoundId != null && !pinnedRoundId.equals(fetchedRoundId, ignoreCase = true)) {
+                false
+            } else {
+                writeSnapshotLocked(snapshot)
+                true
+            }
+        }
+
+    override suspend fun setUserSelected(snapshot: VotingConfigSnapshot) {
+        configMutex.withLock {
+            mutableUserSelectedRoundId.value = snapshot.session.voteRoundId.toLowerHex()
+            mutableCurrentConfig.value = snapshot
+        }
+    }
+
+    override suspend fun clearUserSelection() {
+        configMutex.withLock {
+            mutableUserSelectedRoundId.value = null
+        }
+    }
+
+    override suspend fun clear() {
+        configMutex.withLock {
+            encryptedPreferenceProvider().remove(PREFERENCE_KEY)
+            mutableCurrentConfig.value = null
+            mutableUserSelectedRoundId.value = null
+        }
+    }
+
+    private suspend fun writeSnapshotLocked(snapshot: VotingConfigSnapshot) {
         encryptedPreferenceProvider().putString(
             key = PREFERENCE_KEY,
             value = snapshot.encode()
         )
         mutableCurrentConfig.value = snapshot
-    }
-
-    override suspend fun clear() {
-        encryptedPreferenceProvider().remove(PREFERENCE_KEY)
-        mutableCurrentConfig.value = null
     }
 
     private companion object {
