@@ -57,6 +57,7 @@ class VoteConfirmSubmissionVM(
 ) : ViewModel() {
     private val statusFlow = MutableStateFlow<VoteSubmissionStatus>(VoteSubmissionStatus.Idle)
     private val isFailureSheetVisible = MutableStateFlow(false)
+    private val activeSubmissionIncludesAuthorizationProgress = MutableStateFlow<Boolean?>(null)
     private val draftChoices = runCatching { args.choicesJson.toDraftChoices() }
         .getOrElse { throwable ->
             Log.e("VoteConfirmSubmission", "Failed to parse draft vote choices", throwable)
@@ -74,6 +75,18 @@ class VoteConfirmSubmissionVM(
             .flatMapLatest { accountUuid ->
                 votingRecoveryRepository.observe(accountUuid, args.roundIdHex)
             }.stateIn(this)
+    private val submissionUiState =
+        combine(
+            statusFlow,
+            isFailureSheetVisible,
+            activeSubmissionIncludesAuthorizationProgress
+        ) { status, isFailureSheetVisible, activeIncludesAuthorizationProgress ->
+            SubmissionUiState(
+                status = status,
+                isFailureSheetVisible = isFailureSheetVisible,
+                activeIncludesAuthorizationProgress = activeIncludesAuthorizationProgress
+            )
+        }
 
     init {
         viewModelScope.launch {
@@ -111,9 +124,8 @@ class VoteConfirmSubmissionVM(
             votingApiRepository.snapshot,
             recovery,
             isKeystoneAccount,
-            statusFlow,
-            isFailureSheetVisible,
-        ) { apiSnapshot, recovery, isKeystone, status, showFailureSheet ->
+            submissionUiState,
+        ) { apiSnapshot, recovery, isKeystone, submissionUiState ->
             apiSnapshot.rounds
                 .firstOrNull { round -> round.id == args.roundIdHex }
                 ?.let { round ->
@@ -121,8 +133,9 @@ class VoteConfirmSubmissionVM(
                         round = round,
                         recovery = recovery,
                         isKeystone = isKeystone,
-                        status = status,
-                        showFailureSheet = showFailureSheet
+                        status = submissionUiState.status,
+                        showFailureSheet = submissionUiState.isFailureSheetVisible,
+                        activeIncludesAuthorizationProgress = submissionUiState.activeIncludesAuthorizationProgress
                     )
                 }
         }.map { content ->
@@ -141,6 +154,7 @@ class VoteConfirmSubmissionVM(
         isKeystone: Boolean,
         status: VoteSubmissionStatus,
         showFailureSheet: Boolean,
+        activeIncludesAuthorizationProgress: Boolean?,
     ): VoteConfirmSubmissionState {
         val isPrepared = recovery?.eligibleWeight != null && recovery.hotkeyAddress != null
         val keystoneSignedBundles = recovery?.keystoneBundleSignatures?.size ?: 0
@@ -148,12 +162,13 @@ class VoteConfirmSubmissionVM(
         val hasPendingKeystoneRequest = recovery?.pendingKeystoneRequest != null
         val allKeystoneBundlesSigned = preparedBundleCount > 0 && keystoneSignedBundles >= preparedBundleCount
         val isSubmitting = status.isInFlight()
-        val includesAuthorizationProgress = recovery?.phase?.let { phase ->
-            phase == VotingRecoveryPhase.INITIALIZED ||
-                phase == VotingRecoveryPhase.BUNDLES_PREPARED ||
-                phase == VotingRecoveryPhase.HOTKEY_READY ||
-                phase == VotingRecoveryPhase.DELEGATION_PROVED
-        } ?: true
+        val phaseIncludesAuthorizationProgress = recovery.includesAuthorizationProgress()
+        val includesAuthorizationProgress =
+            if (status.isInFlight()) {
+                activeIncludesAuthorizationProgress ?: phaseIncludesAuthorizationProgress
+            } else {
+                phaseIncludesAuthorizationProgress
+            }
         val memo = if (isKeystone && !allKeystoneBundlesSigned) {
             if (hasPendingKeystoneRequest) {
                 stringRes(R.string.vote_confirm_memo_resume_keystone)
@@ -272,6 +287,7 @@ class VoteConfirmSubmissionVM(
         }
 
         isFailureSheetVisible.value = false
+        activeSubmissionIncludesAuthorizationProgress.value = recovery.value.includesAuthorizationProgress()
         statusFlow.value = VoteSubmissionStatus.LocalAuthorizing
         viewModelScope.launch {
             val authorizationResult = try {
@@ -296,6 +312,7 @@ class VoteConfirmSubmissionVM(
                 VotingSubmissionAuthorizationResult.Authorized -> Unit
                 VotingSubmissionAuthorizationResult.Cancelled -> {
                     statusFlow.value = previousStatus
+                    activeSubmissionIncludesAuthorizationProgress.value = null
                     return@launch
                 }
                 VotingSubmissionAuthorizationResult.Failed -> {
@@ -312,6 +329,7 @@ class VoteConfirmSubmissionVM(
             try {
                 submitVotes(args.roundIdHex, draftChoices, ::onSubmissionProgress)
                 statusFlow.value = VoteSubmissionStatus.Completed
+                activeSubmissionIncludesAuthorizationProgress.value = null
             } catch (throwable: CancellationException) {
                 throw throwable
             } catch (throwable: Exception) {
@@ -435,6 +453,7 @@ class VoteConfirmSubmissionVM(
 
     private fun setFailureStatus(status: VoteSubmissionStatus) {
         statusFlow.value = status
+        activeSubmissionIncludesAuthorizationProgress.value = null
         isFailureSheetVisible.value = true
     }
 
@@ -442,6 +461,27 @@ class VoteConfirmSubmissionVM(
         isFailureSheetVisible.value = false
     }
 }
+
+private fun VotingRecoverySnapshot?.includesAuthorizationProgress(): Boolean =
+    this?.phase?.includesAuthorizationProgress() ?: true
+
+private fun VotingRecoveryPhase.includesAuthorizationProgress(): Boolean =
+    when (this) {
+        VotingRecoveryPhase.INITIALIZED,
+        VotingRecoveryPhase.BUNDLES_PREPARED,
+        VotingRecoveryPhase.HOTKEY_READY,
+        VotingRecoveryPhase.DELEGATION_PROVED -> true
+
+        VotingRecoveryPhase.DELEGATION_SUBMITTED,
+        VotingRecoveryPhase.VOTES_SUBMITTED,
+        VotingRecoveryPhase.SHARES_SUBMITTED -> false
+    }
+
+private data class SubmissionUiState(
+    val status: VoteSubmissionStatus,
+    val isFailureSheetVisible: Boolean,
+    val activeIncludesAuthorizationProgress: Boolean?
+)
 
 private fun Long.toVotingWeightLabel() = "%.4f ZEC".format(this / 100_000_000.0)
 
