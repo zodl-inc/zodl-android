@@ -50,7 +50,7 @@ class VoteConfirmSubmissionVM(
     votingApiRepository: VotingApiRepository,
     private val votingRecoveryRepository: VotingRecoveryRepository,
     private val votingSessionStore: VotingSessionStore,
-    getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
+    private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
     prepareVotingRound: PrepareVotingRoundUseCase,
     private val authorizeVotingSubmission: AuthorizeVotingSubmissionUseCase,
     private val submitVotes: SubmitVotesUseCase,
@@ -91,6 +91,10 @@ class VoteConfirmSubmissionVM(
                 activeIncludesAuthorizationProgress = activeIncludesAuthorizationProgress
             )
         }
+
+    // Guards the cold-launch auto-resume: we only ever fire once per VM
+    // instance, even if `recovery` re-emits or the snapshot updates.
+    private var hasAttemptedAutoResume = false
 
     init {
         viewModelScope.launch {
@@ -134,6 +138,54 @@ class VoteConfirmSubmissionVM(
                 }
             }
         }
+        // Cold-launch auto-resume: if the previous app process was killed while
+        // SubmitVotesUseCase was mid-flight, the recovery phase advanced past
+        // HOTKEY_READY but never reached SHARES_SUBMITTED. The user lands back
+        // here (today via `recoverPendingVotingRouteIfNeeded` for Keystone, or
+        // by re-navigating manually for software wallets) and would otherwise
+        // have to press the CTA again. Mirror iOS `.advanceAfterVote` — fire
+        // `onSubmit()` automatically and let SubmitVotesUseCase's resume
+        // branches pick up wherever they left off.
+        viewModelScope.launch {
+            autoResumeIfInterrupted()
+        }
+    }
+
+    @Suppress("ReturnCount")
+    private suspend fun autoResumeIfInterrupted() {
+        if (hasAttemptedAutoResume) return
+        if (draftChoices.isEmpty()) return
+        // Wait until both the selected account and a non-null recovery
+        // snapshot are loaded. We read keystone-ness from the same account
+        // emission to avoid races between the two derived StateFlows.
+        val account = getSelectedWalletAccount.observe().filterNotNull().first()
+        val accountUuid = account.sdkAccount.accountUuid.toVotingAccountScopeId()
+        val snapshot = recovery.filterNotNull().first()
+        if (snapshot.accountUuid != accountUuid || snapshot.roundId != args.roundIdHex) {
+            // Defensive: only auto-resume against the snapshot for this VM.
+            return
+        }
+        if (!snapshot.phase.indicatesInterruptedSubmission()) return
+        // Keystone: never auto-fire if any bundles still need signing or
+        // there's a pending sign/scan request in flight. The CTA in those
+        // states routes to `onStartKeystoneSigning`, not `onSubmit`.
+        if (account is KeystoneAccount) {
+            val preparedBundles = snapshot.bundleCount ?: 0
+            val signedBundles = snapshot.keystoneBundleSignatures.size
+            if (preparedBundles == 0 || signedBundles < preparedBundles) return
+            if (snapshot.pendingKeystoneRequest != null) return
+        }
+        // Final guard: don't double-trigger if a submission has already been
+        // kicked off by another path (e.g. user tapped before the recovery
+        // flow latched).
+        if (statusFlow.value.isInFlight()) return
+        hasAttemptedAutoResume = true
+        Log.i(
+            "VoteConfirmSubmission",
+            "Auto-resuming interrupted vote submission for round ${args.roundIdHex} " +
+                "from phase ${snapshot.phase}"
+        )
+        onSubmit()
     }
 
     val state: StateFlow<LceState<VoteConfirmSubmissionState>> =
@@ -510,6 +562,27 @@ private fun VotingRecoveryPhase.includesAuthorizationProgress(): Boolean =
         VotingRecoveryPhase.DELEGATION_SUBMITTED,
         VotingRecoveryPhase.VOTES_SUBMITTED,
         VotingRecoveryPhase.SHARES_SUBMITTED -> false
+    }
+
+/**
+ * Recovery phases that mean: SubmitVotesUseCase was running when the process
+ * was killed. Phases up to HOTKEY_READY can be reached purely by preparation
+ * (no user CTA yet), so they're treated as "fresh" here and require the user
+ * to tap. SHARES_SUBMITTED is fully complete — no resume needed. Anything in
+ * between is in-flight and safe to auto-resume; the use-case's resume branches
+ * (cached delegation tx hashes, `submittedProposalIds`, etc.) skip already-
+ * completed work idempotently.
+ */
+private fun VotingRecoveryPhase.indicatesInterruptedSubmission(): Boolean =
+    when (this) {
+        VotingRecoveryPhase.INITIALIZED,
+        VotingRecoveryPhase.BUNDLES_PREPARED,
+        VotingRecoveryPhase.HOTKEY_READY,
+        VotingRecoveryPhase.SHARES_SUBMITTED -> false
+
+        VotingRecoveryPhase.DELEGATION_PROVED,
+        VotingRecoveryPhase.DELEGATION_SUBMITTED,
+        VotingRecoveryPhase.VOTES_SUBMITTED -> true
     }
 
 private data class SubmissionUiState(
