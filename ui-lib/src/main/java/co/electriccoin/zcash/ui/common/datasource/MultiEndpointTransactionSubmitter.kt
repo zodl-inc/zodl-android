@@ -17,6 +17,7 @@ internal class MultiEndpointTransactionSubmitter(
     private val scope: CoroutineScope,
     private val globalTimeoutMillis: Long = MULTI_SUBMIT_GLOBAL_TIMEOUT_MILLIS,
     private val gracePeriodMillis: Long = MULTI_SUBMIT_GRACE_PERIOD_MILLIS,
+    private val logger: MultiEndpointTransactionSubmitterLogger = TwigMultiEndpointTransactionSubmitterLogger,
     private val submit: suspend (CreatedTransaction, LightWalletEndpoint) -> TransactionSubmitResult
 ) {
     suspend fun submitTransactions(
@@ -56,12 +57,12 @@ internal class MultiEndpointTransactionSubmitter(
         logTag: String
     ): TransactionSubmitResult {
         if (endpoints.isEmpty()) {
-            Twig.error { "$logTag No endpoints available for transaction ${transaction.txIdString()}." }
+            logger.error { "$logTag No endpoints available for transaction ${transaction.txIdString()}." }
             return createGrpcFailure(transaction, "No endpoints available")
         }
 
         return if (endpoints.size == 1) {
-            Twig.info {
+            logger.info {
                 "$logTag Submitting transaction ${index + 1}/$transactionCount to ${endpoints.first().serverString()}."
             }
             submitToEndpoint(
@@ -70,7 +71,7 @@ internal class MultiEndpointTransactionSubmitter(
                 logTag = logTag
             )
         } else {
-            Twig.info {
+            logger.info {
                 "$logTag Broadcasting transaction ${index + 1}/$transactionCount to ${endpoints.size} endpoints."
             }
             broadcastToEndpoints(
@@ -159,7 +160,7 @@ internal class MultiEndpointTransactionSubmitter(
                         submissions = completedSubmissions
                     )
                 if (completion.complete(timeoutResult)) {
-                    Twig.error { "$logTag Timed out waiting for any endpoint to accept ${transaction.txIdString()}." }
+                    logger.error { "$logTag Timed out waiting for any endpoint to accept ${transaction.txIdString()}." }
                     jobs.forEach { it.cancel() }
                 }
             }
@@ -167,7 +168,7 @@ internal class MultiEndpointTransactionSubmitter(
         return try {
             when (val result = completion.await()) {
                 is BroadcastCompletion.Accepted -> {
-                    Twig.info {
+                    logger.info {
                         "$logTag Transaction ${transaction.txIdString()} accepted by ${result.endpoint.serverString()}."
                     }
                     scope.launch {
@@ -181,7 +182,7 @@ internal class MultiEndpointTransactionSubmitter(
                 is BroadcastCompletion.Rejected -> {
                     timeoutJob.cancel()
                     jobs.forEach { it.cancel() }
-                    Twig.error {
+                    logger.error {
                         "$logTag Transaction ${transaction.txIdString()} rejected by all ${endpoints.size} endpoint(s)."
                     }
                     result.result
@@ -204,25 +205,25 @@ internal class MultiEndpointTransactionSubmitter(
             val result = submit(transaction, endpoint)
             when (result) {
                 is TransactionSubmitResult.Success -> {
-                    Twig.info { "$logTag ${endpoint.serverString()} SUCCESS ${transaction.txIdString()}." }
+                    logger.info { "$logTag ${endpoint.serverString()} SUCCESS ${transaction.txIdString()}." }
                 }
 
                 is TransactionSubmitResult.Failure -> {
-                    Twig.warn {
+                    logger.warn {
                         "$logTag ${endpoint.serverString()} FAILED ${transaction.txIdString()}: " +
                             "${result.code} ${result.description}"
                     }
                 }
 
                 is TransactionSubmitResult.NotAttempted -> {
-                    Twig.warn { "$logTag ${endpoint.serverString()} NOT_ATTEMPTED ${transaction.txIdString()}." }
+                    logger.warn { "$logTag ${endpoint.serverString()} NOT_ATTEMPTED ${transaction.txIdString()}." }
                 }
             }
             result
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Twig.warn(e) { "$logTag ${endpoint.serverString()} FAILED ${transaction.txIdString()}." }
+            logger.warn(e) { "$logTag ${endpoint.serverString()} FAILED ${transaction.txIdString()}." }
             createGrpcFailure(transaction, e.message)
         }
 
@@ -273,6 +274,32 @@ internal class MultiEndpointTransactionSubmitter(
 }
 
 private fun LightWalletEndpoint.serverString() = "$host:$port"
+
+internal interface MultiEndpointTransactionSubmitterLogger {
+    fun info(message: () -> String)
+
+    fun warn(message: () -> String)
+
+    fun warn(
+        throwable: Throwable,
+        message: () -> String
+    )
+
+    fun error(message: () -> String)
+}
+
+private object TwigMultiEndpointTransactionSubmitterLogger : MultiEndpointTransactionSubmitterLogger {
+    override fun info(message: () -> String) = Twig.info(message)
+
+    override fun warn(message: () -> String) = Twig.warn(message)
+
+    override fun warn(
+        throwable: Throwable,
+        message: () -> String
+    ) = Twig.warn(throwable, message)
+
+    override fun error(message: () -> String) = Twig.error(message)
+}
 
 private const val MULTI_SUBMIT_GRACE_PERIOD_MILLIS = 5_000L
 private const val MULTI_SUBMIT_GLOBAL_TIMEOUT_MILLIS = 30_000L

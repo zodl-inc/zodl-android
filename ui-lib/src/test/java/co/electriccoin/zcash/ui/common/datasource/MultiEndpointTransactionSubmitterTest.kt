@@ -27,6 +27,7 @@ class MultiEndpointTransactionSubmitterTest {
             val submitter =
                 MultiEndpointTransactionSubmitter(
                     scope = backgroundScope,
+                    logger = noOpLogger,
                     submit = { _, submittedEndpoint ->
                         submissions += submittedEndpoint
                         TransactionSubmitResult.Success(transaction.txId)
@@ -54,6 +55,7 @@ class MultiEndpointTransactionSubmitterTest {
             val submitter =
                 MultiEndpointTransactionSubmitter(
                     scope = backgroundScope,
+                    logger = noOpLogger,
                     submit = { _, submittedEndpoint ->
                         when (submittedEndpoint) {
                             first -> {
@@ -87,6 +89,7 @@ class MultiEndpointTransactionSubmitterTest {
             val submitter =
                 MultiEndpointTransactionSubmitter(
                     scope = backgroundScope,
+                    logger = noOpLogger,
                     submit = { _, submittedEndpoint ->
                         when (submittedEndpoint.host) {
                             "first.example.com" -> failure(transaction, code = 1, grpcError = true)
@@ -122,6 +125,7 @@ class MultiEndpointTransactionSubmitterTest {
                 MultiEndpointTransactionSubmitter(
                     scope = backgroundScope,
                     globalTimeoutMillis = 100,
+                    logger = noOpLogger,
                     submit = { _, submittedEndpoint ->
                         when (submittedEndpoint.host) {
                             "failed.example.com" -> failure(transaction, code = 18, grpcError = false)
@@ -153,6 +157,7 @@ class MultiEndpointTransactionSubmitterTest {
             val submitter =
                 MultiEndpointTransactionSubmitter(
                     scope = backgroundScope,
+                    logger = noOpLogger,
                     submit = { _, _ ->
                         if (startedCount.incrementAndGet() == 2) {
                             started.complete(Unit)
@@ -192,6 +197,7 @@ class MultiEndpointTransactionSubmitterTest {
             val submitter =
                 MultiEndpointTransactionSubmitter(
                     scope = backgroundScope,
+                    logger = noOpLogger,
                     submit = { _, _ ->
                         submissions.incrementAndGet()
                         firstFailure
@@ -237,5 +243,19 @@ class MultiEndpointTransactionSubmitterTest {
 
     private companion object {
         const val LOG_TAG = "[MultiSubmitTest]"
+
+        val noOpLogger =
+            object : MultiEndpointTransactionSubmitterLogger {
+                override fun info(message: () -> String) = Unit
+
+                override fun warn(message: () -> String) = Unit
+
+                override fun warn(
+                    throwable: Throwable,
+                    message: () -> String
+                ) = Unit
+
+                override fun error(message: () -> String) = Unit
+            }
     }
 }
