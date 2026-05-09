@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.common.usecase
 import co.electriccoin.zcash.ui.common.model.voting.CastVoteSignature
 import co.electriccoin.zcash.ui.common.model.voting.DelegatedShareInfo
 import co.electriccoin.zcash.ui.common.model.voting.DelegationRegistration
+import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
 import co.electriccoin.zcash.ui.common.model.voting.ShareConfirmationResult
 import co.electriccoin.zcash.ui.common.model.voting.SharePayload
 import co.electriccoin.zcash.ui.common.model.voting.TallyResults
@@ -50,6 +51,8 @@ class RefreshVotingRoundsUseCaseTest {
         private val endorsedRoundIds: Set<String> = emptySet(),
         private val endorsedRoundFailure: Throwable? = null
     ) : VotingApiProvider {
+        override suspend fun validateConfigSource(source: PinnedConfigSource) = Unit
+
         override suspend fun fetchServiceConfig(): VotingServiceConfig = VotingServiceConfig.EMPTY
 
         override suspend fun fetchActiveVotingSession(): VotingSession? = null

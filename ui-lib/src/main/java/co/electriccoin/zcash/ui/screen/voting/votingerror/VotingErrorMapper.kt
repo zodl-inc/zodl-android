@@ -8,11 +8,61 @@ object VotingErrorMapper {
     fun toUserFriendlyMessage(rawMessage: String): StringResource {
         val lower = rawMessage.lowercase()
         return when {
+            lower.contains("no voting server accepted share") ||
+                lower.contains("no reachable vote servers") ||
+                lower.contains("all configured vote servers failed") ->
+                stringRes(UiR.string.vote_error_mapper_no_reachable_vote_servers)
+
             lower.contains("nullifier") && lower.contains("spent") ->
                 stringRes(UiR.string.vote_error_mapper_nullifier_spent)
 
+            lower.contains("vote round not found") ->
+                stringRes(UiR.string.vote_error_mapper_round_not_found)
+
             lower.contains("round") && (lower.contains("not active") || lower.contains("inactive") || lower.contains("closed")) ->
                 stringRes(UiR.string.vote_error_mapper_round_closed)
+
+            lower.contains("no active voting round") ->
+                stringRes(UiR.string.vote_error_mapper_round_closed)
+
+            lower.contains("pir proof root mismatch") ||
+                lower.contains("no pir server matches") ->
+                stringRes(UiR.string.vote_error_mapper_pir_snapshot_mismatch)
+
+            lower.contains("pir proof verification failed") ->
+                stringRes(UiR.string.vote_error_mapper_pir_invalid_proof)
+
+            lower.contains("pir server connect failed") ||
+                lower.contains("pir parallel fetch failed") ->
+                stringRes(UiR.string.vote_error_mapper_pir_unavailable)
+
+            lower.contains("no pir endpoints are configured") ->
+                stringRes(UiR.string.vote_error_mapper_pir_endpoints_missing)
+
+            lower.contains("commitment tree did not grow") ->
+                stringRes(UiR.string.vote_error_mapper_commitment_tree_not_grown)
+
+            lower.contains("invalid commitment tree anchor height") ->
+                stringRes(UiR.string.vote_error_mapper_invalid_anchor_height)
+
+            lower.contains("invalid zero-knowledge proof") ->
+                stringRes(UiR.string.vote_error_mapper_invalid_proof)
+
+            lower.contains("delegation bundle build failed") ||
+                lower.contains("create_proof failed") ->
+                stringRes(UiR.string.vote_error_mapper_proof_generation_failed)
+
+            lower.contains("notreestate") ||
+                lower.contains("no tree state") ->
+                stringRes(UiR.string.vote_error_mapper_no_tree_state)
+
+            lower.contains("http 5") ->
+                stringRes(UiR.string.vote_error_mapper_http_5)
+
+            lower.contains("grpcstatus") ||
+                lower.contains("rpc timed out") ||
+                lower.contains("transport became inactive") ->
+                stringRes(UiR.string.vote_error_mapper_lightwalletd_unavailable)
 
             lower.contains("pir") || lower.contains("private information retrieval") ->
                 stringRes(UiR.string.vote_error_mapper_pir_connection)

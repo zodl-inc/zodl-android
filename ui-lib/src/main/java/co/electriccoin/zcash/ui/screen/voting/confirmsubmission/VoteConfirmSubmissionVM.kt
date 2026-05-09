@@ -31,6 +31,7 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListMode
 import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingArgs
+import co.electriccoin.zcash.ui.screen.voting.votingerror.VotingErrorMapper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -448,7 +449,7 @@ private fun String?.toErrorMessageOrDefault(default: StringResource): StringReso
     if (isNullOrBlank()) {
         default
     } else {
-        stringRes(this)
+        VotingErrorMapper.toUserFriendlyMessage(this)
     }
 
 private fun String.toDraftChoices(): Map<Int, Int> {
