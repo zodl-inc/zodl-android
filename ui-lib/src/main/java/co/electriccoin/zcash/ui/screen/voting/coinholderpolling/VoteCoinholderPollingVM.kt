@@ -31,6 +31,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.voting.chainconfig.VoteChainConfigArgs
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListMode
 import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsArgs
@@ -42,6 +43,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -90,6 +92,7 @@ class VoteCoinholderPollingVM(
                     refreshRecoveryVoteCounts(votingApiRepository.snapshot.value.rounds, accountUuid)
                 }
         }
+        observeVotingChainConfigChanges()
         refreshVotingData()
         startVotingDataAutoRefresh()
     }
@@ -173,6 +176,7 @@ class VoteCoinholderPollingVM(
                     },
                     onBack = ::onBack,
                     onRefresh = ::refreshVotingData,
+                    onConfigSettings = ::onConfigSettings,
                 )
             }
         }.let { contentFlow ->
@@ -259,6 +263,22 @@ class VoteCoinholderPollingVM(
                     Log.w(TAG, "Round list auto refresh failed", throwable)
                 }
             }
+        }
+    }
+
+    private fun observeVotingChainConfigChanges() {
+        viewModelScope.launch {
+            var isFirstEmission = true
+            votingChainConfigRepository.state
+                .map { config -> config.selectedPinnedSource.orEmpty() }
+                .distinctUntilChanged()
+                .collect {
+                    if (isFirstEmission) {
+                        isFirstEmission = false
+                    } else {
+                        refreshVotingData()
+                    }
+                }
         }
     }
 
@@ -386,6 +406,8 @@ class VoteCoinholderPollingVM(
     }
 
     private fun onBack() = navigationRouter.back()
+
+    private fun onConfigSettings() = navigationRouter.forward(VoteChainConfigArgs)
 
     private fun buildConfigErrorSheet(rawMessage: String) =
         ZashiConfirmationState(

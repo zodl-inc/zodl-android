@@ -33,8 +33,10 @@ import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
+import co.electriccoin.zcash.ui.design.component.IconButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
+import co.electriccoin.zcash.ui.design.component.ZashiIconButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
@@ -47,6 +49,7 @@ import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
+import co.electriccoin.zcash.ui.design.R as DesignR
 
 @Composable
 fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
@@ -385,6 +388,16 @@ private fun AppBar(state: VoteCoinholderPollingState) {
                 modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
             )
         },
+        regularActions = {
+            ZashiIconButton(
+                state = IconButtonState(
+                    icon = DesignR.drawable.ic_app_bar_settings,
+                    contentDescription = stringRes(R.string.vote_chain_config_settings_content_description),
+                    onClick = state.onConfigSettings
+                ),
+                modifier = Modifier.size(40.dp)
+            )
+        },
         colors = ZcashTheme.colors.topAppBarColors orDark
             ZcashTheme.colors.topAppBarColors.copyColors(
                 containerColor = Color.Transparent
@@ -448,6 +461,7 @@ private fun CoinholderPollingPreviewWithRounds() =
                 ),
                 onBack = {},
                 onRefresh = {},
+                onConfigSettings = {},
             )
         )
     }
@@ -462,6 +476,7 @@ private fun CoinholderPollingPreviewEmpty() =
                 pastRounds = emptyList(),
                 onBack = {},
                 onRefresh = {},
+                onConfigSettings = {},
             )
         )
     }

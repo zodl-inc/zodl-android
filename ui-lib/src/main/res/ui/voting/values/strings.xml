@@ -2,6 +2,26 @@
 <resources>
     <string name="vote_top_bar_title">Coinholder Polling</string>
     <string name="vote_continue">Continue</string>
+    <string name="vote_chain_config_settings_content_description">Voting chain config</string>
+    <string name="vote_chain_config_title">Select Chain</string>
+    <string name="vote_chain_config_intro_title">Poll Data Source</string>
+    <string name="vote_chain_config_intro_subtitle">Select or enter a chain URL to fetch poll data from.</string>
+    <string name="vote_chain_config_default_name">Default</string>
+    <string name="vote_chain_config_custom_empty">No custom chains yet.</string>
+    <string name="vote_chain_config_add">Add</string>
+    <string name="vote_chain_config_edit">Edit</string>
+    <string name="vote_chain_config_delete">Delete</string>
+    <string name="vote_chain_config_cancel">Cancel</string>
+    <string name="vote_chain_config_save">Save</string>
+    <string name="vote_chain_config_add_title">Add custom chain</string>
+    <string name="vote_chain_config_edit_title">Edit custom chain</string>
+    <string name="vote_chain_config_name_label">Name</string>
+    <string name="vote_chain_config_url_label">Chain URL</string>
+    <string name="vote_chain_config_error_title">Invalid chain config</string>
+    <string name="vote_chain_config_error_name_required">Enter a name for this chain.</string>
+    <string name="vote_chain_config_error_url_required">Enter a static config HTTPS URL.</string>
+    <string name="vote_chain_config_error_duplicate_default">That URL is the default chain. Select Default instead.</string>
+    <string name="vote_chain_config_error_duplicate_custom">That chain URL is already saved.</string>
 
     <string name="vote_how_to_vote_title">How to vote with %1$s</string>
     <string name="vote_how_to_vote_subtitle">Your ZEC gives you a voice. Shape the future of the Zcash network by voting on active proposals.</string>

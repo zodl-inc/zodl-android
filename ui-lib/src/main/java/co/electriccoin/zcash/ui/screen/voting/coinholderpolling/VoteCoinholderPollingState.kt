@@ -11,6 +11,7 @@ data class VoteCoinholderPollingState(
     val pastRounds: List<VotePollCardState>,
     val onBack: () -> Unit,
     val onRefresh: () -> Unit,
+    val onConfigSettings: () -> Unit,
     val configErrorSheet: ZashiConfirmationState? = null,
     val unverifiedPollWarningSheet: ZashiConfirmationState? = null,
 )
