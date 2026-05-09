@@ -18,6 +18,7 @@ import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
 import co.electriccoin.zcash.ui.common.repository.VotingApiSnapshot
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
+import co.electriccoin.zcash.ui.common.repository.VotingConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
 import co.electriccoin.zcash.ui.common.repository.effectiveChoices
@@ -59,6 +60,7 @@ class VoteCoinholderPollingVM(
     private val refreshVotingRounds: RefreshVotingRoundsUseCase,
     private val configurationRepository: ConfigurationRepository,
     private val votingChainConfigRepository: VotingChainConfigRepository,
+    private val votingConfigRepository: VotingConfigRepository,
     private val votingApiRepository: VotingApiRepository,
     private val votingRecoveryRepository: VotingRecoveryRepository,
     private val votingSessionStore: VotingSessionStore,
@@ -128,6 +130,7 @@ class VoteCoinholderPollingVM(
             val apiSnapshot = apiSnapshotWithConfig.apiSnapshot
             val rounds = when {
                 apiSnapshot.rounds.isNotEmpty() -> apiSnapshot.rounds
+                roundsLceState.loading -> null
                 roundsLceState.content is LceContent.Success -> emptyList()
                 else -> null
             }
@@ -279,10 +282,24 @@ class VoteCoinholderPollingVM(
                     if (isFirstEmission) {
                         isFirstEmission = false
                     } else {
+                        clearVotingStateForConfigRefresh()
                         refreshVotingData()
                     }
                 }
         }
+    }
+
+    private suspend fun clearVotingStateForConfigRefresh() {
+        configIssue = null
+        configErrorSheet.value = null
+        unverifiedPollWarningSheet.value = null
+        pendingUnverifiedRoundSelection = null
+        recoveryVoteCountsJob?.cancel()
+        recoveryVoteCountsJob = null
+        recoveryVoteCounts.value = emptyMap()
+        votingConfigRepository.clear()
+        votingSessionStore.clear()
+        votingApiRepository.clear()
     }
 
     private suspend fun refreshVotingDataInternal(resetVisibleConfigError: Boolean): List<VotingRound> {
