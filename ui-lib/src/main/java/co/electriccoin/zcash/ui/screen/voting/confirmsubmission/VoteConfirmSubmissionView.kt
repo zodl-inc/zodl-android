@@ -37,6 +37,7 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.component.VoteHeaderIconStyle
 import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIcons
 import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIconsState
+import co.electriccoin.zcash.ui.screen.voting.votingerror.VotingErrorMapper
 
 @Composable
 fun VoteConfirmSubmissionView(state: VoteConfirmSubmissionState) {
@@ -200,7 +201,7 @@ private fun String?.toMessageOrDefault(default: StringResource): StringResource 
     if (isNullOrBlank()) {
         default
     } else {
-        stringRes(this)
+        VotingErrorMapper.toUserFriendlyMessage(this)
     }
 
 private fun previewState(status: VoteSubmissionStatus) = VoteConfirmSubmissionState(
