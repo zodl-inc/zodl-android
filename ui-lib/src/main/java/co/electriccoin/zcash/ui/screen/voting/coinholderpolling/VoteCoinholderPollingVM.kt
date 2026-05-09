@@ -405,6 +405,17 @@ class VoteCoinholderPollingVM(
                     return
                 }
 
+                // Re-hydrate any draft votes persisted during a prior session that was killed
+                // before reaching the confirmation screen. Mirrors iOS `loadDrafts` at
+                // `VotingStore+Session.swift:293`. The VOTED branch already does this for
+                // submitted rounds; ACTIVE re-entry needs the same so per-tap persistence
+                // (see VoteProposalDetailVM.persistDraftsForCurrentRound) round-trips.
+                val persistedDrafts =
+                    votingRecoveryRepository.get(accountUuid, round.id)?.draftChoices.orEmpty()
+                if (persistedDrafts.isNotEmpty()) {
+                    votingSessionStore.restoreDraftVotes(accountUuid, round.id, persistedDrafts)
+                }
+
                 navigationRouter.forward(
                     VoteProposalListArgs(
                         roundId = round.id,

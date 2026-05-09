@@ -1,6 +1,8 @@
 package co.electriccoin.zcash.ui.screen.voting.proposaldetail
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.LceState
@@ -13,6 +15,7 @@ import co.electriccoin.zcash.ui.common.model.voting.optionsWithAbstain
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
+import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
@@ -25,17 +28,20 @@ import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListMode
 import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsArgs
 import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingArgs
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 class VoteProposalDetailVM(
     private val args: VoteProposalDetailArgs,
     votingApiRepository: VotingApiRepository,
     private val configurationRepository: ConfigurationRepository,
     private val votingChainConfigRepository: VotingChainConfigRepository,
+    private val votingRecoveryRepository: VotingRecoveryRepository,
     private val votingSessionStore: VotingSessionStore,
     private val navigationRouter: NavigationRouter,
     observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase,
@@ -135,6 +141,7 @@ class VoteProposalDetailVM(
                         proposalId = proposal.id,
                         optionId = option.id
                     )
+                    persistDraftsForCurrentRound(accountUuid)
                 },
             )
         }
@@ -184,12 +191,47 @@ class VoteProposalDetailVM(
             roundId = round.id,
             proposals = round.proposals
         )
+        persistDraftsForCurrentRound(accountUuid)
         navigationRouter.replace(
             VoteProposalListArgs(
                 roundId = round.id,
                 mode = VoteProposalListMode.REVIEW
             )
         )
+    }
+
+    /**
+     * Mirrors iOS `Self.persistDrafts(...)` calls in `VotingStore+Submission.swift:15,24` and
+     * `VotingStore+Navigation.swift:447,492`: every draft mutation snapshots the current
+     * draft state to durable storage so a process kill on the proposal list (before the user
+     * reaches `VoteConfirmSubmissionVM.persistDraftChoices`) doesn't lose taps.
+     *
+     * Reads the post-mutation snapshot from the in-memory session store (the toggle/abstain
+     * call that preceded this is synchronous), then issues a fire-and-forget write through
+     * the recovery repository. Failures are logged and swallowed: the in-memory state stays
+     * consistent and the next mutation will retry.
+     */
+    private fun persistDraftsForCurrentRound(accountUuid: String) {
+        if (args.roundId.isEmpty()) return
+        val snapshot = votingSessionStore.state.value
+            .draftVotesFor(accountUuid = accountUuid, roundId = args.roundId)
+        viewModelScope.launch {
+            try {
+                votingRecoveryRepository.storeDraftChoices(
+                    accountUuid = accountUuid,
+                    roundId = args.roundId,
+                    draftChoices = snapshot
+                )
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (throwable: Throwable) {
+                Log.e(
+                    "VoteProposalDetail",
+                    "Failed to persist draft votes for ${args.roundId}",
+                    throwable
+                )
+            }
+        }
     }
 
     private fun navigateToRoundOutcome(round: VotingRound) {
