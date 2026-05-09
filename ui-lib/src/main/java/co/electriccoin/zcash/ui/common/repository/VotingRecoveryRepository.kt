@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.repository
 
 import co.electriccoin.zcash.preference.EncryptedPreferenceProvider
+import co.electriccoin.zcash.preference.api.PreferenceProvider
 import co.electriccoin.zcash.preference.model.entry.PreferenceKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
@@ -206,6 +207,16 @@ interface VotingRecoveryRepository {
         accountUuid: String,
         roundId: String
     )
+
+    /**
+     * Enumerates round ids for the given account that have a recorded submission
+     * (`submittedAtEpochSeconds != null` and at least one entry in `submittedProposalIds`)
+     * and may therefore have outstanding share-tracking work. The recovery snapshot does not
+     * track when share confirmation finishes, so the resulting list is conservative: callers
+     * should pass each round id to the share-tracking worker, which is idempotent and
+     * short-circuits when there are no unconfirmed shares.
+     */
+    suspend fun getRoundIdsRequiringShareTracking(accountUuid: String): List<String>
 }
 
 class VotingRecoveryRepositoryImpl(
@@ -257,10 +268,12 @@ class VotingRecoveryRepositoryImpl(
     }
 
     override suspend fun store(snapshot: VotingRecoverySnapshot) {
-        encryptedPreferenceProvider().putString(
+        val preferenceProvider = encryptedPreferenceProvider()
+        preferenceProvider.putString(
             key = key(snapshot.accountUuid, snapshot.roundId),
             value = snapshot.encode()
         )
+        addToIndex(preferenceProvider, snapshot.accountUuid, snapshot.roundId)
     }
 
     override suspend fun setPhase(
@@ -568,6 +581,30 @@ class VotingRecoveryRepositoryImpl(
         val preferenceProvider = encryptedPreferenceProvider()
         preferenceProvider.remove(key(accountUuid, roundId))
         preferenceProvider.remove(legacyKey(roundId))
+        removeFromIndex(preferenceProvider, accountUuid, roundId)
+    }
+
+    override suspend fun getRoundIdsRequiringShareTracking(accountUuid: String): List<String> {
+        val preferenceProvider = encryptedPreferenceProvider()
+        val scopedAccount = accountUuid.lowercase()
+        val pairs = readIndex(preferenceProvider)
+        if (pairs.isEmpty()) {
+            return emptyList()
+        }
+        return pairs
+            .filter { (indexedAccount, _) -> indexedAccount == scopedAccount }
+            .mapNotNull { (_, indexedRoundId) ->
+                val snapshot = get(scopedAccount, indexedRoundId) ?: run {
+                    // Stale index entry — drop it lazily.
+                    removeFromIndex(preferenceProvider, scopedAccount, indexedRoundId)
+                    return@mapNotNull null
+                }
+                if (snapshot.submittedProposalIds.isNotEmpty()) {
+                    snapshot.roundId
+                } else {
+                    null
+                }
+            }
     }
 
     private fun key(
@@ -580,6 +617,82 @@ class VotingRecoveryRepositoryImpl(
     private fun legacyKey(roundId: String) = PreferenceKey(
         "voting_recovery_${roundId.lowercase()}"
     )
+
+    private suspend fun readIndex(
+        preferenceProvider: PreferenceProvider
+    ): List<Pair<String, String>> {
+        val encoded = preferenceProvider.getString(INDEX_KEY) ?: return emptyList()
+        return decodeIndex(encoded)
+    }
+
+    private suspend fun addToIndex(
+        preferenceProvider: PreferenceProvider,
+        accountUuid: String,
+        roundId: String
+    ) {
+        val scopedAccount = accountUuid.lowercase()
+        val scopedRound = roundId.lowercase()
+        val current = readIndex(preferenceProvider)
+        if (current.any { (a, r) -> a == scopedAccount && r == scopedRound }) {
+            return
+        }
+        preferenceProvider.putString(
+            key = INDEX_KEY,
+            value = encodeIndex(current + (scopedAccount to scopedRound))
+        )
+    }
+
+    private suspend fun removeFromIndex(
+        preferenceProvider: PreferenceProvider,
+        accountUuid: String,
+        roundId: String
+    ) {
+        val scopedAccount = accountUuid.lowercase()
+        val scopedRound = roundId.lowercase()
+        val current = readIndex(preferenceProvider)
+        val updated = current.filterNot { (a, r) -> a == scopedAccount && r == scopedRound }
+        if (updated.size == current.size) {
+            return
+        }
+        if (updated.isEmpty()) {
+            preferenceProvider.remove(INDEX_KEY)
+        } else {
+            preferenceProvider.putString(
+                key = INDEX_KEY,
+                value = encodeIndex(updated)
+            )
+        }
+    }
+
+    private fun encodeIndex(pairs: List<Pair<String, String>>): String {
+        val array = JSONArray()
+        pairs.forEach { (accountUuid, roundId) ->
+            array.put(
+                JSONObject()
+                    .put("account_uuid", accountUuid)
+                    .put("round_id", roundId)
+            )
+        }
+        return array.toString()
+    }
+
+    private fun decodeIndex(encoded: String): List<Pair<String, String>> {
+        return runCatching {
+            val array = JSONArray(encoded)
+            buildList {
+                for (index in 0 until array.length()) {
+                    val entry = array.optJSONObject(index) ?: continue
+                    val accountUuid = entry.optString("account_uuid").takeIf(String::isNotEmpty) ?: continue
+                    val roundId = entry.optString("round_id").takeIf(String::isNotEmpty) ?: continue
+                    add(accountUuid to roundId)
+                }
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    private companion object {
+        val INDEX_KEY = PreferenceKey("voting_recovery_index")
+    }
 }
 
 private fun VotingRecoverySnapshot.encode(): String =

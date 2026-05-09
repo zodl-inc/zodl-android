@@ -57,6 +57,7 @@ import co.electriccoin.zcash.ui.screen.voting.scankeystone.ScanKeystoneVotingPCZ
 import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingArgs
 import co.electriccoin.zcash.ui.screen.tor.optin.TorOptInArgs
 import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
+import co.electriccoin.zcash.work.VotingShareTrackingScheduler
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
@@ -87,11 +88,13 @@ class HomeVM(
     private val votingSessionStore: VotingSessionStore,
     private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
     private val refreshActiveVotingSession: RefreshActiveVotingSessionUseCase,
+    private val votingShareTrackingScheduler: VotingShareTrackingScheduler,
 ) : ViewModel() {
     private var hasSyncErrorBeenShown = false
     private var hasRestoreSuccessBeenShown = false
     private var hasAttemptedPendingVotingRouteRecovery = false
     private var hasRecoveredPendingVotingRoute = false
+    private var hasResumedShareTracking = false
 
     private val messageData =
         getHomeMessage
@@ -143,6 +146,11 @@ class HomeVM(
             if (!hasAttemptedPendingVotingRouteRecovery) {
                 hasAttemptedPendingVotingRouteRecovery = true
                 hasRecoveredPendingVotingRoute = recoverPendingVotingRouteIfNeeded()
+            }
+
+            if (!hasResumedShareTracking) {
+                hasResumedShareTracking = true
+                resumePendingShareTracking()
             }
 
             hasSyncErrorBeenShown =
@@ -210,6 +218,29 @@ class HomeVM(
 
         navigationRouter.replaceAll(*restoredRoutes.toTypedArray())
         return true
+    }
+
+    /**
+     * Re-enqueue share-tracking workers for any rounds the wallet finished submitting in a prior
+     * launch. iOS triggers the equivalent on `governanceTabAppeared`; on Android the WorkManager
+     * worker outlives the process, but if the OS killed the app between `markVoteSubmitted` and
+     * the scheduler call in `SubmitVotesUseCase`, no worker was ever enqueued. Scheduling here
+     * uses `ExistingWorkPolicy.REPLACE`, so re-enqueueing an active worker is a no-op, and
+     * `TrackVotingSharesUseCase` short-circuits when no unconfirmed shares remain.
+     *
+     * Scoped to the currently selected account, mirroring the per-account pattern used by
+     * `recoverPendingVotingRouteIfNeeded` above.
+     */
+    private suspend fun resumePendingShareTracking() {
+        val accountUuid = runCatching {
+            getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId()
+        }.getOrNull() ?: return
+        val pendingRoundIds = runCatching {
+            votingRecoveryRepository.getRoundIdsRequiringShareTracking(accountUuid)
+        }.getOrDefault(emptyList())
+        pendingRoundIds.forEach { roundId ->
+            votingShareTrackingScheduler.schedule(roundId)
+        }
     }
 
     private fun createState(messageState: HomeMessageState?) =
