@@ -199,22 +199,31 @@ class SubmitVotesUseCase(
                             bundleIndex = bundleIndex
                         )
                         if (cachedDelegationTxHash is VotingTxHashLookup.Present) {
-                            val confirmation = awaitTxConfirmation(cachedDelegationTxHash.txHash)
-                            require(confirmation.code == 0) {
-                                confirmation.log.ifEmpty { "Delegation transaction failed" }
-                            }
-
-                            val vanPosition = confirmation.event("delegate_vote")
+                            // Fast-path probe: mirrors iOS `recoverDelegationVanPosition` with
+                            // `confirmationTimeout: 0`. A cached hash that hasn't propagated yet
+                            // (or that landed on-chain with a non-zero code) must NOT block this
+                            // flow for 90s — return null and fall through to fresh delegation.
+                            val confirmation = awaitTxConfirmation(
+                                txHash = cachedDelegationTxHash.txHash,
+                                maxAttempts = 1
+                            )
+                            val vanPosition = confirmation
+                                ?.takeIf { it.code == 0 }
+                                ?.event("delegate_vote")
                                 ?.attribute("leaf_index")
                                 ?.toIntOrNull()
-                                ?: error("Missing delegate_vote leaf_index for bundle $bundleIndex")
-                            votingCryptoClient.storeVanPosition(
-                                dbHandle = dbHandle,
-                                roundId = roundId,
-                                bundleIndex = bundleIndex,
-                                position = vanPosition
-                            )
-                            return@repeat
+                            if (vanPosition != null) {
+                                votingCryptoClient.storeVanPosition(
+                                    dbHandle = dbHandle,
+                                    roundId = roundId,
+                                    bundleIndex = bundleIndex,
+                                    position = vanPosition
+                                )
+                                return@repeat
+                            }
+                            // No usable cached confirmation (not yet propagated, failed on-chain,
+                            // or missing leaf_index) — fall through and re-run delegation from
+                            // scratch for this bundle.
                         }
 
                         val witnessesJson = votingCryptoClient.generateNoteWitnessesJson(
@@ -330,6 +339,7 @@ class SubmitVotesUseCase(
                         )
 
                         val confirmation = awaitTxConfirmation(txResult.txHash)
+                            ?: error("Transaction ${txResult.txHash} was not confirmed in time")
                         require(confirmation.code == 0) {
                             confirmation.log.ifEmpty { "Delegation transaction failed" }
                         }
@@ -439,6 +449,7 @@ class SubmitVotesUseCase(
 
                         if (cachedVoteTxHash is VotingTxHashLookup.Present) {
                             val confirmation = awaitTxConfirmation(cachedVoteTxHash.txHash)
+                                ?: error("Transaction ${cachedVoteTxHash.txHash} was not confirmed in time")
                             require(confirmation.code == 0) {
                                 confirmation.log.ifEmpty { "Vote commitment transaction failed" }
                             }
@@ -571,6 +582,7 @@ class SubmitVotesUseCase(
                         )
 
                         val confirmation = awaitTxConfirmation(txResult.txHash)
+                            ?: error("Transaction ${txResult.txHash} was not confirmed in time")
                         require(confirmation.code == 0) {
                             confirmation.log.ifEmpty { "Vote commitment transaction failed" }
                         }
@@ -696,15 +708,30 @@ class SubmitVotesUseCase(
             ?: error("Voting round $roundId has no stored hotkey seed")
     }
 
-    private suspend fun awaitTxConfirmation(txHash: String): TxConfirmation {
-        repeat(TX_CONFIRMATION_RETRIES) {
-            votingApiProvider.fetchTxConfirmation(txHash)?.let { confirmation ->
-                return confirmation
+    /**
+     * Polls `fetchTxConfirmation` until a confirmation is returned or the attempt budget is
+     * exhausted. Mirrors iOS `delegationTxConfirmationStatus` semantics:
+     *
+     * - `maxAttempts = TX_CONFIRMATION_RETRIES` (default, 45 × 2s ≈ 90s) — fresh-submit waits.
+     * - `maxAttempts = 1` — single fetch, no sleep, returns null if the TX hasn't propagated.
+     *   Used for the cached-delegation-hash recovery probe so a transient lookup miss does
+     *   not stall the submission flow (iOS: `confirmationTimeout: 0`).
+     *
+     * Returns null when the TX is not seen within the budget; callers decide whether that is
+     * fatal (fresh-submit) or a fall-through signal (recovery).
+     */
+    private suspend fun awaitTxConfirmation(
+        txHash: String,
+        maxAttempts: Int = TX_CONFIRMATION_RETRIES
+    ): TxConfirmation? {
+        require(maxAttempts >= 1) { "maxAttempts must be >= 1, was $maxAttempts" }
+        repeat(maxAttempts) { attempt ->
+            votingApiProvider.fetchTxConfirmation(txHash)?.let { return it }
+            if (attempt + 1 < maxAttempts) {
+                delay(TX_CONFIRMATION_POLL_MS)
             }
-            delay(TX_CONFIRMATION_POLL_MS)
         }
-
-        error("Transaction $txHash was not confirmed in time")
+        return null
     }
 
     private suspend fun submitMissingShares(
