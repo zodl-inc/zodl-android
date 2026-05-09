@@ -3,8 +3,38 @@ package co.electriccoin.zcash.ui.screen.voting.votingerror
 import co.electriccoin.zcash.ui.R as UiR
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
+import java.util.Locale
 
 object VotingErrorMapper {
+    /**
+     * Maps a delegation-phase error to a user-facing message, intercepting the
+     * `total_weight must yield at least 1 ballot` failure to surface the user's
+     * snapshot weight against the ballot divisor — matches iOS's
+     * `coinVote.delegation.insufficientSnapshotBalance` short-circuit in
+     * `VotingStore+Delegation.swift`'s `delegationProofFailed` reducer. Falls
+     * back to the generic single-arg mapper for all other errors.
+     *
+     * Pass null for either parameter when the value is unavailable; the generic
+     * mapper handles the fallthrough.
+     */
+    fun toUserFriendlyMessage(
+        rawMessage: String,
+        eligibleWeightZatoshi: Long?,
+        ballotDivisorZatoshi: Long?
+    ): StringResource {
+        if (eligibleWeightZatoshi != null &&
+            ballotDivisorZatoshi != null &&
+            rawMessage.lowercase().contains("total_weight must yield at least 1 ballot")
+        ) {
+            return stringRes(
+                UiR.string.vote_error_mapper_insufficient_snapshot_balance,
+                eligibleWeightZatoshi.toZecLabel(),
+                ballotDivisorZatoshi.toZecLabel()
+            )
+        }
+        return toUserFriendlyMessage(rawMessage)
+    }
+
     fun toUserFriendlyMessage(rawMessage: String): StringResource {
         val lower = rawMessage.lowercase()
         return when {
@@ -120,4 +150,11 @@ object VotingErrorMapper {
             lower.contains("fetch failed") ||
             lower.contains("http")
     }
+
+    // Snapshot balances and the ballot divisor are quantized in 0.125 ZEC
+    // increments, so three decimals is exact for both values.
+    private fun Long.toZecLabel(): String =
+        String.format(Locale.US, "%.3f", this / ZATOSHI_PER_ZEC)
+
+    private const val ZATOSHI_PER_ZEC = 100_000_000.0
 }

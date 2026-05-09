@@ -11,6 +11,7 @@ import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionProgress
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
+import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
@@ -53,11 +54,14 @@ class VoteConfirmSubmissionVM(
     prepareVotingRound: PrepareVotingRoundUseCase,
     private val authorizeVotingSubmission: AuthorizeVotingSubmissionUseCase,
     private val submitVotes: SubmitVotesUseCase,
+    private val votingCryptoClient: VotingCryptoClient,
     private val navigationRouter: NavigationRouter,
 ) : ViewModel() {
     private val statusFlow = MutableStateFlow<VoteSubmissionStatus>(VoteSubmissionStatus.Idle)
     private val isFailureSheetVisible = MutableStateFlow(false)
     private val activeSubmissionIncludesAuthorizationProgress = MutableStateFlow<Boolean?>(null)
+    // Loaded once per VM; ballot divisor is a static SDK constant.
+    private val ballotDivisorZatoshi = MutableStateFlow<Long?>(null)
     private val draftChoices = runCatching { args.choicesJson.toDraftChoices() }
         .getOrElse { throwable ->
             Log.e("VoteConfirmSubmission", "Failed to parse draft vote choices", throwable)
@@ -100,6 +104,19 @@ class VoteConfirmSubmissionVM(
                 )
             }
         }
+        viewModelScope.launch {
+            runCatching {
+                votingCryptoClient.ballotDivisorZatoshi()
+            }.onSuccess { divisor ->
+                ballotDivisorZatoshi.value = divisor
+            }.onFailure { throwable ->
+                Log.w(
+                    "VoteConfirmSubmission",
+                    "Failed to fetch ballot divisor for ${args.roundIdHex}",
+                    throwable
+                )
+            }
+        }
         if (draftChoices.isNotEmpty()) {
             viewModelScope.launch {
                 runCatching {
@@ -125,7 +142,8 @@ class VoteConfirmSubmissionVM(
             recovery,
             isKeystoneAccount,
             submissionUiState,
-        ) { apiSnapshot, recovery, isKeystone, submissionUiState ->
+            ballotDivisorZatoshi,
+        ) { apiSnapshot, recovery, isKeystone, submissionUiState, ballotDivisor ->
             apiSnapshot.rounds
                 .firstOrNull { round -> round.id == args.roundIdHex }
                 ?.let { round ->
@@ -135,7 +153,8 @@ class VoteConfirmSubmissionVM(
                         isKeystone = isKeystone,
                         status = submissionUiState.status,
                         showFailureSheet = submissionUiState.isFailureSheetVisible,
-                        activeIncludesAuthorizationProgress = submissionUiState.activeIncludesAuthorizationProgress
+                        activeIncludesAuthorizationProgress = submissionUiState.activeIncludesAuthorizationProgress,
+                        ballotDivisorZatoshi = ballotDivisor
                     )
                 }
         }.map { content ->
@@ -155,6 +174,7 @@ class VoteConfirmSubmissionVM(
         status: VoteSubmissionStatus,
         showFailureSheet: Boolean,
         activeIncludesAuthorizationProgress: Boolean?,
+        ballotDivisorZatoshi: Long?,
     ): VoteConfirmSubmissionState {
         val isPrepared = recovery?.eligibleWeight != null && recovery.hotkeyAddress != null
         val keystoneSignedBundles = recovery?.keystoneBundleSignatures?.size ?: 0
@@ -207,6 +227,8 @@ class VoteConfirmSubmissionVM(
                 status = status,
                 isVisible = showFailureSheet,
                 canRetry = isPrepared && draftChoices.isNotEmpty(),
+                eligibleWeightZatoshi = recovery?.eligibleWeight,
+                ballotDivisorZatoshi = ballotDivisorZatoshi,
                 retryAction =
                     if (isKeystone && keystoneSignedBundles < preparedBundleCount) {
                         ::onStartKeystoneSigning
@@ -405,6 +427,8 @@ class VoteConfirmSubmissionVM(
         status: VoteSubmissionStatus,
         isVisible: Boolean,
         canRetry: Boolean,
+        eligibleWeightZatoshi: Long?,
+        ballotDivisorZatoshi: Long?,
         retryAction: () -> Unit,
     ): ZashiConfirmationState? {
         if (!isVisible || !status.isFailure()) {
@@ -412,7 +436,7 @@ class VoteConfirmSubmissionVM(
         }
         return ZashiConfirmationState.error(
             title = failureTitle(status),
-            message = failureMessage(status),
+            message = failureMessage(status, eligibleWeightZatoshi, ballotDivisorZatoshi),
             primaryText = stringRes(if (canRetry) R.string.vote_retry else R.string.vote_dismiss),
             secondaryText = stringRes(R.string.vote_dismiss),
             primaryStyle = ButtonStyle.PRIMARY,
@@ -435,13 +459,24 @@ class VoteConfirmSubmissionVM(
             else -> stringRes(R.string.vote_error_something_went_wrong)
         }
 
-    private fun failureMessage(status: VoteSubmissionStatus) =
+    private fun failureMessage(
+        status: VoteSubmissionStatus,
+        eligibleWeightZatoshi: Long?,
+        ballotDivisorZatoshi: Long?,
+    ) =
         when (status) {
             is VoteSubmissionStatus.LocalAuthFailed ->
                 status.error.toErrorMessageOrDefault(stringRes(R.string.vote_confirm_error_authentication))
 
+            // Mirrors iOS's `delegationProofFailed` reducer: surface the snapshot
+            // weight against the ballot divisor when the SDK refuses delegation
+            // because the user's weight does not yield a single ballot.
             is VoteSubmissionStatus.ProtocolAuthFailed ->
-                status.error.toErrorMessageOrDefault(stringRes(R.string.vote_confirm_error_auth))
+                status.error.toErrorMessageOrDefault(
+                    default = stringRes(R.string.vote_confirm_error_auth),
+                    eligibleWeightZatoshi = eligibleWeightZatoshi,
+                    ballotDivisorZatoshi = ballotDivisorZatoshi
+                )
 
             is VoteSubmissionStatus.SubmissionFailed ->
                 status.error.toErrorMessageOrDefault(
@@ -490,6 +525,21 @@ private fun String?.toErrorMessageOrDefault(default: StringResource): StringReso
         default
     } else {
         VotingErrorMapper.toUserFriendlyMessage(this)
+    }
+
+private fun String?.toErrorMessageOrDefault(
+    default: StringResource,
+    eligibleWeightZatoshi: Long?,
+    ballotDivisorZatoshi: Long?,
+): StringResource =
+    if (isNullOrBlank()) {
+        default
+    } else {
+        VotingErrorMapper.toUserFriendlyMessage(
+            rawMessage = this,
+            eligibleWeightZatoshi = eligibleWeightZatoshi,
+            ballotDivisorZatoshi = ballotDivisorZatoshi
+        )
     }
 
 private fun String.toDraftChoices(): Map<Int, Int> {

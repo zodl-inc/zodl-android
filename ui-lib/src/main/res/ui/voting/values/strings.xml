@@ -202,6 +202,7 @@
     <string name="vote_error_mapper_lightwalletd_unavailable">Unable to reach the Zcash lightwalletd server. Please check your internet connection or try switching to a different server in Settings.</string>
     <string name="vote_error_mapper_pir_connection">Could not connect to the privacy-preserving vote server. Please check your connection and try again.</string>
     <string name="vote_error_mapper_insufficient_funds">Insufficient funds to authorize your vote. A small fee is required.</string>
+    <string name="vote_error_mapper_insufficient_snapshot_balance">Your shielded balance at the snapshot (%1$s ZEC) is below the minimum required to vote (%2$s ZEC).</string>
     <string name="vote_error_mapper_wallet_sync">Your wallet is not fully synced. Please wait for syncing to complete before voting.</string>
     <string name="vote_error_mapper_network">Network error. Please check your connection and try again.</string>
     <string name="vote_error_mapper_proof">Vote proof generation failed. Please try again.</string>

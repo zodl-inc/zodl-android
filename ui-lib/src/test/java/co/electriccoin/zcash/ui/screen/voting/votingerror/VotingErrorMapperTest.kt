@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.screen.voting.votingerror
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.util.StringResource
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
@@ -77,6 +78,37 @@ class VotingErrorMapperTest {
                 rawMessage
             )
         }
+    }
+
+    @Test
+    fun insufficientSnapshotBalanceFormatsWeightAndDivisor() {
+        val rawMessage =
+            "Failed to build delegation bundle: total_weight must yield at least 1 ballot " +
+                "(weight = 8000000, divisor = 12500000)"
+        // 0.080 ZEC weight, 0.125 ZEC divisor.
+        val mapped = VotingErrorMapper.toUserFriendlyMessage(
+            rawMessage = rawMessage,
+            eligibleWeightZatoshi = 8_000_000L,
+            ballotDivisorZatoshi = 12_500_000L
+        )
+        val resource = assertIs<StringResource.ByResource>(mapped)
+        assertEquals(R.string.vote_error_mapper_insufficient_snapshot_balance, resource.resource)
+        assertContentEquals(listOf("0.080", "0.125"), resource.args)
+    }
+
+    @Test
+    fun insufficientSnapshotBalanceFallsBackWhenWeightUnknown() {
+        val rawMessage = "total_weight must yield at least 1 ballot"
+        // Without weight or divisor we can't parameterize; the generic catch-all
+        // (in this case the raw-text fallback) should handle it.
+        assertEquals(
+            VotingErrorMapper.toUserFriendlyMessage(rawMessage),
+            VotingErrorMapper.toUserFriendlyMessage(
+                rawMessage = rawMessage,
+                eligibleWeightZatoshi = null,
+                ballotDivisorZatoshi = 12_500_000L
+            )
+        )
     }
 }
 
