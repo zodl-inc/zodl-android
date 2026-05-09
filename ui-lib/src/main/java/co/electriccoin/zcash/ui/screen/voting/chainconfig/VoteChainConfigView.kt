@@ -103,7 +103,10 @@ private fun AppBar(state: VoteChainConfigState) {
             ZashiTopAppBarBackNavigation(onBack = state.onBack)
         },
         regularActions = {
-            TextButton(onClick = state.onAddCustom) {
+            TextButton(
+                enabled = !state.isValidating,
+                onClick = state.onAddCustom
+            ) {
                 Text(
                     text = stringResource(R.string.vote_chain_config_add),
                     style = ZashiTypography.textSm,
@@ -170,7 +173,10 @@ private fun ChainItem(state: VoteChainConfigItemState) {
                             .padding(horizontal = 12.dp),
                     horizontalArrangement = Arrangement.End
                 ) {
-                    TextButton(onClick = state.editButton.onClick) {
+                    TextButton(
+                        enabled = state.editButton.isEnabled,
+                        onClick = state.editButton.onClick
+                    ) {
                         Text(
                             text = state.editButton.text.getValue(),
                             style = ZashiTypography.textSm,
@@ -178,7 +184,10 @@ private fun ChainItem(state: VoteChainConfigItemState) {
                             color = ZashiColors.Text.textPrimary
                         )
                     }
-                    TextButton(onClick = state.deleteButton.onClick) {
+                    TextButton(
+                        enabled = state.deleteButton.isEnabled,
+                        onClick = state.deleteButton.onClick
+                    ) {
                         Text(
                             text = state.deleteButton.text.getValue(),
                             style = ZashiTypography.textSm,
@@ -286,6 +295,7 @@ private fun VoteChainConfigPreview() =
                 ),
                 editor = null,
                 errorSheet = null,
+                isValidating = false,
                 onBack = {},
                 onAddCustom = {}
             )

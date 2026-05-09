@@ -7,6 +7,7 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
 import co.electriccoin.zcash.ui.common.model.voting.StaticVotingConfig
+import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigSelection
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigState
@@ -23,20 +24,32 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 
 class VoteChainConfigVM(
     private val votingChainConfigRepository: VotingChainConfigRepository,
+    private val votingApiProvider: VotingApiProvider,
     private val navigationRouter: NavigationRouter,
 ) : ViewModel() {
     private val editorDraft = MutableStateFlow<EditorDraft?>(null)
     private val errorSheet = MutableStateFlow<ZashiConfirmationState?>(null)
+    private val isValidating = MutableStateFlow(false)
 
     val state =
-        combine(votingChainConfigRepository.state, editorDraft, errorSheet) { chainConfig, editor, errorSheet ->
+        combine(
+            votingChainConfigRepository.state,
+            editorDraft,
+            errorSheet,
+            isValidating
+        ) { chainConfig, editor, errorSheet, isValidating ->
             VoteChainConfigState(
-                chains = buildChainItems(chainConfig),
-                editor = editor?.toState(),
+                chains = buildChainItems(
+                    chainConfig = chainConfig,
+                    isValidating = isValidating
+                ),
+                editor = editor?.toState(isValidating),
                 errorSheet = errorSheet,
+                isValidating = isValidating,
                 onBack = ::onBack,
                 onAddCustom = ::onAddCustom
             )
@@ -46,7 +59,10 @@ class VoteChainConfigVM(
             initialValue = null
         )
 
-    private fun buildChainItems(chainConfig: VotingChainConfigState): List<VoteChainConfigItemState> =
+    private fun buildChainItems(
+        chainConfig: VotingChainConfigState,
+        isValidating: Boolean
+    ): List<VoteChainConfigItemState> =
         buildList {
             add(
                 VoteChainConfigItemState(
@@ -76,11 +92,13 @@ class VoteChainConfigVM(
                         editButton = ButtonState(
                             text = stringRes(R.string.vote_chain_config_edit),
                             style = ButtonStyle.TERTIARY,
+                            isEnabled = !isValidating,
                             onClick = { onEditCustom(chain) }
                         ),
                         deleteButton = ButtonState(
                             text = stringRes(R.string.vote_chain_config_delete),
                             style = ButtonStyle.DESTRUCTIVE2,
+                            isEnabled = !isValidating,
                             onClick = { onDeleteCustom(chain.id) }
                         )
                     )
@@ -91,18 +109,33 @@ class VoteChainConfigVM(
     private fun onBack() = navigationRouter.back()
 
     private fun onDefaultSelected() {
+        if (isValidating.value) return
         viewModelScope.launch {
             votingChainConfigRepository.selectDefault()
         }
     }
 
     private fun onCustomSelected(id: String) {
+        if (isValidating.value) return
         viewModelScope.launch {
-            votingChainConfigRepository.selectCustom(id)
+            val chain = votingChainConfigRepository.get()
+                .customChains
+                .firstOrNull { chain -> chain.id == id }
+                ?: return@launch
+            val parsedSource = parsePinnedSourceOrShowError(chain.pinnedSource) ?: return@launch
+            if (!validatePinnedSourceOrShowError(parsedSource)) {
+                return@launch
+            }
+            if (parsedSource.isBundledDefaultUrl()) {
+                votingChainConfigRepository.selectDefault()
+            } else {
+                votingChainConfigRepository.selectCustom(id)
+            }
         }
     }
 
     private fun onAddCustom() {
+        if (isValidating.value) return
         editorDraft.value = EditorDraft(
             id = null,
             name = "",
@@ -111,6 +144,7 @@ class VoteChainConfigVM(
     }
 
     private fun onEditCustom(chain: VotingCustomChainConfig) {
+        if (isValidating.value) return
         editorDraft.value = EditorDraft(
             id = chain.id,
             name = chain.name,
@@ -119,20 +153,18 @@ class VoteChainConfigVM(
     }
 
     private fun onDeleteCustom(id: String) {
+        if (isValidating.value) return
         viewModelScope.launch {
             votingChainConfigRepository.deleteCustom(id)
         }
     }
 
     private fun onSaveEditor() {
+        if (isValidating.value) return
         val draft = editorDraft.value ?: return
         viewModelScope.launch {
-            val name = draft.name.trim()
+            val name = draft.name.trim().ifEmpty { DEFAULT_CUSTOM_CHAIN_NAME }
             val pinnedSource = draft.pinnedSource.trim()
-            if (name.isEmpty()) {
-                showError(stringRes(R.string.vote_chain_config_error_name_required))
-                return@launch
-            }
             if (pinnedSource.isEmpty()) {
                 showError(stringRes(R.string.vote_chain_config_error_url_required))
                 return@launch
@@ -147,6 +179,27 @@ class VoteChainConfigVM(
             )
             if (duplicateError != null) {
                 showError(duplicateError)
+                return@launch
+            }
+
+            val existing = draft.id?.let { id -> current.customChains.firstOrNull { it.id == id } }
+            if (existing != null && existing.pinnedSource.trim() == pinnedSource) {
+                votingChainConfigRepository.updateCustom(
+                    id = existing.id,
+                    name = name,
+                    pinnedSource = pinnedSource
+                )
+                editorDraft.value = null
+                return@launch
+            }
+
+            if (!validatePinnedSourceOrShowError(parsedSource)) {
+                return@launch
+            }
+
+            if (parsedSource.isBundledDefaultUrl()) {
+                votingChainConfigRepository.selectDefault()
+                editorDraft.value = null
                 return@launch
             }
 
@@ -181,6 +234,27 @@ class VoteChainConfigVM(
                 showError(stringRes(throwable.message.orEmpty().ifBlank { raw }))
                 null
             }
+
+    private suspend fun validatePinnedSourceOrShowError(source: PinnedConfigSource): Boolean {
+        isValidating.value = true
+        return try {
+            votingApiProvider.validateConfigSource(source)
+            true
+        } catch (throwable: Throwable) {
+            if (throwable is CancellationException) {
+                throw throwable
+            }
+            showError(
+                throwable.message
+                    ?.takeIf(String::isNotBlank)
+                    ?.let(::stringRes)
+                    ?: stringRes(R.string.vote_chain_config_error_validation_failed)
+            )
+            false
+        } finally {
+            isValidating.value = false
+        }
+    }
 
     private fun duplicateError(
         parsedSource: PinnedConfigSource,
@@ -226,7 +300,7 @@ class VoteChainConfigVM(
         errorSheet.value = null
     }
 
-    private fun EditorDraft.toState() =
+    private fun EditorDraft.toState(isValidating: Boolean) =
         VoteChainConfigEditorState(
             title = stringRes(
                 if (id == null) {
@@ -237,26 +311,32 @@ class VoteChainConfigVM(
             ),
             name = TextFieldState(
                 value = stringRes(name),
+                isEnabled = !isValidating,
                 onValueChange = ::onNameChanged
             ),
             url = TextFieldState(
                 value = stringRes(pinnedSource),
+                isEnabled = !isValidating,
                 onValueChange = ::onUrlChanged
             ),
             saveButton = ButtonState(
                 text = stringRes(R.string.vote_chain_config_save),
                 style = ButtonStyle.PRIMARY,
+                isEnabled = !isValidating,
+                isLoading = isValidating,
                 onClick = ::onSaveEditor
             ),
             cancelButton = ButtonState(
                 text = stringRes(R.string.vote_chain_config_cancel),
                 style = ButtonStyle.TERTIARY,
+                isEnabled = !isValidating,
                 onClick = ::onCancelEditor
             )
         )
 
     private companion object {
         const val DEFAULT_CHAIN_ID = "default"
+        const val DEFAULT_CUSTOM_CHAIN_NAME = "Custom chain"
     }
 }
 
@@ -269,3 +349,6 @@ private data class EditorDraft(
 private fun compactSource(raw: String): String =
     runCatching { PinnedConfigSource.parse(raw).url }
         .getOrDefault(raw)
+
+private fun PinnedConfigSource.isBundledDefaultUrl(): Boolean =
+    url == PinnedConfigSource.parse(StaticVotingConfig.BUNDLED_PINNED_SOURCE).url

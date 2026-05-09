@@ -12,6 +12,7 @@ data class VoteChainConfigState(
     val chains: List<VoteChainConfigItemState>,
     val editor: VoteChainConfigEditorState?,
     val errorSheet: ZashiConfirmationState?,
+    val isValidating: Boolean,
     val onBack: () -> Unit,
     val onAddCustom: () -> Unit,
 )

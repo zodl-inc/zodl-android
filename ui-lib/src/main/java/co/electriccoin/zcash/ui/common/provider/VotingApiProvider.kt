@@ -59,6 +59,8 @@ import org.json.JSONObject
 import kotlin.math.max
 
 interface VotingApiProvider {
+    suspend fun validateConfigSource(source: PinnedConfigSource)
+
     suspend fun fetchServiceConfig(): VotingServiceConfig
 
     suspend fun fetchActiveVotingSession(): VotingSession?
@@ -106,6 +108,10 @@ class KtorVotingApiProvider(
     private var cachedResolvedConfig: ResolvedVotingConfig? = null
     private val configMutex = Mutex()
     private val serverHealthTracker = VotingServerHealthTracker()
+
+    override suspend fun validateConfigSource(source: PinnedConfigSource) {
+        fetchTrustedConfig(source)
+    }
 
     override suspend fun fetchServiceConfig(): VotingServiceConfig =
         getResolvedConfig(forceRefresh = true).serviceConfig

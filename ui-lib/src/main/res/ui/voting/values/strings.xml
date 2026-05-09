@@ -22,6 +22,7 @@
     <string name="vote_chain_config_error_url_required">Enter a static config HTTPS URL.</string>
     <string name="vote_chain_config_error_duplicate_default">That URL is the default chain. Select Default instead.</string>
     <string name="vote_chain_config_error_duplicate_custom">That chain URL is already saved.</string>
+    <string name="vote_chain_config_error_validation_failed">Unable to validate this chain config. Check the URL and checksum, then try again.</string>
 
     <string name="vote_how_to_vote_title">How to vote with %1$s</string>
     <string name="vote_how_to_vote_subtitle">Your ZEC gives you a voice. Shape the future of the Zcash network by voting on active proposals.</string>
