@@ -40,7 +40,7 @@
     <string name="vote_poll_card_status_voted">Voted</string>
     <string name="vote_poll_card_status_closed">Closed</string>
     <string name="vote_poll_card_trust_zodl">Zodl</string>
-    <string name="vote_poll_card_trust_unverified">Unverified</string>
+    <string name="vote_poll_card_trust_unverified">Unverified Poll</string>
     <string name="vote_poll_card_closes">Closes %1$s</string>
     <string name="vote_poll_card_closed">Closed %1$s</string>
     <string name="vote_poll_card_enter">Enter Poll</string>

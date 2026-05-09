@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.screen.voting.VoteTrustIndicator
 
 @Immutable
 data class VoteCoinholderPollingState(
@@ -22,11 +23,6 @@ enum class VotePollCardStatus {
     CLOSED
 }
 
-enum class VotePollTrustIndicator {
-    ZODL,
-    UNVERIFIED
-}
-
 @Immutable
 data class VotePollCardState(
     val roundId: String,
@@ -36,7 +32,7 @@ data class VotePollCardState(
     val sessionStatus: SessionStatus,
     val isActionEnabled: Boolean,
     val dateLabel: StringResource,
-    val trustIndicator: VotePollTrustIndicator?,
+    val trustIndicator: VoteTrustIndicator?,
     val votedLabel: StringResource?,
     val proposalCount: Int,
     val votedCount: Int,

@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.voting.results
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -43,6 +44,7 @@ import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
 import co.electriccoin.zcash.ui.screen.voting.accentColor
+import co.electriccoin.zcash.ui.screen.voting.component.VoteTrustIndicatorView
 
 private const val BADGE_CORNER_RADIUS = 50
 private const val CHECK_ICON_SIZE_DP = 12
@@ -73,12 +75,22 @@ fun VoteResultsView(state: VoteResultsState) {
                         .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
             ) {
                 Spacer(24.dp)
-                Text(
-                    text = state.roundTitle.getValue(),
-                    style = ZashiTypography.header6,
-                    color = ZashiColors.Text.textPrimary,
-                    fontWeight = FontWeight.SemiBold,
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = state.roundTitle.getValue(),
+                        style = ZashiTypography.header6,
+                        color = ZashiColors.Text.textPrimary,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    state.trustIndicator?.let { indicator ->
+                        VoteTrustIndicatorView(indicator)
+                    }
+                }
 
                 if (state.roundDescription.getValue().isNotEmpty()) {
                     Spacer(8.dp)

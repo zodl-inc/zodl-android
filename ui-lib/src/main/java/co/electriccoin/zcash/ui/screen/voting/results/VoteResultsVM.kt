@@ -12,7 +12,10 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingRound
 import co.electriccoin.zcash.ui.common.model.voting.VoteOptionDisplayColor
 import co.electriccoin.zcash.ui.common.model.voting.displayColor
 import co.electriccoin.zcash.ui.common.model.withLce
+import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
+import co.electriccoin.zcash.ui.common.repository.VotingApiSnapshot
+import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
@@ -20,12 +23,16 @@ import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetAllVotingRoundsUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
+import co.electriccoin.zcash.ui.configuration.ConfigurationEntries
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.voting.VoteTrustIndicator
 import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
-import kotlinx.coroutines.flow.map
+import co.electriccoin.zcash.ui.screen.voting.normalizedVotingRoundIds
+import co.electriccoin.zcash.ui.screen.voting.voteTrustIndicatorFor
+import kotlinx.coroutines.flow.combine
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -35,6 +42,8 @@ class VoteResultsVM(
     private val getAllRounds: GetAllVotingRoundsUseCase,
     private val votingApiProvider: VotingApiProvider,
     private val votingApiRepository: VotingApiRepository,
+    private val configurationRepository: ConfigurationRepository,
+    private val votingChainConfigRepository: VotingChainConfigRepository,
     private val votingRecoveryRepository: VotingRecoveryRepository,
     private val navigationRouter: NavigationRouter,
     private val errorStateMapper: ErrorMapperUseCase,
@@ -66,8 +75,25 @@ class VoteResultsVM(
     }
 
     val state =
-        resultsLce.state
-            .map { lce -> lce.success?.let { buildState(it.round, it.tally, it.recovery) } }
+        combine(
+            resultsLce.state,
+            votingApiRepository.snapshot,
+            isOnDefaultConfigFlow()
+        ) { lce, apiSnapshot, isOnDefaultConfig ->
+            lce.success?.let { results ->
+                val round = apiSnapshot.rounds.firstOrNull { it.id == results.round.id } ?: results.round
+                buildState(
+                    round = round,
+                    tally = results.tally,
+                    recovery = results.recovery,
+                    trustIndicator = trustIndicatorFor(
+                        round = round,
+                        apiSnapshot = apiSnapshot,
+                        isOnDefaultConfig = isOnDefaultConfig
+                    )
+                )
+            }
+        }
             .withLce(groupLce(resultsLce)) { error ->
                 errorStateMapper.mapToState(
                     error = error,
@@ -81,6 +107,7 @@ class VoteResultsVM(
         round: VotingRound,
         tally: TallyResults,
         recovery: VotingRecoverySnapshot?,
+        trustIndicator: VoteTrustIndicator?,
     ): VoteResultsState {
         val proposals = round.proposals.map { proposal ->
             buildProposalState(proposal, tally)
@@ -89,6 +116,7 @@ class VoteResultsVM(
         return VoteResultsState(
             roundTitle = stringRes(round.title),
             roundDescription = stringRes(round.description),
+            trustIndicator = trustIndicator,
             votedMetaLine = buildVotedMetaLine(recovery),
             proposals = proposals,
             isLoadingResults = false,
@@ -100,6 +128,29 @@ class VoteResultsVM(
             onBack = ::onBack,
         )
     }
+
+    private fun isOnDefaultConfigFlow() =
+        combine(
+            votingChainConfigRepository.state,
+            configurationRepository.configurationFlow
+        ) { chainConfig, configuration ->
+            chainConfig.isOnDefaultConfig &&
+                configuration
+                    ?.let(ConfigurationEntries.VOTING_CONFIG_URL::getValue)
+                    .orEmpty()
+                    .isBlank()
+        }
+
+    private fun trustIndicatorFor(
+        round: VotingRound,
+        apiSnapshot: VotingApiSnapshot,
+        isOnDefaultConfig: Boolean
+    ): VoteTrustIndicator? =
+        voteTrustIndicatorFor(
+            roundId = round.id,
+            endorsedRoundIds = apiSnapshot.zodlEndorsedRoundIds.normalizedVotingRoundIds(),
+            isOnDefaultConfig = isOnDefaultConfig
+        )
 
     private fun buildProposalState(
         proposal: Proposal,

@@ -3,10 +3,12 @@ package co.electriccoin.zcash.ui.screen.voting.results
 import co.electriccoin.zcash.ui.common.model.voting.VoteOptionDisplayColor
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.screen.voting.VoteTrustIndicator
 
 data class VoteResultsState(
     val roundTitle: StringResource,
     val roundDescription: StringResource,
+    val trustIndicator: VoteTrustIndicator?,
     val votedMetaLine: StringResource?,
     val proposals: List<VoteProposalResultState>,
     val isLoadingResults: Boolean,

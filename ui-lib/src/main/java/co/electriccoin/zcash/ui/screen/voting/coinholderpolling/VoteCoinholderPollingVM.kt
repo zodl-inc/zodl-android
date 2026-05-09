@@ -32,10 +32,13 @@ import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.chainconfig.VoteChainConfigArgs
+import co.electriccoin.zcash.ui.screen.voting.normalizedVotingRoundIds
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListMode
 import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsArgs
 import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingArgs
+import co.electriccoin.zcash.ui.screen.voting.VoteTrustIndicator
+import co.electriccoin.zcash.ui.screen.voting.voteTrustIndicatorFor
 import co.electriccoin.zcash.ui.screen.voting.votingerror.VotingErrorMapper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -131,7 +134,7 @@ class VoteCoinholderPollingVM(
             val currentAccountUuid = accountUuid ?: return@combine null
 
             rounds?.let {
-                val normalizedEndorsedRoundIds = apiSnapshot.zodlEndorsedRoundIds.normalizedRoundIds()
+                val normalizedEndorsedRoundIds = apiSnapshot.zodlEndorsedRoundIds.normalizedVotingRoundIds()
                 val visibleRounds = visibleRounds(
                     rounds = it,
                     endorsedRoundIds = normalizedEndorsedRoundIds,
@@ -198,7 +201,7 @@ class VoteCoinholderPollingVM(
     private fun buildCard(
         round: VotingRound,
         votedProposalCount: Int?,
-        trustIndicator: VotePollTrustIndicator?,
+        trustIndicator: VoteTrustIndicator?,
     ): VotePollCardState {
         val total = round.proposals.size
         val count = votedProposalCount?.coerceIn(0, total) ?: 0
@@ -461,16 +464,12 @@ class VoteCoinholderPollingVM(
         round: VotingRound,
         endorsedRoundIds: Set<String>,
         isOnDefaultConfig: Boolean
-    ): VotePollTrustIndicator? {
-        if (!isOnDefaultConfig) {
-            return VotePollTrustIndicator.UNVERIFIED
-        }
-        return if (round.id.lowercase() in endorsedRoundIds) {
-            VotePollTrustIndicator.ZODL
-        } else {
-            null
-        }
-    }
+    ): VoteTrustIndicator? =
+        voteTrustIndicatorFor(
+            roundId = round.id,
+            endorsedRoundIds = endorsedRoundIds,
+            isOnDefaultConfig = isOnDefaultConfig
+        )
 
     private fun isOnDefaultConfig(): Boolean =
         votingChainConfigRepository.state.value.isOnDefaultConfig &&
@@ -529,5 +528,3 @@ private data class PendingRoundSelection(
     val round: VotingRound,
     val status: VotePollCardStatus
 )
-
-private fun Set<String>.normalizedRoundIds(): Set<String> = mapTo(mutableSetOf()) { it.lowercase() }
