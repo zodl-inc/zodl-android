@@ -62,12 +62,19 @@ class MultiEndpointTransactionSubmitterTest {
                                 delay(1_000)
                                 failure(transaction, code = 1, grpcError = true)
                             }
-                            second -> TransactionSubmitResult.Success(transaction.txId)
+
+                            second -> {
+                                TransactionSubmitResult.Success(transaction.txId)
+                            }
+
                             third -> {
                                 delay(1_000)
                                 TransactionSubmitResult.Success(transaction.txId)
                             }
-                            else -> error("Unexpected endpoint $submittedEndpoint")
+
+                            else -> {
+                                error("Unexpected endpoint $submittedEndpoint")
+                            }
                         }
                     }
                 )

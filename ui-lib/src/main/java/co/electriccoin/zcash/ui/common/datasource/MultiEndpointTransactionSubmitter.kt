@@ -7,6 +7,8 @@ import co.electriccoin.zcash.spackle.Twig
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -165,34 +167,58 @@ internal class MultiEndpointTransactionSubmitter(
                 }
             }
 
-        return try {
-            when (val result = completion.await()) {
+        return awaitBroadcastCompletion(
+            transaction = transaction,
+            endpointCount = endpoints.size,
+            state =
+                BroadcastSubmissionState(
+                    completion = completion,
+                    jobs = jobs,
+                    timeoutJob = timeoutJob
+                ),
+            logTag = logTag
+        )
+    }
+
+    private suspend fun awaitBroadcastCompletion(
+        transaction: CreatedTransaction,
+        endpointCount: Int,
+        state: BroadcastSubmissionState,
+        logTag: String
+    ): TransactionSubmitResult =
+        try {
+            when (val result = state.completion.await()) {
                 is BroadcastCompletion.Accepted -> {
                     logger.info {
                         "$logTag Transaction ${transaction.txIdString()} accepted by ${result.endpoint.serverString()}."
                     }
-                    scope.launch {
-                        delay(gracePeriodMillis)
-                        jobs.forEach { it.cancel() }
-                        timeoutJob.cancel()
-                    }
+                    state.cancelAfterGracePeriod()
                     result.result
                 }
 
                 is BroadcastCompletion.Rejected -> {
-                    timeoutJob.cancel()
-                    jobs.forEach { it.cancel() }
+                    state.cancel()
                     logger.error {
-                        "$logTag Transaction ${transaction.txIdString()} rejected by all ${endpoints.size} endpoint(s)."
+                        "$logTag Transaction ${transaction.txIdString()} rejected by all $endpointCount endpoint(s)."
                     }
                     result.result
                 }
             }
         } catch (e: CancellationException) {
-            timeoutJob.cancel()
-            jobs.forEach { it.cancel() }
+            state.cancel()
             throw e
         }
+
+    private fun BroadcastSubmissionState.cancelAfterGracePeriod() {
+        scope.launch {
+            delay(gracePeriodMillis)
+            cancel()
+        }
+    }
+
+    private fun BroadcastSubmissionState.cancel() {
+        timeoutJob.cancel()
+        jobs.forEach { it.cancel() }
     }
 
     @Suppress("TooGenericExceptionCaught")
@@ -304,6 +330,12 @@ private object TwigMultiEndpointTransactionSubmitterLogger : MultiEndpointTransa
 private const val MULTI_SUBMIT_GRACE_PERIOD_MILLIS = 5_000L
 private const val MULTI_SUBMIT_GLOBAL_TIMEOUT_MILLIS = 30_000L
 private const val MULTI_SUBMIT_GRPC_FAILURE_CODE = -1
+
+private data class BroadcastSubmissionState(
+    val completion: CompletableDeferred<BroadcastCompletion>,
+    val jobs: List<Deferred<EndpointSubmission>>,
+    val timeoutJob: Job
+)
 
 private data class EndpointSubmission(
     val endpoint: LightWalletEndpoint,
