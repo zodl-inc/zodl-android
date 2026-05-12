@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.common.usecase
 import cash.z.ecc.android.sdk.ext.toHex
 import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.model.voting.VotingConfigException
+import co.electriccoin.zcash.ui.common.model.voting.VotingRoundAuthenticationException
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
 import co.electriccoin.zcash.ui.common.repository.VotingConfigRepository
@@ -19,10 +20,19 @@ class RefreshActiveVotingSessionUseCase(
         val session = runCatching {
             votingApiProvider.fetchActiveVotingSession()
         }.getOrElse { throwable ->
+            val pinnedRoundId = votingConfigRepository.userSelectedRoundId.value
+            if (pinnedRoundId != null &&
+                throwable is VotingRoundAuthenticationException &&
+                !pinnedRoundId.equals(throwable.roundIdHex, ignoreCase = true)
+            ) {
+                // The active endpoint can point at a different unauthenticated
+                // round than the one the user selected from the authenticated
+                // rounds list. Keep the pinned round authoritative in that case.
+                return
+            }
             if (throwable is VotingConfigException) {
-                // Config errors are fatal regardless of user pin: the pinned snapshot's
-                // serviceConfig may itself be stale. Match iOS behaviour of surfacing
-                // the failure to the polls-list configIssue path.
+                // Service config failures, or auth failures for the pinned round
+                // itself, are still fatal: the selected snapshot may be stale.
                 votingConfigRepository.clear()
             }
             throw throwable
