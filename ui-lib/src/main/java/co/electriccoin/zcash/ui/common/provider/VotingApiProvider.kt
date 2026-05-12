@@ -165,7 +165,9 @@ class KtorVotingApiProvider(
 
     override suspend fun fetchAllRounds(): RoundsListResult =
         executeWithVoteServerFailover(ROUNDS_PATH) { baseUrl ->
-            val response = get("$baseUrl$ROUNDS_PATH").body<ChainRoundsResponse>()
+            val response = get("$baseUrl$ROUNDS_PATH") {
+                noCache()
+            }.body<ChainRoundsResponse>()
             val dtos = response.rounds.orEmpty()
             val rounds = mutableListOf<VotingRound>()
             val sessions = mutableMapOf<String, VotingSession>()
@@ -188,7 +190,9 @@ class KtorVotingApiProvider(
                     shouldTryNextVoteServer(throwable)
                 }
             ) { baseUrl ->
-                get("$baseUrl$ENDORSED_ROUNDS_PATH")
+                get("$baseUrl$ENDORSED_ROUNDS_PATH") {
+                    noCache()
+                }
                     .body<ZodlEndorsedRoundsResponse>()
                     .roundIdsHex()
             }
