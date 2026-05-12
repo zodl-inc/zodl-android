@@ -9,6 +9,7 @@ import co.electriccoin.zcash.ui.common.model.voting.DelegatedShareInfo
 import co.electriccoin.zcash.ui.common.model.voting.SharePayload
 import co.electriccoin.zcash.ui.common.model.voting.VoteCommitmentBundle
 import co.electriccoin.zcash.ui.common.model.voting.TxConfirmation
+import co.electriccoin.zcash.ui.common.model.voting.TxResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionProgress
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionResult
@@ -152,7 +153,6 @@ class SubmitVotesUseCase(
             val dbHandle = votingCryptoClient.openVotingDb(votingDbPath)
             check(dbHandle != 0L) { "Failed to open voting DB at $votingDbPath" }
 
-            var isVotingAuthorizationPhase = false
             try {
                 votingCryptoClient.setWalletId(dbHandle, selectedAccount.sdkAccount.accountUuid.toString())
                 val bundleCount = recoveryBundleCount
@@ -185,7 +185,6 @@ class SubmitVotesUseCase(
                     recovery.phase != VotingRecoveryPhase.VOTES_SUBMITTED &&
                     recovery.phase != VotingRecoveryPhase.SHARES_SUBMITTED
                 ) {
-                    isVotingAuthorizationPhase = true
                     repeat(bundleCount) { bundleIndex ->
                         onProgress(
                             VotingSubmissionProgress.Authorizing(
@@ -328,9 +327,7 @@ class SubmitVotesUseCase(
                             }
                         }
                         val txResult = votingApiProvider.submitDelegation(submission.toDelegationRegistration())
-                        require(txResult.code == 0) {
-                            txResult.log.ifEmpty { "Delegation transaction was rejected" }
-                        }
+                            .requireAccepted("Delegation transaction was rejected")
                         votingCryptoClient.storeDelegationTxHash(
                             dbHandle = dbHandle,
                             roundId = roundId,
@@ -340,9 +337,7 @@ class SubmitVotesUseCase(
 
                         val confirmation = awaitTxConfirmation(txResult.txHash)
                             ?: error("Transaction ${txResult.txHash} was not confirmed in time")
-                        require(confirmation.code == 0) {
-                            confirmation.log.ifEmpty { "Delegation transaction failed" }
-                        }
+                        confirmation.requireAccepted("Delegation transaction failed")
 
                         val vanPosition = confirmation.event("delegate_vote")
                             ?.attribute("leaf_index")
@@ -361,7 +356,6 @@ class SubmitVotesUseCase(
                         roundId = roundId,
                         phase = VotingRecoveryPhase.DELEGATION_SUBMITTED
                     )
-                    isVotingAuthorizationPhase = false
                 }
 
                 val proposalSelections = sortedChoices.mapNotNull { (proposalId, choiceId) ->
@@ -580,10 +574,7 @@ class SubmitVotesUseCase(
                         val txResult = votingApiProvider.submitVoteCommitment(
                             bundle = commitment.toVoteCommitmentBundle(),
                             signature = signature
-                        )
-                        require(txResult.code == 0) {
-                            txResult.log.ifEmpty { "Vote commitment transaction was rejected" }
-                        }
+                        ).requireAccepted("Vote commitment transaction was rejected")
                         votingCryptoClient.storeVoteTxHash(
                             dbHandle = dbHandle,
                             roundId = roundId,
@@ -594,9 +585,7 @@ class SubmitVotesUseCase(
 
                         val confirmation = awaitTxConfirmation(txResult.txHash)
                             ?: error("Transaction ${txResult.txHash} was not confirmed in time")
-                        require(confirmation.code == 0) {
-                            confirmation.log.ifEmpty { "Vote commitment transaction failed" }
-                        }
+                        confirmation.requireAccepted("Vote commitment transaction failed")
 
                         val (confirmedVanPosition, vcTreePosition) = confirmation.castVoteLeafPositions()
                         votingCryptoClient.storeVanPosition(
@@ -683,9 +672,6 @@ class SubmitVotesUseCase(
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
-                if (isVotingAuthorizationPhase) {
-                    throw VotingAuthorizationException(exception)
-                }
                 throw exception
             } finally {
                 votingCryptoClient.closeVotingDb(dbHandle)
@@ -863,6 +849,19 @@ class SubmitVotesUseCase(
 
     private fun ZcashNetwork.toVotingNetworkId() =
         if (isMainnet()) 1 else 0
+
+    private fun TxResult.requireAccepted(fallbackMessage: String): TxResult {
+        if (code != 0) {
+            throw IllegalStateException(log.ifEmpty { fallbackMessage })
+        }
+        return this
+    }
+
+    private fun TxConfirmation.requireAccepted(fallbackMessage: String) {
+        if (code != 0) {
+            throw IllegalStateException(log.ifEmpty { fallbackMessage })
+        }
+    }
 
     private fun TxConfirmation.castVoteLeafPositions(): Pair<Int, Long> {
         val rawLeafIndex = event("cast_vote")
