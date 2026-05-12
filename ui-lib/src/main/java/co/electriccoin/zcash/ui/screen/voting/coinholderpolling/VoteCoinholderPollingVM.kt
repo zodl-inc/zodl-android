@@ -115,7 +115,6 @@ class VoteCoinholderPollingVM(
                 }
         }
         observeVotingChainConfigChanges()
-        refreshVotingData()
         startVotingDataAutoRefresh()
         startForegroundShareTracking()
     }
@@ -292,6 +291,10 @@ class VoteCoinholderPollingVM(
         )
     }
 
+    fun onScreenEntered() {
+        refreshVotingData()
+    }
+
     private fun refreshVotingData() {
         roundsLce.execute {
             refreshVotingDataInternal(resetVisibleConfigError = true)
@@ -442,20 +445,14 @@ class VoteCoinholderPollingVM(
     private suspend fun clearVotingStateForConfigRefresh() {
         configIssue = null
         configErrorSheet.value = null
-        unverifiedPollWarningSheet.value = null
-        pendingUnverifiedRoundSelection = null
-        recoveryVoteCountsJob?.cancel()
-        recoveryVoteCountsJob = null
-        recoveryVoteCounts.value = emptyMap()
-        votingConfigRepository.clear()
-        votingSessionStore.clear()
-        votingApiRepository.clear()
+        clearLoadedVotingStateForServiceConfigRefresh()
     }
 
     private suspend fun refreshVotingDataInternal(resetVisibleConfigError: Boolean): List<VotingRound> {
         if (resetVisibleConfigError) {
             configIssue = null
             configErrorSheet.value = null
+            clearLoadedVotingStateForServiceConfigRefresh()
             // Mirror iOS `prepareForServiceConfigRefresh` (VotingStore+Session.swift:644-647):
             // every flow entry / user-driven refresh drops the cached resolved config so
             // downstream callers (authenticateVotingSession, configuredVoteServerUrls,
@@ -484,6 +481,17 @@ class VoteCoinholderPollingVM(
             recoveryVoteCounts.value = emptyMap()
         }
         return votingApiRepository.snapshot.value.rounds
+    }
+
+    private suspend fun clearLoadedVotingStateForServiceConfigRefresh() {
+        unverifiedPollWarningSheet.value = null
+        pendingUnverifiedRoundSelection = null
+        recoveryVoteCountsJob?.cancel()
+        recoveryVoteCountsJob = null
+        recoveryVoteCounts.value = emptyMap()
+        votingConfigRepository.clear()
+        votingSessionStore.clear()
+        votingApiRepository.clear()
     }
 
     private fun votingDataAutoRefreshIntervalMs(): Long {
