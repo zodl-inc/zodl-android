@@ -296,13 +296,14 @@ internal class MultiEndpointTransactionSubmitter(
             description = description
         )
 
-    private fun TransactionSubmitResult.Failure.withEndpoint(endpoint: LightWalletEndpoint) =
-        copy(
-            description = description?.let { "${endpoint.serverString()}: $it" } ?: endpoint.serverString()
-        )
 }
 
 private fun LightWalletEndpoint.serverString() = "$host:$port"
+
+private fun TransactionSubmitResult.Failure.withEndpoint(endpoint: LightWalletEndpoint) =
+    copy(
+        description = description?.let { "${endpoint.serverString()}: $it" } ?: endpoint.serverString()
+    )
 
 internal interface MultiEndpointTransactionSubmitterLogger {
     fun info(message: () -> String)
