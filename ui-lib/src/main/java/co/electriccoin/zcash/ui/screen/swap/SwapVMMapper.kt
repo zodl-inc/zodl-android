@@ -39,7 +39,7 @@ import java.math.MathContext
 import kotlin.math.absoluteValue
 
 @Suppress("TooManyFunctions")
-internal class ExactInputVMMapper {
+internal class SwapVMMapper {
     fun createState(
         internalState: InternalState,
         onBack: () -> Unit,
@@ -58,7 +58,7 @@ internal class ExactInputVMMapper {
         onChangeButtonClick: () -> Unit,
         onAddressClick: () -> Unit,
     ): SwapState {
-        val state = ExactInputInternalState(internalState)
+        val state = SwapInternalState(internalState)
         val textFieldState =
             createAmountTextFieldState(
                 state = state,
@@ -144,7 +144,7 @@ internal class ExactInputVMMapper {
     }
 
     private fun createAddressContactState(
-        state: ExactInputInternalState,
+        state: SwapInternalState,
         onDeleteSelectedContactClick: () -> Unit
     ): ChipButtonState? {
         if (state.selectedContact == null) return null
@@ -159,7 +159,7 @@ internal class ExactInputVMMapper {
 
     @Suppress("CyclomaticComplexMethod")
     private fun createAmountTextFieldState(
-        state: ExactInputInternalState,
+        state: SwapInternalState,
         onSwapCurrencyTypeClick: (BigDecimal?) -> Unit,
         onTextFieldChange: (NumberTextFieldInnerState) -> Unit,
         onBalanceButtonClick: () -> Unit,
@@ -285,7 +285,7 @@ internal class ExactInputVMMapper {
     }
 
     private fun createMaxState(
-        state: ExactInputInternalState,
+        state: SwapInternalState,
         onBalanceButtonClick: () -> Unit
     ): ButtonState {
         val account =
@@ -345,7 +345,7 @@ internal class ExactInputVMMapper {
     }
 
     private fun createAmountTextState(
-        state: ExactInputInternalState,
+        state: SwapInternalState,
         onSwapAssetPickerClick: (() -> Unit)?
     ): SwapAmountTextState {
         val fiatText =
@@ -412,7 +412,7 @@ internal class ExactInputVMMapper {
     }
 
     private fun createSlippageState(
-        state: ExactInputInternalState,
+        state: SwapInternalState,
         onSlippageClick: (BigDecimal?) -> Unit
     ): ButtonState {
         val amount = state.slippage
@@ -424,7 +424,7 @@ internal class ExactInputVMMapper {
         )
     }
 
-    private fun createErrorFooterState(state: ExactInputInternalState): SwapErrorFooterState? {
+    private fun createErrorFooterState(state: SwapInternalState): SwapErrorFooterState? {
         if (state.swapAssets.error == null || state.isEphemeralAddressLocked) return null
 
         val isServiceUnavailableError =
@@ -451,7 +451,7 @@ internal class ExactInputVMMapper {
     @Suppress("CyclomaticComplexMethod")
     private fun createPrimaryButtonState(
         textField: SwapAmountTextFieldState,
-        state: ExactInputInternalState,
+        state: SwapInternalState,
         onRequestSwapQuoteClick: (BigDecimal, String) -> Unit,
         onTryAgainClick: () -> Unit
     ): ButtonState? {
@@ -518,7 +518,7 @@ internal class ExactInputVMMapper {
         )
     }
 
-    private fun createAddressState(state: ExactInputInternalState, onAddressChange: (String) -> Unit): TextFieldState {
+    private fun createAddressState(state: SwapInternalState, onAddressChange: (String) -> Unit): TextFieldState {
         val text = state.addressText
 
         return TextFieldState(
@@ -534,7 +534,7 @@ internal class ExactInputVMMapper {
         )
     }
 
-    private fun createListItems(state: ExactInputInternalState): List<SimpleListItemState> {
+    private fun createListItems(state: SwapInternalState): List<SimpleListItemState> {
         val zecToAssetExchangeRate = state.getZecToDestinationAssetExchangeRate()
         val assetTokenTicker = state.swapAsset?.tokenTicker
         return if (zecToAssetExchangeRate == null || assetTokenTicker == null) {
@@ -560,7 +560,7 @@ internal class ExactInputVMMapper {
     }
 }
 
-private data class ExactInputInternalState(
+private data class SwapInternalState(
     override val account: WalletAccount?,
     override val swapAsset: SwapAsset?,
     override val currencyType: CurrencyType,

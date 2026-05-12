@@ -6,6 +6,7 @@ import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
+import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.model.ZecSwapAsset
 import kotlinx.coroutines.CoroutineScope
@@ -41,7 +42,7 @@ interface SwapRepository {
 
     fun requestExactOutputQuote(amount: BigDecimal, address: String, refundAddress: String)
 
-    fun requestExactInputIntoZec(amount: BigDecimal, refundAddress: String, destinationAddress: String)
+    fun requestFlexInputIntoZec(amount: BigDecimal, refundAddress: String, destinationAddress: String)
 
     fun clear()
 
@@ -161,7 +162,7 @@ class SwapRepositoryImpl(
     }
 
     @Suppress("TooGenericExceptionCaught")
-    override fun requestExactInputIntoZec(amount: BigDecimal, refundAddress: String, destinationAddress: String) {
+    override fun requestFlexInputIntoZec(amount: BigDecimal, refundAddress: String, destinationAddress: String) {
         requestQuoteJob =
             scope.launch {
                 quote.update { SwapQuoteData.Loading }
@@ -170,8 +171,7 @@ class SwapRepositoryImpl(
                 try {
                     val result =
                         swapDataSource.requestQuote(
-                            swapMode = EXACT_INPUT,
-                            flexInput = true,
+                            swapMode = FLEX_INPUT,
                             amount = amount,
                             refundAddress = refundAddress,
                             originAsset = originAsset,
@@ -182,7 +182,7 @@ class SwapRepositoryImpl(
                         )
                     quote.update { SwapQuoteData.Success(quote = result) }
                 } catch (e: Exception) {
-                    quote.update { SwapQuoteData.Error(EXACT_INPUT, e) }
+                    quote.update { SwapQuoteData.Error(FLEX_INPUT, e) }
                 }
             }
     }
@@ -198,7 +198,6 @@ class SwapRepositoryImpl(
                     val result =
                         swapDataSource.requestQuote(
                             swapMode = mode,
-                            flexInput = false,
                             amount = amount,
                             refundAddress = refundAddress,
                             originAsset = originAsset,

@@ -14,7 +14,6 @@ interface SwapDataSource {
     @Throws(ResponseException::class, QuoteLowAmountException::class)
     suspend fun requestQuote(
         swapMode: SwapMode,
-        flexInput: Boolean,
         amount: BigDecimal,
         refundAddress: String,
         originAsset: SwapAsset,
