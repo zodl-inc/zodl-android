@@ -480,10 +480,15 @@ class ChooseServerVM(
         val endpoint =
             when (selectedEndpoint) {
                 Selection.Custom,
-                is Selection.Endpoint -> getUserEndpointSelectionOrShowError()
-                null -> getSelectedEndpoint() ?: run {
-                    showValidationErrorDialog(null)
-                    null
+                is Selection.Endpoint -> {
+                    getUserEndpointSelectionOrShowError()
+                }
+
+                null -> {
+                    getSelectedEndpoint() ?: run {
+                        showValidationErrorDialog(null)
+                        null
+                    }
                 }
             }
 
