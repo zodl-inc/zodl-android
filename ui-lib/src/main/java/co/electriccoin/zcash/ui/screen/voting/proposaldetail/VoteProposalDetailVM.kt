@@ -22,6 +22,7 @@ import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCa
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.isDefaultVotingConfig
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
@@ -260,20 +261,21 @@ class VoteProposalDetailVM(
 
     private fun buildUnverifiedPollWarningSheet(round: VotingRound) =
         ZashiConfirmationState(
-            icon = R.drawable.ic_reset_zashi_warning,
+            icon = R.drawable.ic_alert_circle,
             title = stringRes(R.string.vote_unverified_poll_title),
             message = stringRes(R.string.vote_unverified_poll_message),
             primaryAction = ButtonState(
-                text = stringRes(R.string.vote_continue),
-                style = ButtonStyle.PRIMARY,
-                onClick = { proceedFromUnverifiedPollWarning(round) }
-            ),
-            secondaryAction = ButtonState(
                 text = stringRes(R.string.vote_error_go_back),
-                style = ButtonStyle.TERTIARY,
+                style = ButtonStyle.PRIMARY,
                 onClick = ::dismissUnverifiedPollWarning
             ),
-            onBack = ::dismissUnverifiedPollWarning
+            secondaryAction = ButtonState(
+                text = stringRes(R.string.vote_proceed_anyway),
+                style = ButtonStyle.SECONDARY,
+                onClick = { proceedFromUnverifiedPollWarning(round) }
+            ),
+            onBack = ::dismissUnverifiedPollWarning,
+            style = ZashiConfirmationStyle.UNVERIFIED_POLL_WARNING
         )
 
     private fun proceedFromUnverifiedPollWarning(round: VotingRound) {

@@ -27,6 +27,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -41,6 +42,8 @@ fun ZashiModalBottomSheet(
     modifier: Modifier = Modifier,
     scrimColor: Color = BottomSheetDefaults.ScrimColor,
     sheetState: SheetState = rememberModalBottomSheetState(),
+    shape: Shape = ZashiModalBottomSheetDefaults.SheetShape,
+    containerColor: Color = ZashiModalBottomSheetDefaults.ContainerColor,
     properties: ModalBottomSheetProperties = ModalBottomSheetDefaults.properties,
     dragHandle: @Composable (() -> Unit)? = { ZashiModalBottomSheetDragHandle() },
     content: @Composable ColumnScope.() -> Unit,
@@ -50,8 +53,8 @@ fun ZashiModalBottomSheet(
         modifier = modifier.statusBarsPadding(),
         sheetState = sheetState,
         scrimColor = scrimColor,
-        shape = ZashiModalBottomSheetDefaults.SheetShape,
-        containerColor = ZashiModalBottomSheetDefaults.ContainerColor,
+        shape = shape,
+        containerColor = containerColor,
         dragHandle = dragHandle,
         properties = properties,
         content = content,

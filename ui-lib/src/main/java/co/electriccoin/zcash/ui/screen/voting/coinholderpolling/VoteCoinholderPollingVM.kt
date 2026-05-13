@@ -19,6 +19,7 @@ import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
 import co.electriccoin.zcash.ui.common.repository.VotingApiSnapshot
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
+import co.electriccoin.zcash.ui.common.repository.VotingChainConfigState
 import co.electriccoin.zcash.ui.common.repository.VotingConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
@@ -33,6 +34,7 @@ import co.electriccoin.zcash.ui.common.usecase.VotingShareTrackingResult
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.VoteTrustIndicator
 import co.electriccoin.zcash.ui.screen.voting.chainconfig.VoteChainConfigArgs
@@ -77,10 +79,22 @@ class VoteCoinholderPollingVM(
 ) : ViewModel() {
     private val roundsLce = mutableLce<List<VotingRound>>(Lce(loading = true))
     private val screenRefreshPending = MutableStateFlow(true)
+    private val configRefreshPending = MutableStateFlow(false)
+    private val loadedConfigSource = MutableStateFlow<String?>(null)
+    private val selectedConfigSource =
+        votingChainConfigRepository.state
+            .map { config -> config.selectedPinnedSourceKey() }
+            .distinctUntilChanged()
     private val pollListLceSource =
         object : LceSource {
-            override val loading = combine(roundsLce.loading, screenRefreshPending) { loading, pending ->
-                loading || pending
+            override val loading = combine(
+                roundsLce.loading,
+                screenRefreshPending,
+                configRefreshPending,
+                selectedConfigSource,
+                loadedConfigSource
+            ) { loading, screenPending, configPending, selectedSource, loadedSource ->
+                loading || screenPending || configPending || selectedSource != loadedSource
             }
             override val error = roundsLce.error
         }
@@ -120,13 +134,20 @@ class VoteCoinholderPollingVM(
         ) { apiSnapshot, chainConfig, configuration ->
             ApiSnapshotWithConfig(
                 apiSnapshot = apiSnapshot,
+                selectedConfigSource = chainConfig.selectedPinnedSourceKey(),
                 isOnDefaultConfig = isDefaultVotingConfig(chainConfig, configuration)
+            )
+        }
+    private val apiSnapshotWithConfigReadiness =
+        combine(apiSnapshotWithConfig, loadedConfigSource) { apiSnapshotWithConfig, loadedSource ->
+            apiSnapshotWithConfig.copy(
+                isSelectedConfigLoaded = apiSnapshotWithConfig.selectedConfigSource == loadedSource
             )
         }
 
     val state =
         combine(
-            apiSnapshotWithConfig,
+            apiSnapshotWithConfigReadiness,
             roundsLce.state,
             recoveryVoteCounts,
             votingSessionStore.state,
@@ -134,6 +155,7 @@ class VoteCoinholderPollingVM(
         ) { apiSnapshotWithConfig, roundsLceState, persistedVoteCounts, sessionState, accountUuid ->
             val apiSnapshot = apiSnapshotWithConfig.apiSnapshot
             val rounds = when {
+                !apiSnapshotWithConfig.isSelectedConfigLoaded -> null
                 roundsLceState.loading -> null
                 apiSnapshot.rounds.isNotEmpty() -> apiSnapshot.rounds
                 roundsLceState.content is LceContent.Success -> emptyList()
@@ -204,13 +226,14 @@ class VoteCoinholderPollingVM(
             combine(
                 contentFlow,
                 screenRefreshPending,
+                configRefreshPending,
                 configErrorSheet,
                 unverifiedPollWarningSheet
-            ) { content, refreshPending, configSheet, unverifiedSheet ->
+            ) { content, refreshPending, configPending, configSheet, unverifiedSheet ->
                 // The poll-list VM is retained behind deeper voting screens. Suppress old
                 // content until ON_RESUME starts the refresh, otherwise Compose can draw a
                 // stale poll card for one frame before the loading state arrives.
-                content.takeUnless { refreshPending }?.copy(
+                content.takeUnless { refreshPending || configPending }?.copy(
                     configErrorSheet = configSheet,
                     unverifiedPollWarningSheet = unverifiedSheet
                 )
@@ -421,17 +444,21 @@ class VoteCoinholderPollingVM(
                     if (isFirstEmission) {
                         isFirstEmission = false
                     } else {
-                        clearVotingStateForConfigRefresh()
-                        refreshVotingData()
+                        refreshVotingDataForConfigChange()
                     }
                 }
         }
     }
 
-    private suspend fun clearVotingStateForConfigRefresh() {
-        configIssue = null
-        configErrorSheet.value = null
-        clearLoadedVotingStateForServiceConfigRefresh()
+    private fun refreshVotingDataForConfigChange() {
+        configRefreshPending.value = true
+        roundsLce.execute {
+            try {
+                refreshVotingDataInternal(resetVisibleConfigError = true)
+            } finally {
+                configRefreshPending.value = false
+            }
+        }
     }
 
     private suspend fun refreshVotingDataInternal(resetVisibleConfigError: Boolean): List<VotingRound> {
@@ -466,6 +493,7 @@ class VoteCoinholderPollingVM(
         } ?: run {
             recoveryVoteCounts.value = emptyMap()
         }
+        loadedConfigSource.value = votingChainConfigRepository.state.value.selectedPinnedSourceKey()
         return votingApiRepository.snapshot.value.rounds
     }
 
@@ -658,20 +686,21 @@ class VoteCoinholderPollingVM(
 
     private fun buildUnverifiedPollWarningSheet() =
         ZashiConfirmationState(
-            icon = R.drawable.ic_reset_zashi_warning,
+            icon = R.drawable.ic_alert_circle,
             title = stringRes(R.string.vote_unverified_poll_title),
             message = stringRes(R.string.vote_unverified_poll_message),
             primaryAction = ButtonState(
-                text = stringRes(R.string.vote_continue),
-                style = ButtonStyle.PRIMARY,
-                onClick = ::proceedFromUnverifiedPollWarning
-            ),
-            secondaryAction = ButtonState(
                 text = stringRes(R.string.vote_error_go_back),
-                style = ButtonStyle.TERTIARY,
+                style = ButtonStyle.PRIMARY,
                 onClick = ::dismissUnverifiedPollWarning
             ),
-            onBack = ::dismissUnverifiedPollWarning
+            secondaryAction = ButtonState(
+                text = stringRes(R.string.vote_proceed_anyway),
+                style = ButtonStyle.SECONDARY,
+                onClick = ::proceedFromUnverifiedPollWarning
+            ),
+            onBack = ::dismissUnverifiedPollWarning,
+            style = ZashiConfirmationStyle.UNVERIFIED_POLL_WARNING
         )
 
     private fun proceedFromUnverifiedPollWarning() {
@@ -710,10 +739,15 @@ class VoteCoinholderPollingVM(
 
 private data class ApiSnapshotWithConfig(
     val apiSnapshot: VotingApiSnapshot,
-    val isOnDefaultConfig: Boolean
+    val selectedConfigSource: String,
+    val isOnDefaultConfig: Boolean,
+    val isSelectedConfigLoaded: Boolean = false
 )
 
 private data class PendingRoundSelection(
     val round: VotingRound,
     val status: VotePollCardStatus
 )
+
+private fun VotingChainConfigState.selectedPinnedSourceKey(): String =
+    selectedPinnedSource.orEmpty()

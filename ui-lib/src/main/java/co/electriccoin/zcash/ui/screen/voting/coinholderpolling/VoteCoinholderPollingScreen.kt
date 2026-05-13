@@ -22,14 +22,11 @@ fun VoteCoinholderPollingScreen() {
         vm.onScreenExited()
     }
     val state by vm.state.collectAsStateWithLifecycle()
-    LceRenderer(
-        state = state,
-        loading = { isLoading ->
-            if (isLoading && state.content == null) {
-                VoteCoinholderPollingLoadingView()
-            }
-        }
-    ) {
+    if (state.isLoading && state.error == null) {
+        VoteCoinholderPollingLoadingView()
+        return
+    }
+    LceRenderer(state = state) {
         BackHandler { it.onBack() }
         VoteCoinholderPollingView(it)
     }

@@ -1,9 +1,9 @@
 package co.electriccoin.zcash.ui.screen.voting.coinholderpolling
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -75,7 +75,13 @@ fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
                         Modifier
                             .fillMaxSize()
                             .scaffoldPadding(padding),
-                    verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing2xl)
+                    contentPadding = PaddingValues(
+                        start = ZashiDimensions.Spacing.spacing3xl,
+                        top = 8.dp,
+                        end = ZashiDimensions.Spacing.spacing3xl,
+                        bottom = 40.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing4xl)
                 ) {
                     items(state.activeRounds, key = { it.roundId }) { round ->
                         PollCard(round)
@@ -173,8 +179,7 @@ private fun PollCard(state: VotePollCardState) {
     Surface(
         modifier =
             Modifier
-                .fillMaxWidth()
-                .clickable(enabled = state.isActionEnabled) { state.onAction() },
+                .fillMaxWidth(),
         shape = RoundedCornerShape(ZashiDimensions.Radius.radius2xl),
         color = ZashiColors.Surfaces.bgPrimary,
         border = BorderStroke(1.dp, ZashiColors.Surfaces.strokeSecondary),
@@ -185,66 +190,78 @@ private fun PollCard(state: VotePollCardState) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(ZashiDimensions.Spacing.spacingXl),
-            verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacingXl)
+            verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing2xl)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacingXl)
             ) {
-                StatusBadge(state.status)
-                Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    text = state.dateLabel.getValue(),
-                    style = ZashiTypography.textSm,
-                    fontWeight = FontWeight.Medium,
-                    color = ZashiColors.Text.textTertiary
-                )
-            }
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = state.title.getValue(),
-                    style = ZashiTypography.textMd,
-                    color = ZashiColors.Text.textPrimary,
-                    fontWeight = FontWeight.SemiBold
-                )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
                     modifier = Modifier.fillMaxWidth()
                 ) {
+                    StatusBadge(state.status)
+                    Spacer(modifier = Modifier.weight(1f))
                     Text(
-                        text = state.votedLabel?.getValue()
-                            ?: stringResource(R.string.vote_poll_voted_count, state.votedCount, state.proposalCount),
-                        style = ZashiTypography.textSm,
-                        fontWeight = FontWeight.Medium,
-                        color = ZashiColors.Text.textPrimary
-                    )
-                    ProgressDots(votedCount = state.votedCount, total = state.proposalCount)
-                }
-            }
-
-            state.trustIndicator?.let { indicator ->
-                VoteTrustIndicatorView(indicator)
-            }
-
-            if (state.description.getValue().isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = stringResource(R.string.vote_poll_card_description_label),
+                        text = state.dateLabel.getValue(),
                         style = ZashiTypography.textSm,
                         fontWeight = FontWeight.Medium,
                         color = ZashiColors.Text.textTertiary
                     )
-                    Text(
-                        text = state.description.getValue(),
-                        style = ZashiTypography.textSm,
-                        color = ZashiColors.Text.textPrimary
-                    )
                 }
+
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = state.title.getValue(),
+                        style = ZashiTypography.textMd,
+                        color = ZashiColors.Text.textPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    if (state.description.getValue().isNotEmpty()) {
+                        Text(
+                            text = state.description.getValue(),
+                            style = ZashiTypography.textSm,
+                            color = ZashiColors.Text.textPrimary
+                        )
+                    }
+                }
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (state.trustIndicator != null) {
+                    VoteTrustIndicatorView(state.trustIndicator)
+                } else {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+                PollActionButton(state)
             }
         }
     }
+}
+
+@Composable
+private fun PollActionButton(state: VotePollCardState) {
+    val actionText =
+        when (state.status) {
+            VotePollCardStatus.ACTIVE -> stringRes(R.string.vote_poll_card_enter)
+            VotePollCardStatus.VOTED -> stringRes(R.string.vote_poll_card_view_votes)
+            VotePollCardStatus.CLOSED -> stringRes(R.string.vote_poll_card_view_results)
+        }
+
+    ZashiButton(
+        modifier = Modifier.height(40.dp),
+        state = ButtonState(
+            text = actionText,
+            style = ButtonStyle.PRIMARY,
+            isEnabled = state.isActionEnabled,
+            onClick = state.onAction
+        ),
+        style = ZashiTypography.textSm,
+    )
 }
 
 @Composable
@@ -311,27 +328,6 @@ private data class StatusBadgeParams(
     val bgColor: Color,
     val borderColor: Color,
 )
-
-@Composable
-private fun ProgressDots(
-    votedCount: Int,
-    total: Int
-) {
-    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-        repeat(total) { index ->
-            Surface(
-                shape = CircleShape,
-                color =
-                    if (index < votedCount) {
-                        ZashiColors.Utility.SuccessGreen.utilitySuccess500
-                    } else {
-                        ZashiColors.Utility.Gray.utilityGray200
-                    },
-                modifier = Modifier.size(8.dp)
-            ) {}
-        }
-    }
-}
 
 @Composable
 private fun AppBar(state: VoteCoinholderPollingState) {
