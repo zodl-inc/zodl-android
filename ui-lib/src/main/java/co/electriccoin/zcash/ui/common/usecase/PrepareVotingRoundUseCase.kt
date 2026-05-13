@@ -14,7 +14,6 @@ import co.electriccoin.zcash.ui.common.model.voting.selectVotingBundleNotesJson
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
-import co.electriccoin.zcash.ui.common.repository.VotingConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingDelegationPirPrecomputeRequest
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.repository.VotingEligibility
@@ -33,7 +32,7 @@ import java.io.File
 import java.security.SecureRandom
 
 class PrepareVotingRoundUseCase(
-    private val votingConfigRepository: VotingConfigRepository,
+    private val resolveVotingRoundSession: ResolveVotingRoundSessionUseCase,
     private val votingRecoveryRepository: VotingRecoveryRepository,
     private val votingSessionStore: VotingSessionStore,
     private val votingCryptoClient: VotingCryptoClient,
@@ -41,21 +40,15 @@ class PrepareVotingRoundUseCase(
     private val votingProofPrecomputeRepository: VotingProofPrecomputeRepository,
     private val synchronizerProvider: SynchronizerProvider,
     private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
-    private val getWalletSeedBytes: GetWalletSeedBytesUseCase,
-    private val refreshActiveVotingSession: RefreshActiveVotingSessionUseCase
+    private val getWalletSeedBytes: GetWalletSeedBytesUseCase
 ) {
     private val secureRandom = SecureRandom()
 
     suspend operator fun invoke(roundId: String): VotingRoundPreparationResult =
         withContext(Dispatchers.IO) {
             votingProofPrecomputeRepository.warmProvingCaches()
-            refreshActiveVotingSession()
-            val config = requireNotNull(
-                votingConfigRepository.currentConfig.value ?: votingConfigRepository.get()
-            ) {
-                "No active voting session is loaded"
-            }
-            val session = config.session
+            val sessionContext = resolveVotingRoundSession(roundId)
+            val session = sessionContext.session
             val sessionRoundId = session.voteRoundId.toHex()
 
             require(sessionRoundId.equals(roundId, ignoreCase = true)) {
@@ -257,7 +250,7 @@ class PrepareVotingRoundUseCase(
                                 "Software wallet account is missing seed fingerprint for voting round $roundId"
                             },
                             roundName = session.title,
-                            pirEndpoints = config.serviceConfig.pirEndpoints.map { endpoint -> endpoint.url },
+                            pirEndpoints = sessionContext.serviceConfig.pirEndpoints.map { endpoint -> endpoint.url },
                             expectedSnapshotHeight = session.snapshotHeight
                         )
                     }.onFailure { throwable ->

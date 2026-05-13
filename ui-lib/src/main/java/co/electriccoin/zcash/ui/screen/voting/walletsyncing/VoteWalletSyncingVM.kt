@@ -6,7 +6,7 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
-import co.electriccoin.zcash.ui.common.repository.VotingConfigRepository
+import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -27,30 +27,25 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class VoteWalletSyncingVM(
     private val args: VoteWalletSyncingArgs,
-    private val votingConfigRepository: VotingConfigRepository,
+    private val votingApiRepository: VotingApiRepository,
     private val synchronizerProvider: SynchronizerProvider,
     private val navigationRouter: NavigationRouter,
 ) : ViewModel() {
     private val hasAutoAdvanced = AtomicBoolean(false)
 
     init {
-        viewModelScope.launch {
-            votingConfigRepository.get()
-        }
         observeForAutoAdvance()
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val state: StateFlow<LceState<VoteWalletSyncingState>> =
         combine(
-            votingConfigRepository.currentConfig,
+            votingApiRepository.snapshot,
             synchronizerProvider.synchronizer.flatMapLatest { synchronizer ->
                 synchronizer?.fullyScannedHeight ?: flowOf(null)
             },
-        ) { config, fullyScannedHeight ->
-            val snapshotHeight = config
-                ?.takeIf { snapshot -> snapshot.session.voteRoundId.toHex() == args.roundId }
-                ?.session
+        ) { apiSnapshot, fullyScannedHeight ->
+            val snapshotHeight = apiSnapshot.sessionsByRoundId[args.roundId.lowercase()]
                 ?.snapshotHeight
 
             if (snapshotHeight == null) {
@@ -108,13 +103,14 @@ class VoteWalletSyncingVM(
     private fun observeForAutoAdvance() {
         viewModelScope.launch {
             val snapshotHeight =
-                votingConfigRepository
-                    .currentConfig
+                votingApiRepository
+                    .snapshot
                     .filter { snapshot ->
-                        snapshot != null && snapshot.session.voteRoundId.toHex() == args.roundId
+                        snapshot.sessionsByRoundId.containsKey(args.roundId.lowercase())
                     }
-                    .first()!!
-                    .session
+                    .first()
+                    .sessionsByRoundId
+                    .getValue(args.roundId.lowercase())
                     .snapshotHeight
 
             synchronizerProvider
@@ -140,6 +136,3 @@ class VoteWalletSyncingVM(
 
     private fun onBack() = navigationRouter.backTo(VoteCoinholderPollingArgs::class)
 }
-
-private fun ByteArray.toHex(): String =
-    joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and 0xff) }
