@@ -86,8 +86,8 @@ interface VotingApiProvider {
     /**
      * Fetches `/rounds` and returns both the user-facing [VotingRound] cards and
      * the underlying authenticated [VotingSession]s keyed by lower-cased round id.
-     * The session map lets the polls-list VM build a [VotingConfigSnapshot] from
-     * the user's tap without making another network call — the iOS pattern of
+     * The session map lets downstream voting flows resolve the explicit round id
+     * from navigation without consulting `/rounds/active` — the iOS pattern of
      * "rounds list is authoritative" (`VotingStore+Session.swift:69-77`, `:588-640`).
      */
     suspend fun fetchAllRounds(): RoundsListResult
