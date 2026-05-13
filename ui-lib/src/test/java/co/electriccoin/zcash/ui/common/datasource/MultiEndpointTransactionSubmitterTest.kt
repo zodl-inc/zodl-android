@@ -67,7 +67,10 @@ class MultiEndpointTransactionSubmitterTest {
 
             val result = assertIs<TransactionSubmitResult.Failure>(results.single())
             assertEquals(true, result.grpcError)
-            assertEquals("Timed out submitting to endpoints", result.description)
+            assertEquals(
+                "Timed out waiting for endpoint response; transaction may still have been broadcast",
+                result.description
+            )
         }
 
     @Test
