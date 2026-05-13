@@ -870,7 +870,10 @@ class VotingCryptoClientImpl(
         dbHandle: Long,
         roundId: String,
         bundleIndex: Int
-    ): VotingTxHashLookup = backend.getDelegationTxHash(dbHandle, roundId, bundleIndex).toAppModel()
+    ): VotingTxHashLookup =
+        runExpectedMissingRowLookup {
+            backend.getDelegationTxHash(dbHandle, roundId, bundleIndex).toAppModel()
+        } ?: VotingTxHashLookup.NotFound
 
     override suspend fun storeVoteTxHash(
         dbHandle: Long,
@@ -885,7 +888,10 @@ class VotingCryptoClientImpl(
         roundId: String,
         bundleIndex: Int,
         proposalId: Int
-    ): VotingTxHashLookup = backend.getVoteTxHash(dbHandle, roundId, bundleIndex, proposalId).toAppModel()
+    ): VotingTxHashLookup =
+        runExpectedMissingRowLookup {
+            backend.getVoteTxHash(dbHandle, roundId, bundleIndex, proposalId).toAppModel()
+        } ?: VotingTxHashLookup.NotFound
 
     override suspend fun markVoteSubmitted(
         dbHandle: Long,
@@ -915,12 +921,15 @@ class VotingCryptoClientImpl(
         roundId: String,
         bundleIndex: Int,
         proposalId: Int
-    ): VotingCommitmentBundleRecord? = backend.getCommitmentBundle(
-        dbHandle = dbHandle,
-        roundId = roundId,
-        bundleIndex = bundleIndex,
-        proposalId = proposalId
-    )?.toAppModel()
+    ): VotingCommitmentBundleRecord? =
+        runExpectedMissingRowLookup {
+            backend.getCommitmentBundle(
+                dbHandle = dbHandle,
+                roundId = roundId,
+                bundleIndex = bundleIndex,
+                proposalId = proposalId
+            )?.toAppModel()
+        }
 
     override suspend fun clearRecoveryState(
         dbHandle: Long,
@@ -1167,6 +1176,26 @@ private fun VoteCommitmentResult.toAppModel() =
         encSharesJson = encSharesJson,
         rawBundleJson = rawBundleJson
     )
+
+private suspend fun <T> runExpectedMissingRowLookup(block: suspend () -> T): T? =
+    try {
+        block()
+    } catch (exception: RuntimeException) {
+        // Recovery lookups are cache probes. Older native layers can surface a
+        // missing row as RuntimeException instead of returning null/NotFound.
+        if (exception.isQueryReturnedNoRows()) {
+            null
+        } else {
+            throw exception
+        }
+    }
+
+private fun Throwable.isQueryReturnedNoRows(): Boolean =
+    generateSequence(this) { throwable -> throwable.cause }
+        .any { throwable ->
+            throwable.message
+                ?.contains("Query returned no rows", ignoreCase = true) == true
+        }
 
 private fun SdkVotingTxHashLookup.toAppModel(): VotingTxHashLookup =
     when (this) {
