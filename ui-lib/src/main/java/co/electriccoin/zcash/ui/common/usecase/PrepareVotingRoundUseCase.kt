@@ -10,6 +10,8 @@ import co.electriccoin.zcash.ui.common.model.voting.VoteIneligibilityReason
 import co.electriccoin.zcash.ui.common.model.voting.VotingBundleSetupResult
 import co.electriccoin.zcash.ui.common.model.voting.RoundPhase
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
+import co.electriccoin.zcash.ui.common.model.voting.canBuildGovernancePczt
+import co.electriccoin.zcash.ui.common.model.voting.canGenerateHotkey
 import co.electriccoin.zcash.ui.common.model.voting.selectVotingBundleNotesJson
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
@@ -217,16 +219,31 @@ class PrepareVotingRoundUseCase(
                     recoverySnapshot = effectiveRecoverySnapshot,
                     existingRoundStatePhase = existingRoundState?.phase
                 )
-                val hotkey = votingCryptoClient.generateHotkey(
-                    dbHandle = dbHandle,
-                    roundId = roundId,
-                    seed = hotkeySeed
-                )
-                votingRecoveryRepository.storeHotkey(
-                    accountUuid = accountUuidString,
-                    roundId = roundId,
-                    hotkeyAddress = hotkey.address
-                )
+                val shouldGenerateHotkey = existingRoundState?.phase.canGenerateHotkey() ||
+                    (existingRoundState?.phase == RoundPhase.HOTKEY && existingRoundState.hotkeyAddress == null)
+                val hotkeyAddress = if (shouldGenerateHotkey) {
+                    val hotkey = votingCryptoClient.generateHotkey(
+                        dbHandle = dbHandle,
+                        roundId = roundId,
+                        seed = hotkeySeed
+                    )
+                    votingRecoveryRepository.storeHotkey(
+                        accountUuid = accountUuidString,
+                        roundId = roundId,
+                        hotkeyAddress = hotkey.address
+                    )
+                    hotkey.address
+                } else {
+                    val recoveredHotkeyAddress = effectiveRecoverySnapshot?.hotkeyAddress
+                        ?: existingRoundState?.hotkeyAddress
+                        ?: error("Missing hotkey address for resumed voting round $roundId")
+                    storeRecoveredHotkeyAddress(
+                        accountUuid = accountUuidString,
+                        roundId = roundId,
+                        hotkeyAddress = recoveredHotkeyAddress
+                    )
+                    recoveredHotkeyAddress
+                }
                 votingSessionStore.setEligibility(VotingEligibility.ELIGIBLE)
                 if (existingRoundState == null && selectedAccount !is KeystoneAccount) {
                     val senderSeed = getWalletSeedBytes()
@@ -262,7 +279,7 @@ class PrepareVotingRoundUseCase(
                     roundId = roundId,
                     bundleCount = preparedBundleCount,
                     eligibleWeight = eligibleWeight,
-                    hotkeyAddress = hotkey.address
+                    hotkeyAddress = hotkeyAddress
                 )
             } finally {
                 votingCryptoClient.closeVotingDb(dbHandle)
@@ -339,6 +356,22 @@ class PrepareVotingRoundUseCase(
         )
     }
 
+    private suspend fun storeRecoveredHotkeyAddress(
+        accountUuid: String,
+        roundId: String,
+        hotkeyAddress: String
+    ) {
+        val current = votingRecoveryRepository.get(accountUuid, roundId)
+            ?: VotingRecoverySnapshot(
+                accountUuid = accountUuid,
+                roundId = roundId
+            )
+        if (current.hotkeyAddress == hotkeyAddress) {
+            return
+        }
+        votingRecoveryRepository.store(current.copy(hotkeyAddress = hotkeyAddress))
+    }
+
     private suspend fun getOrCreateHotkeySeed(
         accountUuid: String,
         roundId: String,
@@ -385,19 +418,21 @@ class PrepareVotingRoundUseCase(
         repeat(bundleCount) { bundleIndex ->
             val bundleNotesJson = bundleNotesJsonByIndex[bundleIndex] ?: return@repeat
             runCatching {
-                votingCryptoClient.buildGovernancePczt(
-                    dbHandle = dbHandle,
-                    roundId = roundId,
-                    bundleIndex = bundleIndex,
-                    ufvk = ufvk,
-                    networkId = networkId,
-                    accountIndex = accountIndex,
-                    notesJson = bundleNotesJson,
-                    walletSeed = walletSeed,
-                    hotkeySeed = hotkeySeed,
-                    seedFingerprint = seedFingerprint,
-                    roundName = roundName
-                )
+                if (votingCryptoClient.getRoundState(dbHandle, roundId)?.phase.canBuildGovernancePczt()) {
+                    votingCryptoClient.buildGovernancePczt(
+                        dbHandle = dbHandle,
+                        roundId = roundId,
+                        bundleIndex = bundleIndex,
+                        ufvk = ufvk,
+                        networkId = networkId,
+                        accountIndex = accountIndex,
+                        notesJson = bundleNotesJson,
+                        walletSeed = walletSeed,
+                        hotkeySeed = hotkeySeed,
+                        seedFingerprint = seedFingerprint,
+                        roundName = roundName
+                    )
+                }
                 requests += VotingDelegationPirPrecomputeRequest(
                     accountUuid = accountUuid,
                     walletId = walletId,
