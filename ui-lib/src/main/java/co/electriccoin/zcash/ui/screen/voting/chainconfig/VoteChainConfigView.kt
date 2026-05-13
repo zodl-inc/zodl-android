@@ -495,14 +495,19 @@ private fun EditorSheet(
                         color = ZashiColors.Text.textTertiary
                     )
                 },
-                trailingIcon = {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_copy),
-                        contentDescription = null,
-                        tint = ZashiColors.Text.textTertiary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                },
+                trailingIcon =
+                    if (state.showsUrlCopyButton) {
+                        {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_copy),
+                                contentDescription = null,
+                                tint = ZashiColors.Text.textTertiary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    } else {
+                        null
+                    },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                 singleLine = true,
                 modifier =

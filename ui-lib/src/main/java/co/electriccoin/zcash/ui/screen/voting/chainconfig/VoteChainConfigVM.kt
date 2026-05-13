@@ -356,6 +356,7 @@ class VoteChainConfigVM(
                 isEnabled = !isValidating,
                 onValueChange = ::onUrlChanged
             ),
+            showsUrlCopyButton = id != null,
             deleteButton =
                 id?.let { customId ->
                     ButtonState(
