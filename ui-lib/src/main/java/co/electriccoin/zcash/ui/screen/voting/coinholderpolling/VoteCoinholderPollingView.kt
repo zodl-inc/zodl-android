@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
@@ -215,13 +216,17 @@ private fun PollCard(state: VotePollCardState) {
                         text = state.title.getValue(),
                         style = ZashiTypography.textMd,
                         color = ZashiColors.Text.textPrimary,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
                     )
                     if (state.description.getValue().isNotEmpty()) {
                         Text(
                             text = state.description.getValue(),
                             style = ZashiTypography.textSm,
-                            color = ZashiColors.Text.textPrimary
+                            color = ZashiColors.Text.textPrimary,
+                            maxLines = 3,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }

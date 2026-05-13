@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R as UiR
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
@@ -82,11 +83,18 @@ fun VoteProposalDetailView(state: VoteProposalDetailState) {
 
                     if (state.description.getValue().isNotEmpty()) {
                         Spacer(16.dp)
-                        Text(
-                            text = state.description.getValue(),
-                            style = ZashiTypography.textMd,
-                            color = ZashiColors.Text.textSecondary,
-                        )
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                text = state.description.getValue(),
+                                style = ZashiTypography.textSm,
+                                color = ZashiColors.Text.textPrimary,
+                                maxLines = 8,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            ViewMoreChip(onClick = state.onViewMore)
+                        }
                     }
 
                     state.forumUrl?.let { forumUrl ->
@@ -164,6 +172,28 @@ private fun ForumLinkRow(url: String) {
             contentDescription = null,
             tint = ZashiColors.Text.textTertiary,
             modifier = Modifier.size(20.dp)
+        )
+    }
+}
+
+@Composable
+private fun ViewMoreChip(onClick: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.clickable { onClick() }
+    ) {
+        Text(
+            text = stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_list_view_more).getValue(),
+            style = ZashiTypography.textSm,
+            color = ZashiColors.Text.textPrimary,
+            fontWeight = FontWeight.Medium
+        )
+        Spacer(4.dp)
+        Icon(
+            painter = painterResource(R.drawable.ic_chevron_down_small),
+            contentDescription = null,
+            tint = ZashiColors.Text.textPrimary,
+            modifier = Modifier.size(16.dp)
         )
     }
 }

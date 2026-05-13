@@ -25,6 +25,7 @@ import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.isDefaultVotingConfig
+import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptionArgs
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListMode
 import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsArgs
@@ -112,6 +113,15 @@ class VoteProposalDetailVM(
             unverifiedPollWarningSheet = unverifiedSheet,
             onBack = ::onBack,
             onNext = { onNext(proposals, proposalIndex, drafts) },
+            onViewMore = {
+                navigationRouter.forward(
+                    VotePollDescriptionArgs(
+                        title = proposal.title,
+                        description = proposal.description,
+                        discussionUrl = proposal.forumUrl
+                    )
+                )
+            },
             onConfirmUnanswered = { onConfirmUnanswered(accountUuid, round) },
             onDismissUnanswered = { showUnansweredSheet.value = false },
             onPollEndedClose = ::onBack,
