@@ -10,6 +10,7 @@ import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
+import co.electriccoin.zcash.ui.common.usecase.ResolveVotingRoundSessionUseCase
 import com.sparrowwallet.hummingbird.UR
 import com.sparrowwallet.hummingbird.UREncoder
 import java.io.File
@@ -42,7 +43,7 @@ interface VotingKeystoneRepository {
 
 class VotingKeystoneRepositoryImpl(
     private val accountDataSource: AccountDataSource,
-    private val votingConfigRepository: VotingConfigRepository,
+    private val resolveVotingRoundSession: ResolveVotingRoundSessionUseCase,
     private val votingRecoveryRepository: VotingRecoveryRepository,
     private val votingCryptoClient: VotingCryptoClient,
     private val votingHotkeySeedProvider: VotingHotkeySeedProvider,
@@ -62,12 +63,8 @@ class VotingKeystoneRepositoryImpl(
             require(selectedAccountUuid == accountUuid) {
                 "Selected Keystone account changed during the voting signature flow"
             }
-            val currentConfig = requireNotNull(
-                votingConfigRepository.currentConfig.value ?: votingConfigRepository.get()
-            ) {
-                "No active voting session is loaded"
-            }
-            val session = currentConfig.session
+            val sessionContext = resolveVotingRoundSession(roundId)
+            val session = sessionContext.session
             val sessionRoundId = session.voteRoundId.toLowerHex()
             require(sessionRoundId.equals(roundId, ignoreCase = true)) {
                 "Round $roundId does not match active session $sessionRoundId"
@@ -164,7 +161,7 @@ class VotingKeystoneRepositoryImpl(
                     votingDbPath = votingDbPath,
                     roundId = roundId,
                     bundleIndex = bundleIndex,
-                    pirEndpoints = currentConfig.serviceConfig.pirEndpoints.map { endpoint -> endpoint.url },
+                    pirEndpoints = sessionContext.serviceConfig.pirEndpoints.map { endpoint -> endpoint.url },
                     expectedSnapshotHeight = session.snapshotHeight,
                     networkId = networkId,
                     notesJson = bundleNotesJson

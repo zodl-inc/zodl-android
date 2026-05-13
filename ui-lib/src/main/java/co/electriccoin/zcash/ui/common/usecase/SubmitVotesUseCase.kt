@@ -28,7 +28,6 @@ import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
-import co.electriccoin.zcash.ui.common.repository.VotingConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingProposalSelection
 import co.electriccoin.zcash.ui.common.repository.VotingDelegationPirPrecomputeKey
 import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepository
@@ -53,7 +52,7 @@ class VotingAuthorizationException(cause: Exception) : Exception(
 )
 
 class SubmitVotesUseCase(
-    private val votingConfigRepository: VotingConfigRepository,
+    private val resolveVotingRoundSession: ResolveVotingRoundSessionUseCase,
     private val votingRecoveryRepository: VotingRecoveryRepository,
     private val votingSessionStore: VotingSessionStore,
     private val votingCryptoClient: VotingCryptoClient,
@@ -95,18 +94,14 @@ class SubmitVotesUseCase(
                     )
             }
 
-            val currentConfig = requireNotNull(
-                votingConfigRepository.currentConfig.value ?: votingConfigRepository.get()
-            ) {
-                "No active voting session is loaded"
-            }
-            val session = currentConfig.session
+            val sessionContext = resolveVotingRoundSession(roundId)
+            val session = sessionContext.session
             val sessionRoundId = session.voteRoundId.toHex()
             require(sessionRoundId.equals(roundId, ignoreCase = true)) {
                 "Round $roundId does not match active session $sessionRoundId"
             }
 
-            val serviceConfig = currentConfig.serviceConfig
+            val serviceConfig = sessionContext.serviceConfig
             val voteServerUrls = serviceConfig.voteServers
                 .map { endpoint -> endpoint.url.trimEnd('/') }
                 .distinct()

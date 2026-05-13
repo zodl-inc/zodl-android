@@ -8,9 +8,9 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.provider.ShieldFundsInfoProvider
 import co.electriccoin.zcash.ui.common.repository.HomeMessageData
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
-import co.electriccoin.zcash.ui.common.repository.VotingConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneRouteStage
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
+import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
@@ -82,7 +82,6 @@ class HomeVM(
     private val navigateToReceive: NavigateToReceiveUseCase,
     private val navigateToNearPay: NavigateToNearPayUseCase,
     private val navigateToSwap: NavigateToSwapUseCase,
-    private val votingConfigRepository: VotingConfigRepository,
     private val votingRecoveryRepository: VotingRecoveryRepository,
     private val votingApiRepository: VotingApiRepository,
     private val votingSessionStore: VotingSessionStore,
@@ -181,11 +180,17 @@ class HomeVM(
         }.getOrElse {
             return false
         }
-        val config = votingConfigRepository.currentConfig.value ?: votingConfigRepository.get()
-            ?: return false
         val accountUuid = getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId()
-        val roundId = config.session.voteRoundId.toLowerHex()
-        val recovery = votingRecoveryRepository.get(accountUuid, roundId) ?: return false
+        var recovery: VotingRecoverySnapshot? = null
+        for (roundId in votingApiRepository.snapshot.value.sessionsByRoundId.keys) {
+            val candidate = votingRecoveryRepository.get(accountUuid, roundId)
+            if (candidate?.pendingKeystoneRequest != null) {
+                recovery = candidate
+                break
+            }
+        }
+        recovery ?: return false
+        val roundId = recovery.roundId
         val pendingRequest = recovery.pendingKeystoneRequest ?: return false
         val draftChoices = recovery.draftChoices
             .ifEmpty { recovery.proposalSelections.mapValues { (_, selection) -> selection.choiceId } }
@@ -193,7 +198,9 @@ class HomeVM(
             return false
         }
 
-        votingApiRepository.upsertRound(config.session.toVotingRound())
+        votingApiRepository.snapshot.value.sessionsByRoundId[roundId]
+            ?.toVotingRound()
+            ?.let(votingApiRepository::upsertRound)
         votingSessionStore.restoreDraftVotes(accountUuid, roundId, draftChoices)
 
         val restoredRoutes = buildList {

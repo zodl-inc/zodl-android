@@ -106,6 +106,7 @@ import co.electriccoin.zcash.ui.common.usecase.RefreshFastestServersUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshActiveVotingSessionUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshVotingRoundsUseCase
 import co.electriccoin.zcash.ui.common.usecase.RemindWalletBackupLaterUseCase
+import co.electriccoin.zcash.ui.common.usecase.ResolveVotingRoundSessionUseCase
 import co.electriccoin.zcash.ui.common.usecase.RequestSwapQuoteUseCase
 import co.electriccoin.zcash.ui.common.usecase.RescanBlockchainUseCase
 import co.electriccoin.zcash.ui.common.usecase.RescanQrUseCase
@@ -162,6 +163,7 @@ val useCaseModule =
         factoryOf(::RefreshActiveVotingSessionUseCase)
         factory { RefreshVotingRoundsUseCase(get(), get()) }
         factoryOf(::GetAllVotingRoundsUseCase)
+        factoryOf(::ResolveVotingRoundSessionUseCase)
         factoryOf(::PrepareVotingRoundUseCase)
         factoryOf(::AuthorizeVotingSubmissionUseCase)
         factoryOf(::SkipRemainingKeystoneBundlesUseCase)
