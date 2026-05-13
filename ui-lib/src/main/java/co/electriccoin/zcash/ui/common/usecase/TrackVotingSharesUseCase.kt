@@ -48,8 +48,7 @@ class TrackVotingSharesUseCase(
                 return@withContext VotingShareTrackingResult.Pending(DEFAULT_DELAY_MILLIS)
             }
 
-            val synchronizer = synchronizerProvider.getSynchronizer()
-            val walletDbPath = synchronizer.getWalletDbPath()
+            val walletDbPath = synchronizerProvider.getVotingWalletDbPath()
             val votingDbPath = File(walletDbPath)
                 .parentFile
                 ?.resolve("voting.sqlite3")

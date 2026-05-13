@@ -201,7 +201,7 @@ private class FakeAccountDataSource(
 }
 
 private class FakeSynchronizerProvider(
-    walletDbPath: String
+    private val walletDbPath: String
 ) : SynchronizerProvider {
     private val fakeSynchronizer = synchronizer(walletDbPath)
 
@@ -209,6 +209,8 @@ private class FakeSynchronizerProvider(
     override val synchronizer: StateFlow<Synchronizer?> = MutableStateFlow(fakeSynchronizer)
 
     override suspend fun getSynchronizer(): Synchronizer = fakeSynchronizer
+
+    override suspend fun getVotingWalletDbPath(): String = walletDbPath
 
     override fun resetSynchronizer() = Unit
 }

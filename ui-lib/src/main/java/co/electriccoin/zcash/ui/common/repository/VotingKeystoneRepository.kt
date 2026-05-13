@@ -122,7 +122,7 @@ class VotingKeystoneRepositoryImpl(
                 ?: error("Keystone account is missing seed fingerprint")
 
             val synchronizer = synchronizerProvider.getSynchronizer()
-            val walletDbPath = synchronizer.getWalletDbPath()
+            val walletDbPath = synchronizerProvider.getVotingWalletDbPath()
             val votingDbPath = File(walletDbPath)
                 .parentFile
                 ?.resolve("voting.sqlite3")
@@ -152,6 +152,7 @@ class VotingKeystoneRepositoryImpl(
                     roundId = roundId,
                     bundleIndex = bundleIndex,
                     walletDbPath = walletDbPath,
+                    networkId = networkId,
                     notesJson = allNotesJson
                 )
                 val bundleNotesJson = allNotesJson.selectVotingBundleNotesJson(witnessesJson)
