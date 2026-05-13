@@ -470,36 +470,42 @@ class ChooseServerVM(
             }
 
             ConnectionMode.MANUAL -> {
-                val selectedEndpoint = userEndpointSelection.value
-                val endpoint =
+                getManualServerSelectionOrShowError(persistedSelection)
+            }
+        }
+    }
+
+    private fun getManualServerSelectionOrShowError(persistedSelection: ServerSelection): ServerSelection? {
+        val selectedEndpoint = userEndpointSelection.value
+        val endpoint =
+            when (selectedEndpoint) {
+                Selection.Custom,
+                is Selection.Endpoint -> getUserEndpointSelectionOrShowError()
+                null -> getSelectedEndpoint() ?: run {
+                    showValidationErrorDialog(null)
+                    null
+                }
+            }
+
+        return endpoint?.let {
+            ServerSelection.manual(
+                endpoint = it,
+                isCustom =
                     when (selectedEndpoint) {
-                        Selection.Custom -> getUserEndpointSelectionOrShowError() ?: return null
-                        is Selection.Endpoint -> getUserEndpointSelectionOrShowError()
-                        null -> getSelectedEndpoint()
-                    } ?: run {
-                        showValidationErrorDialog(null)
-                        return null
-                    }
+                        Selection.Custom,
+                        is Selection.Endpoint -> {
+                            !availableServers.contains(it)
+                        }
 
-                ServerSelection.manual(
-                    endpoint = endpoint,
-                    isCustom =
-                        when (selectedEndpoint) {
-                            Selection.Custom,
-                            is Selection.Endpoint -> {
-                                !availableServers.contains(endpoint)
-                            }
-
-                            null -> {
-                                if (persistedSelection.endpoint == endpoint) {
-                                    persistedSelection.isCustom || !availableServers.contains(endpoint)
-                                } else {
-                                    !availableServers.contains(endpoint)
-                                }
+                        null -> {
+                            if (persistedSelection.endpoint == it) {
+                                persistedSelection.isCustom || !availableServers.contains(it)
+                            } else {
+                                !availableServers.contains(it)
                             }
                         }
-                )
-            }
+                    }
+            )
         }
     }
 
