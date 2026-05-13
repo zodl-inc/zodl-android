@@ -12,8 +12,8 @@ data class VotingApiSnapshot(
     val rounds: List<VotingRound> = emptyList(),
     /**
      * Authenticated [VotingSession]s keyed by lower-cased round id, populated by
-     * `/rounds`. Lets the polls-list VM hydrate a [VotingConfigSnapshot] for the
-     * user's tapped round without re-hitting `/rounds/active`.
+     * `/rounds`. Lets voting flows resolve an explicit round id without
+     * re-hitting `/rounds/active`.
      */
     val sessionsByRoundId: Map<String, VotingSession> = emptyMap(),
     val zodlEndorsedRoundIds: Set<String> = emptySet(),
