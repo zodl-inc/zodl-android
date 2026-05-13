@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.voting.proposallist
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -95,6 +97,20 @@ fun VoteProposalListView(state: VoteProposalListState) {
                 }
 
                 state.ctaButton?.let { button ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(64.dp)
+                            .align(Alignment.BottomCenter)
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        ZashiColors.Surfaces.bgPrimary
+                                    )
+                                )
+                            )
+                    )
                     ZashiButton(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -336,6 +352,7 @@ private fun ProposalCard(
         shape = RoundedCornerShape(ZashiDimensions.Radius.radius2xl),
         border = BorderStroke(1.dp, ZashiColors.Surfaces.strokeSecondary),
         onClick = state.onClick,
+        shadowElevation = 4.dp,
         tonalElevation = 0.dp,
     ) {
         Column(

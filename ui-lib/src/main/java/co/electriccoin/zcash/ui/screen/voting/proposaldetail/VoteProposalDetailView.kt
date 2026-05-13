@@ -254,6 +254,20 @@ private fun VoteOptionRow(option: VoteVoteOptionRowState) {
 
 @Composable
 private fun NavigationButtons(state: VoteProposalDetailState) {
+    val hasSelectedOption = state.options.any { option -> option.isSelected }
+    if (!state.isEditingFromReview && !hasSelectedOption) {
+        ZashiButton(
+            modifier = Modifier.fillMaxWidth(),
+            state = ButtonState(
+                text = stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_next),
+                style = ButtonStyle.PRIMARY,
+                isEnabled = false,
+                onClick = state.onNext
+            )
+        )
+        return
+    }
+
     Row(modifier = Modifier.fillMaxWidth()) {
         ZashiButton(
             modifier = Modifier.weight(1f),

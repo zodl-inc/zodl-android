@@ -40,14 +40,6 @@ internal fun VoteSubmissionDetailsCard(state: VoteConfirmSubmissionState) {
     ) {
         Column {
             VoteSubmissionDetailRow(stringRes(R.string.vote_confirm_detail_poll), state.roundTitle.getValue())
-            HorizontalDivider(color = ZashiColors.Surfaces.strokeSecondary)
-            VoteSubmissionDetailRow(stringRes(R.string.vote_confirm_detail_voting_power), state.votingWeightZEC.getValue())
-            HorizontalDivider(color = ZashiColors.Surfaces.strokeSecondary)
-            VoteSubmissionDetailRow(
-                stringRes(R.string.vote_confirm_detail_hotkey),
-                state.hotkeyAddress.getValue(),
-                compactValue = true
-            )
             if (isIdle) {
                 HorizontalDivider(color = ZashiColors.Surfaces.strokeSecondary)
                 VoteSubmissionMemoRow(state.memo.getValue())
@@ -60,7 +52,6 @@ internal fun VoteSubmissionDetailsCard(state: VoteConfirmSubmissionState) {
 private fun VoteSubmissionDetailRow(
     label: StringResource,
     value: String,
-    compactValue: Boolean = false,
 ) {
     Row(
         modifier =
@@ -75,7 +66,7 @@ private fun VoteSubmissionDetailRow(
             modifier = Modifier.weight(0.95f)
         )
         Text(
-            text = if (compactValue) value.toCompactHotkeyLabel() else value,
+            text = value,
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textPrimary,
             fontWeight = FontWeight.Medium,
@@ -200,12 +191,3 @@ private fun VoteSubmissionProgressCard(
         }
     }
 }
-
-private fun String.toCompactHotkeyLabel(): String =
-    if (length <= COMPACT_HOTKEY_VISIBLE_CHARS * 2) {
-        this
-    } else {
-        take(COMPACT_HOTKEY_VISIBLE_CHARS) + "..." + takeLast(COMPACT_HOTKEY_VISIBLE_CHARS)
-    }
-
-private const val COMPACT_HOTKEY_VISIBLE_CHARS = 8
