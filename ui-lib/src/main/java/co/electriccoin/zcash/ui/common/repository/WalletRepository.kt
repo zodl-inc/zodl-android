@@ -180,8 +180,12 @@ class WalletRepositoryImpl(
 
     override suspend fun updateWalletEndpoint(endpoint: LightWalletEndpoint) = updateWalletEndpointInternal(endpoint)
 
-    private suspend fun updateWalletEndpointInternal(endpoint: LightWalletEndpoint) {
+    private suspend fun updateWalletEndpointInternal(
+        endpoint: LightWalletEndpoint,
+        canUpdate: suspend () -> Boolean = { true }
+    ) {
         endpointUpdateMutex.withLock {
+            if (!canUpdate()) return@withLock
             val selectedWallet = persistableWalletProvider.getPersistableWallet() ?: return
             val selectedEndpoint = selectedWallet.endpoint
             if (selectedEndpoint == endpoint) return
@@ -301,10 +305,8 @@ class WalletRepositoryImpl(
                 ?.firstOrNull()
                 ?: return
 
-        if (serverSelectionProvider.getServerSelection()?.mode != ConnectionMode.AUTOMATIC) {
-            return
+        updateWalletEndpointInternal(endpoint) {
+            serverSelectionProvider.getServerSelection()?.mode == ConnectionMode.AUTOMATIC
         }
-
-        updateWalletEndpointInternal(endpoint)
     }
 }
