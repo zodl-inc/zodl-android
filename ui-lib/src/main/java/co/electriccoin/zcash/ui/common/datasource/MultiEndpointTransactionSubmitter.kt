@@ -59,8 +59,9 @@ internal class MultiEndpointTransactionSubmitter(
         transactionCount: Int,
         logTag: String
     ): TransactionSubmitResult {
+        val transactionLabel = "transaction ${index + 1}/$transactionCount"
         if (endpoints.isEmpty()) {
-            logger.error { "$logTag No endpoints available for transaction ${transaction.txIdString()}." }
+            logger.error { "$logTag No endpoints available for $transactionLabel." }
             return createGrpcFailure(transaction, "No endpoints available")
         }
 
@@ -77,6 +78,7 @@ internal class MultiEndpointTransactionSubmitter(
         return broadcastToEndpoints(
             transaction = transaction,
             endpoints = endpoints,
+            transactionLabel = transactionLabel,
             logTag = logTag
         )
     }
@@ -84,6 +86,7 @@ internal class MultiEndpointTransactionSubmitter(
     private suspend fun broadcastToEndpoints(
         transaction: CreatedTransaction,
         endpoints: List<LightWalletEndpoint>,
+        transactionLabel: String,
         logTag: String
     ): TransactionSubmitResult {
         val completion = CompletableDeferred<BroadcastCompletion>()
@@ -99,6 +102,7 @@ internal class MultiEndpointTransactionSubmitter(
                                 submitToEndpoint(
                                     transaction = transaction,
                                     endpoint = endpoint,
+                                    transactionLabel = transactionLabel,
                                     logTag = logTag
                                 )
                         )
@@ -158,13 +162,12 @@ internal class MultiEndpointTransactionSubmitter(
                         submissions = completedSubmissions
                     )
                 if (completion.complete(timeoutResult)) {
-                    logger.error { "$logTag Timed out waiting for any endpoint to accept ${transaction.txIdString()}." }
+                    logger.error { "$logTag Timed out waiting for any endpoint to accept $transactionLabel." }
                     jobs.forEach { it.cancel() }
                 }
             }
 
         return awaitBroadcastCompletion(
-            transaction = transaction,
             endpointCount = endpoints.size,
             state =
                 BroadcastSubmissionState(
@@ -172,21 +175,22 @@ internal class MultiEndpointTransactionSubmitter(
                     jobs = jobs,
                     timeoutJob = timeoutJob
                 ),
+            transactionLabel = transactionLabel,
             logTag = logTag
         )
     }
 
     private suspend fun awaitBroadcastCompletion(
-        transaction: CreatedTransaction,
         endpointCount: Int,
         state: BroadcastSubmissionState,
+        transactionLabel: String,
         logTag: String
     ): TransactionSubmitResult =
         try {
             when (val result = state.completion.await()) {
                 is BroadcastCompletion.Accepted -> {
                     logger.info {
-                        "$logTag Transaction ${transaction.txIdString()} accepted by ${result.endpoint.serverString()}."
+                        "$logTag $transactionLabel accepted by ${result.endpoint.serverString()}."
                     }
                     state.cancelAfterGracePeriod()
                     result.result
@@ -195,7 +199,7 @@ internal class MultiEndpointTransactionSubmitter(
                 is BroadcastCompletion.Rejected -> {
                     state.cancel()
                     logger.error {
-                        "$logTag Transaction ${transaction.txIdString()} rejected by all $endpointCount endpoint(s)."
+                        "$logTag $transactionLabel rejected by all $endpointCount endpoint(s)."
                     }
                     result.result
                 }
@@ -221,31 +225,32 @@ internal class MultiEndpointTransactionSubmitter(
     private suspend fun submitToEndpoint(
         transaction: CreatedTransaction,
         endpoint: LightWalletEndpoint,
+        transactionLabel: String,
         logTag: String
     ): TransactionSubmitResult =
         try {
             val result = submit(transaction, endpoint)
             when (result) {
                 is TransactionSubmitResult.Success -> {
-                    logger.info { "$logTag ${endpoint.serverString()} SUCCESS ${transaction.txIdString()}." }
+                    logger.info { "$logTag ${endpoint.serverString()} SUCCESS $transactionLabel." }
                 }
 
                 is TransactionSubmitResult.Failure -> {
                     logger.warn {
-                        "$logTag ${endpoint.serverString()} FAILED ${transaction.txIdString()}: " +
+                        "$logTag ${endpoint.serverString()} FAILED $transactionLabel: " +
                             "${result.code} ${result.description}"
                     }
                 }
 
                 is TransactionSubmitResult.NotAttempted -> {
-                    logger.warn { "$logTag ${endpoint.serverString()} NOT_ATTEMPTED ${transaction.txIdString()}." }
+                    logger.warn { "$logTag ${endpoint.serverString()} NOT_ATTEMPTED $transactionLabel." }
                 }
             }
             result
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            logger.warn(e) { "$logTag ${endpoint.serverString()} FAILED ${transaction.txIdString()}." }
+            logger.warn(e) { "$logTag ${endpoint.serverString()} FAILED $transactionLabel." }
             createGrpcFailure(transaction, e.message)
         }
 
