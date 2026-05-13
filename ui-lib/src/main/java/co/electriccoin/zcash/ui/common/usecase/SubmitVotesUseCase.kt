@@ -14,7 +14,9 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionProgress
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingTxHashLookup
+import co.electriccoin.zcash.ui.common.model.voting.hasVoteReady
 import co.electriccoin.zcash.ui.common.model.voting.isLastMoment
+import co.electriccoin.zcash.ui.common.model.voting.isRoundPhaseRegression
 import co.electriccoin.zcash.ui.common.model.voting.isSyntheticAbstainChoice
 import co.electriccoin.zcash.ui.common.model.voting.selectVotingBundleNotesJson
 import co.electriccoin.zcash.ui.common.model.voting.shareSubmissionDeadlineEpochSeconds
@@ -187,11 +189,12 @@ class SubmitVotesUseCase(
                             )
                         )
 
-                        val cachedDelegationTxHash = votingCryptoClient.getDelegationTxHash(
-                            dbHandle = dbHandle,
-                            roundId = roundId,
-                            bundleIndex = bundleIndex
-                        )
+                        val cachedDelegationTxHash =
+                            votingCryptoClient.getDelegationTxHash(
+                                dbHandle = dbHandle,
+                                roundId = roundId,
+                                bundleIndex = bundleIndex
+                            )
                         if (cachedDelegationTxHash is VotingTxHashLookup.Present) {
                             // Fast-path probe: mirrors iOS `recoverDelegationVanPosition` with
                             // `confirmationTimeout: 0`. A cached hash that hasn't propagated yet
@@ -220,69 +223,96 @@ class SubmitVotesUseCase(
                             // scratch for this bundle.
                         }
 
-                        val witnessesJson = votingCryptoClient.generateNoteWitnessesJson(
-                            dbHandle = dbHandle,
-                            roundId = roundId,
-                            bundleIndex = bundleIndex,
-                            walletDbPath = walletDbPath,
-                            notesJson = allNotesJson
-                        )
-                        votingCryptoClient.storeWitnesses(
-                            dbHandle = dbHandle,
-                            roundId = roundId,
-                            bundleIndex = bundleIndex,
-                            witnessesJson = witnessesJson
-                        )
-
-                        val bundleNotesJson = allNotesJson.selectVotingBundleNotesJson(witnessesJson)
-                        val precomputeResult = votingProofPrecomputeRepository.awaitDelegationPirPrecompute(
-                            VotingDelegationPirPrecomputeKey(
-                                accountUuid = accountUuidString,
-                                roundId = roundId,
-                                bundleIndex = bundleIndex
-                            )
-                        )
-                        precomputeResult?.onFailure { throwable ->
-                            Log.w(TAG, "Voting PIR precompute failed for round $roundId bundle $bundleIndex", throwable)
+                        // A resumed round may already be past delegation/proving in Rust.
+                        // Skip stale rebuild work instead of trying to regress the phase.
+                        var rustRoundState = votingCryptoClient.getRoundState(dbHandle, roundId)
+                        if (rustRoundState?.phase.hasVoteReady()) {
+                            return@repeat
                         }
-                        if (!isKeystone && precomputeResult == null) {
-                            votingCryptoClient.buildGovernancePczt(
+
+                        if (rustRoundState?.proofGenerated != true) {
+                            val witnessesJson = votingCryptoClient.generateNoteWitnessesJson(
                                 dbHandle = dbHandle,
                                 roundId = roundId,
                                 bundleIndex = bundleIndex,
-                                ufvk = requireNotNull(accountUfvk) {
-                                    "Software wallet account is missing UFVK for voting bundle $bundleIndex"
-                                },
-                                networkId = networkId,
-                                accountIndex = accountIndex,
-                                notesJson = bundleNotesJson,
-                                walletSeed = requireNotNull(senderSeed) {
-                                    "Software wallet seed is missing for voting bundle $bundleIndex"
-                                },
-                                hotkeySeed = hotkeySeed,
-                                seedFingerprint = requireNotNull(seedFingerprint) {
-                                    "Software wallet account is missing seed fingerprint for voting bundle $bundleIndex"
-                                },
-                                roundName = session.title
+                                walletDbPath = walletDbPath,
+                                notesJson = allNotesJson
                             )
-                        }
-                        votingCryptoClient.buildAndProveDelegation(
-                            dbHandle = dbHandle,
-                            roundId = roundId,
-                            bundleIndex = bundleIndex,
-                            pirServerUrl = pirServerUrl,
-                            networkId = networkId,
-                            notesJson = bundleNotesJson,
-                            hotkeyRawSeed = hotkeySeed,
-                            proofProgress = { progress ->
-                                onProgress(
-                                    VotingSubmissionProgress.Authorizing(
-                                        progress = ((bundleIndex + progress.coerceIn(0.0, 1.0)) /
-                                            bundleCount.coerceAtLeast(1)).toFloat()
+                            votingCryptoClient.storeWitnesses(
+                                dbHandle = dbHandle,
+                                roundId = roundId,
+                                bundleIndex = bundleIndex,
+                                witnessesJson = witnessesJson
+                            )
+
+                            val bundleNotesJson = allNotesJson.selectVotingBundleNotesJson(witnessesJson)
+                            val precomputeResult = votingProofPrecomputeRepository.awaitDelegationPirPrecompute(
+                                VotingDelegationPirPrecomputeKey(
+                                    accountUuid = accountUuidString,
+                                    roundId = roundId,
+                                    bundleIndex = bundleIndex
+                                )
+                            )
+                            precomputeResult?.onFailure { throwable ->
+                                Log.w(TAG, "Voting PIR precompute failed for round $roundId bundle $bundleIndex", throwable)
+                            }
+                            if (!isKeystone && precomputeResult?.isSuccess != true) {
+                                val governancePcztResult = runCatching {
+                                    votingCryptoClient.buildGovernancePczt(
+                                        dbHandle = dbHandle,
+                                        roundId = roundId,
+                                        bundleIndex = bundleIndex,
+                                        ufvk = requireNotNull(accountUfvk) {
+                                            "Software wallet account is missing UFVK for voting bundle $bundleIndex"
+                                        },
+                                        networkId = networkId,
+                                        accountIndex = accountIndex,
+                                        notesJson = bundleNotesJson,
+                                        walletSeed = requireNotNull(senderSeed) {
+                                            "Software wallet seed is missing for voting bundle $bundleIndex"
+                                        },
+                                        hotkeySeed = hotkeySeed,
+                                        seedFingerprint = requireNotNull(seedFingerprint) {
+                                            "Software wallet account is missing seed fingerprint for voting bundle $bundleIndex"
+                                        },
+                                        roundName = session.title
                                     )
+                                }
+                                // Foreground or resumed submit may find that Rust already
+                                // advanced past PCZT building; ignore only that stale phase race.
+                                governancePcztResult.exceptionOrNull()
+                                    ?.takeUnless { throwable -> throwable.isRoundPhaseRegression() }
+                                    ?.let { throw it }
+                                if (governancePcztResult.exceptionOrNull()?.isRoundPhaseRegression() == true) {
+                                    Log.i(
+                                        TAG,
+                                        "Skipping governance PCZT rebuild for round $roundId bundle $bundleIndex; " +
+                                            "Rust round phase already advanced"
+                                    )
+                                }
+                            }
+
+                            rustRoundState = votingCryptoClient.getRoundState(dbHandle, roundId)
+                            if (rustRoundState?.proofGenerated != true) {
+                                votingCryptoClient.buildAndProveDelegation(
+                                    dbHandle = dbHandle,
+                                    roundId = roundId,
+                                    bundleIndex = bundleIndex,
+                                    pirServerUrl = pirServerUrl,
+                                    networkId = networkId,
+                                    notesJson = bundleNotesJson,
+                                    hotkeyRawSeed = hotkeySeed,
+                                    proofProgress = { progress ->
+                                        onProgress(
+                                            VotingSubmissionProgress.Authorizing(
+                                                progress = ((bundleIndex + progress.coerceIn(0.0, 1.0)) /
+                                                    bundleCount.coerceAtLeast(1)).toFloat()
+                                            )
+                                        )
+                                    }
                                 )
                             }
-                        )
+                        }
                         votingRecoveryRepository.setPhase(
                             accountUuid = accountUuidString,
                             roundId = roundId,
@@ -443,12 +473,13 @@ class SubmitVotesUseCase(
                             )
                         )
 
-                        val cachedVoteTxHash = votingCryptoClient.getVoteTxHash(
-                            dbHandle = dbHandle,
-                            roundId = roundId,
-                            bundleIndex = bundleIndex,
-                            proposalId = proposalId
-                        )
+                        val cachedVoteTxHash =
+                            votingCryptoClient.getVoteTxHash(
+                                dbHandle = dbHandle,
+                                roundId = roundId,
+                                bundleIndex = bundleIndex,
+                                proposalId = proposalId
+                            )
 
                         if (cachedVoteTxHash is VotingTxHashLookup.Present) {
                             val confirmation = awaitTxConfirmation(cachedVoteTxHash.txHash)

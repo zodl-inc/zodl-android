@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.repository
 
 import co.electriccoin.zcash.ui.common.model.voting.VotingDelegationPirPrecomputeResult
+import co.electriccoin.zcash.ui.common.model.voting.isRoundPhaseRegression
 import co.electriccoin.zcash.ui.common.provider.PirSnapshotResolver
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import kotlinx.coroutines.CoroutineScope
@@ -107,5 +108,12 @@ class VotingProofPrecomputeRepositoryImpl(
             } finally {
                 votingCryptoClient.closeVotingDb(dbHandle)
             }
+        }.recoverCatching { exception ->
+            // Foreground submit can advance the Rust round while this background
+            // precompute is still running. Treat that stale phase race as a cache miss.
+            if (!exception.isRoundPhaseRegression()) {
+                throw exception
+            }
+            VotingDelegationPirPrecomputeResult(cachedCount = 0, fetchedCount = 0)
         }
 }
