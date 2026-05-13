@@ -23,7 +23,7 @@ class PersistServerSelectionUseCase(
     suspend operator fun invoke(selection: ServerSelection) {
         when (selection.mode) {
             ConnectionMode.AUTOMATIC -> persistAutomatic()
-            ConnectionMode.MANUAL -> persistManual(checkNotNull(selection.endpoint))
+            ConnectionMode.MANUAL -> persistManual(selection)
         }
     }
 
@@ -33,10 +33,11 @@ class PersistServerSelectionUseCase(
     }
 
     @Throws(PersistEndpointException::class)
-    private suspend fun persistManual(endpoint: LightWalletEndpoint) {
+    private suspend fun persistManual(selection: ServerSelection) {
+        val endpoint = checkNotNull(selection.endpoint)
         when (val result = validateServerEndpoint(endpoint)) {
             ServerValidation.Valid -> {
-                persistSelectionAndEndpoint(ServerSelection.manual(endpoint), endpoint)
+                persistSelectionAndEndpoint(selection, endpoint)
             }
 
             is ServerValidation.InValid -> {

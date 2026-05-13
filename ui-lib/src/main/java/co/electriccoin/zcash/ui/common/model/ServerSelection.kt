@@ -5,7 +5,8 @@ import org.json.JSONObject
 
 data class ServerSelection(
     val mode: ConnectionMode,
-    val endpoint: LightWalletEndpoint? = null
+    val endpoint: LightWalletEndpoint? = null,
+    val isCustom: Boolean = false
 ) {
     init {
         require(mode == ConnectionMode.AUTOMATIC || endpoint != null) {
@@ -20,6 +21,7 @@ data class ServerSelection(
                 put(KEY_ENDPOINT_HOST, it.host)
                 put(KEY_ENDPOINT_PORT, it.port)
                 put(KEY_ENDPOINT_IS_SECURE, it.isSecure)
+                put(KEY_ENDPOINT_IS_CUSTOM, isCustom)
             }
         }
 
@@ -28,13 +30,15 @@ data class ServerSelection(
         private const val KEY_ENDPOINT_HOST = "endpoint_host"
         private const val KEY_ENDPOINT_PORT = "endpoint_port"
         private const val KEY_ENDPOINT_IS_SECURE = "endpoint_is_secure"
+        private const val KEY_ENDPOINT_IS_CUSTOM = "endpoint_is_custom"
 
         fun automatic() = ServerSelection(ConnectionMode.AUTOMATIC)
 
-        fun manual(endpoint: LightWalletEndpoint) =
+        fun manual(endpoint: LightWalletEndpoint, isCustom: Boolean) =
             ServerSelection(
                 mode = ConnectionMode.MANUAL,
-                endpoint = endpoint
+                endpoint = endpoint,
+                isCustom = isCustom
             )
 
         fun fromPersistedEndpoint(
@@ -44,7 +48,7 @@ data class ServerSelection(
             if (knownEndpoints.contains(it)) {
                 automatic()
             } else {
-                manual(it)
+                manual(endpoint = it, isCustom = true)
             }
         } ?: automatic()
 
@@ -55,8 +59,16 @@ data class ServerSelection(
                 )
 
             return when (mode) {
-                ConnectionMode.AUTOMATIC -> automatic()
-                ConnectionMode.MANUAL -> manual(jsonObject.getEndpoint())
+                ConnectionMode.AUTOMATIC -> {
+                    automatic()
+                }
+
+                ConnectionMode.MANUAL -> {
+                    manual(
+                        endpoint = jsonObject.getEndpoint(),
+                        isCustom = jsonObject.optBoolean(KEY_ENDPOINT_IS_CUSTOM, false)
+                    )
+                }
             }
         }
 

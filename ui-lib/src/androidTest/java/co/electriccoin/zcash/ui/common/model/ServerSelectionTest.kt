@@ -4,7 +4,9 @@ import androidx.test.filters.SmallTest
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class ServerSelectionTest {
     @Test
@@ -20,6 +22,7 @@ class ServerSelectionTest {
 
         assertEquals(ConnectionMode.MANUAL, selection.mode)
         assertEquals(endpoint, selection.endpoint)
+        assertTrue(selection.isCustom)
     }
 
     @Test
@@ -33,6 +36,7 @@ class ServerSelectionTest {
 
         assertEquals(ConnectionMode.AUTOMATIC, selection.mode)
         assertNull(selection.endpoint)
+        assertFalse(selection.isCustom)
     }
 
     @Test
@@ -46,6 +50,19 @@ class ServerSelectionTest {
 
         assertEquals(ConnectionMode.AUTOMATIC, selection.mode)
         assertNull(selection.endpoint)
+        assertFalse(selection.isCustom)
+    }
+
+    @Test
+    @SmallTest
+    fun manualServerJsonRoundTripPreservesCustomClassification() {
+        val endpoint = LightWalletEndpoint(host = "custom.example.com", port = 9067, isSecure = true)
+        val selection = ServerSelection.manual(endpoint = endpoint, isCustom = true)
+
+        val restored = ServerSelection.from(selection.toJson())
+
+        assertEquals(selection, restored)
+        assertTrue(restored.isCustom)
     }
 
     @Test

@@ -178,12 +178,13 @@ class ChooseServerVM(
         combine(
             getSelectedEndpoint.observe(),
             observeFastestServers(),
+            getServerSelection.observe(),
             endpointUiSelection,
             selectedMode
-        ) { selectedEndpoint, fastest, endpointUiSelection, selectedMode ->
+        ) { selectedEndpoint, fastest, persistedServerSelection, endpointUiSelection, selectedMode ->
             if (selectedEndpoint == null) return@combine null
 
-            val isSelectedEndpointCustom = !availableServers.contains(selectedEndpoint)
+            val isSelectedEndpointCustom = isCustomEndpoint(selectedEndpoint, persistedServerSelection)
 
             val customEndpointState =
                 createCustomServerState(
@@ -228,7 +229,7 @@ class ChooseServerVM(
             val userSelectedEndpoint =
                 when (saveButtonInput.endpointSelection) {
                     Selection.Custom -> {
-                        val isSelectedEndpointCustom = !availableServers.contains(selectedEndpoint)
+                        val isSelectedEndpointCustom = isCustomEndpoint(selectedEndpoint, persistedServerSelection)
                         if (isSelectedEndpointCustom) selectedEndpoint else null
                     }
 
@@ -248,7 +249,7 @@ class ChooseServerVM(
             val isCustomEndpointSelectedAndUpdated =
                 when (saveButtonInput.endpointSelection) {
                     Selection.Custom -> {
-                        val isSelectedEndpointCustom = !availableServers.contains(selectedEndpoint)
+                        val isSelectedEndpointCustom = isCustomEndpoint(selectedEndpoint, persistedServerSelection)
                         when {
                             isSelectedEndpointCustom && saveButtonInput.customEndpointText == null -> false
 
@@ -461,15 +462,17 @@ class ChooseServerVM(
     /**
      * @return the server selection requested by the user, or null if the selected custom endpoint is invalid.
      */
-    private suspend fun getUserServerSelectionOrShowError(): ServerSelection? =
-        when (userModeSelection.value ?: getServerSelection().mode) {
+    private suspend fun getUserServerSelectionOrShowError(): ServerSelection? {
+        val persistedSelection = getServerSelection()
+        return when (userModeSelection.value ?: persistedSelection.mode) {
             ConnectionMode.AUTOMATIC -> {
                 ServerSelection.automatic()
             }
 
             ConnectionMode.MANUAL -> {
+                val selectedEndpoint = userEndpointSelection.value
                 val endpoint =
-                    when (userEndpointSelection.value) {
+                    when (selectedEndpoint) {
                         Selection.Custom -> getUserEndpointSelectionOrShowError() ?: return null
                         is Selection.Endpoint -> getUserEndpointSelectionOrShowError()
                         null -> getSelectedEndpoint()
@@ -478,9 +481,40 @@ class ChooseServerVM(
                         return null
                     }
 
-                ServerSelection.manual(endpoint)
+                ServerSelection.manual(
+                    endpoint = endpoint,
+                    isCustom =
+                        when (selectedEndpoint) {
+                            Selection.Custom,
+                            is Selection.Endpoint -> {
+                                !availableServers.contains(endpoint)
+                            }
+
+                            null -> {
+                                if (persistedSelection.endpoint == endpoint) {
+                                    persistedSelection.isCustom || !availableServers.contains(endpoint)
+                                } else {
+                                    !availableServers.contains(endpoint)
+                                }
+                            }
+                        }
+                )
             }
         }
+    }
+
+    private fun isCustomEndpoint(
+        endpoint: LightWalletEndpoint?,
+        persistedSelection: ServerSelection
+    ) = endpoint != null &&
+        (
+            !availableServers.contains(endpoint) ||
+                (
+                    persistedSelection.mode == ConnectionMode.MANUAL &&
+                        persistedSelection.endpoint == endpoint &&
+                        persistedSelection.isCustom
+                )
+        )
 
     private fun getUserEndpointSelectionOrShowError(): LightWalletEndpoint? =
         when (val selection = userEndpointSelection.value) {
