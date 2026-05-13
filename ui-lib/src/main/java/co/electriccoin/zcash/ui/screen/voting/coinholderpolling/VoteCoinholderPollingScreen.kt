@@ -16,6 +16,11 @@ fun VoteCoinholderPollingScreen() {
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         vm.onScreenEntered()
     }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        // Mark retained content stale while another voting screen is on top. Returning to this
+        // destination should show loading until the resume refresh has started.
+        vm.onScreenExited()
+    }
     val state by vm.state.collectAsStateWithLifecycle()
     LceRenderer(
         state = state,

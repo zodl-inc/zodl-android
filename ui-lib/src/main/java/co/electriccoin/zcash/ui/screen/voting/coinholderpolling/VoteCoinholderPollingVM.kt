@@ -7,7 +7,7 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.Lce
 import co.electriccoin.zcash.ui.common.model.LceContent
-import co.electriccoin.zcash.ui.common.model.groupLce
+import co.electriccoin.zcash.ui.common.model.LceSource
 import co.electriccoin.zcash.ui.common.model.mutableLce
 import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.withLce
@@ -75,12 +75,15 @@ class VoteCoinholderPollingVM(
     private val trackVotingShares: TrackVotingSharesUseCase,
     observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase,
 ) : ViewModel() {
-    private val roundsLce =
-        mutableLce<List<VotingRound>>(
-            votingApiRepository.snapshot.value.rounds
-                .takeIf { it.isNotEmpty() }
-                ?.let { rounds -> Lce(content = LceContent.Success(rounds)) }
-        )
+    private val roundsLce = mutableLce<List<VotingRound>>(Lce(loading = true))
+    private val screenRefreshPending = MutableStateFlow(true)
+    private val pollListLceSource =
+        object : LceSource {
+            override val loading = combine(roundsLce.loading, screenRefreshPending) { loading, pending ->
+                loading || pending
+            }
+            override val error = roundsLce.error
+        }
     private var configIssue: VotingConfigException? = null
     private val configErrorSheet = MutableStateFlow<ZashiConfirmationState?>(null)
     private val unverifiedPollWarningSheet = MutableStateFlow<ZashiConfirmationState?>(null)
@@ -136,8 +139,8 @@ class VoteCoinholderPollingVM(
         ) { apiSnapshotWithConfig, roundsLceState, persistedVoteCounts, sessionState, accountUuid ->
             val apiSnapshot = apiSnapshotWithConfig.apiSnapshot
             val rounds = when {
-                apiSnapshot.rounds.isNotEmpty() -> apiSnapshot.rounds
                 roundsLceState.loading -> null
+                apiSnapshot.rounds.isNotEmpty() -> apiSnapshot.rounds
                 roundsLceState.content is LceContent.Success -> emptyList()
                 else -> null
             }
@@ -203,13 +206,21 @@ class VoteCoinholderPollingVM(
                 )
             }
         }.let { contentFlow ->
-            combine(contentFlow, configErrorSheet, unverifiedPollWarningSheet) { content, configSheet, unverifiedSheet ->
-                content?.copy(
+            combine(
+                contentFlow,
+                screenRefreshPending,
+                configErrorSheet,
+                unverifiedPollWarningSheet
+            ) { content, refreshPending, configSheet, unverifiedSheet ->
+                // The poll-list VM is retained behind deeper voting screens. Suppress old
+                // content until ON_RESUME starts the refresh, otherwise Compose can draw a
+                // stale poll card for one frame before the loading state arrives.
+                content.takeUnless { refreshPending }?.copy(
                     configErrorSheet = configSheet,
                     unverifiedPollWarningSheet = unverifiedSheet
                 )
             }
-        }.withLce(groupLce(roundsLce)) { error ->
+        }.withLce(pollListLceSource) { error ->
             errorStateMapper.mapToState(
                 error = error,
                 title = stringRes(R.string.vote_error_unable_to_load_polls_title),
@@ -268,6 +279,11 @@ class VoteCoinholderPollingVM(
 
     fun onScreenEntered() {
         refreshVotingData()
+        screenRefreshPending.value = false
+    }
+
+    fun onScreenExited() {
+        screenRefreshPending.value = true
     }
 
     private fun refreshVotingData() {
