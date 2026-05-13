@@ -385,13 +385,17 @@ internal fun List<TransactionSubmitResult>.toSubmitResult(): SubmitResult {
     val successCount = count { it is TransactionSubmitResult.Success }
     val txIds = map { it.txIdString() }
     val failures = filterIsInstance<TransactionSubmitResult.Failure>()
-    val grpcFailureDescription =
-        failures
-            .lastOrNull { it.grpcError }
-            ?.description
+    val hasTimeoutFailure =
+        failures.any { it.grpcError && it.description == MULTI_SUBMIT_TIMEOUT_DESCRIPTION }
     val grpcFailureReason =
-        if (grpcFailureDescription == MULTI_SUBMIT_TIMEOUT_DESCRIPTION) {
+        if (hasTimeoutFailure) {
             SubmitResult.GrpcFailure.Reason.TIMEOUT
+        } else {
+            null
+        }
+    val grpcFailureDescription =
+        if (hasTimeoutFailure) {
+            MULTI_SUBMIT_TIMEOUT_DESCRIPTION
         } else {
             null
         }

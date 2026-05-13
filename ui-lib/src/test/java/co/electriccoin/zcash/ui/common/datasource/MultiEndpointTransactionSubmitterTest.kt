@@ -342,6 +342,25 @@ class MultiEndpointTransactionSubmitterTest {
     }
 
     @Test
+    fun nonTimeoutGrpcFailuresMapToDefaultPendingResult() {
+        val firstTransaction = transaction(15)
+        val secondTransaction = transaction(16)
+
+        val result =
+            listOf(
+                failure(firstTransaction, code = -1, grpcError = true),
+                failure(secondTransaction, code = -1, grpcError = true)
+            ).toSubmitResult()
+
+        assertEquals(
+            SubmitResult.GrpcFailure(
+                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString())
+            ),
+            result
+        )
+    }
+
+    @Test
     fun emptyCreatedTransactionsMapToFailureResult() {
         val result = emptyList<TransactionSubmitResult>().toSubmitResult()
 
