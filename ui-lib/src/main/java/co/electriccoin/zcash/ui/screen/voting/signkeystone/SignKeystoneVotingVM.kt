@@ -7,6 +7,7 @@ import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneRouteStage
+import co.electriccoin.zcash.ui.common.repository.VotingKeystoneResumeSubmissionException
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneSigningBundle
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
@@ -273,6 +274,14 @@ class SignKeystoneVotingVM(
                     signingBundleState.value = bundle
                     currentQrPart.value = bundle.encoder.nextPart()
                 }.onFailure { throwable ->
+                    if (throwable is VotingKeystoneResumeSubmissionException) {
+                        Log.i(
+                            "SignKeystoneVoting",
+                            "Returning to vote confirmation for ${args.roundIdHex}: ${throwable.message}"
+                        )
+                        navigationRouter.backTo(VoteConfirmSubmissionArgs::class)
+                        return@onFailure
+                    }
                     Log.e(
                         "SignKeystoneVoting",
                         "Failed to create Keystone voting QR bundle for ${args.roundIdHex}",

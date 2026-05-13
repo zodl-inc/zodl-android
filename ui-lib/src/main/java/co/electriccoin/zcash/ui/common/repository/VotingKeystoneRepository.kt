@@ -27,6 +27,19 @@ data class VotingKeystoneSigningBundle(
     val encoder: UREncoder,
 )
 
+sealed class VotingKeystoneResumeSubmissionException(message: String) : Exception(message)
+
+class VotingKeystoneBundlesAlreadySignedException(roundId: String) : VotingKeystoneResumeSubmissionException(
+    "All Keystone voting bundles are already signed for round $roundId"
+)
+
+class VotingKeystoneRoundPhaseAdvancedException(
+    roundId: String,
+    phase: Any?
+) : VotingKeystoneResumeSubmissionException(
+    "Keystone signing request cannot rebuild PCZT for round $roundId at phase $phase"
+)
+
 interface VotingKeystoneRepository {
     suspend fun createPcztEncoder(
         accountUuid: String,
@@ -77,7 +90,7 @@ class VotingKeystoneRepositoryImpl(
             val bundleCount = recovery.bundleCount ?: error("Voting round $roundId has no prepared bundle count")
             val nextUnsignedBundleIndex = (0 until bundleCount)
                 .firstOrNull { index -> index !in recovery.keystoneBundleSignatures }
-                ?: error("All Keystone voting bundles are already signed for round $roundId")
+                ?: throw VotingKeystoneBundlesAlreadySignedException(roundId)
             val pendingRequest = recovery.pendingKeystoneRequest
                 ?.takeIf { request ->
                     request.bundleIndex == nextUnsignedBundleIndex &&
@@ -92,6 +105,10 @@ class VotingKeystoneRepositoryImpl(
                     actionIndex = pendingRequest.actionIndex,
                     encoder = keystoneSDKProvider.generatePczt(pendingRequest.decodeRedactedPczt())
                 )
+            }
+            if (recovery.pendingKeystoneRequest != null) {
+                Log.i(TAG, "Clearing stale Keystone voting request for round $roundId")
+                votingRecoveryRepository.clearPendingKeystoneRequest(accountUuid, roundId)
             }
 
             val hotkeySeed = getHotkeySeed(accountUuid, roundId, recovery)
@@ -127,8 +144,8 @@ class VotingKeystoneRepositoryImpl(
                 // Keystone signing starts by building a governance PCZT. Once Rust
                 // advances past delegation, rebuilding it would regress the round phase.
                 val roundState = votingCryptoClient.getRoundState(dbHandle, roundId)
-                require(roundState?.phase.canBuildGovernancePczt()) {
-                    "Keystone signing request cannot rebuild PCZT for round $roundId at phase ${roundState?.phase}"
+                if (!roundState?.phase.canBuildGovernancePczt()) {
+                    throw VotingKeystoneRoundPhaseAdvancedException(roundId, roundState?.phase)
                 }
                 val witnessesJson = votingCryptoClient.generateNoteWitnessesJson(
                     dbHandle = dbHandle,

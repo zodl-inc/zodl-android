@@ -37,6 +37,8 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+class VoteResultsRoundNotFoundException(roundId: String) : Exception("Round $roundId not found")
+
 class VoteResultsVM(
     private val args: VoteResultsArgs,
     private val getAllRounds: GetAllVotingRoundsUseCase,
@@ -61,7 +63,7 @@ class VoteResultsVM(
         resultsLce.execute {
             val round = votingApiRepository.snapshot.value.rounds.firstOrNull { it.id == args.roundIdHex }
                 ?: getAllRounds().firstOrNull { it.id == args.roundIdHex }
-                ?: error("Round ${args.roundIdHex} not found")
+                ?: throw VoteResultsRoundNotFoundException(args.roundIdHex)
             val cachedTally = votingApiRepository.snapshot.value.tallyResultsByRoundId[args.roundIdHex]
             val tally = cachedTally
                 ?: votingApiProvider.fetchTallyResults(args.roundIdHex).also { results ->
