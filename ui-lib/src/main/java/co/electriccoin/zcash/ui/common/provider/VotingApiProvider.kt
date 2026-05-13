@@ -135,7 +135,7 @@ class KtorVotingApiProvider(
     private val serverHealthTracker = VotingServerHealthTracker()
 
     override suspend fun validateConfigSource(source: PinnedConfigSource) {
-        fetchTrustedConfig(source)
+        fetchStaticConfig(source)
     }
 
     override suspend fun invalidateConfigCache() {
@@ -408,8 +408,8 @@ class KtorVotingApiProvider(
         return resolvePinnedConfigSource(configUrl)
     }
 
-    private suspend fun fetchTrustedConfig(source: PinnedConfigSource): ResolvedVotingConfig {
-        val staticConfig = execute {
+    private suspend fun fetchStaticConfig(source: PinnedConfigSource): StaticVotingConfig =
+        execute {
             val bytes = try {
                 get(source.url) {
                     noCache()
@@ -424,6 +424,9 @@ class KtorVotingApiProvider(
                 expectedSHA256 = source.sha256
             )
         }
+
+    private suspend fun fetchTrustedConfig(source: PinnedConfigSource): ResolvedVotingConfig {
+        val staticConfig = fetchStaticConfig(source)
         val rawServiceConfig = execute {
             try {
                 get(staticConfig.dynamicConfigURL) {

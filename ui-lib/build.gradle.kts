@@ -214,6 +214,7 @@ dependencies {
     api(libs.keystone)
 
     testImplementation(libs.kotlin.test)
+    testImplementation("io.ktor:ktor-client-mock")
 
     androidTestImplementation(projects.testLib)
     androidTestImplementation(libs.bundles.androidx.test)
