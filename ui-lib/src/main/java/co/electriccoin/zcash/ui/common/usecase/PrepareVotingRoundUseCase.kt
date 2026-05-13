@@ -41,6 +41,7 @@ class PrepareVotingRoundUseCase(
     private val votingProofPrecomputeRepository: VotingProofPrecomputeRepository,
     private val synchronizerProvider: SynchronizerProvider,
     private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
+    private val getWalletSeedBytes: GetWalletSeedBytesUseCase,
     private val refreshActiveVotingSession: RefreshActiveVotingSessionUseCase
 ) {
     private val secureRandom = SecureRandom()
@@ -235,6 +236,7 @@ class PrepareVotingRoundUseCase(
                 )
                 votingSessionStore.setEligibility(VotingEligibility.ELIGIBLE)
                 if (existingRoundState == null && selectedAccount !is KeystoneAccount) {
+                    val senderSeed = getWalletSeedBytes()
                     runCatching {
                         pendingPrecomputeRequests += buildSoftwareDelegationPirPrecomputeRequests(
                             accountUuid = accountUuidString,
@@ -249,6 +251,7 @@ class PrepareVotingRoundUseCase(
                                 "Software wallet account is missing UFVK for voting round $roundId"
                             },
                             accountIndex = selectedAccount.hdAccountIndex.index.toInt(),
+                            walletSeed = senderSeed,
                             hotkeySeed = hotkeySeed,
                             seedFingerprint = requireNotNull(selectedAccount.sdkAccount.seedFingerprint) {
                                 "Software wallet account is missing seed fingerprint for voting round $roundId"
@@ -378,6 +381,7 @@ class PrepareVotingRoundUseCase(
         dbHandle: Long,
         ufvk: String,
         accountIndex: Int,
+        walletSeed: ByteArray,
         hotkeySeed: ByteArray,
         seedFingerprint: ByteArray,
         roundName: String,
@@ -396,7 +400,8 @@ class PrepareVotingRoundUseCase(
                     networkId = networkId,
                     accountIndex = accountIndex,
                     notesJson = bundleNotesJson,
-                    hotkeyRawSeed = hotkeySeed,
+                    walletSeed = walletSeed,
+                    hotkeySeed = hotkeySeed,
                     seedFingerprint = seedFingerprint,
                     roundName = roundName
                 )

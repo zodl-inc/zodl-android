@@ -142,7 +142,8 @@ class VotingKeystoneRepositoryImpl(
                     networkId = networkId,
                     accountIndex = accountIndex,
                     notesJson = bundleNotesJson,
-                    hotkeyRawSeed = hotkeySeed,
+                    walletSeed = hotkeySeed,
+                    hotkeySeed = hotkeySeed,
                     seedFingerprint = seedFingerprint,
                     roundName = session.title
                 )

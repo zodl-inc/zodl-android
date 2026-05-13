@@ -13,7 +13,6 @@ data class VotingBundleSetupResult(
 )
 
 data class VotingHotkey(
-    val secretKey: ByteArray,
     val publicKey: ByteArray,
     val address: String
 ) {
@@ -21,14 +20,12 @@ data class VotingHotkey(
         if (this === other) return true
         if (other !is VotingHotkey) return false
 
-        return secretKey.contentEquals(other.secretKey) &&
-            publicKey.contentEquals(other.publicKey) &&
+        return publicKey.contentEquals(other.publicKey) &&
             address == other.address
     }
 
     override fun hashCode(): Int {
-        var result = secretKey.contentHashCode()
-        result = 31 * result + publicKey.contentHashCode()
+        var result = publicKey.contentHashCode()
         result = 31 * result + address.hashCode()
         return result
     }
