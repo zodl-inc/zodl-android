@@ -19,11 +19,11 @@ import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
-import co.electriccoin.zcash.ui.configuration.ConfigurationEntries
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.voting.isDefaultVotingConfig
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListMode
 import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsArgs
@@ -253,11 +253,10 @@ class VoteProposalDetailVM(
     }
 
     private fun isOnDefaultConfig(): Boolean =
-        votingChainConfigRepository.state.value.isOnDefaultConfig &&
-            configurationRepository.configurationFlow.value
-                ?.let(ConfigurationEntries.VOTING_CONFIG_URL::getValue)
-                .orEmpty()
-                .isBlank()
+        isDefaultVotingConfig(
+            chainConfig = votingChainConfigRepository.state.value,
+            configuration = configurationRepository.configurationFlow.value
+        )
 
     private fun buildUnverifiedPollWarningSheet(round: VotingRound) =
         ZashiConfirmationState(

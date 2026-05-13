@@ -23,13 +23,13 @@ import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetAllVotingRoundsUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
-import co.electriccoin.zcash.ui.configuration.ConfigurationEntries
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.VoteTrustIndicator
 import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
+import co.electriccoin.zcash.ui.screen.voting.isDefaultVotingConfig
 import co.electriccoin.zcash.ui.screen.voting.normalizedVotingRoundIds
 import co.electriccoin.zcash.ui.screen.voting.voteTrustIndicatorFor
 import kotlinx.coroutines.flow.combine
@@ -134,11 +134,7 @@ class VoteResultsVM(
             votingChainConfigRepository.state,
             configurationRepository.configurationFlow
         ) { chainConfig, configuration ->
-            chainConfig.isOnDefaultConfig &&
-                configuration
-                    ?.let(ConfigurationEntries.VOTING_CONFIG_URL::getValue)
-                    .orEmpty()
-                    .isBlank()
+            isDefaultVotingConfig(chainConfig, configuration)
         }
 
     private fun trustIndicatorFor(

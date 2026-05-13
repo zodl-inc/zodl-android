@@ -13,6 +13,7 @@ data class VoteChainConfigState(
     val editor: VoteChainConfigEditorState?,
     val errorSheet: ZashiConfirmationState?,
     val isValidating: Boolean,
+    val saveChangesButton: ButtonState,
     val onBack: () -> Unit,
     val onAddCustom: () -> Unit,
 )
@@ -22,15 +23,19 @@ data class VoteChainConfigItemState(
     val id: String,
     val radioButtonState: RadioButtonState,
     val fullUrl: StringResource,
+    val isDefault: Boolean,
     val editButton: ButtonState?,
     val deleteButton: ButtonState?,
 )
 
 @Immutable
 data class VoteChainConfigEditorState(
+    val sheetTitle: StringResource,
     val title: StringResource,
+    val description: StringResource,
     val name: TextFieldState,
     val url: TextFieldState,
+    val deleteButton: ButtonState?,
     val saveButton: ButtonState,
     val cancelButton: ButtonState,
 )
