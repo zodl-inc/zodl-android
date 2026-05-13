@@ -50,6 +50,12 @@ class VoteChainConfigVM(
                 editor = editor?.toState(isValidating),
                 errorSheet = errorSheet,
                 isValidating = isValidating,
+                saveChangesButton = ButtonState(
+                    text = stringRes(R.string.vote_chain_config_save_changes),
+                    style = ButtonStyle.PRIMARY,
+                    isEnabled = !isValidating,
+                    onClick = ::onBack
+                ),
                 onBack = ::onBack,
                 onAddCustom = ::onAddCustom
             )
@@ -74,6 +80,7 @@ class VoteChainConfigVM(
                         onClick = ::onDefaultSelected
                     ),
                     fullUrl = stringRes(StaticVotingConfig.BUNDLED_PINNED_SOURCE),
+                    isDefault = true,
                     editButton = null,
                     deleteButton = null
                 )
@@ -89,6 +96,7 @@ class VoteChainConfigVM(
                             onClick = { onCustomSelected(chain.id) }
                         ),
                         fullUrl = stringRes(chain.pinnedSource),
+                        isDefault = false,
                         editButton = ButtonState(
                             text = stringRes(R.string.vote_chain_config_edit),
                             style = ButtonStyle.TERTIARY,
@@ -156,12 +164,21 @@ class VoteChainConfigVM(
         if (isValidating.value) return
         viewModelScope.launch {
             votingChainConfigRepository.deleteCustom(id)
+            if (editorDraft.value?.id == id) {
+                editorDraft.value = null
+            }
         }
     }
 
     private fun onSaveEditor() {
         if (isValidating.value) return
         val draft = editorDraft.value ?: return
+        val isInvalid =
+            draft.name.trim().length > MAX_CUSTOM_CHAIN_NAME_LENGTH ||
+                draft.pinnedSource.trim().isInvalidPinnedSource()
+        if (isInvalid) {
+            return
+        }
         viewModelScope.launch {
             val name = draft.name.trim().ifEmpty { DEFAULT_CUSTOM_CHAIN_NAME }
             val pinnedSource = draft.pinnedSource.trim()
@@ -302,6 +319,13 @@ class VoteChainConfigVM(
 
     private fun EditorDraft.toState(isValidating: Boolean) =
         VoteChainConfigEditorState(
+            sheetTitle = stringRes(
+                if (id == null) {
+                    R.string.vote_chain_config_add_source_nav
+                } else {
+                    R.string.vote_chain_config_edit_source_nav
+                }
+            ),
             title = stringRes(
                 if (id == null) {
                     R.string.vote_chain_config_add_title
@@ -309,20 +333,43 @@ class VoteChainConfigVM(
                     R.string.vote_chain_config_edit_title
                 }
             ),
+            description = stringRes(
+                if (id == null) {
+                    R.string.vote_chain_config_add_source_description
+                } else {
+                    R.string.vote_chain_config_edit_source_description
+                }
+            ),
             name = TextFieldState(
                 value = stringRes(name),
+                error =
+                    stringRes(R.string.vote_chain_config_error_name_too_long)
+                        .takeIf { name.trim().length > MAX_CUSTOM_CHAIN_NAME_LENGTH },
                 isEnabled = !isValidating,
                 onValueChange = ::onNameChanged
             ),
             url = TextFieldState(
                 value = stringRes(pinnedSource),
+                error =
+                    stringRes(R.string.vote_chain_config_error_url_invalid)
+                        .takeIf { pinnedSource.trim().isInvalidPinnedSource() },
                 isEnabled = !isValidating,
                 onValueChange = ::onUrlChanged
             ),
+            showsUrlCopyButton = id != null,
+            deleteButton =
+                id?.let { customId ->
+                    ButtonState(
+                        text = stringRes(R.string.vote_chain_config_delete),
+                        style = ButtonStyle.DESTRUCTIVE1,
+                        isEnabled = !isValidating,
+                        onClick = { onDeleteCustom(customId) }
+                    )
+                },
             saveButton = ButtonState(
-                text = stringRes(R.string.vote_chain_config_save),
+                text = stringRes(R.string.vote_chain_config_save_changes),
                 style = ButtonStyle.PRIMARY,
-                isEnabled = !isValidating,
+                isEnabled = !isValidating && canSave(),
                 isLoading = isValidating,
                 onClick = ::onSaveEditor
             ),
@@ -336,7 +383,7 @@ class VoteChainConfigVM(
 
     private companion object {
         const val DEFAULT_CHAIN_ID = "default"
-        const val DEFAULT_CUSTOM_CHAIN_NAME = "Custom chain"
+        const val DEFAULT_CUSTOM_CHAIN_NAME = "Custom source"
     }
 }
 
@@ -352,3 +399,13 @@ private fun compactSource(raw: String): String =
 
 private fun PinnedConfigSource.isBundledDefaultUrl(): Boolean =
     url == PinnedConfigSource.parse(StaticVotingConfig.BUNDLED_PINNED_SOURCE).url
+
+private fun EditorDraft.canSave(): Boolean =
+    name.trim().length <= MAX_CUSTOM_CHAIN_NAME_LENGTH &&
+        pinnedSource.trim().isNotEmpty() &&
+        !pinnedSource.trim().isInvalidPinnedSource()
+
+private fun String.isInvalidPinnedSource(): Boolean =
+    isNotBlank() && runCatching { PinnedConfigSource.parse(this) }.isFailure
+
+private const val MAX_CUSTOM_CHAIN_NAME_LENGTH = 15

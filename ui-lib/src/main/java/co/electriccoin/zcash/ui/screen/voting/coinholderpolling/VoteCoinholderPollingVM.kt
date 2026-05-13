@@ -30,18 +30,18 @@ import co.electriccoin.zcash.ui.common.usecase.RefreshActiveVotingSessionUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshVotingRoundsUseCase
 import co.electriccoin.zcash.ui.common.usecase.TrackVotingSharesUseCase
 import co.electriccoin.zcash.ui.common.usecase.VotingShareTrackingResult
-import co.electriccoin.zcash.ui.configuration.ConfigurationEntries
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.voting.VoteTrustIndicator
 import co.electriccoin.zcash.ui.screen.voting.chainconfig.VoteChainConfigArgs
+import co.electriccoin.zcash.ui.screen.voting.isDefaultVotingConfig
 import co.electriccoin.zcash.ui.screen.voting.normalizedVotingRoundIds
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListMode
 import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsArgs
 import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingArgs
-import co.electriccoin.zcash.ui.screen.voting.VoteTrustIndicator
 import co.electriccoin.zcash.ui.screen.voting.voteTrustIndicatorFor
 import co.electriccoin.zcash.ui.screen.voting.votingerror.VotingErrorMapper
 import kotlinx.coroutines.CancellationException
@@ -120,12 +120,7 @@ class VoteCoinholderPollingVM(
         ) { apiSnapshot, chainConfig, configuration ->
             ApiSnapshotWithConfig(
                 apiSnapshot = apiSnapshot,
-                isOnDefaultConfig =
-                    chainConfig.isOnDefaultConfig &&
-                        configuration
-                            ?.let(ConfigurationEntries.VOTING_CONFIG_URL::getValue)
-                            .orEmpty()
-                            .isBlank()
+                isOnDefaultConfig = isDefaultVotingConfig(chainConfig, configuration)
             )
         }
 
@@ -656,11 +651,10 @@ class VoteCoinholderPollingVM(
         )
 
     private fun isOnDefaultConfig(): Boolean =
-        votingChainConfigRepository.state.value.isOnDefaultConfig &&
-            configurationRepository.configurationFlow.value
-                ?.let(ConfigurationEntries.VOTING_CONFIG_URL::getValue)
-                .orEmpty()
-                .isBlank()
+        isDefaultVotingConfig(
+            chainConfig = votingChainConfigRepository.state.value,
+            configuration = configurationRepository.configurationFlow.value
+        )
 
     private fun buildUnverifiedPollWarningSheet() =
         ZashiConfirmationState(
