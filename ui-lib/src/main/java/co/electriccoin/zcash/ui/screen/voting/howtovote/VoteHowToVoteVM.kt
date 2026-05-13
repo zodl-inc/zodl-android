@@ -6,6 +6,7 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LceState
+import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteKeystoneStorageProvider
 import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteStorageProvider
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -20,6 +21,7 @@ import kotlinx.coroutines.launch
 class VoteHowToVoteVM(
     private val navigationRouter: NavigationRouter,
     private val hasSeenHowToVote: HasSeenHowToVoteStorageProvider,
+    private val hasSeenHowToVoteKeystone: HasSeenHowToVoteKeystoneStorageProvider,
     private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow<LceState<VoteHowToVoteState>>(
@@ -65,7 +67,12 @@ class VoteHowToVoteVM(
 
     private fun onContinue() {
         viewModelScope.launch {
-            hasSeenHowToVote.store(true)
+            val isKeystone = getSelectedWalletAccount() is KeystoneAccount
+            if (isKeystone) {
+                hasSeenHowToVoteKeystone.store(true)
+            } else {
+                hasSeenHowToVote.store(true)
+            }
             navigationRouter.replace(VoteCoinholderPollingArgs)
         }
     }

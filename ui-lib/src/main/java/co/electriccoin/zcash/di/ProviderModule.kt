@@ -14,6 +14,8 @@ import co.electriccoin.zcash.ui.common.provider.EphemeralAddressStorageProvider
 import co.electriccoin.zcash.ui.common.provider.EphemeralAddressStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
 import co.electriccoin.zcash.ui.common.provider.GetZcashCurrencyProvider
+import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteKeystoneStorageProvider
+import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteKeystoneStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteStorageProvider
 import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.HttpClientProvider
@@ -92,6 +94,8 @@ val providerModule =
         singleOf(::ShieldFundsInfoProviderImpl) bind ShieldFundsInfoProvider::class
         singleOf(::IsExchangeRateEnabledStorageProviderImpl) bind IsExchangeRateEnabledStorageProvider::class
         singleOf(::HasSeenHowToVoteStorageProviderImpl) bind HasSeenHowToVoteStorageProvider::class
+        singleOf(::HasSeenHowToVoteKeystoneStorageProviderImpl) bind
+            HasSeenHowToVoteKeystoneStorageProvider::class
         singleOf(::IsTorEnabledStorageProviderImpl) bind IsTorEnabledStorageProvider::class
         singleOf(::BlockchainProviderImpl) bind BlockchainProvider::class
         singleOf(::TokenIconProviderImpl) bind TokenIconProvider::class
