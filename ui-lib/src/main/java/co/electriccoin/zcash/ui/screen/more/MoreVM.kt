@@ -5,8 +5,11 @@ import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.NavigationTargets.WHATS_NEW
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
+import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteKeystoneStorageProvider
 import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteStorageProvider
+import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToAddressBookUseCase
 import co.electriccoin.zcash.ui.design.component.listitem.ListItemState
 import co.electriccoin.zcash.ui.design.util.imageRes
@@ -29,6 +32,8 @@ class MoreVM(
     private val navigationRouter: NavigationRouter,
     private val navigateToAddressBook: NavigateToAddressBookUseCase,
     private val hasSeenHowToVote: HasSeenHowToVoteStorageProvider,
+    private val hasSeenHowToVoteKeystone: HasSeenHowToVoteKeystoneStorageProvider,
+    private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
 ) : ViewModel() {
     val state: StateFlow<MoreState> = MutableStateFlow(createState())
 
@@ -88,7 +93,14 @@ class MoreVM(
 
     private fun onVotingClick() {
         viewModelScope.launch {
-            if (hasSeenHowToVote.get()) {
+            val isKeystone = getSelectedWalletAccount() is KeystoneAccount
+            val hasSeenHowToVoteForCurrentWallet = if (isKeystone) {
+                hasSeenHowToVoteKeystone.get()
+            } else {
+                hasSeenHowToVote.get()
+            }
+
+            if (hasSeenHowToVoteForCurrentWallet) {
                 navigationRouter.forward(VoteCoinholderPollingArgs)
             } else {
                 navigationRouter.forward(VoteHowToVoteArgs)
