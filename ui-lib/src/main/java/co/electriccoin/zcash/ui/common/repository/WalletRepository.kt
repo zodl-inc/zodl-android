@@ -54,6 +54,8 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.withIndex
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 interface WalletRepository {
     val secretState: StateFlow<SecretState>
@@ -90,6 +92,8 @@ class WalletRepositoryImpl(
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val refreshFastestServersRequest = MutableSharedFlow<Unit>(replay = 1)
+
+    private val endpointUpdateMutex = Mutex()
 
     private val onboardingState =
         flow {
@@ -177,10 +181,12 @@ class WalletRepositoryImpl(
     override suspend fun updateWalletEndpoint(endpoint: LightWalletEndpoint) = updateWalletEndpointInternal(endpoint)
 
     private suspend fun updateWalletEndpointInternal(endpoint: LightWalletEndpoint) {
-        val selectedWallet = persistableWalletProvider.getPersistableWallet() ?: return
-        val selectedEndpoint = selectedWallet.endpoint
-        if (selectedEndpoint == endpoint) return
-        persistWalletInternal(selectedWallet.copy(endpoint = endpoint))
+        endpointUpdateMutex.withLock {
+            val selectedWallet = persistableWalletProvider.getPersistableWallet() ?: return
+            val selectedEndpoint = selectedWallet.endpoint
+            if (selectedEndpoint == endpoint) return
+            persistWalletInternal(selectedWallet.copy(endpoint = endpoint))
+        }
     }
 
     private suspend fun persistWalletInternal(persistableWallet: PersistableWallet) {

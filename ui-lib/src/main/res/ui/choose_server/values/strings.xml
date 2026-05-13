@@ -31,9 +31,7 @@
 
     <string name="choose_server_connection_mode">Connection mode</string>
     <string name="choose_server_automatic">Automatic</string>
-    <string name="choose_server_automatic_subtitle">Zodl chooses one active server.</string>
     <string name="choose_server_manual">Manual</string>
-    <string name="choose_server_manual_subtitle">Use exactly one selected server.</string>
     <string name="choose_server_fastest_servers">Fastest servers</string>
     <string name="choose_server_other_servers">Other servers</string>
     <string name="choose_server_refresh">Refresh</string>
