@@ -284,8 +284,16 @@ class ProposalDataSourceImpl(
         withContext(Dispatchers.IO) {
             val synchronizer = synchronizerProvider.getSynchronizer() as SdkSynchronizer
             val transactions = block(synchronizer)
-            val endpoints = getSubmissionEndpoints()
 
+            if (transactions.isEmpty()) {
+                return@withContext SubmitResult.Failure(
+                    txIds = emptyList(),
+                    code = MULTI_SUBMIT_EMPTY_TRANSACTION_CODE,
+                    description = MULTI_SUBMIT_EMPTY_TRANSACTION_DESCRIPTION
+                )
+            }
+
+            val endpoints = getSubmissionEndpoints()
             Twig.info {
                 "$logTag Created ${transactions.size} transaction(s); submitting to ${endpoints.size} endpoint(s)."
             }
@@ -300,91 +308,7 @@ class ProposalDataSourceImpl(
 
             Twig.debug { "Internal transaction submit results: $submitResults" }
 
-            val successCount =
-                submitResults
-                    .count { it is TransactionSubmitResult.Success }
-            val txIds =
-                submitResults
-                    .map { it.txIdString() }
-            val statuses =
-                submitResults
-                    .map {
-                        when (it) {
-                            is TransactionSubmitResult.Success -> {
-                                "success"
-                            }
-
-                            is TransactionSubmitResult.Failure -> {
-                                if (it.grpcError) {
-                                    it.description.orEmpty()
-                                } else {
-                                    "code: ${it.code} desc: ${it.description}"
-                                }
-                            }
-
-                            is TransactionSubmitResult.NotAttempted -> {
-                                "notAttempted"
-                            }
-                        }
-                    }
-            val resubmittableFailures =
-                submitResults
-                    .mapNotNull {
-                        when (it) {
-                            is TransactionSubmitResult.Failure -> it.grpcError
-                            is TransactionSubmitResult.NotAttempted -> null
-                            is TransactionSubmitResult.Success -> null
-                        }
-                    }
-            val grpcFailureDescription =
-                submitResults
-                    .filterIsInstance<TransactionSubmitResult.Failure>()
-                    .lastOrNull { it.grpcError }
-                    ?.description
-            val grpcFailureReason =
-                if (grpcFailureDescription == MULTI_SUBMIT_TIMEOUT_DESCRIPTION) {
-                    SubmitResult.GrpcFailure.Reason.TIMEOUT
-                } else {
-                    null
-                }
-
-            val (errCode, errDesc) =
-                submitResults
-                    .filterIsInstance<TransactionSubmitResult.Failure>()
-                    .lastOrNull { !it.grpcError }
-                    ?.let { it.code to it.description } ?: (0 to "")
-
-            val result =
-                when (successCount) {
-                    0 -> {
-                        if (resubmittableFailures.all { it }) {
-                            SubmitResult.GrpcFailure(
-                                txIds = txIds,
-                                description = grpcFailureDescription,
-                                reason = grpcFailureReason
-                            )
-                        } else {
-                            SubmitResult.Failure(txIds = txIds, code = errCode, description = errDesc)
-                        }
-                    }
-
-                    txIds.size -> {
-                        SubmitResult.Success(txIds = txIds)
-                    }
-
-                    else -> {
-                        if (resubmittableFailures.all { it }) {
-                            SubmitResult.GrpcFailure(
-                                txIds = txIds,
-                                description = grpcFailureDescription,
-                                reason = grpcFailureReason
-                            )
-                        } else {
-                            SubmitResult.Partial(txIds = txIds, statuses = statuses)
-                        }
-                    }
-                }
-
+            val result = submitResults.toSubmitResult()
             synchronizer.refreshTransactions()
             synchronizer.refreshAllBalances()
             Twig.debug { "Transaction submit result: $result" }
@@ -449,6 +373,84 @@ class ProposalDataSourceImpl(
         }
 }
 
+internal fun List<TransactionSubmitResult>.toSubmitResult(): SubmitResult {
+    if (isEmpty()) {
+        return SubmitResult.Failure(
+            txIds = emptyList(),
+            code = MULTI_SUBMIT_EMPTY_TRANSACTION_CODE,
+            description = MULTI_SUBMIT_EMPTY_TRANSACTION_DESCRIPTION
+        )
+    }
+
+    val successCount = count { it is TransactionSubmitResult.Success }
+    val txIds = map { it.txIdString() }
+    val statuses =
+        map {
+            when (it) {
+                is TransactionSubmitResult.Success -> {
+                    "success"
+                }
+
+                is TransactionSubmitResult.Failure -> {
+                    if (it.grpcError) {
+                        it.description.orEmpty()
+                    } else {
+                        "code: ${it.code} desc: ${it.description}"
+                    }
+                }
+
+                is TransactionSubmitResult.NotAttempted -> {
+                    "notAttempted"
+                }
+            }
+        }
+    val resubmittableFailures =
+        mapNotNull {
+            when (it) {
+                is TransactionSubmitResult.Failure -> it.grpcError
+                is TransactionSubmitResult.NotAttempted -> null
+                is TransactionSubmitResult.Success -> null
+            }
+        }
+    val grpcFailureDescription =
+        filterIsInstance<TransactionSubmitResult.Failure>()
+            .lastOrNull { it.grpcError }
+            ?.description
+    val grpcFailureReason =
+        if (grpcFailureDescription == MULTI_SUBMIT_TIMEOUT_DESCRIPTION) {
+            SubmitResult.GrpcFailure.Reason.TIMEOUT
+        } else {
+            null
+        }
+
+    val (errCode, errDesc) =
+        filterIsInstance<TransactionSubmitResult.Failure>()
+            .lastOrNull { !it.grpcError }
+            ?.let { it.code to it.description } ?: (0 to "")
+
+    return when (successCount) {
+        0 -> {
+            if (resubmittableFailures.all { it }) {
+                SubmitResult.GrpcFailure(
+                    txIds = txIds,
+                    description = grpcFailureDescription,
+                    reason = grpcFailureReason
+                )
+            } else {
+                SubmitResult.Failure(txIds = txIds, code = errCode, description = errDesc)
+            }
+        }
+
+        txIds.size -> {
+            SubmitResult.Success(txIds = txIds)
+        }
+
+        else -> {
+            SubmitResult.Partial(txIds = txIds, statuses = statuses)
+        }
+    }
+}
+
 sealed interface TransactionProposal {
     val proposal: Proposal
 }
@@ -506,3 +508,5 @@ data class ExactOutputSwapTransactionProposal(
 private const val DEFAULT_SHIELDING_THRESHOLD = 100000L
 private const val MULTI_SUBMIT_TAG = "[MultiSubmit]"
 private const val MULTI_SUBMIT_PCZT_TAG = "[MultiSubmit/PCZT]"
+private const val MULTI_SUBMIT_EMPTY_TRANSACTION_CODE = -1
+private const val MULTI_SUBMIT_EMPTY_TRANSACTION_DESCRIPTION = "No transactions created"

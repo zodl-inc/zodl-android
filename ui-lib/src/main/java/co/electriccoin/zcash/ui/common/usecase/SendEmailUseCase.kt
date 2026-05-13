@@ -126,7 +126,8 @@ class SendEmailUseCase(
                     body =
                         buildString {
                             appendLine("Grpc failure")
-                            submitResult.reportDescription()
+                            submitResult
+                                .reportDescription()
                                 ?.takeIf { it.isNotBlank() }
                                 ?.let {
                                     appendLine()

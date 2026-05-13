@@ -4,6 +4,7 @@ import cash.z.ecc.android.sdk.model.CreatedTransaction
 import cash.z.ecc.android.sdk.model.FirstClassByteArray
 import cash.z.ecc.android.sdk.model.TransactionSubmitResult
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
+import co.electriccoin.zcash.ui.common.model.SubmitResult
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
@@ -291,6 +292,47 @@ class MultiEndpointTransactionSubmitterTest {
             assertEquals(TransactionSubmitResult.NotAttempted(secondTransaction.txId), results[1])
             assertEquals(1, submissions.get())
         }
+
+    @Test
+    fun acceptedTransactionThenGrpcFailureMapsToPartialResult() {
+        val firstTransaction = transaction(10)
+        val secondTransaction = transaction(11)
+        val thirdTransaction = transaction(12)
+
+        val result =
+            listOf(
+                TransactionSubmitResult.Success(firstTransaction.txId),
+                failure(secondTransaction, code = -1, grpcError = true),
+                TransactionSubmitResult.NotAttempted(thirdTransaction.txId)
+            ).toSubmitResult()
+
+        assertEquals(
+            SubmitResult.Partial(
+                txIds =
+                    listOf(
+                        firstTransaction.txIdString(),
+                        secondTransaction.txIdString(),
+                        thirdTransaction.txIdString()
+                    ),
+                statuses = listOf("success", "failure -1", "notAttempted")
+            ),
+            result
+        )
+    }
+
+    @Test
+    fun emptyCreatedTransactionsMapToFailureResult() {
+        val result = emptyList<TransactionSubmitResult>().toSubmitResult()
+
+        assertEquals(
+            SubmitResult.Failure(
+                txIds = emptyList(),
+                code = -1,
+                description = "No transactions created"
+            ),
+            result
+        )
+    }
 
     private fun transaction(index: Int) =
         CreatedTransaction(
