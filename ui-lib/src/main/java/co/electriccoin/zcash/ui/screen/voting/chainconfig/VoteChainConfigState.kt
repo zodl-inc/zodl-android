@@ -36,6 +36,7 @@ data class VoteChainConfigEditorState(
     val name: TextFieldState,
     val url: TextFieldState,
     val showsUrlCopyButton: Boolean,
+    val onUrlCopyClick: () -> Unit,
     val deleteButton: ButtonState?,
     val saveButton: ButtonState,
     val cancelButton: ButtonState,

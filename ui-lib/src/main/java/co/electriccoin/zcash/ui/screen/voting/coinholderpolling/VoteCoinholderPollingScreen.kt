@@ -25,7 +25,7 @@ fun VoteCoinholderPollingScreen() {
     LceRenderer(
         state = state,
         loading = { isLoading ->
-            if (isLoading && state.content == null) {
+            if (isLoading) {
                 VoteCoinholderPollingLoadingView()
             }
         }

@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigSelection
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigState
 import co.electriccoin.zcash.ui.common.repository.VotingCustomChainConfig
+import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.RadioButtonState
@@ -30,6 +31,7 @@ class VoteChainConfigVM(
     private val votingChainConfigRepository: VotingChainConfigRepository,
     private val votingApiProvider: VotingApiProvider,
     private val navigationRouter: NavigationRouter,
+    private val copyToClipboard: CopyToClipboardUseCase,
 ) : ViewModel() {
     private val editorDraft = MutableStateFlow<EditorDraft?>(null)
     private val errorSheet = MutableStateFlow<ZashiConfirmationState?>(null)
@@ -245,6 +247,13 @@ class VoteChainConfigVM(
         editorDraft.value = editorDraft.value?.copy(pinnedSource = value)
     }
 
+    private fun onUrlCopyClick() {
+        val pinnedSource = editorDraft.value?.pinnedSource?.trim().orEmpty()
+        if (pinnedSource.isNotEmpty()) {
+            copyToClipboard(pinnedSource)
+        }
+    }
+
     private fun parsePinnedSourceOrShowError(raw: String): PinnedConfigSource? =
         runCatching { PinnedConfigSource.parse(raw) }
             .getOrElse { throwable ->
@@ -357,6 +366,7 @@ class VoteChainConfigVM(
                 onValueChange = ::onUrlChanged
             ),
             showsUrlCopyButton = id != null,
+            onUrlCopyClick = ::onUrlCopyClick,
             deleteButton =
                 id?.let { customId ->
                     ButtonState(

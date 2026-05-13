@@ -23,6 +23,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
 import co.electriccoin.zcash.ui.design.LocalKeyboardManager
@@ -34,6 +36,8 @@ import co.electriccoin.zcash.ui.design.util.LocalNavRoute
 fun <T : ModalBottomSheetState> ZashiScreenModalBottomSheet(
     state: T?,
     sheetState: SheetState = rememberScreenModalBottomSheetState(),
+    shape: Shape = ZashiModalBottomSheetDefaults.SheetShape,
+    containerColor: Color = ZashiModalBottomSheetDefaults.ContainerColor,
     dragHandle: @Composable (() -> Unit)? = { ZashiModalBottomSheetDragHandle() },
     content: @Composable ColumnScope.(state: T, contentPadding: PaddingValues) -> Unit = { _, _ -> },
 ) {
@@ -46,6 +50,8 @@ fun <T : ModalBottomSheetState> ZashiScreenModalBottomSheet(
     state?.let {
         ZashiModalBottomSheet(
             sheetState = sheetState,
+            shape = shape,
+            containerColor = containerColor,
             dragHandle = dragHandle,
             content = {
                 BackHandler {
@@ -82,6 +88,8 @@ fun <T : ModalBottomSheetState> ZashiScreenModalBottomSheet(
 fun ZashiScreenModalBottomSheet(
     onDismissRequest: () -> Unit,
     sheetState: SheetState = rememberScreenModalBottomSheetState(),
+    shape: Shape = ZashiModalBottomSheetDefaults.SheetShape,
+    containerColor: Color = ZashiModalBottomSheetDefaults.ContainerColor,
     content: @Composable ColumnScope.(contentPadding: PaddingValues) -> Unit = {},
 ) {
     ZashiScreenModalBottomSheet(
@@ -94,6 +102,8 @@ fun ZashiScreenModalBottomSheet(
                 }
             },
         sheetState = sheetState,
+        shape = shape,
+        containerColor = containerColor,
         content = { _, contentPadding ->
             content(contentPadding)
             HookupKeyboardController()

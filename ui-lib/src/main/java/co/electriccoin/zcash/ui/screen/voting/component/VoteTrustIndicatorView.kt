@@ -17,6 +17,7 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.screen.voting.VoteTrustIndicator
+import co.electriccoin.zcash.ui.design.R as DesignR
 
 @Composable
 fun VoteTrustIndicatorView(
@@ -28,17 +29,19 @@ fun VoteTrustIndicatorView(
             VoteTrustIndicator.ZODL ->
                 TrustIndicatorParams(
                     labelRes = R.string.vote_poll_card_trust_zodl,
-                    iconRes = R.drawable.ic_vote_check_verified_solid,
-                    iconTint = ZashiColors.Utility.SuccessGreen.utilitySuccess700,
+                    iconRes = DesignR.drawable.ic_item_zashi,
+                    iconTint = Color.Unspecified,
+                    iconSize = 24,
                     textColor = ZashiColors.Text.textPrimary
                 )
 
             VoteTrustIndicator.UNVERIFIED ->
                 TrustIndicatorParams(
                     labelRes = R.string.vote_poll_card_trust_unverified,
-                    iconRes = R.drawable.ic_alert_circle,
-                    iconTint = ZashiColors.Utility.WarningYellow.utilityOrange700,
-                    textColor = ZashiColors.Utility.WarningYellow.utilityOrange700
+                    iconRes = DesignR.drawable.ic_info,
+                    iconTint = ZashiColors.Text.textTertiary,
+                    iconSize = 20,
+                    textColor = ZashiColors.Text.textTertiary
                 )
         }
 
@@ -51,7 +54,7 @@ fun VoteTrustIndicatorView(
             painter = painterResource(params.iconRes),
             contentDescription = null,
             tint = params.iconTint,
-            modifier = Modifier.size(16.dp)
+            modifier = Modifier.size(params.iconSize.dp)
         )
         Text(
             text = stringResource(params.labelRes),
@@ -66,5 +69,6 @@ private data class TrustIndicatorParams(
     val labelRes: Int,
     val iconRes: Int,
     val iconTint: Color,
+    val iconSize: Int,
     val textColor: Color,
 )

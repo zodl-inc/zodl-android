@@ -498,12 +498,18 @@ private fun EditorSheet(
                 trailingIcon =
                     if (state.showsUrlCopyButton) {
                         {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_copy),
-                                contentDescription = null,
-                                tint = ZashiColors.Text.textTertiary,
-                                modifier = Modifier.size(20.dp)
-                            )
+                            IconButton(
+                                onClick = state.onUrlCopyClick,
+                                enabled = state.url.isEnabled,
+                                modifier = Modifier.size(40.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_copy),
+                                    contentDescription = stringResource(R.string.wbh_copy),
+                                    tint = ZashiColors.Text.textTertiary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
                     } else {
                         null
