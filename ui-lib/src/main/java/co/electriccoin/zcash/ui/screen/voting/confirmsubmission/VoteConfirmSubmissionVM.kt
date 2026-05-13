@@ -406,7 +406,7 @@ class VoteConfirmSubmissionVM(
                 activeSubmissionIncludesAuthorizationProgress.value = null
             } catch (throwable: CancellationException) {
                 throw throwable
-            } catch (throwable: Exception) {
+            } catch (throwable: Throwable) {
                 Log.e(
                     "VoteConfirmSubmission",
                     "Failed to submit votes for round ${args.roundIdHex}",
