@@ -7,13 +7,14 @@ import cash.z.ecc.android.sdk.internal.GovernancePcztResult
 import cash.z.ecc.android.sdk.internal.CommitmentBundleRecord
 import cash.z.ecc.android.sdk.internal.ShareDelegationRecord
 import cash.z.ecc.android.sdk.internal.TypesafeVotingBackend
+import cash.z.ecc.android.sdk.internal.TypesafeVotingDb
 import cash.z.ecc.android.sdk.internal.VoteCommitmentResult
 import cash.z.ecc.android.sdk.internal.VoteRecord
 import cash.z.ecc.android.sdk.internal.VotingTxHashLookup as SdkVotingTxHashLookup
-import cash.z.ecc.android.sdk.internal.model.voting.FfiBundleSetupResult
-import cash.z.ecc.android.sdk.internal.model.voting.FfiRoundPhase
-import cash.z.ecc.android.sdk.internal.model.voting.FfiRoundState
-import cash.z.ecc.android.sdk.internal.model.voting.FfiVotingHotkey
+import cash.z.ecc.android.sdk.internal.model.voting.JniBundleSetupResult
+import cash.z.ecc.android.sdk.internal.model.voting.JniRoundPhase
+import cash.z.ecc.android.sdk.internal.model.voting.JniRoundState
+import cash.z.ecc.android.sdk.internal.model.voting.JniVotingHotkey
 import co.electriccoin.zcash.ui.common.model.voting.RoundPhase
 import co.electriccoin.zcash.ui.common.model.voting.RoundStateInfo
 import co.electriccoin.zcash.ui.common.model.voting.VotingCommitmentBundleRecord
@@ -28,6 +29,9 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingTxHashLookup
 import co.electriccoin.zcash.ui.common.model.voting.VotingVoteCommitment
 import co.electriccoin.zcash.ui.common.model.voting.VotingVoteRecord
 import co.electriccoin.zcash.ui.common.model.voting.toVoteCommitmentBundle
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.concurrent.atomic.AtomicLong
 
 @Suppress("TooManyFunctions")
 interface VotingCryptoClient {
@@ -128,7 +132,8 @@ interface VotingCryptoClient {
         networkId: Int,
         accountIndex: Int,
         notesJson: String,
-        hotkeyRawSeed: ByteArray,
+        walletSeed: ByteArray,
+        hotkeySeed: ByteArray,
         seedFingerprint: ByteArray,
         roundName: String,
         addressIndex: Int = 0
@@ -346,6 +351,313 @@ interface VotingCryptoClient {
 class VotingCryptoClientImpl(
     private val backend: TypesafeVotingBackend
 ) : VotingCryptoClient {
+    private val nextDbHandle = AtomicLong(1)
+    private val dbPaths = mutableMapOf<Long, String>()
+    private val dbs = mutableMapOf<Long, TypesafeVotingDb>()
+
+    private fun db(dbHandle: Long): TypesafeVotingDb =
+        checkNotNull(dbs[dbHandle]) {
+            "Voting DB handle is not open: $dbHandle"
+        }
+
+    private suspend fun TypesafeVotingBackend.openVotingDb(dbPath: String): Long {
+        val handle = nextDbHandle.getAndIncrement()
+        dbPaths[handle] = dbPath
+        return handle
+    }
+
+    private suspend fun TypesafeVotingBackend.closeVotingDb(dbHandle: Long) {
+        dbs.remove(dbHandle)?.close()
+        dbPaths.remove(dbHandle)
+    }
+
+    private suspend fun TypesafeVotingBackend.setWalletId(dbHandle: Long, walletId: String) {
+        val dbPath =
+            checkNotNull(dbPaths[dbHandle]) {
+                "Voting DB handle is not registered: $dbHandle"
+            }
+        dbs.remove(dbHandle)?.close()
+        dbs[dbHandle] = openVotingDb(dbPath, walletId)
+    }
+
+    private suspend fun TypesafeVotingBackend.initRound(
+        dbHandle: Long,
+        roundId: String,
+        snapshotHeight: Long,
+        eaPK: ByteArray,
+        ncRoot: ByteArray,
+        nullifierIMTRoot: ByteArray,
+        sessionJson: String?
+    ) = db(dbHandle).initRound(roundId, snapshotHeight, eaPK, ncRoot, nullifierIMTRoot, sessionJson)
+
+    private suspend fun TypesafeVotingBackend.getRoundState(dbHandle: Long, roundId: String) =
+        db(dbHandle).getRoundState(roundId)
+
+    private suspend fun TypesafeVotingBackend.listRoundsJson(dbHandle: Long): String =
+        JSONArray().apply {
+            db(dbHandle).listRounds().forEach { round ->
+                put(
+                    JSONObject()
+                        .put("round_id", round.roundId)
+                        .put("phase", round.phase)
+                        .put("snapshot_height", round.snapshotHeight)
+                        .put("created_at", round.createdAt)
+                )
+            }
+        }.toString()
+
+    private suspend fun TypesafeVotingBackend.getBundleCount(dbHandle: Long, roundId: String) =
+        db(dbHandle).getBundleCount(roundId)
+
+    private suspend fun TypesafeVotingBackend.getVotes(dbHandle: Long, roundId: String) =
+        db(dbHandle).getVotes(roundId).map { vote ->
+            VoteRecord(
+                proposalId = vote.proposalId,
+                bundleIndex = vote.bundleIndex,
+                choice = vote.choice,
+                submitted = vote.submitted
+            )
+        }
+
+    private suspend fun TypesafeVotingBackend.clearRound(dbHandle: Long, roundId: String) =
+        db(dbHandle).clearRound(roundId)
+
+    private suspend fun TypesafeVotingBackend.deleteSkippedBundles(
+        dbHandle: Long,
+        roundId: String,
+        keepCount: Int
+    ) = db(dbHandle).deleteSkippedBundles(roundId, keepCount)
+
+    private suspend fun TypesafeVotingBackend.setupBundles(dbHandle: Long, roundId: String, notesJson: String) =
+        db(dbHandle).setupBundles(roundId, notesJson)
+
+    private suspend fun TypesafeVotingBackend.generateHotkey(dbHandle: Long, roundId: String, seed: ByteArray) =
+        db(dbHandle).generateHotkey(roundId, seed)
+
+    private suspend fun TypesafeVotingBackend.storeTreeState(
+        dbHandle: Long,
+        roundId: String,
+        treeStateBytes: ByteArray
+    ) = db(dbHandle).storeTreeState(roundId, treeStateBytes)
+
+    private suspend fun TypesafeVotingBackend.generateNoteWitnesses(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        walletDbPath: String,
+        notesJson: String
+    ) = db(dbHandle).generateNoteWitnesses(roundId, bundleIndex, walletDbPath, notesJson)
+
+    private suspend fun TypesafeVotingBackend.storeWitnesses(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        witnessesJson: String
+    ) = db(dbHandle).storeWitnesses(roundId, bundleIndex, witnessesJson)
+
+    private suspend fun TypesafeVotingBackend.buildGovernancePczt(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        ufvk: String,
+        networkId: Int,
+        accountIndex: Int,
+        notesJson: String,
+        walletSeed: ByteArray,
+        hotkeySeed: ByteArray,
+        seedFingerprint: ByteArray,
+        roundName: String,
+        addressIndex: Int
+    ) = db(dbHandle).buildGovernancePczt(
+        roundId,
+        bundleIndex,
+        ufvk,
+        networkId,
+        accountIndex,
+        notesJson,
+        walletSeed,
+        hotkeySeed,
+        seedFingerprint,
+        roundName,
+        addressIndex
+    )
+
+    private suspend fun TypesafeVotingBackend.precomputeDelegationPir(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        pirServerUrl: String,
+        networkId: Int,
+        notesJson: String
+    ) = db(dbHandle).precomputeDelegationPir(roundId, bundleIndex, pirServerUrl, networkId, notesJson)
+
+    private suspend fun TypesafeVotingBackend.buildAndProveDelegation(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        pirServerUrl: String,
+        networkId: Int,
+        notesJson: String,
+        hotkeyRawSeed: ByteArray,
+        proofProgress: ((Double) -> Unit)?
+    ) = db(dbHandle).buildAndProveDelegation(
+        roundId,
+        bundleIndex,
+        pirServerUrl,
+        networkId,
+        notesJson,
+        hotkeyRawSeed,
+        proofProgress
+    )
+
+    private suspend fun TypesafeVotingBackend.getDelegationSubmission(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        senderSeed: ByteArray,
+        networkId: Int,
+        accountIndex: Int
+    ) = db(dbHandle).getDelegationSubmission(roundId, bundleIndex, senderSeed, networkId, accountIndex)
+
+    private suspend fun TypesafeVotingBackend.getDelegationSubmissionWithKeystoneSig(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        keystoneSig: ByteArray,
+        keystoneSighash: ByteArray
+    ) = db(dbHandle).getDelegationSubmissionWithKeystoneSig(roundId, bundleIndex, keystoneSig, keystoneSighash)
+
+    private suspend fun TypesafeVotingBackend.storeDelegationTxHash(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        txHash: String
+    ) = db(dbHandle).storeDelegationTxHash(roundId, bundleIndex, txHash)
+
+    private suspend fun TypesafeVotingBackend.getDelegationTxHash(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int
+    ) = db(dbHandle).getDelegationTxHash(roundId, bundleIndex)
+
+    private suspend fun TypesafeVotingBackend.storeVoteTxHash(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int,
+        txHash: String
+    ) = db(dbHandle).storeVoteTxHash(roundId, bundleIndex, proposalId, txHash)
+
+    private suspend fun TypesafeVotingBackend.getVoteTxHash(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int
+    ) = db(dbHandle).getVoteTxHash(roundId, bundleIndex, proposalId)
+
+    private suspend fun TypesafeVotingBackend.markVoteSubmitted(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int
+    ) = db(dbHandle).markVoteSubmitted(roundId, bundleIndex, proposalId)
+
+    private suspend fun TypesafeVotingBackend.storeCommitmentBundle(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int,
+        bundleJson: String,
+        vcTreePosition: Long
+    ) = db(dbHandle).storeCommitmentBundle(roundId, bundleIndex, proposalId, bundleJson, vcTreePosition)
+
+    private suspend fun TypesafeVotingBackend.getCommitmentBundle(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int
+    ) = db(dbHandle).getCommitmentBundle(roundId, bundleIndex, proposalId)
+
+    private suspend fun TypesafeVotingBackend.clearRecoveryState(dbHandle: Long, roundId: String) =
+        db(dbHandle).clearRecoveryState(roundId)
+
+    private suspend fun TypesafeVotingBackend.recordShareDelegation(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int,
+        shareIndex: Int,
+        sentToUrls: List<String>,
+        nullifier: ByteArray,
+        submitAt: Long
+    ) = db(dbHandle).recordShareDelegation(roundId, bundleIndex, proposalId, shareIndex, sentToUrls, nullifier, submitAt)
+
+    private suspend fun TypesafeVotingBackend.getShareDelegations(dbHandle: Long, roundId: String) =
+        db(dbHandle).getShareDelegations(roundId)
+
+    private suspend fun TypesafeVotingBackend.markShareConfirmed(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int,
+        shareIndex: Int
+    ) = db(dbHandle).markShareConfirmed(roundId, bundleIndex, proposalId, shareIndex)
+
+    private suspend fun TypesafeVotingBackend.addSentServers(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int,
+        shareIndex: Int,
+        newUrls: List<String>
+    ) = db(dbHandle).addSentServers(roundId, bundleIndex, proposalId, shareIndex, newUrls)
+
+    private suspend fun TypesafeVotingBackend.syncVoteTree(dbHandle: Long, roundId: String, nodeUrl: String) =
+        db(dbHandle).syncVoteTree(roundId, nodeUrl)
+
+    private suspend fun TypesafeVotingBackend.storeVanPosition(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        position: Int
+    ) = db(dbHandle).storeVanPosition(roundId, bundleIndex, position)
+
+    private suspend fun TypesafeVotingBackend.generateVanWitnessJson(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        anchorHeight: Int
+    ) = db(dbHandle).generateVanWitnessJson(roundId, bundleIndex, anchorHeight)
+
+    private suspend fun TypesafeVotingBackend.buildVoteCommitment(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        hotkeySeed: ByteArray,
+        proposalId: Int,
+        choice: Int,
+        numOptions: Int,
+        witnessJson: String,
+        vanPosition: Int,
+        anchorHeight: Int,
+        networkId: Int,
+        singleShare: Boolean,
+        proofProgress: ((Double) -> Unit)?
+    ) = db(dbHandle).buildVoteCommitment(
+        roundId,
+        bundleIndex,
+        hotkeySeed,
+        proposalId,
+        choice,
+        numOptions,
+        witnessJson,
+        vanPosition,
+        anchorHeight,
+        networkId,
+        singleShare,
+        proofProgress
+    )
+
     override suspend fun openVotingDb(dbPath: String): Long = backend.openVotingDb(dbPath)
 
     override suspend fun closeVotingDb(dbHandle: Long) = backend.closeVotingDb(dbHandle)
@@ -453,7 +765,8 @@ class VotingCryptoClientImpl(
         networkId: Int,
         accountIndex: Int,
         notesJson: String,
-        hotkeyRawSeed: ByteArray,
+        walletSeed: ByteArray,
+        hotkeySeed: ByteArray,
         seedFingerprint: ByteArray,
         roundName: String,
         addressIndex: Int
@@ -465,7 +778,8 @@ class VotingCryptoClientImpl(
         networkId = networkId,
         accountIndex = accountIndex,
         notesJson = notesJson,
-        hotkeyRawSeed = hotkeyRawSeed,
+        walletSeed = walletSeed,
+        hotkeySeed = hotkeySeed,
         seedFingerprint = seedFingerprint,
         roundName = roundName,
         addressIndex = addressIndex
@@ -771,21 +1085,20 @@ class VotingCryptoClientImpl(
     ): ByteArray = backend.extractOrchardFvkFromUfvk(ufvk, networkId)
 }
 
-private fun FfiBundleSetupResult.toAppModel() =
+private fun JniBundleSetupResult.toAppModel() =
     VotingBundleSetupResult(
         bundleCount = bundleCount,
         eligibleWeight = eligibleWeight,
         bundleWeights = bundleWeights
     )
 
-private fun FfiVotingHotkey.toAppModel() =
+private fun JniVotingHotkey.toAppModel() =
     VotingHotkey(
-        secretKey = secretKey.value.copyOf(),
         publicKey = publicKey.value.copyOf(),
         address = address
     )
 
-private fun FfiRoundState.toAppModel() =
+private fun JniRoundState.toAppModel() =
     RoundStateInfo(
         roundId = roundId,
         phase = roundPhase.toAppModel(),
@@ -795,13 +1108,13 @@ private fun FfiRoundState.toAppModel() =
         proofGenerated = proofGenerated
     )
 
-private fun FfiRoundPhase.toAppModel() =
+private fun JniRoundPhase.toAppModel() =
     when (this) {
-        FfiRoundPhase.INITIALIZED -> RoundPhase.INITIALIZED
-        FfiRoundPhase.HOTKEY_GENERATED -> RoundPhase.HOTKEY
-        FfiRoundPhase.DELEGATION_CONSTRUCTED -> RoundPhase.DELEGATION
-        FfiRoundPhase.DELEGATION_PROVED -> RoundPhase.PROVED
-        FfiRoundPhase.VOTE_READY -> RoundPhase.VOTE_READY
+        JniRoundPhase.INITIALIZED -> RoundPhase.INITIALIZED
+        JniRoundPhase.HOTKEY_GENERATED -> RoundPhase.HOTKEY
+        JniRoundPhase.DELEGATION_CONSTRUCTED -> RoundPhase.DELEGATION
+        JniRoundPhase.DELEGATION_PROVED -> RoundPhase.PROVED
+        JniRoundPhase.VOTE_READY -> RoundPhase.VOTE_READY
     }
 
 private fun GovernancePcztResult.toAppModel() =

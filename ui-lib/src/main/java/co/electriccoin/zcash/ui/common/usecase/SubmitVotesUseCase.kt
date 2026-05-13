@@ -261,7 +261,10 @@ class SubmitVotesUseCase(
                                 networkId = networkId,
                                 accountIndex = accountIndex,
                                 notesJson = bundleNotesJson,
-                                hotkeyRawSeed = hotkeySeed,
+                                walletSeed = requireNotNull(senderSeed) {
+                                    "Software wallet seed is missing for voting bundle $bundleIndex"
+                                },
+                                hotkeySeed = hotkeySeed,
                                 seedFingerprint = requireNotNull(seedFingerprint) {
                                     "Software wallet account is missing seed fingerprint for voting bundle $bundleIndex"
                                 },
