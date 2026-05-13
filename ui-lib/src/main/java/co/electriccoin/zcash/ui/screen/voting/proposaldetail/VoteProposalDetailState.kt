@@ -20,6 +20,7 @@ data class VoteProposalDetailState(
     val unverifiedPollWarningSheet: ZashiConfirmationState?,
     val onBack: () -> Unit,
     val onNext: () -> Unit,
+    val onViewMore: () -> Unit,
     val onConfirmUnanswered: () -> Unit,
     val onDismissUnanswered: () -> Unit,
     val onPollEndedClose: () -> Unit,
