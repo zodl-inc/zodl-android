@@ -83,6 +83,30 @@ class VotingProofPrecomputeRepositoryTest {
     }
 
     @Test
+    fun phaseRegressionPrecomputeFailureReturnsEmptyResultAndClosesVotingDb() = runBlocking {
+        val cryptoClient = FakeVotingCryptoClient(
+            precomputeFailure = IllegalStateException("refusing to regress round phase from PROVED to DELEGATION")
+        )
+        val scope = CoroutineScope(coroutineContext + SupervisorJob())
+        val repository = VotingProofPrecomputeRepositoryImpl(
+            votingCryptoClient = cryptoClient.client,
+            pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+            scope = scope
+        )
+        val request = precomputeRequest()
+
+        repository.startDelegationPirPrecompute(request)
+
+        val result = requireNotNull(repository.awaitDelegationPirPrecompute(request.key))
+            .getOrThrow()
+
+        assertEquals(VotingDelegationPirPrecomputeResult(cachedCount = 0, fetchedCount = 0), result)
+        assertEquals(CryptoCall.CloseVotingDb(DB_HANDLE), cryptoClient.calls.last())
+
+        scope.cancel()
+    }
+
+    @Test
     fun warmProvingCachesStartsOnlyOnce() = runBlocking {
         val cryptoClient = FakeVotingCryptoClient()
         val scope = CoroutineScope(coroutineContext + SupervisorJob())
