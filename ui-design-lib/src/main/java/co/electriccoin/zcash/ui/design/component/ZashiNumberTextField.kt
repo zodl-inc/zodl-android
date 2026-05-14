@@ -20,7 +20,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import cash.z.ecc.android.sdk.ext.ZcashDecimalFormatSymbols
+import cash.z.ecc.sdk.extension.ZcashDecimalFormatSymbols
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.StringResource
@@ -32,7 +32,6 @@ import co.electriccoin.zcash.ui.design.util.stringResByDynamicNumber
 import co.electriccoin.zcash.ui.design.util.stringResByNumber
 import java.math.BigDecimal
 import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
 import java.text.ParseException
 import java.util.Locale
 

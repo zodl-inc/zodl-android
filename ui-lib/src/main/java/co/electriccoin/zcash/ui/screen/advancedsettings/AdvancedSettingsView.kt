@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEachIndexed
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.component.SettingsListItemLeadingIcon
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiButton
@@ -37,6 +38,8 @@ import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
+import co.electriccoin.zcash.ui.design.util.ImageResource
+import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.scaffoldScrollPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -65,7 +68,17 @@ fun AdvancedSettings(
             state.items.fastForEachIndexed { index, item ->
                 ZashiListItem(
                     state = item,
-                    modifier = Modifier.padding(horizontal = 4.dp)
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                    leading =
+                        (item.bigIcon as? ImageResource.ByDrawable)?.let { icon ->
+                            { modifier ->
+                                SettingsListItemLeadingIcon(
+                                    modifier = modifier,
+                                    drawableRes = icon.resource,
+                                    contentDescription = item.title.getValue()
+                                )
+                            }
+                        }
                 )
                 if (index != state.items.lastIndex) {
                     ZashiHorizontalDivider(

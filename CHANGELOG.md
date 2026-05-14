@@ -6,6 +6,9 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Changed:
+- Voting round responses now require explicit option indices from vote servers.
+
 ## [3.3.1 (1643)] - 2026-04-10
 
 ### Fixed:

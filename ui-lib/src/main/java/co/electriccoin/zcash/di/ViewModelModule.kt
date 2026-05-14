@@ -88,6 +88,18 @@ import co.electriccoin.zcash.ui.screen.transactionhistory.ActivityHistoryVM
 import co.electriccoin.zcash.ui.screen.transactionhistory.widget.ActivityWidgetVM
 import co.electriccoin.zcash.ui.screen.transactionnote.viewmodel.TransactionNoteViewModel
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressVM
+import co.electriccoin.zcash.ui.screen.voting.chainconfig.VoteChainConfigVM
+import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingVM
+import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionVM
+import co.electriccoin.zcash.ui.screen.voting.howtovote.VoteHowToVoteVM
+import co.electriccoin.zcash.ui.screen.voting.ineligible.VoteIneligibleVM
+import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailVM
+import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListVM
+import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsVM
+import co.electriccoin.zcash.ui.screen.voting.scankeystone.viewmodel.ScanKeystoneVotingPCZTViewModel
+import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingVM
+import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingVM
+import co.electriccoin.zcash.ui.screen.voting.walletsyncing.VoteWalletSyncingVM
 import co.electriccoin.zcash.ui.screen.walletbackup.WalletBackupViewModel
 import co.electriccoin.zcash.ui.screen.warning.viewmodel.StorageCheckViewModel
 import co.electriccoin.zcash.ui.screen.whatsnew.viewmodel.WhatsNewViewModel
@@ -181,6 +193,18 @@ val viewModelModule =
         viewModelOf(::RestoreTorVM)
         viewModelOf(::ResetZashiVM)
         viewModelOf(::DisconnectVM)
+        viewModelOf(::VoteCoinholderPollingVM)
+        viewModelOf(::VoteChainConfigVM)
+        viewModelOf(::VoteHowToVoteVM)
+        viewModelOf(::VoteProposalListVM)
+        viewModelOf(::VoteProposalDetailVM)
+        viewModelOf(::VoteConfirmSubmissionVM)
+        viewModelOf(::VoteWalletSyncingVM)
+        viewModelOf(::VoteIneligibleVM)
+        viewModelOf(::VoteTallyingVM)
+        viewModelOf(::VoteResultsVM)
+        viewModelOf(::SignKeystoneVotingVM)
+        viewModelOf(::ScanKeystoneVotingPCZTViewModel)
         viewModelOf(::KeystoneConnectVM)
         viewModelOf(::KeystoneNewOrActiveVM)
         viewModelOf(::KeystoneDateVM)

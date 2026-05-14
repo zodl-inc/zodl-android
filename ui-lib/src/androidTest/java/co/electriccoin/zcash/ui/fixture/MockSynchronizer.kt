@@ -209,6 +209,14 @@ internal class MockSynchronizer(
         error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
     }
 
+    override suspend fun getWalletDbPath(): String {
+        error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
+    }
+
+    override suspend fun getTreeState(height: BlockHeight): ByteArray {
+        error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
+    }
+
     override suspend fun rewindToNearestHeight(height: BlockHeight): BlockHeight? {
         error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
     }

@@ -10,4 +10,10 @@
     <string name="sign_keystone_transaction_bottom_sheet_subtitle">Rechazar la firma cancelará la transacción y tendrás que empezar de nuevo si deseas continuar. Esta acción no se puede deshacer.</string>
     <string name="sign_keystone_transaction_bottom_sheet_go_back">Volver</string>
     <string name="sign_keystone_transaction_bottom_sheet_reject">Rechazar firma</string>
+    <string name="sign_keystone_voting_skip_remaining_bundle">Omitir paquete restante</string>
+    <string name="sign_keystone_voting_skip_remaining_bundles">Omitir %1$d paquetes restantes</string>
+    <string name="sign_keystone_voting_skip_remaining_title">¿Omitir paquetes restantes?</string>
+    <string name="sign_keystone_voting_skip_remaining_message">Enviarás con %1$s firmados y renunciarás a %2$s de los paquetes sin firmar.</string>
+    <string name="sign_keystone_voting_skip_remaining_confirm">Omitir restantes</string>
+    <string name="sign_keystone_voting_cancel">Cancelar</string>
 </resources>

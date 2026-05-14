@@ -33,10 +33,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import cash.z.ecc.android.sdk.ext.ZcashDecimalFormatSymbols
 import cash.z.ecc.android.sdk.ext.convertZatoshiToZec
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.fromZecString
+import cash.z.ecc.sdk.extension.ZcashDecimalFormatSymbols
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
@@ -51,7 +51,6 @@ import co.electriccoin.zcash.ui.screen.request.model.RequestCurrency
 import co.electriccoin.zcash.ui.screen.request.model.RequestState
 import java.math.BigDecimal
 import java.math.MathContext
-import java.text.DecimalFormatSymbols
 
 @Composable
 internal fun RequestAmountView(

@@ -8,6 +8,7 @@
     <string name="settings_version">Version <xliff:g example="1" id="version">%s</xliff:g></string>
     <string name="settings_address_book">Address Book</string>
     <string name="settings_whats_new">What\'s New</string>
+    <string name="settings_voting">Coinholder Polling</string>
 
     <string name="settings_troubleshooting_menu_content_description">Additional settings</string>
     <string name="settings_troubleshooting_rescan">Rescan blockchain</string>

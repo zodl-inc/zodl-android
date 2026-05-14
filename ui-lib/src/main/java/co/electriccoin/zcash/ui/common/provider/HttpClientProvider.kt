@@ -6,6 +6,7 @@ import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngineConfig
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpRequestRetry
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
@@ -36,20 +37,37 @@ class HttpClientProviderImpl(
         HttpClient(OkHttp) {
             configureHttpClient()
             install(HttpRequestRetry) {
-                maxRetries = 4
-                retryOnExceptionOrServerErrors(4)
+                maxRetries = MAX_RETRIES
+                retryIf { request, response ->
+                    !request.url.toString().isVotingHelperPath() &&
+                        response.status.value in 500..599
+                }
+                retryOnExceptionIf { request, _ ->
+                    !request.url.toString().isVotingHelperPath()
+                }
                 exponentialDelay()
             }
         }
 
     private fun <T : HttpClientEngineConfig> HttpClientConfig<T>.configureHttpClient() {
         install(ContentNegotiation) { json() }
+        install(HttpTimeout) {
+            requestTimeoutMillis = DEFAULT_REQUEST_TIMEOUT_MILLIS
+            socketTimeoutMillis = DEFAULT_REQUEST_TIMEOUT_MILLIS
+            connectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT_MILLIS
+        }
         install(Logging) {
             logger = KtorLogger()
             level = LogLevel.ALL
             sanitizeHeader { header -> header == HttpHeaders.Authorization }
         }
         expectSuccess = true
+    }
+
+    private companion object {
+        const val MAX_RETRIES = 4
+        const val DEFAULT_REQUEST_TIMEOUT_MILLIS = 120_000L
+        const val DEFAULT_CONNECT_TIMEOUT_MILLIS = 15_000L
     }
 }
 
@@ -58,3 +76,7 @@ private class KtorLogger : Logger {
         Log.d("HttpClient", message)
     }
 }
+
+private fun String.isVotingHelperPath(): Boolean =
+    contains("/shielded-vote/v1/shares") ||
+        contains("/shielded-vote/v1/share-status/")
