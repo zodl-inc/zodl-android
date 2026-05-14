@@ -24,14 +24,14 @@ class AndroidUncaughtExceptionHandlerTest {
                     throw AssertionError("Failed to register once")
                 }
 
-            val didThrowExpectedException =
-                runCatching {
-                    AndroidUncaughtExceptionHandler.register(ApplicationProvider.getApplicationContext())
-                }.exceptionOrNull() is IllegalStateException
-            if (didThrowExpectedException) {
+            // Expected to fail on second registration
+            try {
+                AndroidUncaughtExceptionHandler.register(ApplicationProvider.getApplicationContext())
+            } catch (e: IllegalStateException) {
+                // Expected exception
                 didFail.set(false)
+                latch.countDown()
             }
-            latch.countDown()
         }
 
         latch.await()

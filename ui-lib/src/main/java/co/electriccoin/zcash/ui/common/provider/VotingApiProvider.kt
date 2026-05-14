@@ -378,7 +378,7 @@ class KtorVotingApiProvider(
                     } catch (responseException: ResponseException) {
                         when (responseException.response.status) {
                             HttpStatusCode.NotFound -> {
-                                Log.d(TAG, "No tx confirmation yet for $txHash from $baseUrl", responseException)
+                                Unit
                             }
 
                             HttpStatusCode.UnprocessableEntity -> {
@@ -386,13 +386,13 @@ class KtorVotingApiProvider(
                             }
 
                             else -> {
-                                Log.w(TAG, "Unexpected tx confirmation response from $baseUrl", responseException)
+                                Unit
                             }
                         }
-                    } catch (exception: CancellationException) {
-                        throw exception
                     } catch (exception: Exception) {
-                        Log.w(TAG, "Failed to fetch tx confirmation from $baseUrl", exception)
+                        if (exception is CancellationException) {
+                            throw exception
+                        }
                     }
                 }
                 null
@@ -432,8 +432,7 @@ class KtorVotingApiProvider(
                     }.bodyAsBytes()
                 } catch (responseException: ResponseException) {
                     throw VotingConfigException(
-                        message = "Static voting config fetch failed: HTTP ${responseException.response.status.value}",
-                        cause = responseException
+                        "Static voting config fetch failed: HTTP ${responseException.response.status.value}"
                     )
                 }
             StaticVotingConfig.decodeAndVerify(
@@ -452,8 +451,7 @@ class KtorVotingApiProvider(
                     }.bodyAsText()
                 } catch (responseException: ResponseException) {
                     throw VotingConfigException(
-                        message = "Dynamic voting config fetch failed: HTTP ${responseException.response.status.value}",
-                        cause = responseException
+                        "Dynamic voting config fetch failed: HTTP ${responseException.response.status.value}"
                     )
                 }
             }.let(VotingServiceConfig::decode)
@@ -822,13 +820,13 @@ private fun JSONObject.optNumber(key: String): Number {
 }
 
 private fun String.hexToBase64String(): String =
-    chunked(HEX_BYTE_CHARS)
-        .map { chunk -> chunk.toInt(HEX_RADIX).toByte() }
+    chunked(2)
+        .map { chunk -> chunk.toInt(16).toByte() }
         .toByteArray()
         .toBase64String()
 
 private fun ByteArray.toLowerHex(): String =
-    joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and BYTE_MASK) }
+    joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and 0xff) }
 
 private fun tallyResultsPath(roundIdHex: String): String =
     "/shielded-vote/v1/tally-results/$roundIdHex"
@@ -838,10 +836,6 @@ private fun txConfirmationPath(txHash: String): String =
 
 internal fun shouldTreatEndorsedRoundsStatusAsEmpty(status: HttpStatusCode): Boolean =
     status == HttpStatusCode.BadRequest || status == HttpStatusCode.NotFound
-
-private const val HEX_BYTE_CHARS = 2
-private const val HEX_RADIX = 16
-private const val BYTE_MASK = 0xff
 
 internal fun shouldTreatEndorsedRoundsFailoverFailuresAsEmpty(
     statuses: List<HttpStatusCode?>
@@ -873,14 +867,16 @@ private suspend fun Throwable.isNoActiveRoundFailure(): Boolean =
         }
     }
 
-private suspend fun ResponseException.isNoActiveRoundResponse(): Boolean =
+private suspend fun ResponseException.isNoActiveRoundResponse(): Boolean {
     if (response.status != HttpStatusCode.InternalServerError) {
-        false
-    } else {
+        return false
+    }
+
+    val responseText =
         runCatching { response.bodyAsText() }
             .getOrNull()
             ?.lowercase()
-            ?.let { responseText ->
-                "no active voting round" in responseText && "key not found" in responseText
-            } == true
-    }
+            ?: return false
+
+    return "no active voting round" in responseText && "key not found" in responseText
+}

@@ -162,14 +162,15 @@ class VotingKeystoneRepositoryImpl(
                     if (!roundState?.phase.canBuildGovernancePczt()) {
                         throw VotingKeystoneRoundPhaseAdvancedException(roundId, roundState?.phase)
                     }
-                    votingCryptoClient.generateNoteWitnessesJson(
-                        dbHandle = dbHandle,
-                        roundId = roundId,
-                        bundleIndex = bundleIndex,
-                        walletDbPath = walletDbPath,
-                        networkId = networkId,
-                        notesJson = allNotesJson
-                    )
+                    val witnessesJson =
+                        votingCryptoClient.generateNoteWitnessesJson(
+                            dbHandle = dbHandle,
+                            roundId = roundId,
+                            bundleIndex = bundleIndex,
+                            walletDbPath = walletDbPath,
+                            networkId = networkId,
+                            notesJson = allNotesJson
+                        )
                     val fvkBytes = votingCryptoClient.extractOrchardFvkFromUfvk(ufvk, networkId)
                     val hotkeyRawAddress =
                         votingCryptoClient.deriveHotkeyRawAddress(
@@ -293,7 +294,7 @@ class VotingKeystoneRepositoryImpl(
         }
 
     private fun ByteArray.toLowerHex(): String =
-        joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and BYTE_MASK) }
+        joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and 0xff) }
 
     private suspend fun getHotkeySeed(
         accountUuid: String,
@@ -313,6 +314,5 @@ class VotingKeystoneRepositoryImpl(
 
     private companion object {
         const val TAG = "VotingKeystoneRepository"
-        const val BYTE_MASK = 0xff
     }
 }

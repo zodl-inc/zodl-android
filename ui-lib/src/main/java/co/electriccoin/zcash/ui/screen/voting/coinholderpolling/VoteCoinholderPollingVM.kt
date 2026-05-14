@@ -186,9 +186,7 @@ class VoteCoinholderPollingVM(
                 val sortedRounds =
                     visibleRounds
                         .sortedWith(
-                            compareByDescending<VotingRound> { round ->
-                                round.createdAtHeight.takeIf { it > 0 } ?: round.snapshotHeight
-                            }
+                            compareByDescending<VotingRound> { round -> round.createdAtHeight.takeIf { it > 0 } ?: round.snapshotHeight }
                                 .thenByDescending { round -> round.snapshotHeight }
                                 .thenByDescending { round -> round.votingEnd.epochSecond }
                                 .thenBy { round -> round.id }
@@ -284,9 +282,7 @@ class VoteCoinholderPollingVM(
                 VotePollCardStatus.ACTIVE,
                 VotePollCardStatus.VOTED -> stringRes(R.string.vote_poll_card_closes, formatter.format(round.votingEnd))
 
-                VotePollCardStatus.CLOSED -> {
-                    stringRes(R.string.vote_poll_card_closed, formatter.format(round.votingEnd))
-                }
+                VotePollCardStatus.CLOSED -> stringRes(R.string.vote_poll_card_closed, formatter.format(round.votingEnd))
             }
 
         return VotePollCardState(

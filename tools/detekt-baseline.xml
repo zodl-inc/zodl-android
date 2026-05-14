@@ -3,17 +3,101 @@
   <ManuallySuppressedIssues/>
   <CurrentIssues>
     <ID>CyclomaticComplexMethod:PrepareVotingRoundUseCase.kt$PrepareVotingRoundUseCase$suspend operator fun invoke(roundId: String): VotingRoundPreparationResult</ID>
-    <ID>CyclomaticComplexMethod:SubmitVotesUseCase.kt$SubmitVotesUseCase$suspend operator fun invoke( roundId: String, choices: Map&lt;Int, Int&gt;, onProgress: (VotingSubmissionProgress) -&gt; Unit = {} ): VotingSubmissionResult</ID>
+    <ID>CyclomaticComplexMethod:SubmitVotesUseCase.kt$SubmitVotesUseCase$@Suppress("TooGenericExceptionCaught") suspend operator fun invoke( roundId: String, choices: Map&lt;Int, Int&gt;, onProgress: (VotingSubmissionProgress) -&gt; Unit = {} ): VotingSubmissionResult</ID>
     <ID>CyclomaticComplexMethod:TrackVotingSharesUseCase.kt$TrackVotingSharesUseCase$suspend operator fun invoke(roundId: String): VotingShareTrackingResult</ID>
     <ID>CyclomaticComplexMethod:VoteConfirmSubmissionVM.kt$VoteConfirmSubmissionVM$private fun buildButtonState( isPrepared: Boolean, isKeystone: Boolean, keystoneSignedBundles: Int, preparedBundleCount: Int, hasPendingKeystoneRequest: Boolean, isSubmitting: Boolean, status: VoteSubmissionStatus )</ID>
     <ID>CyclomaticComplexMethod:VoteConfirmSubmissionVM.kt$VoteConfirmSubmissionVM$private fun createState( round: VotingRound, recovery: VotingRecoverySnapshot?, isKeystone: Boolean, status: VoteSubmissionStatus, showFailureSheet: Boolean, activeIncludesAuthorizationProgress: Boolean?, ballotDivisorZatoshi: Long?, ): VoteConfirmSubmissionState</ID>
     <ID>CyclomaticComplexMethod:VotingErrorMapper.kt$VotingErrorMapper$fun toUserFriendlyMessage(rawMessage: String): StringResource</ID>
     <ID>CyclomaticComplexMethod:VotingRecoveryRepository.kt$private fun String.toVotingRecoverySnapshot(): VotingRecoverySnapshot</ID>
     <ID>CyclomaticComplexMethod:VotingRequests.kt$VoteCommitmentBundle$override fun equals(other: Any?): Boolean</ID>
+    <ID>InstanceOfCheckForException:RefreshVotingRoundsUseCase.kt$RefreshVotingRoundsUseCase$exception is CancellationException</ID>
+    <ID>InstanceOfCheckForException:VoteChainConfigVM.kt$VoteChainConfigVM$throwable is CancellationException</ID>
+    <ID>InstanceOfCheckForException:VoteServerFailover.kt$exception is CancellationException</ID>
+    <ID>InstanceOfCheckForException:VotingApiProvider.kt$KtorVotingApiProvider$exception is CancellationException</ID>
     <ID>LargeClass:SubmitVotesUseCase.kt$SubmitVotesUseCase</ID>
+    <ID>LoopWithTooManyJumpStatements:VotingChainConfigRepository.kt$for</ID>
+    <ID>LoopWithTooManyJumpStatements:VotingRecoveryRepository.kt$VotingRecoveryRepositoryImpl$for</ID>
+    <ID>MagicNumber:ChainDto.kt$16</ID>
+    <ID>MagicNumber:HomeVM.kt$0xff</ID>
+    <ID>MagicNumber:RoundAuthenticator.kt$16</ID>
+    <ID>MagicNumber:StaticVotingConfig.kt$0xff</ID>
+    <ID>MagicNumber:StaticVotingConfig.kt$16</ID>
+    <ID>MagicNumber:SubmitVotesUseCase.kt$SubmitVotesUseCase$1_000</ID>
+    <ID>MagicNumber:TrackVotingSharesUseCase.kt$4</ID>
+    <ID>MagicNumber:TrackVotingSharesUseCase.kt$TrackVotingSharesUseCase$0xff</ID>
+    <ID>MagicNumber:TrackVotingSharesUseCase.kt$TrackVotingSharesUseCase$1_000</ID>
+    <ID>MagicNumber:TrackVotingSharesUseCase.kt$TrackVotingSharesUseCase$1_000L</ID>
+    <ID>MagicNumber:VoteConfirmSubmissionComponents.kt$0.3f</ID>
+    <ID>MagicNumber:VoteConfirmSubmissionComponents.kt$0.95f</ID>
+    <ID>MagicNumber:VoteConfirmSubmissionComponents.kt$1.35f</ID>
+    <ID>MagicNumber:VoteConfirmSubmissionVM.kt$100_000_000.0</ID>
+    <ID>MagicNumber:VoteProposalListVM.kt$100_000_000.0</ID>
+    <ID>MagicNumber:VoteProposalListVM.kt$VoteProposalListVM$172800</ID>
+    <ID>MagicNumber:VoteProposalListVM.kt$VoteProposalListVM$3600</ID>
+    <ID>MagicNumber:VoteProposalListVM.kt$VoteProposalListVM$60</ID>
+    <ID>MagicNumber:VoteProposalListVM.kt$VoteProposalListVM$86400</ID>
+    <ID>MagicNumber:VoteResultsVM.kt$100_000_000.0</ID>
+    <ID>MagicNumber:VoteWalletSyncingVM.kt$VoteWalletSyncingVM$100</ID>
+    <ID>MagicNumber:VotingApiProvider.kt$0xff</ID>
+    <ID>MagicNumber:VotingApiProvider.kt$16</ID>
+    <ID>MagicNumber:VotingCryptoModels.kt$31</ID>
+    <ID>MagicNumber:VotingKeystoneRepository.kt$VotingKeystoneRepositoryImpl$0xff</ID>
+    <ID>MagicNumber:VotingRequests.kt$31</ID>
+    <ID>MagicNumber:VotingSubmissionParsers.kt$0xff</ID>
+    <ID>MagicNumber:VotingSubmissionParsers.kt$16</ID>
+    <ID>MatchingDeclarationName:VoteServerFailover.kt$VotingServerFailoverException : IllegalStateException</ID>
+    <ID>MaxLineLength:PrepareVotingRoundUseCase.kt$PrepareVotingRoundUseCase$"Software wallet account is missing seed fingerprint for voting round $roundId"</ID>
+    <ID>MaxLineLength:PrepareVotingRoundUseCase.kt$PrepareVotingRoundUseCase$pirEndpoints = sessionContext.serviceConfig.pirEndpoints.map { endpoint -&gt; endpoint.url }</ID>
+    <ID>MaxLineLength:RefreshVotingRoundsUseCaseTest.kt$RefreshVotingRoundsUseCaseTest$votingApiProvider = FakeVotingApiProvider(endorsedRoundFailure = IllegalStateException("unavailable"))</ID>
+    <ID>MaxLineLength:SubmitVotesUseCase.kt$SubmitVotesUseCase$"Software wallet account is missing UFVK for voting bundle $bundleIndex"</ID>
+    <ID>MaxLineLength:SubmitVotesUseCase.kt$SubmitVotesUseCase$"Software wallet account is missing seed fingerprint for voting bundle $bundleIndex"</ID>
+    <ID>MaxLineLength:SubmitVotesUseCase.kt$SubmitVotesUseCase$Log.w(TAG, "Voting PIR precompute failed for round $roundId bundle $bundleIndex", throwable)</ID>
+    <ID>MaxLineLength:SubmitVotesUseCase.kt$SubmitVotesUseCase$votingRecoveryRepository.storeVoteEndEpochSeconds(accountUuidString, roundId, session.voteEndTime.epochSecond)</ID>
+    <ID>MaxLineLength:VoteCoinholderPollingVM.kt$VoteCoinholderPollingVM$VotePollCardStatus.CLOSED -&gt; stringRes(R.string.vote_poll_card_closed, formatter.format(round.votingEnd))</ID>
+    <ID>MaxLineLength:VoteCoinholderPollingVM.kt$VoteCoinholderPollingVM$compareByDescending&lt;VotingRound&gt; { round -&gt; round.createdAtHeight.takeIf { it &gt; 0 } ?: round.snapshotHeight }</ID>
+    <ID>MaxLineLength:VoteConfirmSubmissionVM.kt$VoteConfirmSubmissionVM$onClick = if (isKeystone &amp;&amp; keystoneSignedBundles &lt; preparedBundleCount) ::onStartKeystoneSigning else ::onSubmit</ID>
+    <ID>MaxLineLength:VoteConfirmSubmissionView.kt$memo = stringRes("I am authorizing this hotkey managed by my wallet to vote on NU7 Sentiment Poll with 1.2500 ZEC.")</ID>
+    <ID>MaxLineLength:VoteHowToVoteView.kt$"Your ZEC gives you a voice. Shape the future of the Zcash network by voting on active proposals."</ID>
+    <ID>MaxLineLength:VoteHowToVoteView.kt$"and submit your vote in one step. After submission, your vote cannot be changed."</ID>
+    <ID>MaxLineLength:VotePollDescriptionView.kt$description = stringRes("This poll gauges coinholder sentiment on proposed Zcash protocol features.")</ID>
+    <ID>MaxLineLength:VotingErrorMapper.kt$VotingErrorMapper$lower.contains("round") &amp;&amp; (lower.contains("not active") || lower.contains("inactive") || lower.contains("closed"))</ID>
+    <ID>MaxLineLength:VotingProofPrecomputeRepositoryTest.kt$VotingProofPrecomputeRepositoryTest$listOf(ResolveCall(endpoints = listOf("https://pir-a", "https://pir-b"), expectedSnapshotHeight = 123L))</ID>
+    <ID>MaxLineLength:VotingProofPrecomputeRepositoryTest.kt$VotingProofPrecomputeRepositoryTest$precomputeFailure = IllegalStateException("refusing to regress round phase from PROVED to DELEGATION")</ID>
+    <ID>MaxLineLength:VotingServiceConfigTest.kt$RoundAuthenticatorTest$sig = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ=="</ID>
+    <ID>MayBeConst:EncryptedPreferenceProviderTest.kt$EncryptedPreferenceProviderTest.Companion$private val FILENAME = "encrypted_preference_test"</ID>
+    <ID>MayBeConst:StandardPreferenceProviderTest.kt$StandardPreferenceProviderTest.Companion$private val FILENAME = "encrypted_preference_test"</ID>
+    <ID>RethrowCaughtException:SubmitVotesUseCase.kt$SubmitVotesUseCase$throw exception</ID>
+    <ID>ReturnCount:ChainDto.kt$private fun String.decodeBinaryField(): ByteArray</ID>
+    <ID>ReturnCount:HomeVM.kt$HomeVM$private suspend fun recoverPendingVotingRouteIfNeeded(): Boolean</ID>
+    <ID>ReturnCount:PrepareVotingRoundUseCase.kt$PrepareVotingRoundUseCase$private fun VotingRecoverySnapshot.preparedBundleSetup(): VotingBundleSetupResult?</ID>
+    <ID>ReturnCount:PrepareVotingRoundUseCase.kt$PrepareVotingRoundUseCase$private suspend fun getOrCreateHotkeySeed( accountUuid: String, roundId: String, recoverySnapshot: VotingRecoverySnapshot?, existingRoundStatePhase: RoundPhase? ): ByteArray</ID>
+    <ID>ReturnCount:PrepareVotingRoundUseCase.kt$PrepareVotingRoundUseCase$private suspend fun isRoundRecoverable( recoverySnapshot: VotingRecoverySnapshot?, dbHandle: Long, roundId: String ): Boolean</ID>
+    <ID>ReturnCount:RoundAuthenticator.kt$RoundAuthenticator$fun authenticate( chainEaPK: ByteArray, roundIdHex: String, rounds: Map&lt;String, VotingServiceConfig.RoundEntry&gt;, trustedKeys: List&lt;StaticVotingConfig.TrustedKey&gt; ): RoundAuthStatus</ID>
+    <ID>ReturnCount:RoundAuthenticator.kt$RoundAuthenticator$fun verifyEntrySignatures( entry: VotingServiceConfig.RoundEntry, trustedKeys: List&lt;StaticVotingConfig.TrustedKey&gt; ): Boolean</ID>
+    <ID>ReturnCount:SignKeystoneVotingVM.kt$SignKeystoneVotingVM$private fun VotingRecoverySnapshot.toSkipBottomSheetState(): SkipKeystoneBundlesBottomSheetState?</ID>
+    <ID>ReturnCount:SignKeystoneVotingVM.kt$SignKeystoneVotingVM$private fun VotingRecoverySnapshot.toSkipRemainingButton(): ButtonState?</ID>
+    <ID>ReturnCount:SubmitVotesUseCase.kt$SubmitVotesUseCase$private fun randomSubmitAt(deadlineEpochSeconds: Long?): Long</ID>
+    <ID>ReturnCount:VoteChainConfigVM.kt$VoteChainConfigVM$private fun onSaveEditor()</ID>
+    <ID>ReturnCount:VoteOptionDisplay.kt$fun Proposal.tallyDisplayInfo( decision: Int, fallbackLabel: String, ): VoteOptionDisplayInfo</ID>
+    <ID>ReturnCount:VoteOptionDisplay.kt$fun Proposal.voteBadgeInfo(choiceId: Int): VoteOptionDisplayInfo</ID>
+    <ID>ReturnCount:VoteOptionDisplay.kt$private fun voteOptionDisplayColor( label: String, position: Int, total: Int, ): VoteOptionDisplayColor</ID>
+    <ID>ReturnCount:VoteProposalListVM.kt$VoteProposalListVM$private fun buildCtaButton( mode: VoteProposalListMode, proposals: List&lt;Proposal&gt;, drafts: Map&lt;Int, Int&gt;, roundId: String, ): ButtonState?</ID>
+    <ID>ReturnCount:VotingApiProvider.kt$private suspend fun ResponseException.isNoActiveRoundResponse(): Boolean</ID>
+    <ID>ReturnCount:VotingRecoveryRepository.kt$VotingRecoveryRepositoryImpl$override suspend fun get( accountUuid: String, roundId: String ): VotingRecoverySnapshot?</ID>
+    <ID>ReturnCount:VotingRecoveryRepository.kt$VotingRecoveryRepositoryImpl$override suspend fun setPendingKeystoneRouteStage( accountUuid: String, roundId: String, routeStage: VotingKeystoneRouteStage )</ID>
+    <ID>ReturnCount:VotingSession.kt$internal fun VotingSession.shareSubmissionDeadlineEpochSeconds(singleShare: Boolean): Long?</ID>
+    <ID>SpreadOperator:HomeVM.kt$HomeVM$(*restoredRoutes.toTypedArray())</ID>
+    <ID>SwallowedException:AndroidUncaughtExceptionHandlerTest.kt$AndroidUncaughtExceptionHandlerTest$e: IllegalStateException</ID>
+    <ID>SwallowedException:VotingApiProvider.kt$KtorVotingApiProvider$responseException: ResponseException</ID>
+    <ID>ThrowsCount:ChainDto.kt$private fun validateChainProposals(proposals: List&lt;Proposal&gt;)</ID>
+    <ID>ThrowsCount:StaticVotingConfig.kt$PinnedConfigSource.Companion$fun parse(raw: String): PinnedConfigSource</ID>
+    <ID>ThrowsCount:StaticVotingConfig.kt$StaticVotingConfig$fun validate()</ID>
+    <ID>ThrowsCount:SubmitVotesUseCase.kt$SubmitVotesUseCase$private suspend fun delegateSharesWithRetry( payloads: List&lt;SharePayload&gt;, roundId: String ): List&lt;DelegatedShareInfo&gt;</ID>
+    <ID>ThrowsCount:VoteServerFailover.kt$internal suspend fun &lt;T&gt; withVoteServerFailover( path: String, serverUrls: List&lt;String&gt;, shouldTryNext: (Throwable) -&gt; Boolean = ::shouldTryNextVoteServer, operation: suspend (String) -&gt; T ): T</ID>
+    <ID>ThrowsCount:VotingServiceConfig.kt$VotingServiceConfig$fun validate()</ID>
     <ID>TooGenericExceptionCaught:RefreshVotingRoundsUseCase.kt$RefreshVotingRoundsUseCase$exception: Exception</ID>
     <ID>TooGenericExceptionCaught:SubmitVotesUseCase.kt$SubmitVotesUseCase$exception: Exception</ID>
-    <ID>TooGenericExceptionCaught:VoteChainConfigVM.kt$VoteChainConfigVM$exception: Exception</ID>
+    <ID>TooGenericExceptionCaught:VoteChainConfigVM.kt$VoteChainConfigVM$throwable: Throwable</ID>
     <ID>TooGenericExceptionCaught:VoteCoinholderPollingVM.kt$VoteCoinholderPollingVM$throwable: Throwable</ID>
     <ID>TooGenericExceptionCaught:VoteProposalDetailVM.kt$VoteProposalDetailVM$throwable: Throwable</ID>
     <ID>TooGenericExceptionCaught:VoteServerFailover.kt$exception: Exception</ID>
@@ -36,5 +120,11 @@
     <ID>TooManyFunctions:VotingRecoveryRepository.kt$VotingRecoveryRepository</ID>
     <ID>TooManyFunctions:VotingRecoveryRepository.kt$VotingRecoveryRepositoryImpl : VotingRecoveryRepository</ID>
     <ID>TooManyFunctions:VotingSubmissionParsers.kt$co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionParsers.kt</ID>
+    <ID>UnusedPrivateMember:RefreshActiveVotingSessionUseCase.kt$private fun VotingSession.toVotingRound()</ID>
+    <ID>UnusedPrivateProperty:VotingKeystoneRepository.kt$VotingKeystoneRepositoryImpl$val witnessesJson = votingCryptoClient.generateNoteWitnessesJson( dbHandle = dbHandle, roundId = roundId, bundleIndex = bundleIndex, walletDbPath = walletDbPath, networkId = networkId, notesJson = allNotesJson )</ID>
+    <ID>UseCheckOrError:SubmitVotesUseCase.kt$SubmitVotesUseCase$throw lastRetryableError ?: IllegalStateException("No voting server accepted share")</ID>
+    <ID>UseRequire:ExceptionPath.kt$ExceptionPath$throw IllegalArgumentException("Directories couldn't be created")</ID>
+    <ID>UseRequire:ExceptionPath.kt$ExceptionPath$throw IllegalArgumentException("Path is a file when a directory was expected")</ID>
+    <ID>UseRequire:ExceptionPath.kt$ExceptionPath$throw IllegalArgumentException("Path is not writeable")</ID>
   </CurrentIssues>
 </SmellBaseline>

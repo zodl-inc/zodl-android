@@ -37,12 +37,7 @@ class VotingProofPrecomputeRepositoryTest {
 
             assertEquals(VotingDelegationPirPrecomputeResult(cachedCount = 2, fetchedCount = 3), result)
             assertEquals(
-                listOf(
-                    ResolveCall(
-                        endpoints = listOf("https://pir-a", "https://pir-b"),
-                        expectedSnapshotHeight = 123L
-                    )
-                ),
+                listOf(ResolveCall(endpoints = listOf("https://pir-a", "https://pir-b"), expectedSnapshotHeight = 123L)),
                 pirSnapshotResolver.calls
             )
             assertEquals(
@@ -98,10 +93,7 @@ class VotingProofPrecomputeRepositoryTest {
         runBlocking {
             val cryptoClient =
                 FakeVotingCryptoClient(
-                    precomputeFailure =
-                        IllegalStateException(
-                            "refusing to regress round phase from PROVED to DELEGATION"
-                        )
+                    precomputeFailure = IllegalStateException("refusing to regress round phase from PROVED to DELEGATION")
                 )
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =

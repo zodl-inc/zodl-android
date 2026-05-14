@@ -31,18 +31,18 @@ data class StaticVotingConfig(
     }
 
     fun validate() {
-        requireVotingConfig(staticConfigVersion == SUPPORTED_VERSION) {
-            "Unsupported static_config_version $staticConfigVersion"
+        if (staticConfigVersion != SUPPORTED_VERSION) {
+            throw VotingConfigException("Unsupported static_config_version $staticConfigVersion")
         }
-        requireVotingConfig(trustedKeys.isNotEmpty()) {
-            "trusted_keys must contain at least one entry"
+        if (trustedKeys.isEmpty()) {
+            throw VotingConfigException("trusted_keys must contain at least one entry")
         }
         trustedKeys.forEach { key ->
-            requireVotingConfig(key.alg == ALG_ED25519) {
-                "trusted_keys[${key.keyId}].alg unsupported: ${key.alg}"
+            if (key.alg != ALG_ED25519) {
+                throw VotingConfigException("trusted_keys[${key.keyId}].alg unsupported: ${key.alg}")
             }
-            requireVotingConfig(key.pubkeyBytes().size == ED25519_PUBLIC_KEY_BYTES) {
-                "trusted_keys[${key.keyId}].pubkey must decode to 32 bytes"
+            if (key.pubkeyBytes().size != ED25519_PUBLIC_KEY_BYTES) {
+                throw VotingConfigException("trusted_keys[${key.keyId}].pubkey must decode to 32 bytes")
             }
         }
     }
@@ -109,10 +109,10 @@ class PinnedConfigSource private constructor(
         fun parse(raw: String): PinnedConfigSource {
             val uri =
                 runCatching { URI(raw) }.getOrElse {
-                    failVotingConfig("Static config source malformed: not a URL: $raw")
+                    throw VotingConfigException("Static config source malformed: not a URL: $raw")
                 }
-            requireVotingConfig(uri.scheme == "https" && !uri.host.isNullOrBlank()) {
-                "Static config source malformed: not an HTTPS URL: $raw"
+            if (uri.scheme != "https" || uri.host.isNullOrBlank()) {
+                throw VotingConfigException("Static config source malformed: not an HTTPS URL: $raw")
             }
 
             val queryParts =
@@ -145,14 +145,16 @@ class PinnedConfigSource private constructor(
                 if (hasChecksum) {
                     val checksum =
                         checksumValue?.let(::urlDecode)
-                            ?: failVotingConfig("Static config source malformed: missing checksum value")
-                    requireVotingConfig(checksum.startsWith(CHECKSUM_PREFIX)) {
-                        "Static config source malformed: checksum must start with sha256:"
+                            ?: throw VotingConfigException("Static config source malformed: missing checksum value")
+                    if (!checksum.startsWith(CHECKSUM_PREFIX)) {
+                        throw VotingConfigException("Static config source malformed: checksum must start with sha256:")
                     }
 
                     val hex = checksum.drop(CHECKSUM_PREFIX.length)
-                    requireVotingConfig(hex.length == SHA256_HEX_LENGTH && hex.isLowercaseHex()) {
+                    if (hex.length != SHA256_HEX_LENGTH || !hex.isLowercaseHex()) {
+                        throw VotingConfigException(
                             "Static config source malformed: sha256 must be 64 lowercase hex chars"
+                        )
                     }
                     hex.lowercaseHexToBytes()
                 } else {
@@ -189,23 +191,19 @@ internal fun decodeBase64Field(value: String, fieldName: String): ByteArray =
     }
 
 internal fun String.lowercaseHexToBytes(): ByteArray {
-    if (length % HEX_BYTE_CHARS != 0 || !isLowercaseHex()) {
+    if (length % 2 != 0 || !isLowercaseHex()) {
         throw VotingConfigException("Expected lowercase hex")
     }
-    return chunked(HEX_BYTE_CHARS).map { chunk -> chunk.toInt(HEX_RADIX).toByte() }.toByteArray()
+    return chunked(2).map { chunk -> chunk.toInt(16).toByte() }.toByteArray()
 }
 
 internal fun String.isLowercaseHex(): Boolean =
     isNotEmpty() && all { character -> character in '0'..'9' || character in 'a'..'f' }
 
 internal fun ByteArray.toLowerHex(): String =
-    joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and BYTE_MASK) }
+    joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and 0xff) }
 
 private val staticVotingConfigJson =
     Json {
         ignoreUnknownKeys = true
     }
-
-private const val HEX_BYTE_CHARS = 2
-private const val HEX_RADIX = 16
-private const val BYTE_MASK = 0xff

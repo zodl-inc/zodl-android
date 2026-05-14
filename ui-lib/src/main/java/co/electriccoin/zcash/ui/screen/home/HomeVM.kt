@@ -177,45 +177,35 @@ class HomeVM(
     private var onSwapButtonClick: Job? = null
 
     private suspend fun recoverPendingVotingRouteIfNeeded(): Boolean {
-        val pendingRoute = pendingVotingRouteRecovery() ?: return false
-
-        votingApiRepository.snapshot.value.sessionsByRoundId[pendingRoute.roundId]
-            ?.toVotingRound()
-            ?.let(votingApiRepository::upsertRound)
-        votingSessionStore.restoreDraftVotes(
-            accountUuid = pendingRoute.accountUuid,
-            roundId = pendingRoute.roundId,
-            draftVotes = pendingRoute.draftChoices
-        )
-
-        navigationRouter.replaceAll(pendingRoute.routes)
-        return true
-    }
-
-    private suspend fun pendingVotingRouteRecovery(): PendingVotingRouteRecovery? {
-        if (runCatching { refreshActiveVotingSession() }.isFailure) {
-            return null
+        runCatching {
+            refreshActiveVotingSession()
+        }.getOrElse {
+            return false
         }
         val accountUuid = getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId()
-        val recovery =
-            votingApiRepository
-                .snapshot
-                .value
-                .sessionsByRoundId
-                .keys
-                .firstNotNullOfOrNull { roundId ->
-                    votingRecoveryRepository
-                        .get(accountUuid, roundId)
-                        ?.takeIf { candidate -> candidate.pendingKeystoneRequest != null }
-                }
-        return recovery?.toPendingVotingRouteRecovery(accountUuid)
-    }
-
-    private fun VotingRecoverySnapshot.toPendingVotingRouteRecovery(accountUuid: String): PendingVotingRouteRecovery? {
-        val pendingRequest = pendingKeystoneRequest ?: return null
+        var recovery: VotingRecoverySnapshot? = null
+        for (roundId in votingApiRepository.snapshot.value.sessionsByRoundId.keys) {
+            val candidate = votingRecoveryRepository.get(accountUuid, roundId)
+            if (candidate?.pendingKeystoneRequest != null) {
+                recovery = candidate
+                break
+            }
+        }
+        recovery ?: return false
+        val roundId = recovery.roundId
+        val pendingRequest = recovery.pendingKeystoneRequest ?: return false
         val draftChoices =
-            draftChoices
-                .ifEmpty { proposalSelections.mapValues { (_, selection) -> selection.choiceId } }
+            recovery.draftChoices
+                .ifEmpty { recovery.proposalSelections.mapValues { (_, selection) -> selection.choiceId } }
+        if (draftChoices.isEmpty()) {
+            return false
+        }
+
+        votingApiRepository.snapshot.value.sessionsByRoundId[roundId]
+            ?.toVotingRound()
+            ?.let(votingApiRepository::upsertRound)
+        votingSessionStore.restoreDraftVotes(accountUuid, roundId, draftChoices)
+
         val restoredRoutes =
             buildList {
                 add(VoteProposalListArgs(roundId = roundId, mode = VoteProposalListMode.REVIEW))
@@ -236,16 +226,9 @@ class HomeVM(
                     )
                 }
             }
-        return draftChoices
-            .takeIf(Map<Int, Int>::isNotEmpty)
-            ?.let { choices ->
-                PendingVotingRouteRecovery(
-                    accountUuid = accountUuid,
-                    roundId = roundId,
-                    draftChoices = choices,
-                    routes = restoredRoutes
-                )
-            }
+
+        navigationRouter.replaceAll(*restoredRoutes.toTypedArray())
+        return true
     }
 
     /**
@@ -436,13 +419,6 @@ class HomeVM(
         navigateToError(ErrorArgs.SyncError(homeMessageData.synchronizerError))
 }
 
-private data class PendingVotingRouteRecovery(
-    val accountUuid: String,
-    val roundId: String,
-    val draftChoices: Map<Int, Int>,
-    val routes: List<Any>
-)
-
 private fun VotingSession.toVotingRound() =
     VotingRound(
         id = voteRoundId.toLowerHex(),
@@ -459,9 +435,7 @@ private fun VotingSession.toVotingRound() =
     )
 
 private fun ByteArray.toLowerHex(): String =
-    joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and BYTE_MASK) }
+    joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and 0xff) }
 
 private fun Map<Int, Int>.toChoicesJson(): String =
     JSONObject(toSortedMap().mapKeys { (proposalId, _) -> proposalId.toString() }).toString()
-
-private const val BYTE_MASK = 0xff

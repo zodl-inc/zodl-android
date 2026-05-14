@@ -24,30 +24,26 @@ fun VoteOption.displayColor(
 
 fun Proposal.voteBadgeInfo(choiceId: Int): VoteOptionDisplayInfo {
     val matchedIndex = options.indexOfFirst { option -> option.id == choiceId }
-    val isSyntheticAbstain = options.none(VoteOption::isAbstainOption) && choiceId == abstainOptionId()
-    return when {
-        matchedIndex >= 0 -> {
-            val matched = options[matchedIndex]
-            VoteOptionDisplayInfo(
-                label = matched.label,
-                color = matched.displayColor(position = matchedIndex, total = options.size)
-            )
-        }
-
-        isSyntheticAbstain -> {
-            VoteOptionDisplayInfo(
-                label = "Abstain",
-                color = VoteOptionDisplayColor.ABSTAIN
-            )
-        }
-
-        else -> {
-            VoteOptionDisplayInfo(
-                label = "Voted",
-                color = VoteOptionDisplayColor.GRAY
-            )
-        }
+    if (matchedIndex >= 0) {
+        val matched = options[matchedIndex]
+        return VoteOptionDisplayInfo(
+            label = matched.label,
+            color = matched.displayColor(position = matchedIndex, total = options.size)
+        )
     }
+
+    val isSyntheticAbstain = options.none(VoteOption::isAbstainOption) && choiceId == abstainOptionId()
+    if (isSyntheticAbstain) {
+        return VoteOptionDisplayInfo(
+            label = "Abstain",
+            color = VoteOptionDisplayColor.ABSTAIN
+        )
+    }
+
+    return VoteOptionDisplayInfo(
+        label = "Voted",
+        color = VoteOptionDisplayColor.GRAY
+    )
 }
 
 fun Proposal.tallyDisplayInfo(
@@ -55,29 +51,25 @@ fun Proposal.tallyDisplayInfo(
     fallbackLabel: String,
 ): VoteOptionDisplayInfo {
     val matchedIndex = options.indexOfFirst { it.id == decision }
-    return when {
-        matchedIndex >= 0 -> {
-            val option = options[matchedIndex]
-            VoteOptionDisplayInfo(
-                label = option.label,
-                color = option.displayColor(position = matchedIndex, total = options.size)
-            )
-        }
-
-        fallbackLabel.contains("abstain", ignoreCase = true) -> {
-            VoteOptionDisplayInfo(
-                label = fallbackLabel,
-                color = VoteOptionDisplayColor.ABSTAIN
-            )
-        }
-
-        else -> {
-            VoteOptionDisplayInfo(
-                label = fallbackLabel,
-                color = VoteOptionDisplayColor.GRAY
-            )
-        }
+    if (matchedIndex >= 0) {
+        val option = options[matchedIndex]
+        return VoteOptionDisplayInfo(
+            label = option.label,
+            color = option.displayColor(position = matchedIndex, total = options.size)
+        )
     }
+
+    if (fallbackLabel.contains("abstain", ignoreCase = true)) {
+        return VoteOptionDisplayInfo(
+            label = fallbackLabel,
+            color = VoteOptionDisplayColor.ABSTAIN
+        )
+    }
+
+    return VoteOptionDisplayInfo(
+        label = fallbackLabel,
+        color = VoteOptionDisplayColor.GRAY
+    )
 }
 
 private fun voteOptionDisplayColor(
@@ -85,6 +77,18 @@ private fun voteOptionDisplayColor(
     position: Int,
     total: Int,
 ): VoteOptionDisplayColor {
+    if (label.contains("abstain", ignoreCase = true)) {
+        return VoteOptionDisplayColor.ABSTAIN
+    }
+
+    if (total == 2) {
+        return if (position == 0) {
+            VoteOptionDisplayColor.SUPPORT
+        } else {
+            VoteOptionDisplayColor.OPPOSE
+        }
+    }
+
     val palette =
         listOf(
             VoteOptionDisplayColor.SUPPORT,
@@ -97,12 +101,5 @@ private fun voteOptionDisplayColor(
             VoteOptionDisplayColor.INDIGO_DARK,
         )
 
-    return when {
-        label.contains("abstain", ignoreCase = true) -> VoteOptionDisplayColor.ABSTAIN
-        total == BINARY_OPTION_COUNT && position == 0 -> VoteOptionDisplayColor.SUPPORT
-        total == BINARY_OPTION_COUNT -> VoteOptionDisplayColor.OPPOSE
-        else -> palette[position.mod(palette.size)]
-    }
+    return palette[position.mod(palette.size)]
 }
-
-private const val BINARY_OPTION_COUNT = 2

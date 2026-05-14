@@ -69,7 +69,7 @@ class StandardPreferenceProviderTest {
         }
 
     companion object {
-        private const val FILENAME = "encrypted_preference_test"
+        private val FILENAME = "encrypted_preference_test"
 
         private suspend fun new() =
             AndroidPreferenceProvider.newStandard(

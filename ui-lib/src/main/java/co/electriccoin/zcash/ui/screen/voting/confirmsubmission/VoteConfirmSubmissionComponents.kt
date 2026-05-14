@@ -63,7 +63,7 @@ private fun VoteSubmissionDetailRow(
             text = label.getValue(),
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textSecondary,
-            modifier = Modifier.weight(LABEL_COLUMN_WEIGHT)
+            modifier = Modifier.weight(0.95f)
         )
         Text(
             text = value,
@@ -73,7 +73,7 @@ private fun VoteSubmissionDetailRow(
             textAlign = TextAlign.End,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(VALUE_COLUMN_WEIGHT)
+            modifier = Modifier.weight(1.35f)
         )
     }
 }
@@ -141,17 +141,18 @@ internal fun VoteSubmissionBottomSection(state: VoteConfirmSubmissionState) {
 }
 
 private fun VoteConfirmSubmissionState.submissionProgress(): Float {
+    val delegationWeight = 0.3f
     return when (val status = status) {
         is VoteSubmissionStatus.Authorizing -> {
             if (includesAuthorizationProgress) {
-                status.progress * DELEGATION_PROGRESS_WEIGHT
+                status.progress * delegationWeight
             } else {
                 status.progress
             }
         }
 
         is VoteSubmissionStatus.Submitting -> {
-            val offset = if (includesAuthorizationProgress) DELEGATION_PROGRESS_WEIGHT else 0f
+            val offset = if (includesAuthorizationProgress) delegationWeight else 0f
             (offset + status.progress * (1f - offset)).coerceIn(0f, 1f)
         }
 
@@ -160,10 +161,6 @@ private fun VoteConfirmSubmissionState.submissionProgress(): Float {
         }
     }
 }
-
-private const val LABEL_COLUMN_WEIGHT = 0.95f
-private const val VALUE_COLUMN_WEIGHT = 1.35f
-private const val DELEGATION_PROGRESS_WEIGHT = 0.3f
 
 @Composable
 private fun VoteSubmissionProgressCard(

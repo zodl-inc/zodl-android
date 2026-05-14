@@ -338,9 +338,7 @@ class RoundAuthenticatorTest {
                         VotingServiceConfig.Signature(
                             keyId = "valar-test",
                             alg = "ed25519",
-                            sig =
-                                "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE" +
-                                    "BAQEBAQEBAQEBAQEBAQEBAQEBAQ=="
+                            sig = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ=="
                         ),
                         VotingServiceConfig.Signature(
                             keyId = "valar-test",

@@ -17,9 +17,10 @@ class RefreshVotingRoundsUseCase(
         val endorsedRoundIds =
             try {
                 votingApiProvider.fetchZodlEndorsedRoundIds()
-            } catch (exception: CancellationException) {
-                throw exception
             } catch (exception: Exception) {
+                if (exception is CancellationException) {
+                    throw exception
+                }
                 logEndorsementFailure(exception)
                 emptySet()
             }
