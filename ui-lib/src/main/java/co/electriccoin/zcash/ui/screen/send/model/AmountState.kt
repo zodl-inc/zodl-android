@@ -10,6 +10,7 @@ import cash.z.ecc.android.sdk.model.toZecString
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.design.component.ZashiNumberTextFieldParser
 import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.util.TickerLocation
 import co.electriccoin.zcash.ui.design.util.getString
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByNumber
@@ -91,7 +92,9 @@ sealed interface AmountState {
                                 stringResByNumber(
                                     zatoshi
                                         .convertZatoshiToZec()
-                                        .multiply(BigDecimal(currencyConversion.priceOfZec), MathContext.DECIMAL128)
+                                        .multiply(BigDecimal(currencyConversion.priceOfZec), MathContext.DECIMAL128),
+                                    maxDecimals = 2,
+                                    includeGroupingSeparator = false
                                 )
                             },
                         lastFieldChangedByUser = lastFieldChangedByUser
@@ -140,7 +143,7 @@ sealed interface AmountState {
 
                 else -> {
                     Valid(
-                        value = stringRes(zatoshi.toZecString(locale)),
+                        value = stringRes(zatoshi, TickerLocation.HIDDEN),
                         zatoshi = zatoshi,
                         fiatValue = stringRes(normalized),
                         lastFieldChangedByUser = AmountField.FIAT

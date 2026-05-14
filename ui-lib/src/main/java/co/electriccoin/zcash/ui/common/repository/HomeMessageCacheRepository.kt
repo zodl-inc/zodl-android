@@ -65,6 +65,10 @@ sealed interface HomeMessageData {
         val progress: Float
     ) : RuntimeMessage()
 
+    data class Resyncing(
+        val progress: Float
+    ) : RuntimeMessage()
+
     data class Syncing(
         val progress: Float
     ) : RuntimeMessage()

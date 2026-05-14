@@ -41,6 +41,8 @@ import co.electriccoin.zcash.ui.screen.home.reporting.CrashReportMessageState
 import co.electriccoin.zcash.ui.screen.home.reporting.CrashReportOptIn
 import co.electriccoin.zcash.ui.screen.home.restoring.WalletRestoringInfo
 import co.electriccoin.zcash.ui.screen.home.restoring.WalletRestoringMessageState
+import co.electriccoin.zcash.ui.screen.home.resyncing.WalletResyncingInfo
+import co.electriccoin.zcash.ui.screen.home.resyncing.WalletResyncingMessageState
 import co.electriccoin.zcash.ui.screen.home.shieldfunds.ShieldFundsMessageState
 import co.electriccoin.zcash.ui.screen.home.syncing.WalletSyncingInfo
 import co.electriccoin.zcash.ui.screen.home.syncing.WalletSyncingMessageState
@@ -314,6 +316,12 @@ class HomeVM(
                 )
             }
 
+            is HomeMessageData.Resyncing -> {
+                WalletResyncingMessageState(
+                    onClick = ::onWalletResyncingMessageClick,
+                )
+            }
+
             is HomeMessageData.Restoring -> {
                 WalletRestoringMessageState(
                     isSpendable = data.isSpendable,
@@ -386,6 +394,8 @@ class HomeVM(
     private fun onWalletSyncingMessageClick() = navigationRouter.forward(WalletSyncingInfo)
 
     private fun onWalletRestoringMessageClick() = navigationRouter.forward(WalletRestoringInfo)
+
+    private fun onWalletResyncingMessageClick() = navigationRouter.forward(WalletResyncingInfo)
 
     private fun onEnableTorClick() = navigationRouter.forward(TorOptInArgs)
 

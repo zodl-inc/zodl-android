@@ -2,8 +2,10 @@ package co.electriccoin.zcash.ui.common.mapper
 
 import cash.z.ecc.android.sdk.model.TransactionPool
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
+import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapStatus.EXPIRED
 import co.electriccoin.zcash.ui.common.model.SwapStatus.FAILED
 import co.electriccoin.zcash.ui.common.model.SwapStatus.INCOMPLETE_DEPOSIT
@@ -151,12 +153,12 @@ class ActivityMapper {
                 } else {
                     if (transaction is SendTransaction.Failed) {
                         when (data.metadata.swapMetadata.mode) {
-                            EXACT_INPUT -> R.drawable.ic_transaction_send_failed
+                            EXACT_INPUT, FLEX_INPUT -> R.drawable.ic_transaction_send_failed
                             EXACT_OUTPUT -> R.drawable.ic_transaction_pay_failed
                         }
                     } else {
                         when (data.metadata.swapMetadata.mode) {
-                            EXACT_INPUT -> {
+                            EXACT_INPUT, FLEX_INPUT -> {
                                 when (data.metadata.swapMetadata.status) {
                                     INCOMPLETE_DEPOSIT, PROCESSING, PENDING -> R.drawable.ic_transaction_send_pending
                                     SUCCESS -> R.drawable.ic_transaction_sent
@@ -214,12 +216,12 @@ class ActivityMapper {
                 } else {
                     if (transaction is SendTransaction.Failed) {
                         when (data.metadata.swapMetadata.mode) {
-                            EXACT_INPUT -> stringRes(R.string.transaction_history_swap_failed)
+                            EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.transaction_history_swap_failed)
                             EXACT_OUTPUT -> stringRes(R.string.transaction_history_payment_failed)
                         }
                     } else {
                         when (data.metadata.swapMetadata.mode) {
-                            EXACT_INPUT -> {
+                            EXACT_INPUT, FLEX_INPUT -> {
                                 when (data.metadata.swapMetadata.status) {
                                     INCOMPLETE_DEPOSIT,
                                     PROCESSING,

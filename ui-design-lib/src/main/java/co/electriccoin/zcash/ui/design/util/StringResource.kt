@@ -64,7 +64,8 @@ sealed interface StringResource {
         val ticker: String,
         val tickerLocation: TickerLocation,
         val minDecimals: Int,
-        val maxDecimals: Int?
+        val maxDecimals: Int?,
+        val includeGroupingSeparator: Boolean
     ) : StringResource
 
     data class ByDynamicCurrencyNumber(
@@ -77,7 +78,8 @@ sealed interface StringResource {
     data class ByNumber(
         val number: Number,
         val minDecimals: Int,
-        val maxDecimals: Int?
+        val maxDecimals: Int?,
+        val includeGroupingSeparator: Boolean
     ) : StringResource
 
     data class ByDynamicNumber(
@@ -138,14 +140,16 @@ fun stringResByCurrencyNumber(
     tickerLocation: TickerLocation =
         if (ticker == FiatCurrency.USD.symbol) TickerLocation.BEFORE else TickerLocation.AFTER,
     minDecimals: Int = 2,
-    maxDecimals: Int? = null
+    maxDecimals: Int? = null,
+    includeGroupingSeparator: Boolean = true
 ): StringResource =
     StringResource.ByCurrencyNumber(
         amount = amount,
         ticker = ticker,
         tickerLocation = tickerLocation,
         minDecimals = minDecimals,
-        maxDecimals = maxDecimals
+        maxDecimals = maxDecimals,
+        includeGroupingSeparator = includeGroupingSeparator
     )
 
 @Stable
@@ -171,9 +175,10 @@ fun stringResByTransactionId(value: String, abbreviated: Boolean): StringResourc
 fun stringResByNumber(
     number: Number,
     minDecimals: Int = 2,
-    maxDecimals: Int? = null
+    maxDecimals: Int? = null,
+    includeGroupingSeparator: Boolean = true
 ): StringResource =
-    StringResource.ByNumber(number, minDecimals, maxDecimals)
+    StringResource.ByNumber(number, minDecimals, maxDecimals, includeGroupingSeparator)
 
 @Stable
 fun stringResByDynamicNumber(number: Number, includeGroupingSeparator: Boolean = true): StringResource =
@@ -254,7 +259,7 @@ private fun StringResource.ByResource.convertResource(context: StringContext) =
     )
 
 private fun StringResource.ByNumber.convertNumber(context: StringContext): String =
-    convertNumberToString(number, context.locale, minDecimals, maxDecimals)
+    convertNumberToString(number, context.locale, minDecimals, maxDecimals, includeGroupingSeparator)
 
 private fun StringResource.ByZatoshi.convertZatoshi(context: StringContext): String {
     val zec = this.zatoshi.convertZatoshiToZec(scale = 8)
@@ -267,7 +272,7 @@ private fun StringResource.ByZatoshi.convertZatoshi(context: StringContext): Str
 }
 
 private fun StringResource.ByCurrencyNumber.convertCurrencyNumber(context: StringContext): String {
-    val amount = convertNumberToString(amount, context.locale, minDecimals, maxDecimals)
+    val amount = convertNumberToString(amount, context.locale, minDecimals, maxDecimals, includeGroupingSeparator)
     return when (this.tickerLocation) {
         TickerLocation.BEFORE -> "$ticker$amount"
         TickerLocation.AFTER -> "$amount $ticker"
@@ -275,7 +280,13 @@ private fun StringResource.ByCurrencyNumber.convertCurrencyNumber(context: Strin
     }
 }
 
-private fun convertNumberToString(amount: Number, locale: Locale, minDecimals: Int, maxDecimals: Int?): String {
+private fun convertNumberToString(
+    amount: Number,
+    locale: Locale,
+    minDecimals: Int,
+    maxDecimals: Int?,
+    includeGroupingSeparator: Boolean
+): String {
     val bigDecimalAmount = amount.toBigDecimal().stripTrailingZeros()
     val maxFractionDigits = maxDecimals ?: bigDecimalAmount.scale().coerceAtLeast(minDecimals)
     val formatter =
@@ -286,6 +297,7 @@ private fun convertNumberToString(amount: Number, locale: Locale, minDecimals: I
         ).apply {
             roundingMode = RoundingMode.HALF_EVEN
             minimumIntegerDigits = 1
+            isGroupingUsed = includeGroupingSeparator
         }
     return formatter.format(bigDecimalAmount)
 }

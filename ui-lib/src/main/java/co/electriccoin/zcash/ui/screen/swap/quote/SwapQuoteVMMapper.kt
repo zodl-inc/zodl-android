@@ -4,8 +4,10 @@ import cash.z.ecc.android.sdk.ext.convertZecToZatoshi
 import cash.z.ecc.android.sdk.model.FiatCurrency
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.DynamicSwapAsset
+import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
+import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT
 import co.electriccoin.zcash.ui.common.model.ZecSwapAsset
 import co.electriccoin.zcash.ui.common.model.getQuoteTokenIcon
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -34,7 +36,7 @@ internal class SwapQuoteVMMapper {
                 title =
                     when {
                         quote.destinationAsset is ZecSwapAsset -> stringRes(R.string.swap_quote_review)
-                        quote.mode == EXACT_INPUT -> stringRes(R.string.swap_quote_title)
+                        quote.mode in listOf(EXACT_INPUT, FLEX_INPUT) -> stringRes(R.string.swap_quote_title)
                         quote.mode == EXACT_OUTPUT -> stringRes(R.string.pay_quote_title)
                         else -> throw IllegalStateException("Unknown swap mode")
                     },
@@ -76,7 +78,7 @@ internal class SwapQuoteVMMapper {
             SwapQuoteInfoItem(
                 description =
                     when (quote.mode) {
-                        EXACT_INPUT -> stringRes(R.string.swap_quote_from)
+                        EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.swap_quote_from)
                         EXACT_OUTPUT -> stringRes(R.string.pay_from)
                     },
                 title = stringRes(R.string.swap_quote_zashi).withStyle(),
@@ -85,7 +87,7 @@ internal class SwapQuoteVMMapper {
             SwapQuoteInfoItem(
                 description =
                     when (quote.mode) {
-                        EXACT_INPUT -> stringRes(R.string.swap_quote_to)
+                        EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.swap_quote_to)
                         EXACT_OUTPUT -> stringRes(R.string.pay_to)
                     },
                 title = stringResByAddress(quote.destinationAddress.address),

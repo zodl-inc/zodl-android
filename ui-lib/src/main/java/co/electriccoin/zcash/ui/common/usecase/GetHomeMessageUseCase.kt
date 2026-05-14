@@ -244,7 +244,9 @@ class GetHomeMessageUseCase(
         if (walletSnapshot.status != Synchronizer.Status.SYNCING) return null
 
         val progress = walletSnapshot.progress.decimal * 100f
-        return if (walletSnapshot.restoringState == WalletRestoringState.RESTORING) {
+        return if (walletSnapshot.restoringState == WalletRestoringState.RESYNCING) {
+            HomeMessageData.Resyncing(progress)
+        } else if (walletSnapshot.restoringState == WalletRestoringState.RESTORING) {
             HomeMessageData.Restoring(walletSnapshot.isSpendable && someBalance, progress)
         } else {
             if (!syncMessageShownBefore) {

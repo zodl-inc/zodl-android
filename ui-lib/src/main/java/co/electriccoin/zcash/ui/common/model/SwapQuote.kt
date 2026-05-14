@@ -9,6 +9,7 @@ import co.electriccoin.zcash.ui.common.datasource.AFFILIATE_FEE_BPS
 import co.electriccoin.zcash.ui.common.model.near.QuoteResponseDto
 import co.electriccoin.zcash.ui.common.model.near.SwapType.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.near.SwapType.EXACT_OUTPUT
+import co.electriccoin.zcash.ui.common.model.near.SwapType.FLEX_INPUT
 import java.math.BigDecimal
 import java.math.MathContext
 import kotlin.time.Instant
@@ -65,9 +66,10 @@ data class NearSwapQuote(
 
     override val mode: SwapMode =
         when (response.quoteRequest.swapType) {
+            FLEX_INPUT -> SwapMode.FLEX_INPUT
             EXACT_INPUT -> SwapMode.EXACT_INPUT
             EXACT_OUTPUT -> SwapMode.EXACT_OUTPUT
-            else -> SwapMode.EXACT_INPUT
+            null -> SwapMode.EXACT_INPUT
         }
 
     override val zecExchangeRate: BigDecimal =

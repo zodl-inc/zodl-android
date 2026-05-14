@@ -22,6 +22,8 @@
     <string name="home_message_restoring_title">Restaurando Wallet • %1$.1f%% Completado</string>
     <string name="home_message_restoring_subtitle">Mantén Zodl abierto en la pantalla activa del teléfono</string>
     <string name="home_message_restoring_subtitle_spendable">Tus fondos están listos para ser utilizados ahora</string>
+    <string name="home_message_resyncing_title">Resincronizando</string>
+    <string name="home_message_resyncing_subtitle">Mantén Zodl abierto en la pantalla activa del teléfono</string>
     <string name="home_message_syncing_title">Sincronizando • %1$.1f%% Completado</string>
     <string name="home_message_syncing_subtitle">Tu wallet se está actualizando</string>
     <string name="home_message_error_title">Error al sincronizar</string>
@@ -50,6 +52,8 @@
     <string name="home_info_restoring_bullet_1">Mantén la app de Zodl abierta en la pantalla activa del teléfono.</string>
     <string name="home_info_restoring_bullet_2">Para evitar que la pantalla se apague, desactiva el modo de ahorro de energía y mantén tu teléfono cargando.</string>
     <string name="home_info_restoring_note">Los fondos no pueden usarse hasta que tu wallet esté restaurada.</string>
+    <string name="home_info_resyncing_title">Resincronización en curso</string>
+    <string name="home_info_resyncing_message">Zodl está escaneando la blockchain para mostrar tus transacciones más recientes y asegurar que tus balances estén correctos. Mantén la app de Zodl abierta en la pantalla activa del teléfono para evitar interrupciones.</string>
     <string name="home_info_syncing_title">Sincronización de Wallet en Progreso</string>
     <string name="home_info_syncing_message">Zodl está escaneando la blockchain para mostrar tus transacciones más recientes y asegurar que tus balances estén correctos. Mantén la app de Zodl abierta en la pantalla activa del teléfono para evitar interrupciones.</string>
     <string name="home_info_updating_title">Actualizando Balance</string>

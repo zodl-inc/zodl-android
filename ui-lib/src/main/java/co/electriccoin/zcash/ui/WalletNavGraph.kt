@@ -80,6 +80,8 @@ import co.electriccoin.zcash.ui.screen.home.reporting.AndroidCrashReportOptIn
 import co.electriccoin.zcash.ui.screen.home.reporting.CrashReportOptIn
 import co.electriccoin.zcash.ui.screen.home.restoring.AndroidWalletRestoringInfo
 import co.electriccoin.zcash.ui.screen.home.restoring.WalletRestoringInfo
+import co.electriccoin.zcash.ui.screen.home.resyncing.AndroidWalletResyncingInfo
+import co.electriccoin.zcash.ui.screen.home.resyncing.WalletResyncingInfo
 import co.electriccoin.zcash.ui.screen.home.shieldfunds.AndroidShieldFundsInfo
 import co.electriccoin.zcash.ui.screen.home.shieldfunds.ShieldFundsInfo
 import co.electriccoin.zcash.ui.screen.home.syncing.AndroidWalletSyncingInfo
@@ -302,6 +304,7 @@ fun NavGraphBuilder.walletNavGraph(
         dialogComposable<WalletDisconnectedInfo> { AndroidWalletDisconnectedInfo() }
         dialogComposable<WalletRestoringInfo> { AndroidWalletRestoringInfo() }
         dialogComposable<WalletSyncingInfo> { AndroidWalletSyncingInfo() }
+        dialogComposable<WalletResyncingInfo> { AndroidWalletResyncingInfo() }
         dialogComposable<WalletUpdatingInfo> { AndroidWalletUpdatingInfo() }
         dialogComposable<ErrorDialog> { AndroidErrorDialog() }
         dialogComposable<ErrorBottomSheet> { AndroidErrorBottomSheet() }

@@ -16,5 +16,5 @@ fun SwapAssetPickerScreen(args: SwapAssetPickerArgs) {
 
 @Serializable
 data class SwapAssetPickerArgs(
-    val chainTicker: String?
+    val onlyChainTicker: String?
 )

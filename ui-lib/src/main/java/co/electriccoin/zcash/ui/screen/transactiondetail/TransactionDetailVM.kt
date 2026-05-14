@@ -11,6 +11,7 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.mapper.SwapSupportMapper
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
+import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapStatus.EXPIRED
 import co.electriccoin.zcash.ui.common.model.SwapStatus.FAILED
 import co.electriccoin.zcash.ui.common.model.SwapStatus.INCOMPLETE_DEPOSIT
@@ -493,6 +494,7 @@ class TransactionDetailVM(
                                 when (data.metadata.swapMetadata.mode) {
                                     EXACT_INPUT -> stringRes(R.string.transaction_history_swap_failed)
                                     EXACT_OUTPUT -> stringRes(R.string.transaction_history_payment_failed)
+                                    FLEX_INPUT -> throw UnsupportedOperationException("FLEX_INPUT not supported")
                                 }
                             } else {
                                 when (data.metadata.swapMetadata.mode) {
@@ -529,6 +531,10 @@ class TransactionDetailVM(
                                             EXPIRED -> stringRes(R.string.transaction_history_payment_expired)
                                         }
                                     }
+
+                                    FLEX_INPUT -> {
+                                        throw UnsupportedOperationException("FLEX_INPUT not supported")
+                                    }
                                 }
                             }
                         }
@@ -552,6 +558,7 @@ class TransactionDetailVM(
                                 ?.origin
                                 ?.tokenIcon ?: loadingImageRes(),
                             when (data.metadata.swapMetadata?.mode) {
+                                FLEX_INPUT -> throw UnsupportedOperationException("FLEX_INPUT not supported")
                                 EXACT_INPUT -> imageRes(R.drawable.ic_transaction_sent)
                                 EXACT_OUTPUT -> imageRes(R.drawable.ic_transaction_paid)
                                 null -> imageRes(R.drawable.ic_transaction_sent)

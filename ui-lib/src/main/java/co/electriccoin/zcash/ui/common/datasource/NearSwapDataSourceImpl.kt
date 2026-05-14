@@ -59,7 +59,6 @@ class NearSwapDataSourceImpl(
     @Suppress("MagicNumber")
     override suspend fun requestQuote(
         swapMode: SwapMode,
-        flexInput: Boolean,
         amount: BigDecimal,
         refundAddress: String,
         originAsset: SwapAsset,
@@ -70,7 +69,7 @@ class NearSwapDataSourceImpl(
     ): SwapQuote {
         val decimals =
             when (swapMode) {
-                SwapMode.EXACT_INPUT -> originAsset.decimals
+                SwapMode.EXACT_INPUT, SwapMode.FLEX_INPUT -> originAsset.decimals
                 SwapMode.EXACT_OUTPUT -> destinationAsset.decimals
             }
 
@@ -82,10 +81,10 @@ class NearSwapDataSourceImpl(
             QuoteRequest(
                 dry = false,
                 swapType =
-                    when {
-                        flexInput -> SwapType.FLEX_INPUT
-                        swapMode == SwapMode.EXACT_INPUT -> SwapType.EXACT_INPUT
-                        else -> SwapType.EXACT_OUTPUT
+                    when (swapMode) {
+                        SwapMode.EXACT_INPUT -> SwapType.EXACT_INPUT
+                        SwapMode.FLEX_INPUT -> SwapType.FLEX_INPUT
+                        SwapMode.EXACT_OUTPUT -> SwapType.EXACT_OUTPUT
                     },
                 slippageTolerance = slippage.multiply(BigDecimal(100), MathContext.DECIMAL128).toInt(),
                 originAsset = originAsset.assetId,
@@ -128,6 +127,7 @@ class NearSwapDataSourceImpl(
                             ?.toBigDecimalOrNull() ?: throw e
                     val errorAsset =
                         when (swapMode) {
+                            SwapMode.FLEX_INPUT -> originAsset
                             SwapMode.EXACT_INPUT -> originAsset
                             SwapMode.EXACT_OUTPUT -> destinationAsset
                         }

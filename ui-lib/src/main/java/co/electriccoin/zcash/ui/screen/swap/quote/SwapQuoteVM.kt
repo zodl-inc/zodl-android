@@ -11,6 +11,7 @@ import co.electriccoin.zcash.ui.common.datasource.SwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
+import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.provider.ResponseWithNearErrorException
@@ -115,7 +116,7 @@ internal class SwapQuoteVM(
 
                 else -> {
                     when (quote.mode) {
-                        EXACT_INPUT -> stringRes(R.string.swap_quote_error_getting_quote_swap)
+                        EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.swap_quote_error_getting_quote_swap)
                         EXACT_OUTPUT -> stringRes(R.string.swap_quote_error_getting_quote)
                     }
                 }
@@ -129,7 +130,7 @@ internal class SwapQuoteVM(
                 ButtonState(
                     text =
                         when (quote.mode) {
-                            EXACT_INPUT -> stringRes(R.string.swap_quote_cancel_swap)
+                            EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.swap_quote_cancel_swap)
                             EXACT_OUTPUT -> stringRes(R.string.swap_quote_cancel_payment)
                         },
                     onClick = ::onCancelPaymentClick
@@ -138,7 +139,7 @@ internal class SwapQuoteVM(
                 ButtonState(
                     text =
                         when (quote.mode) {
-                            EXACT_INPUT -> stringRes(R.string.swap_quote_edit_swap)
+                            EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.swap_quote_edit_swap)
                             EXACT_OUTPUT -> stringRes(R.string.swap_quote_edit_payment)
                         },
                     onClick = ::onEditPaymentClick

@@ -60,7 +60,7 @@ internal class SwapVM(
     private val navigationRouter: NavigationRouter,
     private val requestSwapQuote: RequestSwapQuoteUseCase,
     private val navigateToSwapQuoteIfAvailable: NavigateToSwapQuoteIfAvailableUseCase,
-    private val exactInputVMMapper: ExactInputVMMapper,
+    private val swapVMMapper: SwapVMMapper,
     private val navigateToScanAddress: NavigateToScanGenericAddressUseCase,
     private val navigateToSelectSwapRecipient: NavigateToSelectABSwapRecipientUseCase,
 ) : ViewModel() {
@@ -165,7 +165,7 @@ internal class SwapVM(
     }
 
     private fun createState(innerState: InternalStateImpl): SwapState =
-        exactInputVMMapper.createState(
+        swapVMMapper.createState(
             internalState = innerState,
             onBack = ::onBack,
             onSwapInfoClick = ::onSwapInfoClick,
@@ -257,7 +257,11 @@ internal class SwapVM(
         navigationRouter.forward(
             SwapSlippageArgs(
                 fiatAmount = fiatAmount?.toPlainString(),
-                mode = SwapMode.EXACT_INPUT
+                mode =
+                    when (mode.value) {
+                        SWAP_FROM_ZEC -> SwapMode.EXACT_INPUT
+                        SWAP_INTO_ZEC -> SwapMode.FLEX_INPUT
+                    }
             )
         )
 
@@ -334,7 +338,7 @@ internal class SwapVM(
                 }
 
                 SWAP_INTO_ZEC -> {
-                    requestSwapQuote.requestExactInputIntoZec(
+                    requestSwapQuote.requestFlexInputIntoZec(
                         amount = amount,
                         refundAddress = address,
                         canNavigateToSwapQuote = { !isCancelStateVisible.value }
@@ -353,7 +357,7 @@ internal class SwapVM(
 
     private fun onSwapAssetPickerClick() =
         navigationRouter.forward(
-            SwapAssetPickerArgs(chainTicker = selectedContact.value?.blockchain?.chainTicker)
+            SwapAssetPickerArgs(onlyChainTicker = selectedContact.value?.blockchain?.chainTicker)
         )
 }
 

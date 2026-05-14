@@ -11,6 +11,7 @@ enum class WalletRestoringState {
     NONE,
     INITIATING, // New wallet syncing
     RESTORING, // Existing wallet syncing
+    RESYNCING, // Existing wallet resyncing
     SYNCING; // Follow-up syncing
 
     fun toNumber() = ordinal
