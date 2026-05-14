@@ -1,10 +1,42 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
+import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class SubmitVotesUseCaseProgressTest {
+    @Test
+    fun keystoneAuthorizationClassifierWrapsGenericFailures() {
+        val cause = IllegalStateException("Delegation transaction failed")
+
+        val classified = cause.asVotingAuthorizationExceptionIfNeeded(isKeystone = true)
+
+        assertTrue(classified is VotingAuthorizationException)
+        assertSame(cause, classified.cause)
+        assertEquals("Delegation transaction failed", classified.message)
+    }
+
+    @Test
+    fun authorizationClassifierPreservesNonKeystoneFailures() {
+        val cause = IllegalStateException("Delegation transaction failed")
+
+        val classified = cause.asVotingAuthorizationExceptionIfNeeded(isKeystone = false)
+
+        assertSame(cause, classified)
+    }
+
+    @Test
+    fun authorizationClassifierPreservesRecoverableFailures() {
+        val recoverable = VotingSubmissionRecoverableException(VotingErrors.MissingVotingServerUrl)
+
+        val classified = recoverable.asVotingAuthorizationExceptionIfNeeded(isKeystone = true)
+
+        assertSame(recoverable, classified)
+    }
+
     @Test
     fun submittingProgressDoesNotAdvanceBundleBeforeWorkCompletes() {
         assertEquals(

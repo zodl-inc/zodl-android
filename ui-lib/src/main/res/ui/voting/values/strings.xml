@@ -77,7 +77,7 @@
     <string name="vote_error_insufficient_funds_message">You don\'t have enough ZEC to cover the transaction fee. Add funds to your wallet and try again.</string>
     <string name="vote_error_go_back">Go Back</string>
     <string name="vote_error_authorization_failed_title">Authorization Failed</string>
-    <string name="vote_error_authorization_failed_message">The authorization transaction failed. Check your connection and try again.</string>
+    <string name="vote_error_authorization_failed_message">We couldn\'t authorize your vote. Check your connection and try again.</string>
 
     <string name="vote_poll_ended_title">Poll Has Ended</string>
     <string name="vote_poll_ended_message">The voting period closed.\nYour responses cannot be submitted.</string>
