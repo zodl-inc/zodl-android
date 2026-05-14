@@ -76,7 +76,7 @@ class VoteTallyingVM(
         )
     }
 
-    private fun onBack() = navigationRouter.backTo(VoteCoinholderPollingArgs::class)
+    private fun onBack() = navigationRouter.replaceAll(VoteCoinholderPollingArgs)
 
     private companion object {
         const val POLL_INTERVAL_MS = 5_000L

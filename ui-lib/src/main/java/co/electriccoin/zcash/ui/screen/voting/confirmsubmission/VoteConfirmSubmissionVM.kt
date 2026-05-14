@@ -28,6 +28,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListMode
 import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingArgs
@@ -473,7 +474,8 @@ class VoteConfirmSubmissionVM(
             if (persistedChoices.isNotEmpty()) {
                 votingSessionStore.restoreDraftVotes(accountUuid, args.roundIdHex, persistedChoices)
             }
-            navigationRouter.replace(
+            navigationRouter.replaceAll(
+                VoteCoinholderPollingArgs,
                 VoteProposalListArgs(
                     roundId = args.roundIdHex,
                     mode = VoteProposalListMode.VOTED

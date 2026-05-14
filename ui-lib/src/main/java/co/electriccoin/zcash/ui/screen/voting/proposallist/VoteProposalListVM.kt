@@ -468,7 +468,7 @@ class VoteProposalListVM(
 
     private fun onBack() {
         when (args.mode) {
-            VoteProposalListMode.VOTED -> navigationRouter.backTo(VoteCoinholderPollingArgs::class)
+            VoteProposalListMode.VOTED -> navigationRouter.replaceAll(VoteCoinholderPollingArgs)
             else -> navigationRouter.back()
         }
     }
