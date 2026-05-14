@@ -94,11 +94,12 @@ class MoreVM(
     private fun onVotingClick() {
         viewModelScope.launch {
             val isKeystone = getSelectedWalletAccount() is KeystoneAccount
-            val hasSeenHowToVoteForCurrentWallet = if (isKeystone) {
-                hasSeenHowToVoteKeystone.get()
-            } else {
-                hasSeenHowToVote.get()
-            }
+            val hasSeenHowToVoteForCurrentWallet =
+                if (isKeystone) {
+                    hasSeenHowToVoteKeystone.get()
+                } else {
+                    hasSeenHowToVote.get()
+                }
 
             if (hasSeenHowToVoteForCurrentWallet) {
                 navigationRouter.forward(VoteCoinholderPollingArgs)

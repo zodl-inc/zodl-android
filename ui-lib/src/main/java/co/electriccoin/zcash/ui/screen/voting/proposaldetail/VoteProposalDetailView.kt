@@ -30,7 +30,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import co.electriccoin.zcash.ui.R as UiR
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
@@ -52,6 +51,7 @@ import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.accentColor
+import co.electriccoin.zcash.ui.R as UiR
 
 @Composable
 fun VoteProposalDetailView(state: VoteProposalDetailState) {
@@ -61,16 +61,18 @@ fun VoteProposalDetailView(state: VoteProposalDetailState) {
         topBar = { AppBar(state) },
         content = { padding ->
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .scaffoldPadding(padding)
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .scaffoldPadding(padding)
             ) {
                 Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
                 ) {
                     VerticalSpacer(24.dp)
 
@@ -129,10 +131,11 @@ private fun AppBar(state: VoteProposalDetailState) {
                 modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
             )
         },
-        colors = ZcashTheme.colors.topAppBarColors orDark
-            ZcashTheme.colors.topAppBarColors.copyColors(
-                containerColor = Color.Transparent
-            )
+        colors =
+            ZcashTheme.colors.topAppBarColors orDark
+                ZcashTheme.colors.topAppBarColors.copyColors(
+                    containerColor = Color.Transparent
+                )
     )
 }
 
@@ -201,10 +204,11 @@ private fun ViewMoreChip(onClick: () -> Unit) {
 @Composable
 private fun BottomSection(state: VoteProposalDetailState) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
-            .padding(bottom = ZashiDimensions.Spacing.spacingMd)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
+                .padding(bottom = ZashiDimensions.Spacing.spacingMd)
     ) {
         VoteOptions(options = state.options)
         if (!state.isLocked) {
@@ -258,12 +262,13 @@ private fun NavigationButtons(state: VoteProposalDetailState) {
     if (!state.isEditingFromReview && !hasSelectedOption) {
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),
-            state = ButtonState(
-                text = stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_next),
-                style = ButtonStyle.PRIMARY,
-                isEnabled = false,
-                onClick = state.onNext
-            )
+            state =
+                ButtonState(
+                    text = stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_next),
+                    style = ButtonStyle.PRIMARY,
+                    isEnabled = false,
+                    onClick = state.onNext
+                )
         )
         return
     }
@@ -271,26 +276,28 @@ private fun NavigationButtons(state: VoteProposalDetailState) {
     Row(modifier = Modifier.fillMaxWidth()) {
         ZashiButton(
             modifier = Modifier.weight(1f),
-            state = ButtonState(
-                text = stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_back),
-                style = ButtonStyle.TERTIARY,
-                onClick = state.onBack
-            )
+            state =
+                ButtonState(
+                    text = stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_back),
+                    style = ButtonStyle.TERTIARY,
+                    onClick = state.onBack
+                )
         )
 
         Spacer(12.dp)
         ZashiButton(
             modifier = Modifier.weight(1f),
-            state = ButtonState(
-                text =
-                    if (state.isEditingFromReview) {
-                        stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_save)
-                    } else {
-                        stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_next)
-                    },
-                style = ButtonStyle.PRIMARY,
-                onClick = state.onNext
-            )
+            state =
+                ButtonState(
+                    text =
+                        if (state.isEditingFromReview) {
+                            stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_save)
+                        } else {
+                            stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_next)
+                        },
+                    style = ButtonStyle.PRIMARY,
+                    onClick = state.onNext
+                )
         )
     }
 }
@@ -307,14 +314,17 @@ private fun UnansweredBottomSheet(state: VoteProposalDetailState) {
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
-                .padding(bottom = 32.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
+                    .padding(bottom = 32.dp)
         ) {
             Surface(
                 shape = CircleShape,
-                color = ZashiColors.Utility.ErrorRed.utilityError500.copy(alpha = 0.1f),
+                color =
+                    ZashiColors.Utility.ErrorRed.utilityError500
+                        .copy(alpha = 0.1f),
                 modifier = Modifier.size(48.dp)
             ) {
                 Icon(
@@ -358,22 +368,24 @@ private fun UnansweredBottomSheet(state: VoteProposalDetailState) {
 
             ZashiButton(
                 modifier = Modifier.fillMaxWidth(),
-                state = ButtonState(
-                    text = stringRes(UiR.string.vote_confirm_cta),
-                    style = ButtonStyle.SECONDARY,
-                    onClick = state.onConfirmUnanswered
-                )
+                state =
+                    ButtonState(
+                        text = stringRes(UiR.string.vote_confirm_cta),
+                        style = ButtonStyle.SECONDARY,
+                        onClick = state.onConfirmUnanswered
+                    )
             )
 
             VerticalSpacer(12.dp)
 
             ZashiButton(
                 modifier = Modifier.fillMaxWidth(),
-                state = ButtonState(
-                    text = stringRes(UiR.string.vote_proposal_detail_unanswered_go_back),
-                    style = ButtonStyle.PRIMARY,
-                    onClick = state.onDismissUnanswered
-                )
+                state =
+                    ButtonState(
+                        text = stringRes(UiR.string.vote_proposal_detail_unanswered_go_back),
+                        style = ButtonStyle.PRIMARY,
+                        onClick = state.onDismissUnanswered
+                    )
             )
         }
     }
@@ -399,7 +411,9 @@ private fun PollEndedBottomSheet(state: VoteProposalDetailState) {
         ) {
             Surface(
                 shape = CircleShape,
-                color = ZashiColors.Utility.ErrorRed.utilityError500.copy(alpha = 0.1f),
+                color =
+                    ZashiColors.Utility.ErrorRed.utilityError500
+                        .copy(alpha = 0.1f),
                 modifier = Modifier.size(48.dp)
             ) {
                 Icon(

@@ -1,7 +1,7 @@
 package co.electriccoin.zcash.ui.screen.voting.results
 
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -61,8 +61,9 @@ fun VoteResultsView(state: VoteResultsState) {
                         modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
                     )
                 },
-                colors = ZcashTheme.colors.topAppBarColors orDark
-                    ZcashTheme.colors.topAppBarColors.copyColors(containerColor = Color.Transparent)
+                colors =
+                    ZcashTheme.colors.topAppBarColors orDark
+                        ZcashTheme.colors.topAppBarColors.copyColors(containerColor = Color.Transparent)
             )
         },
         content = { padding ->
@@ -150,10 +151,11 @@ fun VoteResultsLoadingView(onBack: () -> Unit) {
                         modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
                     )
                 },
-                colors = ZcashTheme.colors.topAppBarColors orDark
-                    ZcashTheme.colors.topAppBarColors.copyColors(
-                        containerColor = Color.Transparent
-                    )
+                colors =
+                    ZcashTheme.colors.topAppBarColors orDark
+                        ZcashTheme.colors.topAppBarColors.copyColors(
+                            containerColor = Color.Transparent
+                        )
             )
         },
         content = { padding ->

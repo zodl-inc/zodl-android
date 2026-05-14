@@ -30,11 +30,12 @@ data class VotingDelegationPirPrecomputeRequest(
     val notesJson: String
 ) {
     val key: VotingDelegationPirPrecomputeKey
-        get() = VotingDelegationPirPrecomputeKey(
-            accountUuid = accountUuid,
-            roundId = roundId,
-            bundleIndex = bundleIndex
-        )
+        get() =
+            VotingDelegationPirPrecomputeKey(
+                accountUuid = accountUuid,
+                roundId = roundId,
+                bundleIndex = bundleIndex
+            )
 }
 
 interface VotingProofPrecomputeRepository {
@@ -88,10 +89,11 @@ class VotingProofPrecomputeRepositoryImpl(
         request: VotingDelegationPirPrecomputeRequest
     ): Result<VotingDelegationPirPrecomputeResult> =
         runCatching {
-            val pirServerUrl = pirSnapshotResolver.resolve(
-                endpoints = request.pirEndpoints,
-                expectedSnapshotHeight = request.expectedSnapshotHeight
-            )
+            val pirServerUrl =
+                pirSnapshotResolver.resolve(
+                    endpoints = request.pirEndpoints,
+                    expectedSnapshotHeight = request.expectedSnapshotHeight
+                )
             val dbHandle = votingCryptoClient.openVotingDb(request.votingDbPath)
             check(dbHandle != 0L) { "Failed to open voting DB at ${request.votingDbPath}" }
 

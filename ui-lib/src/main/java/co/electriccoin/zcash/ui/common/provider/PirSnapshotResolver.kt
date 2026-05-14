@@ -25,27 +25,31 @@ class HttpPirSnapshotResolver(
         endpoints: List<String>,
         expectedSnapshotHeight: Long
     ): String {
-        val normalizedEndpoints = endpoints
-            .map(String::trim)
-            .filter(String::isNotEmpty)
-            .map(String::trimTrailingSlash)
-            .distinct()
+        val normalizedEndpoints =
+            endpoints
+                .map(String::trim)
+                .filter(String::isNotEmpty)
+                .map(String::trimTrailingSlash)
+                .distinct()
 
         if (normalizedEndpoints.isEmpty()) {
             throw PirSnapshotResolverException.NoEndpointsConfigured
         }
 
-        val outcomes = httpClientProvider.create().use { client ->
-            coroutineScope {
-                normalizedEndpoints.map { url ->
-                    async { probe(client, url, expectedSnapshotHeight) }
-                }.awaitAll()
+        val outcomes =
+            httpClientProvider.create().use { client ->
+                coroutineScope {
+                    normalizedEndpoints
+                        .map { url ->
+                            async { probe(client, url, expectedSnapshotHeight) }
+                        }.awaitAll()
+                }
             }
-        }
 
-        return outcomes.firstOrNull { outcome ->
-            outcome.status is PirSnapshotProbeStatus.Matching
-        }?.url ?: throw PirSnapshotResolverException.NoMatchingEndpoint(
+        return outcomes
+            .firstOrNull { outcome ->
+                outcome.status is PirSnapshotProbeStatus.Matching
+            }?.url ?: throw PirSnapshotResolverException.NoMatchingEndpoint(
             expected = expectedSnapshotHeight,
             details = outcomes
         )
@@ -56,26 +60,33 @@ class HttpPirSnapshotResolver(
         url: String,
         expectedSnapshotHeight: Long
     ): PirSnapshotProbeOutcome {
-        val status = runCatching {
-            val rootInfo = pirSnapshotJson.decodeFromString<PirRootInfo>(
-                client.get("$url/root").bodyAsText()
-            )
-            val height = rootInfo.height
-                ?: return@runCatching PirSnapshotProbeStatus.MissingHeight
-            if (height == expectedSnapshotHeight) {
-                PirSnapshotProbeStatus.Matching(height)
-            } else {
-                PirSnapshotProbeStatus.Mismatched(height)
+        val status =
+            runCatching {
+                val rootInfo =
+                    pirSnapshotJson.decodeFromString<PirRootInfo>(
+                        client.get("$url/root").bodyAsText()
+                    )
+                val height =
+                    rootInfo.height
+                        ?: return@runCatching PirSnapshotProbeStatus.MissingHeight
+                if (height == expectedSnapshotHeight) {
+                    PirSnapshotProbeStatus.Matching(height)
+                } else {
+                    PirSnapshotProbeStatus.Mismatched(height)
+                }
+            }.getOrElse { throwable ->
+                val reason =
+                    when (throwable) {
+                        is ResponseException -> {
+                            "HTTP ${throwable.response.status.value}"
+                        }
+
+                        else -> {
+                            throwable.message ?: throwable::class.simpleName ?: "unknown error"
+                        }
+                    }
+                PirSnapshotProbeStatus.Unreachable(reason)
             }
-        }.getOrElse { throwable ->
-            val reason = when (throwable) {
-                is ResponseException ->
-                    "HTTP ${throwable.response.status.value}"
-                else ->
-                    throwable.message ?: throwable::class.simpleName ?: "unknown error"
-            }
-            PirSnapshotProbeStatus.Unreachable(reason)
-        }
 
         return PirSnapshotProbeOutcome(
             url = url,
@@ -85,13 +96,19 @@ class HttpPirSnapshotResolver(
 }
 
 sealed interface PirSnapshotProbeStatus {
-    data class Matching(val height: Long) : PirSnapshotProbeStatus
+    data class Matching(
+        val height: Long
+    ) : PirSnapshotProbeStatus
 
-    data class Mismatched(val height: Long) : PirSnapshotProbeStatus
+    data class Mismatched(
+        val height: Long
+    ) : PirSnapshotProbeStatus
 
     data object MissingHeight : PirSnapshotProbeStatus
 
-    data class Unreachable(val reason: String) : PirSnapshotProbeStatus
+    data class Unreachable(
+        val reason: String
+    ) : PirSnapshotProbeStatus
 }
 
 data class PirSnapshotProbeOutcome(
@@ -108,7 +125,9 @@ data class PirSnapshotProbeOutcome(
             }
 }
 
-sealed class PirSnapshotResolverException(message: String) : IllegalStateException(message) {
+sealed class PirSnapshotResolverException(
+    message: String
+) : IllegalStateException(message) {
     data object NoEndpointsConfigured : PirSnapshotResolverException(
         "No PIR endpoints are configured."
     )
@@ -117,14 +136,14 @@ sealed class PirSnapshotResolverException(message: String) : IllegalStateExcepti
         val expected: Long,
         val details: List<PirSnapshotProbeOutcome>
     ) : PirSnapshotResolverException(
-        buildString {
-            append("No PIR server matches the round's expected snapshot height ")
-            append(expected)
-            append(". Voting cannot proceed until a PIR server reports the matching snapshot. [")
-            append(details.joinToString(separator = "; ") { outcome -> outcome.shortDescription })
-            append(']')
-        }
-    )
+            buildString {
+                append("No PIR server matches the round's expected snapshot height ")
+                append(expected)
+                append(". Voting cannot proceed until a PIR server reports the matching snapshot. [")
+                append(details.joinToString(separator = "; ") { outcome -> outcome.shortDescription })
+                append(']')
+            }
+        )
 }
 
 @Serializable
@@ -138,9 +157,10 @@ private data class PirRootInfo(
     val height: Long? = null
 )
 
-private val pirSnapshotJson = Json {
-    ignoreUnknownKeys = true
-}
+private val pirSnapshotJson =
+    Json {
+        ignoreUnknownKeys = true
+    }
 
 private fun String.trimTrailingSlash(): String =
     if (endsWith('/')) dropLast(1) else this

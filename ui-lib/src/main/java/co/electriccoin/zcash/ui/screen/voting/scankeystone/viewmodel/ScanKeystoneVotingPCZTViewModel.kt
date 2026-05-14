@@ -40,13 +40,14 @@ internal class ScanKeystoneVotingPCZTViewModel(
         viewModelScope.launch {
             try {
                 val accountUuid = getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId()
-                val scanResult = parseVotingKeystonePCZT(
-                    accountUuid = accountUuid,
-                    roundId = args.roundIdHex,
-                    bundleIndex = args.bundleIndex,
-                    actionIndex = args.actionIndex,
-                    result = result
-                )
+                val scanResult =
+                    parseVotingKeystonePCZT(
+                        accountUuid = accountUuid,
+                        roundId = args.roundIdHex,
+                        bundleIndex = args.bundleIndex,
+                        actionIndex = args.actionIndex,
+                        result = result
+                    )
                 state.update { it.copy(progress = scanResult.progress) }
                 if (scanResult.isFinished) {
                     navigationRouter.backTo(VoteConfirmSubmissionArgs::class)

@@ -115,7 +115,9 @@ data class VotingServiceConfig(
     }
 }
 
-open class VotingConfigException(message: String) : IllegalStateException(message)
+open class VotingConfigException(
+    message: String
+) : IllegalStateException(message)
 
 private object WalletCapabilities {
     val voteServer = setOf("v1")
@@ -124,15 +126,17 @@ private object WalletCapabilities {
     val pir = setOf("v0")
 }
 
-private val votingConfigJson = Json {
-    ignoreUnknownKeys = true
-}
+private val votingConfigJson =
+    Json {
+        ignoreUnknownKeys = true
+    }
 
 fun VotingServiceConfig.retainingRoundsWithValidSignatures(
     trustedKeys: List<StaticVotingConfig.TrustedKey>
 ): VotingServiceConfig =
     copy(
-        rounds = rounds.filter { (_, entry) ->
-            RoundAuthenticator.verifyEntrySignatures(entry = entry, trustedKeys = trustedKeys)
-        }
+        rounds =
+            rounds.filter { (_, entry) ->
+                RoundAuthenticator.verifyEntrySignatures(entry = entry, trustedKeys = trustedKeys)
+            }
     )

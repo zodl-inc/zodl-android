@@ -22,105 +22,111 @@ import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.repository.withRemainingKeystoneBundlesSkipped
-import java.lang.reflect.Method
-import java.lang.reflect.Proxy
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
+import java.lang.reflect.Method
+import java.lang.reflect.Proxy
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class SkipRemainingKeystoneBundlesUseCaseTest {
     @Test
-    fun skipsRemainingBundlesInVotingDbAndRecoverySnapshot() = runBlocking {
-        val selectedAccount = keystoneAccount()
-        val accountUuid = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
-        val roundId = "round"
-        val recoveryRepository = FakeVotingRecoveryRepository(
-            snapshot = recoverySnapshot(accountUuid = accountUuid, roundId = roundId)
-        )
-        val cryptoClient = FakeVotingCryptoClient()
+    fun skipsRemainingBundlesInVotingDbAndRecoverySnapshot() =
+        runBlocking {
+            val selectedAccount = keystoneAccount()
+            val accountUuid = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
+            val roundId = "round"
+            val recoveryRepository =
+                FakeVotingRecoveryRepository(
+                    snapshot = recoverySnapshot(accountUuid = accountUuid, roundId = roundId)
+                )
+            val cryptoClient = FakeVotingCryptoClient()
 
-        val result = useCase(
-            selectedAccount = selectedAccount,
-            cryptoClient = cryptoClient.client,
-            recoveryRepository = recoveryRepository
-        )(accountUuid, roundId)
+            val result =
+                useCase(
+                    selectedAccount = selectedAccount,
+                    cryptoClient = cryptoClient.client,
+                    recoveryRepository = recoveryRepository
+                )(accountUuid, roundId)
 
-        assertEquals(
-            SkippedKeystoneBundles(
-                signedBundleCount = 2,
-                skippedBundleCount = 1,
-                signedWeight = 500,
-                skippedWeight = 100
-            ),
-            result
-        )
-        assertEquals(2, recoveryRepository.snapshot?.bundleCount)
-        assertEquals(500, recoveryRepository.snapshot?.eligibleWeight)
-        assertEquals(listOf(300L, 200L), recoveryRepository.snapshot?.bundleWeights)
-        assertEquals(listOf(SkipRequest(accountUuid, roundId, keepCount = 2)), recoveryRepository.skipRequests)
-        assertEquals(
-            listOf(
-                CryptoCall.OpenVotingDb("/tmp/wallet/voting.sqlite3"),
-                CryptoCall.SetWalletId(
-                    dbHandle = DB_HANDLE,
-                    walletId = selectedAccount.sdkAccount.accountUuid.toString()
+            assertEquals(
+                SkippedKeystoneBundles(
+                    signedBundleCount = 2,
+                    skippedBundleCount = 1,
+                    signedWeight = 500,
+                    skippedWeight = 100
                 ),
-                CryptoCall.DeleteSkippedBundles(
-                    dbHandle = DB_HANDLE,
-                    roundId = roundId,
-                    keepCount = 2
+                result
+            )
+            assertEquals(2, recoveryRepository.snapshot?.bundleCount)
+            assertEquals(500, recoveryRepository.snapshot?.eligibleWeight)
+            assertEquals(listOf(300L, 200L), recoveryRepository.snapshot?.bundleWeights)
+            assertEquals(listOf(SkipRequest(accountUuid, roundId, keepCount = 2)), recoveryRepository.skipRequests)
+            assertEquals(
+                listOf(
+                    CryptoCall.OpenVotingDb("/tmp/wallet/voting.sqlite3"),
+                    CryptoCall.SetWalletId(
+                        dbHandle = DB_HANDLE,
+                        walletId = selectedAccount.sdkAccount.accountUuid.toString()
+                    ),
+                    CryptoCall.DeleteSkippedBundles(
+                        dbHandle = DB_HANDLE,
+                        roundId = roundId,
+                        keepCount = 2
+                    ),
+                    CryptoCall.CloseVotingDb(DB_HANDLE)
                 ),
-                CryptoCall.CloseVotingDb(DB_HANDLE)
-            ),
-            cryptoClient.calls
-        )
-    }
-
-    @Test
-    fun snapshotFailureAfterDbDeleteLeavesDeleteRetrySafe() = runBlocking {
-        val selectedAccount = keystoneAccount()
-        val accountUuid = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
-        val roundId = "round"
-        val originalSnapshot = recoverySnapshot(accountUuid = accountUuid, roundId = roundId)
-        val recoveryRepository = FakeVotingRecoveryRepository(
-            snapshot = originalSnapshot,
-            failOnSkip = true
-        )
-        val cryptoClient = FakeVotingCryptoClient(deletedRows = 0)
-
-        val failure = assertFailsWith<IllegalStateException> {
-            useCase(
-                selectedAccount = selectedAccount,
-                cryptoClient = cryptoClient.client,
-                recoveryRepository = recoveryRepository
-            )(accountUuid, roundId)
+                cryptoClient.calls
+            )
         }
 
-        assertEquals("snapshot write failed", failure.message)
-        assertEquals(originalSnapshot, recoveryRepository.snapshot)
-        assertEquals(listOf(SkipRequest(accountUuid, roundId, keepCount = 2)), recoveryRepository.skipRequests)
-        assertEquals(
-            listOf(
-                CryptoCall.OpenVotingDb("/tmp/wallet/voting.sqlite3"),
-                CryptoCall.SetWalletId(
-                    dbHandle = DB_HANDLE,
-                    walletId = selectedAccount.sdkAccount.accountUuid.toString()
+    @Test
+    fun snapshotFailureAfterDbDeleteLeavesDeleteRetrySafe() =
+        runBlocking {
+            val selectedAccount = keystoneAccount()
+            val accountUuid = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
+            val roundId = "round"
+            val originalSnapshot = recoverySnapshot(accountUuid = accountUuid, roundId = roundId)
+            val recoveryRepository =
+                FakeVotingRecoveryRepository(
+                    snapshot = originalSnapshot,
+                    failOnSkip = true
+                )
+            val cryptoClient = FakeVotingCryptoClient(deletedRows = 0)
+
+            val failure =
+                assertFailsWith<IllegalStateException> {
+                    useCase(
+                        selectedAccount = selectedAccount,
+                        cryptoClient = cryptoClient.client,
+                        recoveryRepository = recoveryRepository
+                    )(accountUuid, roundId)
+                }
+
+            assertEquals("snapshot write failed", failure.message)
+            assertEquals(originalSnapshot, recoveryRepository.snapshot)
+            assertEquals(listOf(SkipRequest(accountUuid, roundId, keepCount = 2)), recoveryRepository.skipRequests)
+            assertEquals(
+                listOf(
+                    CryptoCall.OpenVotingDb("/tmp/wallet/voting.sqlite3"),
+                    CryptoCall.SetWalletId(
+                        dbHandle = DB_HANDLE,
+                        walletId = selectedAccount.sdkAccount.accountUuid.toString()
+                    ),
+                    CryptoCall.DeleteSkippedBundles(
+                        dbHandle = DB_HANDLE,
+                        roundId = roundId,
+                        keepCount = 2
+                    ),
+                    CryptoCall.CloseVotingDb(DB_HANDLE)
                 ),
-                CryptoCall.DeleteSkippedBundles(
-                    dbHandle = DB_HANDLE,
-                    roundId = roundId,
-                    keepCount = 2
-                ),
-                CryptoCall.CloseVotingDb(DB_HANDLE)
-            ),
-            cryptoClient.calls
-        )
-    }
+                cryptoClient.calls
+            )
+        }
 
     private fun useCase(
         selectedAccount: WalletAccount,
@@ -136,14 +142,16 @@ class SkipRemainingKeystoneBundlesUseCaseTest {
     private suspend fun keystoneAccount(): KeystoneAccount =
         KeystoneAccount(
             sdkAccount = AccountFixture.new(),
-            unified = UnifiedInfo(
-                address = WalletAddressFixture.unified(),
-                balance = WalletBalanceFixture.newLong()
-            ),
-            transparent = TransparentInfo(
-                address = WalletAddressFixture.transparent(),
-                balance = Zatoshi(0)
-            ),
+            unified =
+                UnifiedInfo(
+                    address = WalletAddressFixture.unified(),
+                    balance = WalletBalanceFixture.newLong()
+                ),
+            transparent =
+                TransparentInfo(
+                    address = WalletAddressFixture.transparent(),
+                    balance = Zatoshi(0)
+                ),
             isSelected = true
         )
 
@@ -156,10 +164,11 @@ class SkipRemainingKeystoneBundlesUseCaseTest {
         bundleCount = 3,
         eligibleWeight = 600,
         bundleWeights = listOf(300L, 200L, 100L),
-        keystoneBundleSignatures = mapOf(
-            0 to signature(),
-            1 to signature()
-        )
+        keystoneBundleSignatures =
+            mapOf(
+                0 to signature(),
+                1 to signature()
+            )
     )
 
     private fun signature() =
@@ -230,26 +239,34 @@ private class FakeVotingCryptoClient(
                     calls += CryptoCall.OpenVotingDb(args.valueAt<String>(0))
                     DB_HANDLE
                 }
+
                 "setWalletId" -> {
-                    calls += CryptoCall.SetWalletId(
-                        dbHandle = args.valueAt(0),
-                        walletId = args.valueAt(1)
-                    )
+                    calls +=
+                        CryptoCall.SetWalletId(
+                            dbHandle = args.valueAt(0),
+                            walletId = args.valueAt(1)
+                        )
                     Unit
                 }
+
                 "deleteSkippedBundles" -> {
-                    calls += CryptoCall.DeleteSkippedBundles(
-                        dbHandle = args.valueAt(0),
-                        roundId = args.valueAt(1),
-                        keepCount = args.valueAt(2)
-                    )
+                    calls +=
+                        CryptoCall.DeleteSkippedBundles(
+                            dbHandle = args.valueAt(0),
+                            roundId = args.valueAt(1),
+                            keepCount = args.valueAt(2)
+                        )
                     deletedRows
                 }
+
                 "closeVotingDb" -> {
                     calls += CryptoCall.CloseVotingDb(args.valueAt(0))
                     Unit
                 }
-                else -> method.handleObjectMethod(this)
+
+                else -> {
+                    method.handleObjectMethod(this)
+                }
             }
         } as VotingCryptoClient
 }
@@ -266,18 +283,30 @@ private class FakeVotingRecoveryRepository(
             arrayOf(VotingRecoveryRepository::class.java)
         ) { _, method, args ->
             when (method.name) {
-                "observe" -> flowOf(snapshot)
-                "get" -> snapshot
+                "observe" -> {
+                    flowOf(snapshot)
+                }
+
+                "get" -> {
+                    snapshot
+                }
+
                 "store" -> {
                     snapshot = args.valueAt(0)
                     Unit
                 }
-                "skipRemainingKeystoneBundles" -> skipRemainingKeystoneBundles(
-                    accountUuid = args.valueAt(0),
-                    roundId = args.valueAt(1),
-                    keepCount = args.valueAt(2)
-                )
-                else -> method.handleObjectMethod(this)
+
+                "skipRemainingKeystoneBundles" -> {
+                    skipRemainingKeystoneBundles(
+                        accountUuid = args.valueAt(0),
+                        roundId = args.valueAt(1),
+                        keepCount = args.valueAt(2)
+                    )
+                }
+
+                else -> {
+                    method.handleObjectMethod(this)
+                }
             }
         } as VotingRecoveryRepository
 

@@ -110,12 +110,13 @@ fun VoteChainConfigView(state: VoteChainConfigState?) {
                     Modifier
                         .fillMaxSize()
                         .scaffoldPadding(padding),
-                contentPadding = PaddingValues(
-                    start = ZashiDimensions.Spacing.spacing3xl,
-                    top = ZashiDimensions.Spacing.spacingLg,
-                    end = ZashiDimensions.Spacing.spacing3xl,
-                    bottom = ZashiDimensions.Spacing.spacing3xl
-                ),
+                contentPadding =
+                    PaddingValues(
+                        start = ZashiDimensions.Spacing.spacing3xl,
+                        top = ZashiDimensions.Spacing.spacingLg,
+                        end = ZashiDimensions.Spacing.spacing3xl,
+                        bottom = ZashiDimensions.Spacing.spacing3xl
+                    ),
                 verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing3xl)
             ) {
                 item(key = "intro") {
@@ -150,10 +151,11 @@ private fun AppBar(state: VoteChainConfigState) {
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = state.onBack)
         },
-        colors = ZcashTheme.colors.topAppBarColors orDark
-            ZcashTheme.colors.topAppBarColors.copyColors(
-                containerColor = Color.Transparent
-            )
+        colors =
+            ZcashTheme.colors.topAppBarColors orDark
+                ZcashTheme.colors.topAppBarColors.copyColors(
+                    containerColor = Color.Transparent
+                )
     )
 }
 
@@ -395,16 +397,18 @@ private fun AddCustomSourceButton(state: VoteChainConfigState) {
             Modifier
                 .fillMaxWidth()
                 .height(48.dp),
-        state = ButtonState(
-            text = stringRes(R.string.vote_chain_config_add_custom_source),
-            style = ButtonStyle.TERTIARY,
-            isEnabled = !state.isValidating,
-            onClick = state.onAddCustom
-        ),
-        defaultTertiaryColors = ZashiButtonDefaults.tertiaryColors(
-            containerColor = ZashiColors.Surfaces.bgSecondary,
-            contentColor = ZashiColors.Text.textPrimary
-        ),
+        state =
+            ButtonState(
+                text = stringRes(R.string.vote_chain_config_add_custom_source),
+                style = ButtonStyle.TERTIARY,
+                isEnabled = !state.isValidating,
+                onClick = state.onAddCustom
+            ),
+        defaultTertiaryColors =
+            ZashiButtonDefaults.tertiaryColors(
+                containerColor = ZashiColors.Surfaces.bgSecondary,
+                contentColor = ZashiColors.Text.textPrimary
+            ),
         content = { scope ->
             Icon(
                 imageVector = Icons.Default.Add,
@@ -617,52 +621,60 @@ private const val EDITOR_FOCUS_DELAY_MS = 100L
 private fun VoteChainConfigPreview() =
     ZcashTheme {
         VoteChainConfigView(
-            state = VoteChainConfigState(
-                chains = listOf(
-                    VoteChainConfigItemState(
-                        id = "default",
-                        radioButtonState = RadioButtonState(
-                            text = stringRes("Coinholder Poll"),
-                            subtitle = stringRes("https://voting.valargroup.org/static-voting-config.json"),
-                            isChecked = true,
-                            onClick = {}
+            state =
+                VoteChainConfigState(
+                    chains =
+                        listOf(
+                            VoteChainConfigItemState(
+                                id = "default",
+                                radioButtonState =
+                                    RadioButtonState(
+                                        text = stringRes("Coinholder Poll"),
+                                        subtitle = stringRes("https://voting.valargroup.org/static-voting-config.json"),
+                                        isChecked = true,
+                                        onClick = {}
+                                    ),
+                                fullUrl =
+                                    stringRes(
+                                        "https://voting.valargroup.org/static-voting-config.json?checksum=sha256:abc"
+                                    ),
+                                isDefault = true,
+                                editButton = null,
+                                deleteButton = null
+                            ),
+                            VoteChainConfigItemState(
+                                id = "custom",
+                                radioButtonState =
+                                    RadioButtonState(
+                                        text = stringRes("Local test"),
+                                        subtitle = stringRes("https://example.com/static-voting-config.json"),
+                                        isChecked = false,
+                                        onClick = {}
+                                    ),
+                                fullUrl = stringRes("https://example.com/static-voting-config.json"),
+                                isDefault = false,
+                                editButton =
+                                    ButtonState(
+                                        text = stringRes("Edit"),
+                                        style = ButtonStyle.TERTIARY
+                                    ),
+                                deleteButton =
+                                    ButtonState(
+                                        text = stringRes("Delete"),
+                                        style = ButtonStyle.DESTRUCTIVE2
+                                    )
+                            )
                         ),
-                        fullUrl = stringRes(
-                            "https://voting.valargroup.org/static-voting-config.json?checksum=sha256:abc"
+                    editor = null,
+                    errorSheet = null,
+                    isValidating = false,
+                    saveChangesButton =
+                        ButtonState(
+                            text = stringRes("Save changes"),
+                            style = ButtonStyle.PRIMARY
                         ),
-                        isDefault = true,
-                        editButton = null,
-                        deleteButton = null
-                    ),
-                    VoteChainConfigItemState(
-                        id = "custom",
-                        radioButtonState = RadioButtonState(
-                            text = stringRes("Local test"),
-                            subtitle = stringRes("https://example.com/static-voting-config.json"),
-                            isChecked = false,
-                            onClick = {}
-                        ),
-                        fullUrl = stringRes("https://example.com/static-voting-config.json"),
-                        isDefault = false,
-                        editButton = ButtonState(
-                            text = stringRes("Edit"),
-                            style = ButtonStyle.TERTIARY
-                        ),
-                        deleteButton = ButtonState(
-                            text = stringRes("Delete"),
-                            style = ButtonStyle.DESTRUCTIVE2
-                        )
-                    )
-                ),
-                editor = null,
-                errorSheet = null,
-                isValidating = false,
-                saveChangesButton = ButtonState(
-                    text = stringRes("Save changes"),
-                    style = ButtonStyle.PRIMARY
-                ),
-                onBack = {},
-                onAddCustom = {}
-            )
+                    onBack = {},
+                    onAddCustom = {}
+                )
         )
     }

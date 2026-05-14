@@ -45,44 +45,49 @@ class VoteWalletSyncingVM(
                 synchronizer?.fullyScannedHeight ?: flowOf(null)
             },
         ) { apiSnapshot, fullyScannedHeight ->
-            val snapshotHeight = apiSnapshot.sessionsByRoundId[args.roundId.lowercase()]
-                ?.snapshotHeight
+            val snapshotHeight =
+                apiSnapshot.sessionsByRoundId[args.roundId.lowercase()]
+                    ?.snapshotHeight
 
             if (snapshotHeight == null) {
                 LceState(content = null, isLoading = true)
             } else {
                 val scannedHeight = fullyScannedHeight?.value ?: 0L
-                val progress = (scannedHeight.coerceAtMost(snapshotHeight).toFloat() / snapshotHeight.toFloat())
-                    .coerceIn(0f, 1f)
+                val progress =
+                    (scannedHeight.coerceAtMost(snapshotHeight).toFloat() / snapshotHeight.toFloat())
+                        .coerceIn(0f, 1f)
                 val isSynced = scannedHeight >= snapshotHeight
 
                 LceState(
-                    content = VoteWalletSyncingState(
-                        title = stringRes(R.string.vote_wallet_syncing_title),
-                        body = stringRes(
-                            R.string.vote_wallet_syncing_message,
-                            snapshotHeight,
-                            scannedHeight
-                        ),
-                        progressLabel =
-                            if (isSynced) {
-                                stringRes(R.string.vote_wallet_syncing_progress_complete)
-                            } else {
+                    content =
+                        VoteWalletSyncingState(
+                            title = stringRes(R.string.vote_wallet_syncing_title),
+                            body =
                                 stringRes(
-                                    R.string.vote_wallet_syncing_progress_percent,
-                                    (progress * 100).toInt()
-                                )
-                            },
-                        progress = progress,
-                        isSynced = isSynced,
-                        continueButton = ButtonState(
-                            text = stringRes(R.string.vote_continue),
-                            style = ButtonStyle.PRIMARY,
-                            isEnabled = isSynced,
-                            onClick = ::onContinue
+                                    R.string.vote_wallet_syncing_message,
+                                    snapshotHeight,
+                                    scannedHeight
+                                ),
+                            progressLabel =
+                                if (isSynced) {
+                                    stringRes(R.string.vote_wallet_syncing_progress_complete)
+                                } else {
+                                    stringRes(
+                                        R.string.vote_wallet_syncing_progress_percent,
+                                        (progress * 100).toInt()
+                                    )
+                                },
+                            progress = progress,
+                            isSynced = isSynced,
+                            continueButton =
+                                ButtonState(
+                                    text = stringRes(R.string.vote_continue),
+                                    style = ButtonStyle.PRIMARY,
+                                    isEnabled = isSynced,
+                                    onClick = ::onContinue
+                                ),
+                            onBack = ::onBack,
                         ),
-                        onBack = ::onBack,
-                    ),
                     isLoading = false,
                 )
             }
@@ -107,8 +112,7 @@ class VoteWalletSyncingVM(
                     .snapshot
                     .filter { snapshot ->
                         snapshot.sessionsByRoundId.containsKey(args.roundId.lowercase())
-                    }
-                    .first()
+                    }.first()
                     .sessionsByRoundId
                     .getValue(args.roundId.lowercase())
                     .snapshotHeight
@@ -117,8 +121,7 @@ class VoteWalletSyncingVM(
                 .synchronizer
                 .flatMapLatest { synchronizer ->
                     synchronizer?.fullyScannedHeight ?: flowOf(null)
-                }
-                .distinctUntilChanged()
+                }.distinctUntilChanged()
                 .filter { height -> (height?.value ?: 0L) >= snapshotHeight }
                 .first()
 

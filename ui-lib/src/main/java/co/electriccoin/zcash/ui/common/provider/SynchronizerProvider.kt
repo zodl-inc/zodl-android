@@ -128,10 +128,11 @@ class SynchronizerProviderImpl(
 private suspend fun Synchronizer.getVotingWalletDbPathByReflection(): String =
     suspendCoroutine { continuation ->
         try {
-            val method = javaClass.methods.firstOrNull { method ->
-                method.name.startsWith("getWalletDbPathForVoting") &&
-                    method.parameterTypes.size == 1
-            } ?: error("SDK synchronizer does not expose voting wallet DB path")
+            val method =
+                javaClass.methods.firstOrNull { method ->
+                    method.name.startsWith("getWalletDbPathForVoting") &&
+                        method.parameterTypes.size == 1
+                } ?: error("SDK synchronizer does not expose voting wallet DB path")
             val result = method.invoke(this, continuation)
             if (result !== COROUTINE_SUSPENDED) {
                 continuation.resume(result as String)

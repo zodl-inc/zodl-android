@@ -89,16 +89,17 @@ private fun voteOptionDisplayColor(
         }
     }
 
-    val palette = listOf(
-        VoteOptionDisplayColor.SUPPORT,
-        VoteOptionDisplayColor.OPPOSE,
-        VoteOptionDisplayColor.PURPLE,
-        VoteOptionDisplayColor.WARNING,
-        VoteOptionDisplayColor.INDIGO,
-        VoteOptionDisplayColor.BRAND,
-        VoteOptionDisplayColor.GRAY,
-        VoteOptionDisplayColor.INDIGO_DARK,
-    )
+    val palette =
+        listOf(
+            VoteOptionDisplayColor.SUPPORT,
+            VoteOptionDisplayColor.OPPOSE,
+            VoteOptionDisplayColor.PURPLE,
+            VoteOptionDisplayColor.WARNING,
+            VoteOptionDisplayColor.INDIGO,
+            VoteOptionDisplayColor.BRAND,
+            VoteOptionDisplayColor.GRAY,
+            VoteOptionDisplayColor.INDIGO_DARK,
+        )
 
     return palette[position.mod(palette.size)]
 }

@@ -16,7 +16,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import co.electriccoin.zcash.ui.R as UiR
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ZashiButton
@@ -30,6 +29,7 @@ import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.R as UiR
 
 @Composable
 fun VoteWalletSyncingView(state: VoteWalletSyncingState) {
@@ -43,17 +43,19 @@ fun VoteWalletSyncingView(state: VoteWalletSyncingState) {
                         modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
                     )
                 },
-                colors = ZcashTheme.colors.topAppBarColors orDark
-                    ZcashTheme.colors.topAppBarColors.copyColors(containerColor = Color.Transparent)
+                colors =
+                    ZcashTheme.colors.topAppBarColors orDark
+                        ZcashTheme.colors.topAppBarColors.copyColors(containerColor = Color.Transparent)
             )
         },
         content = { padding ->
             VoteWalletSyncingContent(
                 state = state,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .scaffoldPadding(padding)
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .scaffoldPadding(padding)
             )
         }
     )
@@ -92,9 +94,10 @@ internal fun VoteWalletSyncingContent(
         )
         Spacer(modifier = Modifier.weight(1f))
         ZashiButton(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = ZashiDimensions.Spacing.spacingMd),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = ZashiDimensions.Spacing.spacingMd),
             state = state.continueButton
         )
     }

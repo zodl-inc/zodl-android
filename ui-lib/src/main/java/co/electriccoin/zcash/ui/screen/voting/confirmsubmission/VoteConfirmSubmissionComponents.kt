@@ -115,16 +115,20 @@ internal fun VoteSubmissionBottomSection(state: VoteConfirmSubmissionState) {
             state.status is VoteSubmissionStatus.Authorizing ||
                 state.status is VoteSubmissionStatus.Submitting
         when (val status = state.status) {
-            is VoteSubmissionStatus.Authorizing ->
+            is VoteSubmissionStatus.Authorizing -> {
                 VoteSubmissionProgressCard(stringRes(R.string.vote_confirm_cta_authorizing), submissionProgress)
+            }
 
-            is VoteSubmissionStatus.Submitting ->
+            is VoteSubmissionStatus.Submitting -> {
                 VoteSubmissionProgressCard(
                     stringRes(R.string.vote_confirm_cta_submitting, status.current, status.total),
                     submissionProgress
                 )
+            }
 
-            else -> Unit
+            else -> {
+                Unit
+            }
         }
         if (showsProgress) {
             VerticalSpacer(8.dp)
@@ -139,19 +143,22 @@ internal fun VoteSubmissionBottomSection(state: VoteConfirmSubmissionState) {
 private fun VoteConfirmSubmissionState.submissionProgress(): Float {
     val delegationWeight = 0.3f
     return when (val status = status) {
-        is VoteSubmissionStatus.Authorizing ->
+        is VoteSubmissionStatus.Authorizing -> {
             if (includesAuthorizationProgress) {
                 status.progress * delegationWeight
             } else {
                 status.progress
             }
+        }
 
         is VoteSubmissionStatus.Submitting -> {
             val offset = if (includesAuthorizationProgress) delegationWeight else 0f
             (offset + status.progress * (1f - offset)).coerceIn(0f, 1f)
         }
 
-        else -> 0f
+        else -> {
+            0f
+        }
     }
 }
 

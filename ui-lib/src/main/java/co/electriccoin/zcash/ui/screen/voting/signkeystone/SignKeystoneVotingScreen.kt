@@ -28,11 +28,11 @@ import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
 import co.electriccoin.zcash.ui.design.component.ModalBottomSheetState
-import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
-import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiInScreenModalBottomSheet
+import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
+import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.StringResource
@@ -64,13 +64,21 @@ fun SignKeystoneVotingScreen(args: SignKeystoneVotingArgs) {
     }
 
     when {
-        state != null -> SignKeystoneTransactionView(requireNotNull(state))
-        isLoading -> SignKeystoneVotingLoadingView(onBack = vm::onScreenBack)
-        error != null -> SignKeystoneVotingErrorView(
-            message = requireNotNull(error),
-            onBack = vm::onScreenBack,
-            onRetry = vm::onRetry
-        )
+        state != null -> {
+            SignKeystoneTransactionView(requireNotNull(state))
+        }
+
+        isLoading -> {
+            SignKeystoneVotingLoadingView(onBack = vm::onScreenBack)
+        }
+
+        error != null -> {
+            SignKeystoneVotingErrorView(
+                message = requireNotNull(error),
+                onBack = vm::onScreenBack,
+                onRetry = vm::onRetry
+            )
+        }
     }
 
     SignKeystoneTransactionBottomSheet(state = bottomSheetState)
@@ -172,10 +180,11 @@ private fun SignKeystoneVotingErrorView(
         }
     ) { padding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .scaffoldPadding(padding)
-                .padding(horizontal = 24.dp),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .scaffoldPadding(padding)
+                    .padding(horizontal = 24.dp),
             verticalArrangement = Arrangement.Center
         ) {
             Text(
@@ -191,13 +200,15 @@ private fun SignKeystoneVotingErrorView(
                 color = ZashiColors.Text.textSecondary
             )
             ZashiButton(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 24.dp),
-                state = ButtonState(
-                    text = stringRes(R.string.vote_try_again),
-                    onClick = onRetry
-                )
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 24.dp),
+                state =
+                    ButtonState(
+                        text = stringRes(R.string.vote_try_again),
+                        onClick = onRetry
+                    )
             )
         }
     }

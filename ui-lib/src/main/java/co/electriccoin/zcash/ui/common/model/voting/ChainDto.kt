@@ -67,12 +67,13 @@ data class ChainRoundDto(
             votingStart = Instant.ofEpochSecond(ceremonyPhaseStart),
             votingEnd = Instant.ofEpochSecond(voteEndTime),
             proposals = validatedProposals,
-            status = when (status) {
-                1 -> SessionStatus.ACTIVE
-                2 -> SessionStatus.TALLYING
-                3 -> SessionStatus.COMPLETED
-                else -> SessionStatus.CANCELLED
-            }
+            status =
+                when (status) {
+                    1 -> SessionStatus.ACTIVE
+                    2 -> SessionStatus.TALLYING
+                    3 -> SessionStatus.COMPLETED
+                    else -> SessionStatus.CANCELLED
+                }
         )
     }
 
@@ -96,18 +97,20 @@ data class ChainRoundDto(
             description = description,
             discussionUrl = discussionUrl,
             proposals = validatedProposals,
-            status = when (status) {
-                1 -> SessionStatus.ACTIVE
-                2 -> SessionStatus.TALLYING
-                3 -> SessionStatus.COMPLETED
-                else -> SessionStatus.CANCELLED
-            },
+            status =
+                when (status) {
+                    1 -> SessionStatus.ACTIVE
+                    2 -> SessionStatus.TALLYING
+                    3 -> SessionStatus.COMPLETED
+                    else -> SessionStatus.CANCELLED
+                },
             createdAtHeight = createdAtHeight
         )
     }
 
     private fun validatedProposals(): List<Proposal> =
-        proposals.map(ChainProposalDto::toProposal)
+        proposals
+            .map(ChainProposalDto::toProposal)
             .also(::validateChainProposals)
 }
 

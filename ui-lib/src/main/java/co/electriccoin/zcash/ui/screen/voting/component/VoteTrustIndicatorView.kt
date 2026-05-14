@@ -26,7 +26,7 @@ fun VoteTrustIndicatorView(
 ) {
     val params =
         when (indicator) {
-            VoteTrustIndicator.ZODL ->
+            VoteTrustIndicator.ZODL -> {
                 TrustIndicatorParams(
                     labelRes = R.string.vote_poll_card_trust_zodl,
                     iconRes = DesignR.drawable.ic_item_zashi,
@@ -34,8 +34,9 @@ fun VoteTrustIndicatorView(
                     iconSize = 24,
                     textColor = ZashiColors.Text.textPrimary
                 )
+            }
 
-            VoteTrustIndicator.UNVERIFIED ->
+            VoteTrustIndicator.UNVERIFIED -> {
                 TrustIndicatorParams(
                     labelRes = R.string.vote_poll_card_trust_unverified,
                     iconRes = DesignR.drawable.ic_info,
@@ -43,6 +44,7 @@ fun VoteTrustIndicatorView(
                     iconSize = 20,
                     textColor = ZashiColors.Text.textTertiary
                 )
+            }
         }
 
     Row(

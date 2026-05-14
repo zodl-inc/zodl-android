@@ -9,13 +9,13 @@ import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.stateIn
-import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionProgress
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
+import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionProgress
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
-import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
-import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryPhase
+import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
+import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.usecase.AuthorizeVotingSubmissionUseCase
@@ -37,9 +37,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.json.JSONObject
@@ -60,19 +60,25 @@ class VoteConfirmSubmissionVM(
     private val statusFlow = MutableStateFlow<VoteSubmissionStatus>(VoteSubmissionStatus.Idle)
     private val isFailureSheetVisible = MutableStateFlow(false)
     private val activeSubmissionIncludesAuthorizationProgress = MutableStateFlow<Boolean?>(null)
+
     // Loaded once per VM; ballot divisor is a static SDK constant.
     private val ballotDivisorZatoshi = MutableStateFlow<Long?>(null)
-    private val draftChoices = runCatching { args.choicesJson.toDraftChoices() }
-        .getOrElse { throwable ->
-            Log.e("VoteConfirmSubmission", "Failed to parse draft vote choices", throwable)
-            emptyMap()
-        }
-    private val selectedAccountUuid = getSelectedWalletAccount.observe()
-        .map { account -> account?.sdkAccount?.accountUuid?.toVotingAccountScopeId() }
-        .stateIn(this)
-    private val isKeystoneAccount = getSelectedWalletAccount.observe()
-        .map { account -> account is KeystoneAccount }
-        .stateIn(viewModel = this, initialValue = false)
+    private val draftChoices =
+        runCatching { args.choicesJson.toDraftChoices() }
+            .getOrElse { throwable ->
+                Log.e("VoteConfirmSubmission", "Failed to parse draft vote choices", throwable)
+                emptyMap()
+            }
+    private val selectedAccountUuid =
+        getSelectedWalletAccount
+            .observe()
+            .map { account -> account?.sdkAccount?.accountUuid?.toVotingAccountScopeId() }
+            .stateIn(this)
+    private val isKeystoneAccount =
+        getSelectedWalletAccount
+            .observe()
+            .map { account -> account is KeystoneAccount }
+            .stateIn(viewModel = this, initialValue = false)
     private val recovery =
         selectedAccountUuid
             .filterNotNull()
@@ -124,10 +130,11 @@ class VoteConfirmSubmissionVM(
         if (draftChoices.isNotEmpty()) {
             viewModelScope.launch {
                 runCatching {
-                    val round = votingApiRepository.snapshot
-                        .map { snapshot -> snapshot.rounds.firstOrNull { it.id == args.roundIdHex } }
-                        .filterNotNull()
-                        .first()
+                    val round =
+                        votingApiRepository.snapshot
+                            .map { snapshot -> snapshot.rounds.firstOrNull { it.id == args.roundIdHex } }
+                            .filterNotNull()
+                            .first()
                     persistDraftChoices(round)
                 }.onFailure { throwable ->
                     Log.e(
@@ -241,53 +248,57 @@ class VoteConfirmSubmissionVM(
             } else {
                 phaseIncludesAuthorizationProgress
             }
-        val memo = if (isKeystone && !allKeystoneBundlesSigned) {
-            if (hasPendingKeystoneRequest) {
-                stringRes(R.string.vote_confirm_memo_resume_keystone)
+        val memo =
+            if (isKeystone && !allKeystoneBundlesSigned) {
+                if (hasPendingKeystoneRequest) {
+                    stringRes(R.string.vote_confirm_memo_resume_keystone)
+                } else {
+                    stringRes(R.string.vote_confirm_memo_sign_keystone)
+                }
+            } else if (isPrepared) {
+                stringRes(
+                    R.string.vote_confirm_memo_authorize,
+                    round.title,
+                    requireNotNull(recovery.eligibleWeight).toVotingWeightLabel()
+                )
             } else {
-                stringRes(R.string.vote_confirm_memo_sign_keystone)
+                stringRes(R.string.vote_confirm_memo_preparing)
             }
-        } else if (isPrepared) {
-            stringRes(
-                R.string.vote_confirm_memo_authorize,
-                round.title,
-                requireNotNull(recovery.eligibleWeight).toVotingWeightLabel()
-            )
-        } else {
-            stringRes(R.string.vote_confirm_memo_preparing)
-        }
 
         return VoteConfirmSubmissionState(
             status = status,
             roundTitle = stringRes(round.title),
-            votingWeightZEC = recovery?.eligibleWeight?.toVotingWeightLabel()?.let(::stringRes)
-                ?: stringRes(R.string.vote_confirm_preparing),
+            votingWeightZEC =
+                recovery?.eligibleWeight?.toVotingWeightLabel()?.let(::stringRes)
+                    ?: stringRes(R.string.vote_confirm_preparing),
             hotkeyAddress = recovery?.hotkeyAddress?.let(::stringRes) ?: stringRes(R.string.vote_confirm_preparing),
             isKeystoneUser = isKeystone,
             includesAuthorizationProgress = includesAuthorizationProgress,
             memo = memo,
-            ctaButton = buildButtonState(
-                isPrepared = isPrepared,
-                isKeystone = isKeystone,
-                keystoneSignedBundles = keystoneSignedBundles,
-                preparedBundleCount = preparedBundleCount,
-                hasPendingKeystoneRequest = hasPendingKeystoneRequest,
-                isSubmitting = isSubmitting,
-                status = status
-            ),
-            errorSheet = buildFailureSheet(
-                status = status,
-                isVisible = showFailureSheet,
-                canRetry = isPrepared && draftChoices.isNotEmpty(),
-                eligibleWeightZatoshi = recovery?.eligibleWeight,
-                ballotDivisorZatoshi = ballotDivisorZatoshi,
-                retryAction =
-                    if (isKeystone && keystoneSignedBundles < preparedBundleCount) {
-                        ::onStartKeystoneSigning
-                    } else {
-                        ::onSubmit
-                    }
-            ),
+            ctaButton =
+                buildButtonState(
+                    isPrepared = isPrepared,
+                    isKeystone = isKeystone,
+                    keystoneSignedBundles = keystoneSignedBundles,
+                    preparedBundleCount = preparedBundleCount,
+                    hasPendingKeystoneRequest = hasPendingKeystoneRequest,
+                    isSubmitting = isSubmitting,
+                    status = status
+                ),
+            errorSheet =
+                buildFailureSheet(
+                    status = status,
+                    isVisible = showFailureSheet,
+                    canRetry = isPrepared && draftChoices.isNotEmpty(),
+                    eligibleWeightZatoshi = recovery?.eligibleWeight,
+                    ballotDivisorZatoshi = ballotDivisorZatoshi,
+                    retryAction =
+                        if (isKeystone && keystoneSignedBundles < preparedBundleCount) {
+                            ::onStartKeystoneSigning
+                        } else {
+                            ::onSubmit
+                        }
+                ),
             onBack = ::onBack
         )
     }
@@ -301,43 +312,58 @@ class VoteConfirmSubmissionVM(
         isSubmitting: Boolean,
         status: VoteSubmissionStatus
     ) = when {
-        status is VoteSubmissionStatus.Completed -> ButtonState(
-            text = stringRes(R.string.vote_done),
-            style = ButtonStyle.PRIMARY,
-            onClick = ::onDone
-        )
+        status is VoteSubmissionStatus.Completed -> {
+            ButtonState(
+                text = stringRes(R.string.vote_done),
+                style = ButtonStyle.PRIMARY,
+                onClick = ::onDone
+            )
+        }
 
-        status.isFailure() -> ButtonState(
-            text = stringRes(R.string.vote_retry),
-            style = ButtonStyle.PRIMARY,
-            isEnabled = isPrepared && draftChoices.isNotEmpty(),
-            onClick = if (isKeystone && keystoneSignedBundles < preparedBundleCount) ::onStartKeystoneSigning else ::onSubmit
-        )
+        status.isFailure() -> {
+            ButtonState(
+                text = stringRes(R.string.vote_retry),
+                style = ButtonStyle.PRIMARY,
+                isEnabled = isPrepared && draftChoices.isNotEmpty(),
+                onClick = if (isKeystone && keystoneSignedBundles < preparedBundleCount) ::onStartKeystoneSigning else ::onSubmit
+            )
+        }
 
-        else -> ButtonState(
-            text =
-                when {
-                    !isPrepared -> stringRes(R.string.vote_confirm_cta_preparing)
-                    isKeystone && keystoneSignedBundles < preparedBundleCount -> {
-                        if (hasPendingKeystoneRequest) {
-                            stringRes(R.string.vote_confirm_cta_resume_keystone_signing)
-                        } else if (keystoneSignedBundles == 0) {
-                            stringRes(R.string.vote_confirm_cta_keystone)
-                        } else {
-                            stringRes(
-                                R.string.vote_confirm_cta_sign_bundle,
-                                keystoneSignedBundles + 1,
-                                preparedBundleCount
-                            )
+        else -> {
+            ButtonState(
+                text =
+                    when {
+                        !isPrepared -> {
+                            stringRes(R.string.vote_confirm_cta_preparing)
                         }
-                    }
-                    isSubmitting -> stringRes(R.string.vote_confirm_cta_submitting_generic)
-                    else -> stringRes(R.string.vote_confirm_cta_submit_votes)
-                },
-            style = ButtonStyle.PRIMARY,
-            isEnabled = isPrepared && !isSubmitting && draftChoices.isNotEmpty(),
-            onClick = if (isKeystone && keystoneSignedBundles < preparedBundleCount) ::onStartKeystoneSigning else ::onSubmit
-        )
+
+                        isKeystone && keystoneSignedBundles < preparedBundleCount -> {
+                            if (hasPendingKeystoneRequest) {
+                                stringRes(R.string.vote_confirm_cta_resume_keystone_signing)
+                            } else if (keystoneSignedBundles == 0) {
+                                stringRes(R.string.vote_confirm_cta_keystone)
+                            } else {
+                                stringRes(
+                                    R.string.vote_confirm_cta_sign_bundle,
+                                    keystoneSignedBundles + 1,
+                                    preparedBundleCount
+                                )
+                            }
+                        }
+
+                        isSubmitting -> {
+                            stringRes(R.string.vote_confirm_cta_submitting_generic)
+                        }
+
+                        else -> {
+                            stringRes(R.string.vote_confirm_cta_submit_votes)
+                        }
+                    },
+                style = ButtonStyle.PRIMARY,
+                isEnabled = isPrepared && !isSubmitting && draftChoices.isNotEmpty(),
+                onClick = if (isKeystone && keystoneSignedBundles < preparedBundleCount) ::onStartKeystoneSigning else ::onSubmit
+            )
+        }
     }
 
     private fun onStartKeystoneSigning() {
@@ -364,31 +390,36 @@ class VoteConfirmSubmissionVM(
         activeSubmissionIncludesAuthorizationProgress.value = recovery.value.includesAuthorizationProgress()
         statusFlow.value = VoteSubmissionStatus.LocalAuthorizing
         viewModelScope.launch {
-            val authorizationResult = try {
-                authorizeVotingSubmission(isKeystone = isKeystoneAccount.value)
-            } catch (throwable: CancellationException) {
-                throw throwable
-            } catch (throwable: Exception) {
-                Log.e(
-                    "VoteConfirmSubmission",
-                    "Failed to authorize vote submission for round ${args.roundIdHex}",
-                    throwable
-                )
-                setFailureStatus(
-                    VoteSubmissionStatus.LocalAuthFailed(
-                        throwable.message
+            val authorizationResult =
+                try {
+                    authorizeVotingSubmission(isKeystone = isKeystoneAccount.value)
+                } catch (throwable: CancellationException) {
+                    throw throwable
+                } catch (throwable: Exception) {
+                    Log.e(
+                        "VoteConfirmSubmission",
+                        "Failed to authorize vote submission for round ${args.roundIdHex}",
+                        throwable
                     )
-                )
-                return@launch
-            }
+                    setFailureStatus(
+                        VoteSubmissionStatus.LocalAuthFailed(
+                            throwable.message
+                        )
+                    )
+                    return@launch
+                }
 
             when (authorizationResult) {
-                VotingSubmissionAuthorizationResult.Authorized -> Unit
+                VotingSubmissionAuthorizationResult.Authorized -> {
+                    Unit
+                }
+
                 VotingSubmissionAuthorizationResult.Cancelled -> {
                     statusFlow.value = previousStatus
                     activeSubmissionIncludesAuthorizationProgress.value = null
                     return@launch
                 }
+
                 VotingSubmissionAuthorizationResult.Failed -> {
                     setFailureStatus(
                         VoteSubmissionStatus.LocalAuthFailed(
@@ -424,23 +455,27 @@ class VoteConfirmSubmissionVM(
     }
 
     private fun onSubmissionProgress(progress: VotingSubmissionProgress) {
-        statusFlow.value = when (progress) {
-            is VotingSubmissionProgress.Authorizing ->
-                VoteSubmissionStatus.Authorizing(progress.progress)
+        statusFlow.value =
+            when (progress) {
+                is VotingSubmissionProgress.Authorizing -> {
+                    VoteSubmissionStatus.Authorizing(progress.progress)
+                }
 
-            is VotingSubmissionProgress.Submitting ->
-                VoteSubmissionStatus.Submitting(
-                    current = progress.current,
-                    total = progress.total,
-                    progress = progress.progress
-                )
-        }
+                is VotingSubmissionProgress.Submitting -> {
+                    VoteSubmissionStatus.Submitting(
+                        current = progress.current,
+                        total = progress.total,
+                        progress = progress.progress
+                    )
+                }
+            }
     }
 
     private suspend fun persistDraftChoices(round: VotingRound) {
         val accountUuid = selectedAccountUuid.value ?: return
-        val persistedDraftChoices = draftChoices
-            .filterKeys { proposalId -> round.proposals.any { proposal -> proposal.id == proposalId } }
+        val persistedDraftChoices =
+            draftChoices
+                .filterKeys { proposalId -> round.proposals.any { proposal -> proposal.id == proposalId } }
         if (persistedDraftChoices.isNotEmpty()) {
             votingRecoveryRepository.storeDraftChoices(accountUuid, args.roundIdHex, persistedDraftChoices)
         }
@@ -451,10 +486,11 @@ class VoteConfirmSubmissionVM(
             val accountUuid = selectedAccountUuid.value ?: return@launch
             val recovery = votingRecoveryRepository.get(accountUuid, args.roundIdHex)
             val persistedDraftChoices = recovery?.draftChoices?.ifEmpty { draftChoices } ?: draftChoices
-            val submittedChoices = recovery
-                ?.proposalSelections
-                ?.mapValues { (_, selection) -> selection.choiceId }
-                .orEmpty()
+            val submittedChoices =
+                recovery
+                    ?.proposalSelections
+                    ?.mapValues { (_, selection) -> selection.choiceId }
+                    .orEmpty()
             val persistedChoices = persistedDraftChoices + submittedChoices
             if (persistedChoices.isNotEmpty()) {
                 votingSessionStore.restoreDraftVotes(accountUuid, args.roundIdHex, persistedChoices)
@@ -517,25 +553,30 @@ class VoteConfirmSubmissionVM(
         ballotDivisorZatoshi: Long?,
     ) =
         when (status) {
-            is VoteSubmissionStatus.LocalAuthFailed ->
+            is VoteSubmissionStatus.LocalAuthFailed -> {
                 status.error.toErrorMessageOrDefault(stringRes(R.string.vote_confirm_error_authentication))
+            }
 
             // Mirrors iOS's `delegationProofFailed` reducer: surface the snapshot
             // weight against the ballot divisor when the SDK refuses delegation
             // because the user's weight does not yield a single ballot.
-            is VoteSubmissionStatus.ProtocolAuthFailed ->
+            is VoteSubmissionStatus.ProtocolAuthFailed -> {
                 status.error.toErrorMessageOrDefault(
                     default = stringRes(R.string.vote_confirm_error_auth),
                     eligibleWeightZatoshi = eligibleWeightZatoshi,
                     ballotDivisorZatoshi = ballotDivisorZatoshi
                 )
+            }
 
-            is VoteSubmissionStatus.SubmissionFailed ->
+            is VoteSubmissionStatus.SubmissionFailed -> {
                 status.error.toErrorMessageOrDefault(
                     status.defaultError ?: stringRes(R.string.vote_confirm_error_submission)
                 )
+            }
 
-            else -> stringRes(R.string.vote_error_something_went_wrong)
+            else -> {
+                stringRes(R.string.vote_error_something_went_wrong)
+            }
         }
 
     private fun setFailureStatus(status: VoteSubmissionStatus) {

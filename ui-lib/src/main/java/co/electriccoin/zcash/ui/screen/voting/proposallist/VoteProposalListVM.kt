@@ -12,13 +12,12 @@ import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
-import co.electriccoin.zcash.ui.common.model.voting.VoteIneligibilityReason as ModelVoteIneligibilityReason
 import co.electriccoin.zcash.ui.common.model.voting.voteBadgeInfo
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
-import co.electriccoin.zcash.ui.common.repository.effectiveChoices
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
+import co.electriccoin.zcash.ui.common.repository.effectiveChoices
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.PrepareVotingRoundUseCase
@@ -49,6 +48,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
+import co.electriccoin.zcash.ui.common.model.voting.VoteIneligibilityReason as ModelVoteIneligibilityReason
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class VoteProposalListVM(
@@ -79,20 +79,22 @@ class VoteProposalListVM(
      * For non-VOTING modes (VOTED / REVIEW) prep is skipped (see [prepareForVoting]),
      * so the gate starts in [PreparationGate.READY] and content renders immediately.
      */
-    private val preparationGate = MutableStateFlow(
-        if (args.mode == VoteProposalListMode.VOTING && args.roundId.isNotEmpty()) {
-            PreparationGate.PREPARING
-        } else {
-            PreparationGate.READY
-        }
-    )
+    private val preparationGate =
+        MutableStateFlow(
+            if (args.mode == VoteProposalListMode.VOTING && args.roundId.isNotEmpty()) {
+                PreparationGate.PREPARING
+            } else {
+                PreparationGate.READY
+            }
+        )
 
     init {
         prepareForVoting()
     }
 
     private val selectedAccountUuid: Flow<String> =
-        observeSelectedWalletAccount.require()
+        observeSelectedWalletAccount
+            .require()
             .map { account -> account.sdkAccount.accountUuid.toVotingAccountScopeId() }
 
     private val recoveryFlow: Flow<VotingRecoverySnapshot?> =
@@ -131,11 +133,12 @@ class VoteProposalListVM(
             // is PREPARING, fall through to the `content = null` shimmer so the user
             // never sees the proposal list flash before being routed to WalletSyncing
             // or Ineligible.
-            val gatedContent = when {
-                gate == PreparationGate.READY -> content
-                errorSheet != null -> content
-                else -> null
-            }
+            val gatedContent =
+                when {
+                    gate == PreparationGate.READY -> content
+                    errorSheet != null -> content
+                    else -> null
+                }
             LceState(
                 content = gatedContent,
                 isLoading = gatedContent == null,
@@ -159,35 +162,38 @@ class VoteProposalListVM(
         // until the next prep attempt resolves; without this, the list would render
         // while the retry is in flight.
         preparationGate.value = PreparationGate.PREPARING
-        preparationJob = viewModelScope.launch {
-            runCatching {
-                prepareVotingRound(args.roundId)
-            }.onSuccess { preparation ->
-                when (preparation) {
-                    is VotingRoundPreparationResult.WalletSyncing -> {
-                        navigationRouter.forward(VoteWalletSyncingArgs(roundId = args.roundId))
-                        preparationGate.value = PreparationGate.READY
-                    }
+        preparationJob =
+            viewModelScope.launch {
+                runCatching {
+                    prepareVotingRound(args.roundId)
+                }.onSuccess { preparation ->
+                    when (preparation) {
+                        is VotingRoundPreparationResult.WalletSyncing -> {
+                            navigationRouter.forward(VoteWalletSyncingArgs(roundId = args.roundId))
+                            preparationGate.value = PreparationGate.READY
+                        }
 
-                    is VotingRoundPreparationResult.Ineligible -> {
-                        navigationRouter.forward(
-                            VoteIneligibleArgs(
-                                reason = preparation.toIneligibilityReason(),
-                                snapshotHeight = snapshotHeightFor(args.roundId),
-                                eligibleWeightZatoshi = preparation.eligibleWeight
+                        is VotingRoundPreparationResult.Ineligible -> {
+                            navigationRouter.forward(
+                                VoteIneligibleArgs(
+                                    reason = preparation.toIneligibilityReason(),
+                                    snapshotHeight = snapshotHeightFor(args.roundId),
+                                    eligibleWeightZatoshi = preparation.eligibleWeight
+                                )
                             )
-                        )
-                        preparationGate.value = PreparationGate.READY
-                    }
+                            preparationGate.value = PreparationGate.READY
+                        }
 
-                    is VotingRoundPreparationResult.Ready -> preparationGate.value = PreparationGate.READY
+                        is VotingRoundPreparationResult.Ready -> {
+                            preparationGate.value = PreparationGate.READY
+                        }
+                    }
+                }.onFailure { throwable ->
+                    Log.e("VoteProposalList", "Failed to prepare voting round ${args.roundId}", throwable)
+                    preparationErrorSheet.value = buildPreparationErrorSheet(throwable)
+                    preparationGate.value = PreparationGate.READY
                 }
-            }.onFailure { throwable ->
-                Log.e("VoteProposalList", "Failed to prepare voting round ${args.roundId}", throwable)
-                preparationErrorSheet.value = buildPreparationErrorSheet(throwable)
-                preparationGate.value = PreparationGate.READY
             }
-        }
     }
 
     private fun buildPreparationErrorSheet(throwable: Throwable): ZashiConfirmationState {
@@ -195,23 +201,26 @@ class VoteProposalListVM(
         return ZashiConfirmationState(
             icon = R.drawable.ic_reset_zashi_warning,
             title = stringRes(R.string.vote_error_voting_unavailable_title),
-            message = rawMessage
-                .takeIf { it.isNotBlank() }
-                ?.let(VotingErrorMapper::toUserFriendlyMessage)
-                ?: stringRes(R.string.vote_error_voting_unavailable_message),
-            primaryAction = ButtonState(
-                text = stringRes(R.string.vote_try_again),
-                style = ButtonStyle.PRIMARY,
-                onClick = {
-                    preparationErrorSheet.value = null
-                    prepareForVoting()
-                }
-            ),
-            secondaryAction = ButtonState(
-                text = stringRes(R.string.vote_error_go_back),
-                style = ButtonStyle.TERTIARY,
-                onClick = ::goBackFromPreparationErrorSheet
-            ),
+            message =
+                rawMessage
+                    .takeIf { it.isNotBlank() }
+                    ?.let(VotingErrorMapper::toUserFriendlyMessage)
+                    ?: stringRes(R.string.vote_error_voting_unavailable_message),
+            primaryAction =
+                ButtonState(
+                    text = stringRes(R.string.vote_try_again),
+                    style = ButtonStyle.PRIMARY,
+                    onClick = {
+                        preparationErrorSheet.value = null
+                        prepareForVoting()
+                    }
+                ),
+            secondaryAction =
+                ButtonState(
+                    text = stringRes(R.string.vote_error_go_back),
+                    style = ButtonStyle.TERTIARY,
+                    onClick = ::goBackFromPreparationErrorSheet
+                ),
             onBack = ::dismissPreparationErrorSheet
         )
     }
@@ -240,11 +249,11 @@ class VoteProposalListVM(
     ): VoteProposalListState {
         val mode = args.mode
         val proposals = round.proposals
-        val displayedChoices = when (mode) {
-            VoteProposalListMode.VOTED -> recovery?.effectiveChoices(proposals, drafts) ?: drafts
-
-            else -> drafts
-        }
+        val displayedChoices =
+            when (mode) {
+                VoteProposalListMode.VOTED -> recovery?.effectiveChoices(proposals, drafts) ?: drafts
+                else -> drafts
+            }
         val votedCount = proposals.count { displayedChoices.containsKey(it.id) }
 
         return VoteProposalListState(
@@ -253,11 +262,12 @@ class VoteProposalListVM(
             snapshotHeight = round.snapshotHeight.takeIf { it > 0 },
             votedCount = votedCount,
             totalCount = proposals.size,
-            metaLine = when (mode) {
-                VoteProposalListMode.VOTING -> buildMetaLine(round, recovery)
-                VoteProposalListMode.VOTED -> buildVotedMetaLine(round, recovery)
-                VoteProposalListMode.REVIEW -> null
-            },
+            metaLine =
+                when (mode) {
+                    VoteProposalListMode.VOTING -> buildMetaLine(round, recovery)
+                    VoteProposalListMode.VOTED -> buildVotedMetaLine(round, recovery)
+                    VoteProposalListMode.REVIEW -> null
+                },
             description = round.description.takeIf { it.isNotEmpty() }?.let(::stringRes),
             discussionUrl = round.discussionUrl,
             onViewMore =
@@ -346,30 +356,36 @@ class VoteProposalListVM(
         val firstUnanswered = proposals.firstOrNull { !drafts.containsKey(it.id) }
 
         return when {
-            draftCount == 0 -> ButtonState(
-                text = stringRes(R.string.vote_proposal_list_start_voting),
-                style = ButtonStyle.PRIMARY,
-                onClick = { onProposalTapped(roundId, proposals.first().id) }
-            )
+            draftCount == 0 -> {
+                ButtonState(
+                    text = stringRes(R.string.vote_proposal_list_start_voting),
+                    style = ButtonStyle.PRIMARY,
+                    onClick = { onProposalTapped(roundId, proposals.first().id) }
+                )
+            }
 
-            draftCount < proposals.size -> ButtonState(
-                text = stringRes(R.string.vote_proposal_list_continue_voting),
-                style = ButtonStyle.PRIMARY,
-                onClick = { firstUnanswered?.let { onProposalTapped(roundId, it.id) } }
-            )
+            draftCount < proposals.size -> {
+                ButtonState(
+                    text = stringRes(R.string.vote_proposal_list_continue_voting),
+                    style = ButtonStyle.PRIMARY,
+                    onClick = { firstUnanswered?.let { onProposalTapped(roundId, it.id) } }
+                )
+            }
 
-            else -> ButtonState(
-                text = stringRes(R.string.vote_proposal_list_review_submit),
-                style = ButtonStyle.PRIMARY,
-                onClick = {
-                    navigationRouter.forward(
-                        VoteProposalListArgs(
-                            roundId = roundId,
-                            mode = VoteProposalListMode.REVIEW
+            else -> {
+                ButtonState(
+                    text = stringRes(R.string.vote_proposal_list_review_submit),
+                    style = ButtonStyle.PRIMARY,
+                    onClick = {
+                        navigationRouter.forward(
+                            VoteProposalListArgs(
+                                roundId = roundId,
+                                mode = VoteProposalListMode.REVIEW
+                            )
                         )
-                    )
-                }
-            )
+                    }
+                )
+            }
         }
     }
 
@@ -379,9 +395,10 @@ class VoteProposalListVM(
     ): VoteProposalMetaLineState {
         val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault())
         val dateLabel = stringRes(R.string.vote_proposal_list_ends, formatter.format(round.votingEnd))
-        val votingPowerLabel = recovery?.eligibleWeight?.let { weight ->
-            stringRes(R.string.vote_proposal_list_voting_power, weight.toVotingWeightLabel())
-        }
+        val votingPowerLabel =
+            recovery?.eligibleWeight?.let { weight ->
+                stringRes(R.string.vote_proposal_list_voting_power, weight.toVotingWeightLabel())
+            }
 
         return VoteProposalMetaLineState(
             leading = combineMetaLine(dateLabel, votingPowerLabel),
@@ -395,12 +412,14 @@ class VoteProposalListVM(
     ): VoteProposalMetaLineState? {
         val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault())
         val votedAt = recovery?.submittedAtEpochSeconds?.let(Instant::ofEpochSecond)
-        val votedLabel = votedAt?.let { instant ->
-            stringRes(R.string.vote_proposal_list_voted, formatter.format(instant))
-        }
-        val votingPowerLabel = recovery?.eligibleWeight?.let { weight ->
-            stringRes(R.string.vote_proposal_list_voting_power, weight.toVotingWeightLabel())
-        }
+        val votedLabel =
+            votedAt?.let { instant ->
+                stringRes(R.string.vote_proposal_list_voted, formatter.format(instant))
+            }
+        val votingPowerLabel =
+            recovery?.eligibleWeight?.let { weight ->
+                stringRes(R.string.vote_proposal_list_voting_power, weight.toVotingWeightLabel())
+            }
         val dateLabel = votedLabel ?: stringRes(R.string.vote_proposal_list_ends, formatter.format(round.votingEnd))
         val trailing = buildTimeLeftLabel(round)
 

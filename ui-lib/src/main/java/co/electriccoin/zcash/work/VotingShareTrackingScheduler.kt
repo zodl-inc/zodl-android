@@ -36,10 +36,12 @@ class VotingShareTrackingScheduler(
             roundId: String,
             delayMillis: Long
         ): OneTimeWorkRequest {
-            val constraints = Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .setRequiresStorageNotLow(true)
-                .build()
+            val constraints =
+                Constraints
+                    .Builder()
+                    .setRequiredNetworkType(NetworkType.CONNECTED)
+                    .setRequiresStorageNotLow(true)
+                    .build()
 
             return OneTimeWorkRequestBuilder<VotingShareTrackingWorker>()
                 .setConstraints(constraints)

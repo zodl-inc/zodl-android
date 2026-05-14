@@ -14,36 +14,38 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.runBlocking
 import java.lang.reflect.Proxy
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.runBlocking
 
 class KtorVotingApiProviderTest {
     @Test
-    fun validateConfigSourceOnlyFetchesStaticConfig() = runBlocking {
-        val requests = mutableListOf<String>()
-        val provider = newProvider(requests)
+    fun validateConfigSourceOnlyFetchesStaticConfig() =
+        runBlocking {
+            val requests = mutableListOf<String>()
+            val provider = newProvider(requests)
 
-        provider.validateConfigSource(PinnedConfigSource.parse(STATIC_CONFIG_URL))
+            provider.validateConfigSource(PinnedConfigSource.parse(STATIC_CONFIG_URL))
 
-        assertEquals(listOf("/static-voting-config.json"), requests)
-    }
-
-    @Test
-    fun fetchServiceConfigStillFetchesAndValidatesDynamicConfig() = runBlocking {
-        val requests = mutableListOf<String>()
-        val provider = newProvider(requests)
-
-        assertFailsWith<VotingConfigException> {
-            provider.fetchServiceConfig()
+            assertEquals(listOf("/static-voting-config.json"), requests)
         }
 
-        assertEquals(listOf("/static-voting-config.json", "/dynamic-voting-config.json"), requests)
-    }
+    @Test
+    fun fetchServiceConfigStillFetchesAndValidatesDynamicConfig() =
+        runBlocking {
+            val requests = mutableListOf<String>()
+            val provider = newProvider(requests)
+
+            assertFailsWith<VotingConfigException> {
+                provider.fetchServiceConfig()
+            }
+
+            assertEquals(listOf("/static-voting-config.json", "/dynamic-voting-config.json"), requests)
+        }
 
     private fun newProvider(requests: MutableList<String>) =
         KtorVotingApiProvider(
@@ -61,21 +63,24 @@ class KtorVotingApiProviderTest {
                 MockEngine { request ->
                     requests += request.url.encodedPath
                     when (request.url.encodedPath) {
-                        "/static-voting-config.json" ->
+                        "/static-voting-config.json" -> {
                             respond(
                                 content = staticConfigJson(dynamicConfigUrl = DYNAMIC_CONFIG_URL),
                                 status = HttpStatusCode.OK,
                                 headers = headersOf(HttpHeaders.ContentType, "application/json")
                             )
+                        }
 
-                        "/dynamic-voting-config.json" ->
+                        "/dynamic-voting-config.json" -> {
                             respond(
                                 content = "temporary dynamic config failure",
                                 status = HttpStatusCode.InternalServerError
                             )
+                        }
 
-                        else ->
+                        else -> {
                             respond(content = "not found", status = HttpStatusCode.NotFound)
+                        }
                     }
                 }
             ) {
@@ -116,16 +121,18 @@ class KtorVotingApiProviderTest {
     private companion object {
         const val STATIC_CONFIG_URL = "https://example.com/static-voting-config.json"
         const val DYNAMIC_CONFIG_URL = "https://example.com/dynamic-voting-config.json"
-        val TEST_CHAIN_CONFIG_STATE = VotingChainConfigState(
-            selected = VotingChainConfigSelection.Custom("test-chain"),
-            customChains = listOf(
-                VotingCustomChainConfig(
-                    id = "test-chain",
-                    name = "Test Chain",
-                    pinnedSource = STATIC_CONFIG_URL
-                )
+        val TEST_CHAIN_CONFIG_STATE =
+            VotingChainConfigState(
+                selected = VotingChainConfigSelection.Custom("test-chain"),
+                customChains =
+                    listOf(
+                        VotingCustomChainConfig(
+                            id = "test-chain",
+                            name = "Test Chain",
+                            pinnedSource = STATIC_CONFIG_URL
+                        )
+                    )
             )
-        )
     }
 }
 

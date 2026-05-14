@@ -18,15 +18,19 @@ class VotingShareTrackingWorker(
     private val trackVotingShares: TrackVotingSharesUseCase by inject()
 
     override suspend fun doWork(): Result {
-        val roundId = inputData.getString(VotingShareTrackingScheduler.INPUT_ROUND_ID)
-            ?: return Result.failure()
+        val roundId =
+            inputData.getString(VotingShareTrackingScheduler.INPUT_ROUND_ID)
+                ?: return Result.failure()
 
         return runCatching {
             trackVotingShares(roundId)
         }.fold(
             onSuccess = { outcome ->
                 when (outcome) {
-                    VotingShareTrackingResult.Completed -> Result.success()
+                    VotingShareTrackingResult.Completed -> {
+                        Result.success()
+                    }
+
                     is VotingShareTrackingResult.Pending -> {
                         VotingShareTrackingScheduler(applicationContext)
                             .schedule(roundId, outcome.delayMillis)

@@ -61,22 +61,26 @@ fun VoteProposalListView(state: VoteProposalListState) {
         topBar = { AppBar(state) },
         content = { padding ->
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .scaffoldPadding(padding)
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .scaffoldPadding(padding)
             ) {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     item {
                         VerticalSpacer(24.dp)
                         when (state.mode) {
                             VoteProposalListMode.VOTING,
-                            VoteProposalListMode.VOTED ->
+                            VoteProposalListMode.VOTED -> {
                                 VotingHeader(
                                     state = state,
                                     onViewMore = state.onViewMore ?: {}
                                 )
+                            }
 
-                            VoteProposalListMode.REVIEW -> ReviewHeader()
+                            VoteProposalListMode.REVIEW -> {
+                                ReviewHeader()
+                            }
                         }
                         VerticalSpacer(24.dp)
                     }
@@ -84,9 +88,10 @@ fun VoteProposalListView(state: VoteProposalListState) {
                     items(state.proposals, key = { it.id }) { proposal ->
                         ProposalCard(
                             state = proposal,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
                         )
                         VerticalSpacer(16.dp)
                     }
@@ -98,25 +103,28 @@ fun VoteProposalListView(state: VoteProposalListState) {
 
                 state.ctaButton?.let { button ->
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(64.dp)
-                            .align(Alignment.BottomCenter)
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(
-                                        Color.Transparent,
-                                        ZashiColors.Surfaces.bgPrimary
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .height(64.dp)
+                                .align(Alignment.BottomCenter)
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors =
+                                            listOf(
+                                                Color.Transparent,
+                                                ZashiColors.Surfaces.bgPrimary
+                                            )
                                     )
                                 )
-                            )
                     )
                     ZashiButton(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.BottomCenter)
-                            .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
-                            .padding(bottom = ZashiDimensions.Spacing.spacingMd),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .align(Alignment.BottomCenter)
+                                .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
+                                .padding(bottom = ZashiDimensions.Spacing.spacingMd),
                         state = button
                     )
                 }
@@ -131,10 +139,11 @@ fun VoteProposalListLoadingView() {
         topBar = {
             ZashiSmallTopAppBar(
                 title = stringResource(R.string.vote_top_bar_title),
-                colors = ZcashTheme.colors.topAppBarColors orDark
-                    ZcashTheme.colors.topAppBarColors.copyColors(
-                        containerColor = Color.Transparent
-                    )
+                colors =
+                    ZcashTheme.colors.topAppBarColors orDark
+                        ZcashTheme.colors.topAppBarColors.copyColors(
+                            containerColor = Color.Transparent
+                        )
             )
         },
         content = { padding ->
@@ -157,9 +166,10 @@ private fun VotingHeader(
     onViewMore: () -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -189,9 +199,10 @@ private fun VotingHeader(
         VoteProgressBar(
             votedCount = state.votedCount,
             totalCount = state.totalCount,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(10.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(10.dp)
         )
 
         state.metaLine?.let { metaLine ->
@@ -273,9 +284,10 @@ private fun ViewMoreChip(onClick: () -> Unit) {
 @Composable
 private fun ReviewHeader() {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
     ) {
         Text(
             text = stringResource(R.string.vote_proposal_list_review_title),
@@ -356,9 +368,10 @@ private fun ProposalCard(
         tonalElevation = 0.dp,
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(ZashiDimensions.Spacing.spacingXl),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(ZashiDimensions.Spacing.spacingXl),
             verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacingLg)
         ) {
             Row(
@@ -445,9 +458,10 @@ private fun AppBar(state: VoteProposalListState) {
                 modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
             )
         },
-        colors = ZcashTheme.colors.topAppBarColors orDark
-            ZcashTheme.colors.topAppBarColors.copyColors(
-                containerColor = Color.Transparent
-            )
+        colors =
+            ZcashTheme.colors.topAppBarColors orDark
+                ZcashTheme.colors.topAppBarColors.copyColors(
+                    containerColor = Color.Transparent
+                )
     )
 }

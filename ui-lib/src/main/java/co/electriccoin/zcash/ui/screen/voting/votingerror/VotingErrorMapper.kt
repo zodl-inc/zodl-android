@@ -1,9 +1,9 @@
 package co.electriccoin.zcash.ui.screen.voting.votingerror
 
-import co.electriccoin.zcash.ui.R as UiR
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import java.util.Locale
+import co.electriccoin.zcash.ui.R as UiR
 
 object VotingErrorMapper {
     /**
@@ -40,82 +40,106 @@ object VotingErrorMapper {
         return when {
             lower.contains("no voting server accepted share") ||
                 lower.contains("no reachable vote servers") ||
-                lower.contains("all configured vote servers failed") ->
+                lower.contains("all configured vote servers failed") -> {
                 stringRes(UiR.string.vote_error_mapper_no_reachable_vote_servers)
+            }
 
-            lower.contains("nullifier") && lower.contains("spent") ->
+            lower.contains("nullifier") && lower.contains("spent") -> {
                 stringRes(UiR.string.vote_error_mapper_nullifier_spent)
+            }
 
-            lower.contains("vote round not found") ->
+            lower.contains("vote round not found") -> {
                 stringRes(UiR.string.vote_error_mapper_round_not_found)
+            }
 
-            lower.contains("round") && (lower.contains("not active") || lower.contains("inactive") || lower.contains("closed")) ->
+            lower.contains("round") && (lower.contains("not active") || lower.contains("inactive") || lower.contains("closed")) -> {
                 stringRes(UiR.string.vote_error_mapper_round_closed)
+            }
 
-            lower.contains("no active voting round") ->
+            lower.contains("no active voting round") -> {
                 stringRes(UiR.string.vote_error_mapper_round_closed)
+            }
 
             lower.contains("pir proof root mismatch") ||
-                lower.contains("no pir server matches") ->
+                lower.contains("no pir server matches") -> {
                 stringRes(UiR.string.vote_error_mapper_pir_snapshot_mismatch)
+            }
 
-            lower.contains("pir proof verification failed") ->
+            lower.contains("pir proof verification failed") -> {
                 stringRes(UiR.string.vote_error_mapper_pir_invalid_proof)
+            }
 
             lower.contains("pir server connect failed") ||
-                lower.contains("pir parallel fetch failed") ->
+                lower.contains("pir parallel fetch failed") -> {
                 stringRes(UiR.string.vote_error_mapper_pir_unavailable)
+            }
 
-            lower.contains("no pir endpoints are configured") ->
+            lower.contains("no pir endpoints are configured") -> {
                 stringRes(UiR.string.vote_error_mapper_pir_endpoints_missing)
+            }
 
-            lower.contains("commitment tree did not grow") ->
+            lower.contains("commitment tree did not grow") -> {
                 stringRes(UiR.string.vote_error_mapper_commitment_tree_not_grown)
+            }
 
-            lower.contains("invalid commitment tree anchor height") ->
+            lower.contains("invalid commitment tree anchor height") -> {
                 stringRes(UiR.string.vote_error_mapper_invalid_anchor_height)
+            }
 
-            lower.contains("invalid zero-knowledge proof") ->
+            lower.contains("invalid zero-knowledge proof") -> {
                 stringRes(UiR.string.vote_error_mapper_invalid_proof)
+            }
 
             lower.contains("delegation bundle build failed") ||
-                lower.contains("create_proof failed") ->
+                lower.contains("create_proof failed") -> {
                 stringRes(UiR.string.vote_error_mapper_proof_generation_failed)
+            }
 
             lower.contains("notreestate") ||
-                lower.contains("no tree state") ->
+                lower.contains("no tree state") -> {
                 stringRes(UiR.string.vote_error_mapper_no_tree_state)
+            }
 
-            lower.contains("http 5") ->
+            lower.contains("http 5") -> {
                 stringRes(UiR.string.vote_error_mapper_http_5)
+            }
 
             lower.contains("grpcstatus") ||
                 lower.contains("rpc timed out") ||
-                lower.contains("transport became inactive") ->
+                lower.contains("transport became inactive") -> {
                 stringRes(UiR.string.vote_error_mapper_lightwalletd_unavailable)
+            }
 
-            lower.contains("pir") || lower.contains("private information retrieval") ->
+            lower.contains("pir") || lower.contains("private information retrieval") -> {
                 stringRes(UiR.string.vote_error_mapper_pir_connection)
+            }
 
-            lower.contains("insufficient") && lower.contains("fund") ->
+            lower.contains("insufficient") && lower.contains("fund") -> {
                 stringRes(UiR.string.vote_error_mapper_insufficient_funds)
+            }
 
-            lower.contains("wallet") && lower.contains("sync") ->
+            lower.contains("wallet") && lower.contains("sync") -> {
                 stringRes(UiR.string.vote_error_mapper_wallet_sync)
+            }
 
-            lower.contains("network") || lower.contains("timeout") || lower.contains("connect") ->
+            lower.contains("network") || lower.contains("timeout") || lower.contains("connect") -> {
                 stringRes(UiR.string.vote_error_mapper_network)
+            }
 
-            lower.contains("proof") || lower.contains("zkp") ->
+            lower.contains("proof") || lower.contains("zkp") -> {
                 stringRes(UiR.string.vote_error_mapper_proof)
+            }
 
-            lower.contains("config") || lower.contains("version") ->
+            lower.contains("config") || lower.contains("version") -> {
                 stringRes(UiR.string.vote_error_mapper_version)
+            }
 
-            else -> rawMessage
-                .takeIf { it.isNotBlank() }
-                ?.let(::stringRes)
-                ?: stringRes(UiR.string.vote_error_mapper_unknown)
+            else -> {
+                rawMessage
+                    .takeIf { it.isNotBlank() }
+                    ?.let(::stringRes)
+                    ?: stringRes(UiR.string.vote_error_mapper_unknown)
+            }
         }
     }
 

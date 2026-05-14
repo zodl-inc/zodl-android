@@ -8,51 +8,53 @@ import com.keystone.module.DecodeResult
 import com.keystone.module.ZcashAccounts
 import com.sparrowwallet.hummingbird.UR
 import com.sparrowwallet.hummingbird.UREncoder
+import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlinx.coroutines.runBlocking
 
 class ParseVotingKeystonePCZTUseCaseTest {
     @Test
-    fun resetsQrDecoderWhenVotingBundleChanges() = runBlocking {
-        val keystoneSDKProvider = FakeKeystoneSDKProvider()
-        val useCase = ParseVotingKeystonePCZTUseCase(
-            votingKeystoneRepository = FakeVotingKeystoneRepository(),
-            keystoneSDKProvider = keystoneSDKProvider
-        )
+    fun resetsQrDecoderWhenVotingBundleChanges() =
+        runBlocking {
+            val keystoneSDKProvider = FakeKeystoneSDKProvider()
+            val useCase =
+                ParseVotingKeystonePCZTUseCase(
+                    votingKeystoneRepository = FakeVotingKeystoneRepository(),
+                    keystoneSDKProvider = keystoneSDKProvider
+                )
 
-        assertFailsWith<InvalidKeystonePCZTQRException> {
-            useCase(
-                accountUuid = ACCOUNT_UUID,
-                roundId = ROUND_ID,
-                bundleIndex = 0,
-                actionIndex = 10,
-                result = "first-bundle-frame-1"
-            )
-        }
-        assertFailsWith<InvalidKeystonePCZTQRException> {
-            useCase(
-                accountUuid = ACCOUNT_UUID,
-                roundId = ROUND_ID,
-                bundleIndex = 0,
-                actionIndex = 10,
-                result = "first-bundle-frame-2"
-            )
-        }
-        assertEquals(0, keystoneSDKProvider.resetCallCount)
+            assertFailsWith<InvalidKeystonePCZTQRException> {
+                useCase(
+                    accountUuid = ACCOUNT_UUID,
+                    roundId = ROUND_ID,
+                    bundleIndex = 0,
+                    actionIndex = 10,
+                    result = "first-bundle-frame-1"
+                )
+            }
+            assertFailsWith<InvalidKeystonePCZTQRException> {
+                useCase(
+                    accountUuid = ACCOUNT_UUID,
+                    roundId = ROUND_ID,
+                    bundleIndex = 0,
+                    actionIndex = 10,
+                    result = "first-bundle-frame-2"
+                )
+            }
+            assertEquals(0, keystoneSDKProvider.resetCallCount)
 
-        assertFailsWith<InvalidKeystonePCZTQRException> {
-            useCase(
-                accountUuid = ACCOUNT_UUID,
-                roundId = ROUND_ID,
-                bundleIndex = 1,
-                actionIndex = 11,
-                result = "second-bundle-frame-1"
-            )
+            assertFailsWith<InvalidKeystonePCZTQRException> {
+                useCase(
+                    accountUuid = ACCOUNT_UUID,
+                    roundId = ROUND_ID,
+                    bundleIndex = 1,
+                    actionIndex = 11,
+                    result = "second-bundle-frame-1"
+                )
+            }
+            assertEquals(1, keystoneSDKProvider.resetCallCount)
         }
-        assertEquals(1, keystoneSDKProvider.resetCallCount)
-    }
 }
 
 private class FakeKeystoneSDKProvider : KeystoneSDKProvider {

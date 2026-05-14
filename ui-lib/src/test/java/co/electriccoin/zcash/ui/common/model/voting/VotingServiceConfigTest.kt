@@ -12,9 +12,10 @@ class StaticVotingConfigTest {
     fun pinnedConfigSourceParseAcceptsChecksumAndStripsIt() {
         val hex = "0a".repeat(32)
 
-        val source = PinnedConfigSource.parse(
-            "https://example.com/static-voting-config.json?foo=bar&checksum=sha256:$hex&baz=qux"
-        )
+        val source =
+            PinnedConfigSource.parse(
+                "https://example.com/static-voting-config.json?foo=bar&checksum=sha256:$hex&baz=qux"
+            )
 
         assertEquals("https://example.com/static-voting-config.json?foo=bar&baz=qux", source.url)
         assertEquals(32, source.sha256?.size)
@@ -23,9 +24,10 @@ class StaticVotingConfigTest {
 
     @Test
     fun pinnedConfigSourceParseAcceptsMissingChecksum() {
-        val source = PinnedConfigSource.parse(
-            "https://example.com/static-voting-config.json?foo=bar"
-        )
+        val source =
+            PinnedConfigSource.parse(
+                "https://example.com/static-voting-config.json?foo=bar"
+            )
 
         assertEquals("https://example.com/static-voting-config.json?foo=bar", source.url)
         assertEquals(null, source.sha256)
@@ -35,10 +37,11 @@ class StaticVotingConfigTest {
     fun pinnedConfigSourceParseDoesNotDoubleEncodePreservedQuery() {
         val hex = "0a".repeat(32)
 
-        val source = PinnedConfigSource.parse(
-            "https://example.com/static-voting-config.json" +
-                "?redirect=https%3A%2F%2Fconfig.example%2Fa%3Fb%3Dc&checksum=sha256:$hex"
-        )
+        val source =
+            PinnedConfigSource.parse(
+                "https://example.com/static-voting-config.json" +
+                    "?redirect=https%3A%2F%2Fconfig.example%2Fa%3Fb%3Dc&checksum=sha256:$hex"
+            )
 
         assertEquals(
             "https://example.com/static-voting-config.json?redirect=https%3A%2F%2Fconfig.example%2Fa%3Fb%3Dc",
@@ -49,16 +52,17 @@ class StaticVotingConfigTest {
     @Test
     fun pinnedConfigSourceParseRejectsMalformedSources() {
         val validHex = "0a".repeat(32)
-        val cases = listOf(
-            "https://example.com/static-voting-config.json?checksum=sha512:$validHex",
-            "https://example.com/static-voting-config.json?checksum",
-            "https://example.com/static-voting-config.json?checksum=",
-            "https://example.com/static-voting-config.json?checksum=sha256:${"0A".repeat(32)}",
-            "https://example.com/static-voting-config.json?checksum=sha256:${"0g".repeat(32)}",
-            "https://example.com/static-voting-config.json?checksum=sha256:${"0a".repeat(31)}",
-            "http://example.com/static-voting-config.json?checksum=sha256:$validHex",
-            "not a url?checksum=sha256:$validHex"
-        )
+        val cases =
+            listOf(
+                "https://example.com/static-voting-config.json?checksum=sha512:$validHex",
+                "https://example.com/static-voting-config.json?checksum",
+                "https://example.com/static-voting-config.json?checksum=",
+                "https://example.com/static-voting-config.json?checksum=sha256:${"0A".repeat(32)}",
+                "https://example.com/static-voting-config.json?checksum=sha256:${"0g".repeat(32)}",
+                "https://example.com/static-voting-config.json?checksum=sha256:${"0a".repeat(31)}",
+                "http://example.com/static-voting-config.json?checksum=sha256:$validHex",
+                "not a url?checksum=sha256:$validHex"
+            )
 
         cases.forEach { raw ->
             assertFailsWith<VotingConfigException>(raw) {
@@ -101,8 +105,9 @@ class StaticVotingConfigTest {
 
     @Test
     fun staticConfigValidationRejectsShortTrustedKey() {
-        val data = makeStaticConfigJson(pubkey = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ==")
-            .toByteArray(Charsets.UTF_8)
+        val data =
+            makeStaticConfigJson(pubkey = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ==")
+                .toByteArray(Charsets.UTF_8)
         val sha256 = MessageDigest.getInstance("SHA-256").digest(data)
 
         assertFailsWith<VotingConfigException> {
@@ -132,15 +137,22 @@ class ZodlEndorsedRoundsResponseTest {
     @Test
     fun roundIdsHexDecodesBase64RoundIdsToLowercaseHex() {
         val roundIdBytes = ByteArray(32) { index -> index.toByte() }
-        val encodedRoundId = java.util.Base64.getEncoder().encodeToString(roundIdBytes)
+        val encodedRoundId =
+            java.util.Base64
+                .getEncoder()
+                .encodeToString(roundIdBytes)
 
-        val response = ZodlEndorsedRoundsResponse(
-            voteRoundIds = listOf(
-                encodedRoundId,
-                "not-base64",
-                java.util.Base64.getEncoder().encodeToString(ByteArray(31))
+        val response =
+            ZodlEndorsedRoundsResponse(
+                voteRoundIds =
+                    listOf(
+                        encodedRoundId,
+                        "not-base64",
+                        java.util.Base64
+                            .getEncoder()
+                            .encodeToString(ByteArray(31))
+                    )
             )
-        )
 
         assertEquals(
             setOf("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"),
@@ -152,30 +164,31 @@ class ZodlEndorsedRoundsResponseTest {
 class VotingServiceConfigTest {
     @Test
     fun decodeAcceptsSignedRoundsWithoutLegacyProposalFields() {
-        val config = VotingServiceConfig.decode(
-            """
-            {
-              "config_version": 1,
-              "vote_servers": [{"url": "https://vote.example.com", "label": "vote"}],
-              "pir_endpoints": [{"url": "https://pir.example.com", "label": "pir"}],
-              "supported_versions": {
-                "pir": ["v0"],
-                "vote_protocol": "v0",
-                "tally": "v0",
-                "vote_server": "v1"
-              },
-              "rounds": {
-                "$ROUND_ID": {
-                  "auth_version": 1,
-                  "ea_pk": "$EA_PK_BASE64",
-                  "signatures": [
-                    {"key_id": "valar-test", "alg": "ed25519", "sig": "$ADMIN_SIGNATURE_BASE64"}
-                  ]
+        val config =
+            VotingServiceConfig.decode(
+                """
+                {
+                  "config_version": 1,
+                  "vote_servers": [{"url": "https://vote.example.com", "label": "vote"}],
+                  "pir_endpoints": [{"url": "https://pir.example.com", "label": "pir"}],
+                  "supported_versions": {
+                    "pir": ["v0"],
+                    "vote_protocol": "v0",
+                    "tally": "v0",
+                    "vote_server": "v1"
+                  },
+                  "rounds": {
+                    "$ROUND_ID": {
+                      "auth_version": 1,
+                      "ea_pk": "$EA_PK_BASE64",
+                      "signatures": [
+                        {"key_id": "valar-test", "alg": "ed25519", "sig": "$ADMIN_SIGNATURE_BASE64"}
+                      ]
+                    }
+                  }
                 }
-              }
-            }
-            """.trimIndent()
-        )
+                """.trimIndent()
+            )
 
         config.validate()
 
@@ -186,12 +199,14 @@ class VotingServiceConfigTest {
     @Test
     fun serviceConfigDropsOnlyRoundsWithoutValidSignatures() {
         val invalidRoundId = "b".repeat(64)
-        val config = makeServiceConfig(
-            rounds = mapOf(
-                ROUND_ID to makeEntry(),
-                invalidRoundId to makeEntry(signature = ADMIN_SIGNATURE_BASE64.flipFirstBase64Byte())
+        val config =
+            makeServiceConfig(
+                rounds =
+                    mapOf(
+                        ROUND_ID to makeEntry(),
+                        invalidRoundId to makeEntry(signature = ADMIN_SIGNATURE_BASE64.flipFirstBase64Byte())
+                    )
             )
-        )
 
         val filtered = config.retainingRoundsWithValidSignatures(listOf(makeTrustedKey()))
 
@@ -263,7 +278,10 @@ class RoundAuthenticatorTest {
 
     @Test
     fun authenticateReportsInvalidSignaturesWhenEntryEaPkIsShort() {
-        val shortEaPk = java.util.Base64.getEncoder().encodeToString(ByteArray(31) { 1 })
+        val shortEaPk =
+            java.util.Base64
+                .getEncoder()
+                .encodeToString(ByteArray(31) { 1 })
 
         assertEquals(
             RoundAuthStatus.INVALID_SIGNATURES,
@@ -313,20 +331,22 @@ class RoundAuthenticatorTest {
 
     @Test
     fun verifyEntrySignaturesAcceptsWhenAnySignatureIsValid() {
-        val entry = makeEntry(
-            signatures = listOf(
-                VotingServiceConfig.Signature(
-                    keyId = "valar-test",
-                    alg = "ed25519",
-                    sig = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ=="
-                ),
-                VotingServiceConfig.Signature(
-                    keyId = "valar-test",
-                    alg = "ed25519",
-                    sig = ADMIN_SIGNATURE_BASE64
-                )
+        val entry =
+            makeEntry(
+                signatures =
+                    listOf(
+                        VotingServiceConfig.Signature(
+                            keyId = "valar-test",
+                            alg = "ed25519",
+                            sig = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQ=="
+                        ),
+                        VotingServiceConfig.Signature(
+                            keyId = "valar-test",
+                            alg = "ed25519",
+                            sig = ADMIN_SIGNATURE_BASE64
+                        )
+                    )
             )
-        )
 
         assertTrue(RoundAuthenticator.verifyEntrySignatures(entry, listOf(makeTrustedKey())))
     }
@@ -344,12 +364,13 @@ private fun makeServiceConfig(
     VotingServiceConfig(
         voteServers = listOf(VotingServiceConfig.ServiceEndpoint(url = "https://vote.example.com", label = "vote")),
         pirEndpoints = listOf(VotingServiceConfig.ServiceEndpoint(url = "https://pir.example.com", label = "pir")),
-        supportedVersions = VotingServiceConfig.SupportedVersions(
-            pir = listOf("v0"),
-            voteProtocol = "v0",
-            tally = "v0",
-            voteServer = "v1"
-        ),
+        supportedVersions =
+            VotingServiceConfig.SupportedVersions(
+                pir = listOf("v0"),
+                voteProtocol = "v0",
+                tally = "v0",
+                voteServer = "v1"
+            ),
         rounds = rounds
     )
 
@@ -359,13 +380,14 @@ private fun makeEntry(
     keyId: String = "valar-test",
     signatureAlg: String = "ed25519",
     signature: String = ADMIN_SIGNATURE_BASE64,
-    signatures: List<VotingServiceConfig.Signature> = listOf(
-        VotingServiceConfig.Signature(
-            keyId = keyId,
-            alg = signatureAlg,
-            sig = signature
+    signatures: List<VotingServiceConfig.Signature> =
+        listOf(
+            VotingServiceConfig.Signature(
+                keyId = keyId,
+                alg = signatureAlg,
+                sig = signature
+            )
         )
-    )
 ): VotingServiceConfig.RoundEntry =
     VotingServiceConfig.RoundEntry(
         authVersion = authVersion,
@@ -381,10 +403,14 @@ private fun makeTrustedKey(): StaticVotingConfig.TrustedKey =
     )
 
 private fun String.base64Bytes(): ByteArray =
-    java.util.Base64.getDecoder().decode(this)
+    java.util.Base64
+        .getDecoder()
+        .decode(this)
 
 private fun String.flipFirstBase64Byte(): String {
     val bytes = base64Bytes()
     bytes[0] = (bytes[0].toInt() xor 0xff).toByte()
-    return java.util.Base64.getEncoder().encodeToString(bytes)
+    return java.util.Base64
+        .getEncoder()
+        .encodeToString(bytes)
 }

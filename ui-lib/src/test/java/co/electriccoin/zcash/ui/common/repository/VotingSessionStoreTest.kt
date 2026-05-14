@@ -11,10 +11,11 @@ class VotingSessionStoreTest {
         store.restoreDraftVotes(
             accountUuid = "account",
             roundId = "round",
-            draftVotes = mapOf(
-                1 to 10,
-                2 to 20
-            )
+            draftVotes =
+                mapOf(
+                    1 to 10,
+                    2 to 20
+                )
         )
 
         store.clearDraftVote(

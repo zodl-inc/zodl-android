@@ -9,8 +9,8 @@ import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
-import co.electriccoin.zcash.ui.common.model.voting.displayColor
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
+import co.electriccoin.zcash.ui.common.model.voting.displayColor
 import co.electriccoin.zcash.ui.common.model.voting.optionsWithAbstain
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
@@ -31,9 +31,9 @@ import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListMode
 import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsArgs
 import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingArgs
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -51,7 +51,8 @@ class VoteProposalDetailVM(
     private val showUnansweredSheet = MutableStateFlow(false)
     private val unverifiedPollWarningSheet = MutableStateFlow<ZashiConfirmationState?>(null)
     private val selectedAccountUuid: Flow<String> =
-        observeSelectedWalletAccount.require()
+        observeSelectedWalletAccount
+            .require()
             .map { account -> account.sdkAccount.accountUuid.toVotingAccountScopeId() }
 
     val state: StateFlow<LceState<VoteProposalDetailState>> =
@@ -224,8 +225,9 @@ class VoteProposalDetailVM(
      */
     private fun persistDraftsForCurrentRound(accountUuid: String) {
         if (args.roundId.isEmpty()) return
-        val snapshot = votingSessionStore.state.value
-            .draftVotesFor(accountUuid = accountUuid, roundId = args.roundId)
+        val snapshot =
+            votingSessionStore.state.value
+                .draftVotesFor(accountUuid = accountUuid, roundId = args.roundId)
         viewModelScope.launch {
             try {
                 votingRecoveryRepository.storeDraftChoices(
@@ -247,11 +249,13 @@ class VoteProposalDetailVM(
 
     private fun navigateToRoundOutcome(round: VotingRound) {
         when (round.status) {
-            SessionStatus.TALLYING ->
+            SessionStatus.TALLYING -> {
                 navigationRouter.forward(VoteTallyingArgs(roundIdHex = round.id))
+            }
 
-            else ->
+            else -> {
                 navigationRouter.forward(VoteResultsArgs(roundIdHex = round.id))
+            }
         }
     }
 
@@ -274,16 +278,18 @@ class VoteProposalDetailVM(
             icon = R.drawable.ic_alert_circle,
             title = stringRes(R.string.vote_unverified_poll_title),
             message = stringRes(R.string.vote_unverified_poll_message),
-            primaryAction = ButtonState(
-                text = stringRes(R.string.vote_error_go_back),
-                style = ButtonStyle.PRIMARY,
-                onClick = ::dismissUnverifiedPollWarning
-            ),
-            secondaryAction = ButtonState(
-                text = stringRes(R.string.vote_proceed_anyway),
-                style = ButtonStyle.SECONDARY,
-                onClick = { proceedFromUnverifiedPollWarning(round) }
-            ),
+            primaryAction =
+                ButtonState(
+                    text = stringRes(R.string.vote_error_go_back),
+                    style = ButtonStyle.PRIMARY,
+                    onClick = ::dismissUnverifiedPollWarning
+                ),
+            secondaryAction =
+                ButtonState(
+                    text = stringRes(R.string.vote_proceed_anyway),
+                    style = ButtonStyle.SECONDARY,
+                    onClick = { proceedFromUnverifiedPollWarning(round) }
+                ),
             onBack = ::dismissUnverifiedPollWarning,
             style = ZashiConfirmationStyle.UNVERIFIED_POLL_WARNING
         )

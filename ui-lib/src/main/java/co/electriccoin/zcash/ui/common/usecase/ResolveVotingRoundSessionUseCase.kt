@@ -32,11 +32,12 @@ class ResolveVotingRoundSessionUseCase(
         val roundsResult = votingApiProvider.fetchAllRounds()
         votingApiRepository.storeRounds(roundsResult.rounds, roundsResult.sessionsByRoundId)
 
-        val session = roundsResult.sessionsByRoundId[normalizedRoundId]
-            ?: roundsResult.sessionsByRoundId.values.firstOrNull { session ->
-                session.voteRoundId.toHex().equals(normalizedRoundId, ignoreCase = true)
-            }
-            ?: error("Voting round $roundId is not present in authenticated rounds")
+        val session =
+            roundsResult.sessionsByRoundId[normalizedRoundId]
+                ?: roundsResult.sessionsByRoundId.values.firstOrNull { session ->
+                    session.voteRoundId.toHex().equals(normalizedRoundId, ignoreCase = true)
+                }
+                ?: error("Voting round $roundId is not present in authenticated rounds")
 
         return VotingRoundSessionContext(
             session = session,

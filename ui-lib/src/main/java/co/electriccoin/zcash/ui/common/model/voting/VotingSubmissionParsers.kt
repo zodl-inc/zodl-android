@@ -34,14 +34,18 @@ fun String.toVoteCommitmentBundle(): VoteCommitmentBundle {
         sharesHash = json.getString("shares_hash").hexStringToBytes(),
         shareBlindFactors = json.optJSONArray("share_blinds").toByteArrays(),
         shareComms = json.optJSONArray("share_comms").toByteArrays(),
-        rVpkBytes = json.optString("r_vpk_bytes")
-            .takeIf { it.isNotEmpty() }
-            ?.hexStringToBytes()
-            ?: ByteArray(0),
-        alphaV = json.optString("alpha_v")
-            .takeIf { it.isNotEmpty() }
-            ?.hexStringToBytes()
-            ?: ByteArray(0)
+        rVpkBytes =
+            json
+                .optString("r_vpk_bytes")
+                .takeIf { it.isNotEmpty() }
+                ?.hexStringToBytes()
+                ?: ByteArray(0),
+        alphaV =
+            json
+                .optString("alpha_v")
+                .takeIf { it.isNotEmpty() }
+                ?.hexStringToBytes()
+                ?: ByteArray(0)
     )
 }
 
@@ -59,10 +63,12 @@ fun String.toSharePayloads(): List<SharePayload> {
                     treePosition = payload.getLong("tree_position"),
                     allEncShares = payload.optJSONArray("all_enc_shares").toEncryptedShares(),
                     shareComms = payload.optJSONArray("share_comms").toByteArrays(),
-                    primaryBlind = payload.optString("primary_blind")
-                        .takeIf { it.isNotEmpty() }
-                        ?.hexStringToBytes()
-                        ?: ByteArray(0)
+                    primaryBlind =
+                        payload
+                            .optString("primary_blind")
+                            .takeIf { it.isNotEmpty() }
+                            ?.hexStringToBytes()
+                            ?: ByteArray(0)
                 )
             )
         }

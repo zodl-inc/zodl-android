@@ -69,9 +69,10 @@ fun VoteWalletHeaderIcons(
                     shape = CircleShape,
                     color = ZashiColors.Surfaces.bgSecondary,
                     border = BorderStroke(2.dp, ZashiColors.Surfaces.bgPrimary),
-                    modifier = Modifier
-                        .size(48.dp)
-                        .offset(x = 36.dp)
+                    modifier =
+                        Modifier
+                            .size(48.dp)
+                            .offset(x = 36.dp)
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_vote_thumbs_up),
@@ -85,19 +86,20 @@ fun VoteWalletHeaderIcons(
             VoteHeaderIconStyle.Confirmed -> {
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .offset(x = 36.dp)
-                        .clip(CircleShape)
-                        .background(
-                            brush = Brush.verticalGradient(
-                                listOf(
-                                    ZashiColors.Utility.SuccessGreen.utilitySuccess50,
-                                    ZashiColors.Utility.SuccessGreen.utilitySuccess100
-                                )
-                            )
-                        )
-                        .border(2.dp, ZashiColors.Surfaces.bgPrimary, CircleShape)
+                    modifier =
+                        Modifier
+                            .size(48.dp)
+                            .offset(x = 36.dp)
+                            .clip(CircleShape)
+                            .background(
+                                brush =
+                                    Brush.verticalGradient(
+                                        listOf(
+                                            ZashiColors.Utility.SuccessGreen.utilitySuccess50,
+                                            ZashiColors.Utility.SuccessGreen.utilitySuccess100
+                                        )
+                                    )
+                            ).border(2.dp, ZashiColors.Surfaces.bgPrimary, CircleShape)
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_vote_check_verified_solid),

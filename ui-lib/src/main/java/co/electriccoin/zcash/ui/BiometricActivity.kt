@@ -74,5 +74,6 @@ internal fun Int.toBiometricResult(requestCode: String): BiometricResult =
         BiometricPrompt.ERROR_CANCELED,
         BiometricPrompt.ERROR_NEGATIVE_BUTTON,
         BiometricPrompt.ERROR_USER_CANCELED -> BiometricResult.Cancelled(requestCode)
+
         else -> BiometricResult.Failure(requestCode)
     }

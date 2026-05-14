@@ -14,15 +14,16 @@ class RefreshVotingRoundsUseCase(
         votingApiProvider.fetchServiceConfig()
         val roundsResult = votingApiProvider.fetchAllRounds()
         votingApiRepository.storeRounds(roundsResult.rounds, roundsResult.sessionsByRoundId)
-        val endorsedRoundIds = try {
-            votingApiProvider.fetchZodlEndorsedRoundIds()
-        } catch (exception: Exception) {
-            if (exception is CancellationException) {
-                throw exception
+        val endorsedRoundIds =
+            try {
+                votingApiProvider.fetchZodlEndorsedRoundIds()
+            } catch (exception: Exception) {
+                if (exception is CancellationException) {
+                    throw exception
+                }
+                logEndorsementFailure(exception)
+                emptySet()
             }
-            logEndorsementFailure(exception)
-            emptySet()
-        }
         votingApiRepository.storeZodlEndorsedRoundIds(endorsedRoundIds)
     }
 }

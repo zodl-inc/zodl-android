@@ -8,53 +8,57 @@ import co.electriccoin.zcash.ui.common.repository.BiometricResult
 import co.electriccoin.zcash.ui.common.repository.BiometricsCancelledException
 import co.electriccoin.zcash.ui.common.repository.BiometricsFailureException
 import co.electriccoin.zcash.ui.design.util.StringResource
+import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlinx.coroutines.runBlocking
 
 class AuthorizeVotingSubmissionUseCaseTest {
     @Test
-    fun nonKeystoneSubmissionRequestsDeviceAuthentication() = runBlocking {
-        val biometricRepository = FakeBiometricRepository()
+    fun nonKeystoneSubmissionRequestsDeviceAuthentication() =
+        runBlocking {
+            val biometricRepository = FakeBiometricRepository()
 
-        val result = AuthorizeVotingSubmissionUseCase(biometricRepository)(isKeystone = false)
+            val result = AuthorizeVotingSubmissionUseCase(biometricRepository)(isKeystone = false)
 
-        assertEquals(VotingSubmissionAuthorizationResult.Authorized, result)
-        val request = requireNotNull(biometricRepository.requests.single())
-        val message = assertIs<StringResource.ByResource>(request.message)
-        assertEquals(R.string.authentication_system_ui_subtitle, message.resource)
-        val useCaseName = assertIs<StringResource.ByResource>(message.args.single())
-        assertEquals(R.string.authentication_use_case_vote_submission, useCaseName.resource)
-    }
-
-    @Test
-    fun keystoneSubmissionDoesNotRequestDeviceAuthentication() = runBlocking {
-        val biometricRepository = FakeBiometricRepository()
-
-        val result = AuthorizeVotingSubmissionUseCase(biometricRepository)(isKeystone = true)
-
-        assertEquals(VotingSubmissionAuthorizationResult.Authorized, result)
-        assertEquals(emptyList(), biometricRepository.requests)
-    }
+            assertEquals(VotingSubmissionAuthorizationResult.Authorized, result)
+            val request = requireNotNull(biometricRepository.requests.single())
+            val message = assertIs<StringResource.ByResource>(request.message)
+            assertEquals(R.string.authentication_system_ui_subtitle, message.resource)
+            val useCaseName = assertIs<StringResource.ByResource>(message.args.single())
+            assertEquals(R.string.authentication_use_case_vote_submission, useCaseName.resource)
+        }
 
     @Test
-    fun biometricCancellationReturnsCancelled() = runBlocking {
-        val biometricRepository = FakeBiometricRepository(result = FakeBiometricResult.Cancelled)
+    fun keystoneSubmissionDoesNotRequestDeviceAuthentication() =
+        runBlocking {
+            val biometricRepository = FakeBiometricRepository()
 
-        val result = AuthorizeVotingSubmissionUseCase(biometricRepository)(isKeystone = false)
+            val result = AuthorizeVotingSubmissionUseCase(biometricRepository)(isKeystone = true)
 
-        assertEquals(VotingSubmissionAuthorizationResult.Cancelled, result)
-    }
+            assertEquals(VotingSubmissionAuthorizationResult.Authorized, result)
+            assertEquals(emptyList(), biometricRepository.requests)
+        }
 
     @Test
-    fun biometricFailureReturnsFailed() = runBlocking {
-        val biometricRepository = FakeBiometricRepository(result = FakeBiometricResult.Failed)
+    fun biometricCancellationReturnsCancelled() =
+        runBlocking {
+            val biometricRepository = FakeBiometricRepository(result = FakeBiometricResult.Cancelled)
 
-        val result = AuthorizeVotingSubmissionUseCase(biometricRepository)(isKeystone = false)
+            val result = AuthorizeVotingSubmissionUseCase(biometricRepository)(isKeystone = false)
 
-        assertEquals(VotingSubmissionAuthorizationResult.Failed, result)
-    }
+            assertEquals(VotingSubmissionAuthorizationResult.Cancelled, result)
+        }
+
+    @Test
+    fun biometricFailureReturnsFailed() =
+        runBlocking {
+            val biometricRepository = FakeBiometricRepository(result = FakeBiometricResult.Failed)
+
+            val result = AuthorizeVotingSubmissionUseCase(biometricRepository)(isKeystone = false)
+
+            assertEquals(VotingSubmissionAuthorizationResult.Failed, result)
+        }
 }
 
 private class FakeBiometricRepository(

@@ -39,9 +39,10 @@ class VoteTallyingVM(
         viewModelScope.launch {
             repeat(MAX_POLL_ATTEMPTS) {
                 delay(POLL_INTERVAL_MS)
-                val round = runCatching {
-                    getAllRounds().firstOrNull { it.id == args.roundIdHex }
-                }.getOrNull() ?: return@launch
+                val round =
+                    runCatching {
+                        getAllRounds().firstOrNull { it.id == args.roundIdHex }
+                    }.getOrNull() ?: return@launch
 
                 if (round.status == SessionStatus.COMPLETED || round.status == SessionStatus.CANCELLED) {
                     navigationRouter.replace(VoteResultsArgs(roundIdHex = args.roundIdHex))

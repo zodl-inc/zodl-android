@@ -19,7 +19,9 @@ import kotlin.math.min
 sealed interface VotingShareTrackingResult {
     data object Completed : VotingShareTrackingResult
 
-    data class Pending(val delayMillis: Long) : VotingShareTrackingResult
+    data class Pending(
+        val delayMillis: Long
+    ) : VotingShareTrackingResult
 }
 
 class TrackVotingSharesUseCase(
@@ -33,27 +35,31 @@ class TrackVotingSharesUseCase(
         withContext(Dispatchers.IO) {
             val selectedAccount = getSelectedWalletAccount()
             val accountUuidString = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
-            val recovery = votingRecoveryRepository.get(accountUuidString, roundId)
-                ?: return@withContext VotingShareTrackingResult.Completed
-            val roundVoteServerUrls = recovery.voteServerUrls
-                .ifEmpty {
-                    runCatching {
-                        votingApiProvider.fetchServiceConfig()
-                            .voteServers
-                            .map { endpoint -> endpoint.url.trimEnd('/') }
-                            .distinct()
-                    }.getOrDefault(emptyList())
-                }
+            val recovery =
+                votingRecoveryRepository.get(accountUuidString, roundId)
+                    ?: return@withContext VotingShareTrackingResult.Completed
+            val roundVoteServerUrls =
+                recovery.voteServerUrls
+                    .ifEmpty {
+                        runCatching {
+                            votingApiProvider
+                                .fetchServiceConfig()
+                                .voteServers
+                                .map { endpoint -> endpoint.url.trimEnd('/') }
+                                .distinct()
+                        }.getOrDefault(emptyList())
+                    }
             if (roundVoteServerUrls.isEmpty()) {
                 return@withContext VotingShareTrackingResult.Pending(DEFAULT_DELAY_MILLIS)
             }
 
             val walletDbPath = synchronizerProvider.getVotingWalletDbPath()
-            val votingDbPath = File(walletDbPath)
-                .parentFile
-                ?.resolve("voting.sqlite3")
-                ?.absolutePath
-                ?: error("Unable to derive voting DB path from $walletDbPath")
+            val votingDbPath =
+                File(walletDbPath)
+                    .parentFile
+                    ?.resolve("voting.sqlite3")
+                    ?.absolutePath
+                    ?: error("Unable to derive voting DB path from $walletDbPath")
 
             val dbHandle = votingCryptoClient.openVotingDb(votingDbPath)
             check(dbHandle != 0L) { "Failed to open voting DB at $votingDbPath" }
@@ -71,32 +77,36 @@ class TrackVotingSharesUseCase(
                 shareDelegations
                     .filterNot { delegation -> delegation.confirmed }
                     .forEach { delegation ->
-                        val firstCheckAt = delegation.submitAt
-                            .takeIf { submitAt -> submitAt > 0L }
-                            ?.plus(CHECK_GRACE_SECONDS)
-                            ?: 0L
+                        val firstCheckAt =
+                            delegation.submitAt
+                                .takeIf { submitAt -> submitAt > 0L }
+                                ?.plus(CHECK_GRACE_SECONDS)
+                                ?: 0L
                         if (firstCheckAt > nowEpochSeconds) {
-                            nextDelayMillis = min(
-                                nextDelayMillis,
-                                ((firstCheckAt - nowEpochSeconds) * 1_000L).coerceAtLeast(MIN_DELAY_MILLIS)
-                            )
+                            nextDelayMillis =
+                                min(
+                                    nextDelayMillis,
+                                    ((firstCheckAt - nowEpochSeconds) * 1_000L).coerceAtLeast(MIN_DELAY_MILLIS)
+                                )
                             return@forEach
                         }
 
-                        val statusProbeUrls = delegation.sentToUrls
-                            .map { url -> url.trimEnd('/') }
-                            .filter(String::isNotEmpty)
-                            .ifEmpty { roundVoteServerUrls }
-                            .distinct()
-                        val isConfirmed = statusProbeUrls.any { helperBaseUrl ->
-                            runCatching {
-                                votingApiProvider.fetchShareStatus(
-                                    helperBaseUrl = helperBaseUrl,
-                                    roundIdHex = roundId,
-                                    nullifierHex = delegation.nullifier.toLowerHex()
-                                )
-                            }.getOrNull() == ShareConfirmationResult.CONFIRMED
-                        }
+                        val statusProbeUrls =
+                            delegation.sentToUrls
+                                .map { url -> url.trimEnd('/') }
+                                .filter(String::isNotEmpty)
+                                .ifEmpty { roundVoteServerUrls }
+                                .distinct()
+                        val isConfirmed =
+                            statusProbeUrls.any { helperBaseUrl ->
+                                runCatching {
+                                    votingApiProvider.fetchShareStatus(
+                                        helperBaseUrl = helperBaseUrl,
+                                        roundIdHex = roundId,
+                                        nullifierHex = delegation.nullifier.toLowerHex()
+                                    )
+                                }.getOrNull() == ShareConfirmationResult.CONFIRMED
+                            }
 
                         if (isConfirmed) {
                             votingCryptoClient.markShareConfirmed(
@@ -114,10 +124,11 @@ class TrackVotingSharesUseCase(
                             return@forEach
                         }
                         if (resubmitAt > nowEpochSeconds) {
-                            nextDelayMillis = min(
-                                nextDelayMillis,
-                                ((resubmitAt - nowEpochSeconds) * 1_000L).coerceAtLeast(MIN_DELAY_MILLIS)
-                            )
+                            nextDelayMillis =
+                                min(
+                                    nextDelayMillis,
+                                    ((resubmitAt - nowEpochSeconds) * 1_000L).coerceAtLeast(MIN_DELAY_MILLIS)
+                                )
                             return@forEach
                         }
                         if (recovery.voteEndEpochSeconds != null &&
@@ -126,39 +137,44 @@ class TrackVotingSharesUseCase(
                             return@forEach
                         }
 
-                        val proposalSelection = recovery.proposalSelections[delegation.proposalId]
-                            ?: return@forEach
-                        val commitmentRecord = votingCryptoClient.getCommitmentBundle(
-                            dbHandle = dbHandle,
-                            roundId = roundId,
-                            bundleIndex = delegation.bundleIndex,
-                            proposalId = delegation.proposalId
-                        ) ?: return@forEach
+                        val proposalSelection =
+                            recovery.proposalSelections[delegation.proposalId]
+                                ?: return@forEach
+                        val commitmentRecord =
+                            votingCryptoClient.getCommitmentBundle(
+                                dbHandle = dbHandle,
+                                roundId = roundId,
+                                bundleIndex = delegation.bundleIndex,
+                                proposalId = delegation.proposalId
+                            ) ?: return@forEach
                         if (commitmentRecord.vcTreePosition <= 0L) {
                             return@forEach
                         }
 
-                        val payload = votingCryptoClient.buildSharePayloadsJson(
-                            encSharesJson = commitmentRecord.bundle.encShares.toEncryptedSharesJson(),
-                            commitmentJson = commitmentRecord.bundleJson,
-                            voteDecision = proposalSelection.choiceId,
-                            numOptions = proposalSelection.numOptions,
-                            vcTreePosition = commitmentRecord.vcTreePosition,
-                            singleShareMode = recovery.singleShareMode == true
-                        ).toSharePayloads()
-                            .map { generated -> generated.withSubmitAt(0) }
-                            .firstOrNull { generated ->
-                                generated.encShare.shareIndex == delegation.shareIndex
-                            } ?: return@forEach
+                        val payload =
+                            votingCryptoClient
+                                .buildSharePayloadsJson(
+                                    encSharesJson = commitmentRecord.bundle.encShares.toEncryptedSharesJson(),
+                                    commitmentJson = commitmentRecord.bundleJson,
+                                    voteDecision = proposalSelection.choiceId,
+                                    numOptions = proposalSelection.numOptions,
+                                    vcTreePosition = commitmentRecord.vcTreePosition,
+                                    singleShareMode = recovery.singleShareMode == true
+                                ).toSharePayloads()
+                                .map { generated -> generated.withSubmitAt(0) }
+                                .firstOrNull { generated ->
+                                    generated.encShare.shareIndex == delegation.shareIndex
+                                } ?: return@forEach
 
-                        val acceptedServers = runCatching {
-                            votingApiProvider.resubmitShare(
-                                payload = payload,
-                                roundIdHex = roundId,
-                                candidateUrls = roundVoteServerUrls,
-                                excludeUrls = delegation.sentToUrls
-                            )
-                        }.getOrDefault(emptyList())
+                        val acceptedServers =
+                            runCatching {
+                                votingApiProvider.resubmitShare(
+                                    payload = payload,
+                                    roundIdHex = roundId,
+                                    candidateUrls = roundVoteServerUrls,
+                                    excludeUrls = delegation.sentToUrls
+                                )
+                            }.getOrDefault(emptyList())
 
                         if (acceptedServers.isNotEmpty()) {
                             votingCryptoClient.addSentServers(
@@ -173,8 +189,10 @@ class TrackVotingSharesUseCase(
                         }
                     }
 
-                val hasPendingShares = votingCryptoClient.getShareDelegations(dbHandle, roundId)
-                    .any { delegation -> !delegation.confirmed }
+                val hasPendingShares =
+                    votingCryptoClient
+                        .getShareDelegations(dbHandle, roundId)
+                        .any { delegation -> !delegation.confirmed }
                 if (hasPendingShares) {
                     VotingShareTrackingResult.Pending(nextDelayMillis.coerceAtLeast(MIN_DELAY_MILLIS))
                 } else {
@@ -203,13 +221,14 @@ private fun VotingShareDelegationRecord.resubmitAt(voteEndEpochSeconds: Long?): 
     }
 
     val remainingAtSubmit = (voteEndEpochSeconds - submitAt).coerceAtLeast(0L)
-    val overdueThreshold = max(
-        RESUBMIT_MIN_DELAY_SECONDS,
-        min(
-            RESUBMIT_MAX_DELAY_SECONDS,
-            remainingAtSubmit / 4
+    val overdueThreshold =
+        max(
+            RESUBMIT_MIN_DELAY_SECONDS,
+            min(
+                RESUBMIT_MAX_DELAY_SECONDS,
+                remainingAtSubmit / 4
+            )
         )
-    )
     return submitAt + overdueThreshold
 }
 

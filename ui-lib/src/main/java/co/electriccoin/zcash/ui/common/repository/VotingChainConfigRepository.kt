@@ -22,9 +22,13 @@ data class VotingChainConfigState(
     val selectedPinnedSource: String?
         get() =
             when (val selection = selected) {
-                VotingChainConfigSelection.Default -> null
-                is VotingChainConfigSelection.Custom ->
+                VotingChainConfigSelection.Default -> {
+                    null
+                }
+
+                is VotingChainConfigSelection.Custom -> {
                     customChains.firstOrNull { it.id == selection.id }?.pinnedSource
+                }
             }
 
     val isOnDefaultConfig: Boolean
@@ -34,7 +38,9 @@ data class VotingChainConfigState(
 sealed interface VotingChainConfigSelection {
     data object Default : VotingChainConfigSelection
 
-    data class Custom(val id: String) : VotingChainConfigSelection
+    data class Custom(
+        val id: String
+    ) : VotingChainConfigSelection
 }
 
 data class VotingCustomChainConfig(
@@ -109,11 +115,12 @@ class VotingChainConfigRepositoryImpl(
         name: String,
         pinnedSource: String
     ): VotingCustomChainConfig {
-        val chain = VotingCustomChainConfig(
-            id = UUID.randomUUID().toString(),
-            name = name,
-            pinnedSource = pinnedSource
-        )
+        val chain =
+            VotingCustomChainConfig(
+                id = UUID.randomUUID().toString(),
+                name = name,
+                pinnedSource = pinnedSource
+            )
         updateState { current ->
             current.copy(
                 selected = VotingChainConfigSelection.Custom(chain.id),
@@ -130,13 +137,14 @@ class VotingChainConfigRepositoryImpl(
     ) {
         updateState { current ->
             current.copy(
-                customChains = current.customChains.map { chain ->
-                    if (chain.id == id) {
-                        chain.copy(name = name, pinnedSource = pinnedSource)
-                    } else {
-                        chain
+                customChains =
+                    current.customChains.map { chain ->
+                        if (chain.id == id) {
+                            chain.copy(name = name, pinnedSource = pinnedSource)
+                        } else {
+                            chain
+                        }
                     }
-                }
             )
         }
     }
@@ -144,11 +152,12 @@ class VotingChainConfigRepositoryImpl(
     override suspend fun deleteCustom(id: String) {
         updateState { current ->
             val remaining = current.customChains.filterNot { chain -> chain.id == id }
-            val selected = if (current.selected == VotingChainConfigSelection.Custom(id)) {
-                VotingChainConfigSelection.Default
-            } else {
-                current.selected
-            }
+            val selected =
+                if (current.selected == VotingChainConfigSelection.Custom(id)) {
+                    VotingChainConfigSelection.Default
+                } else {
+                    current.selected
+                }
             current.copy(
                 selected = selected,
                 customChains = remaining
@@ -189,13 +198,17 @@ class VotingChainConfigRepositoryImpl(
 
 private fun VotingChainConfigState.withValidSelection(): VotingChainConfigState =
     when (val selection = selected) {
-        VotingChainConfigSelection.Default -> this
-        is VotingChainConfigSelection.Custom ->
+        VotingChainConfigSelection.Default -> {
+            this
+        }
+
+        is VotingChainConfigSelection.Custom -> {
             if (customChains.any { chain -> chain.id == selection.id }) {
                 this
             } else {
                 copy(selected = VotingChainConfigSelection.Default)
             }
+        }
     }
 
 private fun VotingChainConfigState.encode(): String =
@@ -203,16 +216,17 @@ private fun VotingChainConfigState.encode(): String =
         .put(
             "selected",
             when (val selection = selected) {
-                VotingChainConfigSelection.Default ->
+                VotingChainConfigSelection.Default -> {
                     JSONObject().put("type", "default")
+                }
 
-                is VotingChainConfigSelection.Custom ->
+                is VotingChainConfigSelection.Custom -> {
                     JSONObject()
                         .put("type", "custom")
                         .put("id", selection.id)
+                }
             }
-        )
-        .put(
+        ).put(
             "custom_chains",
             JSONArray(
                 customChains.map { chain ->
@@ -222,22 +236,29 @@ private fun VotingChainConfigState.encode(): String =
                         .put("pinned_source", chain.pinnedSource)
                 }
             )
-        )
-        .toString()
+        ).toString()
 
 private fun String.toVotingChainConfigState(): VotingChainConfigState {
     val json = runCatching { JSONObject(this) }.getOrNull() ?: return VotingChainConfigState()
-    val customChains = json.optJSONArray("custom_chains")
-        .toVotingCustomChainConfigs()
+    val customChains =
+        json
+            .optJSONArray("custom_chains")
+            .toVotingCustomChainConfigs()
     val selectedJson = json.optJSONObject("selected")
-    val selected = when (selectedJson?.optString("type")) {
-        "custom" -> selectedJson.optString("id")
-            .takeIf(String::isNotBlank)
-            ?.let(VotingChainConfigSelection::Custom)
-            ?: VotingChainConfigSelection.Default
+    val selected =
+        when (selectedJson?.optString("type")) {
+            "custom" -> {
+                selectedJson
+                    .optString("id")
+                    .takeIf(String::isNotBlank)
+                    ?.let(VotingChainConfigSelection::Custom)
+                    ?: VotingChainConfigSelection.Default
+            }
 
-        else -> VotingChainConfigSelection.Default
-    }
+            else -> {
+                VotingChainConfigSelection.Default
+            }
+        }
     return VotingChainConfigState(
         selected = selected,
         customChains = customChains

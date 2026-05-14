@@ -55,24 +55,27 @@ fun VoteConfirmSubmissionView(state: VoteConfirmSubmissionState) {
                         modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
                     )
                 },
-                colors = ZcashTheme.colors.topAppBarColors orDark
-                    ZcashTheme.colors.topAppBarColors.copyColors(
-                        containerColor = Color.Transparent
-                    )
+                colors =
+                    ZcashTheme.colors.topAppBarColors orDark
+                        ZcashTheme.colors.topAppBarColors.copyColors(
+                            containerColor = Color.Transparent
+                        )
             )
         },
         content = { padding ->
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .scaffoldPadding(padding)
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .scaffoldPadding(padding)
             ) {
                 Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
                 ) {
                     VerticalSpacer(24.dp)
                     HeaderSection(state)
@@ -107,10 +110,11 @@ fun VoteConfirmSubmissionLoadingView() {
                         modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
                     )
                 },
-                colors = ZcashTheme.colors.topAppBarColors orDark
-                    ZcashTheme.colors.topAppBarColors.copyColors(
-                        containerColor = Color.Transparent
-                    )
+                colors =
+                    ZcashTheme.colors.topAppBarColors orDark
+                        ZcashTheme.colors.topAppBarColors.copyColors(
+                            containerColor = Color.Transparent
+                        )
             )
         },
         content = { padding ->
@@ -158,44 +162,71 @@ private fun navTitle(status: VoteSubmissionStatus): StringResource =
         else -> stringRes(R.string.vote_confirm_nav_submission)
     }
 
-private fun headerTitle(status: VoteSubmissionStatus): StringResource = when (status) {
-    is VoteSubmissionStatus.Idle -> stringRes(R.string.vote_confirm_title_idle)
-    is VoteSubmissionStatus.LocalAuthorizing -> stringRes(R.string.vote_confirm_title_authorizing)
-    is VoteSubmissionStatus.Authorizing, is VoteSubmissionStatus.Submitting ->
-        stringRes(R.string.vote_confirm_title_submitting)
-    is VoteSubmissionStatus.Completed -> stringRes(R.string.vote_confirm_title_confirmed)
-    is VoteSubmissionStatus.LocalAuthFailed -> stringRes(R.string.vote_confirm_title_auth_failed)
-    is VoteSubmissionStatus.ProtocolAuthFailed -> stringRes(R.string.vote_error_authorization_failed_title)
-    is VoteSubmissionStatus.SubmissionFailed -> stringRes(R.string.vote_confirm_title_failed)
-}
-
-private fun headerSubtitle(state: VoteConfirmSubmissionState): StringResource = when (val status = state.status) {
-    is VoteSubmissionStatus.Idle ->
-        if (state.isKeystoneUser) {
-            stringRes(R.string.vote_confirm_subtitle_idle_keystone)
-        } else {
-            stringRes(R.string.vote_confirm_subtitle_idle)
+private fun headerTitle(status: VoteSubmissionStatus): StringResource =
+    when (status) {
+        is VoteSubmissionStatus.Idle -> {
+            stringRes(R.string.vote_confirm_title_idle)
         }
 
-    is VoteSubmissionStatus.LocalAuthorizing,
-    is VoteSubmissionStatus.Authorizing,
-    is VoteSubmissionStatus.Submitting ->
-        stringRes(R.string.vote_confirm_subtitle_in_progress)
+        is VoteSubmissionStatus.LocalAuthorizing -> {
+            stringRes(R.string.vote_confirm_title_authorizing)
+        }
 
-    is VoteSubmissionStatus.Completed ->
-        stringRes(R.string.vote_confirm_subtitle_completed)
+        is VoteSubmissionStatus.Authorizing, is VoteSubmissionStatus.Submitting -> {
+            stringRes(R.string.vote_confirm_title_submitting)
+        }
 
-    is VoteSubmissionStatus.LocalAuthFailed ->
-        status.error.toMessageOrDefault(stringRes(R.string.vote_confirm_error_authentication))
+        is VoteSubmissionStatus.Completed -> {
+            stringRes(R.string.vote_confirm_title_confirmed)
+        }
 
-    is VoteSubmissionStatus.ProtocolAuthFailed ->
-        status.error.toMessageOrDefault(stringRes(R.string.vote_confirm_error_auth))
+        is VoteSubmissionStatus.LocalAuthFailed -> {
+            stringRes(R.string.vote_confirm_title_auth_failed)
+        }
 
-    is VoteSubmissionStatus.SubmissionFailed ->
-        status.error.toMessageOrDefault(
-            status.defaultError ?: stringRes(R.string.vote_confirm_error_submission)
-        )
-}
+        is VoteSubmissionStatus.ProtocolAuthFailed -> {
+            stringRes(R.string.vote_error_authorization_failed_title)
+        }
+
+        is VoteSubmissionStatus.SubmissionFailed -> {
+            stringRes(R.string.vote_confirm_title_failed)
+        }
+    }
+
+private fun headerSubtitle(state: VoteConfirmSubmissionState): StringResource =
+    when (val status = state.status) {
+        is VoteSubmissionStatus.Idle -> {
+            if (state.isKeystoneUser) {
+                stringRes(R.string.vote_confirm_subtitle_idle_keystone)
+            } else {
+                stringRes(R.string.vote_confirm_subtitle_idle)
+            }
+        }
+
+        is VoteSubmissionStatus.LocalAuthorizing,
+        is VoteSubmissionStatus.Authorizing,
+        is VoteSubmissionStatus.Submitting -> {
+            stringRes(R.string.vote_confirm_subtitle_in_progress)
+        }
+
+        is VoteSubmissionStatus.Completed -> {
+            stringRes(R.string.vote_confirm_subtitle_completed)
+        }
+
+        is VoteSubmissionStatus.LocalAuthFailed -> {
+            status.error.toMessageOrDefault(stringRes(R.string.vote_confirm_error_authentication))
+        }
+
+        is VoteSubmissionStatus.ProtocolAuthFailed -> {
+            status.error.toMessageOrDefault(stringRes(R.string.vote_confirm_error_auth))
+        }
+
+        is VoteSubmissionStatus.SubmissionFailed -> {
+            status.error.toMessageOrDefault(
+                status.defaultError ?: stringRes(R.string.vote_confirm_error_submission)
+            )
+        }
+    }
 
 private fun String?.toMessageOrDefault(default: StringResource): StringResource =
     if (isNullOrBlank()) {
@@ -204,22 +235,24 @@ private fun String?.toMessageOrDefault(default: StringResource): StringResource 
         VotingErrorMapper.toUserFriendlyMessage(this)
     }
 
-private fun previewState(status: VoteSubmissionStatus) = VoteConfirmSubmissionState(
-    status = status,
-    roundTitle = stringRes("NU7 Sentiment Poll"),
-    votingWeightZEC = stringRes("1.2500 ZEC"),
-    hotkeyAddress = stringRes("zs1xk9...f7q2m"),
-    isKeystoneUser = false,
-    includesAuthorizationProgress = true,
-    memo = stringRes("I am authorizing this hotkey managed by my wallet to vote on NU7 Sentiment Poll with 1.2500 ZEC."),
-    ctaButton = ButtonState(
-        text = stringRes("Confirm"),
-        style = ButtonStyle.PRIMARY,
-        onClick = {}
-    ),
-    errorSheet = null,
-    onBack = {},
-)
+private fun previewState(status: VoteSubmissionStatus) =
+    VoteConfirmSubmissionState(
+        status = status,
+        roundTitle = stringRes("NU7 Sentiment Poll"),
+        votingWeightZEC = stringRes("1.2500 ZEC"),
+        hotkeyAddress = stringRes("zs1xk9...f7q2m"),
+        isKeystoneUser = false,
+        includesAuthorizationProgress = true,
+        memo = stringRes("I am authorizing this hotkey managed by my wallet to vote on NU7 Sentiment Poll with 1.2500 ZEC."),
+        ctaButton =
+            ButtonState(
+                text = stringRes("Confirm"),
+                style = ButtonStyle.PRIMARY,
+                onClick = {}
+            ),
+        errorSheet = null,
+        onBack = {},
+    )
 
 @PreviewScreens
 @Composable

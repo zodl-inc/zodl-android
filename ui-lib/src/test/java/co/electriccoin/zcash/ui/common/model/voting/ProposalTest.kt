@@ -7,36 +7,42 @@ import kotlin.test.assertTrue
 class ProposalTest {
     @Test
     fun generatedAbstainChoiceIsSyntheticWhenProposalHasNoOnWireAbstain() {
-        val proposal = proposal(
-            options = listOf(
-                VoteOption(id = 0, label = "Support"),
-                VoteOption(id = 1, label = "Oppose")
+        val proposal =
+            proposal(
+                options =
+                    listOf(
+                        VoteOption(id = 0, label = "Support"),
+                        VoteOption(id = 1, label = "Oppose")
+                    )
             )
-        )
 
         assertTrue(proposal.isSyntheticAbstainChoice(choiceId = 2))
     }
 
     @Test
     fun onWireAbstainChoiceIsNotSynthetic() {
-        val proposal = proposal(
-            options = listOf(
-                VoteOption(id = 0, label = "Support"),
-                VoteOption(id = 1, label = "Abstain")
+        val proposal =
+            proposal(
+                options =
+                    listOf(
+                        VoteOption(id = 0, label = "Support"),
+                        VoteOption(id = 1, label = "Abstain")
+                    )
             )
-        )
 
         assertFalse(proposal.isSyntheticAbstainChoice(choiceId = 1))
     }
 
     @Test
     fun unknownChoiceIsNotSynthetic() {
-        val proposal = proposal(
-            options = listOf(
-                VoteOption(id = 0, label = "Support"),
-                VoteOption(id = 1, label = "Oppose")
+        val proposal =
+            proposal(
+                options =
+                    listOf(
+                        VoteOption(id = 0, label = "Support"),
+                        VoteOption(id = 1, label = "Oppose")
+                    )
             )
-        )
 
         assertFalse(proposal.isSyntheticAbstainChoice(choiceId = 99))
     }

@@ -7,35 +7,52 @@ import kotlin.test.assertFailsWith
 class ChainDtoTest {
     @Test
     fun chainRoundSourcesProposalIdentityFromChainResponse() {
-        val round = makeRound(
-            proposals = listOf(
-                makeProposal(
-                    id = 2,
-                    options = listOf(
-                        ChainVoteOptionDto(label = "No", index = 1),
-                        ChainVoteOptionDto(label = "Yes", index = 0)
+        val round =
+            makeRound(
+                proposals =
+                    listOf(
+                        makeProposal(
+                            id = 2,
+                            options =
+                                listOf(
+                                    ChainVoteOptionDto(label = "No", index = 1),
+                                    ChainVoteOptionDto(label = "Yes", index = 0)
+                                )
+                        ),
+                        makeProposal(
+                            id = 3,
+                            options =
+                                listOf(
+                                    ChainVoteOptionDto(label = "Abstain", index = 0),
+                                    ChainVoteOptionDto(label = "Approve", index = 1)
+                                )
+                        )
                     )
-                ),
-                makeProposal(
-                    id = 3,
-                    options = listOf(
-                        ChainVoteOptionDto(label = "Abstain", index = 0),
-                        ChainVoteOptionDto(label = "Approve", index = 1)
-                    )
-                )
-            )
-        ).toVotingRound()
+            ).toVotingRound()
 
         assertEquals(listOf(2, 3), round.proposals.map(Proposal::id))
-        assertEquals(listOf(1, 0), round.proposals.first().options.map(VoteOption::id))
-        assertEquals(listOf(0, 1), round.proposals.last().options.map(VoteOption::id))
+        assertEquals(
+            listOf(1, 0),
+            round.proposals
+                .first()
+                .options
+                .map(VoteOption::id)
+        )
+        assertEquals(
+            listOf(0, 1),
+            round.proposals
+                .last()
+                .options
+                .map(VoteOption::id)
+        )
     }
 
     @Test
     fun chainSessionSourcesProposalIdentityFromChainResponse() {
-        val session = makeRound(
-            proposals = listOf(makeProposal(id = 2))
-        ).toVotingSession()
+        val session =
+            makeRound(
+                proposals = listOf(makeProposal(id = 2))
+            ).toVotingSession()
 
         assertEquals(listOf(2), session.proposals.map(Proposal::id))
     }
@@ -71,10 +88,11 @@ class ChainDtoTest {
     fun chainRoundRejectsDuplicateProposalIds() {
         assertFailsWith<VotingConfigException> {
             makeRound(
-                proposals = listOf(
-                    makeProposal(id = 1),
-                    makeProposal(id = 1)
-                )
+                proposals =
+                    listOf(
+                        makeProposal(id = 1),
+                        makeProposal(id = 1)
+                    )
             ).toVotingRound()
         }
     }
@@ -83,14 +101,16 @@ class ChainDtoTest {
     fun chainRoundRejectsNonContiguousOptionIndices() {
         assertFailsWith<VotingConfigException> {
             makeRound(
-                proposals = listOf(
-                    makeProposal(
-                        options = listOf(
-                            ChainVoteOptionDto(label = "No", index = 0),
-                            ChainVoteOptionDto(label = "Yes", index = 2)
+                proposals =
+                    listOf(
+                        makeProposal(
+                            options =
+                                listOf(
+                                    ChainVoteOptionDto(label = "No", index = 0),
+                                    ChainVoteOptionDto(label = "Yes", index = 2)
+                                )
                         )
                     )
-                )
             ).toVotingRound()
         }
     }
@@ -113,14 +133,16 @@ class ChainDtoTest {
     fun chainRoundRejectsMissingOptionIndicesWhenTheyCreateDuplicates() {
         assertFailsWith<VotingConfigException> {
             makeRound(
-                proposals = listOf(
-                    makeProposal(
-                        options = listOf(
-                            ChainVoteOptionDto(label = "No"),
-                            ChainVoteOptionDto(label = "Yes")
+                proposals =
+                    listOf(
+                        makeProposal(
+                            options =
+                                listOf(
+                                    ChainVoteOptionDto(label = "No"),
+                                    ChainVoteOptionDto(label = "Yes")
+                                )
                         )
                     )
-                )
             ).toVotingRound()
         }
     }
@@ -138,10 +160,11 @@ class ChainDtoTest {
 
     private fun makeProposal(
         id: Int = 1,
-        options: List<ChainVoteOptionDto> = listOf(
-            ChainVoteOptionDto(label = "No", index = 0),
-            ChainVoteOptionDto(label = "Yes", index = 1)
-        )
+        options: List<ChainVoteOptionDto> =
+            listOf(
+                ChainVoteOptionDto(label = "No", index = 0),
+                ChainVoteOptionDto(label = "Yes", index = 1)
+            )
     ): ChainProposalDto =
         ChainProposalDto(
             id = id,

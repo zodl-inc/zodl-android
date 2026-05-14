@@ -47,16 +47,18 @@ class VoteTrustIndicatorTest {
         assertTrue(isDefaultVotingConfig(VotingChainConfigState(), configuration = null))
         assertFalse(
             isDefaultVotingConfig(
-                chainConfig = VotingChainConfigState(
-                    selected = VotingChainConfigSelection.Custom(CUSTOM_CHAIN_ID),
-                    customChains = listOf(
-                        VotingCustomChainConfig(
-                            id = CUSTOM_CHAIN_ID,
-                            name = "Custom source",
-                            pinnedSource = "https://example.com/static-voting-config.json"
-                        )
-                    )
-                ),
+                chainConfig =
+                    VotingChainConfigState(
+                        selected = VotingChainConfigSelection.Custom(CUSTOM_CHAIN_ID),
+                        customChains =
+                            listOf(
+                                VotingCustomChainConfig(
+                                    id = CUSTOM_CHAIN_ID,
+                                    name = "Custom source",
+                                    pinnedSource = "https://example.com/static-voting-config.json"
+                                )
+                            )
+                    ),
                 configuration = null
             )
         )

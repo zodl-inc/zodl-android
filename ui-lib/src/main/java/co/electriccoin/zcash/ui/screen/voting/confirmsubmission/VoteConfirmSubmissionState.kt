@@ -9,15 +9,25 @@ sealed class VoteSubmissionStatus {
 
     data object LocalAuthorizing : VoteSubmissionStatus()
 
-    data class Authorizing(val progress: Float) : VoteSubmissionStatus()
+    data class Authorizing(
+        val progress: Float
+    ) : VoteSubmissionStatus()
 
-    data class Submitting(val current: Int, val total: Int, val progress: Float) : VoteSubmissionStatus()
+    data class Submitting(
+        val current: Int,
+        val total: Int,
+        val progress: Float
+    ) : VoteSubmissionStatus()
 
     data object Completed : VoteSubmissionStatus()
 
-    data class LocalAuthFailed(val error: String?) : VoteSubmissionStatus()
+    data class LocalAuthFailed(
+        val error: String?
+    ) : VoteSubmissionStatus()
 
-    data class ProtocolAuthFailed(val error: String?) : VoteSubmissionStatus()
+    data class ProtocolAuthFailed(
+        val error: String?
+    ) : VoteSubmissionStatus()
 
     data class SubmissionFailed(
         val error: String?,

@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.voting.VotingRound
+import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.provider.ShieldFundsInfoProvider
 import co.electriccoin.zcash.ui.common.repository.HomeMessageData
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
@@ -13,8 +15,6 @@ import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
-import co.electriccoin.zcash.ui.common.model.voting.VotingRound
-import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.usecase.GetHomeMessageUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.IsRestoreSuccessDialogVisibleUseCase
@@ -52,12 +52,12 @@ import co.electriccoin.zcash.ui.screen.home.updating.WalletUpdatingMessageState
 import co.electriccoin.zcash.ui.screen.keepopen.KeepOpenArgs
 import co.electriccoin.zcash.ui.screen.keepopen.KeepOpenFlow
 import co.electriccoin.zcash.ui.screen.send.Send
+import co.electriccoin.zcash.ui.screen.tor.optin.TorOptInArgs
 import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionArgs
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListMode
 import co.electriccoin.zcash.ui.screen.voting.scankeystone.ScanKeystoneVotingPCZTRequest
 import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingArgs
-import co.electriccoin.zcash.ui.screen.tor.optin.TorOptInArgs
 import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
 import co.electriccoin.zcash.work.VotingShareTrackingScheduler
 import kotlinx.coroutines.Job
@@ -194,8 +194,9 @@ class HomeVM(
         recovery ?: return false
         val roundId = recovery.roundId
         val pendingRequest = recovery.pendingKeystoneRequest ?: return false
-        val draftChoices = recovery.draftChoices
-            .ifEmpty { recovery.proposalSelections.mapValues { (_, selection) -> selection.choiceId } }
+        val draftChoices =
+            recovery.draftChoices
+                .ifEmpty { recovery.proposalSelections.mapValues { (_, selection) -> selection.choiceId } }
         if (draftChoices.isEmpty()) {
             return false
         }
@@ -205,25 +206,26 @@ class HomeVM(
             ?.let(votingApiRepository::upsertRound)
         votingSessionStore.restoreDraftVotes(accountUuid, roundId, draftChoices)
 
-        val restoredRoutes = buildList {
-            add(VoteProposalListArgs(roundId = roundId, mode = VoteProposalListMode.REVIEW))
-            add(
-                VoteConfirmSubmissionArgs(
-                    roundIdHex = roundId,
-                    choicesJson = draftChoices.toChoicesJson()
-                )
-            )
-            add(SignKeystoneVotingArgs(roundIdHex = roundId))
-            if (pendingRequest.routeStage == VotingKeystoneRouteStage.SCAN) {
+        val restoredRoutes =
+            buildList {
+                add(VoteProposalListArgs(roundId = roundId, mode = VoteProposalListMode.REVIEW))
                 add(
-                    ScanKeystoneVotingPCZTRequest(
+                    VoteConfirmSubmissionArgs(
                         roundIdHex = roundId,
-                        bundleIndex = pendingRequest.bundleIndex,
-                        actionIndex = pendingRequest.actionIndex
+                        choicesJson = draftChoices.toChoicesJson()
                     )
                 )
+                add(SignKeystoneVotingArgs(roundIdHex = roundId))
+                if (pendingRequest.routeStage == VotingKeystoneRouteStage.SCAN) {
+                    add(
+                        ScanKeystoneVotingPCZTRequest(
+                            roundIdHex = roundId,
+                            bundleIndex = pendingRequest.bundleIndex,
+                            actionIndex = pendingRequest.actionIndex
+                        )
+                    )
+                }
             }
-        }
 
         navigationRouter.replaceAll(*restoredRoutes.toTypedArray())
         return true
@@ -241,12 +243,14 @@ class HomeVM(
      * `recoverPendingVotingRouteIfNeeded` above.
      */
     private suspend fun resumePendingShareTracking() {
-        val accountUuid = runCatching {
-            getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId()
-        }.getOrNull() ?: return
-        val pendingRoundIds = runCatching {
-            votingRecoveryRepository.getRoundIdsRequiringShareTracking(accountUuid)
-        }.getOrDefault(emptyList())
+        val accountUuid =
+            runCatching {
+                getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId()
+            }.getOrNull() ?: return
+        val pendingRoundIds =
+            runCatching {
+                votingRecoveryRepository.getRoundIdsRequiringShareTracking(accountUuid)
+            }.getOrDefault(emptyList())
         pendingRoundIds.forEach { roundId ->
             votingShareTrackingScheduler.schedule(roundId)
         }

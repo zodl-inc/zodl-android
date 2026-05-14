@@ -34,9 +34,10 @@ class VotingHotkeySeedProviderImpl(
         )
     }
 
-    private fun key(accountUuid: String) = PreferenceKey(
-        "voting_hotkey_seed_${accountUuid.lowercase()}"
-    )
+    private fun key(accountUuid: String) =
+        PreferenceKey(
+            "voting_hotkey_seed_${accountUuid.lowercase()}"
+        )
 
     private companion object {
         const val MIN_SEED_BYTES = 32

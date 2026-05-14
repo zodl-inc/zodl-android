@@ -47,8 +47,9 @@ internal fun VotingSession.lastMomentBufferSeconds(): Long? {
         return null
     }
 
-    val proportionalBuffer = durationSeconds * LAST_MOMENT_BUFFER_FRACTION_NUMERATOR /
-        LAST_MOMENT_BUFFER_FRACTION_DENOMINATOR
+    val proportionalBuffer =
+        durationSeconds * LAST_MOMENT_BUFFER_FRACTION_NUMERATOR /
+            LAST_MOMENT_BUFFER_FRACTION_DENOMINATOR
     return min(proportionalBuffer, LAST_MOMENT_BUFFER_MAX_SECONDS)
 }
 

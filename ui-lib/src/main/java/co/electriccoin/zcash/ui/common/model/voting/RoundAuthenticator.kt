@@ -17,16 +17,25 @@ class VotingRoundAuthenticationException(
 
 private fun votingRoundAuthMessage(status: RoundAuthStatus, roundIdHex: String): String =
     when (status) {
-        RoundAuthStatus.AUTHENTICATED ->
+        RoundAuthStatus.AUTHENTICATED -> {
             "Voting round ${roundIdHex.take(16)}... is authenticated"
-        RoundAuthStatus.UNKNOWN_AUTH_VERSION ->
+        }
+
+        RoundAuthStatus.UNKNOWN_AUTH_VERSION -> {
             "Voting round ${roundIdHex.take(16)}... requires a newer wallet. Please update the wallet."
-        RoundAuthStatus.MISSING_ROUND ->
+        }
+
+        RoundAuthStatus.MISSING_ROUND -> {
             "Voting config does not authenticate round ${roundIdHex.take(16)}..."
-        RoundAuthStatus.INVALID_SIGNATURES ->
+        }
+
+        RoundAuthStatus.INVALID_SIGNATURES -> {
             "Voting config signature is invalid for round ${roundIdHex.take(16)}..."
-        RoundAuthStatus.EA_PK_MISMATCH ->
+        }
+
+        RoundAuthStatus.EA_PK_MISMATCH -> {
             "Voting config EA key does not match round ${roundIdHex.take(16)}..."
+        }
     }
 
 object RoundAuthenticator {
@@ -43,8 +52,9 @@ object RoundAuthenticator {
             return RoundAuthStatus.UNKNOWN_AUTH_VERSION
         }
 
-        val entryEaPk = runCatching { entry.eaPkBytes() }.getOrNull()
-            ?: return RoundAuthStatus.INVALID_SIGNATURES
+        val entryEaPk =
+            runCatching { entry.eaPkBytes() }.getOrNull()
+                ?: return RoundAuthStatus.INVALID_SIGNATURES
         if (entryEaPk.size != EA_PK_BYTES || !verifyEntrySignatures(entry, trustedKeys)) {
             return RoundAuthStatus.INVALID_SIGNATURES
         }

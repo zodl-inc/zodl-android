@@ -26,7 +26,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import co.electriccoin.zcash.ui.R as UiR
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
@@ -43,6 +42,7 @@ import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.R as UiR
 
 @Composable
 fun VoteTallyingView(state: VoteTallyingState) {
@@ -56,16 +56,18 @@ fun VoteTallyingView(state: VoteTallyingState) {
                         modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
                     )
                 },
-                colors = ZcashTheme.colors.topAppBarColors orDark
-                    ZcashTheme.colors.topAppBarColors.copyColors(containerColor = Color.Transparent)
+                colors =
+                    ZcashTheme.colors.topAppBarColors orDark
+                        ZcashTheme.colors.topAppBarColors.copyColors(containerColor = Color.Transparent)
             )
         },
         content = { padding ->
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .scaffoldPadding(padding),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .scaffoldPadding(padding),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
@@ -78,7 +80,9 @@ fun VoteTallyingView(state: VoteTallyingState) {
                     Surface(
                         modifier = Modifier.fillMaxSize(),
                         shape = CircleShape,
-                        color = ZashiColors.Btns.Primary.btnPrimaryBg.copy(alpha = 0.12f)
+                        color =
+                            ZashiColors.Btns.Primary.btnPrimaryBg
+                                .copy(alpha = 0.12f)
                     ) {}
                     Icon(
                         painter = painterResource(R.drawable.ic_info),
@@ -126,14 +130,15 @@ fun VoteTallyingView(state: VoteTallyingState) {
 
                 VerticalSpacer(24.dp)
                 Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
-                        .border(
-                            width = 1.dp,
-                            color = ZashiColors.Surfaces.strokeSecondary,
-                            shape = RoundedCornerShape(14.dp)
-                        ),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
+                            .border(
+                                width = 1.dp,
+                                color = ZashiColors.Surfaces.strokeSecondary,
+                                shape = RoundedCornerShape(14.dp)
+                            ),
                     shape = RoundedCornerShape(14.dp),
                     color = ZashiColors.Surfaces.bgPrimary,
                 ) {

@@ -11,10 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -66,9 +66,10 @@ fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
                 NoRoundsContent(
                     onGotIt = state.onBack,
                     onRefresh = state.onRefresh,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .scaffoldPadding(padding)
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .scaffoldPadding(padding)
                 )
             } else {
                 LazyColumn(
@@ -76,12 +77,13 @@ fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
                         Modifier
                             .fillMaxSize()
                             .scaffoldPadding(padding),
-                    contentPadding = PaddingValues(
-                        start = ZashiDimensions.Spacing.spacing3xl,
-                        top = 8.dp,
-                        end = ZashiDimensions.Spacing.spacing3xl,
-                        bottom = 40.dp
-                    ),
+                    contentPadding =
+                        PaddingValues(
+                            start = ZashiDimensions.Spacing.spacing3xl,
+                            top = 8.dp,
+                            end = ZashiDimensions.Spacing.spacing3xl,
+                            bottom = 40.dp
+                        ),
                     verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing4xl)
                 ) {
                     items(state.activeRounds, key = { it.roundId }) { round ->
@@ -102,10 +104,11 @@ fun VoteCoinholderPollingLoadingView() {
         topBar = {
             ZashiSmallTopAppBar(
                 title = stringResource(R.string.vote_top_bar_title),
-                colors = ZcashTheme.colors.topAppBarColors orDark
-                    ZcashTheme.colors.topAppBarColors.copyColors(
-                        containerColor = Color.Transparent
-                    )
+                colors =
+                    ZcashTheme.colors.topAppBarColors orDark
+                        ZcashTheme.colors.topAppBarColors.copyColors(
+                            containerColor = Color.Transparent
+                        )
             )
         },
         content = { padding ->
@@ -188,9 +191,10 @@ private fun PollCard(state: VotePollCardState) {
         tonalElevation = 0.dp
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(ZashiDimensions.Spacing.spacingXl),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(ZashiDimensions.Spacing.spacingXl),
             verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing2xl)
         ) {
             Column(
@@ -259,12 +263,13 @@ private fun PollActionButton(state: VotePollCardState) {
 
     ZashiButton(
         modifier = Modifier.height(40.dp),
-        state = ButtonState(
-            text = actionText,
-            style = ButtonStyle.PRIMARY,
-            isEnabled = state.isActionEnabled,
-            onClick = state.onAction
-        ),
+        state =
+            ButtonState(
+                text = actionText,
+                style = ButtonStyle.PRIMARY,
+                isEnabled = state.isActionEnabled,
+                onClick = state.onAction
+            ),
         style = ZashiTypography.textSm,
     )
 }
@@ -273,7 +278,7 @@ private fun PollActionButton(state: VotePollCardState) {
 private fun StatusBadge(status: VotePollCardStatus) {
     val params =
         when (status) {
-            VotePollCardStatus.ACTIVE ->
+            VotePollCardStatus.ACTIVE -> {
                 StatusBadgeParams(
                     labelRes = R.string.vote_poll_card_status_active,
                     iconTint = ZashiColors.Utility.SuccessGreen.utilitySuccess700,
@@ -281,8 +286,9 @@ private fun StatusBadge(status: VotePollCardStatus) {
                     bgColor = ZashiColors.Utility.SuccessGreen.utilitySuccess50,
                     borderColor = ZashiColors.Utility.SuccessGreen.utilitySuccess200,
                 )
+            }
 
-            VotePollCardStatus.VOTED ->
+            VotePollCardStatus.VOTED -> {
                 StatusBadgeParams(
                     labelRes = R.string.vote_poll_card_status_voted,
                     iconTint = ZashiColors.Utility.SuccessGreen.utilitySuccess700,
@@ -290,8 +296,9 @@ private fun StatusBadge(status: VotePollCardStatus) {
                     bgColor = ZashiColors.Utility.SuccessGreen.utilitySuccess50,
                     borderColor = ZashiColors.Utility.SuccessGreen.utilitySuccess200,
                 )
+            }
 
-            VotePollCardStatus.CLOSED ->
+            VotePollCardStatus.CLOSED -> {
                 StatusBadgeParams(
                     labelRes = R.string.vote_poll_card_status_closed,
                     iconTint = ZashiColors.Utility.ErrorRed.utilityError700,
@@ -299,6 +306,7 @@ private fun StatusBadge(status: VotePollCardStatus) {
                     bgColor = ZashiColors.Utility.ErrorRed.utilityError50,
                     borderColor = ZashiColors.Utility.ErrorRed.utilityError200,
                 )
+            }
         }
     Surface(
         shape = CircleShape,
@@ -346,18 +354,20 @@ private fun AppBar(state: VoteCoinholderPollingState) {
         },
         regularActions = {
             ZashiIconButton(
-                state = IconButtonState(
-                    icon = DesignR.drawable.ic_app_bar_settings,
-                    contentDescription = stringRes(R.string.vote_chain_config_settings_content_description),
-                    onClick = state.onConfigSettings
-                ),
+                state =
+                    IconButtonState(
+                        icon = DesignR.drawable.ic_app_bar_settings,
+                        contentDescription = stringRes(R.string.vote_chain_config_settings_content_description),
+                        onClick = state.onConfigSettings
+                    ),
                 modifier = Modifier.size(40.dp)
             )
         },
-        colors = ZcashTheme.colors.topAppBarColors orDark
-            ZcashTheme.colors.topAppBarColors.copyColors(
-                containerColor = Color.Transparent
-            )
+        colors =
+            ZcashTheme.colors.topAppBarColors orDark
+                ZcashTheme.colors.topAppBarColors.copyColors(
+                    containerColor = Color.Transparent
+                )
     )
 }
 
@@ -366,62 +376,66 @@ private fun AppBar(state: VoteCoinholderPollingState) {
 private fun CoinholderPollingPreviewWithRounds() =
     ZcashTheme {
         VoteCoinholderPollingView(
-            state = VoteCoinholderPollingState(
-                activeRounds = listOf(
-                    VotePollCardState(
-                        roundId = "abc123",
-                        roundNumber = 3,
-                        title = stringRes("ZF Grant Funding — Q3 2026"),
-                        description = stringRes(
-                            "Shielded vote on the allocation of Zcash Foundation grant funds for Q3 2026."
+            state =
+                VoteCoinholderPollingState(
+                    activeRounds =
+                        listOf(
+                            VotePollCardState(
+                                roundId = "abc123",
+                                roundNumber = 3,
+                                title = stringRes("ZF Grant Funding — Q3 2026"),
+                                description =
+                                    stringRes(
+                                        "Shielded vote on the allocation of Zcash Foundation grant funds for Q3 2026."
+                                    ),
+                                status = VotePollCardStatus.ACTIVE,
+                                sessionStatus = SessionStatus.ACTIVE,
+                                isActionEnabled = true,
+                                dateLabel = stringRes("Closes May 15"),
+                                trustIndicator = VoteTrustIndicator.ZODL,
+                                votedLabel = null,
+                                proposalCount = 2,
+                                votedCount = 0,
+                                onAction = {},
+                            ),
                         ),
-                        status = VotePollCardStatus.ACTIVE,
-                        sessionStatus = SessionStatus.ACTIVE,
-                        isActionEnabled = true,
-                        dateLabel = stringRes("Closes May 15"),
-                        trustIndicator = VoteTrustIndicator.ZODL,
-                        votedLabel = null,
-                        proposalCount = 2,
-                        votedCount = 0,
-                        onAction = {},
-                    ),
-                ),
-                pastRounds = listOf(
-                    VotePollCardState(
-                        roundId = "def456",
-                        roundNumber = 2,
-                        title = stringRes("ZF Grant Funding — Q2 2026"),
-                        description = stringRes("Completed vote on Q2 2026 grant allocation."),
-                        status = VotePollCardStatus.CLOSED,
-                        sessionStatus = SessionStatus.COMPLETED,
-                        isActionEnabled = true,
-                        dateLabel = stringRes("Closed Apr 10"),
-                        trustIndicator = VoteTrustIndicator.ZODL,
-                        votedLabel = stringRes("2 of 2 voted"),
-                        proposalCount = 2,
-                        votedCount = 2,
-                        onAction = {},
-                    ),
-                    VotePollCardState(
-                        roundId = "ghi789",
-                        roundNumber = 1,
-                        title = stringRes("ZF Grant Funding — Q1 2026"),
-                        description = stringRes(""),
-                        status = VotePollCardStatus.CLOSED,
-                        sessionStatus = SessionStatus.COMPLETED,
-                        isActionEnabled = true,
-                        dateLabel = stringRes("Closed Jan 20"),
-                        trustIndicator = VoteTrustIndicator.UNVERIFIED,
-                        votedLabel = null,
-                        proposalCount = 1,
-                        votedCount = 0,
-                        onAction = {},
-                    ),
-                ),
-                onBack = {},
-                onRefresh = {},
-                onConfigSettings = {},
-            )
+                    pastRounds =
+                        listOf(
+                            VotePollCardState(
+                                roundId = "def456",
+                                roundNumber = 2,
+                                title = stringRes("ZF Grant Funding — Q2 2026"),
+                                description = stringRes("Completed vote on Q2 2026 grant allocation."),
+                                status = VotePollCardStatus.CLOSED,
+                                sessionStatus = SessionStatus.COMPLETED,
+                                isActionEnabled = true,
+                                dateLabel = stringRes("Closed Apr 10"),
+                                trustIndicator = VoteTrustIndicator.ZODL,
+                                votedLabel = stringRes("2 of 2 voted"),
+                                proposalCount = 2,
+                                votedCount = 2,
+                                onAction = {},
+                            ),
+                            VotePollCardState(
+                                roundId = "ghi789",
+                                roundNumber = 1,
+                                title = stringRes("ZF Grant Funding — Q1 2026"),
+                                description = stringRes(""),
+                                status = VotePollCardStatus.CLOSED,
+                                sessionStatus = SessionStatus.COMPLETED,
+                                isActionEnabled = true,
+                                dateLabel = stringRes("Closed Jan 20"),
+                                trustIndicator = VoteTrustIndicator.UNVERIFIED,
+                                votedLabel = null,
+                                proposalCount = 1,
+                                votedCount = 0,
+                                onAction = {},
+                            ),
+                        ),
+                    onBack = {},
+                    onRefresh = {},
+                    onConfigSettings = {},
+                )
         )
     }
 
@@ -430,12 +444,13 @@ private fun CoinholderPollingPreviewWithRounds() =
 private fun CoinholderPollingPreviewEmpty() =
     ZcashTheme {
         VoteCoinholderPollingView(
-            state = VoteCoinholderPollingState(
-                activeRounds = emptyList(),
-                pastRounds = emptyList(),
-                onBack = {},
-                onRefresh = {},
-                onConfigSettings = {},
-            )
+            state =
+                VoteCoinholderPollingState(
+                    activeRounds = emptyList(),
+                    pastRounds = emptyList(),
+                    onBack = {},
+                    onRefresh = {},
+                    onConfigSettings = {},
+                )
         )
     }

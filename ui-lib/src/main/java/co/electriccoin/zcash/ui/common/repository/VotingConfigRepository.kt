@@ -3,17 +3,17 @@ package co.electriccoin.zcash.ui.common.repository
 import co.electriccoin.zcash.preference.EncryptedPreferenceProvider
 import co.electriccoin.zcash.preference.model.entry.PreferenceKey
 import co.electriccoin.zcash.ui.common.model.voting.VotingServiceConfig
-import java.time.Instant
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
+import java.time.Instant
 
 enum class VotingConfigSource {
     LOCAL_OVERRIDE,
@@ -52,9 +52,10 @@ class VotingConfigRepositoryImpl(
     override suspend fun get(): VotingConfigSnapshot? {
         currentConfig.value?.let { cached -> return cached }
 
-        val restored = encryptedPreferenceProvider()
-            .getString(PREFERENCE_KEY)
-            ?.toVotingConfigSnapshot()
+        val restored =
+            encryptedPreferenceProvider()
+                .getString(PREFERENCE_KEY)
+                ?.toVotingConfigSnapshot()
         mutableCurrentConfig.value = restored
         return restored
     }
@@ -104,17 +105,23 @@ private fun VotingConfigSnapshot.encode(): String =
 private fun String.toVotingConfigSnapshot(): VotingConfigSnapshot {
     val json = JSONObject(this)
     return VotingConfigSnapshot(
-        serviceConfig = json.optJSONObject("service_config")
-            ?.toString()
-            ?.let(VotingServiceConfig::decode)
-            ?: VotingServiceConfig.EMPTY,
-        source = json.optString("source")
-            .takeIf(String::isNotEmpty)
-            ?.let(VotingConfigSource::valueOf)
-            ?: VotingConfigSource.REMOTE,
-        loadedAt = json.optLong("loaded_at")
-            .takeIf { json.has("loaded_at") && !json.isNull("loaded_at") }
-            ?.let(Instant::ofEpochMilli)
-            ?: Instant.now()
+        serviceConfig =
+            json
+                .optJSONObject("service_config")
+                ?.toString()
+                ?.let(VotingServiceConfig::decode)
+                ?: VotingServiceConfig.EMPTY,
+        source =
+            json
+                .optString("source")
+                .takeIf(String::isNotEmpty)
+                ?.let(VotingConfigSource::valueOf)
+                ?: VotingConfigSource.REMOTE,
+        loadedAt =
+            json
+                .optLong("loaded_at")
+                .takeIf { json.has("loaded_at") && !json.isNull("loaded_at") }
+                ?.let(Instant::ofEpochMilli)
+                ?: Instant.now()
     )
 }

@@ -24,9 +24,10 @@ class VoteHowToVoteVM(
     private val hasSeenHowToVoteKeystone: HasSeenHowToVoteKeystoneStorageProvider,
     private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
 ) : ViewModel() {
-    private val mutableState = MutableStateFlow<LceState<VoteHowToVoteState>>(
-        LceState(content = null, isLoading = true)
-    )
+    private val mutableState =
+        MutableStateFlow<LceState<VoteHowToVoteState>>(
+            LceState(content = null, isLoading = true)
+        )
 
     val state: StateFlow<LceState<VoteHowToVoteState>> = mutableState
 
@@ -35,33 +36,37 @@ class VoteHowToVoteVM(
             val isKeystone = getSelectedWalletAccount() is KeystoneAccount
             val walletName = if (isKeystone) "Keystone" else "Zodl"
 
-            mutableState.value = LceState(
-                content = VoteHowToVoteState(
-                    title = stringRes(R.string.vote_how_to_vote_title, walletName),
-                    subtitle = stringRes(R.string.vote_how_to_vote_subtitle),
-                    steps = listOf(
-                        VoteStep(
-                            number = "1",
-                            title = stringRes(R.string.vote_how_to_vote_step1_title),
-                            description = stringRes(R.string.vote_how_to_vote_step1_description)
+            mutableState.value =
+                LceState(
+                    content =
+                        VoteHowToVoteState(
+                            title = stringRes(R.string.vote_how_to_vote_title, walletName),
+                            subtitle = stringRes(R.string.vote_how_to_vote_subtitle),
+                            steps =
+                                listOf(
+                                    VoteStep(
+                                        number = "1",
+                                        title = stringRes(R.string.vote_how_to_vote_step1_title),
+                                        description = stringRes(R.string.vote_how_to_vote_step1_description)
+                                    ),
+                                    VoteStep(
+                                        number = "2",
+                                        title = stringRes(R.string.vote_how_to_vote_step2_title),
+                                        description = stringRes(R.string.vote_how_to_vote_step2_description)
+                                    ),
+                                ),
+                            infoText = stringRes(R.string.vote_how_to_vote_disclaimer),
+                            walletHeaderIcons = VoteWalletHeaderIconsState(isKeystone = isKeystone),
+                            continueButton =
+                                ButtonState(
+                                    text = stringRes(R.string.vote_continue),
+                                    style = ButtonStyle.PRIMARY,
+                                    onClick = ::onContinue
+                                ),
+                            onBack = ::onBack
                         ),
-                        VoteStep(
-                            number = "2",
-                            title = stringRes(R.string.vote_how_to_vote_step2_title),
-                            description = stringRes(R.string.vote_how_to_vote_step2_description)
-                        ),
-                    ),
-                    infoText = stringRes(R.string.vote_how_to_vote_disclaimer),
-                    walletHeaderIcons = VoteWalletHeaderIconsState(isKeystone = isKeystone),
-                    continueButton = ButtonState(
-                        text = stringRes(R.string.vote_continue),
-                        style = ButtonStyle.PRIMARY,
-                        onClick = ::onContinue
-                    ),
-                    onBack = ::onBack
-                ),
-                isLoading = false
-            )
+                    isLoading = false
+                )
         }
     }
 

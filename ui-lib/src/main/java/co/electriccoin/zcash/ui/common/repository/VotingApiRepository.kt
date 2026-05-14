@@ -58,11 +58,12 @@ class VotingApiRepositoryImpl : VotingApiRepository {
         mutableSnapshot.update { current ->
             current.copy(
                 rounds = rounds,
-                sessionsByRoundId = if (sessionsByRoundId.isEmpty()) {
-                    current.sessionsByRoundId
-                } else {
-                    sessionsByRoundId
-                }
+                sessionsByRoundId =
+                    if (sessionsByRoundId.isEmpty()) {
+                        current.sessionsByRoundId
+                    } else {
+                        sessionsByRoundId
+                    }
             )
         }
     }

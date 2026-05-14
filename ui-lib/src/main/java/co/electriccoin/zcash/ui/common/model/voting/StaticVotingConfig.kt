@@ -1,13 +1,13 @@
 package co.electriccoin.zcash.ui.common.model.voting
 
-import java.net.URI
-import java.net.URLDecoder
-import java.security.MessageDigest
-import java.util.Base64
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import java.net.URI
+import java.net.URLDecoder
+import java.security.MessageDigest
+import java.util.Base64
 
 @Serializable
 data class StaticVotingConfig(
@@ -69,12 +69,13 @@ data class StaticVotingConfig(
                 }
             }
 
-            val config = runCatching {
-                staticVotingConfigJson.decodeFromString<StaticVotingConfig>(data.toString(Charsets.UTF_8))
-            }.getOrElse { throwable ->
-                val detail = throwable.message ?: throwable::class.simpleName ?: "unknown error"
-                throw VotingConfigException("Static voting config decode failed: $detail")
-            }
+            val config =
+                runCatching {
+                    staticVotingConfigJson.decodeFromString<StaticVotingConfig>(data.toString(Charsets.UTF_8))
+                }.getOrElse { throwable ->
+                    val detail = throwable.message ?: throwable::class.simpleName ?: "unknown error"
+                    throw VotingConfigException("Static voting config decode failed: $detail")
+                }
 
             config.validate()
             return config
@@ -106,68 +107,76 @@ class PinnedConfigSource private constructor(
         private const val SHA256_HEX_LENGTH = 64
 
         fun parse(raw: String): PinnedConfigSource {
-            val uri = runCatching { URI(raw) }.getOrElse {
-                throw VotingConfigException("Static config source malformed: not a URL: $raw")
-            }
+            val uri =
+                runCatching { URI(raw) }.getOrElse {
+                    throw VotingConfigException("Static config source malformed: not a URL: $raw")
+                }
             if (uri.scheme != "https" || uri.host.isNullOrBlank()) {
                 throw VotingConfigException("Static config source malformed: not an HTTPS URL: $raw")
             }
 
-            val queryParts = uri.rawQuery
-                ?.split('&')
-                ?.filter(String::isNotEmpty)
-                .orEmpty()
+            val queryParts =
+                uri.rawQuery
+                    ?.split('&')
+                    ?.filter(String::isNotEmpty)
+                    .orEmpty()
 
             var checksumValue: String? = null
             var hasCapturedChecksumValue = false
             var hasChecksum = false
-            val strippedQueryParts = queryParts.filterNot { part ->
-                val rawName = part.substringBefore('=')
-                val isChecksum = runCatching { urlDecode(rawName) }
-                    .getOrDefault(rawName) == "checksum"
-                if (isChecksum && !hasCapturedChecksumValue) {
-                    checksumValue = part
-                        .substringAfter('=', missingDelimiterValue = "")
-                        .takeIf(String::isNotEmpty)
-                    hasCapturedChecksumValue = true
-                }
-                hasChecksum = hasChecksum || isChecksum
-                isChecksum
-            }
-
-            val sha256 = if (hasChecksum) {
-                val checksum = checksumValue?.let(::urlDecode)
-                    ?: throw VotingConfigException("Static config source malformed: missing checksum value")
-                if (!checksum.startsWith(CHECKSUM_PREFIX)) {
-                    throw VotingConfigException("Static config source malformed: checksum must start with sha256:")
+            val strippedQueryParts =
+                queryParts.filterNot { part ->
+                    val rawName = part.substringBefore('=')
+                    val isChecksum =
+                        runCatching { urlDecode(rawName) }
+                            .getOrDefault(rawName) == "checksum"
+                    if (isChecksum && !hasCapturedChecksumValue) {
+                        checksumValue =
+                            part
+                                .substringAfter('=', missingDelimiterValue = "")
+                                .takeIf(String::isNotEmpty)
+                        hasCapturedChecksumValue = true
+                    }
+                    hasChecksum = hasChecksum || isChecksum
+                    isChecksum
                 }
 
-                val hex = checksum.drop(CHECKSUM_PREFIX.length)
-                if (hex.length != SHA256_HEX_LENGTH || !hex.isLowercaseHex()) {
-                    throw VotingConfigException(
-                        "Static config source malformed: sha256 must be 64 lowercase hex chars"
-                    )
+            val sha256 =
+                if (hasChecksum) {
+                    val checksum =
+                        checksumValue?.let(::urlDecode)
+                            ?: throw VotingConfigException("Static config source malformed: missing checksum value")
+                    if (!checksum.startsWith(CHECKSUM_PREFIX)) {
+                        throw VotingConfigException("Static config source malformed: checksum must start with sha256:")
+                    }
+
+                    val hex = checksum.drop(CHECKSUM_PREFIX.length)
+                    if (hex.length != SHA256_HEX_LENGTH || !hex.isLowercaseHex()) {
+                        throw VotingConfigException(
+                            "Static config source malformed: sha256 must be 64 lowercase hex chars"
+                        )
+                    }
+                    hex.lowercaseHexToBytes()
+                } else {
+                    null
                 }
-                hex.lowercaseHexToBytes()
-            } else {
-                null
-            }
 
             val strippedQuery = strippedQueryParts.joinToString("&").takeIf(String::isNotEmpty)
-            val strippedUrl = buildString {
-                append(uri.scheme)
-                append("://")
-                append(uri.rawAuthority)
-                append(uri.rawPath.orEmpty())
-                if (strippedQuery != null) {
-                    append('?')
-                    append(strippedQuery)
+            val strippedUrl =
+                buildString {
+                    append(uri.scheme)
+                    append("://")
+                    append(uri.rawAuthority)
+                    append(uri.rawPath.orEmpty())
+                    if (strippedQuery != null) {
+                        append('?')
+                        append(strippedQuery)
+                    }
+                    if (uri.rawFragment != null) {
+                        append('#')
+                        append(uri.rawFragment)
+                    }
                 }
-                if (uri.rawFragment != null) {
-                    append('#')
-                    append(uri.rawFragment)
-                }
-            }
             return PinnedConfigSource(url = strippedUrl, sha256 = sha256)
         }
 
@@ -194,6 +203,7 @@ internal fun String.isLowercaseHex(): Boolean =
 internal fun ByteArray.toLowerHex(): String =
     joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and 0xff) }
 
-private val staticVotingConfigJson = Json {
-    ignoreUnknownKeys = true
-}
+private val staticVotingConfigJson =
+    Json {
+        ignoreUnknownKeys = true
+    }

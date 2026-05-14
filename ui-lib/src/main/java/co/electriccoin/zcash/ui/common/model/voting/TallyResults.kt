@@ -43,19 +43,21 @@ fun ChainTallyResultsResponse.toTallyResults(
     roundId: String,
     ballotDivisorZatoshi: Long
 ): TallyResults {
-    val proposalTallies = results
-        .groupBy(ChainTallyResultEntry::proposalId)
-        .map { (proposalId, entries) ->
-            ProposalTally(
-                proposalId = proposalId,
-                options = entries.map { entry ->
-                    OptionTally(
-                        optionId = entry.voteDecision,
-                        weight = entry.totalValue * ballotDivisorZatoshi
-                    )
-                }
-            )
-        }
+    val proposalTallies =
+        results
+            .groupBy(ChainTallyResultEntry::proposalId)
+            .map { (proposalId, entries) ->
+                ProposalTally(
+                    proposalId = proposalId,
+                    options =
+                        entries.map { entry ->
+                            OptionTally(
+                                optionId = entry.voteDecision,
+                                weight = entry.totalValue * ballotDivisorZatoshi
+                            )
+                        }
+                )
+            }
 
     return TallyResults(
         roundId = roundId,

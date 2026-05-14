@@ -45,19 +45,21 @@ class VoteChainConfigVM(
             isValidating
         ) { chainConfig, editor, errorSheet, isValidating ->
             VoteChainConfigState(
-                chains = buildChainItems(
-                    chainConfig = chainConfig,
-                    isValidating = isValidating
-                ),
+                chains =
+                    buildChainItems(
+                        chainConfig = chainConfig,
+                        isValidating = isValidating
+                    ),
                 editor = editor?.toState(isValidating),
                 errorSheet = errorSheet,
                 isValidating = isValidating,
-                saveChangesButton = ButtonState(
-                    text = stringRes(R.string.vote_chain_config_save_changes),
-                    style = ButtonStyle.PRIMARY,
-                    isEnabled = !isValidating,
-                    onClick = ::onBack
-                ),
+                saveChangesButton =
+                    ButtonState(
+                        text = stringRes(R.string.vote_chain_config_save_changes),
+                        style = ButtonStyle.PRIMARY,
+                        isEnabled = !isValidating,
+                        onClick = ::onBack
+                    ),
                 onBack = ::onBack,
                 onAddCustom = ::onAddCustom
             )
@@ -75,12 +77,13 @@ class VoteChainConfigVM(
             add(
                 VoteChainConfigItemState(
                     id = DEFAULT_CHAIN_ID,
-                    radioButtonState = RadioButtonState(
-                        text = stringRes(R.string.vote_chain_config_default_name),
-                        subtitle = stringRes(compactSource(StaticVotingConfig.BUNDLED_PINNED_SOURCE)),
-                        isChecked = chainConfig.selected is VotingChainConfigSelection.Default,
-                        onClick = ::onDefaultSelected
-                    ),
+                    radioButtonState =
+                        RadioButtonState(
+                            text = stringRes(R.string.vote_chain_config_default_name),
+                            subtitle = stringRes(compactSource(StaticVotingConfig.BUNDLED_PINNED_SOURCE)),
+                            isChecked = chainConfig.selected is VotingChainConfigSelection.Default,
+                            onClick = ::onDefaultSelected
+                        ),
                     fullUrl = stringRes(StaticVotingConfig.BUNDLED_PINNED_SOURCE),
                     isDefault = true,
                     editButton = null,
@@ -91,26 +94,29 @@ class VoteChainConfigVM(
                 add(
                     VoteChainConfigItemState(
                         id = chain.id,
-                        radioButtonState = RadioButtonState(
-                            text = stringRes(chain.name),
-                            subtitle = stringRes(compactSource(chain.pinnedSource)),
-                            isChecked = chainConfig.selected == VotingChainConfigSelection.Custom(chain.id),
-                            onClick = { onCustomSelected(chain.id) }
-                        ),
+                        radioButtonState =
+                            RadioButtonState(
+                                text = stringRes(chain.name),
+                                subtitle = stringRes(compactSource(chain.pinnedSource)),
+                                isChecked = chainConfig.selected == VotingChainConfigSelection.Custom(chain.id),
+                                onClick = { onCustomSelected(chain.id) }
+                            ),
                         fullUrl = stringRes(chain.pinnedSource),
                         isDefault = false,
-                        editButton = ButtonState(
-                            text = stringRes(R.string.vote_chain_config_edit),
-                            style = ButtonStyle.TERTIARY,
-                            isEnabled = !isValidating,
-                            onClick = { onEditCustom(chain) }
-                        ),
-                        deleteButton = ButtonState(
-                            text = stringRes(R.string.vote_chain_config_delete),
-                            style = ButtonStyle.DESTRUCTIVE2,
-                            isEnabled = !isValidating,
-                            onClick = { onDeleteCustom(chain.id) }
-                        )
+                        editButton =
+                            ButtonState(
+                                text = stringRes(R.string.vote_chain_config_edit),
+                                style = ButtonStyle.TERTIARY,
+                                isEnabled = !isValidating,
+                                onClick = { onEditCustom(chain) }
+                            ),
+                        deleteButton =
+                            ButtonState(
+                                text = stringRes(R.string.vote_chain_config_delete),
+                                style = ButtonStyle.DESTRUCTIVE2,
+                                isEnabled = !isValidating,
+                                onClick = { onDeleteCustom(chain.id) }
+                            )
                     )
                 )
             }
@@ -128,10 +134,12 @@ class VoteChainConfigVM(
     private fun onCustomSelected(id: String) {
         if (isValidating.value) return
         viewModelScope.launch {
-            val chain = votingChainConfigRepository.get()
-                .customChains
-                .firstOrNull { chain -> chain.id == id }
-                ?: return@launch
+            val chain =
+                votingChainConfigRepository
+                    .get()
+                    .customChains
+                    .firstOrNull { chain -> chain.id == id }
+                    ?: return@launch
             val parsedSource = parsePinnedSourceOrShowError(chain.pinnedSource) ?: return@launch
             if (!validatePinnedSourceOrShowError(parsedSource)) {
                 return@launch
@@ -146,20 +154,22 @@ class VoteChainConfigVM(
 
     private fun onAddCustom() {
         if (isValidating.value) return
-        editorDraft.value = EditorDraft(
-            id = null,
-            name = "",
-            pinnedSource = ""
-        )
+        editorDraft.value =
+            EditorDraft(
+                id = null,
+                name = "",
+                pinnedSource = ""
+            )
     }
 
     private fun onEditCustom(chain: VotingCustomChainConfig) {
         if (isValidating.value) return
-        editorDraft.value = EditorDraft(
-            id = chain.id,
-            name = chain.name,
-            pinnedSource = chain.pinnedSource
-        )
+        editorDraft.value =
+            EditorDraft(
+                id = chain.id,
+                name = chain.name,
+                pinnedSource = chain.pinnedSource
+            )
     }
 
     private fun onDeleteCustom(id: String) {
@@ -191,11 +201,12 @@ class VoteChainConfigVM(
 
             val parsedSource = parsePinnedSourceOrShowError(pinnedSource) ?: return@launch
             val current = votingChainConfigRepository.get()
-            val duplicateError = duplicateError(
-                parsedSource = parsedSource,
-                current = current,
-                editingId = draft.id
-            )
+            val duplicateError =
+                duplicateError(
+                    parsedSource = parsedSource,
+                    current = current,
+                    editingId = draft.id
+                )
             if (duplicateError != null) {
                 showError(duplicateError)
                 return@launch
@@ -248,7 +259,11 @@ class VoteChainConfigVM(
     }
 
     private fun onUrlCopyClick() {
-        val pinnedSource = editorDraft.value?.pinnedSource?.trim().orEmpty()
+        val pinnedSource =
+            editorDraft.value
+                ?.pinnedSource
+                ?.trim()
+                .orEmpty()
         if (pinnedSource.isNotEmpty()) {
             copyToClipboard(pinnedSource)
         }
@@ -291,11 +306,12 @@ class VoteChainConfigVM(
             return stringRes(R.string.vote_chain_config_error_duplicate_default)
         }
 
-        val hasDuplicateCustom = current.customChains
-            .filterNot { chain -> chain.id == editingId }
-            .any { chain ->
-                runCatching { PinnedConfigSource.parse(chain.pinnedSource) }.getOrNull() == parsedSource
-            }
+        val hasDuplicateCustom =
+            current.customChains
+                .filterNot { chain -> chain.id == editingId }
+                .any { chain ->
+                    runCatching { PinnedConfigSource.parse(chain.pinnedSource) }.getOrNull() == parsedSource
+                }
         return if (hasDuplicateCustom) {
             stringRes(R.string.vote_chain_config_error_duplicate_custom)
         } else {
@@ -304,22 +320,25 @@ class VoteChainConfigVM(
     }
 
     private fun showError(message: StringResource) {
-        errorSheet.value = ZashiConfirmationState(
-            icon = R.drawable.ic_reset_zashi_warning,
-            title = stringRes(R.string.vote_chain_config_error_title),
-            message = message,
-            primaryAction = ButtonState(
-                text = stringRes(R.string.vote_dismiss),
-                style = ButtonStyle.PRIMARY,
-                onClick = ::dismissError
-            ),
-            secondaryAction = ButtonState(
-                text = stringRes(R.string.vote_dismiss),
-                style = ButtonStyle.TERTIARY,
-                onClick = ::dismissError
-            ),
-            onBack = ::dismissError
-        )
+        errorSheet.value =
+            ZashiConfirmationState(
+                icon = R.drawable.ic_reset_zashi_warning,
+                title = stringRes(R.string.vote_chain_config_error_title),
+                message = message,
+                primaryAction =
+                    ButtonState(
+                        text = stringRes(R.string.vote_dismiss),
+                        style = ButtonStyle.PRIMARY,
+                        onClick = ::dismissError
+                    ),
+                secondaryAction =
+                    ButtonState(
+                        text = stringRes(R.string.vote_dismiss),
+                        style = ButtonStyle.TERTIARY,
+                        onClick = ::dismissError
+                    ),
+                onBack = ::dismissError
+            )
     }
 
     private fun dismissError() {
@@ -328,43 +347,48 @@ class VoteChainConfigVM(
 
     private fun EditorDraft.toState(isValidating: Boolean) =
         VoteChainConfigEditorState(
-            sheetTitle = stringRes(
-                if (id == null) {
-                    R.string.vote_chain_config_add_source_nav
-                } else {
-                    R.string.vote_chain_config_edit_source_nav
-                }
-            ),
-            title = stringRes(
-                if (id == null) {
-                    R.string.vote_chain_config_add_title
-                } else {
-                    R.string.vote_chain_config_edit_title
-                }
-            ),
-            description = stringRes(
-                if (id == null) {
-                    R.string.vote_chain_config_add_source_description
-                } else {
-                    R.string.vote_chain_config_edit_source_description
-                }
-            ),
-            name = TextFieldState(
-                value = stringRes(name),
-                error =
-                    stringRes(R.string.vote_chain_config_error_name_too_long)
-                        .takeIf { name.trim().length > MAX_CUSTOM_CHAIN_NAME_LENGTH },
-                isEnabled = !isValidating,
-                onValueChange = ::onNameChanged
-            ),
-            url = TextFieldState(
-                value = stringRes(pinnedSource),
-                error =
-                    stringRes(R.string.vote_chain_config_error_url_invalid)
-                        .takeIf { pinnedSource.trim().isInvalidPinnedSource() },
-                isEnabled = !isValidating,
-                onValueChange = ::onUrlChanged
-            ),
+            sheetTitle =
+                stringRes(
+                    if (id == null) {
+                        R.string.vote_chain_config_add_source_nav
+                    } else {
+                        R.string.vote_chain_config_edit_source_nav
+                    }
+                ),
+            title =
+                stringRes(
+                    if (id == null) {
+                        R.string.vote_chain_config_add_title
+                    } else {
+                        R.string.vote_chain_config_edit_title
+                    }
+                ),
+            description =
+                stringRes(
+                    if (id == null) {
+                        R.string.vote_chain_config_add_source_description
+                    } else {
+                        R.string.vote_chain_config_edit_source_description
+                    }
+                ),
+            name =
+                TextFieldState(
+                    value = stringRes(name),
+                    error =
+                        stringRes(R.string.vote_chain_config_error_name_too_long)
+                            .takeIf { name.trim().length > MAX_CUSTOM_CHAIN_NAME_LENGTH },
+                    isEnabled = !isValidating,
+                    onValueChange = ::onNameChanged
+                ),
+            url =
+                TextFieldState(
+                    value = stringRes(pinnedSource),
+                    error =
+                        stringRes(R.string.vote_chain_config_error_url_invalid)
+                            .takeIf { pinnedSource.trim().isInvalidPinnedSource() },
+                    isEnabled = !isValidating,
+                    onValueChange = ::onUrlChanged
+                ),
             showsUrlCopyButton = id != null,
             onUrlCopyClick = ::onUrlCopyClick,
             deleteButton =
@@ -376,19 +400,21 @@ class VoteChainConfigVM(
                         onClick = { onDeleteCustom(customId) }
                     )
                 },
-            saveButton = ButtonState(
-                text = stringRes(R.string.vote_chain_config_save_changes),
-                style = ButtonStyle.PRIMARY,
-                isEnabled = !isValidating && canSave(),
-                isLoading = isValidating,
-                onClick = ::onSaveEditor
-            ),
-            cancelButton = ButtonState(
-                text = stringRes(R.string.vote_chain_config_cancel),
-                style = ButtonStyle.TERTIARY,
-                isEnabled = !isValidating,
-                onClick = ::onCancelEditor
-            )
+            saveButton =
+                ButtonState(
+                    text = stringRes(R.string.vote_chain_config_save_changes),
+                    style = ButtonStyle.PRIMARY,
+                    isEnabled = !isValidating && canSave(),
+                    isLoading = isValidating,
+                    onClick = ::onSaveEditor
+                ),
+            cancelButton =
+                ButtonState(
+                    text = stringRes(R.string.vote_chain_config_cancel),
+                    style = ButtonStyle.TERTIARY,
+                    isEnabled = !isValidating,
+                    onClick = ::onCancelEditor
+                )
         )
 
     private companion object {

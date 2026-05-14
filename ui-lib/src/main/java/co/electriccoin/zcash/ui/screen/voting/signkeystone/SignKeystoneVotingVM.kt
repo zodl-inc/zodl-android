@@ -6,8 +6,8 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
-import co.electriccoin.zcash.ui.common.repository.VotingKeystoneRouteStage
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneResumeSubmissionException
+import co.electriccoin.zcash.ui.common.repository.VotingKeystoneRouteStage
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneSigningBundle
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
@@ -25,7 +25,6 @@ import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTrans
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.ZashiAccountInfoListItemState
 import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionArgs
 import co.electriccoin.zcash.ui.screen.voting.scankeystone.ScanKeystoneVotingPCZTRequest
-import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -37,6 +36,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
 
 class SignKeystoneVotingVM(
@@ -49,7 +49,8 @@ class SignKeystoneVotingVM(
 ) : ViewModel() {
     private var signingBundle: VotingKeystoneSigningBundle? = null
     private val selectedAccountUuid =
-        observeSelectedWalletAccount.require()
+        observeSelectedWalletAccount
+            .require()
             .map { account -> account.sdkAccount.accountUuid.toVotingAccountScopeId() }
             .stateIn(
                 scope = viewModelScope,
@@ -305,11 +306,12 @@ class SignKeystoneVotingVM(
             return null
         }
 
-        val buttonText = if (remainingCount == 1) {
-            stringRes(R.string.sign_keystone_voting_skip_remaining_bundle)
-        } else {
-            stringRes(R.string.sign_keystone_voting_skip_remaining_bundles, remainingCount)
-        }
+        val buttonText =
+            if (remainingCount == 1) {
+                stringRes(R.string.sign_keystone_voting_skip_remaining_bundle)
+            } else {
+                stringRes(R.string.sign_keystone_voting_skip_remaining_bundles, remainingCount)
+            }
 
         return ButtonState(
             text = buttonText,
@@ -330,21 +332,24 @@ class SignKeystoneVotingVM(
         val skippedWeight = bundleWeights.subList(signedCount, bundleCount).sum()
 
         return SkipKeystoneBundlesBottomSheetState(
-            message = stringRes(
-                R.string.sign_keystone_voting_skip_remaining_message,
-                signedWeight.toVotingWeightLabel(),
-                skippedWeight.toVotingWeightLabel()
-            ),
+            message =
+                stringRes(
+                    R.string.sign_keystone_voting_skip_remaining_message,
+                    signedWeight.toVotingWeightLabel(),
+                    skippedWeight.toVotingWeightLabel()
+                ),
             onBack = ::onCloseSkipBottomSheetClick,
-            skipButton = ButtonState(
-                text = stringRes(R.string.sign_keystone_voting_skip_remaining_confirm),
-                style = ButtonStyle.DESTRUCTIVE2,
-                onClick = ::onConfirmSkipRemainingClick
-            ),
-            cancelButton = ButtonState(
-                text = stringRes(R.string.sign_keystone_voting_cancel),
-                onClick = ::onCloseSkipBottomSheetClick
-            )
+            skipButton =
+                ButtonState(
+                    text = stringRes(R.string.sign_keystone_voting_skip_remaining_confirm),
+                    style = ButtonStyle.DESTRUCTIVE2,
+                    onClick = ::onConfirmSkipRemainingClick
+                ),
+            cancelButton =
+                ButtonState(
+                    text = stringRes(R.string.sign_keystone_voting_cancel),
+                    onClick = ::onCloseSkipBottomSheetClick
+                )
         )
     }
 

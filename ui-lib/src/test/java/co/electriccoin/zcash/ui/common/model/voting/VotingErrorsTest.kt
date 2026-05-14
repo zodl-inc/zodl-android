@@ -16,19 +16,21 @@ class VotingErrorsTest {
 
     @Test
     fun walletSyncingMessageIncludesProgress() {
-        val failure = VotingErrors.WalletSyncing(
-            scannedHeight = 10,
-            snapshotHeight = 20
-        )
+        val failure =
+            VotingErrors.WalletSyncing(
+                scannedHeight = 10,
+                snapshotHeight = 20
+            )
 
         assertEquals("Wallet sync is below the voting snapshot height (10/20)", failure.userMessage)
     }
 
     @Test
     fun replayRetryLaterCarriesTypedFailure() {
-        val decision = VotingReplayDecision.RetryLater(
-            VotingErrors.TxConfirmationTimedOut("tx-1")
-        )
+        val decision =
+            VotingReplayDecision.RetryLater(
+                VotingErrors.TxConfirmationTimedOut("tx-1")
+            )
 
         assertIs<VotingErrors.TxConfirmationTimedOut>(decision.reason)
         assertEquals("Transaction tx-1 was not confirmed in time", decision.reason.userMessage)

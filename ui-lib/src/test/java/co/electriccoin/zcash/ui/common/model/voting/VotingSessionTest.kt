@@ -69,17 +69,19 @@ class VotingSessionTest {
         title = "Voting Round",
         description = "Voting round description",
         discussionUrl = null,
-        proposals = listOf(
-            Proposal(
-                id = 1,
-                title = "Proposal",
-                description = "Proposal description",
-                options = listOf(
-                    VoteOption(id = 0, label = "No"),
-                    VoteOption(id = 1, label = "Yes")
+        proposals =
+            listOf(
+                Proposal(
+                    id = 1,
+                    title = "Proposal",
+                    description = "Proposal description",
+                    options =
+                        listOf(
+                            VoteOption(id = 0, label = "No"),
+                            VoteOption(id = 1, label = "Yes")
+                        )
                 )
-            )
-        ),
+            ),
         status = SessionStatus.ACTIVE,
         createdAtHeight = 1
     )

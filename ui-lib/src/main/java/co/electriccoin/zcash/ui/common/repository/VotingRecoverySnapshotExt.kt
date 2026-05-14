@@ -11,10 +11,11 @@ fun VotingRecoverySnapshot.effectiveChoices(
 ): Map<Int, Int> =
     buildMap {
         proposals.forEach { proposal ->
-            val choiceId = inMemoryDraftChoices[proposal.id]
-                ?: draftChoices[proposal.id]
-                ?: proposalSelections[proposal.id]?.choiceId
-                ?: proposal.abstainOptionId().takeIf { submittedAtEpochSeconds != null }
+            val choiceId =
+                inMemoryDraftChoices[proposal.id]
+                    ?: draftChoices[proposal.id]
+                    ?: proposalSelections[proposal.id]?.choiceId
+                    ?: proposal.abstainOptionId().takeIf { submittedAtEpochSeconds != null }
 
             if (choiceId != null) {
                 put(proposal.id, choiceId)
@@ -36,9 +37,10 @@ internal fun VotingRecoverySnapshot.withRemainingKeystoneBundlesSkipped(
     keepCount: Int,
     updatedAt: Instant = Instant.now()
 ): VotingRecoverySnapshot {
-    val currentBundleCount = requireNotNull(bundleCount) {
-        "Voting round $roundId has no prepared bundle count"
-    }
+    val currentBundleCount =
+        requireNotNull(bundleCount) {
+            "Voting round $roundId has no prepared bundle count"
+        }
     require(keepCount > 0) {
         "At least one Keystone voting bundle must be signed before skipping"
     }
@@ -57,9 +59,10 @@ internal fun VotingRecoverySnapshot.withRemainingKeystoneBundlesSkipped(
         bundleCount = keepCount,
         eligibleWeight = keptBundleWeights.sum(),
         bundleWeights = keptBundleWeights,
-        keystoneBundleSignatures = keystoneBundleSignatures.filterKeys { bundleIndex ->
-            bundleIndex < keepCount
-        },
+        keystoneBundleSignatures =
+            keystoneBundleSignatures.filterKeys { bundleIndex ->
+                bundleIndex < keepCount
+            },
         skippedBundleCount = skippedBundleCount + currentBundleCount - keepCount,
         pendingKeystoneRequest = null,
         updatedAt = updatedAt

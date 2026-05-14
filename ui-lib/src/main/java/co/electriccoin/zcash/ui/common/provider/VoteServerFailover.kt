@@ -9,9 +9,9 @@ internal class VotingServerFailoverException(
     val serverUrls: List<String>,
     val lastError: Throwable?
 ) : IllegalStateException(
-    "All configured vote servers failed for $path",
-    lastError
-)
+        "All configured vote servers failed for $path",
+        lastError
+    )
 
 internal suspend fun <T> withVoteServerFailover(
     path: String,

@@ -18,10 +18,11 @@ class AuthorizeVotingSubmissionUseCase(
         return try {
             biometricRepository.requestBiometrics(
                 BiometricRequest(
-                    message = stringRes(
-                        R.string.authentication_system_ui_subtitle,
-                        stringRes(R.string.authentication_use_case_vote_submission)
-                    )
+                    message =
+                        stringRes(
+                            R.string.authentication_system_ui_subtitle,
+                            stringRes(R.string.authentication_use_case_vote_submission)
+                        )
                 )
             )
             VotingSubmissionAuthorizationResult.Authorized

@@ -23,8 +23,8 @@ import cash.z.ecc.android.sdk.internal.model.voting.JniWireEncryptedShare
 import cash.z.ecc.android.sdk.internal.model.voting.JniWitnessData
 import co.electriccoin.zcash.ui.common.model.voting.RoundPhase
 import co.electriccoin.zcash.ui.common.model.voting.RoundStateInfo
-import co.electriccoin.zcash.ui.common.model.voting.VotingCommitmentBundleRecord
 import co.electriccoin.zcash.ui.common.model.voting.VotingBundleSetupResult
+import co.electriccoin.zcash.ui.common.model.voting.VotingCommitmentBundleRecord
 import co.electriccoin.zcash.ui.common.model.voting.VotingDelegationPirPrecomputeResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingDelegationProof
 import co.electriccoin.zcash.ui.common.model.voting.VotingDelegationSubmission
@@ -426,17 +426,18 @@ class VotingCryptoClientImpl : VotingCryptoClient {
     ): RoundStateInfo? = db(dbHandle).getRoundState(roundId)?.toAppModel()
 
     override suspend fun listRoundsJson(dbHandle: Long): String =
-        JSONArray().apply {
-            db(dbHandle).listRounds().forEach { round ->
-                put(
-                    JSONObject()
-                        .put("round_id", round.roundId)
-                        .put("phase", round.phase)
-                        .put("snapshot_height", round.snapshotHeight)
-                        .put("created_at", round.createdAt)
-                )
-            }
-        }.toString()
+        JSONArray()
+            .apply {
+                db(dbHandle).listRounds().forEach { round ->
+                    put(
+                        JSONObject()
+                            .put("round_id", round.roundId)
+                            .put("phase", round.phase)
+                            .put("snapshot_height", round.snapshotHeight)
+                            .put("created_at", round.createdAt)
+                    )
+                }
+            }.toString()
 
     override suspend fun getBundleCount(
         dbHandle: Long,
@@ -539,17 +540,18 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         seedFingerprint: ByteArray,
         roundName: String
     ): VotingGovernancePczt =
-        db(dbHandle).buildGovernancePczt(
-            roundId,
-            bundleIndex,
-            fvkBytes,
-            hotkeyRawAddress,
-            networkId,
-            accountIndex,
-            notesJson.toJniNoteInfos(),
-            seedFingerprint,
-            roundName
-        ).toAppModel()
+        db(dbHandle)
+            .buildGovernancePczt(
+                roundId,
+                bundleIndex,
+                fvkBytes,
+                hotkeyRawAddress,
+                networkId,
+                accountIndex,
+                notesJson.toJniNoteInfos(),
+                seedFingerprint,
+                roundName
+            ).toAppModel()
 
     override suspend fun buildGovernancePcztFromSeed(
         dbHandle: Long,
@@ -564,18 +566,19 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         seedFingerprint: ByteArray,
         roundName: String
     ): VotingGovernancePczt =
-        db(dbHandle).buildGovernancePcztFromSeed(
-            roundId,
-            bundleIndex,
-            ufvk,
-            networkId,
-            accountIndex,
-            notesJson.toJniNoteInfos(),
-            walletSeed,
-            hotkeySeed,
-            seedFingerprint,
-            roundName
-        ).toAppModel()
+        db(dbHandle)
+            .buildGovernancePcztFromSeed(
+                roundId,
+                bundleIndex,
+                ufvk,
+                networkId,
+                accountIndex,
+                notesJson.toJniNoteInfos(),
+                walletSeed,
+                hotkeySeed,
+                seedFingerprint,
+                roundName
+            ).toAppModel()
 
     override suspend fun extractPcztSighash(pcztBytes: ByteArray): ByteArray =
         rustBackend().extractPcztSighash(pcztBytes)
@@ -607,15 +610,16 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         hotkeyRawAddress: ByteArray,
         proofProgress: ((Double) -> Unit)?
     ): VotingDelegationProof =
-        db(dbHandle).buildAndProveDelegation(
-            roundId,
-            bundleIndex,
-            pirServerUrl,
-            networkId,
-            notesJson.toJniNoteInfos(),
-            hotkeyRawAddress,
-            proofProgress?.asVotingProgressCallback()
-        ).toAppModel()
+        db(dbHandle)
+            .buildAndProveDelegation(
+                roundId,
+                bundleIndex,
+                pirServerUrl,
+                networkId,
+                notesJson.toJniNoteInfos(),
+                hotkeyRawAddress,
+                proofProgress?.asVotingProgressCallback()
+            ).toAppModel()
 
     override suspend fun getDelegationSubmission(
         dbHandle: Long,
@@ -634,7 +638,8 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         keystoneSig: ByteArray,
         keystoneSighash: ByteArray
     ): VotingDelegationSubmission =
-        db(dbHandle).getDelegationSubmissionWithKeystoneSig(roundId, bundleIndex, keystoneSig, keystoneSighash)
+        db(dbHandle)
+            .getDelegationSubmissionWithKeystoneSig(roundId, bundleIndex, keystoneSig, keystoneSighash)
             .toAppModel()
 
     override suspend fun storeDelegationTxHash(
@@ -797,19 +802,20 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         singleShare: Boolean,
         proofProgress: ((Double) -> Unit)?
     ): VotingVoteCommitment =
-        db(dbHandle).buildVoteCommitment(
-            roundId,
-            bundleIndex,
-            hotkeySeed,
-            proposalId,
-            choice,
-            numOptions,
-            witnessJson.toJniVanWitness(vanPosition, anchorHeight),
-            networkId,
-            accountIndex,
-            singleShare,
-            proofProgress?.asVotingProgressCallback()
-        ).toAppModel()
+        db(dbHandle)
+            .buildVoteCommitment(
+                roundId,
+                bundleIndex,
+                hotkeySeed,
+                proposalId,
+                choice,
+                numOptions,
+                witnessJson.toJniVanWitness(vanPosition, anchorHeight),
+                networkId,
+                accountIndex,
+                singleShare,
+                proofProgress?.asVotingProgressCallback()
+            ).toAppModel()
 
     override suspend fun buildSharePayloadsJson(
         encSharesJson: String,
@@ -819,25 +825,28 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         vcTreePosition: Long,
         singleShareMode: Boolean
     ): String =
-        rustBackend().buildSharePayloads(
-            commitmentJson.toJniVoteCommitmentResult(encSharesJson.toJniEncryptedShares()),
-            voteDecision,
-            numOptions,
-            vcTreePosition,
-            singleShareMode
-        ).asList().toSharePayloadsJson()
+        rustBackend()
+            .buildSharePayloads(
+                commitmentJson.toJniVoteCommitmentResult(encSharesJson.toJniEncryptedShares()),
+                voteDecision,
+                numOptions,
+                vcTreePosition,
+                singleShareMode
+            ).asList()
+            .toSharePayloadsJson()
 
     override suspend fun signCastVote(
         hotkeySeed: ByteArray,
         networkId: Int,
         accountIndex: Int,
         commitmentJson: String
-    ): ByteArray = rustBackend().signCastVote(
-        hotkeySeed,
-        networkId,
-        accountIndex,
-        commitmentJson.toJniVoteCommitmentResult()
-    )
+    ): ByteArray =
+        rustBackend().signCastVote(
+            hotkeySeed,
+            networkId,
+            accountIndex,
+            commitmentJson.toJniVoteCommitmentResult()
+        )
 
     override suspend fun warmProvingCaches() = rustBackend().warmProvingCaches()
 
@@ -1097,14 +1106,18 @@ private fun String.toJniVoteCommitmentResult(
         sharesHash = json.getString("shares_hash").hexStringToBytes(),
         shareBlinds = json.optJSONArray("share_blinds").toByteArrays(),
         shareComms = json.optJSONArray("share_comms").toByteArrays(),
-        rVpk = json.optString("r_vpk_bytes")
-            .takeIf(String::isNotEmpty)
-            ?.hexStringToBytes()
-            ?: ByteArray(0),
-        alphaV = json.optString("alpha_v")
-            .takeIf(String::isNotEmpty)
-            ?.hexStringToBytes()
-            ?: ByteArray(0)
+        rVpk =
+            json
+                .optString("r_vpk_bytes")
+                .takeIf(String::isNotEmpty)
+                ?.hexStringToBytes()
+                ?: ByteArray(0),
+        alphaV =
+            json
+                .optString("alpha_v")
+                .takeIf(String::isNotEmpty)
+                ?.hexStringToBytes()
+                ?: ByteArray(0)
     )
 }
 

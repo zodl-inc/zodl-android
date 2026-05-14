@@ -15,37 +15,41 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.provider.RoundsListResult
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepositoryImpl
+import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlinx.coroutines.runBlocking
 
 class RefreshVotingRoundsUseCaseTest {
     @Test
-    fun refreshStoresZodlEndorsedRoundIds() = runBlocking {
-        val repository = VotingApiRepositoryImpl()
-        val useCase = RefreshVotingRoundsUseCase(
-            votingApiProvider = FakeVotingApiProvider(endorsedRoundIds = setOf(ROUND_ID)),
-            votingApiRepository = repository
-        )
+    fun refreshStoresZodlEndorsedRoundIds() =
+        runBlocking {
+            val repository = VotingApiRepositoryImpl()
+            val useCase =
+                RefreshVotingRoundsUseCase(
+                    votingApiProvider = FakeVotingApiProvider(endorsedRoundIds = setOf(ROUND_ID)),
+                    votingApiRepository = repository
+                )
 
-        useCase()
+            useCase()
 
-        assertEquals(setOf(ROUND_ID), repository.snapshot.value.zodlEndorsedRoundIds)
-    }
+            assertEquals(setOf(ROUND_ID), repository.snapshot.value.zodlEndorsedRoundIds)
+        }
 
     @Test
-    fun refreshTreatsZodlEndorsedRoundFailureAsNonFatal() = runBlocking {
-        val repository = VotingApiRepositoryImpl()
-        val useCase = RefreshVotingRoundsUseCase(
-            votingApiProvider = FakeVotingApiProvider(endorsedRoundFailure = IllegalStateException("unavailable")),
-            votingApiRepository = repository,
-            logEndorsementFailure = {}
-        )
+    fun refreshTreatsZodlEndorsedRoundFailureAsNonFatal() =
+        runBlocking {
+            val repository = VotingApiRepositoryImpl()
+            val useCase =
+                RefreshVotingRoundsUseCase(
+                    votingApiProvider = FakeVotingApiProvider(endorsedRoundFailure = IllegalStateException("unavailable")),
+                    votingApiRepository = repository,
+                    logEndorsementFailure = {}
+                )
 
-        useCase()
+            useCase()
 
-        assertEquals(emptySet(), repository.snapshot.value.zodlEndorsedRoundIds)
-    }
+            assertEquals(emptySet(), repository.snapshot.value.zodlEndorsedRoundIds)
+        }
 
     private class FakeVotingApiProvider(
         private val endorsedRoundIds: Set<String> = emptySet(),

@@ -247,16 +247,18 @@ class VotingRecoveryRepositoryImpl(
             ?.toVotingRecoverySnapshot()
             ?.let { return it }
 
-        val legacySnapshot = preferenceProvider
-            .getString(legacyKey(roundId))
-            ?.toVotingRecoverySnapshot()
-            ?: return null
+        val legacySnapshot =
+            preferenceProvider
+                .getString(legacyKey(roundId))
+                ?.toVotingRecoverySnapshot()
+                ?: return null
 
-        val migratedSnapshot = legacySnapshot.copy(
-            accountUuid = accountUuid,
-            roundId = roundId,
-            updatedAt = Instant.now()
-        )
+        val migratedSnapshot =
+            legacySnapshot.copy(
+                accountUuid = accountUuid,
+                roundId = roundId,
+                updatedAt = Instant.now()
+            )
 
         preferenceProvider.putString(
             key = scopedKey,
@@ -281,10 +283,11 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         phase: VotingRecoveryPhase
     ) {
-        val current = get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-            accountUuid = accountUuid,
-            roundId = roundId
-        )
+        val current =
+            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
+                accountUuid = accountUuid,
+                roundId = roundId
+            )
         store(
             current.copy(
                 phase = phase,
@@ -300,10 +303,11 @@ class VotingRecoveryRepositoryImpl(
         eligibleWeight: Long,
         bundleWeights: List<Long>
     ) {
-        val current = get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-            accountUuid = accountUuid,
-            roundId = roundId
-        )
+        val current =
+            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
+                accountUuid = accountUuid,
+                roundId = roundId
+            )
         store(
             current.copy(
                 phase = VotingRecoveryPhase.BUNDLES_PREPARED,
@@ -321,10 +325,11 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         eligibleWeight: Long
     ) {
-        val current = get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-            accountUuid = accountUuid,
-            roundId = roundId
-        )
+        val current =
+            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
+                accountUuid = accountUuid,
+                roundId = roundId
+            )
         store(
             current.copy(
                 eligibleWeight = eligibleWeight,
@@ -338,10 +343,11 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         voteEndEpochSeconds: Long
     ) {
-        val current = get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-            accountUuid = accountUuid,
-            roundId = roundId
-        )
+        val current =
+            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
+                accountUuid = accountUuid,
+                roundId = roundId
+            )
         store(
             current.copy(
                 voteEndEpochSeconds = voteEndEpochSeconds,
@@ -355,10 +361,11 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         submittedAtEpochSeconds: Long
     ) {
-        val current = get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-            accountUuid = accountUuid,
-            roundId = roundId
-        )
+        val current =
+            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
+                accountUuid = accountUuid,
+                roundId = roundId
+            )
         store(
             current.copy(
                 submittedAtEpochSeconds = submittedAtEpochSeconds,
@@ -372,10 +379,11 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         hotkeyAddress: String
     ) {
-        val current = get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-            accountUuid = accountUuid,
-            roundId = roundId
-        )
+        val current =
+            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
+                accountUuid = accountUuid,
+                roundId = roundId
+            )
         store(
             current.copy(
                 phase = VotingRecoveryPhase.HOTKEY_READY,
@@ -390,17 +398,19 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         voteServerUrls: List<String>
     ) {
-        val current = get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-            accountUuid = accountUuid,
-            roundId = roundId
-        )
+        val current =
+            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
+                accountUuid = accountUuid,
+                roundId = roundId
+            )
         store(
             current.copy(
-                voteServerUrls = voteServerUrls
-                    .map(String::trim)
-                    .filter(String::isNotEmpty)
-                    .map { url -> if (url.endsWith('/')) url.dropLast(1) else url }
-                    .distinct(),
+                voteServerUrls =
+                    voteServerUrls
+                        .map(String::trim)
+                        .filter(String::isNotEmpty)
+                        .map { url -> if (url.endsWith('/')) url.dropLast(1) else url }
+                        .distinct(),
                 updatedAt = Instant.now()
             )
         )
@@ -411,10 +421,11 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         draftChoices: Map<Int, Int>
     ) {
-        val current = get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-            accountUuid = accountUuid,
-            roundId = roundId
-        )
+        val current =
+            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
+                accountUuid = accountUuid,
+                roundId = roundId
+            )
         store(
             current.copy(
                 draftChoices = draftChoices.toMap(),
@@ -428,10 +439,11 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         proposalSelections: Map<Int, VotingProposalSelection>
     ) {
-        val current = get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-            accountUuid = accountUuid,
-            roundId = roundId
-        )
+        val current =
+            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
+                accountUuid = accountUuid,
+                roundId = roundId
+            )
         store(
             current.copy(
                 proposalSelections = current.proposalSelections + proposalSelections,
@@ -448,21 +460,25 @@ class VotingRecoveryRepositoryImpl(
         sighash: ByteArray,
         rk: ByteArray?
     ) {
-        val current = get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-            accountUuid = accountUuid,
-            roundId = roundId
-        )
+        val current =
+            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
+                accountUuid = accountUuid,
+                roundId = roundId
+            )
         store(
             current.copy(
-                keystoneBundleSignatures = current.keystoneBundleSignatures + (
-                    bundleIndex to VotingKeystoneBundleSignature(
-                        spendAuthSigBase64 = Base64.getEncoder().encodeToString(spendAuthSig),
-                        sighashBase64 = Base64.getEncoder().encodeToString(sighash),
-                        rkBase64 = rk?.let(Base64.getEncoder()::encodeToString)
-                    )
-                ),
-                pendingKeystoneRequest = current.pendingKeystoneRequest
-                    ?.takeUnless { request -> request.bundleIndex == bundleIndex },
+                keystoneBundleSignatures =
+                    current.keystoneBundleSignatures + (
+                        bundleIndex to
+                            VotingKeystoneBundleSignature(
+                                spendAuthSigBase64 = Base64.getEncoder().encodeToString(spendAuthSig),
+                                sighashBase64 = Base64.getEncoder().encodeToString(sighash),
+                                rkBase64 = rk?.let(Base64.getEncoder()::encodeToString)
+                            )
+                    ),
+                pendingKeystoneRequest =
+                    current.pendingKeystoneRequest
+                        ?.takeUnless { request -> request.bundleIndex == bundleIndex },
                 updatedAt = Instant.now()
             )
         )
@@ -477,20 +493,22 @@ class VotingRecoveryRepositoryImpl(
         expectedSighash: ByteArray,
         expectedRk: ByteArray?
     ) {
-        val current = get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-            accountUuid = accountUuid,
-            roundId = roundId
-        )
+        val current =
+            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
+                accountUuid = accountUuid,
+                roundId = roundId
+            )
         store(
             current.copy(
-                pendingKeystoneRequest = VotingPendingKeystoneRequest(
-                    bundleIndex = bundleIndex,
-                    actionIndex = actionIndex,
-                    redactedPcztBase64 = Base64.getEncoder().encodeToString(redactedPczt),
-                    expectedSighashBase64 = Base64.getEncoder().encodeToString(expectedSighash),
-                    expectedRkBase64 = expectedRk?.let(Base64.getEncoder()::encodeToString),
-                    routeStage = VotingKeystoneRouteStage.SIGN
-                ),
+                pendingKeystoneRequest =
+                    VotingPendingKeystoneRequest(
+                        bundleIndex = bundleIndex,
+                        actionIndex = actionIndex,
+                        redactedPcztBase64 = Base64.getEncoder().encodeToString(redactedPczt),
+                        expectedSighashBase64 = Base64.getEncoder().encodeToString(expectedSighash),
+                        expectedRkBase64 = expectedRk?.let(Base64.getEncoder()::encodeToString),
+                        routeStage = VotingKeystoneRouteStage.SIGN
+                    ),
                 updatedAt = Instant.now()
             )
         )
@@ -535,9 +553,10 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         keepCount: Int
     ): VotingRecoverySnapshot {
-        val current = requireNotNull(get(accountUuid, roundId)) {
-            "Voting round $roundId has not been prepared"
-        }
+        val current =
+            requireNotNull(get(accountUuid, roundId)) {
+                "Voting round $roundId has not been prepared"
+            }
         return current.withRemainingKeystoneBundlesSkipped(keepCount).also { updated ->
             store(updated)
         }
@@ -548,10 +567,11 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         singleShareMode: Boolean
     ) {
-        val current = get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-            accountUuid = accountUuid,
-            roundId = roundId
-        )
+        val current =
+            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
+                accountUuid = accountUuid,
+                roundId = roundId
+            )
         store(
             current.copy(
                 singleShareMode = singleShareMode,
@@ -565,10 +585,11 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         proposalId: Int
     ) {
-        val current = get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-            accountUuid = accountUuid,
-            roundId = roundId
-        )
+        val current =
+            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
+                accountUuid = accountUuid,
+                roundId = roundId
+            )
         store(
             current.withProposalSubmitted(proposalId)
         )
@@ -594,11 +615,12 @@ class VotingRecoveryRepositoryImpl(
         return pairs
             .filter { (indexedAccount, _) -> indexedAccount == scopedAccount }
             .mapNotNull { (_, indexedRoundId) ->
-                val snapshot = get(scopedAccount, indexedRoundId) ?: run {
-                    // Stale index entry — drop it lazily.
-                    removeFromIndex(preferenceProvider, scopedAccount, indexedRoundId)
-                    return@mapNotNull null
-                }
+                val snapshot =
+                    get(scopedAccount, indexedRoundId) ?: run {
+                        // Stale index entry — drop it lazily.
+                        removeFromIndex(preferenceProvider, scopedAccount, indexedRoundId)
+                        return@mapNotNull null
+                    }
                 if (snapshot.submittedProposalIds.isNotEmpty()) {
                     snapshot.roundId
                 } else {
@@ -614,9 +636,10 @@ class VotingRecoveryRepositoryImpl(
         "voting_recovery_${accountUuid.lowercase()}_${roundId.lowercase()}"
     )
 
-    private fun legacyKey(roundId: String) = PreferenceKey(
-        "voting_recovery_${roundId.lowercase()}"
-    )
+    private fun legacyKey(roundId: String) =
+        PreferenceKey(
+            "voting_recovery_${roundId.lowercase()}"
+        )
 
     private suspend fun readIndex(
         preferenceProvider: PreferenceProvider
@@ -676,8 +699,8 @@ class VotingRecoveryRepositoryImpl(
         return array.toString()
     }
 
-    private fun decodeIndex(encoded: String): List<Pair<String, String>> {
-        return runCatching {
+    private fun decodeIndex(encoded: String): List<Pair<String, String>> =
+        runCatching {
             val array = JSONArray(encoded)
             buildList {
                 for (index in 0 until array.length()) {
@@ -688,7 +711,6 @@ class VotingRecoveryRepositoryImpl(
                 }
             }
         }.getOrDefault(emptyList())
-    }
 
     private companion object {
         val INDEX_KEY = PreferenceKey("voting_recovery_index")
@@ -717,8 +739,7 @@ private fun VotingRecoverySnapshot.encode(): String =
                     put(proposalId.toString(), choiceId)
                 }
             }
-        )
-        .put(
+        ).put(
             "proposal_selections",
             JSONObject().apply {
                 proposalSelections.toSortedMap().forEach { (proposalId, selection) ->
@@ -730,8 +751,7 @@ private fun VotingRecoverySnapshot.encode(): String =
                     )
                 }
             }
-        )
-        .put(
+        ).put(
             "keystone_bundle_signatures",
             JSONObject().apply {
                 keystoneBundleSignatures.toSortedMap().forEach { (bundleIndex, signature) ->
@@ -744,8 +764,7 @@ private fun VotingRecoverySnapshot.encode(): String =
                     )
                 }
             }
-        )
-        .put(
+        ).put(
             "pending_keystone_request",
             pendingKeystoneRequest?.let { request ->
                 JSONObject()
@@ -756,8 +775,7 @@ private fun VotingRecoverySnapshot.encode(): String =
                     .put("expected_rk", request.expectedRkBase64)
                     .put("route_stage", request.routeStage.name)
             }
-        )
-        .put("submitted_proposal_ids", JSONArray(submittedProposalIds.sorted()))
+        ).put("submitted_proposal_ids", JSONArray(submittedProposalIds.sorted()))
         .put("updated_at", updatedAt.toEpochMilli())
         .toString()
 
@@ -767,95 +785,121 @@ private fun String.toVotingRecoverySnapshot(): VotingRecoverySnapshot {
     return VotingRecoverySnapshot(
         accountUuid = json.optString("account_uuid"),
         roundId = json.getString("round_id"),
-        phase = json.optString("phase")
-            .takeIf { it.isNotEmpty() }
-            ?.let(VotingRecoveryPhase::valueOf)
-            ?: VotingRecoveryPhase.INITIALIZED,
-        bundleCount = json.optInt("bundle_count")
-            .takeIf { json.has("bundle_count") && !json.isNull("bundle_count") },
-        eligibleWeight = json.optLong("eligible_weight")
-            .takeIf { json.has("eligible_weight") && !json.isNull("eligible_weight") },
-        bundleWeights = buildList {
-            val weightsJson = json.optJSONArray("bundle_weights") ?: JSONArray()
-            for (index in 0 until weightsJson.length()) {
-                add(weightsJson.getLong(index))
-            }
-        },
-        skippedBundleCount = json.optInt("skipped_bundle_count")
-            .takeIf { json.has("skipped_bundle_count") && !json.isNull("skipped_bundle_count") }
-            ?: 0,
-        submittedAtEpochSeconds = json.optLong("submitted_at_epoch_seconds")
-            .takeIf { json.has("submitted_at_epoch_seconds") && !json.isNull("submitted_at_epoch_seconds") },
-        voteEndEpochSeconds = json.optLong("vote_end_epoch_seconds")
-            .takeIf { json.has("vote_end_epoch_seconds") && !json.isNull("vote_end_epoch_seconds") },
+        phase =
+            json
+                .optString("phase")
+                .takeIf { it.isNotEmpty() }
+                ?.let(VotingRecoveryPhase::valueOf)
+                ?: VotingRecoveryPhase.INITIALIZED,
+        bundleCount =
+            json
+                .optInt("bundle_count")
+                .takeIf { json.has("bundle_count") && !json.isNull("bundle_count") },
+        eligibleWeight =
+            json
+                .optLong("eligible_weight")
+                .takeIf { json.has("eligible_weight") && !json.isNull("eligible_weight") },
+        bundleWeights =
+            buildList {
+                val weightsJson = json.optJSONArray("bundle_weights") ?: JSONArray()
+                for (index in 0 until weightsJson.length()) {
+                    add(weightsJson.getLong(index))
+                }
+            },
+        skippedBundleCount =
+            json
+                .optInt("skipped_bundle_count")
+                .takeIf { json.has("skipped_bundle_count") && !json.isNull("skipped_bundle_count") }
+                ?: 0,
+        submittedAtEpochSeconds =
+            json
+                .optLong("submitted_at_epoch_seconds")
+                .takeIf { json.has("submitted_at_epoch_seconds") && !json.isNull("submitted_at_epoch_seconds") },
+        voteEndEpochSeconds =
+            json
+                .optLong("vote_end_epoch_seconds")
+                .takeIf { json.has("vote_end_epoch_seconds") && !json.isNull("vote_end_epoch_seconds") },
         hotkeySeedBase64 = json.optString("hotkey_seed").takeIf { it.isNotEmpty() },
         hotkeyAddress = json.optString("hotkey_address").takeIf { it.isNotEmpty() },
-        voteServerUrls = buildList {
-            val voteServersJson = json.optJSONArray("vote_server_urls") ?: JSONArray()
-            for (index in 0 until voteServersJson.length()) {
-                add(voteServersJson.getString(index))
-            }
-        },
-        singleShareMode = json.optBoolean("single_share_mode")
-            .takeIf { json.has("single_share_mode") && !json.isNull("single_share_mode") },
-        draftChoices = buildMap {
-            val draftChoicesJson = json.optJSONObject("draft_choices") ?: JSONObject()
-            draftChoicesJson.keys().forEach { proposalId ->
-                if (!draftChoicesJson.isNull(proposalId)) {
-                    put(proposalId.toInt(), draftChoicesJson.getInt(proposalId))
+        voteServerUrls =
+            buildList {
+                val voteServersJson = json.optJSONArray("vote_server_urls") ?: JSONArray()
+                for (index in 0 until voteServersJson.length()) {
+                    add(voteServersJson.getString(index))
                 }
-            }
-        },
-        proposalSelections = buildMap {
-            val selectionsJson = json.optJSONObject("proposal_selections") ?: JSONObject()
-            selectionsJson.keys().forEach { proposalId ->
-                val selection = selectionsJson.optJSONObject(proposalId) ?: return@forEach
-                put(
-                    proposalId.toInt(),
-                    VotingProposalSelection(
-                        choiceId = selection.getInt("choice_id"),
-                        numOptions = selection.getInt("num_options")
-                    )
-                )
-            }
-        },
-        keystoneBundleSignatures = buildMap {
-            val signaturesJson = json.optJSONObject("keystone_bundle_signatures") ?: JSONObject()
-            signaturesJson.keys().forEach { bundleIndex ->
-                val signature = signaturesJson.optJSONObject(bundleIndex) ?: return@forEach
-                put(
-                    bundleIndex.toInt(),
-                    VotingKeystoneBundleSignature(
-                        spendAuthSigBase64 = signature.getString("spend_auth_sig"),
-                        sighashBase64 = signature.getString("sighash"),
-                        rkBase64 = signature.optString("rk").takeIf(String::isNotEmpty)
-                    )
-                )
-            }
-        },
-        pendingKeystoneRequest = json.optJSONObject("pending_keystone_request")
-            ?.let { request ->
-                VotingPendingKeystoneRequest(
-                    bundleIndex = request.getInt("bundle_index"),
-                    actionIndex = request.getInt("action_index"),
-                    redactedPcztBase64 = request.getString("redacted_pczt"),
-                    expectedSighashBase64 = request.getString("expected_sighash"),
-                    expectedRkBase64 = request.optString("expected_rk").takeIf(String::isNotEmpty),
-                    routeStage = request.optString("route_stage")
-                        .takeIf(String::isNotEmpty)
-                        ?.let(VotingKeystoneRouteStage::valueOf)
-                        ?: VotingKeystoneRouteStage.SIGN
-                )
             },
-        submittedProposalIds = buildSet {
-            val submittedIds = json.optJSONArray("submitted_proposal_ids") ?: JSONArray()
-            for (index in 0 until submittedIds.length()) {
-                add(submittedIds.getInt(index))
-            }
-        },
-        updatedAt = json.optLong("updated_at")
-            .takeIf { json.has("updated_at") }
-            ?.let(Instant::ofEpochMilli)
-            ?: Instant.now()
+        singleShareMode =
+            json
+                .optBoolean("single_share_mode")
+                .takeIf { json.has("single_share_mode") && !json.isNull("single_share_mode") },
+        draftChoices =
+            buildMap {
+                val draftChoicesJson = json.optJSONObject("draft_choices") ?: JSONObject()
+                draftChoicesJson.keys().forEach { proposalId ->
+                    if (!draftChoicesJson.isNull(proposalId)) {
+                        put(proposalId.toInt(), draftChoicesJson.getInt(proposalId))
+                    }
+                }
+            },
+        proposalSelections =
+            buildMap {
+                val selectionsJson = json.optJSONObject("proposal_selections") ?: JSONObject()
+                selectionsJson.keys().forEach { proposalId ->
+                    val selection = selectionsJson.optJSONObject(proposalId) ?: return@forEach
+                    put(
+                        proposalId.toInt(),
+                        VotingProposalSelection(
+                            choiceId = selection.getInt("choice_id"),
+                            numOptions = selection.getInt("num_options")
+                        )
+                    )
+                }
+            },
+        keystoneBundleSignatures =
+            buildMap {
+                val signaturesJson = json.optJSONObject("keystone_bundle_signatures") ?: JSONObject()
+                signaturesJson.keys().forEach { bundleIndex ->
+                    val signature = signaturesJson.optJSONObject(bundleIndex) ?: return@forEach
+                    put(
+                        bundleIndex.toInt(),
+                        VotingKeystoneBundleSignature(
+                            spendAuthSigBase64 = signature.getString("spend_auth_sig"),
+                            sighashBase64 = signature.getString("sighash"),
+                            rkBase64 = signature.optString("rk").takeIf(String::isNotEmpty)
+                        )
+                    )
+                }
+            },
+        pendingKeystoneRequest =
+            json
+                .optJSONObject("pending_keystone_request")
+                ?.let { request ->
+                    VotingPendingKeystoneRequest(
+                        bundleIndex = request.getInt("bundle_index"),
+                        actionIndex = request.getInt("action_index"),
+                        redactedPcztBase64 = request.getString("redacted_pczt"),
+                        expectedSighashBase64 = request.getString("expected_sighash"),
+                        expectedRkBase64 = request.optString("expected_rk").takeIf(String::isNotEmpty),
+                        routeStage =
+                            request
+                                .optString("route_stage")
+                                .takeIf(String::isNotEmpty)
+                                ?.let(VotingKeystoneRouteStage::valueOf)
+                                ?: VotingKeystoneRouteStage.SIGN
+                    )
+                },
+        submittedProposalIds =
+            buildSet {
+                val submittedIds = json.optJSONArray("submitted_proposal_ids") ?: JSONArray()
+                for (index in 0 until submittedIds.length()) {
+                    add(submittedIds.getInt(index))
+                }
+            },
+        updatedAt =
+            json
+                .optLong("updated_at")
+                .takeIf { json.has("updated_at") }
+                ?.let(Instant::ofEpochMilli)
+                ?: Instant.now()
     )
 }

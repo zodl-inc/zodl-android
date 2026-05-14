@@ -20,38 +20,42 @@ import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.VotingConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingConfigSnapshot
-import java.time.Instant
-import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
+import java.time.Instant
+import kotlin.test.Test
+import kotlin.test.assertEquals
 
 class RefreshActiveVotingSessionUseCaseTest {
     @Test
-    fun refreshStoresServiceConfigAndRoundSessions() = runBlocking {
-        val session = makeSession(SELECTED_ROUND_ID)
-        val configRepository = FakeVotingConfigRepository()
-        val apiRepository = VotingApiRepositoryImpl()
-        val useCase = RefreshActiveVotingSessionUseCase(
-            votingApiProvider = FakeVotingApiProvider(
-                roundsResult = RoundsListResult(
-                    rounds = listOf(session.toVotingRound()),
-                    sessionsByRoundId = mapOf(SELECTED_ROUND_ID to session)
+    fun refreshStoresServiceConfigAndRoundSessions() =
+        runBlocking {
+            val session = makeSession(SELECTED_ROUND_ID)
+            val configRepository = FakeVotingConfigRepository()
+            val apiRepository = VotingApiRepositoryImpl()
+            val useCase =
+                RefreshActiveVotingSessionUseCase(
+                    votingApiProvider =
+                        FakeVotingApiProvider(
+                            roundsResult =
+                                RoundsListResult(
+                                    rounds = listOf(session.toVotingRound()),
+                                    sessionsByRoundId = mapOf(SELECTED_ROUND_ID to session)
+                                )
+                        ),
+                    votingConfigRepository = configRepository,
+                    votingApiRepository = apiRepository
                 )
-            ),
-            votingConfigRepository = configRepository,
-            votingApiRepository = apiRepository
-        )
 
-        useCase()
+            useCase()
 
-        assertEquals(VotingServiceConfig.EMPTY, configRepository.currentConfig.value?.serviceConfig)
-        assertEquals(listOf(session.toVotingRound()), apiRepository.snapshot.value.rounds)
-        assertEquals(session, apiRepository.snapshot.value.sessionsByRoundId[SELECTED_ROUND_ID])
-    }
+            assertEquals(VotingServiceConfig.EMPTY, configRepository.currentConfig.value?.serviceConfig)
+            assertEquals(listOf(session.toVotingRound()), apiRepository.snapshot.value.rounds)
+            assertEquals(session, apiRepository.snapshot.value.sessionsByRoundId[SELECTED_ROUND_ID])
+        }
 
     private class FakeVotingApiProvider(
         private val roundsResult: RoundsListResult
@@ -140,17 +144,19 @@ class RefreshActiveVotingSessionUseCaseTest {
                 title = "Round",
                 description = "Round description",
                 discussionUrl = null,
-                proposals = listOf(
-                    Proposal(
-                        id = 1,
-                        title = "Proposal",
-                        description = "Proposal description",
-                        options = listOf(
-                            VoteOption(id = 0, label = "Support"),
-                            VoteOption(id = 1, label = "Oppose")
+                proposals =
+                    listOf(
+                        Proposal(
+                            id = 1,
+                            title = "Proposal",
+                            description = "Proposal description",
+                            options =
+                                listOf(
+                                    VoteOption(id = 0, label = "Support"),
+                                    VoteOption(id = 1, label = "Oppose")
+                                )
                         )
-                    )
-                ),
+                    ),
                 status = SessionStatus.ACTIVE,
                 createdAtHeight = 1L
             )
