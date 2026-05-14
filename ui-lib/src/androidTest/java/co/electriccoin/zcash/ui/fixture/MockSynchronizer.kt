@@ -219,10 +219,6 @@ internal class MockSynchronizer : CloseableSynchronizer {
         error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
     }
 
-    override suspend fun rewindToHeight(height: BlockHeight) {
-        error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
-    }
-
     override suspend fun validateAddress(address: String): AddressType = AddressType.Unified
 
     override suspend fun validateConsensusBranch(): ConsensusMatchType {

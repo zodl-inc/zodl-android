@@ -2,7 +2,6 @@ package co.electriccoin.zcash.ui.screen.connectkeystone.height
 
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.lifecycle.ViewModel
-import cash.z.ecc.android.sdk.exception.InitializeException
 import cash.z.ecc.android.sdk.model.BlockHeight
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
@@ -74,7 +73,7 @@ class KeystoneHeightVM(
         createAccountLce.execute {
             createKeystoneAccount(
                 accounts,
-                account ?: throw InitializeException.NoAccountLoaded,
+                account ?: throw IllegalStateException("No account loaded"),
                 BlockHeight.new(height),
             )
         }

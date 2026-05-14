@@ -6,6 +6,7 @@ import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZecSend
 import cash.z.ecc.android.sdk.model.fromZecString
+import cash.z.ecc.android.sdk.model.toKotlinLocale
 import cash.z.ecc.android.sdk.type.AddressType
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposalNotCreatedException
@@ -95,7 +96,7 @@ class CreateFlexaTransactionUseCase(
                     null -> WalletAddress.Unified.new(recipientAddressState.address)
                 },
             amount =
-                Zatoshi.fromZecString(transaction.amount, locale)
+                Zatoshi.fromZecString(context, transaction.amount, locale.toKotlinLocale())
                     ?: throw NullPointerException("TX amount is null"),
             memo = Memo(""),
             proposal = null

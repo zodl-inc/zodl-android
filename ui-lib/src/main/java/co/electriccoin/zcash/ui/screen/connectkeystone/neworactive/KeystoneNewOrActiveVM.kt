@@ -2,7 +2,6 @@ package co.electriccoin.zcash.ui.screen.connectkeystone.neworactive
 
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.lifecycle.ViewModel
-import cash.z.ecc.android.sdk.exception.InitializeException
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.LceState
@@ -55,7 +54,7 @@ class KeystoneNewOrActiveVM(
 
     private fun onNewDeviceClick() =
         createAccountLce.execute {
-            val account = accounts.accounts.firstOrNull() ?: throw InitializeException.NoAccountLoaded
+            val account = accounts.accounts.firstOrNull() ?: throw IllegalStateException("No account loaded")
             createKeystoneAccount(accounts, account, birthday = null)
         }
 

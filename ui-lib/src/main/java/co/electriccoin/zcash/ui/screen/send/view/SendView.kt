@@ -328,7 +328,7 @@ fun SendButton(
                 // SDK side validations
                 val zecSendValidation =
                     ZecSendExt.new(
-                        locale = locale,
+                        context = context,
                         destinationString = recipientAddressState.address,
                         zecString = amountState.value.getString(context),
                         // Take memo for a valid non-transparent receiver only

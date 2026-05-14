@@ -1,6 +1,8 @@
 package cash.z.ecc.sdk.extension
 
 import android.os.Build
+import cash.z.ecc.android.sdk.ext.convertZatoshiToZec
+import cash.z.ecc.android.sdk.model.Zatoshi
 import java.math.RoundingMode
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
@@ -17,6 +19,13 @@ fun zatoshiFormatter(locale: Locale): DecimalFormat =
         maximumFractionDigits = ZATOSHI_MAXIMUM_FRACTION_DIGITS,
         minimumFractionDigits = ZATOSHI_MINIMUM_FRACTION_DIGITS
     )
+
+fun Zatoshi.toZecString(locale: Locale): String =
+    currencyFormatter(
+        locale = locale,
+        maximumFractionDigits = ZATOSHI_MAXIMUM_FRACTION_DIGITS,
+        minimumFractionDigits = ZATOSHI_MAXIMUM_FRACTION_DIGITS
+    ).format(convertZatoshiToZec(scale = ZATOSHI_MAXIMUM_FRACTION_DIGITS))
 
 fun currencyFormatter(
     locale: Locale,

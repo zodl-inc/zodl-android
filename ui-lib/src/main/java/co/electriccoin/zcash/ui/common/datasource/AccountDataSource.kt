@@ -186,7 +186,6 @@ class AccountDataSourceImpl(
                                 seedFingerprint = seedFingerprint.hexToByteArray(),
                                 zip32AccountIndex = Zip32AccountIndex.new(index)
                             ),
-                        birthday = birthday,
                     ),
                 )
         }
