@@ -189,6 +189,7 @@ dependencies {
     "storeImplementation"(libs.mlkit.scanning)
     "internalImplementation"(libs.mlkit.scanning)
     api(libs.zcash.sdk)
+    implementation(libs.zcash.sdk.backend)
     implementation(libs.zcash.sdk.incubator)
     implementation(libs.zcash.bip39)
     implementation(libs.tink)

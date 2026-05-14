@@ -128,7 +128,7 @@ class SubmitVotesUseCase(
             val hotkeySeed = getHotkeySeed(accountUuidString, roundId, recovery)
 
             val synchronizer = synchronizerProvider.getSynchronizer()
-            val walletDbPath = synchronizer.getWalletDbPath()
+            val walletDbPath = synchronizerProvider.getVotingWalletDbPath()
             val votingDbPath = File(walletDbPath)
                 .parentFile
                 ?.resolve("voting.sqlite3")
@@ -242,16 +242,18 @@ class SubmitVotesUseCase(
                                 roundId = roundId,
                                 bundleIndex = bundleIndex,
                                 walletDbPath = walletDbPath,
+                                networkId = networkId,
                                 notesJson = allNotesJson
                             )
+                            val bundleNotesJson = allNotesJson.selectVotingBundleNotesJson(witnessesJson)
                             votingCryptoClient.storeWitnesses(
                                 dbHandle = dbHandle,
                                 roundId = roundId,
                                 bundleIndex = bundleIndex,
+                                notesJson = bundleNotesJson,
                                 witnessesJson = witnessesJson
                             )
 
-                            val bundleNotesJson = allNotesJson.selectVotingBundleNotesJson(witnessesJson)
                             val precomputeResult = votingProofPrecomputeRepository.awaitDelegationPirPrecompute(
                                 VotingDelegationPirPrecomputeKey(
                                     accountUuid = accountUuidString,
@@ -582,6 +584,7 @@ class SubmitVotesUseCase(
                             vanPosition = vanWitness.position,
                             anchorHeight = vanWitness.anchorHeight,
                             networkId = networkId,
+                            accountIndex = accountIndex,
                             singleShare = singleShare,
                             proofProgress = { proofProgress ->
                                 onProgress(
@@ -606,14 +609,8 @@ class SubmitVotesUseCase(
                             voteAuthSig = votingCryptoClient.signCastVote(
                                 hotkeySeed = hotkeySeed,
                                 networkId = networkId,
-                                roundId = roundId,
-                                rVpk = commitment.rVpk,
-                                vanNullifier = commitment.vanNullifier,
-                                vanNew = commitment.voteAuthorityNoteNew,
-                                voteCommitment = commitment.voteCommitment,
-                                proposalId = proposalId,
-                                anchorHeight = commitment.anchorHeight,
-                                alphaV = commitment.alphaV
+                                accountIndex = accountIndex,
+                                commitmentJson = commitment.rawBundleJson
                             )
                         )
                         val txResult = votingApiProvider.submitVoteCommitment(

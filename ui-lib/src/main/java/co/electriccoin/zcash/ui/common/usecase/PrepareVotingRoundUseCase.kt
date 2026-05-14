@@ -70,7 +70,7 @@ class PrepareVotingRoundUseCase(
             val selectedAccount = getSelectedWalletAccount()
             val accountUuid = selectedAccount.sdkAccount.accountUuid
             val accountUuidString = accountUuid.toVotingAccountScopeId()
-            val walletDbPath = synchronizer.getWalletDbPath()
+            val walletDbPath = synchronizerProvider.getVotingWalletDbPath()
             val votingDbPath = File(walletDbPath)
                 .parentFile
                 ?.resolve("voting.sqlite3")
@@ -201,15 +201,18 @@ class PrepareVotingRoundUseCase(
                             roundId = roundId,
                             bundleIndex = bundleIndex,
                             walletDbPath = walletDbPath,
+                            networkId = networkId,
                             notesJson = notesJson
                         )
+                        val bundleNotesJson = notesJson.selectVotingBundleNotesJson(witnessesJson)
                         votingCryptoClient.storeWitnesses(
                             dbHandle = dbHandle,
                             roundId = roundId,
                             bundleIndex = bundleIndex,
+                            notesJson = bundleNotesJson,
                             witnessesJson = witnessesJson
                         )
-                        bundleNotesJsonByIndex[bundleIndex] = notesJson.selectVotingBundleNotesJson(witnessesJson)
+                        bundleNotesJsonByIndex[bundleIndex] = bundleNotesJson
                     }
                 }
 

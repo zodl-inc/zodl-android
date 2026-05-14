@@ -44,8 +44,7 @@ class SkipRemainingKeystoneBundlesUseCase(
             val signedWeight = recovery.bundleWeights.take(keepCount).sum()
             val skippedWeight = recovery.bundleWeights.subList(keepCount, bundleCount).sum()
 
-            val synchronizer = synchronizerProvider.getSynchronizer()
-            val votingDbPath = File(synchronizer.getWalletDbPath())
+            val votingDbPath = File(synchronizerProvider.getVotingWalletDbPath())
                 .parentFile
                 ?.resolve("voting.sqlite3")
                 ?.absolutePath
