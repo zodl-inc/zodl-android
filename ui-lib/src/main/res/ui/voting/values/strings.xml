@@ -101,7 +101,10 @@
     <string name="vote_confirm_cta_submitting_generic">Submitting...</string>
     <string name="vote_confirm_cta_submit_votes">Submit Votes</string>
     <string name="vote_confirm_cta_authorizing">Authorizing...</string>
-    <string name="vote_confirm_cta_submitting">Submitting vote %1$d of %2$d...</string>
+    <string name="vote_confirm_cta_submitting">Submitting vote %1$d of %2$d</string>
+    <string name="vote_confirm_status_authorizing">Authorizing vote...</string>
+    <string name="vote_confirm_status_submitting">Submitting vote %1$d of %2$d...</string>
+    <string name="vote_confirm_status_authorizing_percent">%1$d%%</string>
     <string name="vote_confirm_nav_confirmation">Confirmation</string>
     <string name="vote_confirm_nav_submission">Submission</string>
     <string name="vote_confirm_title_idle">Confirm &amp; Submit</string>

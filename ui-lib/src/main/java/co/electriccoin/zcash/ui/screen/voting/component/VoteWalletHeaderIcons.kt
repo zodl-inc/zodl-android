@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -17,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
@@ -40,11 +42,16 @@ fun VoteWalletHeaderIcons(
 ) {
     Box(
         contentAlignment = Alignment.CenterStart,
-        modifier = modifier
+        modifier = modifier.width(92.dp)
     ) {
         Surface(
             shape = CircleShape,
-            color = ZashiColors.Surfaces.bgAlt,
+            color =
+                if (state.isKeystone) {
+                    ZashiColors.Surfaces.bgAlt
+                } else {
+                    Color.Black
+                },
             modifier = Modifier.size(48.dp)
         ) {
             if (state.isKeystone) {
@@ -55,11 +62,17 @@ fun VoteWalletHeaderIcons(
                     modifier = Modifier.padding(8.dp)
                 )
             } else {
-                Image(
-                    painter = painterResource(co.electriccoin.zcash.ui.design.R.drawable.ic_item_zashi),
-                    contentDescription = null,
-                    modifier = Modifier.padding(8.dp)
-                )
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_vote_zodl),
+                        contentDescription = null,
+                        colorFilter = ColorFilter.tint(Color.White),
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
             }
         }
 
@@ -69,10 +82,9 @@ fun VoteWalletHeaderIcons(
                     shape = CircleShape,
                     color = ZashiColors.Surfaces.bgSecondary,
                     border = BorderStroke(2.dp, ZashiColors.Surfaces.bgPrimary),
-                    modifier =
-                        Modifier
-                            .size(48.dp)
-                            .offset(x = 36.dp)
+                    modifier = Modifier
+                        .size(48.dp)
+                        .offset(x = 44.dp)
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_vote_thumbs_up),
@@ -86,20 +98,19 @@ fun VoteWalletHeaderIcons(
             VoteHeaderIconStyle.Confirmed -> {
                 Box(
                     contentAlignment = Alignment.Center,
-                    modifier =
-                        Modifier
-                            .size(48.dp)
-                            .offset(x = 36.dp)
-                            .clip(CircleShape)
-                            .background(
-                                brush =
-                                    Brush.verticalGradient(
-                                        listOf(
-                                            ZashiColors.Utility.SuccessGreen.utilitySuccess50,
-                                            ZashiColors.Utility.SuccessGreen.utilitySuccess100
-                                        )
-                                    )
-                            ).border(2.dp, ZashiColors.Surfaces.bgPrimary, CircleShape)
+                    modifier = Modifier
+                        .size(48.dp)
+                        .offset(x = 44.dp)
+                        .clip(CircleShape)
+                        .background(
+                            brush = Brush.verticalGradient(
+                                listOf(
+                                    ZashiColors.Utility.SuccessGreen.utilitySuccess50,
+                                    ZashiColors.Utility.SuccessGreen.utilitySuccess100
+                                )
+                            )
+                        )
+                        .border(2.dp, ZashiColors.Surfaces.bgPrimary, CircleShape)
                 ) {
                     Icon(
                         painter = painterResource(R.drawable.ic_vote_check_verified_solid),
