@@ -145,8 +145,7 @@ interface VotingCryptoClient {
         walletSeed: ByteArray,
         hotkeySeed: ByteArray,
         seedFingerprint: ByteArray,
-        roundName: String,
-        addressIndex: Int = 0
+        roundName: String
     ): VotingGovernancePczt
 
     suspend fun extractPcztSighash(pcztBytes: ByteArray): ByteArray
@@ -515,8 +514,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         walletSeed: ByteArray,
         hotkeySeed: ByteArray,
         seedFingerprint: ByteArray,
-        roundName: String,
-        addressIndex: Int
+        roundName: String
     ): VotingGovernancePczt =
         db(dbHandle).buildGovernancePczt(
             roundId,
@@ -528,8 +526,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
             walletSeed,
             hotkeySeed,
             seedFingerprint,
-            roundName,
-            addressIndex
+            roundName
         ).toAppModel()
 
     override suspend fun extractPcztSighash(pcztBytes: ByteArray): ByteArray =
