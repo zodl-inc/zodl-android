@@ -72,7 +72,6 @@ class SubmitVotesUseCase(
     private val prepareVotingRound: PrepareVotingRoundUseCase,
     private val votingShareTrackingScheduler: VotingShareTrackingScheduler,
 ) {
-    @Suppress("TooGenericExceptionCaught")
     suspend operator fun invoke(
         roundId: String,
         choices: Map<Int, Int>,
@@ -134,7 +133,11 @@ class SubmitVotesUseCase(
                         VotingErrors.MissingPreparedRecovery(roundId)
                     )
             votingRecoveryRepository.storeVoteServerUrls(accountUuidString, roundId, voteServerUrls)
-            votingRecoveryRepository.storeVoteEndEpochSeconds(accountUuidString, roundId, session.voteEndTime.epochSecond)
+            votingRecoveryRepository.storeVoteEndEpochSeconds(
+                accountUuidString,
+                roundId,
+                session.voteEndTime.epochSecond
+            )
             val recoveryBundleCount = recovery.bundleCount
             val hotkeySeed = getHotkeySeed(accountUuidString, roundId, recovery)
 
@@ -289,7 +292,11 @@ class SubmitVotesUseCase(
                                     )
                                 )
                             precomputeResult?.onFailure { throwable ->
-                                Log.w(TAG, "Voting PIR precompute failed for round $roundId bundle $bundleIndex", throwable)
+                                Log.w(
+                                    TAG,
+                                    "Voting PIR precompute failed for round $roundId bundle $bundleIndex",
+                                    throwable
+                                )
                             }
                             if (!isKeystone && precomputeResult?.isSuccess != true) {
                                 val governancePcztResult =
@@ -300,7 +307,8 @@ class SubmitVotesUseCase(
                                             bundleIndex = bundleIndex,
                                             ufvk =
                                                 requireNotNull(accountUfvk) {
-                                                    "Software wallet account is missing UFVK for voting bundle $bundleIndex"
+                                                    "Software wallet account is missing UFVK " +
+                                                        "for voting bundle $bundleIndex"
                                                 },
                                             networkId = networkId,
                                             accountIndex = accountIndex,
@@ -312,7 +320,8 @@ class SubmitVotesUseCase(
                                             hotkeySeed = hotkeySeed,
                                             seedFingerprint =
                                                 requireNotNull(seedFingerprint) {
-                                                    "Software wallet account is missing seed fingerprint for voting bundle $bundleIndex"
+                                                    "Software wallet account is missing seed fingerprint " +
+                                                        "for voting bundle $bundleIndex"
                                                 },
                                             roundName = session.title
                                         )
@@ -873,10 +882,6 @@ class SubmitVotesUseCase(
                 votingShareTrackingScheduler.schedule(roundId)
 
                 VotingSubmissionResult(submittedProposalCount = completedProposalCount)
-            } catch (exception: CancellationException) {
-                throw exception
-            } catch (exception: Exception) {
-                throw exception
             } finally {
                 traceVotingStep(
                     roundId = roundId,
@@ -1088,7 +1093,7 @@ class SubmitVotesUseCase(
                 throw exception
             } catch (exception: Exception) {
                 if (!exception.isShareDelegationExhaustion() && !exception.isTransientVotingInfrastructureFailure()) {
-                    throw exception
+                    failShareDelegation(exception)
                 }
                 lastRetryableError = exception
                 if (attempt + 1 < SHARE_DELEGATION_ATTEMPTS) {
@@ -1097,7 +1102,12 @@ class SubmitVotesUseCase(
             }
         }
 
-        throw lastRetryableError ?: IllegalStateException("No voting server accepted share")
+        failShareDelegation(lastRetryableError)
+    }
+
+    private fun failShareDelegation(exception: Exception?): Nothing {
+        exception?.let { throw it }
+        error("No voting server accepted share")
     }
 
     private fun Throwable.isShareDelegationExhaustion(): Boolean {
@@ -1120,17 +1130,14 @@ class SubmitVotesUseCase(
     }
 
     private fun randomSubmitAt(deadlineEpochSeconds: Long?): Long {
-        if (deadlineEpochSeconds == null) {
-            return 0
+        val nowEpochSeconds = System.currentTimeMillis() / MILLIS_PER_SECOND
+        return when {
+            deadlineEpochSeconds == null || deadlineEpochSeconds <= nowEpochSeconds -> 0
+            else -> {
+                val window = deadlineEpochSeconds - nowEpochSeconds
+                nowEpochSeconds + Random.nextLong(until = window)
+            }
         }
-
-        val nowEpochSeconds = System.currentTimeMillis() / 1_000
-        if (deadlineEpochSeconds <= nowEpochSeconds) {
-            return 0
-        }
-
-        val window = deadlineEpochSeconds - nowEpochSeconds
-        return nowEpochSeconds + Random.nextLong(until = window)
     }
 
     private fun ZcashNetwork.toVotingNetworkId() =
@@ -1193,5 +1200,6 @@ class SubmitVotesUseCase(
         const val TX_CONFIRMATION_POLL_MS = 2_000L
         const val SHARE_DELEGATION_ATTEMPTS = 3
         const val SHARE_DELEGATION_RETRY_MS = 2_000L
+        const val MILLIS_PER_SECOND = 1_000
     }
 }

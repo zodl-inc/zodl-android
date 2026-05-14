@@ -149,35 +149,29 @@ data class ChainVoteOptionDto(
 }
 
 private fun validateChainProposals(proposals: List<Proposal>) {
-    if (proposals.size !in MIN_PROPOSALS..MAX_PROPOSALS) {
-        throw VotingConfigException(
+    requireVotingConfig(proposals.size in MIN_PROPOSALS..MAX_PROPOSALS) {
             "proposals must contain between $MIN_PROPOSALS and $MAX_PROPOSALS entries"
-        )
     }
 
     val proposalIds = mutableSetOf<Int>()
     proposals.forEach { proposal ->
-        if (proposal.id !in MIN_PROPOSAL_ID..MAX_PROPOSAL_ID) {
-            throw VotingConfigException(
+        requireVotingConfig(proposal.id in MIN_PROPOSAL_ID..MAX_PROPOSAL_ID) {
                 "proposal id must be in the range $MIN_PROPOSAL_ID to $MAX_PROPOSAL_ID"
-            )
         }
-        if (!proposalIds.add(proposal.id)) {
-            throw VotingConfigException("proposal ids must be unique")
+        requireVotingConfig(proposalIds.add(proposal.id)) {
+            "proposal ids must be unique"
         }
-        if (proposal.options.size !in MIN_OPTIONS..MAX_OPTIONS) {
-            throw VotingConfigException(
+        requireVotingConfig(proposal.options.size in MIN_OPTIONS..MAX_OPTIONS) {
                 "proposal options must contain between $MIN_OPTIONS and $MAX_OPTIONS entries"
-            )
         }
 
         val optionIds = proposal.options.map(VoteOption::id)
-        if (optionIds.toSet().size != optionIds.size) {
-            throw VotingConfigException("option index values within a proposal must be unique")
+        requireVotingConfig(optionIds.toSet().size == optionIds.size) {
+            "option index values within a proposal must be unique"
         }
         val expectedOptionIds = 0 until proposal.options.size
-        if (optionIds.sorted() != expectedOptionIds.toList()) {
-            throw VotingConfigException("option index values within a proposal must be 0-indexed contiguous")
+        requireVotingConfig(optionIds.sorted() == expectedOptionIds.toList()) {
+            "option index values within a proposal must be 0-indexed contiguous"
         }
     }
 }
@@ -194,17 +188,18 @@ private fun String.normalizeRoundId(): String {
 
 private fun String.decodeBinaryField(): ByteArray {
     val trimmed = trim()
-    if (trimmed.isEmpty()) return ByteArray(0)
-    if (trimmed.isHexEncoded()) return trimmed.hexToBytes()
-
-    return runCatching { Base64.getDecoder().decode(trimmed) }.getOrDefault(ByteArray(0))
+    return when {
+        trimmed.isEmpty() -> ByteArray(0)
+        trimmed.isHexEncoded() -> trimmed.hexToBytes()
+        else -> runCatching { Base64.getDecoder().decode(trimmed) }.getOrDefault(ByteArray(0))
+    }
 }
 
 private fun String.isHexEncoded(): Boolean =
     isNotEmpty() && length % 2 == 0 && all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }
 
 private fun String.hexToBytes(): ByteArray =
-    chunked(2).map { chunk -> chunk.toInt(16).toByte() }.toByteArray()
+    chunked(HEX_BYTE_CHARS).map { chunk -> chunk.toInt(HEX_RADIX).toByte() }.toByteArray()
 
 private fun ByteArray.toHexString(): String =
     joinToString(separator = "") { byte -> "%02x".format(byte) }
@@ -216,3 +211,5 @@ private const val MAX_PROPOSAL_ID = 15
 private const val MIN_OPTIONS = 2
 private const val MAX_OPTIONS = 8
 private const val DEFAULT_MISSING_OPTION_INDEX = 0
+private const val HEX_BYTE_CHARS = 2
+private const val HEX_RADIX = 16

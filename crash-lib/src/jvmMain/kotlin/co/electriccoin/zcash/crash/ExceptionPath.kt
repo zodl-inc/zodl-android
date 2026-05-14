@@ -23,17 +23,11 @@ object ExceptionPath {
     @Suppress("ThrowsCount")
     suspend fun validateDir(path: File) {
         if (!path.existsSuspend()) {
-            if (!path.mkdirsSuspend()) {
-                throw IllegalArgumentException("Directories couldn't be created")
-            }
+            require(path.mkdirsSuspend()) { "Directories couldn't be created" }
         } else {
-            if (!path.isDirectorySuspend()) {
-                throw IllegalArgumentException("Path is a file when a directory was expected")
-            }
+            require(path.isDirectorySuspend()) { "Path is a file when a directory was expected" }
         }
 
-        if (!path.canWriteSuspend()) {
-            throw IllegalArgumentException("Path is not writeable")
-        }
+        require(path.canWriteSuspend()) { "Path is not writeable" }
     }
 }

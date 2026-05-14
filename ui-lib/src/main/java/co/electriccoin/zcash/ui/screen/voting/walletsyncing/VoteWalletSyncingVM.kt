@@ -74,7 +74,7 @@ class VoteWalletSyncingVM(
                                 } else {
                                     stringRes(
                                         R.string.vote_wallet_syncing_progress_percent,
-                                        (progress * 100).toInt()
+                                        (progress * PERCENT_SCALE).toInt()
                                     )
                                 },
                             progress = progress,
@@ -138,4 +138,8 @@ class VoteWalletSyncingVM(
     }
 
     private fun onBack() = navigationRouter.backTo(VoteCoinholderPollingArgs::class)
+
+    private companion object {
+        const val PERCENT_SCALE = 100
+    }
 }

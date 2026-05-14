@@ -323,18 +323,23 @@ class VoteProposalListVM(
         proposals: List<Proposal>,
         drafts: Map<Int, Int>,
         roundId: String,
-    ): ButtonState? {
-        if (mode == VoteProposalListMode.VOTED) {
-            return null
+    ): ButtonState? =
+        when {
+            mode == VoteProposalListMode.VOTED -> null
+            proposals.isEmpty() -> null
+            mode == VoteProposalListMode.REVIEW -> buildReviewCtaButton(proposals, drafts, roundId)
+            else -> buildVotingCtaButton(proposals, drafts, roundId)
         }
 
-        if (proposals.isEmpty()) {
-            return null
-        }
-
-        if (mode == VoteProposalListMode.REVIEW) {
-            val allDrafted = proposals.all { drafts.containsKey(it.id) }
-            return if (allDrafted) {
+    private fun buildReviewCtaButton(
+        proposals: List<Proposal>,
+        drafts: Map<Int, Int>,
+        roundId: String
+    ): ButtonState? =
+        proposals
+            .all { drafts.containsKey(it.id) }
+            .takeIf { it }
+            ?.let {
                 ButtonState(
                     text = stringRes(R.string.vote_proposal_list_confirm_submit),
                     style = ButtonStyle.PRIMARY,
@@ -347,11 +352,13 @@ class VoteProposalListVM(
                         )
                     }
                 )
-            } else {
-                null
             }
-        }
 
+    private fun buildVotingCtaButton(
+        proposals: List<Proposal>,
+        drafts: Map<Int, Int>,
+        roundId: String
+    ): ButtonState {
         val draftCount = proposals.count { drafts.containsKey(it.id) }
         val firstUnanswered = proposals.firstOrNull { !drafts.containsKey(it.id) }
 
@@ -443,10 +450,22 @@ class VoteProposalListVM(
         val remaining = ChronoUnit.SECONDS.between(Instant.now(), round.votingEnd)
         return when {
             remaining <= 0 -> stringRes(R.string.vote_proposal_list_time_ended)
-            remaining < 3600 -> stringRes(R.string.vote_proposal_list_time_minutes_left, remaining / 60)
-            remaining < 86400 -> stringRes(R.string.vote_proposal_list_time_hours_left, remaining / 3600)
-            remaining < 172800 -> stringRes(R.string.vote_proposal_list_time_day_left, remaining / 86400)
-            else -> stringRes(R.string.vote_proposal_list_time_days_left, remaining / 86400)
+            remaining < SECONDS_PER_HOUR -> stringRes(
+                R.string.vote_proposal_list_time_minutes_left,
+                remaining / SECONDS_PER_MINUTE
+            )
+            remaining < SECONDS_PER_DAY -> stringRes(
+                R.string.vote_proposal_list_time_hours_left,
+                remaining / SECONDS_PER_HOUR
+            )
+            remaining < TWO_DAYS_SECONDS -> stringRes(
+                R.string.vote_proposal_list_time_day_left,
+                remaining / SECONDS_PER_DAY
+            )
+            else -> stringRes(
+                R.string.vote_proposal_list_time_days_left,
+                remaining / SECONDS_PER_DAY
+            )
         }
     }
 
@@ -483,13 +502,19 @@ class VoteProposalListVM(
 private fun Map<Int, Int>.toChoicesJson(): String =
     JSONObject(toSortedMap().mapKeys { (proposalId, _) -> proposalId.toString() }).toString()
 
-private fun Long.toVotingWeightLabel() = "%.4f ZEC".format(this / 100_000_000.0)
+private fun Long.toVotingWeightLabel() = "%.4f ZEC".format(this / ZATOSHI_PER_ZEC)
 
 private fun VotingRoundPreparationResult.Ineligible.toIneligibilityReason(): VoteIneligibilityReason =
     when (reason) {
         ModelVoteIneligibilityReason.NO_NOTES -> VoteIneligibilityReason.NO_NOTES
         ModelVoteIneligibilityReason.BALANCE_TOO_LOW -> VoteIneligibilityReason.BALANCE_TOO_LOW
     }
+
+private const val SECONDS_PER_MINUTE = 60
+private const val SECONDS_PER_HOUR = 3_600
+private const val SECONDS_PER_DAY = 86_400
+private const val TWO_DAYS_SECONDS = 172_800
+private const val ZATOSHI_PER_ZEC = 100_000_000.0
 
 private enum class PreparationGate {
     /** `prepareVotingRound` is in flight; suppress proposal-list content. */
