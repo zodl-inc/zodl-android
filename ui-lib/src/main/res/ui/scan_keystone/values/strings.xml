@@ -12,6 +12,6 @@
     <string name="scan_keystone_torch_content_description">Camera torch toggle</string>
     <string name="scan_keystone_gallery_content_description">Gallery</string>
     <string name="scan_keystone_info">Scan your Keystone wallet to connect</string>
-    <string name="scan_keystone_info_transaction">Scan your Keystone QR code to sign the transaction</string>
+    <string name="scan_keystone_info_transaction">Scan Keystone QR code to sign the transaction</string>
 
 </resources>
