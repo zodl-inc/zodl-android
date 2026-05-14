@@ -30,6 +30,11 @@ interface NavigationRouter {
     fun replaceAll(vararg routes: Any)
 
     /**
+     * Pop all screens except for the root and add [routes] to backstack.
+     */
+    fun replaceAll(routes: List<Any>)
+
+    /**
      * Pop last screen from backstack.
      */
     fun back()
@@ -60,6 +65,8 @@ class NavigationRouterImpl : NavigationRouter {
     override fun replace(vararg routes: Any) = navigateWithBackoff(NavigationCommand.Replace(routes.toList()))
 
     override fun replaceAll(vararg routes: Any) = navigateWithBackoff(NavigationCommand.ReplaceAll(routes.toList()))
+
+    override fun replaceAll(routes: List<Any>) = navigateWithBackoff(NavigationCommand.ReplaceAll(routes))
 
     override fun back() = navigateWithBackoff(NavigationCommand.Back)
 

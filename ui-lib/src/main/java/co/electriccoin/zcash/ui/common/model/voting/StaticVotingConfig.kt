@@ -31,18 +31,18 @@ data class StaticVotingConfig(
     }
 
     fun validate() {
-        if (staticConfigVersion != SUPPORTED_VERSION) {
-            throw VotingConfigException("Unsupported static_config_version $staticConfigVersion")
+        requireVotingConfig(staticConfigVersion == SUPPORTED_VERSION) {
+            "Unsupported static_config_version $staticConfigVersion"
         }
-        if (trustedKeys.isEmpty()) {
-            throw VotingConfigException("trusted_keys must contain at least one entry")
+        requireVotingConfig(trustedKeys.isNotEmpty()) {
+            "trusted_keys must contain at least one entry"
         }
         trustedKeys.forEach { key ->
-            if (key.alg != ALG_ED25519) {
-                throw VotingConfigException("trusted_keys[${key.keyId}].alg unsupported: ${key.alg}")
+            requireVotingConfig(key.alg == ALG_ED25519) {
+                "trusted_keys[${key.keyId}].alg unsupported: ${key.alg}"
             }
-            if (key.pubkeyBytes().size != ED25519_PUBLIC_KEY_BYTES) {
-                throw VotingConfigException("trusted_keys[${key.keyId}].pubkey must decode to 32 bytes")
+            requireVotingConfig(key.pubkeyBytes().size == ED25519_PUBLIC_KEY_BYTES) {
+                "trusted_keys[${key.keyId}].pubkey must decode to 32 bytes"
             }
         }
     }
@@ -109,10 +109,10 @@ class PinnedConfigSource private constructor(
         fun parse(raw: String): PinnedConfigSource {
             val uri =
                 runCatching { URI(raw) }.getOrElse {
-                    throw VotingConfigException("Static config source malformed: not a URL: $raw")
+                    failVotingConfig("Static config source malformed: not a URL: $raw")
                 }
-            if (uri.scheme != "https" || uri.host.isNullOrBlank()) {
-                throw VotingConfigException("Static config source malformed: not an HTTPS URL: $raw")
+            requireVotingConfig(uri.scheme == "https" && !uri.host.isNullOrBlank()) {
+                "Static config source malformed: not an HTTPS URL: $raw"
             }
 
             val queryParts =
@@ -145,16 +145,14 @@ class PinnedConfigSource private constructor(
                 if (hasChecksum) {
                     val checksum =
                         checksumValue?.let(::urlDecode)
-                            ?: throw VotingConfigException("Static config source malformed: missing checksum value")
-                    if (!checksum.startsWith(CHECKSUM_PREFIX)) {
-                        throw VotingConfigException("Static config source malformed: checksum must start with sha256:")
+                            ?: failVotingConfig("Static config source malformed: missing checksum value")
+                    requireVotingConfig(checksum.startsWith(CHECKSUM_PREFIX)) {
+                        "Static config source malformed: checksum must start with sha256:"
                     }
 
                     val hex = checksum.drop(CHECKSUM_PREFIX.length)
-                    if (hex.length != SHA256_HEX_LENGTH || !hex.isLowercaseHex()) {
-                        throw VotingConfigException(
+                    requireVotingConfig(hex.length == SHA256_HEX_LENGTH && hex.isLowercaseHex()) {
                             "Static config source malformed: sha256 must be 64 lowercase hex chars"
-                        )
                     }
                     hex.lowercaseHexToBytes()
                 } else {

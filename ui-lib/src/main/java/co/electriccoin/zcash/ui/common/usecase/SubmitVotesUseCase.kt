@@ -72,7 +72,6 @@ class SubmitVotesUseCase(
     private val prepareVotingRound: PrepareVotingRoundUseCase,
     private val votingShareTrackingScheduler: VotingShareTrackingScheduler,
 ) {
-    @Suppress("TooGenericExceptionCaught")
     suspend operator fun invoke(
         roundId: String,
         choices: Map<Int, Int>,
@@ -883,10 +882,6 @@ class SubmitVotesUseCase(
                 votingShareTrackingScheduler.schedule(roundId)
 
                 VotingSubmissionResult(submittedProposalCount = completedProposalCount)
-            } catch (exception: CancellationException) {
-                throw exception
-            } catch (exception: Exception) {
-                throw exception
             } finally {
                 traceVotingStep(
                     roundId = roundId,
@@ -1098,7 +1093,7 @@ class SubmitVotesUseCase(
                 throw exception
             } catch (exception: Exception) {
                 if (!exception.isShareDelegationExhaustion() && !exception.isTransientVotingInfrastructureFailure()) {
-                    throw exception
+                    failShareDelegation(exception)
                 }
                 lastRetryableError = exception
                 if (attempt + 1 < SHARE_DELEGATION_ATTEMPTS) {
@@ -1107,7 +1102,11 @@ class SubmitVotesUseCase(
             }
         }
 
-        lastRetryableError?.let { throw it }
+        failShareDelegation(lastRetryableError)
+    }
+
+    private fun failShareDelegation(exception: Exception?): Nothing {
+        exception?.let { throw it }
         error("No voting server accepted share")
     }
 

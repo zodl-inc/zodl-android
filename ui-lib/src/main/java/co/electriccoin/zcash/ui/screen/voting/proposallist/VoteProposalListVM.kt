@@ -323,18 +323,23 @@ class VoteProposalListVM(
         proposals: List<Proposal>,
         drafts: Map<Int, Int>,
         roundId: String,
-    ): ButtonState? {
-        if (mode == VoteProposalListMode.VOTED) {
-            return null
+    ): ButtonState? =
+        when {
+            mode == VoteProposalListMode.VOTED -> null
+            proposals.isEmpty() -> null
+            mode == VoteProposalListMode.REVIEW -> buildReviewCtaButton(proposals, drafts, roundId)
+            else -> buildVotingCtaButton(proposals, drafts, roundId)
         }
 
-        if (proposals.isEmpty()) {
-            return null
-        }
-
-        if (mode == VoteProposalListMode.REVIEW) {
-            val allDrafted = proposals.all { drafts.containsKey(it.id) }
-            return if (allDrafted) {
+    private fun buildReviewCtaButton(
+        proposals: List<Proposal>,
+        drafts: Map<Int, Int>,
+        roundId: String
+    ): ButtonState? =
+        proposals
+            .all { drafts.containsKey(it.id) }
+            .takeIf { it }
+            ?.let {
                 ButtonState(
                     text = stringRes(R.string.vote_proposal_list_confirm_submit),
                     style = ButtonStyle.PRIMARY,
@@ -347,11 +352,13 @@ class VoteProposalListVM(
                         )
                     }
                 )
-            } else {
-                null
             }
-        }
 
+    private fun buildVotingCtaButton(
+        proposals: List<Proposal>,
+        drafts: Map<Int, Int>,
+        roundId: String
+    ): ButtonState {
         val draftCount = proposals.count { drafts.containsKey(it.id) }
         val firstUnanswered = proposals.firstOrNull { !drafts.containsKey(it.id) }
 

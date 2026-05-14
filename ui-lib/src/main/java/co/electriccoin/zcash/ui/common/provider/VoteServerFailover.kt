@@ -4,15 +4,6 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingConfigException
 import io.ktor.client.plugins.ResponseException
 import kotlinx.coroutines.CancellationException
 
-internal class VotingServerFailoverException(
-    val path: String,
-    val serverUrls: List<String>,
-    val lastError: Throwable?
-) : IllegalStateException(
-        "All configured vote servers failed for $path",
-        lastError
-    )
-
 internal suspend fun <T> withVoteServerFailover(
     path: String,
     serverUrls: List<String>,
@@ -21,7 +12,7 @@ internal suspend fun <T> withVoteServerFailover(
 ): T {
     val normalizedServerUrls = serverUrls.normalizedVoteServerUrls()
     if (normalizedServerUrls.isEmpty()) {
-        throw VotingServerFailoverException(
+        failVoteServerFailover(
             path = path,
             serverUrls = emptyList(),
             lastError = null
@@ -37,12 +28,12 @@ internal suspend fun <T> withVoteServerFailover(
         } catch (exception: Exception) {
             lastError = exception
             if (!shouldTryNext(exception)) {
-                throw exception
+                failVoteServerOperation(exception)
             }
         }
     }
 
-    throw VotingServerFailoverException(
+    failVoteServerFailover(
         path = path,
         serverUrls = normalizedServerUrls,
         lastError = lastError
@@ -62,5 +53,19 @@ internal fun List<String>.normalizedVoteServerUrls(): List<String> =
         .filter(String::isNotEmpty)
         .map { serverUrl -> serverUrl.trimEnd('/') }
         .distinct()
+
+private fun failVoteServerFailover(
+    path: String,
+    serverUrls: List<String>,
+    lastError: Throwable?
+): Nothing =
+    throw VotingServerFailoverException(
+        path = path,
+        serverUrls = serverUrls,
+        lastError = lastError
+    )
+
+private fun failVoteServerOperation(exception: Exception): Nothing =
+    throw exception
 
 private const val HTTP_BAD_REQUEST = 400

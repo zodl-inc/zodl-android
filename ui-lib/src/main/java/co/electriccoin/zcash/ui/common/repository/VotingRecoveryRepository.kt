@@ -242,31 +242,17 @@ class VotingRecoveryRepositoryImpl(
         val scopedKey = key(accountUuid, roundId)
         val preferenceProvider = encryptedPreferenceProvider()
 
-        preferenceProvider
+        val scopedSnapshot =
+            preferenceProvider
             .getString(scopedKey)
             ?.toVotingRecoverySnapshot()
-            ?.let { return it }
 
-        val legacySnapshot =
-            preferenceProvider
-                .getString(legacyKey(roundId))
-                ?.toVotingRecoverySnapshot()
-                ?: return null
-
-        val migratedSnapshot =
-            legacySnapshot.copy(
-                accountUuid = accountUuid,
-                roundId = roundId,
-                updatedAt = Instant.now()
-            )
-
-        preferenceProvider.putString(
-            key = scopedKey,
-            value = migratedSnapshot.encode()
+        return scopedSnapshot ?: migrateLegacySnapshot(
+            preferenceProvider = preferenceProvider,
+            accountUuid = accountUuid,
+            roundId = roundId,
+            scopedKey = scopedKey
         )
-        preferenceProvider.remove(legacyKey(roundId))
-
-        return migratedSnapshot
     }
 
     override suspend fun store(snapshot: VotingRecoverySnapshot) {
@@ -519,17 +505,16 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         routeStage: VotingKeystoneRouteStage
     ) {
-        val current = get(accountUuid, roundId) ?: return
-        val pendingRequest = current.pendingKeystoneRequest ?: return
-        if (pendingRequest.routeStage == routeStage) {
-            return
-        }
-        store(
-            current.copy(
-                pendingKeystoneRequest = pendingRequest.copy(routeStage = routeStage),
-                updatedAt = Instant.now()
+        val current = get(accountUuid, roundId)
+        val pendingRequest = current?.pendingKeystoneRequest
+        if (current != null && pendingRequest != null && pendingRequest.routeStage != routeStage) {
+            store(
+                current.copy(
+                    pendingKeystoneRequest = pendingRequest.copy(routeStage = routeStage),
+                    updatedAt = Instant.now()
+                )
             )
-        )
+        }
     }
 
     override suspend fun clearPendingKeystoneRequest(
@@ -702,15 +687,38 @@ class VotingRecoveryRepositoryImpl(
     private fun decodeIndex(encoded: String): List<Pair<String, String>> =
         runCatching {
             val array = JSONArray(encoded)
-            buildList {
-                for (index in 0 until array.length()) {
-                    val entry = array.optJSONObject(index) ?: continue
-                    val accountUuid = entry.optString("account_uuid").takeIf(String::isNotEmpty) ?: continue
-                    val roundId = entry.optString("round_id").takeIf(String::isNotEmpty) ?: continue
-                    add(accountUuid to roundId)
+            (0 until array.length()).mapNotNull { index ->
+                val entry = array.optJSONObject(index)
+                val accountUuid = entry?.optString("account_uuid")?.takeIf(String::isNotEmpty)
+                val roundId = entry?.optString("round_id")?.takeIf(String::isNotEmpty)
+                if (accountUuid != null && roundId != null) {
+                    accountUuid to roundId
+                } else {
+                    null
                 }
             }
         }.getOrDefault(emptyList())
+
+    private suspend fun migrateLegacySnapshot(
+        preferenceProvider: PreferenceProvider,
+        accountUuid: String,
+        roundId: String,
+        scopedKey: PreferenceKey
+    ): VotingRecoverySnapshot? =
+        preferenceProvider
+            .getString(legacyKey(roundId))
+            ?.toVotingRecoverySnapshot()
+            ?.copy(
+                accountUuid = accountUuid,
+                roundId = roundId,
+                updatedAt = Instant.now()
+            )?.also { migratedSnapshot ->
+                preferenceProvider.putString(
+                    key = scopedKey,
+                    value = migratedSnapshot.encode()
+                )
+                preferenceProvider.remove(legacyKey(roundId))
+            }
 
     private companion object {
         val INDEX_KEY = PreferenceKey("voting_recovery_index")

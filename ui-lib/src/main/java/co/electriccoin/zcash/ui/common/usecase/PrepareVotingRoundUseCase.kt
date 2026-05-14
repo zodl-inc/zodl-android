@@ -361,28 +361,24 @@ class PrepareVotingRoundUseCase(
         recoverySnapshot: VotingRecoverySnapshot?,
         dbHandle: Long,
         roundId: String
-    ): Boolean {
-        if (recoverySnapshot?.preparedBundleSetup() != null) {
-            return true
-        }
-        val dbBundleCount =
+    ): Boolean =
+        recoverySnapshot?.preparedBundleSetup() != null ||
             runCatching {
                 votingCryptoClient.getBundleCount(dbHandle, roundId)
-            }.getOrNull() ?: return false
-        return dbBundleCount > 0
-    }
+            }.getOrNull()?.let { dbBundleCount -> dbBundleCount > 0 } == true
 
     private fun VotingRecoverySnapshot.preparedBundleSetup(): VotingBundleSetupResult? {
-        val count = bundleCount ?: return null
-        val weight = eligibleWeight ?: return null
-        if (bundleWeights.size < count) {
-            return null
+        val count = bundleCount
+        val weight = eligibleWeight
+        return if (count != null && weight != null && bundleWeights.size >= count) {
+            VotingBundleSetupResult(
+                bundleCount = count,
+                eligibleWeight = weight,
+                bundleWeights = bundleWeights.take(count)
+            )
+        } else {
+            null
         }
-        return VotingBundleSetupResult(
-            bundleCount = count,
-            eligibleWeight = weight,
-            bundleWeights = bundleWeights.take(count)
-        )
     }
 
     private suspend fun storeRecoveredHotkeyAddress(
@@ -408,22 +404,31 @@ class PrepareVotingRoundUseCase(
         recoverySnapshot: VotingRecoverySnapshot?,
         existingRoundStatePhase: RoundPhase?
     ): ByteArray {
-        recoverySnapshot?.decodeHotkeySeed()?.let { legacySeed ->
-            if (votingHotkeySeedProvider.get(accountUuid) == null) {
-                votingHotkeySeedProvider.store(accountUuid, legacySeed)
+        val legacySeed = recoverySnapshot?.decodeHotkeySeed()
+        val storedSeed = votingHotkeySeedProvider.get(accountUuid)
+        return when {
+            legacySeed != null -> {
+                legacySeed.also { seed ->
+                    if (storedSeed == null) {
+                        votingHotkeySeedProvider.store(accountUuid, seed)
+                    }
+                }
             }
-            return legacySeed
+
+            storedSeed != null -> {
+                storedSeed
+            }
+
+            existingRoundStatePhase != null && existingRoundStatePhase != RoundPhase.INITIALIZED -> {
+                error("Missing stored hotkey seed for resumed round $roundId")
+            }
+
+            else -> {
+                ByteArray(HOTKEY_SEED_BYTES)
+                    .also(secureRandom::nextBytes)
+                    .also { seed -> votingHotkeySeedProvider.store(accountUuid, seed) }
+            }
         }
-
-        votingHotkeySeedProvider.get(accountUuid)?.let { return it }
-
-        if (existingRoundStatePhase != null && existingRoundStatePhase != RoundPhase.INITIALIZED) {
-            error("Missing stored hotkey seed for resumed round $roundId")
-        }
-
-        return ByteArray(HOTKEY_SEED_BYTES)
-            .also(secureRandom::nextBytes)
-            .also { seed -> votingHotkeySeedProvider.store(accountUuid, seed) }
     }
 
     private suspend fun buildSoftwareDelegationPirPrecomputeRequests(

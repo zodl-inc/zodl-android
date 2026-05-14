@@ -266,21 +266,22 @@ private fun String.toVotingChainConfigState(): VotingChainConfigState {
 }
 
 private fun JSONArray?.toVotingCustomChainConfigs(): List<VotingCustomChainConfig> =
-    buildList {
-        if (this@toVotingCustomChainConfigs == null) {
-            return@buildList
+    this
+        ?.let { chainsJson ->
+            (0 until chainsJson.length()).mapNotNull { index ->
+                val json = chainsJson.optJSONObject(index)
+                val id = json?.optString("id")?.takeIf(String::isNotBlank)
+                val name = json?.optString("name")?.takeIf(String::isNotBlank)
+                val pinnedSource = json?.optString("pinned_source")?.takeIf(String::isNotBlank)
+                if (id != null && name != null && pinnedSource != null) {
+                    VotingCustomChainConfig(
+                        id = id,
+                        name = name,
+                        pinnedSource = pinnedSource
+                    )
+                } else {
+                    null
+                }
+            }
         }
-        for (index in 0 until length()) {
-            val json = optJSONObject(index) ?: continue
-            val id = json.optString("id").takeIf(String::isNotBlank) ?: continue
-            val name = json.optString("name").takeIf(String::isNotBlank) ?: continue
-            val pinnedSource = json.optString("pinned_source").takeIf(String::isNotBlank) ?: continue
-            add(
-                VotingCustomChainConfig(
-                    id = id,
-                    name = name,
-                    pinnedSource = pinnedSource
-                )
-            )
-        }
-    }
+        .orEmpty()

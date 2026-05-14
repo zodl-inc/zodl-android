@@ -3,44 +3,17 @@
   <ManuallySuppressedIssues/>
   <CurrentIssues>
     <ID>CyclomaticComplexMethod:PrepareVotingRoundUseCase.kt$PrepareVotingRoundUseCase$suspend operator fun invoke(roundId: String): VotingRoundPreparationResult</ID>
-    <ID>CyclomaticComplexMethod:SubmitVotesUseCase.kt$SubmitVotesUseCase$@Suppress("TooGenericExceptionCaught") suspend operator fun invoke( roundId: String, choices: Map&lt;Int, Int&gt;, onProgress: (VotingSubmissionProgress) -&gt; Unit = {} ): VotingSubmissionResult</ID>
+    <ID>CyclomaticComplexMethod:SubmitVotesUseCase.kt$SubmitVotesUseCase$suspend operator fun invoke( roundId: String, choices: Map&lt;Int, Int&gt;, onProgress: (VotingSubmissionProgress) -&gt; Unit = {} ): VotingSubmissionResult</ID>
     <ID>CyclomaticComplexMethod:TrackVotingSharesUseCase.kt$TrackVotingSharesUseCase$suspend operator fun invoke(roundId: String): VotingShareTrackingResult</ID>
     <ID>CyclomaticComplexMethod:VoteConfirmSubmissionVM.kt$VoteConfirmSubmissionVM$private fun buildButtonState( isPrepared: Boolean, isKeystone: Boolean, keystoneSignedBundles: Int, preparedBundleCount: Int, hasPendingKeystoneRequest: Boolean, isSubmitting: Boolean, status: VoteSubmissionStatus )</ID>
     <ID>CyclomaticComplexMethod:VoteConfirmSubmissionVM.kt$VoteConfirmSubmissionVM$private fun createState( round: VotingRound, recovery: VotingRecoverySnapshot?, isKeystone: Boolean, status: VoteSubmissionStatus, showFailureSheet: Boolean, activeIncludesAuthorizationProgress: Boolean?, ballotDivisorZatoshi: Long?, ): VoteConfirmSubmissionState</ID>
     <ID>CyclomaticComplexMethod:VotingErrorMapper.kt$VotingErrorMapper$fun toUserFriendlyMessage(rawMessage: String): StringResource</ID>
     <ID>CyclomaticComplexMethod:VotingRecoveryRepository.kt$private fun String.toVotingRecoverySnapshot(): VotingRecoverySnapshot</ID>
     <ID>CyclomaticComplexMethod:VotingRequests.kt$VoteCommitmentBundle$override fun equals(other: Any?): Boolean</ID>
-    <ID>InstanceOfCheckForException:VoteChainConfigVM.kt$VoteChainConfigVM$throwable is CancellationException</ID>
     <ID>LargeClass:SubmitVotesUseCase.kt$SubmitVotesUseCase</ID>
-    <ID>LoopWithTooManyJumpStatements:VotingChainConfigRepository.kt$for</ID>
-    <ID>LoopWithTooManyJumpStatements:VotingRecoveryRepository.kt$VotingRecoveryRepositoryImpl$for</ID>
-    <ID>MatchingDeclarationName:VoteServerFailover.kt$VotingServerFailoverException : IllegalStateException</ID>
-    <ID>RethrowCaughtException:SubmitVotesUseCase.kt$SubmitVotesUseCase$throw exception</ID>
-    <ID>ReturnCount:ChainDto.kt$private fun String.decodeBinaryField(): ByteArray</ID>
-    <ID>ReturnCount:HomeVM.kt$HomeVM$private suspend fun recoverPendingVotingRouteIfNeeded(): Boolean</ID>
-    <ID>ReturnCount:PrepareVotingRoundUseCase.kt$PrepareVotingRoundUseCase$private fun VotingRecoverySnapshot.preparedBundleSetup(): VotingBundleSetupResult?</ID>
-    <ID>ReturnCount:PrepareVotingRoundUseCase.kt$PrepareVotingRoundUseCase$private suspend fun getOrCreateHotkeySeed( accountUuid: String, roundId: String, recoverySnapshot: VotingRecoverySnapshot?, existingRoundStatePhase: RoundPhase? ): ByteArray</ID>
-    <ID>ReturnCount:PrepareVotingRoundUseCase.kt$PrepareVotingRoundUseCase$private suspend fun isRoundRecoverable( recoverySnapshot: VotingRecoverySnapshot?, dbHandle: Long, roundId: String ): Boolean</ID>
-    <ID>ReturnCount:RoundAuthenticator.kt$RoundAuthenticator$fun authenticate( chainEaPK: ByteArray, roundIdHex: String, rounds: Map&lt;String, VotingServiceConfig.RoundEntry&gt;, trustedKeys: List&lt;StaticVotingConfig.TrustedKey&gt; ): RoundAuthStatus</ID>
-    <ID>ReturnCount:RoundAuthenticator.kt$RoundAuthenticator$fun verifyEntrySignatures( entry: VotingServiceConfig.RoundEntry, trustedKeys: List&lt;StaticVotingConfig.TrustedKey&gt; ): Boolean</ID>
-    <ID>ReturnCount:SignKeystoneVotingVM.kt$SignKeystoneVotingVM$private fun VotingRecoverySnapshot.toSkipBottomSheetState(): SkipKeystoneBundlesBottomSheetState?</ID>
-    <ID>ReturnCount:SignKeystoneVotingVM.kt$SignKeystoneVotingVM$private fun VotingRecoverySnapshot.toSkipRemainingButton(): ButtonState?</ID>
-    <ID>ReturnCount:VoteChainConfigVM.kt$VoteChainConfigVM$private fun onSaveEditor()</ID>
-    <ID>ReturnCount:VoteProposalListVM.kt$VoteProposalListVM$private fun buildCtaButton( mode: VoteProposalListMode, proposals: List&lt;Proposal&gt;, drafts: Map&lt;Int, Int&gt;, roundId: String, ): ButtonState?</ID>
-    <ID>ReturnCount:VotingApiProvider.kt$private suspend fun ResponseException.isNoActiveRoundResponse(): Boolean</ID>
-    <ID>ReturnCount:VotingRecoveryRepository.kt$VotingRecoveryRepositoryImpl$override suspend fun get( accountUuid: String, roundId: String ): VotingRecoverySnapshot?</ID>
-    <ID>ReturnCount:VotingRecoveryRepository.kt$VotingRecoveryRepositoryImpl$override suspend fun setPendingKeystoneRouteStage( accountUuid: String, roundId: String, routeStage: VotingKeystoneRouteStage )</ID>
-    <ID>SpreadOperator:HomeVM.kt$HomeVM$(*restoredRoutes.toTypedArray())</ID>
-    <ID>SwallowedException:VotingApiProvider.kt$KtorVotingApiProvider$responseException: ResponseException</ID>
-    <ID>ThrowsCount:ChainDto.kt$private fun validateChainProposals(proposals: List&lt;Proposal&gt;)</ID>
-    <ID>ThrowsCount:StaticVotingConfig.kt$PinnedConfigSource.Companion$fun parse(raw: String): PinnedConfigSource</ID>
-    <ID>ThrowsCount:StaticVotingConfig.kt$StaticVotingConfig$fun validate()</ID>
-    <ID>ThrowsCount:SubmitVotesUseCase.kt$SubmitVotesUseCase$private suspend fun delegateSharesWithRetry( payloads: List&lt;SharePayload&gt;, roundId: String ): List&lt;DelegatedShareInfo&gt;</ID>
-    <ID>ThrowsCount:VoteServerFailover.kt$internal suspend fun &lt;T&gt; withVoteServerFailover( path: String, serverUrls: List&lt;String&gt;, shouldTryNext: (Throwable) -&gt; Boolean = ::shouldTryNextVoteServer, operation: suspend (String) -&gt; T ): T</ID>
-    <ID>ThrowsCount:VotingServiceConfig.kt$VotingServiceConfig$fun validate()</ID>
     <ID>TooGenericExceptionCaught:RefreshVotingRoundsUseCase.kt$RefreshVotingRoundsUseCase$exception: Exception</ID>
     <ID>TooGenericExceptionCaught:SubmitVotesUseCase.kt$SubmitVotesUseCase$exception: Exception</ID>
-    <ID>TooGenericExceptionCaught:VoteChainConfigVM.kt$VoteChainConfigVM$throwable: Throwable</ID>
+    <ID>TooGenericExceptionCaught:VoteChainConfigVM.kt$VoteChainConfigVM$exception: Exception</ID>
     <ID>TooGenericExceptionCaught:VoteCoinholderPollingVM.kt$VoteCoinholderPollingVM$throwable: Throwable</ID>
     <ID>TooGenericExceptionCaught:VoteProposalDetailVM.kt$VoteProposalDetailVM$throwable: Throwable</ID>
     <ID>TooGenericExceptionCaught:VoteServerFailover.kt$exception: Exception</ID>
