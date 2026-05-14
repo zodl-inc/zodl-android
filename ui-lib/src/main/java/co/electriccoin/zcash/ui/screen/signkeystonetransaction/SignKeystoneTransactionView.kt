@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -32,11 +33,13 @@ import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiQr
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
+import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.listitem.BaseListItem
 import co.electriccoin.zcash.ui.design.component.listitem.ZashiListItemDefaults
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
+import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
@@ -51,6 +54,9 @@ fun SignKeystoneTransactionView(state: SignKeystoneTransactionState) {
         topBar = {
             ZashiSmallTopAppBar(
                 title = state.barTitle.getValue(),
+                navigationAction = {
+                    ZashiTopAppBarBackNavigation(onBack = state.onBack)
+                }
             )
         }
     ) {
@@ -58,35 +64,50 @@ fun SignKeystoneTransactionView(state: SignKeystoneTransactionState) {
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
                     .scaffoldPadding(it)
         ) {
-            ZashiAccountInfoListItem(
-                state = state.accountInfo,
-                badgeText = state.badgeText
+            Column(
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
+            ) {
+                ZashiAccountInfoListItem(
+                    modifier = Modifier.fillMaxWidth(),
+                    state = state.accountInfo,
+                    badgeText = state.badgeText
+                )
+                Spacer(Modifier.height(32.dp))
+                QrContent(state)
+                Spacer(Modifier.height(32.dp))
+                Text(
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    text = state.title.getValue(),
+                    style = ZashiTypography.textMd,
+                    fontWeight = FontWeight.Medium,
+                    color = ZashiColors.Text.textPrimary
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    text = state.subtitle.getValue(),
+                    style = ZashiTypography.textSm,
+                    color = ZashiColors.Text.textTertiary
+                )
+                Spacer(Modifier.height(32.dp))
+            }
+            BottomSection(
+                state = state,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
+                        .padding(bottom = ZashiDimensions.Spacing.spacingMd)
             )
-            Spacer(Modifier.height(32.dp))
-            QrContent(state)
-            Spacer(Modifier.height(32.dp))
-            Text(
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
-                text = state.title.getValue(),
-                style = ZashiTypography.textMd,
-                fontWeight = FontWeight.Medium,
-                color = ZashiColors.Text.textPrimary
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
-                text = state.subtitle.getValue(),
-                style = ZashiTypography.textSm,
-                color = ZashiColors.Text.textTertiary
-            )
-            Spacer(Modifier.height(32.dp))
-            Spacer(Modifier.weight(1f))
-            BottomSection(state)
         }
     }
 }
@@ -164,12 +185,14 @@ private fun BottomSection(
                 state = state.secondaryButton,
                 defaultPrimaryColors = ZashiButtonDefaults.secondaryColors()
             )
+            Spacer(Modifier.height(12.dp))
         }
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),
             state = state.negativeButton,
             defaultPrimaryColors = ZashiButtonDefaults.destructive1Colors()
         )
+        Spacer(Modifier.height(12.dp))
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),
             state = state.positiveButton

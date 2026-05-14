@@ -322,7 +322,7 @@ class VoteConfirmSubmissionVM(
                         if (hasPendingKeystoneRequest) {
                             stringRes(R.string.vote_confirm_cta_resume_keystone_signing)
                         } else if (keystoneSignedBundles == 0) {
-                            stringRes(R.string.vote_confirm_cta_sign_keystone)
+                            stringRes(R.string.vote_confirm_cta_keystone)
                         } else {
                             stringRes(
                                 R.string.vote_confirm_cta_sign_bundle,
