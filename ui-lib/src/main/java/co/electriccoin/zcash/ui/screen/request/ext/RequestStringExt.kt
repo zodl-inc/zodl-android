@@ -1,6 +1,6 @@
 package co.electriccoin.zcash.ui.screen.request.ext
 
-import cash.z.ecc.android.sdk.ext.currencyFormatter
+import cash.z.ecc.sdk.extension.currencyFormatter
 import java.math.BigDecimal
 import java.text.ParseException
 import java.util.Locale

@@ -1,11 +1,10 @@
 package co.electriccoin.zcash.ui.screen.support.model
 
 import android.content.Context
-import cash.z.ecc.android.sdk.ext.ZcashDecimalFormatSymbols
 import cash.z.ecc.android.sdk.model.MonetarySeparators
+import cash.z.ecc.sdk.extension.ZcashDecimalFormatSymbols
 import co.electriccoin.zcash.global.StorageChecker
 import co.electriccoin.zcash.ui.design.util.getPreferredLocale
-import java.text.DecimalFormatSymbols
 import java.util.Locale
 
 // TODO [#1301]: Localize support text content

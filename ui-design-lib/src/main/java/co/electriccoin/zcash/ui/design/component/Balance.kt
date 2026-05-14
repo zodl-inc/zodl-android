@@ -13,14 +13,13 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
-import cash.z.ecc.android.sdk.ext.ZcashDecimalFormatSymbols
 import cash.z.ecc.android.sdk.model.Zatoshi
+import cash.z.ecc.sdk.extension.ZcashDecimalFormatSymbols
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.rememberDesiredFormatLocale
 import co.electriccoin.zcash.ui.design.util.stringRes
-import java.text.DecimalFormatSymbols
 
 /**
  * This accepts string with balance and displays it in the UI component styled according to the design

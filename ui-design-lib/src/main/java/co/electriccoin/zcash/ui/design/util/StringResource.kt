@@ -8,10 +8,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.ui.platform.LocalContext
 import cash.z.ecc.android.sdk.ext.convertZatoshiToZec
-import cash.z.ecc.android.sdk.ext.currencyFormatter
-import cash.z.ecc.android.sdk.ext.zatoshiFormatter
 import cash.z.ecc.android.sdk.model.FiatCurrency
 import cash.z.ecc.android.sdk.model.Zatoshi
+import cash.z.ecc.sdk.extension.currencyFormatter
+import cash.z.ecc.sdk.extension.zatoshiFormatter
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.theme.balances.LocalBalancesAvailable
 import java.math.BigDecimal
