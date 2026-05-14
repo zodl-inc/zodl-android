@@ -286,10 +286,14 @@ class PrepareVotingRoundUseCase(
                                     hotkeySeed = hotkeySeed,
                                     seedFingerprint =
                                         requireNotNull(selectedAccount.sdkAccount.seedFingerprint) {
-                                            "Software wallet account is missing seed fingerprint for voting round $roundId"
+                                            "Software wallet account is missing seed fingerprint " +
+                                                "for voting round $roundId"
                                         },
                                     roundName = session.title,
-                                    pirEndpoints = sessionContext.serviceConfig.pirEndpoints.map { endpoint -> endpoint.url },
+                                    pirEndpoints =
+                                        sessionContext.serviceConfig.pirEndpoints.map { endpoint ->
+                                            endpoint.url
+                                        },
                                     expectedSnapshotHeight = session.snapshotHeight
                                 )
                         }.onFailure { throwable ->

@@ -193,7 +193,8 @@ private fun HowToVotePreview() =
                     title = stringRes("How to vote with Zodl"),
                     subtitle =
                         stringRes(
-                            "Your ZEC gives you a voice. Shape the future of the Zcash network by voting on active proposals."
+                            "Your ZEC gives you a voice. Shape the future of the Zcash " +
+                                "network by voting on active proposals."
                         ),
                     steps =
                         listOf(
@@ -212,7 +213,8 @@ private fun HowToVotePreview() =
                                 description =
                                     stringRes(
                                         "When you're ready, you'll confirm a small authorization transaction " +
-                                            "and submit your vote in one step. After submission, your vote cannot be changed."
+                                            "and submit your vote in one step. After submission, " +
+                                            "your vote cannot be changed."
                                     )
                             ),
                         ),

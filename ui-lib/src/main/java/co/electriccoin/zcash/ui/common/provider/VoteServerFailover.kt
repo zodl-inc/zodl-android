@@ -32,10 +32,9 @@ internal suspend fun <T> withVoteServerFailover(
     for (serverUrl in normalizedServerUrls) {
         try {
             return operation(serverUrl)
+        } catch (exception: CancellationException) {
+            throw exception
         } catch (exception: Exception) {
-            if (exception is CancellationException) {
-                throw exception
-            }
             lastError = exception
             if (!shouldTryNext(exception)) {
                 throw exception

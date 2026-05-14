@@ -204,7 +204,7 @@ private fun String.isHexEncoded(): Boolean =
     isNotEmpty() && length % 2 == 0 && all { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }
 
 private fun String.hexToBytes(): ByteArray =
-    chunked(2).map { chunk -> chunk.toInt(16).toByte() }.toByteArray()
+    chunked(HEX_BYTE_CHARS).map { chunk -> chunk.toInt(HEX_RADIX).toByte() }.toByteArray()
 
 private fun ByteArray.toHexString(): String =
     joinToString(separator = "") { byte -> "%02x".format(byte) }
@@ -216,3 +216,5 @@ private const val MAX_PROPOSAL_ID = 15
 private const val MIN_OPTIONS = 2
 private const val MAX_OPTIONS = 8
 private const val DEFAULT_MISSING_OPTION_INDEX = 0
+private const val HEX_BYTE_CHARS = 2
+private const val HEX_RADIX = 16

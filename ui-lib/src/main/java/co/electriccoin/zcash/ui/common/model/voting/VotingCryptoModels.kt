@@ -4,7 +4,7 @@ private fun List<ByteArray>.contentListEquals(other: List<ByteArray>) =
     size == other.size && indices.all { this[it].contentEquals(other[it]) }
 
 private fun List<ByteArray>.contentListHashCode() =
-    fold(1) { acc, value -> 31 * acc + value.contentHashCode() }
+    fold(1) { acc, value -> HASH_MULTIPLIER * acc + value.contentHashCode() }
 
 data class VotingBundleSetupResult(
     val bundleCount: Int,
@@ -30,6 +30,8 @@ data class VotingHotkey(
         return result
     }
 }
+
+private const val HASH_MULTIPLIER = 31
 
 data class VotingGovernancePczt(
     val pcztBytes: ByteArray,

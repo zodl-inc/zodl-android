@@ -4,7 +4,7 @@ private fun List<ByteArray>.contentListEquals(other: List<ByteArray>) =
     size == other.size && indices.all { this[it].contentEquals(other[it]) }
 
 private fun List<ByteArray>.contentListHashCode() =
-    fold(1) { acc, value -> 31 * acc + value.contentHashCode() }
+    fold(1) { acc, value -> HASH_MULTIPLIER * acc + value.contentHashCode() }
 
 private fun <T> List<T>.contentListEquals(
     other: List<T>,
@@ -12,7 +12,7 @@ private fun <T> List<T>.contentListEquals(
 ) = size == other.size && indices.all { matcher(this[it], other[it]) }
 
 private fun <T> List<T>.contentListHashCode(hasher: (T) -> Int) =
-    fold(1) { acc, value -> 31 * acc + hasher(value) }
+    fold(1) { acc, value -> HASH_MULTIPLIER * acc + hasher(value) }
 
 data class DelegationRegistration(
     val rk: ByteArray,
@@ -53,6 +53,8 @@ data class DelegationRegistration(
         return result
     }
 }
+
+private const val HASH_MULTIPLIER = 31
 
 data class EncryptedShare(
     val c1: ByteArray,

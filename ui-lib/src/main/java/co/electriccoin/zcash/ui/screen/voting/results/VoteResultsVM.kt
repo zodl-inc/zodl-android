@@ -235,4 +235,6 @@ class VoteResultsVM(
     fun onBack() = navigationRouter.backTo(VoteCoinholderPollingArgs::class)
 }
 
-private fun Long.toZec(): Double = this / 100_000_000.0
+private fun Long.toZec(): Double = this / ZATOSHI_PER_ZEC
+
+private const val ZATOSHI_PER_ZEC = 100_000_000.0

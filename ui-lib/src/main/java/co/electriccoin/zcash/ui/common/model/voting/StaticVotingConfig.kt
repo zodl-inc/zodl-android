@@ -191,19 +191,23 @@ internal fun decodeBase64Field(value: String, fieldName: String): ByteArray =
     }
 
 internal fun String.lowercaseHexToBytes(): ByteArray {
-    if (length % 2 != 0 || !isLowercaseHex()) {
+    if (length % HEX_BYTE_CHARS != 0 || !isLowercaseHex()) {
         throw VotingConfigException("Expected lowercase hex")
     }
-    return chunked(2).map { chunk -> chunk.toInt(16).toByte() }.toByteArray()
+    return chunked(HEX_BYTE_CHARS).map { chunk -> chunk.toInt(HEX_RADIX).toByte() }.toByteArray()
 }
 
 internal fun String.isLowercaseHex(): Boolean =
     isNotEmpty() && all { character -> character in '0'..'9' || character in 'a'..'f' }
 
 internal fun ByteArray.toLowerHex(): String =
-    joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and 0xff) }
+    joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and BYTE_MASK) }
 
 private val staticVotingConfigJson =
     Json {
         ignoreUnknownKeys = true
     }
+
+private const val HEX_BYTE_CHARS = 2
+private const val HEX_RADIX = 16
+private const val BYTE_MASK = 0xff

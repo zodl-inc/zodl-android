@@ -435,7 +435,9 @@ private fun VotingSession.toVotingRound() =
     )
 
 private fun ByteArray.toLowerHex(): String =
-    joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and 0xff) }
+    joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and BYTE_MASK) }
 
 private fun Map<Int, Int>.toChoicesJson(): String =
     JSONObject(toSortedMap().mapKeys { (proposalId, _) -> proposalId.toString() }).toString()
+
+private const val BYTE_MASK = 0xff
