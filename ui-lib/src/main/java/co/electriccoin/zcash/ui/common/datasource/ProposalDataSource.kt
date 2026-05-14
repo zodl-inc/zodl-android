@@ -385,6 +385,7 @@ internal fun List<TransactionSubmitResult>.toSubmitResult(): SubmitResult {
     val successCount = count { it is TransactionSubmitResult.Success }
     val txIds = map { it.txIdString() }
     val failures = filterIsInstance<TransactionSubmitResult.Failure>()
+    val hasNotAttempted = any { it is TransactionSubmitResult.NotAttempted }
     val hasTimeoutFailure =
         failures.any { it.grpcError && it.description == MULTI_SUBMIT_TIMEOUT_DESCRIPTION }
     val grpcFailureReason =
@@ -407,12 +408,14 @@ internal fun List<TransactionSubmitResult>.toSubmitResult(): SubmitResult {
 
     return when (successCount) {
         0 -> {
-            if (failures.all { it.grpcError }) {
+            if (failures.size == size && failures.all { it.grpcError }) {
                 SubmitResult.GrpcFailure(
                     txIds = txIds,
                     description = grpcFailureDescription,
                     reason = grpcFailureReason
                 )
+            } else if (hasNotAttempted && failures.none { !it.grpcError }) {
+                SubmitResult.Partial(txIds = txIds, statuses = map { it.statusDescription() })
             } else {
                 SubmitResult.Failure(txIds = txIds, code = errCode, description = errDesc)
             }

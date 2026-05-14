@@ -369,6 +369,26 @@ class MultiEndpointTransactionSubmitterTest {
     }
 
     @Test
+    fun grpcFailureThenNotAttemptedMapsToPartialResult() {
+        val firstTransaction = transaction(17)
+        val secondTransaction = transaction(18)
+
+        val result =
+            listOf(
+                failure(firstTransaction, code = -1, grpcError = true),
+                TransactionSubmitResult.NotAttempted(secondTransaction.txId)
+            ).toSubmitResult()
+
+        assertEquals(
+            SubmitResult.Partial(
+                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString()),
+                statuses = listOf("failure -1", "notAttempted")
+            ),
+            result
+        )
+    }
+
+    @Test
     fun emptyCreatedTransactionsMapToFailureResult() {
         val result = emptyList<TransactionSubmitResult>().toSubmitResult()
 
