@@ -489,6 +489,26 @@ class SubmitVotesUseCase(
                             ?: error("Unknown proposal id $proposalId for round $roundId")
                     val progressBase = proposalIndex + 1
 
+                    fun emitSubmittingProgress(
+                        bundleIndex: Int,
+                        bundleProgress: Double
+                    ) {
+                        onProgress(
+                            VotingSubmissionProgress.Submitting(
+                                current = progressBase,
+                                total = totalChoices,
+                                progress =
+                                    calculateSubmittingBundleProgress(
+                                        proposalIndex = proposalIndex,
+                                        bundleIndex = bundleIndex,
+                                        bundleCount = bundleCount,
+                                        totalChoices = totalChoices,
+                                        bundleProgress = bundleProgress
+                                    )
+                            )
+                        )
+                    }
+
                     val submittedBundles =
                         submittedBundleIndicesByProposal
                             .getOrPut(proposalId) { mutableSetOf() }
@@ -528,15 +548,7 @@ class SubmitVotesUseCase(
                             return@repeat
                         }
 
-                        val completedBundles = proposalIndex * bundleCount + bundleIndex + 1
-                        val bundleTotal = totalChoices * bundleCount.coerceAtLeast(1)
-                        onProgress(
-                            VotingSubmissionProgress.Submitting(
-                                current = progressBase,
-                                total = totalChoices,
-                                progress = completedBundles.toFloat() / bundleTotal
-                            )
-                        )
+                        emitSubmittingProgress(bundleIndex, bundleProgress = 0.0)
 
                         val cachedVoteTxHash =
                             votingCryptoClient.getVoteTxHash(
@@ -628,6 +640,7 @@ class SubmitVotesUseCase(
                                     )
                                 }
                                 submittedBundles += bundleIndex
+                                emitSubmittingProgress(bundleIndex, bundleProgress = 1.0)
                                 return@repeat
                             }
                             Log.i(
@@ -693,18 +706,9 @@ class SubmitVotesUseCase(
                                     accountIndex = accountIndex,
                                     singleShare = singleShare,
                                     proofProgress = { proofProgress ->
-                                        onProgress(
-                                            VotingSubmissionProgress.Submitting(
-                                                current = progressBase,
-                                                total = totalChoices,
-                                                progress =
-                                                    (
-                                                        (
-                                                            proposalIndex * bundleCount + bundleIndex +
-                                                                proofProgress.coerceIn(0.0, 1.0)
-                                                        ) / bundleTotal
-                                                    ).toFloat()
-                                            )
+                                        emitSubmittingProgress(
+                                            bundleIndex = bundleIndex,
+                                            bundleProgress = proofProgress
                                         )
                                     }
                                 )
@@ -826,6 +830,7 @@ class SubmitVotesUseCase(
                             )
                         }
                         submittedBundles += bundleIndex
+                        emitSubmittingProgress(bundleIndex, bundleProgress = 1.0)
                     }
 
                     markProposalSubmissionComplete(accountUuidString, roundId, proposalId)
@@ -1194,4 +1199,25 @@ class SubmitVotesUseCase(
         const val SHARE_DELEGATION_ATTEMPTS = 3
         const val SHARE_DELEGATION_RETRY_MS = 2_000L
     }
+}
+
+internal fun calculateSubmittingBundleProgress(
+    proposalIndex: Int,
+    bundleIndex: Int,
+    bundleCount: Int,
+    totalChoices: Int,
+    bundleProgress: Double
+): Float {
+    require(proposalIndex >= 0) { "proposalIndex must be non-negative" }
+    require(bundleIndex >= 0) { "bundleIndex must be non-negative" }
+    require(bundleCount > 0) { "bundleCount must be positive" }
+    require(totalChoices > 0) { "totalChoices must be positive" }
+
+    val completedBundles =
+        proposalIndex * bundleCount +
+            bundleIndex +
+            bundleProgress.coerceIn(0.0, 1.0)
+    val bundleTotal = totalChoices * bundleCount
+
+    return (completedBundles / bundleTotal).toFloat().coerceIn(0f, 1f)
 }
