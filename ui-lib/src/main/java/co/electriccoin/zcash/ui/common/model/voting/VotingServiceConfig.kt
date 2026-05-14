@@ -58,35 +58,43 @@ data class VotingServiceConfig(
     }
 
     fun validate() {
-        requireVotingConfig(configVersion == 1) {
-            "Unsupported config_version $configVersion"
+        if (configVersion != 1) {
+            throw VotingConfigException("Unsupported config_version $configVersion")
         }
-        requireVotingConfig(voteServers.isNotEmpty()) {
-            "vote_servers must contain at least one entry"
+        if (voteServers.isEmpty()) {
+            throw VotingConfigException("vote_servers must contain at least one entry")
         }
-        requireVotingConfig(pirEndpoints.isNotEmpty()) {
-            "pir_endpoints must contain at least one entry"
+        if (pirEndpoints.isEmpty()) {
+            throw VotingConfigException("pir_endpoints must contain at least one entry")
         }
         rounds.keys.forEach { roundId ->
-            requireVotingConfig(roundId.length == ROUND_ID_HEX_LENGTH && roundId.isLowercaseHex()) {
-                "rounds key must be 64 lowercase hex characters: $roundId"
+            if (roundId.length != ROUND_ID_HEX_LENGTH || !roundId.isLowercaseHex()) {
+                throw VotingConfigException("rounds key must be 64 lowercase hex characters: $roundId")
             }
         }
-        requireVotingConfig(WalletCapabilities.voteServer.contains(supportedVersions.voteServer)) {
+        if (!WalletCapabilities.voteServer.contains(supportedVersions.voteServer)) {
+            throw VotingConfigException(
                 "Wallet does not support vote_server version " +
                     "\"${supportedVersions.voteServer}\". Please update the wallet."
+            )
         }
-        requireVotingConfig(WalletCapabilities.voteProtocol.contains(supportedVersions.voteProtocol)) {
+        if (!WalletCapabilities.voteProtocol.contains(supportedVersions.voteProtocol)) {
+            throw VotingConfigException(
                 "Wallet does not support vote_protocol version " +
                     "\"${supportedVersions.voteProtocol}\". Please update the wallet."
+            )
         }
-        requireVotingConfig(WalletCapabilities.tally.contains(supportedVersions.tally)) {
+        if (!WalletCapabilities.tally.contains(supportedVersions.tally)) {
+            throw VotingConfigException(
                 "Wallet does not support tally version " +
                     "\"${supportedVersions.tally}\". Please update the wallet."
+            )
         }
-        requireVotingConfig(WalletCapabilities.pir.intersect(supportedVersions.pir.toSet()).isNotEmpty()) {
+        if (WalletCapabilities.pir.intersect(supportedVersions.pir.toSet()).isEmpty()) {
+            throw VotingConfigException(
                 "Wallet does not support pir version " +
                     "\"${supportedVersions.pir.joinToString(separator = ",")}\". Please update the wallet."
+            )
         }
     }
 
@@ -108,21 +116,8 @@ data class VotingServiceConfig(
 }
 
 open class VotingConfigException(
-    message: String,
-    cause: Throwable? = null
-) : IllegalStateException(message, cause)
-
-internal inline fun requireVotingConfig(
-    value: Boolean,
-    lazyMessage: () -> String
-) {
-    if (!value) {
-        failVotingConfig(lazyMessage())
-    }
-}
-
-internal fun failVotingConfig(message: String): Nothing =
-    throw VotingConfigException(message)
+    message: String
+) : IllegalStateException(message)
 
 private object WalletCapabilities {
     val voteServer = setOf("v1")

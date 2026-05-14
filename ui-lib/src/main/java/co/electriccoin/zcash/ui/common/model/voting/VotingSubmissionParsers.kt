@@ -92,10 +92,10 @@ fun ByteArray.toBase64String(): String =
     Base64.getEncoder().encodeToString(this)
 
 fun String.hexStringToBytes(): ByteArray =
-    chunked(HEX_BYTE_CHARS).map { chunk -> chunk.toInt(HEX_RADIX).toByte() }.toByteArray()
+    chunked(2).map { chunk -> chunk.toInt(16).toByte() }.toByteArray()
 
 private fun ByteArray.toHexString(): String =
-    joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and BYTE_MASK) }
+    joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and 0xff) }
 
 private fun JSONObject.toEncryptedShare() =
     EncryptedShare(
@@ -113,10 +113,6 @@ private fun JSONArray?.toEncryptedShares(): List<EncryptedShare> {
         }
     }
 }
-
-private const val HEX_BYTE_CHARS = 2
-private const val HEX_RADIX = 16
-private const val BYTE_MASK = 0xff
 
 private fun JSONArray?.toByteArrays(): List<ByteArray> {
     if (this == null) return emptyList()

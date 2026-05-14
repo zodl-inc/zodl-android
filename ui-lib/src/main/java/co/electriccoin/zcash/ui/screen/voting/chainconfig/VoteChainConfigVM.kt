@@ -184,88 +184,55 @@ class VoteChainConfigVM(
 
     private fun onSaveEditor() {
         if (isValidating.value) return
-        val draft = editorDraft.value
-        if (draft?.isLocallyValid() == true) {
-            viewModelScope.launch {
-                saveEditorDraft(draft)
-            }
+        val draft = editorDraft.value ?: return
+        val isInvalid =
+            draft.name.trim().length > MAX_CUSTOM_CHAIN_NAME_LENGTH ||
+                draft.pinnedSource.trim().isInvalidPinnedSource()
+        if (isInvalid) {
+            return
         }
-    }
-
-    private suspend fun saveEditorDraft(draft: EditorDraft) {
-        val name = draft.name.trim().ifEmpty { DEFAULT_CUSTOM_CHAIN_NAME }
-        val pinnedSource = draft.pinnedSource.trim()
-        val parsedSource = parseValidEditorSource(pinnedSource) ?: return
-        val current = votingChainConfigRepository.get()
-        val duplicateError =
-            duplicateError(
-                parsedSource = parsedSource,
-                current = current,
-                editingId = draft.id
-            )
-
-        when {
-            duplicateError != null -> {
-                showError(duplicateError)
+        viewModelScope.launch {
+            val name = draft.name.trim().ifEmpty { DEFAULT_CUSTOM_CHAIN_NAME }
+            val pinnedSource = draft.pinnedSource.trim()
+            if (pinnedSource.isEmpty()) {
+                showError(stringRes(R.string.vote_chain_config_error_url_required))
+                return@launch
             }
 
-            updateExistingCustomIfSourceUnchanged(
-                draft = draft,
-                current = current,
-                name = name,
-                pinnedSource = pinnedSource
-            ) -> {
-                editorDraft.value = null
-            }
-
-            validatePinnedSourceOrShowError(parsedSource) -> {
-                saveValidatedEditorDraft(
-                    draft = draft,
+            val parsedSource = parsePinnedSourceOrShowError(pinnedSource) ?: return@launch
+            val current = votingChainConfigRepository.get()
+            val duplicateError =
+                duplicateError(
                     parsedSource = parsedSource,
+                    current = current,
+                    editingId = draft.id
+                )
+            if (duplicateError != null) {
+                showError(duplicateError)
+                return@launch
+            }
+
+            val existing = draft.id?.let { id -> current.customChains.firstOrNull { it.id == id } }
+            if (existing != null && existing.pinnedSource.trim() == pinnedSource) {
+                votingChainConfigRepository.updateCustom(
+                    id = existing.id,
                     name = name,
                     pinnedSource = pinnedSource
                 )
+                editorDraft.value = null
+                return@launch
             }
-        }
-    }
 
-    private fun parseValidEditorSource(pinnedSource: String): PinnedConfigSource? =
-        if (pinnedSource.isEmpty()) {
-            showError(stringRes(R.string.vote_chain_config_error_url_required))
-            null
-        } else {
-            parsePinnedSourceOrShowError(pinnedSource)
-        }
+            if (!validatePinnedSourceOrShowError(parsedSource)) {
+                return@launch
+            }
 
-    private suspend fun updateExistingCustomIfSourceUnchanged(
-        draft: EditorDraft,
-        current: VotingChainConfigState,
-        name: String,
-        pinnedSource: String
-    ): Boolean {
-        val existing = draft.id?.let { id -> current.customChains.firstOrNull { it.id == id } }
-        return if (existing != null && existing.pinnedSource.trim() == pinnedSource) {
-            votingChainConfigRepository.updateCustom(
-                id = existing.id,
-                name = name,
-                pinnedSource = pinnedSource
-            )
-            true
-        } else {
-            false
-        }
-    }
+            if (parsedSource.isBundledDefaultUrl()) {
+                votingChainConfigRepository.selectDefault()
+                editorDraft.value = null
+                return@launch
+            }
 
-    private suspend fun saveValidatedEditorDraft(
-        draft: EditorDraft,
-        parsedSource: PinnedConfigSource,
-        name: String,
-        pinnedSource: String
-    ) {
-        if (parsedSource.isBundledDefaultUrl()) {
-            votingChainConfigRepository.selectDefault()
-            editorDraft.value = null
-        } else {
             if (draft.id == null) {
                 votingChainConfigRepository.addCustom(name = name, pinnedSource = pinnedSource)
             } else {
@@ -314,11 +281,12 @@ class VoteChainConfigVM(
         return try {
             votingApiProvider.validateConfigSource(source)
             true
-        } catch (exception: CancellationException) {
-            throw exception
-        } catch (exception: Exception) {
+        } catch (throwable: Throwable) {
+            if (throwable is CancellationException) {
+                throw throwable
+            }
             showError(
-                exception.message
+                throwable.message
                     ?.takeIf(String::isNotBlank)
                     ?.let(::stringRes)
                     ?: stringRes(R.string.vote_chain_config_error_validation_failed)
@@ -471,10 +439,6 @@ private fun PinnedConfigSource.isBundledDefaultUrl(): Boolean =
 private fun EditorDraft.canSave(): Boolean =
     name.trim().length <= MAX_CUSTOM_CHAIN_NAME_LENGTH &&
         pinnedSource.trim().isNotEmpty() &&
-        !pinnedSource.trim().isInvalidPinnedSource()
-
-private fun EditorDraft.isLocallyValid(): Boolean =
-    name.trim().length <= MAX_CUSTOM_CHAIN_NAME_LENGTH &&
         !pinnedSource.trim().isInvalidPinnedSource()
 
 private fun String.isInvalidPinnedSource(): Boolean =

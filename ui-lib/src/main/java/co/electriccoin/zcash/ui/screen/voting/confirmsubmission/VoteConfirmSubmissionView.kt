@@ -243,11 +243,7 @@ private fun previewState(status: VoteSubmissionStatus) =
         hotkeyAddress = stringRes("zs1xk9...f7q2m"),
         isKeystoneUser = false,
         includesAuthorizationProgress = true,
-        memo =
-            stringRes(
-                "I am authorizing this hotkey managed by my wallet to vote on " +
-                    "NU7 Sentiment Poll with 1.2500 ZEC."
-            ),
+        memo = stringRes("I am authorizing this hotkey managed by my wallet to vote on NU7 Sentiment Poll with 1.2500 ZEC."),
         ctaButton =
             ButtonState(
                 text = stringRes("Confirm"),

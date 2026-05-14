@@ -52,8 +52,7 @@ object VotingErrorMapper {
                 stringRes(UiR.string.vote_error_mapper_round_not_found)
             }
 
-            lower.contains("round") &&
-                (lower.contains("not active") || lower.contains("inactive") || lower.contains("closed")) -> {
+            lower.contains("round") && (lower.contains("not active") || lower.contains("inactive") || lower.contains("closed")) -> {
                 stringRes(UiR.string.vote_error_mapper_round_closed)
             }
 

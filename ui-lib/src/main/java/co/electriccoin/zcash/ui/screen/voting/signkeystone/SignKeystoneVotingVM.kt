@@ -298,58 +298,59 @@ class SignKeystoneVotingVM(
         }
     }
 
-    private fun VotingRecoverySnapshot.toSkipRemainingButton(): ButtonState? =
-        skipBundleCounts()?.let { counts ->
-            ButtonState(
-                text =
-                    if (counts.remainingCount == 1) {
-                        stringRes(R.string.sign_keystone_voting_skip_remaining_bundle)
-                    } else {
-                        stringRes(R.string.sign_keystone_voting_skip_remaining_bundles, counts.remainingCount)
-                    },
-                style = ButtonStyle.SECONDARY,
-                onClick = ::onSkipRemainingClick
-            )
+    private fun VotingRecoverySnapshot.toSkipRemainingButton(): ButtonState? {
+        val bundleCount = bundleCount ?: return null
+        val signedCount = signedBundlePrefixCount(bundleCount)
+        val remainingCount = bundleCount - signedCount
+        if (signedCount <= 0 || remainingCount <= 0 || bundleWeights.size < bundleCount) {
+            return null
         }
 
-    private fun VotingRecoverySnapshot.toSkipBottomSheetState(): SkipKeystoneBundlesBottomSheetState? =
-        skipBundleCounts()?.let { counts ->
-            val signedWeight = bundleWeights.take(counts.signedCount).sum()
-            val skippedWeight = bundleWeights.subList(counts.signedCount, counts.bundleCount).sum()
+        val buttonText =
+            if (remainingCount == 1) {
+                stringRes(R.string.sign_keystone_voting_skip_remaining_bundle)
+            } else {
+                stringRes(R.string.sign_keystone_voting_skip_remaining_bundles, remainingCount)
+            }
 
-            SkipKeystoneBundlesBottomSheetState(
-                message =
-                    stringRes(
-                        R.string.sign_keystone_voting_skip_remaining_message,
-                        signedWeight.toVotingWeightLabel(),
-                        skippedWeight.toVotingWeightLabel()
-                    ),
-                onBack = ::onCloseSkipBottomSheetClick,
-                skipButton =
-                    ButtonState(
-                        text = stringRes(R.string.sign_keystone_voting_skip_remaining_confirm),
-                        style = ButtonStyle.DESTRUCTIVE2,
-                        onClick = ::onConfirmSkipRemainingClick
-                    ),
-                cancelButton =
-                    ButtonState(
-                        text = stringRes(R.string.sign_keystone_voting_cancel),
-                        onClick = ::onCloseSkipBottomSheetClick
-                    )
-            )
+        return ButtonState(
+            text = buttonText,
+            style = ButtonStyle.SECONDARY,
+            onClick = ::onSkipRemainingClick
+        )
+    }
+
+    private fun VotingRecoverySnapshot.toSkipBottomSheetState(): SkipKeystoneBundlesBottomSheetState? {
+        val bundleCount = bundleCount ?: return null
+        val signedCount = signedBundlePrefixCount(bundleCount)
+        val remainingCount = bundleCount - signedCount
+        if (signedCount <= 0 || remainingCount <= 0 || bundleWeights.size < bundleCount) {
+            return null
         }
 
-    private fun VotingRecoverySnapshot.skipBundleCounts(): SkipBundleCounts? {
-        val resolvedBundleCount = bundleCount ?: return null
-        val signedCount = signedBundlePrefixCount(resolvedBundleCount)
-        val remainingCount = resolvedBundleCount - signedCount
-        return SkipBundleCounts(
-            bundleCount = resolvedBundleCount,
-            signedCount = signedCount,
-            remainingCount = remainingCount
-        ).takeIf {
-            signedCount > 0 && remainingCount > 0 && bundleWeights.size >= resolvedBundleCount
-        }
+        val signedWeight = bundleWeights.take(signedCount).sum()
+        val skippedWeight = bundleWeights.subList(signedCount, bundleCount).sum()
+
+        return SkipKeystoneBundlesBottomSheetState(
+            message =
+                stringRes(
+                    R.string.sign_keystone_voting_skip_remaining_message,
+                    signedWeight.toVotingWeightLabel(),
+                    skippedWeight.toVotingWeightLabel()
+                ),
+            onBack = ::onCloseSkipBottomSheetClick,
+            skipButton =
+                ButtonState(
+                    text = stringRes(R.string.sign_keystone_voting_skip_remaining_confirm),
+                    style = ButtonStyle.DESTRUCTIVE2,
+                    onClick = ::onConfirmSkipRemainingClick
+                ),
+            cancelButton =
+                ButtonState(
+                    text = stringRes(R.string.sign_keystone_voting_cancel),
+                    onClick = ::onCloseSkipBottomSheetClick
+                )
+        )
     }
 
     private fun VotingRecoverySnapshot.signedBundlePrefixCount(bundleCount: Int): Int =
@@ -361,12 +362,6 @@ class SignKeystoneVotingVM(
         // Keystone bundle weights are quantized in 0.125 ZEC increments, so three decimals are exact here.
         return String.format(Locale.US, "%.3f ZEC", this / ZATOSHI_PER_ZEC)
     }
-
-    private data class SkipBundleCounts(
-        val bundleCount: Int,
-        val signedCount: Int,
-        val remainingCount: Int
-    )
 
     private companion object {
         const val ZATOSHI_PER_ZEC = 100_000_000.0
