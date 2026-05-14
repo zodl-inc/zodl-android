@@ -157,8 +157,7 @@ class VotingKeystoneRepositoryImpl(
                 val fvkBytes = votingCryptoClient.extractOrchardFvkFromUfvk(ufvk, networkId)
                 val hotkeyRawAddress = votingCryptoClient.deriveHotkeyRawAddress(
                     hotkeySeed = hotkeySeed,
-                    networkId = networkId,
-                    accountIndex = accountIndex
+                    networkId = networkId
                 )
                 val governancePczt = votingCryptoClient.buildGovernancePczt(
                     dbHandle = dbHandle,

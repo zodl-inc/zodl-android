@@ -146,8 +146,7 @@ class SubmitVotesUseCase(
             )
             val hotkeyRawAddress = votingCryptoClient.deriveHotkeyRawAddress(
                 hotkeySeed = hotkeySeed,
-                networkId = networkId,
-                accountIndex = accountIndex
+                networkId = networkId
             )
 
             val singleShare = session.isLastMoment()

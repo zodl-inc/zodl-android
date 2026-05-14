@@ -119,8 +119,7 @@ interface VotingCryptoClient {
 
     suspend fun deriveHotkeyRawAddress(
         hotkeySeed: ByteArray,
-        networkId: Int,
-        accountIndex: Int
+        networkId: Int
     ): ByteArray
 
     suspend fun generateNoteWitnessesJson(
@@ -498,10 +497,9 @@ class VotingCryptoClientImpl : VotingCryptoClient {
 
     override suspend fun deriveHotkeyRawAddress(
         hotkeySeed: ByteArray,
-        networkId: Int,
-        accountIndex: Int
+        networkId: Int
     ): ByteArray =
-        rustBackend().deriveHotkeyRawAddress(hotkeySeed, networkId, accountIndex)
+        rustBackend().deriveHotkeyRawAddress(hotkeySeed, networkId)
 
     override suspend fun generateNoteWitnessesJson(
         dbHandle: Long,
