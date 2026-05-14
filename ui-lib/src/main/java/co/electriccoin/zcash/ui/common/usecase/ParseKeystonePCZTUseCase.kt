@@ -27,11 +27,16 @@ abstract class BaseKeystoneScanner(
 ) {
     private val mutex = Mutex()
 
+    private var activeScanSessionId: String? = null
     private var latestResult: ParseKeystoneQrResult? = null
 
     @Suppress("TooGenericExceptionCaught", "SwallowedException")
-    suspend operator fun invoke(result: String): ParseKeystoneQrResult =
+    suspend operator fun invoke(
+        result: String,
+        scanSessionId: String? = null
+    ): ParseKeystoneQrResult =
         withSemaphore {
+            resetDecoderForNewSession(scanSessionId)
             val latest = latestResult
             if (latest != null && latest.isFinished) {
                 latest
@@ -76,6 +81,25 @@ abstract class BaseKeystoneScanner(
 
     abstract suspend fun onSuccess(ur: UR)
 
+    private fun resetDecoderForNewSession(scanSessionId: String?) {
+        val requestedSessionId = scanSessionId ?: DEFAULT_SCAN_SESSION_ID
+        val previousSessionId = activeScanSessionId
+        if (previousSessionId == requestedSessionId) {
+            return
+        }
+
+        activeScanSessionId = requestedSessionId
+        latestResult = null
+        if (previousSessionId == null) {
+            return
+        }
+        try {
+            keystoneSDKProvider.resetQRDecoder()
+        } catch (resetException: KeystoneSDKException) {
+            Twig.warn(resetException) { "Failed to reset QR decoder for new scan session" }
+        }
+    }
+
     private fun decodeResult(result: String): DecodeResult =
         try {
             keystoneSDKProvider.decodeQR(result)
@@ -89,6 +113,10 @@ abstract class BaseKeystoneScanner(
                 block()
             }
         }
+
+    private companion object {
+        const val DEFAULT_SCAN_SESSION_ID = "default"
+    }
 }
 
 class InvalidKeystonePCZTQRException : Exception()

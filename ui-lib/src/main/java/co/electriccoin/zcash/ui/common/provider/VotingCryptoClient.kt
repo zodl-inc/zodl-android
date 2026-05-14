@@ -117,6 +117,11 @@ interface VotingCryptoClient {
         accountUuidBytes: ByteArray
     ): String
 
+    suspend fun deriveHotkeyRawAddress(
+        hotkeySeed: ByteArray,
+        networkId: Int
+    ): ByteArray
+
     suspend fun generateNoteWitnessesJson(
         dbHandle: Long,
         roundId: String,
@@ -135,6 +140,19 @@ interface VotingCryptoClient {
     )
 
     suspend fun buildGovernancePczt(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        fvkBytes: ByteArray,
+        hotkeyRawAddress: ByteArray,
+        networkId: Int,
+        accountIndex: Int,
+        notesJson: String,
+        seedFingerprint: ByteArray,
+        roundName: String
+    ): VotingGovernancePczt
+
+    suspend fun buildGovernancePcztFromSeed(
         dbHandle: Long,
         roundId: String,
         bundleIndex: Int,
@@ -171,7 +189,7 @@ interface VotingCryptoClient {
         pirServerUrl: String,
         networkId: Int,
         notesJson: String,
-        hotkeyRawSeed: ByteArray,
+        hotkeyRawAddress: ByteArray,
         proofProgress: ((Double) -> Unit)? = null
     ): VotingDelegationProof
 
@@ -477,6 +495,12 @@ class VotingCryptoClientImpl : VotingCryptoClient {
             .asList()
             .toNotesJson()
 
+    override suspend fun deriveHotkeyRawAddress(
+        hotkeySeed: ByteArray,
+        networkId: Int
+    ): ByteArray =
+        rustBackend().deriveHotkeyRawAddress(hotkeySeed, networkId)
+
     override suspend fun generateNoteWitnessesJson(
         dbHandle: Long,
         roundId: String,
@@ -507,6 +531,30 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         dbHandle: Long,
         roundId: String,
         bundleIndex: Int,
+        fvkBytes: ByteArray,
+        hotkeyRawAddress: ByteArray,
+        networkId: Int,
+        accountIndex: Int,
+        notesJson: String,
+        seedFingerprint: ByteArray,
+        roundName: String
+    ): VotingGovernancePczt =
+        db(dbHandle).buildGovernancePczt(
+            roundId,
+            bundleIndex,
+            fvkBytes,
+            hotkeyRawAddress,
+            networkId,
+            accountIndex,
+            notesJson.toJniNoteInfos(),
+            seedFingerprint,
+            roundName
+        ).toAppModel()
+
+    override suspend fun buildGovernancePcztFromSeed(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
         ufvk: String,
         networkId: Int,
         accountIndex: Int,
@@ -516,7 +564,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         seedFingerprint: ByteArray,
         roundName: String
     ): VotingGovernancePczt =
-        db(dbHandle).buildGovernancePczt(
+        db(dbHandle).buildGovernancePcztFromSeed(
             roundId,
             bundleIndex,
             ufvk,
@@ -556,7 +604,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         pirServerUrl: String,
         networkId: Int,
         notesJson: String,
-        hotkeyRawSeed: ByteArray,
+        hotkeyRawAddress: ByteArray,
         proofProgress: ((Double) -> Unit)?
     ): VotingDelegationProof =
         db(dbHandle).buildAndProveDelegation(
@@ -565,7 +613,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
             pirServerUrl,
             networkId,
             notesJson.toJniNoteInfos(),
-            hotkeyRawSeed,
+            hotkeyRawAddress,
             proofProgress?.asVotingProgressCallback()
         ).toAppModel()
 

@@ -12,7 +12,6 @@ import co.electriccoin.zcash.ui.common.model.voting.RoundPhase
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
 import co.electriccoin.zcash.ui.common.model.voting.canBuildGovernancePczt
 import co.electriccoin.zcash.ui.common.model.voting.canGenerateHotkey
-import co.electriccoin.zcash.ui.common.model.voting.selectVotingBundleNotesJson
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
@@ -78,7 +77,7 @@ class PrepareVotingRoundUseCase(
                 ?: error("Unable to derive voting DB path from $walletDbPath")
             val networkId = synchronizer.network.toVotingNetworkId()
             val recoverySnapshot = votingRecoveryRepository.get(accountUuidString, roundId)
-            val bundleNotesJsonByIndex = mutableMapOf<Int, String>()
+            var roundNotesJson: String? = null
             val pendingPrecomputeRequests = mutableListOf<VotingDelegationPirPrecomputeRequest>()
 
             val dbHandle = votingCryptoClient.openVotingDb(votingDbPath)
@@ -132,6 +131,7 @@ class PrepareVotingRoundUseCase(
                         )
                     }
                     freshNotesJson = notesJson
+                    roundNotesJson = notesJson
 
                     votingCryptoClient.initializeRound(
                         dbHandle = dbHandle,
@@ -204,15 +204,13 @@ class PrepareVotingRoundUseCase(
                             networkId = networkId,
                             notesJson = notesJson
                         )
-                        val bundleNotesJson = notesJson.selectVotingBundleNotesJson(witnessesJson)
                         votingCryptoClient.storeWitnesses(
                             dbHandle = dbHandle,
                             roundId = roundId,
                             bundleIndex = bundleIndex,
-                            notesJson = bundleNotesJson,
+                            notesJson = notesJson,
                             witnessesJson = witnessesJson
                         )
-                        bundleNotesJsonByIndex[bundleIndex] = bundleNotesJson
                     }
                 }
 
@@ -249,8 +247,11 @@ class PrepareVotingRoundUseCase(
                 }
                 votingSessionStore.setEligibility(VotingEligibility.ELIGIBLE)
                 if (existingRoundState == null && selectedAccount !is KeystoneAccount) {
-                    val senderSeed = getWalletSeedBytes()
                     runCatching {
+                        val ufvk = requireNotNull(selectedAccount.sdkAccount.ufvk) {
+                            "Software wallet account is missing UFVK for voting round $roundId"
+                        }
+                        val accountIndex = selectedAccount.hdAccountIndex.index.toInt()
                         pendingPrecomputeRequests += buildSoftwareDelegationPirPrecomputeRequests(
                             accountUuid = accountUuidString,
                             walletId = accountUuid.toString(),
@@ -258,13 +259,13 @@ class PrepareVotingRoundUseCase(
                             roundId = roundId,
                             networkId = networkId,
                             bundleCount = preparedBundleCount,
-                            bundleNotesJsonByIndex = bundleNotesJsonByIndex,
-                            dbHandle = dbHandle,
-                            ufvk = requireNotNull(selectedAccount.sdkAccount.ufvk) {
-                                "Software wallet account is missing UFVK for voting round $roundId"
+                            notesJson = requireNotNull(roundNotesJson ?: freshNotesJson) {
+                                "Missing prepared voting notes for round $roundId"
                             },
-                            accountIndex = selectedAccount.hdAccountIndex.index.toInt(),
-                            walletSeed = senderSeed,
+                            dbHandle = dbHandle,
+                            ufvk = ufvk,
+                            accountIndex = accountIndex,
+                            walletSeed = getWalletSeedBytes(),
                             hotkeySeed = hotkeySeed,
                             seedFingerprint = requireNotNull(selectedAccount.sdkAccount.seedFingerprint) {
                                 "Software wallet account is missing seed fingerprint for voting round $roundId"
@@ -406,7 +407,7 @@ class PrepareVotingRoundUseCase(
         roundId: String,
         networkId: Int,
         bundleCount: Int,
-        bundleNotesJsonByIndex: Map<Int, String>,
+        notesJson: String,
         dbHandle: Long,
         ufvk: String,
         accountIndex: Int,
@@ -419,17 +420,16 @@ class PrepareVotingRoundUseCase(
     ): List<VotingDelegationPirPrecomputeRequest> {
         val requests = mutableListOf<VotingDelegationPirPrecomputeRequest>()
         repeat(bundleCount) { bundleIndex ->
-            val bundleNotesJson = bundleNotesJsonByIndex[bundleIndex] ?: return@repeat
             runCatching {
                 if (votingCryptoClient.getRoundState(dbHandle, roundId)?.phase.canBuildGovernancePczt()) {
-                    votingCryptoClient.buildGovernancePczt(
+                    votingCryptoClient.buildGovernancePcztFromSeed(
                         dbHandle = dbHandle,
                         roundId = roundId,
                         bundleIndex = bundleIndex,
                         ufvk = ufvk,
                         networkId = networkId,
                         accountIndex = accountIndex,
-                        notesJson = bundleNotesJson,
+                        notesJson = notesJson,
                         walletSeed = walletSeed,
                         hotkeySeed = hotkeySeed,
                         seedFingerprint = seedFingerprint,
@@ -445,7 +445,7 @@ class PrepareVotingRoundUseCase(
                     pirEndpoints = pirEndpoints,
                     expectedSnapshotHeight = expectedSnapshotHeight,
                     networkId = networkId,
-                    notesJson = bundleNotesJson
+                    notesJson = notesJson
                 )
             }.onFailure { throwable ->
                 Log.w(TAG, "Skipping voting PIR precompute for round $roundId bundle $bundleIndex", throwable)

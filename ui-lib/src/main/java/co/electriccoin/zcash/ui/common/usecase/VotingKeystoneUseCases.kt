@@ -30,7 +30,10 @@ class ParseVotingKeystonePCZTUseCase(
         this.roundId = roundId
         this.bundleIndex = bundleIndex
         this.actionIndex = actionIndex
-        return super.invoke(result)
+        return super.invoke(
+            result = result,
+            scanSessionId = votingScanSessionId(accountUuid, roundId, bundleIndex, actionIndex)
+        )
     }
 
     private var accountUuid: String? = null
@@ -47,4 +50,11 @@ class ParseVotingKeystonePCZTUseCase(
             signedPcztUr = ur
         )
     }
+
+    private fun votingScanSessionId(
+        accountUuid: String,
+        roundId: String,
+        bundleIndex: Int,
+        actionIndex: Int
+    ) = listOf(accountUuid, roundId, bundleIndex, actionIndex).joinToString(separator = ":")
 }

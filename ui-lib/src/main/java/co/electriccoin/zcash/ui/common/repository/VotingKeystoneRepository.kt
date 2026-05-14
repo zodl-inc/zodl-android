@@ -6,7 +6,6 @@ import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.voting.canBuildGovernancePczt
-import co.electriccoin.zcash.ui.common.model.voting.selectVotingBundleNotesJson
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
@@ -155,17 +154,20 @@ class VotingKeystoneRepositoryImpl(
                     networkId = networkId,
                     notesJson = allNotesJson
                 )
-                val bundleNotesJson = allNotesJson.selectVotingBundleNotesJson(witnessesJson)
+                val fvkBytes = votingCryptoClient.extractOrchardFvkFromUfvk(ufvk, networkId)
+                val hotkeyRawAddress = votingCryptoClient.deriveHotkeyRawAddress(
+                    hotkeySeed = hotkeySeed,
+                    networkId = networkId
+                )
                 val governancePczt = votingCryptoClient.buildGovernancePczt(
                     dbHandle = dbHandle,
                     roundId = roundId,
                     bundleIndex = bundleIndex,
-                    ufvk = ufvk,
+                    fvkBytes = fvkBytes,
+                    hotkeyRawAddress = hotkeyRawAddress,
                     networkId = networkId,
                     accountIndex = accountIndex,
-                    notesJson = bundleNotesJson,
-                    walletSeed = hotkeySeed,
-                    hotkeySeed = hotkeySeed,
+                    notesJson = allNotesJson,
                     seedFingerprint = seedFingerprint,
                     roundName = session.title
                 )
@@ -189,7 +191,7 @@ class VotingKeystoneRepositoryImpl(
                     pirEndpoints = sessionContext.serviceConfig.pirEndpoints.map { endpoint -> endpoint.url },
                     expectedSnapshotHeight = session.snapshotHeight,
                     networkId = networkId,
-                    notesJson = bundleNotesJson
+                    notesJson = allNotesJson
                 )
                 VotingKeystoneSigningBundle(
                     roundId = roundId,
