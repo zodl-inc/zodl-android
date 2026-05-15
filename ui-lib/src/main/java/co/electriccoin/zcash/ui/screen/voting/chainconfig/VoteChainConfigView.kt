@@ -110,13 +110,6 @@ fun VoteChainConfigView(state: VoteChainConfigState?) {
                     Modifier
                         .fillMaxSize()
                         .scaffoldPadding(padding),
-                contentPadding =
-                    PaddingValues(
-                        start = ZashiDimensions.Spacing.spacing3xl,
-                        top = ZashiDimensions.Spacing.spacingLg,
-                        end = ZashiDimensions.Spacing.spacing3xl,
-                        bottom = ZashiDimensions.Spacing.spacing3xl
-                    ),
                 verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing3xl)
             ) {
                 item(key = "intro") {
