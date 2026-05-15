@@ -61,7 +61,7 @@ data class ZashiConfirmationState(
     val title: StringResource,
     val message: StringResource,
     val primaryAction: ButtonState,
-    val secondaryAction: ButtonState,
+    val secondaryAction: ButtonState? = null,
     override val onBack: () -> Unit,
     val style: ZashiConfirmationStyle = ZashiConfirmationStyle.DEFAULT,
 ) : ModalBottomSheetState {
@@ -82,9 +82,9 @@ private fun ConfirmationContent(
     val isUnverifiedPollWarning = state.style == ZashiConfirmationStyle.UNVERIFIED_POLL_WARNING
     val actions =
         if (isUnverifiedPollWarning) {
-            listOf(state.secondaryAction, state.primaryAction)
+            listOfNotNull(state.secondaryAction, state.primaryAction)
         } else {
-            listOf(state.primaryAction, state.secondaryAction)
+            listOfNotNull(state.primaryAction, state.secondaryAction)
         }
 
     Column(

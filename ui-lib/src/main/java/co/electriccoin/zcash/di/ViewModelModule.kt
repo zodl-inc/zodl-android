@@ -92,7 +92,6 @@ import co.electriccoin.zcash.ui.screen.voting.chainconfig.VoteChainConfigVM
 import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingVM
 import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionVM
 import co.electriccoin.zcash.ui.screen.voting.howtovote.VoteHowToVoteVM
-import co.electriccoin.zcash.ui.screen.voting.ineligible.VoteIneligibleVM
 import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailVM
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListVM
 import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsVM
@@ -200,7 +199,6 @@ val viewModelModule =
         viewModelOf(::VoteProposalDetailVM)
         viewModelOf(::VoteConfirmSubmissionVM)
         viewModelOf(::VoteWalletSyncingVM)
-        viewModelOf(::VoteIneligibleVM)
         viewModelOf(::VoteTallyingVM)
         viewModelOf(::VoteResultsVM)
         viewModelOf(::SignKeystoneVotingVM)

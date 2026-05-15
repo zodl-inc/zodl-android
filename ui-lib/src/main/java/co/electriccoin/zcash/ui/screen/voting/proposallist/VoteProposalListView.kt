@@ -44,6 +44,7 @@ import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.VerticalSpacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -61,6 +62,7 @@ private const val DOT_FILL_RATIO = 0.6f
 
 @Composable
 fun VoteProposalListView(state: VoteProposalListState) {
+    ZashiConfirmationBottomSheet(state = state.ineligibleSheet)
     BlankBgScaffold(
         topBar = { AppBar(state) },
         content = { padding ->
