@@ -392,7 +392,8 @@ class SubmitVotesUseCase(
                                     val keystoneSignature =
                                         recovery.keystoneBundleSignatures[bundleIndex]
                                             ?: error("Keystone signature is missing for voting bundle $bundleIndex")
-                                    require(submission.spendAuthSig.contentEquals(keystoneSignature.decodeSpendAuthSig())) {
+                                    val expectedSpendAuthSig = keystoneSignature.decodeSpendAuthSig()
+                                    require(submission.spendAuthSig.contentEquals(expectedSpendAuthSig)) {
                                         "Delegation signature mismatch for Keystone voting bundle $bundleIndex"
                                     }
                                     require(submission.sighash.contentEquals(keystoneSignature.decodeSighash())) {

@@ -31,6 +31,8 @@ import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.stringRes
 import kotlin.math.roundToInt
 
+private const val PERCENT_SCALE = 100
+
 @Composable
 internal fun VoteSubmissionDetailsCard(state: VoteConfirmSubmissionState) {
     val isIdle = state.status is VoteSubmissionStatus.Idle
@@ -122,23 +124,26 @@ internal fun VoteSubmissionBottomSection(state: VoteConfirmSubmissionState) {
             state.status is VoteSubmissionStatus.Authorizing ||
                 state.status is VoteSubmissionStatus.Submitting
         when (val status = state.status) {
-            is VoteSubmissionStatus.Authorizing ->
+            is VoteSubmissionStatus.Authorizing -> {
                 VoteSubmissionProgressCard(
                     title = stringRes(R.string.vote_confirm_status_authorizing),
-                    subtitle = stringRes(
-                        R.string.vote_confirm_status_authorizing_percent,
-                        (submissionProgress * 100).roundToInt()
-                    ),
+                    subtitle =
+                        stringRes(
+                            R.string.vote_confirm_status_authorizing_percent,
+                            (submissionProgress * PERCENT_SCALE).roundToInt()
+                        ),
                     progress = submissionProgress
                 )
+            }
 
             is VoteSubmissionStatus.Submitting -> {
                 VoteSubmissionProgressCard(
-                    title = stringRes(
-                        R.string.vote_confirm_status_submitting,
-                        status.current,
-                        status.total
-                    ),
+                    title =
+                        stringRes(
+                            R.string.vote_confirm_status_submitting,
+                            status.current,
+                            status.total
+                        ),
                     subtitle = null,
                     progress = submissionProgress
                 )

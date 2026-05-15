@@ -229,21 +229,14 @@ class VoteConfirmSubmissionVM(
                 phaseIncludesAuthorizationProgress
             }
         val memo =
-            if (isKeystone && !allKeystoneBundlesSigned) {
-                if (hasPendingKeystoneRequest) {
-                    stringRes(R.string.vote_confirm_memo_resume_keystone)
-                } else {
-                    stringRes(R.string.vote_confirm_memo_sign_keystone)
-                }
-            } else if (isPrepared) {
-                stringRes(
-                    R.string.vote_confirm_memo_authorize,
-                    round.title,
-                    requireNotNull(recovery.eligibleWeight).toVotingWeightLabel()
-                )
-            } else {
-                stringRes(R.string.vote_confirm_memo_preparing)
-            }
+            buildMemo(
+                round = round,
+                recovery = recovery,
+                isKeystone = isKeystone,
+                isPrepared = isPrepared,
+                allKeystoneBundlesSigned = allKeystoneBundlesSigned,
+                hasPendingKeystoneRequest = hasPendingKeystoneRequest
+            )
 
         return VoteConfirmSubmissionState(
             status = status,
@@ -279,6 +272,35 @@ class VoteConfirmSubmissionVM(
                 ),
             onBack = ::onBack
         )
+    }
+
+    private fun buildMemo(
+        round: VotingRound,
+        recovery: VotingRecoverySnapshot?,
+        isKeystone: Boolean,
+        isPrepared: Boolean,
+        allKeystoneBundlesSigned: Boolean,
+        hasPendingKeystoneRequest: Boolean
+    ) = when {
+        isKeystone && !allKeystoneBundlesSigned -> {
+            if (hasPendingKeystoneRequest) {
+                stringRes(R.string.vote_confirm_memo_resume_keystone)
+            } else {
+                stringRes(R.string.vote_confirm_memo_sign_keystone)
+            }
+        }
+
+        isPrepared -> {
+            stringRes(
+                R.string.vote_confirm_memo_authorize,
+                round.title,
+                requireNotNull(recovery?.eligibleWeight).toVotingWeightLabel()
+            )
+        }
+
+        else -> {
+            stringRes(R.string.vote_confirm_memo_preparing)
+        }
     }
 
     private fun buildButtonState(
