@@ -426,14 +426,7 @@ class SubmitVotesUseCase(
                             confirmation.requireAccepted("Delegation transaction failed")
                         }
 
-                        val vanPosition =
-                            runVotingAuthorizationStep(isKeystone) {
-                                confirmation
-                                    .event("delegate_vote")
-                                    ?.attribute("leaf_index")
-                                    ?.toIntOrNull()
-                                    ?: error("Missing delegate_vote leaf_index for bundle $bundleIndex")
-                            }
+                        val vanPosition = confirmation.delegateVoteVanPosition(bundleIndex)
                         traceVotingStep(
                             roundId = roundId,
                             step = "storeDelegationVanPosition",
@@ -1230,6 +1223,19 @@ internal fun Exception.asVotingAuthorizationExceptionIfNeeded(isKeystone: Boolea
         isKeystone -> VotingAuthorizationException(this)
         else -> this
     }
+
+internal fun TxConfirmation.delegateVoteVanPosition(bundleIndex: Int): Int {
+    val rawLeafIndex =
+        event("delegate_vote")
+            ?.attribute("leaf_index")
+            ?: throw unexpectedSdkResponse("Missing delegate_vote leaf_index for bundle $bundleIndex")
+
+    return rawLeafIndex.toIntOrNull()
+        ?: throw unexpectedSdkResponse("Malformed delegate_vote leaf_index for bundle $bundleIndex: $rawLeafIndex")
+}
+
+private fun unexpectedSdkResponse(message: String) =
+    VotingSubmissionRecoverableException(VotingErrors.UnexpectedSdkResponse(message))
 
 internal fun calculateSubmittingBundleProgress(
     proposalIndex: Int,

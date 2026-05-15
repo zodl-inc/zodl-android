@@ -1,9 +1,14 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import co.electriccoin.zcash.ui.common.model.voting.TxConfirmation
+import co.electriccoin.zcash.ui.common.model.voting.TxEvent
+import co.electriccoin.zcash.ui.common.model.voting.TxEventAttribute
 import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
@@ -35,6 +40,49 @@ class SubmitVotesUseCaseProgressTest {
         val classified = recoverable.asVotingAuthorizationExceptionIfNeeded(isKeystone = true)
 
         assertSame(recoverable, classified)
+    }
+
+    @Test
+    fun delegateVoteVanPositionReportsMissingLeafIndexAsRecoverableSdkResponse() {
+        val confirmation = TxConfirmation(height = 1, code = 0)
+
+        val exception =
+            assertFailsWith<VotingSubmissionRecoverableException> {
+                confirmation.delegateVoteVanPosition(bundleIndex = 3)
+            }
+
+        val failure = assertIs<VotingErrors.UnexpectedSdkResponse>(exception.failure)
+        assertEquals("Missing delegate_vote leaf_index for bundle 3", failure.userMessage)
+    }
+
+    @Test
+    fun delegateVoteVanPositionReportsMalformedLeafIndexAsRecoverableSdkResponse() {
+        val confirmation =
+            TxConfirmation(
+                height = 1,
+                code = 0,
+                events =
+                    listOf(
+                        TxEvent(
+                            type = "delegate_vote",
+                            attributes =
+                                listOf(
+                                    TxEventAttribute(
+                                        key = "leaf_index",
+                                        value = "not-a-position"
+                                    )
+                                )
+                        )
+                    )
+            )
+
+        val exception =
+            assertFailsWith<VotingSubmissionRecoverableException> {
+                confirmation.delegateVoteVanPosition(bundleIndex = 4)
+            }
+
+        val failure = assertIs<VotingErrors.UnexpectedSdkResponse>(exception.failure)
+        assertEquals("Malformed delegate_vote leaf_index for bundle 4: not-a-position", failure.userMessage)
     }
 
     @Test

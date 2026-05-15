@@ -100,6 +100,15 @@ sealed interface VotingErrors {
         override val userMessage =
             "Missing stored vote commitment bundle for round $roundId bundle $bundleIndex proposal $proposalId"
     }
+
+    /**
+     * A successful SDK or vote-server response was missing required structured data.
+     */
+    data class UnexpectedSdkResponse(
+        val detail: String
+    ) : VotingErrors {
+        override val userMessage = detail
+    }
 }
 
 /**
