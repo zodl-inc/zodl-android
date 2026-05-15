@@ -22,7 +22,7 @@ fun VoteCoinholderPollingScreen() {
         vm.onScreenExited()
     }
     val state by vm.state.collectAsStateWithLifecycle()
-    if (state.isLoading && state.error == null) {
+    if (state.isLoading && state.content == null && state.error == null) {
         VoteCoinholderPollingLoadingView()
         return
     }
