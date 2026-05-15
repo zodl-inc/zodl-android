@@ -29,9 +29,7 @@ import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.ServerSelectionProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.withContext
 import org.zecdev.zip321.ZIP321
 import org.zecdev.zip321.parser.ParserContext
@@ -105,8 +103,6 @@ class ProposalDataSourceImpl(
     private val lightWalletEndpointProvider: LightWalletEndpointProvider,
     private val serverSelectionProvider: ServerSelectionProvider,
 ) : ProposalDataSource {
-    private val broadcastScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
-
     override suspend fun createProposal(account: WalletAccount, send: ZecSend): RegularTransactionProposal =
         withContext(Dispatchers.IO) {
             getOrThrow { synchronizer ->
@@ -322,15 +318,16 @@ class ProposalDataSourceImpl(
         logTag: String
     ): List<TransactionSubmitResult> =
         MultiEndpointTransactionSubmitter(
-            scope = broadcastScope,
             submit = { transaction, endpoint ->
                 synchronizer.broadcaster.submit(transaction, endpoint)
             }
-        ).submitTransactions(
-            transactions = transactions,
-            endpoints = endpoints,
-            logTag = logTag
-        )
+        ).use { submitter ->
+            submitter.submitTransactions(
+                transactions = transactions,
+                endpoints = endpoints,
+                logTag = logTag
+            )
+        }
 
     private suspend fun getSubmissionEndpoints(): List<LightWalletEndpoint> {
         val selection = serverSelectionProvider.getServerSelection() ?: ServerSelection.automatic()

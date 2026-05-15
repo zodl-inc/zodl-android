@@ -5,6 +5,7 @@ import cash.z.ecc.android.sdk.model.FirstClassByteArray
 import cash.z.ecc.android.sdk.model.TransactionSubmitResult
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.common.model.SubmitResult
+import co.electriccoin.zcash.ui.util.CloseableScopeHolderImpl
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
@@ -27,7 +28,7 @@ class MultiEndpointTransactionSubmitterTest {
             val transaction = transaction(1)
             val submitter =
                 MultiEndpointTransactionSubmitter(
-                    scope = backgroundScope,
+                    closeableScopeHolder = CloseableScopeHolderImpl(backgroundScope),
                     logger = noOpLogger,
                     submit = { _, submittedEndpoint ->
                         submissions += submittedEndpoint
@@ -52,7 +53,7 @@ class MultiEndpointTransactionSubmitterTest {
             val transaction = transaction(8)
             val submitter =
                 MultiEndpointTransactionSubmitter(
-                    scope = backgroundScope,
+                    closeableScopeHolder = CloseableScopeHolderImpl(backgroundScope),
                     globalTimeoutMillis = 100,
                     timeoutDrainMillis = 100,
                     logger = noOpLogger,
@@ -80,7 +81,7 @@ class MultiEndpointTransactionSubmitterTest {
             val transaction = transaction(9)
             val submitter =
                 MultiEndpointTransactionSubmitter(
-                    scope = backgroundScope,
+                    closeableScopeHolder = CloseableScopeHolderImpl(backgroundScope),
                     globalTimeoutMillis = 100,
                     timeoutDrainMillis = 100,
                     logger = noOpLogger,
@@ -121,7 +122,7 @@ class MultiEndpointTransactionSubmitterTest {
             val transaction = transaction(2)
             val submitter =
                 MultiEndpointTransactionSubmitter(
-                    scope = backgroundScope,
+                    closeableScopeHolder = CloseableScopeHolderImpl(backgroundScope),
                     logger = noOpLogger,
                     submit = { _, submittedEndpoint ->
                         when (submittedEndpoint) {
@@ -162,7 +163,7 @@ class MultiEndpointTransactionSubmitterTest {
             val transaction = transaction(3)
             val submitter =
                 MultiEndpointTransactionSubmitter(
-                    scope = backgroundScope,
+                    closeableScopeHolder = CloseableScopeHolderImpl(backgroundScope),
                     logger = noOpLogger,
                     submit = { _, submittedEndpoint ->
                         when (submittedEndpoint.host) {
@@ -198,7 +199,7 @@ class MultiEndpointTransactionSubmitterTest {
             val transaction = transaction(4)
             val submitter =
                 MultiEndpointTransactionSubmitter(
-                    scope = backgroundScope,
+                    closeableScopeHolder = CloseableScopeHolderImpl(backgroundScope),
                     globalTimeoutMillis = 100,
                     timeoutDrainMillis = 100,
                     logger = noOpLogger,
@@ -241,7 +242,7 @@ class MultiEndpointTransactionSubmitterTest {
             val startedCount = AtomicInteger(0)
             val submitter =
                 MultiEndpointTransactionSubmitter(
-                    scope = backgroundScope,
+                    closeableScopeHolder = CloseableScopeHolderImpl(backgroundScope),
                     logger = noOpLogger,
                     submit = { _, _ ->
                         if (startedCount.incrementAndGet() == 2) {
@@ -281,7 +282,7 @@ class MultiEndpointTransactionSubmitterTest {
             val firstFailure = failure(firstTransaction, code = 18, grpcError = false)
             val submitter =
                 MultiEndpointTransactionSubmitter(
-                    scope = backgroundScope,
+                    closeableScopeHolder = CloseableScopeHolderImpl(backgroundScope),
                     logger = noOpLogger,
                     submit = { _, _ ->
                         submissions.incrementAndGet()
@@ -308,7 +309,7 @@ class MultiEndpointTransactionSubmitterTest {
             val transaction = transaction(19)
             val submitter =
                 MultiEndpointTransactionSubmitter(
-                    scope = backgroundScope,
+                    closeableScopeHolder = CloseableScopeHolderImpl(backgroundScope),
                     logger = logger,
                     submit = { _, _ ->
                         failure(transaction, code = 18, grpcError = false)
@@ -334,7 +335,7 @@ class MultiEndpointTransactionSubmitterTest {
             val transaction = transaction(20)
             val submitter =
                 MultiEndpointTransactionSubmitter(
-                    scope = backgroundScope,
+                    closeableScopeHolder = CloseableScopeHolderImpl(backgroundScope),
                     logger = logger,
                     submit = { _, _ ->
                         error("private.example.com:443 failed")

@@ -4,10 +4,12 @@ import cash.z.ecc.android.sdk.model.CreatedTransaction
 import cash.z.ecc.android.sdk.model.TransactionSubmitResult
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.spackle.Twig
+import co.electriccoin.zcash.ui.util.CloseableScopeHolder
+import co.electriccoin.zcash.ui.util.CloseableScopeHolderImpl
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
@@ -16,13 +18,13 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 
 internal class MultiEndpointTransactionSubmitter(
-    private val scope: CoroutineScope,
+    closeableScopeHolder: CloseableScopeHolder = CloseableScopeHolderImpl(Dispatchers.IO),
     private val globalTimeoutMillis: Long = MULTI_SUBMIT_GLOBAL_TIMEOUT_MILLIS,
     private val timeoutDrainMillis: Long = MULTI_SUBMIT_TIMEOUT_DRAIN_MILLIS,
     private val gracePeriodMillis: Long = MULTI_SUBMIT_GRACE_PERIOD_MILLIS,
     private val logger: MultiEndpointTransactionSubmitterLogger = TwigMultiEndpointTransactionSubmitterLogger,
     private val submit: suspend (CreatedTransaction, LightWalletEndpoint) -> TransactionSubmitResult
-) {
+) : CloseableScopeHolder by closeableScopeHolder {
     suspend fun submitTransactions(
         transactions: List<CreatedTransaction>,
         endpoints: List<LightWalletEndpoint>,
