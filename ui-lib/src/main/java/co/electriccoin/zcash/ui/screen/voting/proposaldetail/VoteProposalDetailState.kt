@@ -14,6 +14,7 @@ data class VoteProposalDetailState(
     val options: List<VoteVoteOptionRowState>,
     val isLocked: Boolean,
     val isEditingFromReview: Boolean,
+    val isFromList: Boolean,
     val showUnansweredSheet: Boolean,
     val unansweredCount: Int,
     val showPollEndedSheet: Boolean,

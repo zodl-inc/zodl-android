@@ -299,7 +299,7 @@ class VoteProposalListVM(
             title = stringRes(proposal.title),
             description = stringRes(proposal.description),
             voteBadge = badge,
-            onClick = { onProposalTapped(roundId, proposal.id) },
+            onClick = { onProposalTapped(roundId, proposal.id, isFromList = true) },
         )
     }
 
@@ -449,7 +449,8 @@ class VoteProposalListVM(
 
     private fun onProposalTapped(
         roundId: String,
-        proposalId: Int
+        proposalId: Int,
+        isFromList: Boolean = false,
     ) {
         if (roundId.isEmpty()) return
 
@@ -459,6 +460,7 @@ class VoteProposalListVM(
                 roundId = roundId,
                 isEditingFromReview = args.mode == VoteProposalListMode.REVIEW,
                 isReadOnly = args.mode == VoteProposalListMode.VOTED,
+                isFromList = isFromList,
             )
         )
     }

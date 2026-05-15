@@ -105,6 +105,7 @@ class VoteProposalDetailVM(
             options = buildOptions(proposal, selectedOptionId, accountUuid, args.isReadOnly || pollEnded),
             isLocked = args.isReadOnly || pollEnded,
             isEditingFromReview = args.isEditingFromReview,
+            isFromList = args.isFromList,
             showUnansweredSheet = showSheet && !pollEnded,
             unansweredCount = unansweredCount,
             showPollEndedSheet = pollEnded && !args.isReadOnly,
@@ -163,6 +164,11 @@ class VoteProposalDetailVM(
         currentIndex: Int,
         drafts: Map<Int, Int>
     ) {
+        if (args.isFromList) {
+            navigationRouter.backTo(VoteProposalListArgs::class)
+            return
+        }
+
         val isLast = currentIndex == proposals.lastIndex
         if (!isLast) {
             val nextProposal = proposals[currentIndex + 1]

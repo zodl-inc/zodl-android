@@ -290,7 +290,7 @@ private fun NavigationButtons(state: VoteProposalDetailState) {
             state =
                 ButtonState(
                     text =
-                        if (state.isEditingFromReview) {
+                        if (state.isEditingFromReview || state.isFromList) {
                             stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_save)
                         } else {
                             stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_next)
