@@ -55,7 +55,7 @@
     <string name="vote_poll_card_closes">Closes %1$s</string>
     <string name="vote_poll_card_closed">Closed %1$s</string>
     <string name="vote_poll_card_enter">Enter Poll</string>
-    <string name="vote_poll_card_view_votes">View My Votes</string>
+    <string name="vote_poll_card_view_votes">Review</string>
     <string name="vote_poll_card_view_results">View Results</string>
     <string name="vote_poll_voted_count">%1$d of %2$d voted</string>
 
