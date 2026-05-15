@@ -334,26 +334,28 @@ class SubmitVotesUseCase(
 
                             rustRoundState = votingCryptoClient.getRoundState(dbHandle, roundId)
                             if (rustRoundState?.proofGenerated != true) {
-                                votingCryptoClient.buildAndProveDelegation(
-                                    dbHandle = dbHandle,
-                                    roundId = roundId,
-                                    bundleIndex = bundleIndex,
-                                    pirServerUrl = pirServerUrl,
-                                    networkId = networkId,
-                                    notesJson = allNotesJson,
-                                    hotkeyRawAddress = hotkeyRawAddress,
-                                    proofProgress = { progress ->
-                                        onProgress(
-                                            VotingSubmissionProgress.Authorizing(
-                                                progress =
-                                                    (
-                                                        (bundleIndex + progress.coerceIn(0.0, 1.0)) /
-                                                            bundleCount.coerceAtLeast(1)
-                                                    ).toFloat()
+                                runVotingAuthorizationStep(isKeystone) {
+                                    votingCryptoClient.buildAndProveDelegation(
+                                        dbHandle = dbHandle,
+                                        roundId = roundId,
+                                        bundleIndex = bundleIndex,
+                                        pirServerUrl = pirServerUrl,
+                                        networkId = networkId,
+                                        notesJson = allNotesJson,
+                                        hotkeyRawAddress = hotkeyRawAddress,
+                                        proofProgress = { progress ->
+                                            onProgress(
+                                                VotingSubmissionProgress.Authorizing(
+                                                    progress =
+                                                        (
+                                                            (bundleIndex + progress.coerceIn(0.0, 1.0)) /
+                                                                bundleCount.coerceAtLeast(1)
+                                                        ).toFloat()
+                                                )
                                             )
-                                        )
-                                    }
-                                )
+                                        }
+                                    )
+                                }
                             }
                         }
                         votingRecoveryRepository.setPhase(
@@ -362,48 +364,51 @@ class SubmitVotesUseCase(
                             phase = VotingRecoveryPhase.DELEGATION_PROVED
                         )
 
-                        val submission =
-                            if (isKeystone) {
-                                val keystoneSignature =
-                                    recovery.keystoneBundleSignatures[bundleIndex]
-                                        ?: error("Keystone signature is missing for voting bundle $bundleIndex")
-                                votingCryptoClient.getDelegationSubmissionWithKeystoneSignature(
-                                    dbHandle = dbHandle,
-                                    roundId = roundId,
-                                    bundleIndex = bundleIndex,
-                                    keystoneSig = keystoneSignature.decodeSpendAuthSig(),
-                                    keystoneSighash = keystoneSignature.decodeSighash()
-                                )
-                            } else {
-                                votingCryptoClient.getDelegationSubmission(
-                                    dbHandle = dbHandle,
-                                    roundId = roundId,
-                                    bundleIndex = bundleIndex,
-                                    senderSeed = requireNotNull(senderSeed),
-                                    networkId = networkId,
-                                    accountIndex = accountIndex
-                                )
-                            }
-                        if (isKeystone) {
-                            val keystoneSignature =
-                                recovery.keystoneBundleSignatures[bundleIndex]
-                                    ?: error("Keystone signature is missing for voting bundle $bundleIndex")
-                            require(submission.spendAuthSig.contentEquals(keystoneSignature.decodeSpendAuthSig())) {
-                                "Delegation signature mismatch for Keystone voting bundle $bundleIndex"
-                            }
-                            require(submission.sighash.contentEquals(keystoneSignature.decodeSighash())) {
-                                "Delegation sighash mismatch for Keystone voting bundle $bundleIndex"
-                            }
-                            keystoneSignature.decodeRk()?.let { expectedRk ->
-                                require(submission.rk.contentEquals(expectedRk)) {
-                                    "Delegation rk mismatch for Keystone voting bundle $bundleIndex"
-                                }
-                            }
-                        }
                         val txResult =
-                            votingApiProvider
-                                .submitDelegation(submission.toDelegationRegistration())
-                                .requireAccepted("Delegation transaction was rejected")
+                            runVotingAuthorizationStep(isKeystone) {
+                                val submission =
+                                    if (isKeystone) {
+                                        val keystoneSignature =
+                                            recovery.keystoneBundleSignatures[bundleIndex]
+                                                ?: error("Keystone signature is missing for voting bundle $bundleIndex")
+                                        votingCryptoClient.getDelegationSubmissionWithKeystoneSignature(
+                                            dbHandle = dbHandle,
+                                            roundId = roundId,
+                                            bundleIndex = bundleIndex,
+                                            keystoneSig = keystoneSignature.decodeSpendAuthSig(),
+                                            keystoneSighash = keystoneSignature.decodeSighash()
+                                        )
+                                    } else {
+                                        votingCryptoClient.getDelegationSubmission(
+                                            dbHandle = dbHandle,
+                                            roundId = roundId,
+                                            bundleIndex = bundleIndex,
+                                            senderSeed = requireNotNull(senderSeed),
+                                            networkId = networkId,
+                                            accountIndex = accountIndex
+                                        )
+                                    }
+                                if (isKeystone) {
+                                    val keystoneSignature =
+                                        recovery.keystoneBundleSignatures[bundleIndex]
+                                            ?: error("Keystone signature is missing for voting bundle $bundleIndex")
+                                    val expectedSpendAuthSig = keystoneSignature.decodeSpendAuthSig()
+                                    require(submission.spendAuthSig.contentEquals(expectedSpendAuthSig)) {
+                                        "Delegation signature mismatch for Keystone voting bundle $bundleIndex"
+                                    }
+                                    require(submission.sighash.contentEquals(keystoneSignature.decodeSighash())) {
+                                        "Delegation sighash mismatch for Keystone voting bundle $bundleIndex"
+                                    }
+                                    keystoneSignature.decodeRk()?.let { expectedRk ->
+                                        require(submission.rk.contentEquals(expectedRk)) {
+                                            "Delegation rk mismatch for Keystone voting bundle $bundleIndex"
+                                        }
+                                    }
+                                }
+                                votingApiProvider
+                                    .submitDelegation(submission.toDelegationRegistration())
+                                    .requireAccepted("Delegation transaction was rejected")
+                            }
                         votingCryptoClient.storeDelegationTxHash(
                             dbHandle = dbHandle,
                             roundId = roundId,
@@ -412,18 +417,17 @@ class SubmitVotesUseCase(
                         )
 
                         val confirmation =
-                            awaitTxConfirmation(txResult.txHash)
-                                ?: throw VotingSubmissionRecoverableException(
-                                    VotingErrors.TxConfirmationTimedOut(txResult.txHash)
-                                )
-                        confirmation.requireAccepted("Delegation transaction failed")
+                            runVotingAuthorizationStep(isKeystone) {
+                                awaitTxConfirmation(txResult.txHash)
+                                    ?: throw VotingSubmissionRecoverableException(
+                                        VotingErrors.TxConfirmationTimedOut(txResult.txHash)
+                                    )
+                            }
+                        runVotingAuthorizationStep(isKeystone) {
+                            confirmation.requireAccepted("Delegation transaction failed")
+                        }
 
-                        val vanPosition =
-                            confirmation
-                                .event("delegate_vote")
-                                ?.attribute("leaf_index")
-                                ?.toIntOrNull()
-                                ?: error("Missing delegate_vote leaf_index for bundle $bundleIndex")
+                        val vanPosition = confirmation.delegateVoteVanPosition(bundleIndex)
                         traceVotingStep(
                             roundId = roundId,
                             step = "storeDelegationVanPosition",
@@ -489,6 +493,26 @@ class SubmitVotesUseCase(
                             ?: error("Unknown proposal id $proposalId for round $roundId")
                     val progressBase = proposalIndex + 1
 
+                    fun emitSubmittingProgress(
+                        bundleIndex: Int,
+                        bundleProgress: Double
+                    ) {
+                        onProgress(
+                            VotingSubmissionProgress.Submitting(
+                                current = progressBase,
+                                total = totalChoices,
+                                progress =
+                                    calculateSubmittingBundleProgress(
+                                        proposalIndex = proposalIndex,
+                                        bundleIndex = bundleIndex,
+                                        bundleCount = bundleCount,
+                                        totalChoices = totalChoices,
+                                        bundleProgress = bundleProgress
+                                    )
+                            )
+                        )
+                    }
+
                     val submittedBundles =
                         submittedBundleIndicesByProposal
                             .getOrPut(proposalId) { mutableSetOf() }
@@ -528,15 +552,7 @@ class SubmitVotesUseCase(
                             return@repeat
                         }
 
-                        val completedBundles = proposalIndex * bundleCount + bundleIndex + 1
-                        val bundleTotal = totalChoices * bundleCount.coerceAtLeast(1)
-                        onProgress(
-                            VotingSubmissionProgress.Submitting(
-                                current = progressBase,
-                                total = totalChoices,
-                                progress = completedBundles.toFloat() / bundleTotal
-                            )
-                        )
+                        emitSubmittingProgress(bundleIndex, bundleProgress = 0.0)
 
                         val cachedVoteTxHash =
                             votingCryptoClient.getVoteTxHash(
@@ -628,6 +644,7 @@ class SubmitVotesUseCase(
                                     )
                                 }
                                 submittedBundles += bundleIndex
+                                emitSubmittingProgress(bundleIndex, bundleProgress = 1.0)
                                 return@repeat
                             }
                             Log.i(
@@ -693,18 +710,9 @@ class SubmitVotesUseCase(
                                     accountIndex = accountIndex,
                                     singleShare = singleShare,
                                     proofProgress = { proofProgress ->
-                                        onProgress(
-                                            VotingSubmissionProgress.Submitting(
-                                                current = progressBase,
-                                                total = totalChoices,
-                                                progress =
-                                                    (
-                                                        (
-                                                            proposalIndex * bundleCount + bundleIndex +
-                                                                proofProgress.coerceIn(0.0, 1.0)
-                                                        ) / bundleTotal
-                                                    ).toFloat()
-                                            )
+                                        emitSubmittingProgress(
+                                            bundleIndex = bundleIndex,
+                                            bundleProgress = proofProgress
                                         )
                                     }
                                 )
@@ -826,6 +834,7 @@ class SubmitVotesUseCase(
                             )
                         }
                         submittedBundles += bundleIndex
+                        emitSubmittingProgress(bundleIndex, bundleProgress = 1.0)
                     }
 
                     markProposalSubmissionComplete(accountUuidString, roundId, proposalId)
@@ -1133,6 +1142,18 @@ class SubmitVotesUseCase(
         return nowEpochSeconds + Random.nextLong(until = window)
     }
 
+    private suspend fun <T> runVotingAuthorizationStep(
+        isKeystone: Boolean,
+        block: suspend () -> T
+    ): T =
+        try {
+            block()
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            throw exception.asVotingAuthorizationExceptionIfNeeded(isKeystone)
+        }
+
     private fun ZcashNetwork.toVotingNetworkId() =
         if (isMainnet()) 1 else 0
 
@@ -1194,4 +1215,46 @@ class SubmitVotesUseCase(
         const val SHARE_DELEGATION_ATTEMPTS = 3
         const val SHARE_DELEGATION_RETRY_MS = 2_000L
     }
+}
+
+internal fun Exception.asVotingAuthorizationExceptionIfNeeded(isKeystone: Boolean): Exception =
+    when {
+        this is VotingSubmissionRecoverableException -> this
+        this is VotingAuthorizationException -> this
+        isKeystone -> VotingAuthorizationException(this)
+        else -> this
+    }
+
+internal fun TxConfirmation.delegateVoteVanPosition(bundleIndex: Int): Int {
+    val rawLeafIndex =
+        event("delegate_vote")
+            ?.attribute("leaf_index")
+            ?: throw unexpectedSdkResponse("Missing delegate_vote leaf_index for bundle $bundleIndex")
+
+    return rawLeafIndex.toIntOrNull()
+        ?: throw unexpectedSdkResponse("Malformed delegate_vote leaf_index for bundle $bundleIndex: $rawLeafIndex")
+}
+
+private fun unexpectedSdkResponse(message: String) =
+    VotingSubmissionRecoverableException(VotingErrors.UnexpectedSdkResponse(message))
+
+internal fun calculateSubmittingBundleProgress(
+    proposalIndex: Int,
+    bundleIndex: Int,
+    bundleCount: Int,
+    totalChoices: Int,
+    bundleProgress: Double
+): Float {
+    require(proposalIndex >= 0) { "proposalIndex must be non-negative" }
+    require(bundleIndex >= 0) { "bundleIndex must be non-negative" }
+    require(bundleCount > 0) { "bundleCount must be positive" }
+    require(totalChoices > 0) { "totalChoices must be positive" }
+
+    val completedBundles =
+        proposalIndex * bundleCount +
+            bundleIndex +
+            bundleProgress.coerceIn(0.0, 1.0)
+    val bundleTotal = totalChoices * bundleCount
+
+    return (completedBundles / bundleTotal).toFloat().coerceIn(0f, 1f)
 }

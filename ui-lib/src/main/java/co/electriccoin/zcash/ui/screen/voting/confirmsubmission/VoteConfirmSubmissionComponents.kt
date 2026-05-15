@@ -29,6 +29,9 @@ import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.stringRes
+import kotlin.math.roundToInt
+
+private const val PERCENT_SCALE = 100
 
 @Composable
 internal fun VoteSubmissionDetailsCard(state: VoteConfirmSubmissionState) {
@@ -43,6 +46,12 @@ internal fun VoteSubmissionDetailsCard(state: VoteConfirmSubmissionState) {
             if (isIdle) {
                 HorizontalDivider(color = ZashiColors.Surfaces.strokeSecondary)
                 VoteSubmissionMemoRow(state.memo.getValue())
+            } else {
+                HorizontalDivider(color = ZashiColors.Surfaces.strokeSecondary)
+                VoteSubmissionDetailRow(
+                    stringRes(R.string.vote_confirm_detail_voting_power),
+                    state.votingWeightZEC.getValue()
+                )
             }
         }
     }
@@ -116,13 +125,27 @@ internal fun VoteSubmissionBottomSection(state: VoteConfirmSubmissionState) {
                 state.status is VoteSubmissionStatus.Submitting
         when (val status = state.status) {
             is VoteSubmissionStatus.Authorizing -> {
-                VoteSubmissionProgressCard(stringRes(R.string.vote_confirm_cta_authorizing), submissionProgress)
+                VoteSubmissionProgressCard(
+                    title = stringRes(R.string.vote_confirm_status_authorizing),
+                    subtitle =
+                        stringRes(
+                            R.string.vote_confirm_status_authorizing_percent,
+                            (submissionProgress * PERCENT_SCALE).roundToInt()
+                        ),
+                    progress = submissionProgress
+                )
             }
 
             is VoteSubmissionStatus.Submitting -> {
                 VoteSubmissionProgressCard(
-                    stringRes(R.string.vote_confirm_cta_submitting, status.current, status.total),
-                    submissionProgress
+                    title =
+                        stringRes(
+                            R.string.vote_confirm_status_submitting,
+                            status.current,
+                            status.total
+                        ),
+                    subtitle = null,
+                    progress = submissionProgress
                 )
             }
 
@@ -165,6 +188,7 @@ private fun VoteConfirmSubmissionState.submissionProgress(): Float {
 @Composable
 private fun VoteSubmissionProgressCard(
     title: StringResource,
+    subtitle: StringResource?,
     progress: Float
 ) {
     val animatedProgress by animateFloatAsState(
@@ -195,6 +219,15 @@ private fun VoteSubmissionProgressCard(
                 trackColor = ZashiColors.Surfaces.bgTertiary,
                 strokeCap = StrokeCap.Round,
             )
+            subtitle?.let {
+                VerticalSpacer(8.dp)
+                Text(
+                    text = it.getValue(),
+                    style = ZashiTypography.textXs,
+                    color = ZashiColors.Text.textTertiary,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
         }
     }
 }

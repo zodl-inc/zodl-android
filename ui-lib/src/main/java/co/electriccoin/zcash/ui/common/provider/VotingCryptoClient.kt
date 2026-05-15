@@ -694,7 +694,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         roundId,
         bundleIndex,
         proposalId,
-        bundleJson.toJniVoteCommitmentResult(),
+        bundleJson.toJniVoteCommitmentResult(fallbackBundleIndex = bundleIndex),
         vcTreePosition
     )
 
@@ -1091,7 +1091,8 @@ private fun String.toJniVanWitness(
 }
 
 private fun String.toJniVoteCommitmentResult(
-    encSharesOverride: List<JniWireEncryptedShare>? = null
+    encSharesOverride: List<JniWireEncryptedShare>? = null,
+    fallbackBundleIndex: Int = 0
 ): JniVoteCommitmentResult {
     val json = JSONObject(this)
     return JniVoteCommitmentResult(
@@ -1099,6 +1100,7 @@ private fun String.toJniVoteCommitmentResult(
         voteAuthorityNoteNew = json.getString("vote_authority_note_new").hexStringToBytes(),
         voteCommitment = json.getString("vote_commitment").hexStringToBytes(),
         proposalId = json.getInt("proposal_id"),
+        bundleIndex = json.optInt("bundle_index", fallbackBundleIndex),
         proof = json.getString("proof").hexStringToBytes(),
         encShares = encSharesOverride ?: json.optJSONArray("enc_shares").toJniEncryptedShares(),
         anchorHeight = json.getLong("anchor_height"),
@@ -1127,6 +1129,7 @@ private fun JniVoteCommitmentResult.toStorageJson(): String =
         .put("vote_authority_note_new", voteAuthorityNoteNew.toHexString())
         .put("vote_commitment", voteCommitment.toHexString())
         .put("proposal_id", proposalId)
+        .put("bundle_index", bundleIndex)
         .put("proof", proof.toHexString())
         .put("enc_shares", encShares.toEncryptedSharesJsonArray())
         .put("anchor_height", anchorHeight)

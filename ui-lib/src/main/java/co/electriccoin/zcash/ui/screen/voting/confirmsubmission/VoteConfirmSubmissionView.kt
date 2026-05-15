@@ -218,7 +218,7 @@ private fun headerSubtitle(state: VoteConfirmSubmissionState): StringResource =
         }
 
         is VoteSubmissionStatus.ProtocolAuthFailed -> {
-            status.error.toMessageOrDefault(stringRes(R.string.vote_confirm_error_auth))
+            stringRes(R.string.vote_error_authorization_failed_message)
         }
 
         is VoteSubmissionStatus.SubmissionFailed -> {
