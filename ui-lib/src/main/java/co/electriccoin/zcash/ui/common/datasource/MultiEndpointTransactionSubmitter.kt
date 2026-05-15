@@ -100,55 +100,43 @@ internal class MultiEndpointTransactionSubmitter(
 
                 scope
                     .async {
-                        EndpointSubmission(
-                            endpointLabel = endpointLabel,
-                            result =
-                                submitToEndpoint(
-                                    transaction = transaction,
-                                    endpoint = endpoint,
-                                    endpointLabel = endpointLabel,
-                                    transactionLabel = transactionLabel,
-                                    logTag = logTag
+                        val submission =
+                            EndpointSubmission(
+                                endpointLabel = endpointLabel,
+                                result =
+                                    submitToEndpoint(
+                                        transaction = transaction,
+                                        endpoint = endpoint,
+                                        endpointLabel = endpointLabel,
+                                        transactionLabel = transactionLabel,
+                                        logTag = logTag
+                                    )
+                            )
+
+                        when (val result = submission.result) {
+                            is TransactionSubmitResult.Success -> {
+                                completion.complete(
+                                    BroadcastCompletion.Accepted(
+                                        endpointLabel = submission.endpointLabel,
+                                        result = result
+                                    )
                                 )
-                        )
-                    }.also { job ->
-                        job.invokeOnCompletion { throwable ->
-                            if (throwable is CancellationException) return@invokeOnCompletion
+                            }
 
-                            scope.launch {
-                                val submission =
-                                    runCatching { job.await() }
-                                        .getOrElse {
-                                            EndpointSubmission(
-                                                endpointLabel = endpointLabel,
-                                                result = createGrpcFailure(transaction, SUBMIT_EXCEPTION_DESCRIPTION)
-                                            )
-                                        }
-
-                                when (val result = submission.result) {
-                                    is TransactionSubmitResult.Success -> {
-                                        completion.complete(
-                                            BroadcastCompletion.Accepted(
-                                                endpointLabel = submission.endpointLabel,
-                                                result = result
-                                            )
+                            is TransactionSubmitResult.Failure,
+                            is TransactionSubmitResult.NotAttempted -> {
+                                failures += submission
+                                if (failureCount.incrementAndGet() >= endpoints.size) {
+                                    completion.complete(
+                                        BroadcastCompletion.Rejected(
+                                            result = selectRejectedResult(transaction, failures.toList())
                                         )
-                                    }
-
-                                    is TransactionSubmitResult.Failure,
-                                    is TransactionSubmitResult.NotAttempted -> {
-                                        failures += submission
-                                        if (failureCount.incrementAndGet() >= endpoints.size) {
-                                            completion.complete(
-                                                BroadcastCompletion.Rejected(
-                                                    result = selectRejectedResult(transaction, failures.toList())
-                                                )
-                                            )
-                                        }
-                                    }
+                                    )
                                 }
                             }
                         }
+
+                        submission
                     }
             }
         val timeoutJob =
