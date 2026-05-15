@@ -223,6 +223,8 @@
     <string name="vote_error_mapper_version">Your app may need an update to participate in this voting round.</string>
     <string name="vote_error_mapper_unknown">An unexpected error occurred. Please try again.</string>
 
+    <string name="vote_wallet_syncing_sheet_title">Wallet Syncing</string>
+    <string name="vote_wallet_syncing_sheet_message">Your wallet needs to sync to the snapshot block height before you can participate in voting.</string>
     <string name="vote_wallet_syncing_top_bar_title">Wallet Sync</string>
     <string name="vote_wallet_syncing_title">Syncing your wallet</string>
     <string name="vote_wallet_syncing_message">Your wallet needs to scan up to block %1$d before you can vote. Currently at block %2$d.</string>

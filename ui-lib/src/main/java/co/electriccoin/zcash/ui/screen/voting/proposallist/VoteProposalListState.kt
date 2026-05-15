@@ -29,6 +29,7 @@ data class VoteProposalListState(
     val ctaButton: ButtonState?,
     val onBack: () -> Unit,
     val ineligibleSheet: ZashiConfirmationState? = null,
+    val walletSyncingSheet: ZashiConfirmationState? = null,
 )
 
 @Immutable

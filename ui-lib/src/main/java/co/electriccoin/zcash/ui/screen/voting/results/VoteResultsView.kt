@@ -37,7 +37,6 @@ import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
-import co.electriccoin.zcash.ui.screen.voting.VoteTrustIndicator
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
@@ -46,8 +45,10 @@ import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
+import co.electriccoin.zcash.ui.screen.voting.VoteTrustIndicator
 import co.electriccoin.zcash.ui.screen.voting.accentColor
 import co.electriccoin.zcash.ui.screen.voting.component.VoteTrustIndicatorView
+import co.electriccoin.zcash.ui.screen.voting.component.ZipBadge
 
 private const val BADGE_CORNER_RADIUS = 50
 private const val CHECK_ICON_SIZE_DP = 12
@@ -277,22 +278,6 @@ private fun OptionResultBar(option: VoteOptionResultState) {
 }
 
 @Composable
-private fun ZipBadge(label: String) {
-    Surface(
-        color = ZashiColors.Surfaces.bgTertiary,
-        shape = RoundedCornerShape(BADGE_CORNER_RADIUS),
-    ) {
-        Text(
-            text = label,
-            style = ZashiTypography.textXs,
-            color = ZashiColors.Text.textPrimary,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-        )
-    }
-}
-
-@Composable
 private fun WinnerBadge(
     label: String,
     color: VoteOptionDisplayColor,
@@ -352,7 +337,11 @@ private fun previewProposalResults() =
         VoteProposalResultState(
             zipNumber = stringRes("ZIP-317"),
             title = stringRes("Proportional Transfer Fee Mechanism"),
-            description = stringRes("Replace the current fixed fee with a proportional fee based on the number of logical actions."),
+            description =
+                stringRes(
+                    "Replace the current fixed fee with a " +
+                        "proportional fee based on the number of logical actions."
+                ),
             options =
                 listOf(
                     VoteOptionResultState(

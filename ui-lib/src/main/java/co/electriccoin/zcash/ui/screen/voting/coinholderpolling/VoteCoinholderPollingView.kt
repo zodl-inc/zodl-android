@@ -264,10 +264,11 @@ private fun PollActionButton(state: VotePollCardState) {
         state =
             ButtonState(
                 text = actionText,
-                style = when (state.status) {
-                    VotePollCardStatus.ACTIVE -> ButtonStyle.PRIMARY
-                    else -> ButtonStyle.TERTIARY
-                },
+                style =
+                    when (state.status) {
+                        VotePollCardStatus.ACTIVE -> ButtonStyle.PRIMARY
+                        else -> ButtonStyle.TERTIARY
+                    },
                 isEnabled = state.isActionEnabled,
                 onClick = state.onAction
             ),

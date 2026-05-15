@@ -349,7 +349,7 @@ fun NavGraphBuilder.walletNavGraph(
         composable<VoteChainConfigArgs> { VoteChainConfigScreen() }
         composable<VoteProposalListArgs> { VoteProposalListScreen(it.toRoute()) }
         composable<VoteProposalDetailArgs> { VoteProposalDetailScreen(it.toRoute()) }
-dialogComposable<VotePollDescriptionArgs> { VotePollDescriptionScreen(it.toRoute()) }
+        dialogComposable<VotePollDescriptionArgs> { VotePollDescriptionScreen(it.toRoute()) }
         composable<VoteWalletSyncingArgs> { VoteWalletSyncingScreen(it.toRoute()) }
         composable<VoteConfirmSubmissionArgs> { VoteConfirmSubmissionScreen(it.toRoute()) }
         composable<VoteTallyingArgs> { VoteTallyingScreen(it.toRoute()) }

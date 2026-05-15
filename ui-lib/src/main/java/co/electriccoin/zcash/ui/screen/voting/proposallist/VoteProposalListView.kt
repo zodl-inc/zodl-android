@@ -36,25 +36,26 @@ import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.common.model.voting.VoteOptionDisplayColor
-import co.electriccoin.zcash.ui.design.component.ButtonState
-import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
-import co.electriccoin.zcash.ui.design.theme.ZcashTheme
-import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
+import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.VerticalSpacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
+import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
+import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
 import co.electriccoin.zcash.ui.screen.voting.accentColor
+import co.electriccoin.zcash.ui.screen.voting.component.ZipBadge
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -63,6 +64,7 @@ private const val DOT_FILL_RATIO = 0.6f
 @Composable
 fun VoteProposalListView(state: VoteProposalListState) {
     ZashiConfirmationBottomSheet(state = state.ineligibleSheet)
+    ZashiConfirmationBottomSheet(state = state.walletSyncingSheet)
     BlankBgScaffold(
         topBar = { AppBar(state) },
         content = { padding ->
@@ -416,23 +418,6 @@ private fun ProposalCard(
 }
 
 @Composable
-private fun ZipBadge(label: String) {
-    Surface(
-        color = ZashiColors.Utility.Gray.utilityGray100,
-        shape = RoundedCornerShape(ZashiDimensions.Radius.radius2xl),
-        border = BorderStroke(1.dp, ZashiColors.Utility.Gray.utilityGray200),
-    ) {
-        Text(
-            text = label,
-            style = ZashiTypography.textXs,
-            color = ZashiColors.Utility.Gray.utilityGray700,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-        )
-    }
-}
-
-@Composable
 private fun VoteBadge(state: VoteVoteBadgeState) {
     val textColor = state.color.accentColor()
     val bgColor = textColor.copy(alpha = 0.12f)
@@ -460,7 +445,11 @@ private fun previewProposals(withBadge: Boolean) =
             id = 1,
             zipNumber = stringRes("ZIP-317"),
             title = stringRes("Proportional Transfer Fee Mechanism"),
-            description = stringRes("Replace the current fixed fee with a proportional fee based on the number of logical actions."),
+            description =
+                stringRes(
+                    "Replace the current fixed fee with a proportional " +
+                        "fee based on the number of logical actions."
+                ),
             voteBadge =
                 if (withBadge) {
                     VoteVoteBadgeState(stringRes("Support"), VoteOptionDisplayColor.SUPPORT)

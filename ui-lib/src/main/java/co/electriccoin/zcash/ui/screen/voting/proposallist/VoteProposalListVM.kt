@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.common.model.LceError
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.stateIn
@@ -23,7 +24,6 @@ import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCa
 import co.electriccoin.zcash.ui.common.usecase.PrepareVotingRoundUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
-import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -33,7 +33,6 @@ import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmi
 import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptionArgs
 import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailArgs
 import co.electriccoin.zcash.ui.screen.voting.votingerror.VotingErrorMapper
-import co.electriccoin.zcash.ui.screen.voting.walletsyncing.VoteWalletSyncingArgs
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -64,6 +63,7 @@ class VoteProposalListVM(
 ) : ViewModel() {
     private val preparationErrorSheet = MutableStateFlow<ZashiConfirmationState?>(null)
     private val ineligibleSheet = MutableStateFlow<ZashiConfirmationState?>(null)
+    private val walletSyncingSheet = MutableStateFlow<ZashiConfirmationState?>(null)
     private var preparationJob: Job? = null
 
     /**
@@ -125,7 +125,13 @@ class VoteProposalListVM(
                     )
                 }
         }.let { contentFlow ->
-            combine(contentFlow, preparationErrorSheet, ineligibleSheet, preparationGate) { content, errorSheet, ineligible, gate ->
+            combine(
+                contentFlow,
+                preparationErrorSheet,
+                ineligibleSheet,
+                walletSyncingSheet,
+                preparationGate
+            ) { content, errorSheet, ineligible, walletSyncing, gate ->
                 // Suppress the resolved-list content frame until the eligibility ladder
                 // confirms `Ready` (or until prep surfaces a recoverable error sheet — in
                 // which case we still want to render the list underneath the sheet so the
@@ -135,9 +141,17 @@ class VoteProposalListVM(
                 // or Ineligible.
                 val gatedContent =
                     when {
-                        gate == PreparationGate.READY -> content?.copy(ineligibleSheet = ineligible)
-                        errorSheet != null -> content?.copy(ineligibleSheet = ineligible)
-                        else -> null
+                        gate == PreparationGate.READY -> {
+                            content?.copy(ineligibleSheet = ineligible, walletSyncingSheet = walletSyncing)
+                        }
+
+                        errorSheet != null -> {
+                            content?.copy(ineligibleSheet = ineligible, walletSyncingSheet = walletSyncing)
+                        }
+
+                        else -> {
+                            null
+                        }
                     }
                 LceState(
                     content = gatedContent,
@@ -167,7 +181,7 @@ class VoteProposalListVM(
                 }.onSuccess { preparation ->
                     when (preparation) {
                         is VotingRoundPreparationResult.WalletSyncing -> {
-                            navigationRouter.forward(VoteWalletSyncingArgs(roundId = args.roundId))
+                            walletSyncingSheet.value = buildWalletSyncingSheet()
                             preparationGate.value = PreparationGate.READY
                         }
 
@@ -244,6 +258,21 @@ class VoteProposalListVM(
             onBack = ::dismissIneligibleErrorSheet,
         )
 
+    private fun dismissWalletSyncingSheet() {
+        walletSyncingSheet.value = null
+        onBack()
+    }
+
+    private fun buildWalletSyncingSheet(): ZashiConfirmationState =
+        ZashiConfirmationState.error(
+            title = stringRes(R.string.vote_wallet_syncing_sheet_title),
+            message = stringRes(R.string.vote_wallet_syncing_sheet_message),
+            primaryText = stringRes(R.string.vote_poll_list_empty_got_it),
+            primaryStyle = ButtonStyle.PRIMARY,
+            onPrimary = ::dismissWalletSyncingSheet,
+            onBack = ::dismissWalletSyncingSheet,
+        )
+
     private fun buildIneligibleMessage(
         preparation: VotingRoundPreparationResult.Ineligible,
         snapshotHeight: Long,
@@ -253,12 +282,14 @@ class VoteProposalListVM(
                 .takeIf { it > 0L }
                 ?.let { NumberFormat.getNumberInstance(Locale.US).format(it) }
         return when (preparation.reason) {
-            ModelVoteIneligibilityReason.NO_NOTES ->
+            ModelVoteIneligibilityReason.NO_NOTES -> {
                 if (snapshotLabel == null) {
                     stringRes(R.string.vote_ineligible_no_notes)
                 } else {
                     stringRes(R.string.vote_ineligible_no_notes_at_snapshot, snapshotLabel)
                 }
+            }
+
             ModelVoteIneligibilityReason.BALANCE_TOO_LOW -> {
                 val eligibleWeightZec = "%.4f".format(preparation.eligibleWeight / ZATOSHI_PER_ZEC)
                 if (snapshotLabel == null) {
