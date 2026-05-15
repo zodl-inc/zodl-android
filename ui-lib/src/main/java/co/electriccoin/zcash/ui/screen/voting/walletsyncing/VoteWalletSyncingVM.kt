@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.LceState
+import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -91,11 +92,7 @@ class VoteWalletSyncingVM(
                     isLoading = false,
                 )
             }
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(),
-            initialValue = LceState(content = null, isLoading = true)
-        )
+        }.stateIn(this)
 
     /**
      * Mirrors iOS `startActiveRoundPipeline` (`VotingStore+Session.swift:317-332`): once the wallet's

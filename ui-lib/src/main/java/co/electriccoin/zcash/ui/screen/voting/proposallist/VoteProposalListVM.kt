@@ -144,10 +144,7 @@ class VoteProposalListVM(
                 isLoading = gatedContent == null,
                 error = errorSheet?.let(LceError::BottomSheet)
             )
-        }.stateIn(
-            viewModel = this,
-            initialValue = LceState(content = null, isLoading = true)
-        )
+        }.stateIn(this)
 
     private fun prepareForVoting() {
         if (args.roundId.isEmpty() || args.mode != VoteProposalListMode.VOTING) {

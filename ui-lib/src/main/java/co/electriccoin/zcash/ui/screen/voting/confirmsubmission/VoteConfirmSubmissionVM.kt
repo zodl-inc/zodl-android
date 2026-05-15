@@ -202,10 +202,7 @@ class VoteConfirmSubmissionVM(
                 content = content,
                 isLoading = content == null
             )
-        }.stateIn(
-            viewModel = this,
-            initialValue = LceState(content = null, isLoading = true)
-        )
+        }.stateIn(this)
 
     private fun createState(
         round: VotingRound,

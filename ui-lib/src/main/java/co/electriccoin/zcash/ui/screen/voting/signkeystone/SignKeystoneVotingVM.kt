@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneResumeSubmissionException
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneRouteStage
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneSigningBundle
@@ -52,11 +53,7 @@ class SignKeystoneVotingVM(
         observeSelectedWalletAccount
             .require()
             .map { account -> account.sdkAccount.accountUuid.toVotingAccountScopeId() }
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.Eagerly,
-                initialValue = null
-            )
+            .stateIn(this)
 
     private val isLoading = MutableStateFlow(true)
     private val errorMessage = MutableStateFlow<StringResource?>(null)
@@ -71,11 +68,7 @@ class SignKeystoneVotingVM(
             .filterNotNull()
             .flatMapLatest { accountUuid ->
                 votingRecoveryRepository.observe(accountUuid, args.roundIdHex)
-            }.stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT.inWholeMilliseconds),
-                initialValue = null
-            )
+            }.stateIn(this)
 
     val loading: StateFlow<Boolean> = isLoading
     val error: StateFlow<StringResource?> = errorMessage
@@ -100,11 +93,7 @@ class SignKeystoneVotingVM(
                 } else {
                     null
                 }
-            }.stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT.inWholeMilliseconds),
-                initialValue = null
-            )
+            }.stateIn(this)
 
     val skipBottomSheetState =
         combine(
@@ -114,11 +103,7 @@ class SignKeystoneVotingVM(
             recovery
                 ?.takeIf { isVisible }
                 ?.toSkipBottomSheetState()
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT.inWholeMilliseconds),
-            initialValue = null
-        )
+        }.stateIn(this)
 
     val state: StateFlow<SignKeystoneTransactionState?> =
         combine(
@@ -155,11 +140,7 @@ class SignKeystoneVotingVM(
                     onBack = ::onCancelClick,
                 )
             }
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT.inWholeMilliseconds),
-            initialValue = null
-        )
+        }.stateIn(this)
 
     init {
         loadSigningBundle()

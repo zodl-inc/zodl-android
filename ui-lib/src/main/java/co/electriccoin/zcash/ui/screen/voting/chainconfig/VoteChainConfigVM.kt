@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
 import co.electriccoin.zcash.ui.common.model.voting.StaticVotingConfig
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
@@ -63,11 +64,7 @@ class VoteChainConfigVM(
                 onBack = ::onBack,
                 onAddCustom = ::onAddCustom
             )
-        }.stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT.inWholeMilliseconds),
-            initialValue = null
-        )
+        }.stateIn(this)
 
     private fun buildChainItems(
         chainConfig: VotingChainConfigState,
