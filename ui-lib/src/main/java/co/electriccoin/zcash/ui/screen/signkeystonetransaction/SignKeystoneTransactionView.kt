@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.signkeystonetransaction
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -17,12 +19,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment.Companion.CenterHorizontally
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import co.electriccoin.zcash.ui.common.component.SettingsListItemLeadingIcon
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -124,9 +125,9 @@ private fun ZashiAccountInfoListItem(
         modifier = modifier,
         contentPadding = PaddingValues(16.dp),
         leading = {
-            SettingsListItemLeadingIcon(
-                modifier = it,
-                drawableRes = state.icon,
+            Image(
+                modifier = it.size(40.dp),
+                painter = painterResource(state.icon),
                 contentDescription = state.title.getValue()
             )
         },
