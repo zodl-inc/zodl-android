@@ -8,7 +8,6 @@ import co.electriccoin.zcash.ui.screen.voting.VoteTrustIndicator
 data class VoteResultsState(
     val roundTitle: StringResource,
     val roundDescription: StringResource,
-    val trustIndicator: VoteTrustIndicator?,
     val votedMetaLine: StringResource?,
     val proposals: List<VoteProposalResultState>,
     val isLoadingResults: Boolean,

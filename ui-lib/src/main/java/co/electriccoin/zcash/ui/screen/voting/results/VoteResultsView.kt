@@ -29,12 +29,15 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.common.model.voting.VoteOptionDisplayColor
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
+import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.VerticalSpacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
+import co.electriccoin.zcash.ui.screen.voting.VoteTrustIndicator
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
@@ -88,9 +91,6 @@ fun VoteResultsView(state: VoteResultsState) {
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.weight(1f, fill = false),
                     )
-                    state.trustIndicator?.let { indicator ->
-                        VoteTrustIndicatorView(indicator)
-                    }
                 }
 
                 if (state.roundDescription.getValue().isNotEmpty()) {
@@ -238,6 +238,7 @@ private fun ProposalResultCard(state: VoteProposalResultState) {
                 text = state.totalZec.getValue(),
                 style = ZashiTypography.textXs,
                 color = ZashiColors.Text.textTertiary,
+                modifier = Modifier.align(Alignment.End)
             )
         }
     }
@@ -345,3 +346,81 @@ private fun optionBarColor(
     if (!isWinner) return ZashiColors.Utility.Gray.utilityGray500
     return color.accentColor()
 }
+
+private fun previewProposalResults() =
+    listOf(
+        VoteProposalResultState(
+            zipNumber = stringRes("ZIP-317"),
+            title = stringRes("Proportional Transfer Fee Mechanism"),
+            description = stringRes("Replace the current fixed fee with a proportional fee based on the number of logical actions."),
+            options =
+                listOf(
+                    VoteOptionResultState(
+                        label = stringRes("Yes"),
+                        amountZec = stringRes("1,240,000 ZEC"),
+                        fraction = 0.76f,
+                        color = VoteOptionDisplayColor.SUPPORT,
+                        isWinner = true,
+                    ),
+                    VoteOptionResultState(
+                        label = stringRes("No"),
+                        amountZec = stringRes("390,000 ZEC"),
+                        fraction = 0.24f,
+                        color = VoteOptionDisplayColor.OPPOSE,
+                        isWinner = false,
+                    ),
+                ),
+            totalZec = stringRes("Total: 1,630,000 ZEC"),
+            winnerLabel = stringRes("Yes"),
+            winnerColor = VoteOptionDisplayColor.SUPPORT,
+            showWinnerSeal = true,
+        ),
+        VoteProposalResultState(
+            zipNumber = stringRes("ZIP-320"),
+            title = stringRes("Memo Encryption Upgrade"),
+            description = stringRes(""),
+            options =
+                listOf(
+                    VoteOptionResultState(
+                        label = stringRes("Yes"),
+                        amountZec = stringRes("500,000 ZEC"),
+                        fraction = 0.5f,
+                        color = VoteOptionDisplayColor.SUPPORT,
+                        isWinner = false,
+                    ),
+                    VoteOptionResultState(
+                        label = stringRes("No"),
+                        amountZec = stringRes("500,000 ZEC"),
+                        fraction = 0.5f,
+                        color = VoteOptionDisplayColor.OPPOSE,
+                        isWinner = false,
+                    ),
+                ),
+            totalZec = stringRes("Total: 1,000,000 ZEC"),
+            winnerLabel = stringRes("Tie"),
+            winnerColor = VoteOptionDisplayColor.GRAY,
+            showWinnerSeal = false,
+        ),
+    )
+
+private fun previewState(
+    isLoading: Boolean = false,
+) = VoteResultsState(
+    roundTitle = stringRes("Round 3 Results"),
+    roundDescription = stringRes("Final results for protocol upgrade proposals voted on by ZEC coinholders."),
+    votedMetaLine = stringRes("You voted in this round"),
+    proposals = previewProposalResults(),
+    isLoadingResults = isLoading,
+    doneButton = ButtonState(text = stringRes("Done")),
+    onBack = {},
+)
+
+@PreviewScreens
+@Composable
+private fun VoteResultsPreview() =
+    ZcashTheme { VoteResultsView(previewState()) }
+
+@PreviewScreens
+@Composable
+private fun VoteResultsLoadingPreview() =
+    ZcashTheme { VoteResultsLoadingView(onBack = {}) }
