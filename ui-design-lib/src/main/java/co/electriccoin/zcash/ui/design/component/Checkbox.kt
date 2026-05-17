@@ -20,7 +20,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun LabeledCheckboxPreview() {
     ZcashTheme(forceDarkMode = false) {
@@ -41,7 +41,7 @@ private fun LabeledCheckboxPreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun LabeledCheckboxDarkPreview() {
     ZcashTheme(forceDarkMode = true) {

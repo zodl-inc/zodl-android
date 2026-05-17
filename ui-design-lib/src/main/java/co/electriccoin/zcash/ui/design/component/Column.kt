@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 
-@Preview("Column with blank background")
+@Preview("Column with blank background", showBackground = true)
 @Composable
 private fun BlankBgColumnComposablePreview() {
     ZcashTheme(forceDarkMode = false) {

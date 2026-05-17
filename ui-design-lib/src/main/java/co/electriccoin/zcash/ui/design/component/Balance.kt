@@ -135,7 +135,7 @@ object StyledBalanceDefaults {
     )
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun StyledBalancePreview() =
     ZcashTheme(forceDarkMode = false) {
@@ -150,7 +150,7 @@ private fun StyledBalancePreview() =
         }
     }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun HiddenStyledBalancePreview() =
     ZcashTheme(forceDarkMode = false) {

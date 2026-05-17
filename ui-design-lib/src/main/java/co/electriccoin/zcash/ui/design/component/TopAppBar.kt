@@ -52,7 +52,7 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.internal.SecondaryTypography
 import co.electriccoin.zcash.ui.design.theme.internal.TopAppBarColors
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun TopAppBarTextComposablePreview() {
     ZcashTheme(forceDarkMode = false) {
@@ -71,7 +71,7 @@ private fun TopAppBarTextComposablePreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun TopAppBarTextDarkComposablePreview() {
     ZcashTheme(forceDarkMode = true) {
@@ -90,7 +90,7 @@ private fun TopAppBarTextDarkComposablePreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun TopAppBarTextRestoringComposablePreview() {
     ZcashTheme(forceDarkMode = false) {
@@ -110,7 +110,7 @@ private fun TopAppBarTextRestoringComposablePreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun TopAppBarTextRestoringLongComposablePreview() {
     ZcashTheme(forceDarkMode = false) {
@@ -130,7 +130,7 @@ private fun TopAppBarTextRestoringLongComposablePreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun TopAppBarLogoComposablePreview() {
     ZcashTheme(forceDarkMode = false) {
@@ -149,7 +149,7 @@ private fun TopAppBarLogoComposablePreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun TopAppBarLogoRestoringComposablePreview() {
     ZcashTheme(forceDarkMode = false) {
@@ -169,7 +169,7 @@ private fun TopAppBarLogoRestoringComposablePreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun TopAppBarLogoRestoringDarkComposablePreview() {
     ZcashTheme(forceDarkMode = true) {
@@ -189,7 +189,7 @@ private fun TopAppBarLogoRestoringDarkComposablePreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun TopAppBarRegularMenuComposablePreview() {
     ZcashTheme(forceDarkMode = false) {
@@ -207,7 +207,7 @@ private fun TopAppBarRegularMenuComposablePreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun TopAppBarOneVisibleActionMenuComposablePreview() {
     ZcashTheme(forceDarkMode = false) {
@@ -231,7 +231,7 @@ private fun TopAppBarOneVisibleActionMenuComposablePreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun TopAppBarHamburgerMenuComposablePreview() {
     ZcashTheme(forceDarkMode = false) {
@@ -255,7 +255,7 @@ private fun TopAppBarHamburgerMenuComposablePreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun TopAppBarHamburgerPlusActionComposablePreview() {
     ZcashTheme(forceDarkMode = false) {

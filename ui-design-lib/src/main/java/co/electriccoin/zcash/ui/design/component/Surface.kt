@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.tooling.preview.Preview
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 
-@Preview("Blank background")
+@Preview("Blank background", showBackground = true)
 @Composable
 private fun BlankSurfacePreview() {
     ZcashTheme(forceDarkMode = false) {

@@ -32,7 +32,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun ReferenceComposablePreview() {
     ZcashTheme(forceDarkMode = false) {
@@ -297,7 +297,7 @@ fun Reference(
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun NavigationTabTextPreview() {
     ZcashTheme(forceDarkMode = false) {

@@ -17,7 +17,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun CircularScreenProgressIndicatorComposablePreview() {
     ZcashTheme(forceDarkMode = false) {
@@ -75,7 +75,7 @@ fun CircularSmallProgressIndicator(
     )
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun LinearProgressIndicatorComposablePreview() {
     ZcashTheme(forceDarkMode = false) {

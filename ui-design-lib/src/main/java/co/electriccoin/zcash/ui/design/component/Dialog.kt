@@ -22,7 +22,7 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun LightAlertDialogComposablePreview() {
     ZcashTheme(forceDarkMode = false) {
@@ -38,7 +38,7 @@ private fun LightAlertDialogComposablePreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun NoButtonAlertDialogComposablePreview() {
     ZcashTheme(forceDarkMode = false) {
@@ -52,7 +52,7 @@ private fun NoButtonAlertDialogComposablePreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun DarkAlertDialogComposablePreview() {
     ZcashTheme(forceDarkMode = true) {
@@ -167,7 +167,7 @@ fun AppAlertDialog(
     )
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun NavigationButtonPreview() {
     ZcashTheme(forceDarkMode = false) {
@@ -178,7 +178,7 @@ private fun NavigationButtonPreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun NavigationButtonDarkPreview() {
     ZcashTheme(forceDarkMode = true) {

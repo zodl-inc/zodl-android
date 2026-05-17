@@ -321,7 +321,7 @@ object ZashiNumberTextFieldParser {
 }
 
 @Composable
-@Preview
+@Preview(showBackground = true)
 private fun Preview() =
     ZcashTheme {
         BlankSurface {
