@@ -12,6 +12,16 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.4.1 (1696)] - 2026-05-18
+
+### Cambiado:
+- Actualizamos el texto del widget de estado de protección.
+
+### Corregido:
+- Corregimos un error que impedía proteger cuando había muchas entradas transparentes pequeñas.
+- Corregimos que «Enviar de nuevo» no rellenaba correctamente algunos campos.
+- Corregimos que el aviso de Conversión de Moneda no aparecía en los flujos de nueva billetera y restauración.
+
 ## [3.4.0 (1691)] - 2026-05-12
 
 ### Añadido:

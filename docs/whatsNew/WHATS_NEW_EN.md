@@ -12,6 +12,16 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.4.1 (1696)] - 2026-05-18
+
+### Changed:
+- We updated the copy on the shielding status widget.
+
+### Fixed:
+- We fixed a bug that prevented shielding when many small transparent inputs were involved.
+- We fixed "Send Again" pre-filling some fields incorrectly.
+- We fixed the Currency Conversion prompt not appearing in the new-wallet and restore flows.
+
 ## [3.4.0 (1691)] - 2026-05-12
 
 ### Added:

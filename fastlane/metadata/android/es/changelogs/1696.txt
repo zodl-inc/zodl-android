@@ -1,0 +1,7 @@
+Cambiado:
+- Actualizamos el texto del widget de estado de protección.
+
+Corregido:
+- Corregimos un error que impedía proteger cuando había muchas entradas transparentes pequeñas.
+- Corregimos que «Enviar de nuevo» no rellenaba correctamente algunos campos.
+- Corregimos que el aviso de Conversión de Moneda no aparecía en los flujos de nueva billetera y restauración.
