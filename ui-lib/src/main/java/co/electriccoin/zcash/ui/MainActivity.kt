@@ -5,6 +5,7 @@ package co.electriccoin.zcash.ui
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
 import androidx.activity.enableEdgeToEdge
@@ -27,6 +28,7 @@ import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.compose.BindCompLocalProvider
 import co.electriccoin.zcash.ui.common.compose.DisableScreenTimeout
 import co.electriccoin.zcash.ui.common.extension.setContentCompat
+import co.electriccoin.zcash.ui.common.usecase.HandleSharedPaymentUseCase
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationUIState
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.OldHomeViewModel
@@ -74,6 +76,10 @@ class MainActivity : FragmentActivity() {
 
     private val navigationRouter: NavigationRouter by inject()
 
+    private val handleSharedPaymentUseCase: HandleSharedPaymentUseCase by inject()
+
+    private var pendingIntent: Intent? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Twig.debug { "Activity state: Create" }
@@ -86,16 +92,15 @@ class MainActivity : FragmentActivity() {
 
         monitorForBackgroundSync()
 
-        if (intent.data != null) {
-            navigationRouter.forward(ThirdPartyScan)
-        }
+        pendingIntent = intent
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-
-        if (intent.data != null) {
-            navigationRouter.forward(ThirdPartyScan)
+        if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            handleIncomingIntent(intent)
+        } else {
+            pendingIntent = intent
         }
     }
 
@@ -103,12 +108,103 @@ class MainActivity : FragmentActivity() {
         Twig.debug { "Activity state: Start" }
         authenticationViewModel.runAuthenticationRequiredCheck()
         super.onStart()
+
+        pendingIntent?.let { intent ->
+            handleIncomingIntent(intent)
+            pendingIntent = null
+        }
     }
 
     override fun onStop() {
         Twig.debug { "Activity state: Stop" }
         authenticationViewModel.persistGoToBackgroundTime(System.currentTimeMillis())
         super.onStop()
+    }
+
+    private fun handleIncomingIntent(intent: Intent) {
+        if (intent.data != null && Intent.ACTION_VIEW == intent.action) {
+            navigationRouter.forward(ThirdPartyScan)
+            return
+        }
+
+        when (intent.action) {
+            Intent.ACTION_SEND -> handleActionSend(intent)
+            Intent.ACTION_SEND_MULTIPLE -> handleActionSendMultiple(intent)
+        }
+    }
+
+    private fun handleActionSend(intent: Intent) {
+        when {
+            intent.type?.startsWith("text/") == true -> {
+                val rawText =
+                    intent
+                        .getStringExtra(Intent.EXTRA_TEXT)
+                        ?.takeIf { it.isNotBlank() }
+                        ?: return
+                val candidate = extractPaymentStringFromText(rawText) ?: return
+
+                lifecycleScope.launch {
+                    handleSharedPaymentUseCase(candidate)
+                }
+            }
+
+            intent.type?.startsWith("image/") == true -> {
+                val uri = getSingleStreamUri(intent) ?: return
+
+                lifecycleScope.launch {
+                    handleSharedPaymentUseCase(uri)
+                }
+            }
+        }
+    }
+
+    private fun handleActionSendMultiple(intent: Intent) {
+        if (intent.type?.startsWith("image/") != true) {
+            return
+        }
+
+        val uris =
+            intent
+                .getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
+                ?.takeIf { it.isNotEmpty() }
+                ?: return
+        val first = uris.first()
+
+        if (uris.size > 1) {
+            Twig.info { "Multiple images shared, processing first only" }
+        }
+
+        lifecycleScope.launch {
+            handleSharedPaymentUseCase(first)
+        }
+    }
+
+    private fun getSingleStreamUri(intent: Intent): Uri? =
+        intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+
+    private fun extractPaymentStringFromText(text: String): String? {
+        val trimmed = text.trim()
+
+        // Try to extract a zcash: URI first - this handles ZIP-321 URIs with parameters
+        // Pattern matches zcash: followed by address and optional query parameters
+        // Stops at whitespace to avoid capturing trailing text
+        val uriRegex = Regex("zcash:[^\\s]+", RegexOption.IGNORE_CASE)
+        val uriMatch = uriRegex.find(trimmed)
+
+        return when {
+            // Found a zcash: URI - return it, trimming any trailing punctuation that's
+            // not part of a query parameter (e.g., "Check this out: zcash:addr." -> "zcash:addr")
+            uriMatch != null -> {
+                uriMatch.value.trimEnd('.', ',', '!', '?', ';', ':')
+                    .takeIf { it.length > "zcash:".length }
+            }
+
+            // No zcash: URI found - treat the entire text as a potential address
+            // Let the validation in HandleSharedPaymentUseCase determine if it's valid
+            trimmed.isNotBlank() -> trimmed
+
+            else -> null
+        }
     }
 
     /**

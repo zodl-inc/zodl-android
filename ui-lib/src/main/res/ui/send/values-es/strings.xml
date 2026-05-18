@@ -26,6 +26,6 @@
     <string name="send_transparent_memo">Las transacciones transparentes no pueden tener mensajes</string>
 
     <string name="send_address_book_hint">Agrega un contacto tocando el ícono de la libreta de direcciones.</string>
+    <string name="send_shared_content_invalid">El contenido compartido no contiene un pago válido de Zcash.</string>
     <string name="send_address_book_content_description">Abrir libreta de direcciones.</string>
-
 </resources>
