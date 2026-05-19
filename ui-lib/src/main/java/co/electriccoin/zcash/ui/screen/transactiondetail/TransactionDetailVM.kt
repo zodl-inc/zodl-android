@@ -22,6 +22,7 @@ import co.electriccoin.zcash.ui.common.model.SwapStatus.SUCCESS
 import co.electriccoin.zcash.ui.common.repository.ReceiveTransaction
 import co.electriccoin.zcash.ui.common.repository.SendTransaction
 import co.electriccoin.zcash.ui.common.repository.ShieldTransaction
+import co.electriccoin.zcash.ui.common.util.Zap1MemoFormatter
 import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
 import co.electriccoin.zcash.ui.common.usecase.DetailedTransactionData
 import co.electriccoin.zcash.ui.common.usecase.FlipTransactionBookmarkUseCase
@@ -273,7 +274,7 @@ class TransactionDetailVM(
                                 TransactionDetailMemosState(
                                     transaction.memos.orEmpty().map { memo ->
                                         TransactionDetailMemoState(
-                                            content = stringRes(memo),
+                                            content = stringRes(Zap1MemoFormatter.format(memo) ?: memo),
                                             onClick = { onCopyToClipboard(memo) }
                                         )
                                     }
@@ -315,7 +316,7 @@ class TransactionDetailVM(
                             TransactionDetailMemosState(
                                 transaction.memos?.map { memo ->
                                     TransactionDetailMemoState(
-                                        content = stringRes(memo),
+                                        content = stringRes(Zap1MemoFormatter.format(memo) ?: memo),
                                         onClick = { onCopyToClipboard(memo) }
                                     )
                                 }
