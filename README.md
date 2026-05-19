@@ -14,12 +14,9 @@ Zcash mobile wallet leveraging the [Zcash Android SDK](https://github.com/zcash/
 
 Or download the latest APK from the [Releases Section](https://github.com/zodl-inc/zashi-android/releases/latest).
 
-# Zodl Discord
+# Zodl Support
 
-Join the Zodl community on Discord to report bugs, share ideas, request new
-features, and help shape Zodl's journey!
-
-https://discord.gg/jQPU7aXe7A
+Obtain help for Zodl and connect with our team at [support.zodl.com](https://support.zodl.com/).
 
 # Reporting an issue
 
@@ -60,7 +57,7 @@ the project, these steps are not necessary.)
     1. See `ZCASH_RELEASE_PACKAGE_NAME`
 1. Change the support email address under [strings.xml](ui-lib/src/main/res/ui/non_translatable/values/strings.xml)
     1. See `support_email_address`
-1. Remove any copyrighted ZCash icons, logos, or assets
+1. Remove any copyrighted Zcash icons, logos, or assets
     1. ui-lib/src/main/res/common/ - All of the the ic_launcher assets
 1. Optional
     1. Configure secrets and variables for [Continuous Integration](docs/CI.md)
