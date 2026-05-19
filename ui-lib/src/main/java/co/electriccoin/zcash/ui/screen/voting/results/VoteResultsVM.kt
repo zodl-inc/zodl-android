@@ -8,9 +8,7 @@ import co.electriccoin.zcash.ui.common.model.mutableLce
 import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.TallyResults
-import co.electriccoin.zcash.ui.common.model.voting.VoteOptionDisplayColor
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
-import co.electriccoin.zcash.ui.common.model.voting.displayColor
 import co.electriccoin.zcash.ui.common.model.withLce
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
@@ -107,7 +105,7 @@ class VoteResultsVM(
     ): VoteResultsState {
         val proposals =
             round.proposals.map { proposal ->
-                buildProposalState(proposal, tally)
+                buildProposalState(proposal, tally, recovery)
             }
 
         return VoteResultsState(
@@ -137,6 +135,7 @@ class VoteResultsVM(
     private fun buildProposalState(
         proposal: Proposal,
         tally: TallyResults,
+        recovery: VotingRecoverySnapshot?,
     ): VoteProposalResultState {
         val tallyProposal = tally.proposals.firstOrNull { it.proposalId == proposal.id }
         val totalWeight = tallyProposal?.options?.sumOf { it.weight } ?: 0L
@@ -149,21 +148,21 @@ class VoteResultsVM(
         val options =
             proposal.options.mapIndexed { index, option ->
                 val weight = tallyProposal?.options?.firstOrNull { it.optionId == option.id }?.weight ?: 0L
-                val color = option.displayColor(position = index, total = proposal.options.size)
 
                 VoteOptionResultState(
                     label = stringRes(option.label),
                     amountZec = stringRes(R.string.vote_results_amount_zec, weight.toZec()),
                     fraction = if (hasVotes) weight / displayWeight else 0f,
-                    color = color,
                     isWinner = hasVotes && !hasTie && weight == maxWeight,
                 )
             }
 
-        val winner =
+        val votedOptionId = recovery?.draftChoices?.get(proposal.id)
+        val votedLabel =
             proposal.options
-                .zip(options)
-                .firstOrNull { (_, optionState) -> optionState.isWinner }
+                .firstOrNull { it.id == votedOptionId }
+                ?.label
+                ?.let { stringRes(R.string.vote_results_voted_option, it) }
 
         return VoteProposalResultState(
             zipNumber = proposal.zipNumber?.let(::stringRes),
@@ -171,13 +170,7 @@ class VoteResultsVM(
             description = stringRes(proposal.description),
             options = options,
             totalZec = stringRes(R.string.vote_results_total_zec, totalWeight.toZec()),
-            winnerLabel =
-                when {
-                    hasTie -> stringRes(R.string.vote_results_tie)
-                    else -> winner?.first?.label?.let(::stringRes)
-                },
-            winnerColor = winner?.second?.color ?: VoteOptionDisplayColor.GRAY,
-            showWinnerSeal = hasVotes && !hasTie && winner != null,
+            votedLabel = votedLabel,
         )
     }
 

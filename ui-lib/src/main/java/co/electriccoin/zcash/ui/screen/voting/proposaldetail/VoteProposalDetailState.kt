@@ -32,6 +32,7 @@ data class VoteProposalDetailState(
 data class VoteVoteOptionRowState(
     val index: Int,
     val label: StringResource,
+    val description: StringResource?,
     val color: VoteOptionDisplayColor,
     val isSelected: Boolean,
     val isLocked: Boolean,

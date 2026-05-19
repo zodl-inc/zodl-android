@@ -3,7 +3,6 @@ package co.electriccoin.zcash.ui.screen.voting.proposallist
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,11 +11,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,7 +25,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,7 +50,8 @@ import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
-import co.electriccoin.zcash.ui.screen.voting.accentColor
+import co.electriccoin.zcash.ui.screen.voting.answerColors
+import co.electriccoin.zcash.ui.screen.voting.component.VoteViewMoreChip
 import co.electriccoin.zcash.ui.screen.voting.component.ZipBadge
 import java.text.NumberFormat
 import java.util.Locale
@@ -96,12 +93,9 @@ fun VoteProposalListView(state: VoteProposalListState) {
                     items(state.proposals, key = { it.id }) { proposal ->
                         ProposalCard(
                             state = proposal,
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
+                            modifier = Modifier.fillMaxWidth()
                         )
-                        VerticalSpacer(16.dp)
+                        VerticalSpacer(8.dp)
                     }
 
                     if (state.ctaButton != null) {
@@ -131,7 +125,6 @@ fun VoteProposalListView(state: VoteProposalListState) {
                             Modifier
                                 .fillMaxWidth()
                                 .align(Alignment.BottomCenter)
-                                .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
                                 .padding(bottom = ZashiDimensions.Spacing.spacingMd),
                         state = button
                     )
@@ -173,12 +166,7 @@ private fun VotingHeader(
     state: VoteProposalListState,
     onViewMore: () -> Unit,
 ) {
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth()
@@ -234,7 +222,7 @@ private fun VotingHeader(
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(4.dp)
-                ViewMoreChip(onClick = onViewMore)
+                VoteViewMoreChip(onClick = onViewMore)
             }
         }
     }
@@ -268,38 +256,11 @@ private fun HeaderMetaLine(state: VoteProposalMetaLineState) {
 }
 
 @Composable
-private fun ViewMoreChip(onClick: () -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.clickable { onClick() }
-    ) {
-        Text(
-            text = stringResource(R.string.vote_proposal_list_view_more),
-            style = ZashiTypography.textSm,
-            color = ZashiColors.Text.textPrimary,
-            fontWeight = FontWeight.Medium
-        )
-        Spacer(4.dp)
-        Icon(
-            painter = painterResource(co.electriccoin.zcash.ui.design.R.drawable.ic_chevron_down_small),
-            contentDescription = null,
-            tint = ZashiColors.Text.textPrimary,
-            modifier = Modifier.size(16.dp)
-        )
-    }
-}
-
-@Composable
 private fun ReviewHeader() {
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = stringResource(R.string.vote_proposal_list_review_title),
-            style = ZashiTypography.textXl,
+            style = ZashiTypography.header6,
             color = ZashiColors.Text.textPrimary,
             fontWeight = FontWeight.SemiBold,
         )
@@ -307,7 +268,7 @@ private fun ReviewHeader() {
         Text(
             text = stringResource(R.string.vote_proposal_list_review_subtitle),
             style = ZashiTypography.textSm,
-            color = ZashiColors.Text.textSecondary,
+            color = ZashiColors.Text.textPrimary,
         )
     }
 }
@@ -382,20 +343,7 @@ private fun ProposalCard(
                     .padding(ZashiDimensions.Spacing.spacingXl),
             verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacingLg)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                state.zipNumber?.let { zipNumber ->
-                    ZipBadge(label = zipNumber.getValue())
-                }
-
-                Spacer(1f)
-
-                state.voteBadge?.let { voteBadge ->
-                    VoteBadge(state = voteBadge)
-                }
-            }
+            state.zipNumber?.let { ZipBadge(label = it.getValue()) }
 
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
@@ -413,26 +361,62 @@ private fun ProposalCard(
                     )
                 }
             }
+
+            state.voteBadge?.let { YourVoteContainer(badge = it) }
         }
     }
 }
 
-@Composable
-private fun VoteBadge(state: VoteVoteBadgeState) {
-    val textColor = state.color.accentColor()
-    val bgColor = textColor.copy(alpha = 0.12f)
+private const val YOUR_VOTE_SHORT_LABEL_MAX_CHARS = 10
 
-    Surface(
-        color = bgColor,
-        shape = RoundedCornerShape(ZashiDimensions.Radius.radiusMd),
-    ) {
-        Text(
-            text = state.label.getValue(),
-            style = ZashiTypography.textXs,
-            color = textColor,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-        )
+@Composable
+private fun YourVoteContainer(badge: VoteVoteBadgeState) {
+    val colors = badge.color.answerColors()
+    val label = badge.label.getValue()
+    val isShort = label.length <= YOUR_VOTE_SHORT_LABEL_MAX_CHARS
+    val containerModifier =
+        Modifier
+            .fillMaxWidth()
+            .background(colors.bg, RoundedCornerShape(10.dp))
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+
+    if (isShort) {
+        Row(
+            modifier = containerModifier,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.vote_proposal_list_your_vote),
+                style = ZashiTypography.textXxs,
+                fontWeight = FontWeight.Medium,
+                color = colors.labelColor,
+            )
+            Text(
+                text = label,
+                style = ZashiTypography.textXs,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.textColor,
+            )
+        }
+    } else {
+        Column(
+            modifier = containerModifier,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.vote_proposal_list_your_vote),
+                style = ZashiTypography.textXxs,
+                fontWeight = FontWeight.Medium,
+                color = colors.labelColor,
+            )
+            Text(
+                text = label,
+                style = ZashiTypography.textXs,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.textColor,
+            )
+        }
     }
 }
 
@@ -465,7 +449,10 @@ private fun previewProposals(withBadge: Boolean) =
             description = stringRes("Upgrade the memo field encryption to use a more secure algorithm."),
             voteBadge =
                 if (withBadge) {
-                    VoteVoteBadgeState(stringRes("Oppose"), VoteOptionDisplayColor.OPPOSE)
+                    VoteVoteBadgeState(
+                        stringRes("As soon as possible after NSM activation"),
+                        VoteOptionDisplayColor.OPPOSE
+                    )
                 } else {
                     null
                 },
