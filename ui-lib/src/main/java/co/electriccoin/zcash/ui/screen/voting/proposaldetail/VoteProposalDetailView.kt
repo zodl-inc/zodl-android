@@ -295,7 +295,7 @@ private fun NavigationButtons(state: VoteProposalDetailState) {
     }
 }
 
-const val MAX_LINES = 4
+private const val MAX_LINES = 4
 
 private fun previewOptions(selectedIndex: Int? = null) =
     listOf(

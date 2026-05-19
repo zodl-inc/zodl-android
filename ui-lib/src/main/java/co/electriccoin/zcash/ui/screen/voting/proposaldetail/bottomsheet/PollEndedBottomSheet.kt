@@ -14,6 +14,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -58,9 +59,7 @@ fun PollEndedBottomSheet(
                 modifier = Modifier.size(48.dp)
             ) {
                 Icon(
-                    painter =
-                        androidx.compose.ui.res
-                            .painterResource(DesignR.drawable.ic_info),
+                    painter = painterResource(DesignR.drawable.ic_info),
                     contentDescription = null,
                     tint = ZashiColors.Utility.ErrorRed.utilityError500,
                     modifier = Modifier.padding(12.dp)
