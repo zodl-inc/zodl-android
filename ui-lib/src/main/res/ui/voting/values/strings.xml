@@ -160,6 +160,7 @@
     <string name="vote_proposal_list_time_day_left">%1$d day left</string>
     <string name="vote_proposal_list_time_days_left">%1$d days left</string>
     <string name="vote_proposal_list_view_more">View more</string>
+    <string name="vote_proposal_list_view_less">View less</string>
     <string name="vote_proposal_detail_forum_discussions">View Forum Discussions</string>
     <string name="vote_poll_description_title">POLL DESCRIPTION</string>
 

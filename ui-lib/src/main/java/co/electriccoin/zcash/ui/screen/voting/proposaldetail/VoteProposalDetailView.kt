@@ -15,6 +15,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -56,6 +58,9 @@ import co.electriccoin.zcash.ui.screen.voting.proposaldetail.bottomsheet.Unanswe
 fun VoteProposalDetailView(state: VoteProposalDetailState) {
     ZashiConfirmationBottomSheet(state = state.unverifiedPollWarningSheet)
 
+    val isDescriptionExpanded = remember { mutableStateOf(false) }
+    val isDescriptionOverflowing = remember { mutableStateOf(false) }
+
     BlankBgScaffold(
         topBar = { AppBar(state) },
         content = { padding ->
@@ -65,7 +70,6 @@ fun VoteProposalDetailView(state: VoteProposalDetailState) {
                         .fillMaxSize()
                         .scaffoldPadding(padding)
             ) {
-                // Scrollable area: title, description, options
                 Column(
                     modifier =
                         Modifier
@@ -84,36 +88,41 @@ fun VoteProposalDetailView(state: VoteProposalDetailState) {
 
                     if (state.description.getValue().isNotEmpty()) {
                         Spacer(16.dp)
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Text(
                                 text = state.description.getValue(),
                                 style = ZashiTypography.textSm,
                                 color = ZashiColors.Text.textPrimary,
-                                maxLines = 8,
-                                overflow = TextOverflow.Ellipsis,
+                                maxLines = if (isDescriptionExpanded.value) Int.MAX_VALUE else MAX_LINES,
+                                overflow =
+                                    if (isDescriptionExpanded.value) TextOverflow.Visible else TextOverflow.Ellipsis,
+                                onTextLayout = { result ->
+                                    if (!isDescriptionExpanded.value) {
+                                        isDescriptionOverflowing.value = result.hasVisualOverflow
+                                    }
+                                },
                             )
-                            VoteViewMoreChip(onClick = state.onViewMore)
+                            if (isDescriptionOverflowing.value || isDescriptionExpanded.value) {
+                                VoteViewMoreChip(
+                                    isExpanded = isDescriptionExpanded.value,
+                                    onClick = { isDescriptionExpanded.value = !isDescriptionExpanded.value },
+                                )
+                            }
                         }
                     }
 
                     VerticalSpacer(24.dp)
                     VoteOptions(options = state.options)
                     VerticalSpacer(32.dp)
-                }
 
-                // Fixed bottom: forum link + navigation buttons
-                Column(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
                     state.forumUrl?.let { forumUrl ->
                         ForumLinkRow(url = forumUrl)
-                        VerticalSpacer(24.dp)
+                        VerticalSpacer(16.dp)
                     }
-                    if (!state.isLocked) {
-                        NavigationButtons(state = state)
-                    }
+                }
+
+                if (!state.isLocked) {
+                    NavigationButtons(state = state)
                 }
             }
         }
@@ -285,6 +294,8 @@ private fun NavigationButtons(state: VoteProposalDetailState) {
         )
     }
 }
+
+const val MAX_LINES = 4
 
 private fun previewOptions(selectedIndex: Int? = null) =
     listOf(
