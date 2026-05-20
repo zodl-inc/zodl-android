@@ -141,6 +141,7 @@ class VoteProposalDetailVM(
             VoteVoteOptionRowState(
                 index = option.id,
                 label = stringRes(option.label),
+                description = option.description?.let { stringRes(it) },
                 color = option.displayColor(position = index, total = total),
                 isSelected = selectedOptionId == option.id,
                 isLocked = isReadOnly,

@@ -63,19 +63,17 @@ import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
-import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTextField
 import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
-import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.voting.component.VoteAppBar
 import kotlinx.coroutines.delay
 
 @Composable
@@ -98,7 +96,12 @@ fun VoteChainConfigView(state: VoteChainConfigState?) {
         }
     }
     BlankBgScaffold(
-        topBar = { AppBar(state) },
+        topBar = {
+            VoteAppBar(
+                title = stringResource(R.string.vote_chain_config_title),
+                onBack = state.onBack,
+            )
+        },
         bottomBar = {
             if (state.editor == null) {
                 BottomActions(state)
@@ -134,21 +137,6 @@ fun VoteChainConfigView(state: VoteChainConfigState?) {
                 }
             }
         }
-    )
-}
-
-@Composable
-private fun AppBar(state: VoteChainConfigState) {
-    ZashiSmallTopAppBar(
-        title = stringResource(R.string.vote_chain_config_title),
-        navigationAction = {
-            ZashiTopAppBarBackNavigation(onBack = state.onBack)
-        },
-        colors =
-            ZcashTheme.colors.topAppBarColors orDark
-                ZcashTheme.colors.topAppBarColors.copyColors(
-                    containerColor = Color.Transparent
-                )
     )
 }
 

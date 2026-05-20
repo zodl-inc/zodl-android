@@ -16,30 +16,26 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
-import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
-import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.voting.component.VoteAppBar
 import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIcons
 import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIconsState
 import co.electriccoin.zcash.ui.R as AppR
@@ -47,7 +43,12 @@ import co.electriccoin.zcash.ui.R as AppR
 @Composable
 fun VoteHowToVoteView(state: VoteHowToVoteState) {
     BlankBgScaffold(
-        topBar = { AppBar(state) },
+        topBar = {
+            VoteAppBar(
+                title = stringResource(AppR.string.vote_top_bar_title),
+                onBack = state.onBack,
+            )
+        },
         content = { padding ->
             Content(
                 state = state,
@@ -163,24 +164,6 @@ private fun StepRow(step: VoteStep) {
             )
         }
     }
-}
-
-@Composable
-private fun AppBar(state: VoteHowToVoteState) {
-    ZashiSmallTopAppBar(
-        title = stringResource(AppR.string.vote_top_bar_title),
-        navigationAction = {
-            ZashiTopAppBarBackNavigation(
-                onBack = state.onBack,
-                modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
-            )
-        },
-        colors =
-            ZcashTheme.colors.topAppBarColors orDark
-                ZcashTheme.colors.topAppBarColors.copyColors(
-                    containerColor = Color.Transparent
-                )
-    )
 }
 
 @PreviewScreens
