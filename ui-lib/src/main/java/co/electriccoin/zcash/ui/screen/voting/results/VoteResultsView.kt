@@ -16,61 +16,40 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
-import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.VerticalSpacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
-import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
-import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
+import co.electriccoin.zcash.ui.screen.voting.component.VoteAppBar
 import co.electriccoin.zcash.ui.screen.voting.component.VoteViewMoreChip
 import co.electriccoin.zcash.ui.screen.voting.component.ZipBadge
-import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptionState
-import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptionView
 import co.electriccoin.zcash.ui.screen.voting.voteResultBarColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VoteResultsView(state: VoteResultsState) {
-    var descriptionSheetState by remember { mutableStateOf<VotePollDescriptionState?>(null) }
-    VotePollDescriptionView(state = descriptionSheetState)
-
     BlankBgScaffold(
         topBar = {
-            ZashiSmallTopAppBar(
-                title = stringRes(R.string.vote_top_bar_title).getValue(),
-                navigationAction = {
-                    ZashiTopAppBarBackNavigation(
-                        onBack = state.onBack,
-                        modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
-                    )
-                },
-                colors =
-                    ZcashTheme.colors.topAppBarColors orDark
-                        ZcashTheme.colors.topAppBarColors.copyColors(containerColor = Color.Transparent)
+            VoteAppBar(
+                title = stringResource(R.string.vote_top_bar_title),
+                onBack = state.onBack,
             )
         },
         content = { padding ->
@@ -111,15 +90,7 @@ fun VoteResultsView(state: VoteResultsState) {
                             overflow = TextOverflow.Ellipsis,
                         )
                         Spacer(4.dp)
-                        VoteViewMoreChip(onClick = {
-                            descriptionSheetState =
-                                VotePollDescriptionState(
-                                    title = state.roundTitle,
-                                    description = state.roundDescription,
-                                    discussionUrl = null,
-                                    onBack = { descriptionSheetState = null },
-                                )
-                        })
+                        VoteViewMoreChip(onClick = { state.onViewMore?.invoke() })
                     }
 
                     state.votedMetaLine?.let { votedMetaLine ->
@@ -165,19 +136,9 @@ fun VoteResultsView(state: VoteResultsState) {
 fun VoteResultsLoadingView(onBack: () -> Unit) {
     BlankBgScaffold(
         topBar = {
-            ZashiSmallTopAppBar(
-                title = stringRes(R.string.vote_top_bar_title).getValue(),
-                navigationAction = {
-                    ZashiTopAppBarBackNavigation(
-                        onBack = onBack,
-                        modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
-                    )
-                },
-                colors =
-                    ZcashTheme.colors.topAppBarColors orDark
-                        ZcashTheme.colors.topAppBarColors.copyColors(
-                            containerColor = Color.Transparent
-                        )
+            VoteAppBar(
+                title = stringResource(R.string.vote_top_bar_title),
+                onBack = onBack,
             )
         },
         content = { padding ->
@@ -391,6 +352,7 @@ private fun previewState(
     isLoadingResults = isLoading,
     doneButton = ButtonState(text = stringRes("Done")),
     onBack = {},
+    onViewMore = {},
 )
 
 @PreviewScreens

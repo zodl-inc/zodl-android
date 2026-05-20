@@ -28,6 +28,7 @@ import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
 import co.electriccoin.zcash.ui.screen.voting.isDefaultVotingConfig
+import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptionArgs
 import kotlinx.coroutines.flow.combine
 import java.time.Instant
 import java.time.ZoneId
@@ -123,6 +124,18 @@ class VoteResultsVM(
                     onClick = ::onDone,
                 ),
             onBack = ::onBack,
+            onViewMore =
+                round.description.takeIf { it.isNotEmpty() }?.let { description ->
+                    {
+                        navigationRouter.forward(
+                            VotePollDescriptionArgs(
+                                title = round.title,
+                                description = description,
+                                discussionUrl = null,
+                            )
+                        )
+                    }
+                },
         )
     }
 

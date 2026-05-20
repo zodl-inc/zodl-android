@@ -11,6 +11,7 @@ data class VoteResultsState(
     val isLoadingResults: Boolean,
     val doneButton: ButtonState,
     val onBack: () -> Unit,
+    val onViewMore: (() -> Unit)?,
 )
 
 data class VoteProposalResultState(
