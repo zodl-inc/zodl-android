@@ -30,7 +30,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
-import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.common.model.voting.VoteOptionDisplayColor
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -39,7 +38,6 @@ import co.electriccoin.zcash.ui.design.component.VerticalSpacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
-import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -52,6 +50,7 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
 import co.electriccoin.zcash.ui.screen.voting.VoteColors
 import co.electriccoin.zcash.ui.screen.voting.answerColors
+import co.electriccoin.zcash.ui.screen.voting.component.VoteAppBar
 import co.electriccoin.zcash.ui.screen.voting.component.VoteViewMoreChip
 import co.electriccoin.zcash.ui.screen.voting.component.ZipBadge
 import java.text.NumberFormat
@@ -64,7 +63,12 @@ fun VoteProposalListView(state: VoteProposalListState) {
     ZashiConfirmationBottomSheet(state = state.ineligibleSheet)
     ZashiConfirmationBottomSheet(state = state.walletSyncingSheet)
     BlankBgScaffold(
-        topBar = { AppBar(state) },
+        topBar = {
+            VoteAppBar(
+                title = stringResource(R.string.vote_top_bar_title),
+                onBack = state.onBack,
+            )
+        },
         content = { padding ->
             Box(
                 modifier =
@@ -521,21 +525,3 @@ private fun VoteProposalListReviewPreview() =
 @Composable
 private fun VoteProposalListLoadingPreview() =
     ZcashTheme { VoteProposalListLoadingView() }
-
-@Composable
-private fun AppBar(state: VoteProposalListState) {
-    ZashiSmallTopAppBar(
-        title = stringResource(R.string.vote_top_bar_title),
-        navigationAction = {
-            ZashiTopAppBarBackNavigation(
-                onBack = state.onBack,
-                modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
-            )
-        },
-        colors =
-            ZcashTheme.colors.topAppBarColors orDark
-                ZcashTheme.colors.topAppBarColors.copyColors(
-                    containerColor = Color.Transparent
-                )
-    )
-}
