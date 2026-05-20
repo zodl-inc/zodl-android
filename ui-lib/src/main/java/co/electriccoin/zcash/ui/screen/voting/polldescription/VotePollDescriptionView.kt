@@ -148,15 +148,8 @@ private fun PollDescriptionPreview() =
     ZcashTheme {
         VotePollDescriptionView(
             state =
-                VotePollDescriptionState(
-                    title = stringRes("NU7 Sentiment Poll"),
-                    description =
-                        stringRes(
-                            "This poll gauges coinholder and community sentiment on proposed Zcash protocol " +
-                                "features and initiatives. It includes questions focused on protocol proposals."
-                        ),
+                VotePollDescriptionState.preview.copy(
                     discussionUrl = "https://forum.zcashcommunity.com",
-                    onBack = {}
                 )
         )
     }
@@ -165,14 +158,4 @@ private fun PollDescriptionPreview() =
 @PreviewScreens
 @Composable
 private fun PollDescriptionNoUrlPreview() =
-    ZcashTheme {
-        VotePollDescriptionView(
-            state =
-                VotePollDescriptionState(
-                    title = stringRes("NU7 Sentiment Poll"),
-                    description = stringRes("This poll gauges coinholder sentiment on proposed Zcash protocol features."),
-                    discussionUrl = null,
-                    onBack = {}
-                )
-        )
-    }
+    ZcashTheme { VotePollDescriptionView(VotePollDescriptionState.preview) }

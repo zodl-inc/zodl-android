@@ -482,23 +482,10 @@ private fun previewState(
     mode: VoteProposalListMode,
     withBadge: Boolean = false,
     withCta: Boolean = false,
-) = VoteProposalListState(
+) = VoteProposalListState.preview.copy(
     mode = mode,
-    roundTitle = stringRes("Round 3"),
-    snapshotHeight = 2_500_000L,
-    votedCount = 2,
-    totalCount = 3,
-    metaLine =
-        VoteProposalMetaLineState(
-            leading = stringRes("Voting open · ends in 3 days"),
-            trailing = stringRes("2 / 3 voted"),
-        ),
-    description = stringRes("This round covers protocol upgrades and fee structure changes proposed by the community."),
-    discussionUrl = null,
-    onViewMore = {},
     proposals = previewProposals(withBadge),
     ctaButton = if (withCta) ButtonState(text = stringRes("Submit votes")) else null,
-    onBack = {},
 )
 
 @PreviewScreens

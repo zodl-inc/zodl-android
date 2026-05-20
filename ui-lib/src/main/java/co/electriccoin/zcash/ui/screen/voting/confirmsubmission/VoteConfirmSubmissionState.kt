@@ -1,8 +1,10 @@
 package co.electriccoin.zcash.ui.screen.voting.confirmsubmission
 
+import androidx.compose.runtime.Immutable
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.util.stringRes
 
 sealed class VoteSubmissionStatus {
     data object Idle : VoteSubmissionStatus()
@@ -45,6 +47,7 @@ internal fun VoteSubmissionStatus.isFailure() =
         this is VoteSubmissionStatus.ProtocolAuthFailed ||
         this is VoteSubmissionStatus.SubmissionFailed
 
+@Immutable
 data class VoteConfirmSubmissionState(
     val status: VoteSubmissionStatus,
     val roundTitle: StringResource,
@@ -56,4 +59,20 @@ data class VoteConfirmSubmissionState(
     val ctaButton: ButtonState,
     val errorSheet: ZashiConfirmationState?,
     val onBack: () -> Unit,
-)
+) {
+    companion object {
+        val preview =
+            VoteConfirmSubmissionState(
+                status = VoteSubmissionStatus.Idle,
+                roundTitle = stringRes("ZF Grant Funding — Q3 2026"),
+                votingWeightZEC = stringRes("12.345 ZEC"),
+                hotkeyAddress = stringRes("u1abc...xyz"),
+                isKeystoneUser = false,
+                includesAuthorizationProgress = false,
+                memo = stringRes("Round 1 · 2 proposals"),
+                ctaButton = ButtonState.preview,
+                errorSheet = null,
+                onBack = {},
+            )
+    }
+}

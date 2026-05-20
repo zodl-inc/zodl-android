@@ -21,6 +21,7 @@ import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
@@ -102,3 +103,13 @@ internal fun VoteWalletSyncingContent(
         )
     }
 }
+
+@PreviewScreens
+@Composable
+private fun VoteWalletSyncingPreview() =
+    ZcashTheme { VoteWalletSyncingView(VoteWalletSyncingState.preview) }
+
+@PreviewScreens
+@Composable
+private fun VoteWalletSyncingSyncedPreview() =
+    ZcashTheme { VoteWalletSyncingView(VoteWalletSyncingState.preview.copy(isSynced = true, progress = 1f)) }

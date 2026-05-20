@@ -351,64 +351,27 @@ private fun CoinholderPollingPreviewWithRounds() =
     ZcashTheme {
         VoteCoinholderPollingView(
             state =
-                VoteCoinholderPollingState(
-                    activeRounds =
-                        listOf(
-                            VotePollCardState(
-                                roundId = "abc123",
-                                roundNumber = 3,
-                                title = stringRes("ZF Grant Funding — Q3 2026"),
-                                description =
-                                    stringRes(
-                                        "Shielded vote on the allocation of Zcash Foundation grant funds for Q3 2026."
-                                    ),
-                                status = VotePollCardStatus.ACTIVE,
-                                sessionStatus = SessionStatus.ACTIVE,
-                                isActionEnabled = true,
-                                dateLabel = stringRes("Closes May 15"),
-                                trustIndicator = VoteTrustIndicator.ZODL,
-                                votedLabel = null,
-                                proposalCount = 2,
-                                votedCount = 0,
-                                onAction = {},
-                            ),
-                        ),
+                VoteCoinholderPollingState.preview.copy(
                     pastRounds =
                         listOf(
-                            VotePollCardState(
+                            VotePollCardState.preview.copy(
                                 roundId = "def456",
                                 roundNumber = 2,
                                 title = stringRes("ZF Grant Funding — Q2 2026"),
-                                description = stringRes("Completed vote on Q2 2026 grant allocation."),
                                 status = VotePollCardStatus.CLOSED,
                                 sessionStatus = SessionStatus.COMPLETED,
-                                isActionEnabled = true,
-                                dateLabel = stringRes("Closed Apr 10"),
-                                trustIndicator = VoteTrustIndicator.ZODL,
                                 votedLabel = stringRes("2 of 2 voted"),
-                                proposalCount = 2,
                                 votedCount = 2,
-                                onAction = {},
                             ),
-                            VotePollCardState(
+                            VotePollCardState.preview.copy(
                                 roundId = "ghi789",
                                 roundNumber = 1,
                                 title = stringRes("ZF Grant Funding — Q1 2026"),
-                                description = stringRes(""),
                                 status = VotePollCardStatus.VOTED,
                                 sessionStatus = SessionStatus.COMPLETED,
-                                isActionEnabled = true,
-                                dateLabel = stringRes("Closed Jan 20"),
                                 trustIndicator = VoteTrustIndicator.UNVERIFIED,
-                                votedLabel = null,
-                                proposalCount = 1,
-                                votedCount = 0,
-                                onAction = {},
                             ),
                         ),
-                    onBack = {},
-                    onRefresh = {},
-                    onConfigSettings = {},
                 )
         )
     }
@@ -419,12 +382,9 @@ private fun CoinholderPollingPreviewEmpty() =
     ZcashTheme {
         VoteCoinholderPollingView(
             state =
-                VoteCoinholderPollingState(
+                VoteCoinholderPollingState.preview.copy(
                     activeRounds = emptyList(),
                     pastRounds = emptyList(),
-                    onBack = {},
-                    onRefresh = {},
-                    onConfigSettings = {},
                 )
         )
     }
