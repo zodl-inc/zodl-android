@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.spackle.model.Index
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun ComposableChipPreview() {
     ZcashTheme(forceDarkMode = false) {
@@ -28,7 +28,7 @@ private fun ComposableChipPreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun ComposableChipIndexedPreview() {
     ZcashTheme(forceDarkMode = false) {
@@ -38,7 +38,7 @@ private fun ComposableChipIndexedPreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun ComposableLongChipPreview() {
     ZcashTheme(forceDarkMode = false) {
@@ -51,7 +51,7 @@ private fun ComposableLongChipPreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun ComposableChipOnSurfacePreview() {
     ZcashTheme(forceDarkMode = false) {
@@ -61,7 +61,7 @@ private fun ComposableChipOnSurfacePreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun ComposableChipOnSurfaceDarkPreview() {
     ZcashTheme(forceDarkMode = true) {

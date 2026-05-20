@@ -15,7 +15,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun TopScreenLogoRegularComposablePreview() {
     ZcashTheme(forceDarkMode = false) {
@@ -28,7 +28,7 @@ private fun TopScreenLogoRegularComposablePreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun TopScreenLogoRegularDarkComposablePreview() {
     ZcashTheme(forceDarkMode = true) {
@@ -41,7 +41,7 @@ private fun TopScreenLogoRegularDarkComposablePreview() {
     }
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun TopScreenLogoLongComposablePreview() {
     ZcashTheme(forceDarkMode = false) {

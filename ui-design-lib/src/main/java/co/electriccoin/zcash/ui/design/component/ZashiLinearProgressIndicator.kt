@@ -31,7 +31,7 @@ fun ZashiLinearProgressIndicator(
     )
 }
 
-@Preview
+@Preview(showBackground = true)
 @Composable
 private fun ZashiLinearProgressIndicatorPreview() {
     ZcashTheme(forceDarkMode = false) {
