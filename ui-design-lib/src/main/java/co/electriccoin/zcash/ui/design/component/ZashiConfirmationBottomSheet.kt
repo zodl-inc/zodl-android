@@ -65,7 +65,16 @@ data class ZashiConfirmationState(
     override val onBack: () -> Unit,
     val style: ZashiConfirmationStyle = ZashiConfirmationStyle.DEFAULT,
 ) : ModalBottomSheetState {
-    companion object
+    companion object {
+        val preview =
+            ZashiConfirmationState(
+                icon = android.R.drawable.ic_dialog_alert,
+                title = stringRes("Preview title"),
+                message = stringRes("Preview message"),
+                primaryAction = ButtonState.preview,
+                onBack = {},
+            )
+    }
 }
 
 enum class ZashiConfirmationStyle {

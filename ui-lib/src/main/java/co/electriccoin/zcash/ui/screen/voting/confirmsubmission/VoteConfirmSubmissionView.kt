@@ -236,23 +236,7 @@ private fun String?.toMessageOrDefault(default: StringResource): StringResource 
     }
 
 private fun previewState(status: VoteSubmissionStatus) =
-    VoteConfirmSubmissionState(
-        status = status,
-        roundTitle = stringRes("NU7 Sentiment Poll"),
-        votingWeightZEC = stringRes("1.2500 ZEC"),
-        hotkeyAddress = stringRes("zs1xk9...f7q2m"),
-        isKeystoneUser = false,
-        includesAuthorizationProgress = true,
-        memo = stringRes("I am authorizing this hotkey managed by my wallet to vote on NU7 Sentiment Poll with 1.2500 ZEC."),
-        ctaButton =
-            ButtonState(
-                text = stringRes("Confirm"),
-                style = ButtonStyle.PRIMARY,
-                onClick = {}
-            ),
-        errorSheet = null,
-        onBack = {},
-    )
+    VoteConfirmSubmissionState.preview.copy(status = status)
 
 @PreviewScreens
 @Composable

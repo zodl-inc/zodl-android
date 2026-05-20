@@ -317,8 +317,7 @@ private fun previewOptions(selectedIndex: Int? = null) =
     )
 
 private fun previewState(selectedIndex: Int? = null) =
-    VoteProposalDetailState(
-        positionLabel = stringRes("1 of 6"),
+    VoteProposalDetailState.preview.copy(
         title = stringRes("NSM issuance smoothing"),
         description =
             stringRes(
@@ -327,20 +326,6 @@ private fun previewState(selectedIndex: Int? = null) =
             ),
         forumUrl = "https://forum.zcashcommunity.com",
         options = previewOptions(selectedIndex),
-        isLocked = false,
-        isEditingFromReview = false,
-        isFromList = false,
-        showUnansweredSheet = false,
-        unansweredCount = 0,
-        showPollEndedSheet = false,
-        unverifiedPollWarningSheet = null,
-        onBack = {},
-        onNext = {},
-        onViewMore = {},
-        onConfirmUnanswered = {},
-        onDismissUnanswered = {},
-        onPollEndedClose = {},
-        onPollEndedViewResults = {},
     )
 
 @PreviewScreens

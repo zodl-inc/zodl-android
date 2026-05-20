@@ -169,48 +169,4 @@ private fun StepRow(step: VoteStep) {
 @PreviewScreens
 @Composable
 private fun HowToVotePreview() =
-    ZcashTheme {
-        VoteHowToVoteView(
-            state =
-                VoteHowToVoteState(
-                    title = stringRes("How to vote with Zodl"),
-                    subtitle =
-                        stringRes(
-                            "Your ZEC gives you a voice. Shape the future of the Zcash network by voting on active proposals."
-                        ),
-                    steps =
-                        listOf(
-                            VoteStep(
-                                number = "1",
-                                title = stringRes("Voting on Proposals"),
-                                description =
-                                    stringRes(
-                                        "Vote Support, Oppose, or Abstain on each question. " +
-                                            "You can skip questions and change your vote before submitting."
-                                    )
-                            ),
-                            VoteStep(
-                                number = "2",
-                                title = stringRes("Authorize and Submit"),
-                                description =
-                                    stringRes(
-                                        "When you're ready, you'll confirm a small authorization transaction " +
-                                            "and submit your vote in one step. After submission, your vote cannot be changed."
-                                    )
-                            ),
-                        ),
-                    infoText =
-                        stringRes(
-                            "Your balance at the snapshot time determines your voting weight. " +
-                                "You don't need to move your funds anywhere."
-                        ),
-                    walletHeaderIcons = VoteWalletHeaderIconsState(isKeystone = false),
-                    continueButton =
-                        ButtonState(
-                            text = stringRes("Continue"),
-                            style = ButtonStyle.PRIMARY
-                        ) {},
-                    onBack = {}
-                )
-        )
-    }
+    ZcashTheme { VoteHowToVoteView(VoteHowToVoteState.preview) }

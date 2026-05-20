@@ -342,18 +342,11 @@ private fun previewProposalResults() =
         ),
     )
 
-private fun previewState(
-    isLoading: Boolean = false,
-) = VoteResultsState(
-    roundTitle = stringRes("Round 3 Results"),
-    roundDescription = stringRes("Final results for protocol upgrade proposals voted on by ZEC coinholders."),
-    votedMetaLine = stringRes("You voted in this round"),
-    proposals = previewProposalResults(),
-    isLoadingResults = isLoading,
-    doneButton = ButtonState(text = stringRes("Done")),
-    onBack = {},
-    onViewMore = {},
-)
+private fun previewState(isLoading: Boolean = false) =
+    VoteResultsState.preview.copy(
+        isLoadingResults = isLoading,
+        proposals = previewProposalResults(),
+    )
 
 @PreviewScreens
 @Composable

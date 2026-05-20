@@ -603,59 +603,29 @@ private fun VoteChainConfigPreview() =
     ZcashTheme {
         VoteChainConfigView(
             state =
-                VoteChainConfigState(
+                VoteChainConfigState.preview.copy(
                     chains =
                         listOf(
-                            VoteChainConfigItemState(
-                                id = "default",
-                                radioButtonState =
-                                    RadioButtonState(
-                                        text = stringRes("Coinholder Poll"),
-                                        subtitle = stringRes("https://voting.valargroup.org/static-voting-config.json"),
-                                        isChecked = true,
-                                        onClick = {}
-                                    ),
-                                fullUrl =
-                                    stringRes(
-                                        "https://voting.valargroup.org/static-voting-config.json?checksum=sha256:abc"
-                                    ),
-                                isDefault = true,
-                                editButton = null,
-                                deleteButton = null
-                            ),
-                            VoteChainConfigItemState(
+                            VoteChainConfigItemState.preview,
+                            VoteChainConfigItemState.preview.copy(
                                 id = "custom",
                                 radioButtonState =
                                     RadioButtonState(
                                         text = stringRes("Local test"),
                                         subtitle = stringRes("https://example.com/static-voting-config.json"),
                                         isChecked = false,
-                                        onClick = {}
+                                        onClick = {},
                                     ),
                                 fullUrl = stringRes("https://example.com/static-voting-config.json"),
                                 isDefault = false,
-                                editButton =
-                                    ButtonState(
-                                        text = stringRes("Edit"),
-                                        style = ButtonStyle.TERTIARY
-                                    ),
+                                editButton = ButtonState(text = stringRes("Edit"), style = ButtonStyle.TERTIARY),
                                 deleteButton =
                                     ButtonState(
                                         text = stringRes("Delete"),
                                         style = ButtonStyle.DESTRUCTIVE2
-                                    )
-                            )
+                                    ),
+                            ),
                         ),
-                    editor = null,
-                    errorSheet = null,
-                    isValidating = false,
-                    saveChangesButton =
-                        ButtonState(
-                            text = stringRes("Save changes"),
-                            style = ButtonStyle.PRIMARY
-                        ),
-                    onBack = {},
-                    onAddCustom = {}
                 )
         )
     }
