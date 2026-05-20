@@ -33,29 +33,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Authenticate to Google Cloud for GCS/KMS
-        id: auth_gcs
-        uses: google-github-actions/auth@v3
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
         with:
-          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+          role-to-assume: ${{ secrets.AWS_RELEASE_ROLE_ARN }}
+          aws-region: us-east-1
 
-      - name: Download file from GCS
+      - name: Import GPG signing key from AWS Secrets Manager
         run: |
-          gcloud auth login --cred-file="$GOOGLE_APPLICATION_CREDENTIALS"
-          gsutil -q cp gs://${{ secrets.SOLANA_GCS_BUCKET }}/encrypted_gpg.kms encrypted_gpg.kms
-
-      - name: Decrypt file using KMS
-        run: |
-          gcloud kms decrypt \
-            --key gpg \
-            --keyring gpg \
-            --location global \
-            --plaintext-file private.pgp \
-            --ciphertext-file encrypted_gpg.kms
-
-      - name: Import GPG
-        run: |
-          gpg --import private.pgp
+          aws secretsmanager get-secret-value \
+            --secret-id /release/gpg-signing-key \
+            --query SecretString --output text > private.pgp
+          gpg --batch --import private.pgp
+          shred -u private.pgp
 
       - name: Set up Java
         uses: ./.github/actions/setup-java
@@ -131,30 +121,14 @@ jobs:
         run: |
           mv app/build/outputs/apk/zcashmainnetFoss/release/app-zcashmainnet-foss-release.apk artifacts/app-zcashmainnet-foss-release-full-externallibs.apk
 
-      - name: Build FOSS (F-Droid) APK
-        env:
-          ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/release.jks
-          ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
-          ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
-          ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: ${{ secrets.UPLOAD_KEY_ALIAS_PASSWORD }}
-          # ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          # ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
-        run: |
-          ./gradlew clean :app:assembleZcashmainnetFossRelease
-
-      - name: Prepare FOSS (F-Droid) artifacts
-        run: |
-          mv app/build/outputs/apk/zcashmainnetFoss/release/app-zcashmainnet-foss-release.apk artifacts/
-
       - name: Prepare Signature artifacts
         run: |
           cd artifacts/
           TAG=$(git describe --tags --abbrev=0)
           VERSION_CODE=$(echo "$TAG" | cut -d'-' -f2)
           echo $VERSION_CODE > version_code.txt
-          gpg -u sysadmin@z.cash --armor --digest-algo SHA256 --detach-sign app-zcashmainnet-foss-release.apk
-          gpg -u sysadmin@z.cash --armor --digest-algo SHA256 --detach-sign app-zcashmainnet-foss-release-full-externallibs.apk
-          gpg -u sysadmin@z.cash --armor --digest-algo SHA256 --detach-sign app-zcashmainnet-google-play-store-release-universal.apk
+          gpg -u sysadmin@zodl.com --armor --digest-algo SHA256 --detach-sign app-zcashmainnet-foss-release-full-externallibs.apk
+          gpg -u sysadmin@zodl.com --armor --digest-algo SHA256 --detach-sign app-zcashmainnet-google-play-store-release-universal.apk
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v3
@@ -326,3 +300,135 @@ jobs:
 
           echo "Config updated in GCS"
           echo "Backup: gs://${{ secrets.SOLANA_GCS_BUCKET }}/backups/encrypted_config.yaml.kms.${TIMESTAMP}"
+
+  publish_to_fdroid:
+    needs: [release]
+    environment: deployment
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC -> AWS
+    steps:
+      - name: Get release tag
+        id: release_info
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          VERSION_NAME=$(echo "$TAG" | sed 's/^v//' | cut -d'-' -f1)
+          VERSION_CODE=$(echo "$TAG" | cut -d'-' -f2)
+
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "version_name=${VERSION_NAME}" >> $GITHUB_OUTPUT
+          echo "version_code=${VERSION_CODE}" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
+        with:
+          role-to-assume: ${{ secrets.AWS_RELEASE_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Load F-Droid index keystore + SSH deploy key from Secrets Manager
+        id: secrets
+        run: |
+          KEYSTORE_JSON=$(aws secretsmanager get-secret-value \
+            --secret-id /infra/zodl-android/fdroid_index_keystore \
+            --query SecretString --output text)
+          echo "$KEYSTORE_JSON" | jq -r '.keystore_b64'         | base64 -d > /tmp/fdroid-index.jks
+          echo "keystore_password=$(echo "$KEYSTORE_JSON" | jq -r '.keystore_password')" >> $GITHUB_OUTPUT
+          echo "key_alias=$(echo "$KEYSTORE_JSON" | jq -r '.key_alias')"                 >> $GITHUB_OUTPUT
+          echo "key_password=$(echo "$KEYSTORE_JSON" | jq -r '.key_password')"           >> $GITHUB_OUTPUT
+          echo "::add-mask::$(echo "$KEYSTORE_JSON" | jq -r '.keystore_password')"
+          echo "::add-mask::$(echo "$KEYSTORE_JSON" | jq -r '.key_password')"
+
+          mkdir -p ~/.ssh
+          aws secretsmanager get-secret-value \
+            --secret-id /infra/zodl-android/fdroid_deploy_ssh_key \
+            --query SecretString --output text > ~/.ssh/id_fdroid
+          chmod 600 ~/.ssh/id_fdroid
+          ssh-keyscan -t ed25519,rsa github.com >> ~/.ssh/known_hosts 2>/dev/null
+          cat > ~/.ssh/config <<'EOF'
+          Host github.com-fdroid
+            HostName github.com
+            User git
+            IdentityFile ~/.ssh/id_fdroid
+            IdentitiesOnly yes
+          EOF
+          chmod 600 ~/.ssh/config
+
+      - name: Install fdroidserver + deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            fdroidserver openjdk-21-jdk-headless apksigner git python3
+          fdroid --version
+
+      - name: Clone zodl-inc/fdroid (SSH)
+        run: |
+          git config --global user.name  "zodl-inc-bot"
+          git config --global user.email "sysadmin@zodl.com"
+          git clone --depth 1 \
+            git@github.com-fdroid:zodl-inc/fdroid.git fdroid-repo
+          mkdir -p fdroid-repo/fdroid/repo fdroid-repo/fdroid/archive
+
+      - name: Download FOSS APK from GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release_info.outputs.tag }}
+        run: |
+          gh release download "$TAG" \
+            --repo zodl-inc/zodl-android \
+            -p "app-zcashmainnet-foss-release-full-externallibs.apk" \
+            -D fdroid-repo/fdroid/repo/
+
+      - name: Initialize fdroid config
+        working-directory: fdroid-repo/fdroid
+        env:
+          KEYSTORE_PASSWORD: ${{ steps.secrets.outputs.keystore_password }}
+          KEY_ALIAS: ${{ steps.secrets.outputs.key_alias }}
+          KEY_PASSWORD: ${{ steps.secrets.outputs.key_password }}
+        run: |
+          # fdroid init expects config.yml at repo root; write one pointing at
+          # the shared keystore that lives in /tmp.
+          cat > config.yml <<EOF
+          repo_url: https://foss.zodl.com/fdroid/repo
+          repo_name: Zodl F-Droid Repo
+          repo_icon: icon.png
+          repo_description: >-
+            Official self-hosted F-Droid repository for the Zodl Zcash Wallet.
+            APKs are built by zodl-inc/zodl-android CI and signed with the
+            production upload key (same as Google Play).
+          archive_url: https://foss.zodl.com/fdroid/archive
+          archive_name: Zodl F-Droid Archive
+          archive_description: Archive of older Zodl wallet builds.
+          archive_older: 3
+          keystore: /tmp/fdroid-index.jks
+          repo_keyalias: ${KEY_ALIAS}
+          keystorepass: ${KEYSTORE_PASSWORD}
+          keypass: ${KEY_PASSWORD}
+          EOF
+
+      - name: Run fdroid update
+        working-directory: fdroid-repo/fdroid
+        run: |
+          fdroid update --create-metadata --pretty --verbose
+          # fdroid writes config.yml with secrets — delete before committing.
+          rm -f config.yml
+
+      - name: Commit + push
+        working-directory: fdroid-repo
+        env:
+          TAG: ${{ steps.release_info.outputs.tag }}
+        run: |
+          git add fdroid/repo fdroid/archive fdroid/metadata || true
+          if git diff --cached --quiet; then
+            echo "No changes to publish."
+            exit 0
+          fi
+          git commit -m "Publish ${TAG}"
+          git push origin HEAD:main
+
+      - name: Cleanup
+        if: always()
+        run: |
+          shred -u /tmp/fdroid-index.jks ~/.ssh/id_fdroid 2>/dev/null || true

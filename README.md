@@ -7,12 +7,27 @@ Zcash mobile wallet leveraging the [Zcash Android SDK](https://github.com/zcash/
 
 [<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
      alt="Get it on F-Droid"
-     height="80">](https://f-droid.org/packages/co.electriccoin.zcash.foss/)
+     height="80">](https://foss.zodl.com)
 [<img src="https://play.google.com/intl/en_us/badges/images/generic/en-play-badge.png"
      alt="Get it on Google Play"
      height="80">](https://play.google.com/store/apps/details?id=co.electriccoin.zcash)
 
-Or download the latest APK from the [Releases Section](https://github.com/zodl-inc/zashi-android/releases/latest).
+Zodl runs its own F-Droid repository at <https://foss.zodl.com>. To add it to
+your F-Droid client, tap this link on Android:
+
+```
+fdroidrepos://foss.zodl.com/fdroid/repo?fingerprint=7e751ab710159dff44f55631f910ba4033f0ebd2f867691af633cece4ddb62e4
+```
+
+…or add the URL manually in **F-Droid → Settings → Repositories → +**:
+`https://foss.zodl.com/fdroid/repo` (fingerprint
+`7e751ab710159dff44f55631f910ba4033f0ebd2f867691af633cece4ddb62e4`).
+
+Unlike the `f-droid.org` build, our repo ships the same build-time
+integrations as the Google Play release (Flexa, CMC, Crashlytics) and is
+signed with the same upload key — no reinstall needed when switching.
+
+Or download the latest APK from the [Releases Section](https://github.com/zodl-inc/zodl-android/releases/latest).
 
 # Zodl Discord
 
