@@ -18,6 +18,7 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.design.R as DesignR
 
 @Composable
 fun VoteViewMoreChip(
@@ -41,7 +42,7 @@ fun VoteViewMoreChip(
         )
         Spacer(4.dp)
         Icon(
-            painter = painterResource(co.electriccoin.zcash.ui.design.R.drawable.ic_chevron_down_small),
+            painter = painterResource(DesignR.drawable.ic_chevron_down_small),
             contentDescription = null,
             tint = ZashiColors.Text.textPrimary,
             modifier =
@@ -52,4 +53,4 @@ fun VoteViewMoreChip(
     }
 }
 
-const val ROTATE = 180f
+private const val ROTATE = 180f

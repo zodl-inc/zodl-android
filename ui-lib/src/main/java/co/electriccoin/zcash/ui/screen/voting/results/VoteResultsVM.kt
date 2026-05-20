@@ -9,6 +9,7 @@ import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.TallyResults
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
+import co.electriccoin.zcash.ui.common.model.voting.voteBadgeInfo
 import co.electriccoin.zcash.ui.common.model.withLce
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
@@ -16,6 +17,7 @@ import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
+import co.electriccoin.zcash.ui.common.repository.effectiveChoices
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetAllVotingRoundsUseCase
@@ -157,20 +159,13 @@ class VoteResultsVM(
                 )
             }
 
-        val votedOptionId = recovery?.draftChoices?.get(proposal.id)
-        val votedLabel =
-            proposal.options
-                .firstOrNull { it.id == votedOptionId }
-                ?.label
-                ?.let { stringRes(R.string.vote_results_voted_option, it) }
-
         return VoteProposalResultState(
             zipNumber = proposal.zipNumber?.let(::stringRes),
             title = stringRes(proposal.title),
             description = stringRes(proposal.description),
             options = options,
             totalZec = stringRes(R.string.vote_results_total_zec, totalWeight.toZec()),
-            votedLabel = votedLabel,
+            votedLabel = proposal.votedResultLabel(recovery),
         )
     }
 
@@ -206,3 +201,9 @@ class VoteResultsVM(
 }
 
 private fun Long.toZec(): Double = this / 100_000_000.0
+
+internal fun Proposal.votedResultLabel(recovery: VotingRecoverySnapshot?): StringResource? {
+    val votedOptionId = recovery?.effectiveChoices(listOf(this))?.get(id) ?: return null
+    val badgeInfo = voteBadgeInfo(votedOptionId)
+    return stringRes(R.string.vote_results_voted_option, badgeInfo.label)
+}

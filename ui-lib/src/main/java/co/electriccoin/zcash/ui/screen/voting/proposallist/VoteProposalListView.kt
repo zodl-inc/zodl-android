@@ -379,6 +379,22 @@ private fun YourVoteContainer(badge: VoteVoteBadgeState) {
             .fillMaxWidth()
             .background(colors.bg, RoundedCornerShape(10.dp))
             .padding(horizontal = 12.dp, vertical = 8.dp)
+    val yourVoteLabel: @Composable () -> Unit = {
+        Text(
+            text = stringResource(R.string.vote_proposal_list_your_vote),
+            style = ZashiTypography.textXxs,
+            fontWeight = FontWeight.Medium,
+            color = colors.labelColor,
+        )
+    }
+    val voteValue: @Composable () -> Unit = {
+        Text(
+            text = label,
+            style = ZashiTypography.textXs,
+            fontWeight = FontWeight.SemiBold,
+            color = colors.textColor,
+        )
+    }
 
     if (isShort) {
         Row(
@@ -386,36 +402,16 @@ private fun YourVoteContainer(badge: VoteVoteBadgeState) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = stringResource(R.string.vote_proposal_list_your_vote),
-                style = ZashiTypography.textXxs,
-                fontWeight = FontWeight.Medium,
-                color = colors.labelColor,
-            )
-            Text(
-                text = label,
-                style = ZashiTypography.textXs,
-                fontWeight = FontWeight.SemiBold,
-                color = colors.textColor,
-            )
+            yourVoteLabel()
+            voteValue()
         }
     } else {
         Column(
             modifier = containerModifier,
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            Text(
-                text = stringResource(R.string.vote_proposal_list_your_vote),
-                style = ZashiTypography.textXxs,
-                fontWeight = FontWeight.Medium,
-                color = colors.labelColor,
-            )
-            Text(
-                text = label,
-                style = ZashiTypography.textXs,
-                fontWeight = FontWeight.SemiBold,
-                color = colors.textColor,
-            )
+            yourVoteLabel()
+            voteValue()
         }
     }
 }

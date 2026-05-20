@@ -4,6 +4,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Dp
 
+/**
+ * Expands a bounded full-width child through its parent's horizontal scaffold padding.
+ * Keep [horizontal] in sync with the surrounding scaffold horizontal padding.
+ */
 fun Modifier.escapeHorizontalPadding(horizontal: Dp): Modifier =
     layout { measurable, constraints ->
         val extraPx = (horizontal * 2).roundToPx()

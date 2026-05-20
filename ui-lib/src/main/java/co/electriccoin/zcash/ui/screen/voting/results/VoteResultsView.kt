@@ -251,12 +251,16 @@ private fun ProposalResultCard(state: VoteProposalResultState) {
                         text = votedLabel.getValue(),
                         style = ZashiTypography.textXs,
                         color = ZashiColors.Utility.Gray.utilityGray500,
-                        modifier = Modifier.padding(end = 8.dp),
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .padding(end = 8.dp),
                         overflow = TextOverflow.Ellipsis,
                         maxLines = 1,
                     )
+                } ?: run {
+                    Spacer(Modifier.weight(1f))
                 }
-                Spacer(Modifier.weight(1f))
                 Text(
                     text = state.totalZec.getValue(),
                     style = ZashiTypography.textXs,
