@@ -225,7 +225,7 @@ jobs:
         timeout-minutes: 10
         run: |
           # Note that we explicitly check just the Kotlin modules, to avoid compiling the Android modules here
-          ./gradlew :configuration-api-lib:check :crash-lib:check :preference-api-lib:check :spackle-lib:check
+          ./gradlew :configuration-api-lib:check :crash-lib:check :preference-api-lib:check :spackle-lib:check :ui-design-lib:check
       - name: Collect Artifacts
         if: ${{ always() }}
         timeout-minutes: 1

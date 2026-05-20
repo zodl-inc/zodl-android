@@ -48,6 +48,9 @@ dependencies {
     implementation(libs.zxing)
     api(libs.compose.shimmer)
 
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.zxing)
+
     androidTestImplementation(libs.bundles.androidx.test)
     androidTestImplementation(libs.androidx.compose.test.junit)
     androidTestImplementation(libs.androidx.compose.test.manifest)
