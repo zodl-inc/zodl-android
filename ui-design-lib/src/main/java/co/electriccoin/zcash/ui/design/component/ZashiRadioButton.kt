@@ -61,6 +61,7 @@ fun ZashiRadioButton(
             modifier
                 .clip(RoundedCornerShape(12.dp))
                 .clickable(
+                    enabled = state.isEnabled,
                     indication = if (isRippleEnabled) ripple() else null,
                     interactionSource = remember { MutableInteractionSource() },
                     onClick =
@@ -95,7 +96,12 @@ fun ZashiRadioButton(
                 Text(
                     text = state.text.getValue(),
                     style = ZashiTypography.textSm,
-                    color = ZashiColors.Text.textPrimary,
+                    color =
+                        if (state.isEnabled) {
+                            ZashiColors.Text.textPrimary
+                        } else {
+                            ZashiColors.Text.textDisabled
+                        },
                     modifier =
                         Modifier.padding(
                             top = 14.dp,
@@ -109,7 +115,12 @@ fun ZashiRadioButton(
                     Text(
                         text = state.subtitle.getValue(),
                         style = ZashiTypography.textSm,
-                        color = ZashiColors.Text.textTertiary,
+                        color =
+                            if (state.isEnabled) {
+                                ZashiColors.Text.textTertiary
+                            } else {
+                                ZashiColors.Text.textDisabled
+                            },
                         modifier =
                             Modifier.padding(
                                 bottom = 6.dp,
@@ -166,8 +177,11 @@ private fun RadioButtonIndicator(
 data class RadioButtonState(
     val text: StringResource,
     val isChecked: Boolean,
+    val isEnabled: Boolean = true,
     val hapticFeedbackType: HapticFeedbackType? =
-        if (isChecked) {
+        if (!isEnabled) {
+            null
+        } else if (isChecked) {
             HapticFeedbackType.ToggleOff
         } else {
             HapticFeedbackType.ToggleOn

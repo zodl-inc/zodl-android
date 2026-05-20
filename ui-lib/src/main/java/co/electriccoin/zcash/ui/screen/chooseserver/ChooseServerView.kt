@@ -11,11 +11,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -53,11 +56,11 @@ import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
 import co.electriccoin.zcash.ui.design.component.LottieProgress
-import co.electriccoin.zcash.ui.design.component.OldZashiBottomBar
 import co.electriccoin.zcash.ui.design.component.RadioButtonCheckedContent
 import co.electriccoin.zcash.ui.design.component.RadioButtonState
 import co.electriccoin.zcash.ui.design.component.TextFieldState
 import co.electriccoin.zcash.ui.design.component.ZashiBadge
+import co.electriccoin.zcash.ui.design.component.ZashiBadgeDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiHorizontalDivider
 import co.electriccoin.zcash.ui.design.component.ZashiRadioButton
@@ -103,23 +106,91 @@ fun ChooseServerView(state: ChooseServerState?) {
                     bottom = ZcashTheme.dimens.spacingDefault,
                 )
         ) {
-            if (state.fastest.servers.isEmpty() && state.fastest.isLoading) {
-                item(
-                    key = "fastest_loading",
-                    contentType = "fastest_loading"
-                ) {
-                    ServerLoading()
-                }
-            } else if (state.fastest.servers.isNotEmpty()) {
-                serverListItems(state.fastest)
+            item(
+                key = "connection_mode",
+                contentType = "connection_mode"
+            ) {
+                ConnectionModeSection(state.connectionMode)
             }
 
-            serverListItems(state.other)
+            if (state.connectionMode.isManualSelected) {
+                if (state.fastest.servers.isEmpty() && state.fastest.isLoading) {
+                    item(
+                        key = "fastest_loading",
+                        contentType = "fastest_loading"
+                    ) {
+                        ServerLoading()
+                    }
+                } else if (state.fastest.servers.isNotEmpty()) {
+                    serverListItems(state.fastest)
+                }
+
+                serverListItems(state.other)
+            }
         }
 
         if (state.dialogState != null) {
             ErrorDialog(dialogState = state.dialogState)
         }
+    }
+}
+
+@Composable
+private fun ConnectionModeSection(state: ServerConnectionModeState) {
+    Column {
+        Column(
+            modifier = Modifier.padding(horizontal = 24.dp)
+        ) {
+            ServerHeader(text = stringRes(R.string.choose_server_connection_mode))
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        ZashiRadioButton(
+            state = state.automatic,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp)
+                    .then(
+                        if (state.automatic.isChecked) {
+                            Modifier.background(ZashiColors.Surfaces.bgSecondary, RoundedCornerShape(12.dp))
+                        } else {
+                            Modifier
+                        }
+                    ),
+            checkedContent = {
+                if (state.automaticBadge != null) {
+                    LottieProgress(size = 20.dp)
+                } else {
+                    RadioButtonCheckedContent(state.automatic)
+                }
+            },
+            trailingContent = {
+                if (state.automaticBadge != null) {
+                    ZashiBadge(
+                        text = state.automaticBadge,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                        colors = ZashiBadgeDefaults.warningColors()
+                    )
+                }
+            }
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        ZashiRadioButton(
+            state = state.manual,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp)
+                    .then(
+                        if (state.manual.isChecked) {
+                            Modifier.background(ZashiColors.Surfaces.bgSecondary, RoundedCornerShape(12.dp))
+                        } else {
+                            Modifier
+                        }
+                    )
+        )
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
@@ -190,14 +261,31 @@ private fun ErrorDialog(dialogState: ServerDialogState) {
 
 @Composable
 fun ChooseServerBottomBar(saveButtonState: ButtonState) {
-    OldZashiBottomBar {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .background(ZashiColors.Surfaces.bgPrimary)
+    ) {
+        ZashiHorizontalDivider()
+        Spacer(modifier = Modifier.height(20.dp))
         ZashiButton(
             state = saveButtonState,
             modifier =
                 Modifier
                     .padding(horizontal = 24.dp)
                     .fillMaxWidth()
+                    .height(48.dp),
+            content = { scope ->
+                if (saveButtonState.isLoading) {
+                    scope.Loading()
+                    Spacer(modifier = Modifier.width(6.dp))
+                }
+                scope.Text()
+            }
         )
+        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
     }
 }
 
@@ -292,7 +380,10 @@ private fun LazyListScope.serverListItems(state: ServerListState) {
                     },
                     trailingContent = {
                         if (item.badge != null) {
-                            ZashiBadge(text = item.badge)
+                            ZashiBadge(
+                                text = item.badge,
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp)
+                            )
                         }
                     }
                 )
@@ -319,15 +410,10 @@ private fun FastestServersHeader(state: ServerListState.Fastest) {
         ) {
             ServerHeader(text = state.title)
             Spacer(modifier = Modifier.weight(1f))
-            TextButton(onClick = state.retryButton.onClick) {
-                Text(
-                    text = state.retryButton.text.getValue(),
-                    style = ZashiTypography.textSm,
-                    fontWeight = FontWeight.SemiBold,
-                    color = ZashiColors.Text.textPrimary
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-
+            TextButton(
+                enabled = state.retryButton.isEnabled,
+                onClick = state.retryButton.onClick
+            ) {
                 if (state.isLoading) {
                     LottieProgress()
                 } else {
@@ -337,6 +423,13 @@ private fun FastestServersHeader(state: ServerListState.Fastest) {
                         colorFilter = ColorFilter.tint(ZashiColors.Text.textPrimary)
                     )
                 }
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = state.retryButton.text.getValue(),
+                    style = ZashiTypography.textSm,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ZashiColors.Text.textPrimary
+                )
             }
         }
 
@@ -397,6 +490,7 @@ private fun CustomServerRadioButton(
                 if (state.badge != null) {
                     ZashiBadge(
                         text = state.badge,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
                     )
                     Spacer(
                         modifier = Modifier.width(8.dp),
@@ -493,6 +587,21 @@ private fun ChooseServerPreview(
     ChooseServerView(
         state =
             ChooseServerState(
+                connectionMode =
+                    ServerConnectionModeState(
+                        automatic =
+                            RadioButtonState(
+                                text = stringRes("Automatic"),
+                                isChecked = true,
+                                onClick = {}
+                            ),
+                        manual =
+                            RadioButtonState(
+                                text = stringRes("Manual"),
+                                isChecked = false,
+                                onClick = {}
+                            )
+                    ),
                 fastest = fastestServers,
                 other =
                     ServerListState.Other(

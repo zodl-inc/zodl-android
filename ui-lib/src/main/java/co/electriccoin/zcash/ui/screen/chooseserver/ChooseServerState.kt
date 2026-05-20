@@ -8,12 +8,21 @@ import co.electriccoin.zcash.ui.design.util.Itemizable
 import co.electriccoin.zcash.ui.design.util.StringResource
 
 data class ChooseServerState(
+    val connectionMode: ServerConnectionModeState,
     val fastest: ServerListState.Fastest,
     val other: ServerListState.Other,
     val saveButton: ButtonState,
     val dialogState: ServerDialogState?,
     val onBack: () -> Unit
 )
+
+data class ServerConnectionModeState(
+    val automatic: RadioButtonState,
+    val manual: RadioButtonState,
+    val automaticBadge: StringResource? = null
+) {
+    val isManualSelected = manual.isChecked
+}
 
 sealed interface ServerListState {
     val title: StringResource

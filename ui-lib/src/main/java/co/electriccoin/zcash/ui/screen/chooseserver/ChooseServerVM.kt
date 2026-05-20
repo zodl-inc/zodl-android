@@ -8,11 +8,14 @@ import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.ConnectionMode
+import co.electriccoin.zcash.ui.common.model.ServerSelection
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedEndpointUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveFastestServersUseCase
 import co.electriccoin.zcash.ui.common.usecase.PersistEndpointException
-import co.electriccoin.zcash.ui.common.usecase.PersistEndpointUseCase
+import co.electriccoin.zcash.ui.common.usecase.PersistServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshFastestServersUseCase
 import co.electriccoin.zcash.ui.common.usecase.ValidateEndpointUseCase
 import co.electriccoin.zcash.ui.design.component.AlertDialogState
@@ -25,6 +28,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -33,16 +37,19 @@ import kotlinx.coroutines.launch
 class ChooseServerVM(
     application: Application,
     observeFastestServers: ObserveFastestServersUseCase,
-    getSelectedEndpoint: GetSelectedEndpointUseCase,
+    private val getSelectedEndpoint: GetSelectedEndpointUseCase,
+    private val getServerSelection: GetServerSelectionUseCase,
     private val lightWalletEndpointProvider: LightWalletEndpointProvider,
     private val refreshFastestServersUseCase: RefreshFastestServersUseCase,
-    private val persistEndpoint: PersistEndpointUseCase,
+    private val persistServerSelection: PersistServerSelectionUseCase,
     private val validateEndpoint: ValidateEndpointUseCase,
     private val navigationRouter: NavigationRouter,
 ) : AndroidViewModel(application) {
     private val userCustomEndpointText = MutableStateFlow<String?>(null)
 
     private val userEndpointSelection = MutableStateFlow<Selection?>(null)
+
+    private val userModeSelection = MutableStateFlow<ConnectionMode?>(null)
 
     private val isSaveInProgress = MutableStateFlow(false)
 
@@ -52,23 +59,124 @@ class ChooseServerVM(
 
     private val availableServers by lazy(LazyThreadSafetyMode.NONE) { lightWalletEndpointProvider.getEndpoints() }
 
+    private val selectedMode =
+        combine(
+            getServerSelection.observe(),
+            userModeSelection
+        ) { persistedServerSelection, userModeSelection ->
+            userModeSelection ?: persistedServerSelection.mode
+        }
+
+    private val endpointUiSelection =
+        combine(
+            userCustomEndpointText,
+            userEndpointSelection,
+            isCustomEndpointExpanded,
+            isSaveInProgress
+        ) { customEndpointText, endpointSelection, isCustomEndpointExpanded, isSaveInProgress ->
+            EndpointUiSelection(
+                customEndpointText = customEndpointText,
+                endpointSelection = endpointSelection,
+                isCustomEndpointExpanded = isCustomEndpointExpanded,
+                isSaveInProgress = isSaveInProgress
+            )
+        }
+
+    private val saveButtonInput =
+        combine(
+            userEndpointSelection,
+            userModeSelection,
+            isSaveInProgress,
+            userCustomEndpointText
+        ) { endpointSelection, modeSelection, isSaveInProgress, customEndpointText ->
+            SaveButtonInput(
+                endpointSelection = endpointSelection,
+                modeSelection = modeSelection,
+                isSaveInProgress = isSaveInProgress,
+                customEndpointText = customEndpointText
+            )
+        }
+
+    private val connectionMode =
+        combine(
+            selectedMode,
+            getSelectedEndpoint.observe(),
+            observeFastestServers(),
+            isSaveInProgress
+        ) { selectedMode, selectedEndpoint, fastestServers, isSaveInProgress ->
+            val isAutomatic = selectedMode == ConnectionMode.AUTOMATIC
+            ServerConnectionModeState(
+                automatic =
+                    RadioButtonState(
+                        text = stringRes(R.string.choose_server_automatic),
+                        subtitle =
+                            if (isAutomatic && selectedEndpoint != null) {
+                                stringRes(
+                                    R.string.choose_server_full_server_name,
+                                    selectedEndpoint.host,
+                                    selectedEndpoint.port
+                                )
+                            } else {
+                                null
+                            },
+                        isChecked = isAutomatic,
+                        isEnabled = !isSaveInProgress,
+                        onClick = ::onAutomaticModeClicked,
+                        hapticFeedbackType =
+                            if (isAutomatic) {
+                                null
+                            } else {
+                                HapticFeedbackType.SegmentTick
+                            }
+                    ),
+                manual =
+                    RadioButtonState(
+                        text = stringRes(R.string.choose_server_manual),
+                        isChecked = selectedMode == ConnectionMode.MANUAL,
+                        isEnabled = !isSaveInProgress,
+                        onClick = ::onManualModeClicked,
+                        hapticFeedbackType =
+                            if (selectedMode == ConnectionMode.MANUAL) {
+                                null
+                            } else {
+                                HapticFeedbackType.SegmentTick
+                            }
+                    ),
+                automaticBadge =
+                    if (isAutomatic && fastestServers.isLoading) {
+                        stringRes(R.string.choose_server_testing)
+                    } else {
+                        null
+                    }
+            )
+        }
+
     private val fastest =
         combine(
             getSelectedEndpoint.observe(),
             observeFastestServers(),
             userEndpointSelection,
-        ) { selectedEndpoint, fastestServers, userEndpointSelection ->
+            selectedMode,
+            isSaveInProgress,
+        ) { selectedEndpoint, fastestServers, userEndpointSelection, selectedMode, isSaveInProgress ->
             ServerListState.Fastest(
                 title = stringRes(R.string.choose_server_fastest_servers),
                 servers =
                     fastestServers.servers
                         ?.map { endpoint ->
-                            createDefaultServerState(endpoint, userEndpointSelection, selectedEndpoint)
+                            createDefaultServerState(
+                                endpoint = endpoint,
+                                userEndpointSelection = userEndpointSelection,
+                                selectedEndpoint = selectedEndpoint,
+                                selectedMode = selectedMode,
+                                isEnabled = !isSaveInProgress
+                            )
                         }.orEmpty(),
                 isLoading = fastestServers.isLoading,
                 retryButton =
                     ButtonState(
                         text = stringRes(R.string.choose_server_refresh),
+                        isEnabled = !isSaveInProgress,
                         onClick = ::onRefreshClicked
                     )
             )
@@ -78,21 +186,26 @@ class ChooseServerVM(
         combine(
             getSelectedEndpoint.observe(),
             observeFastestServers(),
-            userCustomEndpointText,
-            userEndpointSelection,
-            isCustomEndpointExpanded
-        ) { selectedEndpoint, fastest, userCustomEndpointText, userEndpointSelection, isCustomEndpointExpanded ->
+            getServerSelection.observe(),
+            endpointUiSelection,
+            selectedMode
+        ) { selectedEndpoint, fastest, persistedServerSelection, endpointUiSelection, selectedMode ->
             if (selectedEndpoint == null) return@combine null
 
-            val isSelectedEndpointCustom = !availableServers.contains(selectedEndpoint)
+            val isSelectedEndpointCustom = isCustomEndpoint(selectedEndpoint, persistedServerSelection)
+            val isEnabled = !endpointUiSelection.isSaveInProgress
 
             val customEndpointState =
                 createCustomServerState(
-                    userEndpointSelection = userEndpointSelection,
+                    userEndpointSelection = endpointUiSelection.endpointSelection,
                     isSelectedEndpointCustom = isSelectedEndpointCustom,
-                    userCustomEndpointText = userCustomEndpointText,
+                    userCustomEndpointText = endpointUiSelection.customEndpointText,
                     selectedEndpoint = selectedEndpoint,
-                    isCustomEndpointExpanded = isCustomEndpointExpanded
+                    isCustomEndpointExpanded =
+                        endpointUiSelection.isCustomEndpointExpanded ||
+                            (selectedMode == ConnectionMode.MANUAL && isSelectedEndpointCustom),
+                    selectedMode = selectedMode,
+                    isEnabled = isEnabled
                 )
 
             ServerListState.Other(
@@ -102,7 +215,13 @@ class ChooseServerVM(
                         .filter {
                             !fastest.servers.orEmpty().contains(it)
                         }.map<LightWalletEndpoint, ServerState> { endpoint ->
-                            createDefaultServerState(endpoint, userEndpointSelection, selectedEndpoint)
+                            createDefaultServerState(
+                                endpoint = endpoint,
+                                userEndpointSelection = endpointUiSelection.endpointSelection,
+                                selectedEndpoint = selectedEndpoint,
+                                selectedMode = selectedMode,
+                                isEnabled = isEnabled
+                            )
                         }.toMutableList()
                         .apply {
                             val index = 1.coerceIn(0, size.coerceAtLeast(0))
@@ -114,36 +233,40 @@ class ChooseServerVM(
     private val buttonState =
         combine(
             getSelectedEndpoint.observe(),
-            userEndpointSelection,
-            isSaveInProgress,
-            userCustomEndpointText,
-        ) { selectedEndpoint, userEndpointSelection, isSaveInProgress, userCustomEndpointText ->
+            getServerSelection.observe(),
+            saveButtonInput
+        ) { selectedEndpoint, persistedServerSelection, saveButtonInput ->
+            val selectedMode = saveButtonInput.modeSelection ?: persistedServerSelection.mode
             val userSelectedEndpoint =
-                when (userEndpointSelection) {
+                when (saveButtonInput.endpointSelection) {
                     Selection.Custom -> {
-                        val isSelectedEndpointCustom = !availableServers.contains(selectedEndpoint)
+                        val isSelectedEndpointCustom = isCustomEndpoint(selectedEndpoint, persistedServerSelection)
                         if (isSelectedEndpointCustom) selectedEndpoint else null
                     }
 
                     is Selection.Endpoint -> {
-                        userEndpointSelection.endpoint
+                        saveButtonInput.endpointSelection.endpoint
                     }
 
                     null -> {
-                        null
+                        if (selectedMode == ConnectionMode.MANUAL) {
+                            selectedEndpoint
+                        } else {
+                            null
+                        }
                     }
                 }
 
             val isCustomEndpointSelectedAndUpdated =
-                when (userEndpointSelection) {
+                when (saveButtonInput.endpointSelection) {
                     Selection.Custom -> {
-                        val isSelectedEndpointCustom = !availableServers.contains(selectedEndpoint)
+                        val isSelectedEndpointCustom = isCustomEndpoint(selectedEndpoint, persistedServerSelection)
                         when {
-                            isSelectedEndpointCustom && userCustomEndpointText == null -> false
+                            isSelectedEndpointCustom && saveButtonInput.customEndpointText == null -> false
 
                             isSelectedEndpointCustom &&
                                 selectedEndpoint?.generateUserString() !=
-                                userCustomEndpointText -> true
+                                saveButtonInput.customEndpointText -> true
 
                             else -> false
                         }
@@ -158,19 +281,34 @@ class ChooseServerVM(
                     }
                 }
 
+            val hasUnsavedSelection =
+                selectedMode != persistedServerSelection.mode ||
+                    (
+                        selectedMode == ConnectionMode.MANUAL &&
+                            saveButtonInput.endpointSelection != null &&
+                            selectedEndpoint != userSelectedEndpoint
+                    ) ||
+                    isCustomEndpointSelectedAndUpdated
+
             ButtonState(
-                text = stringRes(R.string.choose_server_save),
+                text =
+                    if (saveButtonInput.isSaveInProgress) {
+                        stringRes(R.string.choose_server_saving)
+                    } else {
+                        stringRes(R.string.choose_server_save)
+                    },
                 isEnabled =
-                    (userEndpointSelection != null && selectedEndpoint != userSelectedEndpoint) ||
-                        isCustomEndpointSelectedAndUpdated,
-                isLoading = isSaveInProgress,
+                    !saveButtonInput.isSaveInProgress &&
+                        hasUnsavedSelection,
+                isLoading = saveButtonInput.isSaveInProgress,
                 onClick = ::onSaveButtonClicked,
                 hapticFeedbackType = HapticFeedbackType.Confirm
             )
         }
 
     val state =
-        combine(fastest, other, buttonState, dialogState) {
+        combine(connectionMode, fastest, other, buttonState, dialogState) {
+            connectionMode,
             fastest,
             other,
             buttonState,
@@ -181,6 +319,7 @@ class ChooseServerVM(
             }
 
             ChooseServerState(
+                connectionMode = connectionMode,
                 fastest = fastest,
                 other = other,
                 saveButton = buttonState,
@@ -202,10 +341,15 @@ class ChooseServerVM(
         userCustomEndpointText: String?,
         selectedEndpoint: LightWalletEndpoint,
         isCustomEndpointExpanded: Boolean,
+        selectedMode: ConnectionMode,
+        isEnabled: Boolean,
     ): ServerState.Custom {
-        var isChecked =
-            userEndpointSelection is Selection.Custom ||
-                (userEndpointSelection == null && isSelectedEndpointCustom)
+        val isChecked =
+            selectedMode == ConnectionMode.MANUAL &&
+                (
+                    userEndpointSelection is Selection.Custom ||
+                        (userEndpointSelection == null && isSelectedEndpointCustom)
+                )
         return ServerState.Custom(
             radioButtonState =
                 RadioButtonState(
@@ -220,6 +364,7 @@ class ChooseServerVM(
                             stringRes(R.string.choose_server_custom)
                         },
                     isChecked = isChecked,
+                    isEnabled = isEnabled,
                     onClick = ::onCustomEndpointClicked,
                     hapticFeedbackType = if (isChecked) null else HapticFeedbackType.SegmentTick,
                 ),
@@ -235,6 +380,7 @@ class ChooseServerVM(
                         } else {
                             stringRes("")
                         },
+                    isEnabled = isEnabled,
                     onValueChange = ::onCustomEndpointTextChanged,
                 ),
             badge = if (isSelectedEndpointCustom) stringRes(R.string.choose_server_active) else null,
@@ -247,11 +393,16 @@ class ChooseServerVM(
         endpoint: LightWalletEndpoint,
         userEndpointSelection: Selection?,
         selectedEndpoint: LightWalletEndpoint?,
+        selectedMode: ConnectionMode,
+        isEnabled: Boolean,
     ): ServerState.Default {
         val defaultEndpoint = lightWalletEndpointProvider.getDefaultEndpoint()
         val isEndpointChecked =
-            (userEndpointSelection is Selection.Endpoint && userEndpointSelection.endpoint == endpoint) ||
-                (userEndpointSelection == null && selectedEndpoint == endpoint)
+            selectedMode == ConnectionMode.MANUAL &&
+                (
+                    (userEndpointSelection is Selection.Endpoint && userEndpointSelection.endpoint == endpoint) ||
+                        (userEndpointSelection == null && selectedEndpoint == endpoint)
+                )
 
         return ServerState.Default(
             key = "default_${endpoint.host}_${endpoint.port}",
@@ -259,6 +410,7 @@ class ChooseServerVM(
                 RadioButtonState(
                     text = stringRes(R.string.choose_server_full_server_name, endpoint.host, endpoint.port),
                     isChecked = isEndpointChecked,
+                    isEnabled = isEnabled,
                     onClick = { onEndpointClicked(endpoint) },
                     subtitle =
                         if (endpoint == defaultEndpoint) {
@@ -273,32 +425,53 @@ class ChooseServerVM(
     }
 
     private fun onRefreshClicked() {
+        if (!canUpdateSelection()) return
         refreshFastestServersUseCase()
     }
 
     private fun onCustomEndpointTextChanged(new: String) {
+        if (!canUpdateSelection()) return
         this.userCustomEndpointText.update { new }
     }
 
-    private fun onEndpointClicked(endpoint: LightWalletEndpoint) {
+    private fun onAutomaticModeClicked() {
+        if (!canUpdateSelection()) return
         isCustomEndpointExpanded.update { false }
+        userEndpointSelection.update { null }
+        userModeSelection.update { ConnectionMode.AUTOMATIC }
+    }
+
+    private fun onManualModeClicked() {
+        if (!canUpdateSelection()) return
+        userModeSelection.update { ConnectionMode.MANUAL }
+    }
+
+    private fun onEndpointClicked(endpoint: LightWalletEndpoint) {
+        if (!canUpdateSelection()) return
+        isCustomEndpointExpanded.update { false }
+        userModeSelection.update { ConnectionMode.MANUAL }
         userEndpointSelection.update { Selection.Endpoint(endpoint) }
     }
 
     private fun onCustomEndpointClicked() {
+        if (!canUpdateSelection()) return
         isCustomEndpointExpanded.update { true }
+        userModeSelection.update { ConnectionMode.MANUAL }
         userEndpointSelection.update { Selection.Custom }
     }
+
+    private fun canUpdateSelection() = !isSaveInProgress.value
 
     private fun onSaveButtonClicked() =
         viewModelScope.launch {
             try {
                 if (isSaveInProgress.value) return@launch
                 isSaveInProgress.update { true }
-                val selection = getUserEndpointSelectionOrShowError() ?: return@launch
-                persistEndpoint(selection)
+                val selection = getUserServerSelectionOrShowError() ?: return@launch
+                persistServerSelection(selection)
                 isCustomEndpointExpanded.update { false }
                 userEndpointSelection.update { null }
+                userModeSelection.update { null }
             } catch (e: PersistEndpointException) {
                 showValidationErrorDialog(e.message)
             } finally {
@@ -311,9 +484,71 @@ class ChooseServerVM(
     }
 
     /**
-     * @return an endpoint selected by user or null if user didn't select any new endpoint explicitly or if selected
-     * custom endpoint is invalid
+     * @return the server selection requested by the user, or null if the selected custom endpoint is invalid.
      */
+    private suspend fun getUserServerSelectionOrShowError(): ServerSelection? {
+        val persistedSelection = getServerSelection()
+        return when (userModeSelection.value ?: persistedSelection.mode) {
+            ConnectionMode.AUTOMATIC -> {
+                ServerSelection.automatic()
+            }
+
+            ConnectionMode.MANUAL -> {
+                getManualServerSelectionOrShowError(persistedSelection)
+            }
+        }
+    }
+
+    private suspend fun getManualServerSelectionOrShowError(persistedSelection: ServerSelection): ServerSelection? {
+        val selectedEndpoint = userEndpointSelection.value
+        val endpoint =
+            when (selectedEndpoint) {
+                Selection.Custom,
+                is Selection.Endpoint -> {
+                    getUserEndpointSelectionOrShowError()
+                }
+
+                null -> {
+                    getSelectedEndpoint() ?: run {
+                        showValidationErrorDialog(null)
+                        null
+                    }
+                }
+            }
+
+        return endpoint?.let { endpoint ->
+            when (selectedEndpoint) {
+                Selection.Custom,
+                is Selection.Endpoint -> {
+                    ServerSelection.manual(
+                        endpoint = endpoint,
+                        isCustom = !availableServers.contains(endpoint)
+                    )
+                }
+
+                null -> {
+                    endpoint.toCurrentManualServerSelection(
+                        persistedSelection = persistedSelection,
+                        availableServers = availableServers
+                    )
+                }
+            }
+        }
+    }
+
+    private fun isCustomEndpoint(
+        endpoint: LightWalletEndpoint?,
+        persistedSelection: ServerSelection
+    ) = endpoint != null &&
+        (
+            !availableServers.contains(endpoint) ||
+                (
+                    persistedSelection.mode == ConnectionMode.MANUAL &&
+                        persistedSelection.endpoint == endpoint &&
+                        persistedSelection.isCustom
+                )
+        )
+
     private fun getUserEndpointSelectionOrShowError(): LightWalletEndpoint? =
         when (val selection = userEndpointSelection.value) {
             is Selection.Custom -> {
@@ -363,3 +598,30 @@ private sealed interface Selection {
         val endpoint: LightWalletEndpoint
     ) : Selection
 }
+
+private data class EndpointUiSelection(
+    val customEndpointText: String?,
+    val endpointSelection: Selection?,
+    val isCustomEndpointExpanded: Boolean,
+    val isSaveInProgress: Boolean,
+)
+
+private data class SaveButtonInput(
+    val endpointSelection: Selection?,
+    val modeSelection: ConnectionMode?,
+    val isSaveInProgress: Boolean,
+    val customEndpointText: String?,
+)
+
+internal fun LightWalletEndpoint.toCurrentManualServerSelection(
+    persistedSelection: ServerSelection,
+    availableServers: List<LightWalletEndpoint>
+) = ServerSelection.manual(
+    endpoint = this,
+    isCustom =
+        if (persistedSelection.endpoint == this) {
+            persistedSelection.isCustom || !availableServers.contains(this)
+        } else {
+            !availableServers.contains(this)
+        }
+)

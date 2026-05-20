@@ -12,29 +12,39 @@ import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import cash.z.ecc.sdk.type.fromResources
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.preference.StandardPreferenceProvider
+import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.datasource.RestoreTimestampDataSource
+import co.electriccoin.zcash.ui.common.model.ConnectionMode
 import co.electriccoin.zcash.ui.common.model.FastestServersState
 import co.electriccoin.zcash.ui.common.model.OnboardingState
+import co.electriccoin.zcash.ui.common.model.ServerSelection
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
+import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
+import co.electriccoin.zcash.ui.common.provider.ServerSelectionProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.WalletBackupFlagStorageProvider
 import co.electriccoin.zcash.ui.common.provider.WalletRestoringStateProvider
 import co.electriccoin.zcash.ui.common.viewmodel.SecretState
 import co.electriccoin.zcash.ui.preference.StandardPreferenceKeys
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
@@ -46,6 +56,8 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.withIndex
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 interface WalletRepository {
     val secretState: StateFlow<SecretState>
@@ -62,7 +74,7 @@ interface WalletRepository {
         birthday: BlockHeight
     )
 
-    fun updateWalletEndpoint(endpoint: LightWalletEndpoint)
+    suspend fun updateWalletEndpoint(endpoint: LightWalletEndpoint)
 
     fun refreshFastestServers()
 }
@@ -70,8 +82,10 @@ interface WalletRepository {
 class WalletRepositoryImpl(
     configurationRepository: ConfigurationRepository,
     private val application: Application,
+    private val applicationStateProvider: ApplicationStateProvider,
     private val lightWalletEndpointProvider: LightWalletEndpointProvider,
     private val persistableWalletProvider: PersistableWalletProvider,
+    private val serverSelectionProvider: ServerSelectionProvider,
     private val synchronizerProvider: SynchronizerProvider,
     private val standardPreferenceProvider: StandardPreferenceProvider,
     private val restoreTimestampDataSource: RestoreTimestampDataSource,
@@ -81,6 +95,8 @@ class WalletRepositoryImpl(
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val refreshFastestServersRequest = MutableSharedFlow<Unit>(replay = 1)
+
+    private val endpointUpdateMutex = Mutex()
 
     private val onboardingState =
         flow {
@@ -149,6 +165,13 @@ class WalletRepositoryImpl(
             initialValue = FastestServersState(servers = emptyList(), isLoading = true)
         )
 
+    init {
+        scope.launch {
+            migrateServerSelectionIfNeeded()
+            keepSelectedEndpointUpdated()
+        }
+    }
+
     override val walletRestoringState: StateFlow<WalletRestoringState> =
         walletRestoringStateProvider
             .observe()
@@ -158,11 +181,17 @@ class WalletRepositoryImpl(
                 initialValue = WalletRestoringState.NONE
             )
 
-    override fun updateWalletEndpoint(endpoint: LightWalletEndpoint) {
-        scope.launch {
-            val selectedWallet = persistableWalletProvider.getPersistableWallet() ?: return@launch
+    override suspend fun updateWalletEndpoint(endpoint: LightWalletEndpoint) = updateWalletEndpointInternal(endpoint)
+
+    private suspend fun updateWalletEndpointInternal(
+        endpoint: LightWalletEndpoint,
+        canUpdate: suspend () -> Boolean = { true }
+    ) {
+        endpointUpdateMutex.withLock {
+            if (!canUpdate()) return@withLock
+            val selectedWallet = persistableWalletProvider.getPersistableWallet() ?: return
             val selectedEndpoint = selectedWallet.endpoint
-            if (selectedEndpoint == endpoint) return@launch
+            if (selectedEndpoint == endpoint) return
             persistWalletInternal(selectedWallet.copy(endpoint = endpoint))
         }
     }
@@ -175,6 +204,7 @@ class WalletRepositoryImpl(
     override fun createNewWallet() {
         scope.launch {
             persistOnboardingStateInternal(OnboardingState.READY)
+            serverSelectionProvider.store(ServerSelection.automatic())
             val zcashNetwork = ZcashNetwork.fromResources(application)
             val newWallet =
                 PersistableWallet.new(
@@ -183,7 +213,9 @@ class WalletRepositoryImpl(
                     endpoint = lightWalletEndpointProvider.getDefaultEndpoint(),
                     walletInitMode = WalletInitMode.NewWallet,
                 )
-            persistWalletInternal(newWallet)
+            endpointUpdateMutex.withLock {
+                persistWalletInternal(newWallet)
+            }
             walletRestoringStateProvider.store(WalletRestoringState.INITIATING)
         }
     }
@@ -197,9 +229,7 @@ class WalletRepositoryImpl(
 
     override fun refreshFastestServers() {
         scope.launch {
-            if (!fastestEndpoints.first().isLoading) {
-                refreshFastestServersRequest.emit(Unit)
-            }
+            refreshFastestServersIfIdle(fastestEndpoints, refreshFastestServersRequest)
         }
     }
 
@@ -209,6 +239,7 @@ class WalletRepositoryImpl(
         birthday: BlockHeight
     ) {
         scope.launch {
+            serverSelectionProvider.store(ServerSelection.automatic())
             val restoredWallet =
                 PersistableWallet(
                     network = network,
@@ -217,11 +248,95 @@ class WalletRepositoryImpl(
                     seedPhrase = seedPhrase,
                     walletInitMode = WalletInitMode.RestoreWallet,
                 )
-            persistWalletInternal(restoredWallet)
+            endpointUpdateMutex.withLock {
+                persistWalletInternal(restoredWallet)
+            }
             walletRestoringStateProvider.store(WalletRestoringState.RESTORING)
             walletBackupFlagStorageProvider.store(true)
             restoreTimestampDataSource.getOrCreate()
             persistOnboardingStateInternal(OnboardingState.READY)
         }
+    }
+
+    private suspend fun migrateServerSelectionIfNeeded() {
+        if (serverSelectionProvider.getServerSelection() != null) return
+
+        val existingWallet = persistableWalletProvider.getPersistableWallet()
+        val selection =
+            ServerSelection.fromPersistedEndpoint(
+                endpoint = existingWallet?.endpoint,
+                knownEndpoints = lightWalletEndpointProvider.getEndpoints()
+            )
+
+        if (serverSelectionProvider.getServerSelection() == null) {
+            serverSelectionProvider.store(selection)
+        }
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun keepSelectedEndpointUpdated() {
+        serverSelectionProvider
+            .serverSelection
+            .filterNotNull()
+            .distinctUntilChanged()
+            .collectLatest { selection ->
+                try {
+                    when (selection.mode) {
+                        ConnectionMode.AUTOMATIC -> {
+                            keepAutomaticEndpointUpdated()
+                        }
+
+                        ConnectionMode.MANUAL -> {
+                            selection.endpoint?.let { updateWalletEndpointInternal(it) }
+                        }
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Twig.error(e) { "Unable to update selected server endpoint" }
+                }
+            }
+    }
+
+    private suspend fun keepAutomaticEndpointUpdated() =
+        coroutineScope {
+            launch {
+                applicationStateProvider
+                    .observeOnForeground()
+                    .collect {
+                        if (serverSelectionProvider.getServerSelection()?.mode == ConnectionMode.AUTOMATIC) {
+                            refreshFastestServersIfIdle(fastestEndpoints, refreshFastestServersRequest)
+                        }
+                    }
+            }
+
+            fastestEndpoints
+                .collectLatest { fastestServers ->
+                    if (fastestServers.isLoading) return@collectLatest
+                    val endpoint = fastestServers.servers?.firstOrNull() ?: return@collectLatest
+
+                    val failure =
+                        runCatching {
+                            updateWalletEndpointInternal(endpoint) {
+                                serverSelectionProvider.getServerSelection()?.mode == ConnectionMode.AUTOMATIC
+                            }
+                        }.exceptionOrNull()
+
+                    when (failure) {
+                        null -> Unit
+                        is CancellationException -> throw failure
+                        is Exception -> Twig.error(failure) { "Unable to update selected server endpoint" }
+                        else -> throw failure
+                    }
+                }
+        }
+}
+
+private suspend fun refreshFastestServersIfIdle(
+    fastestEndpoints: StateFlow<FastestServersState>,
+    refreshFastestServersRequest: MutableSharedFlow<Unit>
+) {
+    if (!fastestEndpoints.first().isLoading) {
+        refreshFastestServersRequest.emit(Unit)
     }
 }

@@ -38,6 +38,8 @@ import co.electriccoin.zcash.ui.common.provider.RestoreTimestampStorageProvider
 import co.electriccoin.zcash.ui.common.provider.RestoreTimestampStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.SelectedAccountUUIDProvider
 import co.electriccoin.zcash.ui.common.provider.SelectedAccountUUIDProviderImpl
+import co.electriccoin.zcash.ui.common.provider.ServerSelectionProvider
+import co.electriccoin.zcash.ui.common.provider.ServerSelectionProviderImpl
 import co.electriccoin.zcash.ui.common.provider.ShieldFundsInfoProvider
 import co.electriccoin.zcash.ui.common.provider.ShieldFundsInfoProviderImpl
 import co.electriccoin.zcash.ui.common.provider.SimpleSwapAssetProvider
@@ -78,6 +80,7 @@ val providerModule =
         singleOf(::GetZcashCurrencyProvider)
         singleOf(::SelectedAccountUUIDProviderImpl) bind SelectedAccountUUIDProvider::class
         singleOf(::PersistableWalletProviderImpl) bind PersistableWalletProvider::class
+        singleOf(::ServerSelectionProviderImpl) bind ServerSelectionProvider::class
         singleOf(::SynchronizerProviderImpl) bind SynchronizerProvider::class
         singleOf(::ApplicationStateProviderImpl) bind ApplicationStateProvider::class
         singleOf(::RestoreTimestampStorageProviderImpl) bind RestoreTimestampStorageProvider::class

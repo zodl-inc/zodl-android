@@ -46,6 +46,7 @@ import co.electriccoin.zcash.ui.common.usecase.GetResyncDataFromHeightUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedEndpointUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedSwapAssetUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSlippageUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSupportUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSwapAssetsUseCase
@@ -97,7 +98,7 @@ import co.electriccoin.zcash.ui.common.usecase.ParseKeystonePCZTUseCase
 import co.electriccoin.zcash.ui.common.usecase.ParseKeystoneSignInRequestUseCase
 import co.electriccoin.zcash.ui.common.usecase.ParseKeystoneUrToZashiAccountsUseCase
 import co.electriccoin.zcash.ui.common.usecase.ParseVotingKeystonePCZTUseCase
-import co.electriccoin.zcash.ui.common.usecase.PersistEndpointUseCase
+import co.electriccoin.zcash.ui.common.usecase.PersistServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.PrefillSendUseCase
 import co.electriccoin.zcash.ui.common.usecase.PrepareVotingRoundUseCase
 import co.electriccoin.zcash.ui.common.usecase.PreselectSwapAssetUseCase
@@ -159,6 +160,7 @@ val useCaseModule =
     module {
         factoryOf(::ObserveFastestServersUseCase)
         factoryOf(::GetSelectedEndpointUseCase)
+        factoryOf(::GetServerSelectionUseCase)
         factoryOf(::RefreshFastestServersUseCase)
         factoryOf(::RefreshActiveVotingSessionUseCase)
         factory { RefreshVotingRoundsUseCase(get(), get()) }
@@ -169,7 +171,7 @@ val useCaseModule =
         factoryOf(::SkipRemainingKeystoneBundlesUseCase)
         factoryOf(::SubmitVotesUseCase)
         factoryOf(::TrackVotingSharesUseCase)
-        factoryOf(::PersistEndpointUseCase)
+        factoryOf(::PersistServerSelectionUseCase)
         factoryOf(::ValidateEndpointUseCase)
         factoryOf(::GetConfigurationUseCase)
         factoryOf(::RescanBlockchainUseCase)
