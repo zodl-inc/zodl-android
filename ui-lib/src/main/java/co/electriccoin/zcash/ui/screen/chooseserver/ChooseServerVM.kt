@@ -71,12 +71,14 @@ class ChooseServerVM(
         combine(
             userCustomEndpointText,
             userEndpointSelection,
-            isCustomEndpointExpanded
-        ) { customEndpointText, endpointSelection, isCustomEndpointExpanded ->
+            isCustomEndpointExpanded,
+            isSaveInProgress
+        ) { customEndpointText, endpointSelection, isCustomEndpointExpanded, isSaveInProgress ->
             EndpointUiSelection(
                 customEndpointText = customEndpointText,
                 endpointSelection = endpointSelection,
-                isCustomEndpointExpanded = isCustomEndpointExpanded
+                isCustomEndpointExpanded = isCustomEndpointExpanded,
+                isSaveInProgress = isSaveInProgress
             )
         }
 
@@ -99,8 +101,9 @@ class ChooseServerVM(
         combine(
             selectedMode,
             getSelectedEndpoint.observe(),
-            observeFastestServers()
-        ) { selectedMode, selectedEndpoint, fastestServers ->
+            observeFastestServers(),
+            isSaveInProgress
+        ) { selectedMode, selectedEndpoint, fastestServers, isSaveInProgress ->
             val isAutomatic = selectedMode == ConnectionMode.AUTOMATIC
             ServerConnectionModeState(
                 automatic =
@@ -117,6 +120,7 @@ class ChooseServerVM(
                                 null
                             },
                         isChecked = isAutomatic,
+                        isEnabled = !isSaveInProgress,
                         onClick = ::onAutomaticModeClicked,
                         hapticFeedbackType =
                             if (isAutomatic) {
@@ -129,6 +133,7 @@ class ChooseServerVM(
                     RadioButtonState(
                         text = stringRes(R.string.choose_server_manual),
                         isChecked = selectedMode == ConnectionMode.MANUAL,
+                        isEnabled = !isSaveInProgress,
                         onClick = ::onManualModeClicked,
                         hapticFeedbackType =
                             if (selectedMode == ConnectionMode.MANUAL) {
@@ -152,7 +157,8 @@ class ChooseServerVM(
             observeFastestServers(),
             userEndpointSelection,
             selectedMode,
-        ) { selectedEndpoint, fastestServers, userEndpointSelection, selectedMode ->
+            isSaveInProgress,
+        ) { selectedEndpoint, fastestServers, userEndpointSelection, selectedMode, isSaveInProgress ->
             ServerListState.Fastest(
                 title = stringRes(R.string.choose_server_fastest_servers),
                 servers =
@@ -162,13 +168,15 @@ class ChooseServerVM(
                                 endpoint = endpoint,
                                 userEndpointSelection = userEndpointSelection,
                                 selectedEndpoint = selectedEndpoint,
-                                selectedMode = selectedMode
+                                selectedMode = selectedMode,
+                                isEnabled = !isSaveInProgress
                             )
                         }.orEmpty(),
                 isLoading = fastestServers.isLoading,
                 retryButton =
                     ButtonState(
                         text = stringRes(R.string.choose_server_refresh),
+                        isEnabled = !isSaveInProgress,
                         onClick = ::onRefreshClicked
                     )
             )
@@ -185,6 +193,7 @@ class ChooseServerVM(
             if (selectedEndpoint == null) return@combine null
 
             val isSelectedEndpointCustom = isCustomEndpoint(selectedEndpoint, persistedServerSelection)
+            val isEnabled = !endpointUiSelection.isSaveInProgress
 
             val customEndpointState =
                 createCustomServerState(
@@ -195,7 +204,8 @@ class ChooseServerVM(
                     isCustomEndpointExpanded =
                         endpointUiSelection.isCustomEndpointExpanded ||
                             (selectedMode == ConnectionMode.MANUAL && isSelectedEndpointCustom),
-                    selectedMode = selectedMode
+                    selectedMode = selectedMode,
+                    isEnabled = isEnabled
                 )
 
             ServerListState.Other(
@@ -209,7 +219,8 @@ class ChooseServerVM(
                                 endpoint = endpoint,
                                 userEndpointSelection = endpointUiSelection.endpointSelection,
                                 selectedEndpoint = selectedEndpoint,
-                                selectedMode = selectedMode
+                                selectedMode = selectedMode,
+                                isEnabled = isEnabled
                             )
                         }.toMutableList()
                         .apply {
@@ -331,6 +342,7 @@ class ChooseServerVM(
         selectedEndpoint: LightWalletEndpoint,
         isCustomEndpointExpanded: Boolean,
         selectedMode: ConnectionMode,
+        isEnabled: Boolean,
     ): ServerState.Custom {
         val isChecked =
             selectedMode == ConnectionMode.MANUAL &&
@@ -352,6 +364,7 @@ class ChooseServerVM(
                             stringRes(R.string.choose_server_custom)
                         },
                     isChecked = isChecked,
+                    isEnabled = isEnabled,
                     onClick = ::onCustomEndpointClicked,
                     hapticFeedbackType = if (isChecked) null else HapticFeedbackType.SegmentTick,
                 ),
@@ -367,6 +380,7 @@ class ChooseServerVM(
                         } else {
                             stringRes("")
                         },
+                    isEnabled = isEnabled,
                     onValueChange = ::onCustomEndpointTextChanged,
                 ),
             badge = if (isSelectedEndpointCustom) stringRes(R.string.choose_server_active) else null,
@@ -380,6 +394,7 @@ class ChooseServerVM(
         userEndpointSelection: Selection?,
         selectedEndpoint: LightWalletEndpoint?,
         selectedMode: ConnectionMode,
+        isEnabled: Boolean,
     ): ServerState.Default {
         val defaultEndpoint = lightWalletEndpointProvider.getDefaultEndpoint()
         val isEndpointChecked =
@@ -395,6 +410,7 @@ class ChooseServerVM(
                 RadioButtonState(
                     text = stringRes(R.string.choose_server_full_server_name, endpoint.host, endpoint.port),
                     isChecked = isEndpointChecked,
+                    isEnabled = isEnabled,
                     onClick = { onEndpointClicked(endpoint) },
                     subtitle =
                         if (endpoint == defaultEndpoint) {
@@ -409,34 +425,42 @@ class ChooseServerVM(
     }
 
     private fun onRefreshClicked() {
+        if (!canUpdateSelection()) return
         refreshFastestServersUseCase()
     }
 
     private fun onCustomEndpointTextChanged(new: String) {
+        if (!canUpdateSelection()) return
         this.userCustomEndpointText.update { new }
     }
 
     private fun onAutomaticModeClicked() {
+        if (!canUpdateSelection()) return
         isCustomEndpointExpanded.update { false }
         userEndpointSelection.update { null }
         userModeSelection.update { ConnectionMode.AUTOMATIC }
     }
 
     private fun onManualModeClicked() {
+        if (!canUpdateSelection()) return
         userModeSelection.update { ConnectionMode.MANUAL }
     }
 
     private fun onEndpointClicked(endpoint: LightWalletEndpoint) {
+        if (!canUpdateSelection()) return
         isCustomEndpointExpanded.update { false }
         userModeSelection.update { ConnectionMode.MANUAL }
         userEndpointSelection.update { Selection.Endpoint(endpoint) }
     }
 
     private fun onCustomEndpointClicked() {
+        if (!canUpdateSelection()) return
         isCustomEndpointExpanded.update { true }
         userModeSelection.update { ConnectionMode.MANUAL }
         userEndpointSelection.update { Selection.Custom }
     }
+
+    private fun canUpdateSelection() = !isSaveInProgress.value
 
     private fun onSaveButtonClicked() =
         viewModelScope.launch {
@@ -579,6 +603,7 @@ private data class EndpointUiSelection(
     val customEndpointText: String?,
     val endpointSelection: Selection?,
     val isCustomEndpointExpanded: Boolean,
+    val isSaveInProgress: Boolean,
 )
 
 private data class SaveButtonInput(

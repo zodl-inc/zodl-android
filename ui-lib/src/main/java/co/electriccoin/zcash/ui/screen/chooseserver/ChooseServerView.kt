@@ -410,7 +410,10 @@ private fun FastestServersHeader(state: ServerListState.Fastest) {
         ) {
             ServerHeader(text = state.title)
             Spacer(modifier = Modifier.weight(1f))
-            TextButton(onClick = state.retryButton.onClick) {
+            TextButton(
+                enabled = state.retryButton.isEnabled,
+                onClick = state.retryButton.onClick
+            ) {
                 if (state.isLoading) {
                     LottieProgress()
                 } else {
