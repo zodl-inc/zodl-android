@@ -50,6 +50,7 @@ import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
+import co.electriccoin.zcash.ui.screen.voting.VoteColors
 import co.electriccoin.zcash.ui.screen.voting.answerColors
 import co.electriccoin.zcash.ui.screen.voting.component.VoteViewMoreChip
 import co.electriccoin.zcash.ui.screen.voting.component.ZipBadge
@@ -379,22 +380,6 @@ private fun YourVoteContainer(badge: VoteVoteBadgeState) {
             .fillMaxWidth()
             .background(colors.bg, RoundedCornerShape(10.dp))
             .padding(horizontal = 12.dp, vertical = 8.dp)
-    val yourVoteLabel: @Composable () -> Unit = {
-        Text(
-            text = stringResource(R.string.vote_proposal_list_your_vote),
-            style = ZashiTypography.textXxs,
-            fontWeight = FontWeight.Medium,
-            color = colors.labelColor,
-        )
-    }
-    val voteValue: @Composable () -> Unit = {
-        Text(
-            text = label,
-            style = ZashiTypography.textXs,
-            fontWeight = FontWeight.SemiBold,
-            color = colors.textColor,
-        )
-    }
 
     if (isShort) {
         Row(
@@ -402,18 +387,38 @@ private fun YourVoteContainer(badge: VoteVoteBadgeState) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            yourVoteLabel()
-            voteValue()
+            Label(colors)
+            Value(label, colors)
         }
     } else {
         Column(
             modifier = containerModifier,
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            yourVoteLabel()
-            voteValue()
+            Label(colors)
+            Value(label, colors)
         }
     }
+}
+
+@Composable
+private fun Value(label: String, colors: VoteColors) {
+    Text(
+        text = label,
+        style = ZashiTypography.textXs,
+        fontWeight = FontWeight.SemiBold,
+        color = colors.textColor,
+    )
+}
+
+@Composable
+private fun Label(colors: VoteColors) {
+    Text(
+        text = stringResource(R.string.vote_proposal_list_your_vote),
+        style = ZashiTypography.textXxs,
+        fontWeight = FontWeight.Medium,
+        color = colors.labelColor,
+    )
 }
 
 private fun formatSnapshotHeight(height: Long): String =
