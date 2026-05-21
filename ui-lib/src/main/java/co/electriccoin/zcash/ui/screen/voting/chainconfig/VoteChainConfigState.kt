@@ -4,7 +4,6 @@ import androidx.compose.runtime.Immutable
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.RadioButtonState
 import co.electriccoin.zcash.ui.design.component.TextFieldState
-import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 
@@ -12,9 +11,8 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 data class VoteChainConfigState(
     val chains: List<VoteChainConfigItemState>,
     val editor: VoteChainConfigEditorState?,
-    val errorSheet: ZashiConfirmationState?,
-    val isValidating: Boolean,
-    val saveChangesButton: ButtonState,
+    val isLoading: Boolean,
+    val doneButton: ButtonState,
     val onBack: () -> Unit,
     val onAddCustom: () -> Unit,
 ) {
@@ -23,9 +21,8 @@ data class VoteChainConfigState(
             VoteChainConfigState(
                 chains = listOf(VoteChainConfigItemState.preview),
                 editor = null,
-                errorSheet = null,
-                isValidating = false,
-                saveChangesButton = ButtonState.preview,
+                isLoading = false,
+                doneButton = ButtonState.preview,
                 onBack = {},
                 onAddCustom = {},
             )

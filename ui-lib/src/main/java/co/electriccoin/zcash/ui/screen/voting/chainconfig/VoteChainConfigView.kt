@@ -57,11 +57,9 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
-import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
 import co.electriccoin.zcash.ui.design.component.RadioButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
-import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiTextField
 import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
@@ -78,13 +76,7 @@ import kotlinx.coroutines.delay
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-fun VoteChainConfigView(state: VoteChainConfigState?) {
-    if (state == null) {
-        CircularScreenProgressIndicator()
-        return
-    }
-
-    ZashiConfirmationBottomSheet(state = state.errorSheet)
+fun VoteChainConfigView(state: VoteChainConfigState) {
     state.editor?.let { editor ->
         ZashiScreenModalBottomSheet(
             onDismissRequest = editor.cancelButton.onClick
@@ -362,7 +354,7 @@ private fun BottomActions(state: VoteChainConfigState) {
     ) {
         AddCustomSourceButton(state)
         ZashiButton(
-            state = state.saveChangesButton,
+            state = state.doneButton,
             modifier =
                 Modifier
                     .fillMaxWidth()
@@ -382,7 +374,7 @@ private fun AddCustomSourceButton(state: VoteChainConfigState) {
             ButtonState(
                 text = stringRes(R.string.vote_chain_config_add_custom_source),
                 style = ButtonStyle.TERTIARY,
-                isEnabled = !state.isValidating,
+                isEnabled = !state.isLoading,
                 onClick = state.onAddCustom
             ),
         defaultTertiaryColors =
