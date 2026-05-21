@@ -35,7 +35,7 @@ data class ChainTxDto(
 @JsonIgnoreUnknownKeys
 data class ChainRoundDto(
     @SerialName("vote_round_id") val voteRoundId: String,
-    @SerialName("title") val title: String,
+    @SerialName("title") val title: String = "",
     @SerialName("description") val description: String = "",
     @SerialName("snapshot_height") val snapshotHeight: Long,
     @SerialName("snapshot_blockhash") val snapshotBlockhash: String = "",
@@ -118,7 +118,7 @@ data class ChainRoundDto(
 @JsonIgnoreUnknownKeys
 data class ChainProposalDto(
     @SerialName("id") val id: Int,
-    @SerialName("title") val title: String,
+    @SerialName("title") val title: String = "",
     @SerialName("description") val description: String = "",
     @SerialName("options") val options: List<ChainVoteOptionDto> = emptyList(),
     @SerialName("zip_number") val zipNumber: String? = null,
@@ -140,11 +140,13 @@ data class ChainProposalDto(
 data class ChainVoteOptionDto(
     @SerialName("label") val label: String,
     @SerialName("index") val index: Int? = null,
+    @SerialName("description") val description: String? = null,
 ) {
     fun toVoteOption(): VoteOption =
         VoteOption(
             id = index ?: DEFAULT_MISSING_OPTION_INDEX,
-            label = label
+            label = label,
+            description = description,
         )
 }
 
