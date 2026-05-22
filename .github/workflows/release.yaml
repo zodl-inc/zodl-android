@@ -121,12 +121,33 @@ jobs:
         run: |
           mv app/build/outputs/apk/zcashmainnetFoss/release/app-zcashmainnet-foss-release.apk artifacts/app-zcashmainnet-foss-release-full-externallibs.apk
 
+      # Second FOSS build with Flexa/CMC keys intentionally NOT injected:
+      # this is the build that f-droid.org's reproducible build farm needs to
+      # match (their builders cannot see those secrets). Keep it in sync with
+      # the externallibs build above so fdroidserver metadata generation has
+      # the artifact it expects under the un-suffixed filename.
+      - name: Build FOSS (F-Droid) APK
+        env:
+          ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/release.jks
+          ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: ${{ secrets.UPLOAD_KEY_ALIAS_PASSWORD }}
+          # ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
+          # ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
+        run: |
+          ./gradlew clean :app:assembleZcashmainnetFossRelease
+
+      - name: Prepare FOSS (F-Droid) artifacts
+        run: |
+          mv app/build/outputs/apk/zcashmainnetFoss/release/app-zcashmainnet-foss-release.apk artifacts/
+
       - name: Prepare Signature artifacts
         run: |
           cd artifacts/
           TAG=$(git describe --tags --abbrev=0)
           VERSION_CODE=$(echo "$TAG" | cut -d'-' -f2)
           echo $VERSION_CODE > version_code.txt
+          gpg -u sysadmin@zodl.com --armor --digest-algo SHA256 --detach-sign app-zcashmainnet-foss-release.apk
           gpg -u sysadmin@zodl.com --armor --digest-algo SHA256 --detach-sign app-zcashmainnet-foss-release-full-externallibs.apk
           gpg -u sysadmin@zodl.com --armor --digest-algo SHA256 --detach-sign app-zcashmainnet-google-play-store-release-universal.apk
 
