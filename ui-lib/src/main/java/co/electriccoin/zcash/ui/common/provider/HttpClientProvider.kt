@@ -73,7 +73,11 @@ class HttpClientProviderImpl(
 
 private class KtorLogger : Logger {
     override fun log(message: String) {
-        Log.d("HttpClient", message)
+        message.chunked(MAX_LOG_CHUNK).forEach { Log.d("HttpClient", it) }
+    }
+
+    private companion object {
+        const val MAX_LOG_CHUNK = 3900
     }
 }
 
