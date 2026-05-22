@@ -104,7 +104,7 @@ fun ZashiRadioButton(
                         },
                     modifier =
                         Modifier.padding(
-                            top = 14.dp,
+                            top = if (state.subtitle == null) 14.dp else 6.dp,
                             bottom = if (state.subtitle == null) 14.dp else 0.dp,
                             start = 0.dp,
                             end = ZcashTheme.dimens.spacingDefault
@@ -216,6 +216,7 @@ private fun RadioButtonPreview() =
                         text = stringRes("test"),
                         isChecked = true,
                         onClick = {},
+                        subtitle = stringRes("subtitle")
                     ),
             )
         }

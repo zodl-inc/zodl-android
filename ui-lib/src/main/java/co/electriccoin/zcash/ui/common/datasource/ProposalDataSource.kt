@@ -18,16 +18,15 @@ import cash.z.ecc.android.sdk.model.proposeSend
 import cash.z.ecc.android.sdk.type.AddressType
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.spackle.Twig
-import co.electriccoin.zcash.ui.common.model.ConnectionMode
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.NetworkDimension
-import co.electriccoin.zcash.ui.common.model.ServerSelection
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.model.VersionInfo
 import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
-import co.electriccoin.zcash.ui.common.provider.ServerSelectionProvider
+import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -101,7 +100,8 @@ class TexUnsupportedOnKSException : Exception("TEX addresses are unsupported on 
 class ProposalDataSourceImpl(
     private val synchronizerProvider: SynchronizerProvider,
     private val lightWalletEndpointProvider: LightWalletEndpointProvider,
-    private val serverSelectionProvider: ServerSelectionProvider,
+    private val isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
+    private val persistableWalletProvider: PersistableWalletProvider,
 ) : ProposalDataSource {
     override suspend fun createProposal(account: WalletAccount, send: ZecSend): RegularTransactionProposal =
         withContext(Dispatchers.IO) {
@@ -328,11 +328,11 @@ class ProposalDataSourceImpl(
         )
 
     private suspend fun getSubmissionEndpoints(): List<LightWalletEndpoint> {
-        val selection = serverSelectionProvider.getServerSelection() ?: ServerSelection.automatic()
-
-        return when (selection.mode) {
-            ConnectionMode.AUTOMATIC -> lightWalletEndpointProvider.getEndpoints()
-            ConnectionMode.MANUAL -> listOf(checkNotNull(selection.endpoint))
+        val isAutomatic = isServerSelectionAutomaticProvider.get() != false
+        return if (isAutomatic) {
+            lightWalletEndpointProvider.getEndpoints()
+        } else {
+            listOf(persistableWalletProvider.requirePersistableWallet().endpoint)
         }
     }
 

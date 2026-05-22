@@ -47,7 +47,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.R.drawable
 import co.electriccoin.zcash.ui.design.component.AlertDialogState
@@ -58,6 +57,7 @@ import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
 import co.electriccoin.zcash.ui.design.component.LottieProgress
 import co.electriccoin.zcash.ui.design.component.RadioButtonCheckedContent
 import co.electriccoin.zcash.ui.design.component.RadioButtonState
+import co.electriccoin.zcash.ui.design.component.RadioButtonUncheckedContent
 import co.electriccoin.zcash.ui.design.component.TextFieldState
 import co.electriccoin.zcash.ui.design.component.ZashiBadge
 import co.electriccoin.zcash.ui.design.component.ZashiBadgeDefaults
@@ -99,7 +99,10 @@ fun ChooseServerView(state: ChooseServerState?) {
         }
     ) { paddingValues ->
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(bottom = paddingValues.calculateBottomPadding()),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(bottom = paddingValues.calculateBottomPadding()),
             contentPadding =
                 PaddingValues(
                     top = paddingValues.calculateTopPadding() + ZcashTheme.dimens.spacingDefault,
@@ -114,14 +117,7 @@ fun ChooseServerView(state: ChooseServerState?) {
             }
 
             if (state.connectionMode.isManualSelected) {
-                if (state.fastest.servers.isEmpty() && state.fastest.isLoading) {
-                    item(
-                        key = "fastest_loading",
-                        contentType = "fastest_loading"
-                    ) {
-                        ServerLoading()
-                    }
-                } else if (state.fastest.servers.isNotEmpty()) {
+                if (state.fastest.servers.isNotEmpty()) {
                     serverListItems(state.fastest)
                 }
 
@@ -165,8 +161,13 @@ private fun ConnectionModeSection(state: ServerConnectionModeState) {
                     RadioButtonCheckedContent(state.automatic)
                 }
             },
+            uncheckedContent = {
+                if (!(state.automaticBadge != null && state.automatic.isChecked)) {
+                    RadioButtonUncheckedContent(state.automatic)
+                }
+            },
             trailingContent = {
-                if (state.automaticBadge != null) {
+                if (state.automaticBadge != null && state.automatic.isChecked) {
                     ZashiBadge(
                         text = state.automaticBadge,
                         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
@@ -188,38 +189,30 @@ private fun ConnectionModeSection(state: ServerConnectionModeState) {
                         } else {
                             Modifier
                         }
+                    ),
+            checkedContent = {
+                if (state.automaticBadge != null) {
+                    LottieProgress(size = 20.dp)
+                } else {
+                    RadioButtonCheckedContent(state.manual)
+                }
+            },
+            uncheckedContent = {
+                if (!(state.automaticBadge != null && state.isManualSelected)) {
+                    RadioButtonUncheckedContent(state.manual)
+                }
+            },
+            trailingContent = {
+                if (state.automaticBadge != null && state.isManualSelected) {
+                    ZashiBadge(
+                        text = state.automaticBadge,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                        colors = ZashiBadgeDefaults.warningColors()
                     )
+                }
+            }
         )
         Spacer(modifier = Modifier.height(32.dp))
-    }
-}
-
-@Composable
-private fun ServerLoading() {
-    Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        LottieProgress(
-            size = 32.dp,
-        )
-        Spacer(modifier = Modifier.height(20.dp))
-        Text(
-            text = stringResource(id = R.string.choose_server_loading_title),
-            style = ZashiTypography.textXl,
-            color = ZashiColors.Text.textPrimary,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = stringResource(id = R.string.choose_server_loading_subtitle),
-            fontSize = 14.sp,
-            color = ZashiColors.Text.textTertiary
-        )
-        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 

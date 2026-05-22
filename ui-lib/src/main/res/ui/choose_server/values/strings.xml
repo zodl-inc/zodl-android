@@ -26,7 +26,7 @@
     <string name="choose_server_save_success_dialog_btn">OK</string>
     <string name="choose_server_save_default">Default</string>
 
-    <string name="choose_server_loading_title">Performing Server Test</string>
+    <string name="choose_server_loading_title">Performing server test…</string>
     <string name="choose_server_loading_subtitle">This may take a moment…</string>
 
     <string name="choose_server_connection_mode">Connection mode</string>
@@ -34,6 +34,7 @@
     <string name="choose_server_manual">Manual</string>
     <string name="choose_server_fastest_servers">Fastest servers</string>
     <string name="choose_server_other_servers">Other servers</string>
+    <string name="choose_server_browse_servers">Browse all servers</string>
     <string name="choose_server_refresh">Refresh</string>
     <string name="choose_server_active">Active</string>
     <string name="choose_server_testing">Testing</string>

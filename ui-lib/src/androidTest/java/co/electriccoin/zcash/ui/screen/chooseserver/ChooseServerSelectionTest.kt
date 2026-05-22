@@ -15,14 +15,12 @@ import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.BaseNavigationCommand
 import co.electriccoin.zcash.ui.NavigationCommand
 import co.electriccoin.zcash.ui.NavigationRouter
-import co.electriccoin.zcash.ui.common.model.ConnectionMode
 import co.electriccoin.zcash.ui.common.model.FastestServersState
-import co.electriccoin.zcash.ui.common.model.ServerSelection
 import co.electriccoin.zcash.ui.common.model.SynchronizerError
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
+import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
-import co.electriccoin.zcash.ui.common.provider.ServerSelectionProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.WalletRepository
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedEndpointUseCase
@@ -57,14 +55,14 @@ class ChooseServerSelectionTest {
             val lightWalletEndpointProvider = LightWalletEndpointProvider(application)
             val currentEndpoint = lightWalletEndpointProvider.getEndpoints().last()
             val persistableWalletProvider = FakePersistableWalletProvider(currentEndpoint)
-            val serverSelectionProvider = FakeServerSelectionProvider(ServerSelection.automatic())
+            val isServerSelectionAutomaticProvider = FakeIsServerSelectionAutomaticProvider(initial = null)
             val walletRepository = FakeWalletRepository(currentEndpoint)
             val viewModel =
                 createViewModel(
                     application,
                     lightWalletEndpointProvider,
                     persistableWalletProvider,
-                    serverSelectionProvider,
+                    isServerSelectionAutomaticProvider,
                     walletRepository
                 )
 
@@ -90,15 +88,10 @@ class ChooseServerSelectionTest {
 
             manualState.saveButton.onClick()
 
-            val persistedSelection =
-                withTimeout(STATE_TIMEOUT_MILLIS) {
-                    serverSelectionProvider.serverSelection
-                        .filterNotNull()
-                        .first { it.mode == ConnectionMode.MANUAL }
-                }
-            assertEquals(ConnectionMode.MANUAL, persistedSelection.mode)
-            assertEquals(currentEndpoint, persistedSelection.endpoint)
-            assertFalse(persistedSelection.isCustom)
+            withTimeout(STATE_TIMEOUT_MILLIS) {
+                isServerSelectionAutomaticProvider.observe().first { it == false }
+            }
+            assertEquals(false, isServerSelectionAutomaticProvider.get())
             assertEquals(currentEndpoint, walletRepository.updatedEndpoint)
         }
 
@@ -110,7 +103,7 @@ class ChooseServerSelectionTest {
             val lightWalletEndpointProvider = LightWalletEndpointProvider(application)
             val currentEndpoint = lightWalletEndpointProvider.getEndpoints().last()
             val persistableWalletProvider = FakePersistableWalletProvider(currentEndpoint)
-            val serverSelectionProvider = FakeServerSelectionProvider(ServerSelection.automatic())
+            val isServerSelectionAutomaticProvider = FakeIsServerSelectionAutomaticProvider(initial = null)
             val continueEndpointUpdate = CompletableDeferred<Unit>()
             val walletRepository = FakeWalletRepository(currentEndpoint, continueEndpointUpdate)
             val viewModel =
@@ -118,7 +111,7 @@ class ChooseServerSelectionTest {
                     application,
                     lightWalletEndpointProvider,
                     persistableWalletProvider,
-                    serverSelectionProvider,
+                    isServerSelectionAutomaticProvider,
                     walletRepository
                 )
 
@@ -192,46 +185,8 @@ class ChooseServerSelectionTest {
             assertEquals(currentEndpoint, walletRepository.updatedEndpoint)
         }
 
-    @Test
-    @SmallTest
-    fun currentKnownEndpointPinsAsManualWhenNoEndpointWasTapped() {
-        val endpoint = knownEndpoints[1]
-
-        val selection =
-            endpoint.toCurrentManualServerSelection(
-                persistedSelection = ServerSelection.automatic(),
-                availableServers = knownEndpoints
-            )
-
-        assertEquals(ConnectionMode.MANUAL, selection.mode)
-        assertEquals(endpoint, selection.endpoint)
-        assertFalse(selection.isCustom)
-    }
-
-    @Test
-    @SmallTest
-    fun currentUnknownEndpointPinsAsCustomWhenNoEndpointWasTapped() {
-        val endpoint = LightWalletEndpoint(host = "custom.example.com", port = 9067, isSecure = true)
-
-        val selection =
-            endpoint.toCurrentManualServerSelection(
-                persistedSelection = ServerSelection.automatic(),
-                availableServers = knownEndpoints
-            )
-
-        assertEquals(ConnectionMode.MANUAL, selection.mode)
-        assertEquals(endpoint, selection.endpoint)
-        assertTrue(selection.isCustom)
-    }
-
     companion object {
         private const val STATE_TIMEOUT_MILLIS = 2_000L
-
-        private val knownEndpoints =
-            listOf(
-                LightWalletEndpoint(host = "zec.rocks", port = 443, isSecure = true),
-                LightWalletEndpoint(host = "eu.zec.rocks", port = 443, isSecure = true)
-            )
     }
 }
 
@@ -239,15 +194,20 @@ private fun createViewModel(
     application: Application,
     lightWalletEndpointProvider: LightWalletEndpointProvider,
     persistableWalletProvider: PersistableWalletProvider,
-    serverSelectionProvider: ServerSelectionProvider,
+    isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
     walletRepository: WalletRepository,
 ): ChooseServerVM {
     val getSelectedEndpoint = GetSelectedEndpointUseCase(persistableWalletProvider)
+    val getServerSelection =
+        GetServerSelectionUseCase(
+            isServerSelectionAutomaticProvider = isServerSelectionAutomaticProvider,
+            persistableWalletProvider = persistableWalletProvider,
+        )
     return ChooseServerVM(
         application = application,
         observeFastestServers = ObserveFastestServersUseCase(walletRepository),
         getSelectedEndpoint = getSelectedEndpoint,
-        getServerSelection = GetServerSelectionUseCase(serverSelectionProvider),
+        getServerSelection = getServerSelection,
         lightWalletEndpointProvider = lightWalletEndpointProvider,
         refreshFastestServersUseCase = RefreshFastestServersUseCase(walletRepository),
         persistServerSelection =
@@ -256,8 +216,8 @@ private fun createViewModel(
                 walletRepository = walletRepository,
                 synchronizerProvider = FakeSynchronizerProvider(),
                 lightWalletEndpointProvider = lightWalletEndpointProvider,
-                serverSelectionProvider = serverSelectionProvider,
-                getSelectedEndpoint = getSelectedEndpoint
+                getSelectedEndpoint = getSelectedEndpoint,
+                isServerSelectionAutomaticProvider = isServerSelectionAutomaticProvider,
             ),
         validateEndpoint = ValidateEndpointUseCase(),
         navigationRouter = FakeNavigationRouter
@@ -300,18 +260,22 @@ private class FakePersistableWalletProvider(
     override suspend fun requirePersistableWallet() = checkNotNull(mutablePersistableWallet.value)
 }
 
-private class FakeServerSelectionProvider(
-    initialSelection: ServerSelection?
-) : ServerSelectionProvider {
-    private val mutableServerSelection = MutableStateFlow(initialSelection)
+private class FakeIsServerSelectionAutomaticProvider(
+    initial: Boolean?
+) : IsServerSelectionAutomaticProvider {
+    private val state = MutableStateFlow(initial)
 
-    override val serverSelection: Flow<ServerSelection?> = mutableServerSelection
+    override suspend fun get(): Boolean? = state.value
 
-    override suspend fun store(serverSelection: ServerSelection) {
-        mutableServerSelection.value = serverSelection
+    override suspend fun store(amount: Boolean) {
+        state.value = amount
     }
 
-    override suspend fun getServerSelection() = mutableServerSelection.value
+    override fun observe(): Flow<Boolean?> = state
+
+    override suspend fun clear() {
+        state.value = null
+    }
 }
 
 private class FakeWalletRepository(
@@ -354,6 +318,8 @@ private class FakeSynchronizerProvider : SynchronizerProvider {
     override val synchronizer = MutableStateFlow<Synchronizer?>(MockSynchronizer(ServerValidation.Valid))
 
     override suspend fun getSynchronizer(): Synchronizer = checkNotNull(synchronizer.value)
+
+    override suspend fun getVotingWalletDbPath(): String = ""
 
     override fun resetSynchronizer() = Unit
 }
