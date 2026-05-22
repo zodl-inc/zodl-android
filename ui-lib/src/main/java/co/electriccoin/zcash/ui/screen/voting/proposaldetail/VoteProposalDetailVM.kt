@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.voting.Proposal
@@ -48,7 +49,7 @@ class VoteProposalDetailVM(
     private val navigationRouter: NavigationRouter,
     observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase,
 ) : ViewModel() {
-    private val showUnansweredSheet = MutableStateFlow(false)
+    private val unansweredSheet = MutableStateFlow<ZashiConfirmationState?>(null)
     private val unverifiedPollWarningSheet = MutableStateFlow<ZashiConfirmationState?>(null)
     private val selectedAccountUuid: Flow<String> =
         observeSelectedWalletAccount
@@ -60,9 +61,9 @@ class VoteProposalDetailVM(
             votingApiRepository.snapshot,
             votingSessionStore.state,
             selectedAccountUuid,
-            showUnansweredSheet,
+            unansweredSheet,
             unverifiedPollWarningSheet,
-        ) { apiSnapshot, sessionState, accountUuid, showSheet, unverifiedSheet ->
+        ) { apiSnapshot, sessionState, accountUuid, unansweredSheetState, unverifiedSheet ->
             apiSnapshot.rounds
                 .firstOrNull { it.id == args.roundId }
                 ?.let { round ->
@@ -70,7 +71,7 @@ class VoteProposalDetailVM(
                         round = round,
                         drafts = sessionState.draftVotesFor(accountUuid, args.roundId),
                         accountUuid = accountUuid,
-                        showSheet = showSheet,
+                        unansweredSheetState = unansweredSheetState,
                         unverifiedSheet = unverifiedSheet
                     )
                 }
@@ -85,7 +86,7 @@ class VoteProposalDetailVM(
         round: VotingRound,
         drafts: Map<Int, Int>,
         accountUuid: String,
-        showSheet: Boolean,
+        unansweredSheetState: ZashiConfirmationState?,
         unverifiedSheet: ZashiConfirmationState?,
     ): VoteProposalDetailState {
         val proposals = round.proposals
@@ -94,7 +95,6 @@ class VoteProposalDetailVM(
         val proposal = proposals.getOrElse(proposalIndex) { proposals.first() }
         val position = proposalIndex + 1
         val selectedOptionId = drafts[proposal.id]
-        val unansweredCount = proposals.count { !drafts.containsKey(it.id) }
         val pollEnded = round.status != SessionStatus.ACTIVE
 
         return VoteProposalDetailState(
@@ -106,12 +106,11 @@ class VoteProposalDetailVM(
             isLocked = args.isReadOnly || pollEnded,
             isEditingFromReview = args.isEditingFromReview,
             isFromList = args.isFromList,
-            showUnansweredSheet = showSheet && !pollEnded,
-            unansweredCount = unansweredCount,
+            unansweredSheet = unansweredSheetState?.takeIf { !pollEnded },
             showPollEndedSheet = pollEnded && !args.isReadOnly,
             unverifiedPollWarningSheet = unverifiedSheet,
             onBack = ::onBack,
-            onNext = { onNext(proposals, proposalIndex, drafts) },
+            onNext = { onNext(proposals, proposalIndex, drafts, accountUuid, round) },
             onViewMore = {
                 navigationRouter.forward(
                     VotePollDescriptionArgs(
@@ -121,8 +120,6 @@ class VoteProposalDetailVM(
                     )
                 )
             },
-            onConfirmUnanswered = { onConfirmUnanswered(accountUuid, round) },
-            onDismissUnanswered = { showUnansweredSheet.value = false },
             onPollEndedClose = ::onBack,
             onPollEndedViewResults = { onPollEndedViewResults(round) },
         )
@@ -163,7 +160,9 @@ class VoteProposalDetailVM(
     private fun onNext(
         proposals: List<Proposal>,
         currentIndex: Int,
-        drafts: Map<Int, Int>
+        drafts: Map<Int, Int>,
+        accountUuid: String,
+        round: VotingRound,
     ) {
         if (args.isFromList) {
             navigationRouter.backTo(VoteProposalListArgs::class)
@@ -193,7 +192,8 @@ class VoteProposalDetailVM(
                 )
             )
         } else {
-            showUnansweredSheet.value = true
+            val unansweredCount = proposals.count { !drafts.containsKey(it.id) }
+            unansweredSheet.value = buildUnansweredSheet(unansweredCount, accountUuid, round)
         }
     }
 
@@ -201,7 +201,7 @@ class VoteProposalDetailVM(
         accountUuid: String,
         round: VotingRound
     ) {
-        showUnansweredSheet.value = false
+        unansweredSheet.value = null
         votingSessionStore.abstainUnanswered(
             accountUuid = accountUuid,
             roundId = round.id,
@@ -276,6 +276,25 @@ class VoteProposalDetailVM(
             chainConfig = votingChainConfigRepository.state.value,
             configuration = configurationRepository.configurationFlow.value
         )
+
+    private fun buildUnansweredSheet(
+        unansweredCount: Int,
+        accountUuid: String,
+        round: VotingRound,
+    ) = ZashiConfirmationState.error(
+        title = stringRes(R.string.vote_proposal_detail_unanswered_title),
+        message =
+            if (unansweredCount == 1) {
+                stringRes(R.string.vote_proposal_detail_unanswered_message_singular)
+            } else {
+                stringRes(R.string.vote_proposal_detail_unanswered_message_plural, unansweredCount)
+            },
+        primaryText = stringRes(R.string.vote_confirm_cta),
+        secondaryText = stringRes(R.string.vote_proposal_detail_unanswered_go_back),
+        onPrimary = { onConfirmUnanswered(accountUuid, round) },
+        onSecondary = { unansweredSheet.value = null },
+        onBack = { unansweredSheet.value = null },
+    )
 
     private fun buildUnverifiedPollWarningSheet(round: VotingRound) =
         ZashiConfirmationState(

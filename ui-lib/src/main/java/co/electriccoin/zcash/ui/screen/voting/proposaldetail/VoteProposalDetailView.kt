@@ -49,11 +49,11 @@ import co.electriccoin.zcash.ui.screen.voting.component.VoteRadioIndicator
 import co.electriccoin.zcash.ui.screen.voting.component.VoteViewMoreChip
 import co.electriccoin.zcash.ui.screen.voting.escapeHorizontalPadding
 import co.electriccoin.zcash.ui.screen.voting.proposaldetail.bottomsheet.PollEndedBottomSheet
-import co.electriccoin.zcash.ui.screen.voting.proposaldetail.bottomsheet.UnansweredBottomSheet
 
 @Composable
 fun VoteProposalDetailView(state: VoteProposalDetailState) {
     ZashiConfirmationBottomSheet(state = state.unverifiedPollWarningSheet)
+    ZashiConfirmationBottomSheet(state = state.unansweredSheet)
 
     val isDescriptionExpanded = remember { mutableStateOf(false) }
     val isDescriptionOverflowing = remember { mutableStateOf(false) }
@@ -128,14 +128,6 @@ fun VoteProposalDetailView(state: VoteProposalDetailState) {
             }
         }
     )
-
-    if (state.showUnansweredSheet) {
-        UnansweredBottomSheet(
-            unansweredCount = state.unansweredCount,
-            onConfirm = state.onConfirmUnanswered,
-            onDismiss = state.onDismissUnanswered,
-        )
-    }
 
     if (state.showPollEndedSheet) {
         PollEndedBottomSheet(
