@@ -78,7 +78,6 @@ fun VoteProposalListView(state: VoteProposalListState) {
             ) {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     item {
-                        VerticalSpacer(24.dp)
                         when (state.mode) {
                             VoteProposalListMode.VOTING,
                             VoteProposalListMode.VOTED -> {
@@ -173,7 +172,7 @@ private fun VotingHeader(
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
@@ -197,15 +196,6 @@ private fun VotingHeader(
 
         Spacer(12.dp)
 
-        VoteProgressBar(
-            votedCount = state.votedCount,
-            totalCount = state.totalCount,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(10.dp)
-        )
-
         state.metaLine?.let { metaLine ->
             Spacer(8.dp)
             HeaderMetaLine(metaLine)
@@ -215,7 +205,7 @@ private fun VotingHeader(
             Spacer(8.dp)
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.End,
+                horizontalAlignment = Alignment.Start,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
@@ -338,8 +328,7 @@ private fun ProposalCard(
         shape = RoundedCornerShape(ZashiDimensions.Radius.radius2xl),
         border = BorderStroke(1.dp, ZashiColors.Surfaces.strokeSecondary),
         onClick = state.onClick,
-        shadowElevation = 4.dp,
-        tonalElevation = 0.dp,
+        shadowElevation = 1.dp,
     ) {
         Column(
             modifier =
@@ -363,6 +352,7 @@ private fun ProposalCard(
                         style = ZashiTypography.textXs,
                         color = ZashiColors.Text.textTertiary,
                         maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
@@ -437,6 +427,7 @@ private fun previewProposals(withBadge: Boolean) =
             description =
                 stringRes(
                     "Replace the current fixed fee with a proportional " +
+                        "fee based on the number of logical actions " +
                         "fee based on the number of logical actions."
                 ),
             voteBadge =

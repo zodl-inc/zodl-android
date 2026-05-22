@@ -24,7 +24,7 @@ fun VoteRadioIndicator(isChecked: Boolean) {
             exit = scaleOut(spring(stiffness = Spring.StiffnessHigh, dampingRatio = Spring.DampingRatioMediumBouncy))
         ) {
             Image(
-                painter = painterResource(R.drawable.ic_radio_button_checked),
+                painter = painterResource(R.drawable.checkbox),
                 contentDescription = null,
             )
         }

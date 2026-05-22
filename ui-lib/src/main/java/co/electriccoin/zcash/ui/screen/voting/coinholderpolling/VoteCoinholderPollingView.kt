@@ -80,7 +80,6 @@ fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
                             .scaffoldPadding(padding),
                     contentPadding =
                         PaddingValues(
-                            top = 8.dp,
                             bottom = 40.dp
                         ),
                     verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing4xl)

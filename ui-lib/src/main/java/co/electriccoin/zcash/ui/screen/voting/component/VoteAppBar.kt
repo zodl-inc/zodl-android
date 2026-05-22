@@ -1,6 +1,9 @@
 package co.electriccoin.zcash.ui.screen.voting.component
 
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -52,6 +55,7 @@ fun VoteAppBar(
                             ),
                         modifier = Modifier.size(40.dp)
                     )
+                    Spacer(modifier = Modifier.width(16.dp))
                 }
             } else {
                 null

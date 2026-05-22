@@ -186,7 +186,7 @@ class VoteProposalListVM(
                         }
 
                         is VotingRoundPreparationResult.Ineligible -> {
-                            ineligibleSheet.value = buildIneligibleSheet(preparation, snapshotHeightFor(args.roundId))
+                            // ineligibleSheet.value = buildIneligibleSheet(preparation, snapshotHeightFor(args.roundId))
                             preparationGate.value = PreparationGate.READY
                         }
 

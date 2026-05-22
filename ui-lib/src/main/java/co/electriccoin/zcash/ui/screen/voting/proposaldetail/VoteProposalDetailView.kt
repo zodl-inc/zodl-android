@@ -80,7 +80,6 @@ fun VoteProposalDetailView(state: VoteProposalDetailState) {
                             .fillMaxWidth()
                             .verticalScroll(rememberScrollState())
                 ) {
-                    VerticalSpacer(24.dp)
 
                     Text(
                         text = state.title.getValue(),
@@ -116,15 +115,14 @@ fun VoteProposalDetailView(state: VoteProposalDetailState) {
 
                     VerticalSpacer(24.dp)
                     VoteOptions(options = state.options)
-                    VerticalSpacer(32.dp)
 
+                }
+
+                if (!state.isLocked) {
                     state.forumUrl?.let { forumUrl ->
                         ForumLinkRow(url = forumUrl)
                         VerticalSpacer(16.dp)
                     }
-                }
-
-                if (!state.isLocked) {
                     NavigationButtons(state = state)
                 }
             }
@@ -244,7 +242,6 @@ private fun NavigationButtons(state: VoteProposalDetailState) {
                 ButtonState(
                     text = stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_next),
                     style = ButtonStyle.PRIMARY,
-                    isEnabled = false,
                     onClick = state.onNext
                 )
         )
@@ -256,19 +253,8 @@ private fun NavigationButtons(state: VoteProposalDetailState) {
             modifier = Modifier.weight(1f),
             state =
                 ButtonState(
-                    text = stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_back),
-                    style = ButtonStyle.TERTIARY,
-                    onClick = state.onBack
-                )
-        )
-
-        Spacer(12.dp)
-        ZashiButton(
-            modifier = Modifier.weight(1f),
-            state =
-                ButtonState(
                     text =
-                        if (state.isEditingFromReview || state.isFromList) {
+                        if (state.isEditingFromReview) {
                             stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_save)
                         } else {
                             stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_next)
