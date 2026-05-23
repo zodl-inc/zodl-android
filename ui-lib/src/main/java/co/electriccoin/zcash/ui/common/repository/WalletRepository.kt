@@ -38,13 +38,11 @@ import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
@@ -119,7 +117,7 @@ class WalletRepositoryImpl(
     override val fastestEndpoints =
         channelFlow {
             val synchronizerPipeline = MutableStateFlow<Synchronizer?>(null)
-            var previousFastestServerState: FastestServersState? = null
+            var previousState: FastestServersState? = null
 
             launch {
                 refreshFastestServersRequest
@@ -130,7 +128,11 @@ class WalletRepositoryImpl(
                         synchronizerProvider
                             .synchronizer
                             .onEach { synchronizer ->
-                                if (synchronizerEmitted) {
+                                val previousState = previousState
+                                if (synchronizerEmitted &&
+                                    !previousState?.servers.isNullOrEmpty() &&
+                                    !previousState.isLoading
+                                ) {
                                     synchronizerPipeline.update { null }
                                 } else {
                                     synchronizerPipeline.update { synchronizer }
@@ -151,7 +153,7 @@ class WalletRepositoryImpl(
                             ?.map {
                                 when (it) {
                                     FastestServersResult.Measuring -> {
-                                        previousFastestServerState?.copy(isLoading = true)
+                                        previousState?.copy(isLoading = true)
                                             ?: FastestServersState(servers = null, isLoading = true)
                                     }
 
@@ -164,13 +166,13 @@ class WalletRepositoryImpl(
                                     }
                                 }
                             } ?: flowOf(
-                            previousFastestServerState ?: FastestServersState(
+                            previousState ?: FastestServersState(
                                 servers = emptyList(),
                                 isLoading = false
                             )
                         )
                     }.onEach {
-                        previousFastestServerState = it
+                        previousState = it
                         send(it)
                     }.collect()
             }

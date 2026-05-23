@@ -33,6 +33,7 @@ import co.electriccoin.zcash.ui.common.usecase.GetABContactsUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetABSwapContactsUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetActivitiesUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetAllVotingRoundsUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetAutomaticEndpointUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetConfigurationUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetExchangeRateUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetFilteredActivitiesUseCase
@@ -46,7 +47,6 @@ import co.electriccoin.zcash.ui.common.usecase.GetResyncDataFromHeightUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedEndpointUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedSwapAssetUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
-import co.electriccoin.zcash.ui.common.usecase.GetServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSlippageUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSupportUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSwapAssetsUseCase
@@ -137,7 +137,6 @@ import co.electriccoin.zcash.ui.common.usecase.TrackVotingSharesUseCase
 import co.electriccoin.zcash.ui.common.usecase.UpdateABContactUseCase
 import co.electriccoin.zcash.ui.common.usecase.UpdateSwapActivityMetadataUseCase
 import co.electriccoin.zcash.ui.common.usecase.ValidateAddressUseCase
-import co.electriccoin.zcash.ui.common.usecase.ValidateEndpointUseCase
 import co.electriccoin.zcash.ui.common.usecase.ValidateGenericABContactNameUseCase
 import co.electriccoin.zcash.ui.common.usecase.ValidateSeedUseCase
 import co.electriccoin.zcash.ui.common.usecase.ValidateSwapABContactAddressUseCase
@@ -160,7 +159,6 @@ val useCaseModule =
     module {
         factoryOf(::ObserveFastestServersUseCase)
         factoryOf(::GetSelectedEndpointUseCase)
-        factoryOf(::GetServerSelectionUseCase)
         factoryOf(::RefreshFastestServersUseCase)
         factoryOf(::RefreshActiveVotingSessionUseCase)
         factory { RefreshVotingRoundsUseCase(get(), get()) }
@@ -172,7 +170,6 @@ val useCaseModule =
         factoryOf(::SubmitVotesUseCase)
         factoryOf(::TrackVotingSharesUseCase)
         factoryOf(::PersistServerSelectionUseCase)
-        factoryOf(::ValidateEndpointUseCase)
         factoryOf(::GetConfigurationUseCase)
         factoryOf(::RescanBlockchainUseCase)
         factoryOf(::ValidateZashiABContactAddressUseCase)
@@ -308,4 +305,5 @@ val useCaseModule =
         factoryOf(::GetSwapStatusUseCase)
         factoryOf(::ExecuteDebugDBQueryUseCase)
         factoryOf(::SwapSupportMapper)
+        factoryOf(::GetAutomaticEndpointUseCase)
     }

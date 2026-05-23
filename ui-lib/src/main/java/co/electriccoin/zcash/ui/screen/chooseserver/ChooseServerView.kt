@@ -48,6 +48,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.component.EndpointTextFieldState
+import co.electriccoin.zcash.ui.common.component.ZashiEndpointTextField
 import co.electriccoin.zcash.ui.design.R.drawable
 import co.electriccoin.zcash.ui.design.component.AlertDialogState
 import co.electriccoin.zcash.ui.design.component.AppAlertDialog
@@ -58,14 +60,12 @@ import co.electriccoin.zcash.ui.design.component.LottieProgress
 import co.electriccoin.zcash.ui.design.component.RadioButtonCheckedContent
 import co.electriccoin.zcash.ui.design.component.RadioButtonState
 import co.electriccoin.zcash.ui.design.component.RadioButtonUncheckedContent
-import co.electriccoin.zcash.ui.design.component.TextFieldState
 import co.electriccoin.zcash.ui.design.component.ZashiBadge
 import co.electriccoin.zcash.ui.design.component.ZashiBadgeDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiHorizontalDivider
 import co.electriccoin.zcash.ui.design.component.ZashiRadioButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
-import co.electriccoin.zcash.ui.design.component.ZashiTextField
 import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
@@ -509,7 +509,7 @@ private fun CustomServerRadioButton(
         AnimatedVisibility(visible = state.isExpanded) {
             val focusManager = LocalFocusManager.current
             Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingSmall))
-            ZashiTextField(
+            ZashiEndpointTextField(
                 state = state.newServerTextFieldState,
                 placeholder = {
                     Text(text = stringResource(R.string.choose_server_textfield_hint))
@@ -612,9 +612,7 @@ private fun ChooseServerPreview(
                                             }
                                         ),
                                         newServerTextFieldState =
-                                            TextFieldState(
-                                                value = stringRes(""),
-                                                error = null,
+                                            EndpointTextFieldState(
                                                 onValueChange = { },
                                             ),
                                         badge = null,

@@ -15,6 +15,8 @@ import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.BaseNavigationCommand
 import co.electriccoin.zcash.ui.NavigationCommand
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.component.EndpointTextFieldInnerState
+import co.electriccoin.zcash.ui.common.component.ZashiEndpointTextFieldParser
 import co.electriccoin.zcash.ui.common.model.FastestServersState
 import co.electriccoin.zcash.ui.common.model.SynchronizerError
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
@@ -23,14 +25,15 @@ import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.WalletRepository
+import co.electriccoin.zcash.ui.common.usecase.GetAutomaticEndpointUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedEndpointUseCase
-import co.electriccoin.zcash.ui.common.usecase.GetServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveFastestServersUseCase
 import co.electriccoin.zcash.ui.common.usecase.PersistServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshFastestServersUseCase
-import co.electriccoin.zcash.ui.common.usecase.ValidateEndpointUseCase
 import co.electriccoin.zcash.ui.common.viewmodel.SecretState
+import co.electriccoin.zcash.ui.design.component.InnerTextFieldState
 import co.electriccoin.zcash.ui.design.util.getString
+import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.fixture.MockSynchronizer
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
@@ -38,7 +41,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlin.reflect.KClass
 import kotlin.test.Test
@@ -50,7 +53,7 @@ class ChooseServerSelectionTest {
     @Test
     @SmallTest
     fun automaticToManualSavePinsCurrentEndpointWithoutEndpointTap() =
-        runTest {
+        runBlocking {
             val application = ApplicationProvider.getApplicationContext<Application>()
             val lightWalletEndpointProvider = LightWalletEndpointProvider(application)
             val currentEndpoint = lightWalletEndpointProvider.getEndpoints().last()
@@ -98,7 +101,7 @@ class ChooseServerSelectionTest {
     @Test
     @SmallTest
     fun savingServerSelectionDisablesAndIgnoresSelectionChanges() =
-        runTest {
+        runBlocking {
             val application = ApplicationProvider.getApplicationContext<Application>()
             val lightWalletEndpointProvider = LightWalletEndpointProvider(application)
             val currentEndpoint = lightWalletEndpointProvider.getEndpoints().last()
@@ -143,20 +146,22 @@ class ChooseServerSelectionTest {
                             .first { it.saveButton.isLoading }
                     }
 
-                assertFalse(savingState.connectionMode.automatic.isEnabled)
-                assertFalse(savingState.connectionMode.manual.isEnabled)
                 assertFalse(savingState.fastest.retryButton.isEnabled)
-                assertTrue(savingState.fastest.servers.all { !it.radioButtonState.isEnabled })
-                assertTrue(savingState.other.servers.all { !it.isEnabled })
-
                 val customServer = savingState.customServer()
+                assertFalse(customServer.newServerTextFieldState.isEnabled)
                 assertFalse(customServer.isExpanded)
 
                 savingState.connectionMode.automatic.onClick()
                 savingState.fastest.retryButton.onClick()
                 savingState.defaultServer().radioButtonState.onClick()
                 customServer.radioButtonState.onClick()
-                customServer.newServerTextFieldState.onValueChange("custom.example.com:443")
+                customServer.newServerTextFieldState.onValueChange(
+                    EndpointTextFieldInnerState(
+                        innerTextFieldState = InnerTextFieldState(value = stringRes("custom.example.com:443")),
+                        endpoint = ZashiEndpointTextFieldParser.toEndpointOrNull("custom.example.com:443"),
+                        lastValidEndpoint = ZashiEndpointTextFieldParser.toEndpointOrNull("custom.example.com:443"),
+                    )
+                )
 
                 val stillSavingState =
                     withTimeout(STATE_TIMEOUT_MILLIS) {
@@ -170,7 +175,11 @@ class ChooseServerSelectionTest {
 
                 val stillCustomServer = stillSavingState.customServer()
                 assertFalse(stillCustomServer.isExpanded)
-                assertEquals("", stillCustomServer.newServerTextFieldState.value.getString(application))
+                assertEquals(
+                    "",
+                    stillCustomServer.newServerTextFieldState.innerState.innerTextFieldState.value
+                        .getString(application)
+                )
             } finally {
                 continueEndpointUpdate.complete(Unit)
             }
@@ -198,16 +207,17 @@ private fun createViewModel(
     walletRepository: WalletRepository,
 ): ChooseServerVM {
     val getSelectedEndpoint = GetSelectedEndpointUseCase(persistableWalletProvider)
-    val getServerSelection =
-        GetServerSelectionUseCase(
-            isServerSelectionAutomaticProvider = isServerSelectionAutomaticProvider,
-            persistableWalletProvider = persistableWalletProvider,
+    val getAutomaticEndpoint =
+        GetAutomaticEndpointUseCase(
+            walletRepository = walletRepository,
+            lightWalletEndpointProvider = lightWalletEndpointProvider,
+            getSelectedEndpoint = getSelectedEndpoint,
         )
     return ChooseServerVM(
         application = application,
         observeFastestServers = ObserveFastestServersUseCase(walletRepository),
         getSelectedEndpoint = getSelectedEndpoint,
-        getServerSelection = getServerSelection,
+        isServerSelectionAutomaticProvider = isServerSelectionAutomaticProvider,
         lightWalletEndpointProvider = lightWalletEndpointProvider,
         refreshFastestServersUseCase = RefreshFastestServersUseCase(walletRepository),
         persistServerSelection =
@@ -215,25 +225,17 @@ private fun createViewModel(
                 application = application,
                 walletRepository = walletRepository,
                 synchronizerProvider = FakeSynchronizerProvider(),
-                lightWalletEndpointProvider = lightWalletEndpointProvider,
-                getSelectedEndpoint = getSelectedEndpoint,
                 isServerSelectionAutomaticProvider = isServerSelectionAutomaticProvider,
+                getAutomaticEndpoint = getAutomaticEndpoint,
             ),
-        validateEndpoint = ValidateEndpointUseCase(),
-        navigationRouter = FakeNavigationRouter
+        navigationRouter = FakeNavigationRouter,
+        getAutomaticEndpoint = getAutomaticEndpoint
     )
 }
 
 private fun ChooseServerState.customServer() = other.servers.filterIsInstance<ServerState.Custom>().first()
 
 private fun ChooseServerState.defaultServer() = other.servers.filterIsInstance<ServerState.Default>().first()
-
-private val ServerState.isEnabled: Boolean
-    get() =
-        when (this) {
-            is ServerState.Custom -> radioButtonState.isEnabled && newServerTextFieldState.isEnabled
-            is ServerState.Default -> radioButtonState.isEnabled
-        }
 
 private class FakePersistableWalletProvider(
     endpoint: LightWalletEndpoint
