@@ -1,10 +1,46 @@
 package co.electriccoin.zcash.ui.common.model.voting
 
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
 
 class ChainDtoTest {
+    @Test
+    fun chainRoundsDecodeWhenRoundTitleIsMissing() {
+        val response =
+            Json.decodeFromString<ChainRoundsResponse>(
+                """
+                {
+                  "rounds": [
+                    {
+                      "vote_round_id": "${"00".repeat(32)}",
+                      "snapshot_height": 100,
+                      "vote_end_time": 200,
+                      "proposals": [
+                        {
+                          "id": 1,
+                          "title": "Proposal 1",
+                          "options": [
+                            { "label": "No", "index": 0 },
+                            { "label": "Yes", "index": 1 }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+                """.trimIndent()
+            )
+
+        val round = assertNotNull(response.rounds?.single())
+        assertEquals("", round.title)
+        assertEquals("", round.description)
+        assertEquals("Proposal 1", round.toVotingRound().proposals.single().title)
+    }
+
     @Test
     fun chainRoundSourcesProposalIdentityFromChainResponse() {
         val round =

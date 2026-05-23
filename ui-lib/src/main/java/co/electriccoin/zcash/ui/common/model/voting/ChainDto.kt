@@ -35,7 +35,7 @@ data class ChainTxDto(
 @JsonIgnoreUnknownKeys
 data class ChainRoundDto(
     @SerialName("vote_round_id") val voteRoundId: String,
-    @SerialName("title") val title: String,
+    @SerialName("title") val title: String = "",
     @SerialName("description") val description: String = "",
     @SerialName("snapshot_height") val snapshotHeight: Long,
     @SerialName("snapshot_blockhash") val snapshotBlockhash: String = "",

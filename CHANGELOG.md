@@ -9,6 +9,9 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ### Changed:
 - Voting round responses now require explicit option indices from vote servers.
 
+### Fixed:
+- Coinholder polling can now load when a vote server returns a round without a title.
+
 ## [3.3.1 (1643)] - 2026-04-10
 
 ### Fixed:
