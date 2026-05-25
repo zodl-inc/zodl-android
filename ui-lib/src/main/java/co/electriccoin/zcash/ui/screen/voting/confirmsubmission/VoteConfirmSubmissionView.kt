@@ -52,7 +52,8 @@ fun VoteConfirmSubmissionView(state: VoteConfirmSubmissionState) {
                 navigationAction = {
                     ZashiTopAppBarBackNavigation(
                         onBack = state.onBack,
-                        modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
+                        modifier = Modifier.testTag(ZashiTopAppBarTags.BACK),
+                        enabled = !state.status.isInFlight(),
                     )
                 },
                 colors =
