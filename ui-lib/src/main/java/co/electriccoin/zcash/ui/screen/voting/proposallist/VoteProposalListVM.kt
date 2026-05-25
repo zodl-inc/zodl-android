@@ -47,7 +47,6 @@ import java.text.NumberFormat
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
 import java.util.Locale
 import co.electriccoin.zcash.ui.common.model.voting.VoteIneligibilityReason as ModelVoteIneligibilityReason
 
@@ -482,7 +481,7 @@ class VoteProposalListVM(
 
         return VoteProposalMetaLineState(
             leading = combineMetaLine(dateLabel, votingPowerLabel),
-            trailing = buildTimeLeftLabel(round)
+            trailing = null
         )
     }
 
@@ -501,11 +500,10 @@ class VoteProposalListVM(
                 stringRes(R.string.vote_proposal_list_voting_power, weight.toVotingWeightLabel())
             }
         val dateLabel = votedLabel ?: stringRes(R.string.vote_proposal_list_ends, formatter.format(round.votingEnd))
-        val trailing = buildTimeLeftLabel(round)
 
         return VoteProposalMetaLineState(
             leading = combineMetaLine(dateLabel, votingPowerLabel),
-            trailing = trailing
+            trailing = null
         )
     }
 
@@ -519,16 +517,6 @@ class VoteProposalListVM(
             stringRes(R.string.vote_proposal_list_meta_line, dateLabel, votingPowerLabel)
         }
 
-    private fun buildTimeLeftLabel(round: VotingRound): StringResource {
-        val remaining = ChronoUnit.SECONDS.between(Instant.now(), round.votingEnd)
-        return when {
-            remaining <= 0 -> stringRes(R.string.vote_proposal_list_time_ended)
-            remaining < 3600 -> stringRes(R.string.vote_proposal_list_time_minutes_left, remaining / 60)
-            remaining < 86400 -> stringRes(R.string.vote_proposal_list_time_hours_left, remaining / 3600)
-            remaining < 172800 -> stringRes(R.string.vote_proposal_list_time_day_left, remaining / 86400)
-            else -> stringRes(R.string.vote_proposal_list_time_days_left, remaining / 86400)
-        }
-    }
 
     private fun onProposalTapped(
         roundId: String,
