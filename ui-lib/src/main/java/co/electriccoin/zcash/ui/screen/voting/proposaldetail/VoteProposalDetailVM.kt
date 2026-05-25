@@ -12,7 +12,6 @@ import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
 import co.electriccoin.zcash.ui.common.model.voting.displayColor
-import co.electriccoin.zcash.ui.common.model.voting.optionsWithAbstain
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
@@ -135,7 +134,7 @@ class VoteProposalDetailVM(
         accountUuid: String,
         isReadOnly: Boolean
     ): List<VoteVoteOptionRowState> {
-        val options = proposal.optionsWithAbstain()
+        val options = proposal.options
 
         return options.map { option ->
             VoteVoteOptionRowState(
