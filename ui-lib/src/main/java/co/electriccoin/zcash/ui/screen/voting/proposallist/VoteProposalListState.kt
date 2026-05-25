@@ -26,7 +26,7 @@ data class VoteProposalListState(
     val description: StringResource?,
     val discussionUrl: String?,
     val onViewMore: (() -> Unit)?,
-    val proposals: List<VoteProposalRowState>,
+    val proposals: List<VoteProposalRowState>?,
     val ctaButton: ButtonState?,
     val onBack: () -> Unit,
     val ineligibleSheet: ZashiConfirmationState? = null,

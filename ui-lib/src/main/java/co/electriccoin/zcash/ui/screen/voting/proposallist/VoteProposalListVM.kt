@@ -109,6 +109,22 @@ class VoteProposalListVM(
             }
         }
 
+    private val initialLoadingState: VoteProposalListState
+        get() = VoteProposalListState(
+            mode = args.mode,
+            roundTitle = stringRes(""),
+            snapshotHeight = null,
+            votedCount = 0,
+            totalCount = 0,
+            metaLine = null,
+            description = null,
+            discussionUrl = null,
+            onViewMore = null,
+            proposals = null,
+            ctaButton = null,
+            onBack = ::onBack,
+        )
+
     val state: StateFlow<LceState<VoteProposalListState>> =
         combine(
             votingApiRepository.snapshot,
@@ -136,10 +152,9 @@ class VoteProposalListVM(
                 // confirms `Ready` (or until prep surfaces a recoverable error sheet — in
                 // which case we still want to render the list underneath the sheet so the
                 // "Try again" / "Go back" controls have somewhere to live). When the gate
-                // is PREPARING, fall through to the `content = null` shimmer so the user
-                // never sees the proposal list flash before being routed to WalletSyncing
-                // or Ineligible.
-                val gatedContent =
+                // is PREPARING, fall through to the loading shimmer so the user never sees
+                // the proposal list flash before being routed to WalletSyncing or Ineligible.
+                val resolvedContent =
                     when {
                         gate == PreparationGate.READY -> {
                             content?.copy(ineligibleSheet = ineligible, walletSyncingSheet = walletSyncing)
@@ -154,8 +169,8 @@ class VoteProposalListVM(
                         }
                     }
                 LceState(
-                    content = gatedContent,
-                    isLoading = gatedContent == null,
+                    content = resolvedContent ?: initialLoadingState,
+                    isLoading = resolvedContent == null,
                     error = errorSheet?.let(LceError::BottomSheet)
                 )
             }

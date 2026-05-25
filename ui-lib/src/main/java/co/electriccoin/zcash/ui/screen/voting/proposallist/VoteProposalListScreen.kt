@@ -13,16 +13,13 @@ import org.koin.core.parameter.parametersOf
 fun VoteProposalListScreen(args: VoteProposalListArgs) {
     val vm = koinViewModel<VoteProposalListVM> { parametersOf(args) }
     val state by vm.state.collectAsStateWithLifecycle()
-    LceRenderer(
-        state = state,
-        loading = { isLoading ->
-            if (isLoading && state.content == null) {
-                VoteProposalListLoadingView()
-            }
-        }
-    ) {
+    LceRenderer(state = state) {
         BackHandler { it.onBack() }
-        VoteProposalListView(it)
+        if (state.isLoading && it.proposals == null) {
+            VoteProposalListLoadingView(it)
+        } else {
+            VoteProposalListView(it)
+        }
     }
 }
 
