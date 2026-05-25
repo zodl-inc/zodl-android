@@ -93,14 +93,14 @@ fun VoteResultsView(state: VoteResultsState) {
                         VoteViewMoreChip(onClick = { state.onViewMore?.invoke() })
                     }
 
-                    state.votedMetaLine?.let { votedMetaLine ->
-                        Spacer(4.dp)
-                        Text(
-                            text = votedMetaLine.getValue(),
-                            style = ZashiTypography.textXs,
-                            color = ZashiColors.Text.textTertiary,
-                        )
-                    }
+                    // state.votedMetaLine?.let { votedMetaLine ->
+                    //     Spacer(4.dp)
+                    //     Text(
+                    //         text = votedMetaLine.getValue(),
+                    //         style = ZashiTypography.textXs,
+                    //         color = ZashiColors.Text.textTertiary,
+                    //     )
+                    // }
 
                     Spacer(24.dp)
                     Text(

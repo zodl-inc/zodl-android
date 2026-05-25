@@ -400,23 +400,18 @@ class VoteProposalListVM(
         }
 
         if (mode == VoteProposalListMode.REVIEW) {
-            val allDrafted = proposals.all { drafts.containsKey(it.id) }
-            return if (allDrafted) {
-                ButtonState(
-                    text = stringRes(R.string.vote_proposal_list_confirm_submit),
-                    style = ButtonStyle.PRIMARY,
-                    onClick = {
-                        navigationRouter.forward(
-                            VoteConfirmSubmissionArgs(
-                                roundIdHex = roundId,
-                                choicesJson = drafts.toChoicesJson()
-                            )
+            return ButtonState(
+                text = stringRes(R.string.vote_proposal_list_confirm_submit),
+                style = ButtonStyle.PRIMARY,
+                onClick = {
+                    navigationRouter.forward(
+                        VoteConfirmSubmissionArgs(
+                            roundIdHex = roundId,
+                            choicesJson = drafts.toChoicesJson()
                         )
-                    }
-                )
-            } else {
-                null
-            }
+                    )
+                }
+            )
         }
 
         val draftCount = proposals.count { drafts.containsKey(it.id) }

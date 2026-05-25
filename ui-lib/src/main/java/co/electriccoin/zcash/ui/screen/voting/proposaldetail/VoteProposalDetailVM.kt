@@ -202,11 +202,6 @@ class VoteProposalDetailVM(
         round: VotingRound
     ) {
         unansweredSheet.value = null
-        votingSessionStore.abstainUnanswered(
-            accountUuid = accountUuid,
-            roundId = round.id,
-            proposals = round.proposals
-        )
         persistDraftsForCurrentRound(accountUuid)
         navigationRouter.replace(
             VoteProposalListArgs(
