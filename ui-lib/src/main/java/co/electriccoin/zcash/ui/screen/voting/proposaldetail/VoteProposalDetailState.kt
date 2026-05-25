@@ -22,6 +22,7 @@ data class VoteProposalDetailState(
     val onBack: () -> Unit,
     val onNext: () -> Unit,
     val onViewMore: () -> Unit,
+    val onForumClick: () -> Unit,
     val onPollEndedClose: () -> Unit,
     val onPollEndedViewResults: () -> Unit,
 ) {
@@ -42,6 +43,7 @@ data class VoteProposalDetailState(
                 onBack = {},
                 onNext = {},
                 onViewMore = {},
+                onForumClick = {},
                 onPollEndedClose = {},
                 onPollEndedViewResults = {},
             )

@@ -34,15 +34,14 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
-import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
+import co.electriccoin.zcash.ui.design.util.scaffoldScrollPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
 import co.electriccoin.zcash.ui.screen.voting.VoteTrustIndicator
@@ -63,7 +62,9 @@ fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
             )
         },
         content = { padding ->
-            if (state.activeRounds.isEmpty() && state.pastRounds.isEmpty()) {
+            val activeRounds = state.activeRounds.orEmpty()
+            val pastRounds = state.pastRounds.orEmpty()
+            if (activeRounds.isEmpty() && pastRounds.isEmpty()) {
                 NoRoundsContent(
                     onGotIt = state.onBack,
                     onRefresh = state.onRefresh,
@@ -74,20 +75,28 @@ fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
                 )
             } else {
                 LazyColumn(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .scaffoldPadding(padding),
+                    modifier = Modifier.fillMaxSize(),
                     contentPadding =
                         PaddingValues(
-                            bottom = 40.dp
+                            start = ZashiDimensions.Spacing.spacing3xl,
+                            top = padding.calculateTopPadding() + ZashiDimensions.Spacing.spacingLg,
+                            end = ZashiDimensions.Spacing.spacing3xl,
+                            bottom =  padding.calculateBottomPadding() + ZashiDimensions.Spacing.spacing3xl
                         ),
                     verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing4xl)
                 ) {
-                    items(state.activeRounds, key = { it.roundId }) { round ->
+                    items(
+                        activeRounds,
+                        key = { it.roundId },
+                        contentType = { "pollcard" }
+                    ) { round ->
                         PollCard(round)
                     }
-                    items(state.pastRounds, key = { it.roundId }) { round ->
+                    items(
+                        pastRounds,
+                        key = { it.roundId },
+                        contentType = { "pollcard" }
+                    ) { round ->
                         PollCard(round)
                     }
                 }
@@ -97,26 +106,22 @@ fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
 }
 
 @Composable
-fun VoteCoinholderPollingLoadingView() {
+fun VoteCoinholderPollingLoadingView(state: VoteCoinholderPollingState) {
     BlankBgScaffold(
         topBar = {
-            ZashiSmallTopAppBar(
+            VoteAppBar(
                 title = stringResource(R.string.vote_top_bar_title),
-                colors =
-                    ZcashTheme.colors.topAppBarColors orDark
-                        ZcashTheme.colors.topAppBarColors.copyColors(
-                            containerColor = Color.Transparent
-                        )
+                onBack = state.onBack,
+                onConfigSettings = state.onConfigSettings,
             )
         },
         content = { padding ->
             CommonShimmerLoadingScreen(
-                shimmerItemsCount = 4,
+                shimmerItemsCount = 8,
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .scaffoldPadding(padding)
-                        .padding(top = 8.dp),
+                        .scaffoldScrollPadding(padding),
                 showDivider = false,
             )
         }
@@ -386,4 +391,11 @@ private fun CoinholderPollingPreviewEmpty() =
                     pastRounds = emptyList(),
                 )
         )
+    }
+
+@PreviewScreens
+@Composable
+private fun CoinholderPollingPreviewLoading() =
+    ZcashTheme {
+        VoteCoinholderPollingLoadingView(state = VoteCoinholderPollingState.preview)
     }

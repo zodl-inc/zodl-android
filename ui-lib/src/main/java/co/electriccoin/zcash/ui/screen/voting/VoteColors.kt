@@ -3,7 +3,6 @@ package co.electriccoin.zcash.ui.screen.voting
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import co.electriccoin.zcash.ui.common.model.voting.VoteOptionDisplayColor
-import co.electriccoin.zcash.ui.design.theme.colors.HyperBlue
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 
 data class VoteColors(
@@ -22,43 +21,35 @@ data class VoteColors(
 @Composable
 fun VoteOptionDisplayColor.answerColors(): VoteColors =
     when (this) {
-        // VoteOptionDisplayColor.SUPPORT -> {
-        //     VoteColors(
-        //         bg = ZashiColors.Utility.SuccessGreen.utilitySuccess50,
-        //         labelColor = ZashiColors.Utility.SuccessGreen.utilitySuccess700,
-        //         textColor = ZashiColors.Utility.SuccessGreen.utilitySuccess800,
-        //     )
-        // }
-        //
-        // VoteOptionDisplayColor.OPPOSE -> {
-        //     VoteColors(
-        //         bg = ZashiColors.Utility.ErrorRed.utilityError50,
-        //         labelColor = ZashiColors.Utility.ErrorRed.utilityError500,
-        //         textColor = ZashiColors.Utility.ErrorRed.utilityError600,
-        //     )
-        // }
+        VoteOptionDisplayColor.SUPPORT -> {
+            VoteColors(
+                bg = ZashiColors.Utility.SuccessGreen.utilitySuccess50,
+                labelColor = ZashiColors.Utility.SuccessGreen.utilitySuccess500,
+                textColor = ZashiColors.Utility.SuccessGreen.utilitySuccess500,
+            )
+        }
+
+        VoteOptionDisplayColor.OPPOSE -> {
+            VoteColors(
+                bg = ZashiColors.Utility.ErrorRed.utilityError50,
+                labelColor = ZashiColors.Utility.ErrorRed.utilityError500,
+                textColor = ZashiColors.Utility.ErrorRed.utilityError500,
+            )
+        }
 
         VoteOptionDisplayColor.ABSTAIN, VoteOptionDisplayColor.GRAY -> {
             VoteColors(
                 bg = ZashiColors.Utility.Gray.utilityGray50,
-                labelColor = ZashiColors.Text.textTertiary,
-                textColor = ZashiColors.Text.textSecondary,
+                labelColor = ZashiColors.Utility.Gray.utilityGray500,
+                textColor = ZashiColors.Utility.Gray.utilityGray500,
             )
         }
 
         else -> {
             VoteColors(
                 bg = ZashiColors.Utility.HyperBlue.utilityBlueDark50,
-                labelColor = ZashiColors.Utility.HyperBlue.utilityBlueDark700,
-                textColor = ZashiColors.Utility.HyperBlue.utilityBlueDark800,
+                labelColor = ZashiColors.Utility.HyperBlue.utilityBlueDark500,
+                textColor = ZashiColors.Utility.HyperBlue.utilityBlueDark500,
             )
         }
-    }
-
-@Composable
-fun voteResultBarColor(isWinner: Boolean): Color =
-    if (isWinner) {
-        ZashiColors.Utility.Indigo.utilityIndigo500
-    } else {
-        ZashiColors.Utility.Gray.utilityGray700
     }

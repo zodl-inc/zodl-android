@@ -9,6 +9,7 @@ import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.TallyResults
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
+import co.electriccoin.zcash.ui.common.model.voting.displayColor
 import co.electriccoin.zcash.ui.common.model.voting.voteBadgeInfo
 import co.electriccoin.zcash.ui.common.model.withLce
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
@@ -161,7 +162,7 @@ class VoteResultsVM(
         val hasTie = winningOptions.size > 1
 
         val options =
-            proposal.options.mapIndexed { index, option ->
+            proposal.options.map { option ->
                 val weight = tallyProposal?.options?.firstOrNull { it.optionId == option.id }?.weight ?: 0L
 
                 VoteOptionResultState(
@@ -169,6 +170,7 @@ class VoteResultsVM(
                     amountZec = stringRes(R.string.vote_results_amount_zec, weight.toZec()),
                     fraction = if (hasVotes) weight / displayWeight else 0f,
                     isWinner = hasVotes && !hasTie && weight == maxWeight,
+                    color = option.displayColor(),
                 )
             }
 

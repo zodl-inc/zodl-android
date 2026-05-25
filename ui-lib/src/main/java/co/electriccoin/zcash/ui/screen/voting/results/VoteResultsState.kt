@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.voting.results
 
 import androidx.compose.runtime.Immutable
+import co.electriccoin.zcash.ui.common.model.voting.VoteOptionDisplayColor
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -59,6 +60,7 @@ data class VoteOptionResultState(
     val amountZec: StringResource,
     val fraction: Float,
     val isWinner: Boolean,
+    val color: VoteOptionDisplayColor,
 ) {
     companion object {
         val preview =
@@ -67,6 +69,7 @@ data class VoteOptionResultState(
                 amountZec = stringRes("800.00 ZEC"),
                 fraction = 0.65f,
                 isWinner = true,
+                color = VoteOptionDisplayColor.SUPPORT,
             )
     }
 }

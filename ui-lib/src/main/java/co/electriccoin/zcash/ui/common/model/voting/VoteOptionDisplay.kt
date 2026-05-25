@@ -17,10 +17,7 @@ data class VoteOptionDisplayInfo(
     val color: VoteOptionDisplayColor,
 )
 
-fun VoteOption.displayColor(
-    position: Int,
-    total: Int,
-): VoteOptionDisplayColor = voteOptionDisplayColor(label = label, position = position, total = total)
+fun VoteOption.displayColor(): VoteOptionDisplayColor = voteOptionDisplayColor(label = label)
 
 fun Proposal.voteBadgeInfo(choiceId: Int): VoteOptionDisplayInfo {
     val matchedIndex = options.indexOfFirst { option -> option.id == choiceId }
@@ -28,7 +25,7 @@ fun Proposal.voteBadgeInfo(choiceId: Int): VoteOptionDisplayInfo {
         val matched = options[matchedIndex]
         return VoteOptionDisplayInfo(
             label = matched.label,
-            color = matched.displayColor(position = matchedIndex, total = options.size)
+            color = matched.displayColor()
         )
     }
 
@@ -55,7 +52,7 @@ fun Proposal.tallyDisplayInfo(
         val option = options[matchedIndex]
         return VoteOptionDisplayInfo(
             label = option.label,
-            color = option.displayColor(position = matchedIndex, total = options.size)
+            color = option.displayColor()
         )
     }
 
@@ -72,34 +69,10 @@ fun Proposal.tallyDisplayInfo(
     )
 }
 
-private fun voteOptionDisplayColor(
-    label: String,
-    position: Int,
-    total: Int,
-): VoteOptionDisplayColor {
-    if (label.contains("abstain", ignoreCase = true)) {
-        return VoteOptionDisplayColor.ABSTAIN
+private fun voteOptionDisplayColor(label: String): VoteOptionDisplayColor =
+    when {
+        label.contains("abstain", ignoreCase = true) -> VoteOptionDisplayColor.ABSTAIN
+        label.equals("yes", ignoreCase = true) -> VoteOptionDisplayColor.SUPPORT
+        label.equals("no", ignoreCase = true) -> VoteOptionDisplayColor.OPPOSE
+        else -> VoteOptionDisplayColor.PURPLE
     }
-
-    if (total == 2) {
-        return if (position == 0) {
-            VoteOptionDisplayColor.SUPPORT
-        } else {
-            VoteOptionDisplayColor.OPPOSE
-        }
-    }
-
-    val palette =
-        listOf(
-            VoteOptionDisplayColor.SUPPORT,
-            VoteOptionDisplayColor.OPPOSE,
-            VoteOptionDisplayColor.PURPLE,
-            VoteOptionDisplayColor.WARNING,
-            VoteOptionDisplayColor.INDIGO,
-            VoteOptionDisplayColor.BRAND,
-            VoteOptionDisplayColor.GRAY,
-            VoteOptionDisplayColor.INDIGO_DARK,
-        )
-
-    return palette[position.mod(palette.size)]
-}

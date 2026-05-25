@@ -20,7 +20,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -119,8 +118,8 @@ fun VoteProposalDetailView(state: VoteProposalDetailState) {
                 }
 
                 if (!state.isLocked) {
-                    state.forumUrl?.let { forumUrl ->
-                        ForumLinkRow(url = forumUrl)
+                    if (state.forumUrl != null) {
+                        ForumLinkRow(onClick = state.onForumClick)
                         VerticalSpacer(16.dp)
                     }
                     NavigationButtons(state = state)
@@ -138,15 +137,13 @@ fun VoteProposalDetailView(state: VoteProposalDetailState) {
 }
 
 @Composable
-private fun ForumLinkRow(url: String) {
-    val uriHandler = LocalUriHandler.current
-
+private fun ForumLinkRow(onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable { uriHandler.openUri(url) }
+                .clickable(onClick = onClick)
     ) {
         Surface(
             shape = CircleShape,

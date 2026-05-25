@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -45,7 +46,7 @@ import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orDark
-import co.electriccoin.zcash.ui.design.util.scaffoldPadding
+import co.electriccoin.zcash.ui.design.util.scaffoldScrollPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
 import co.electriccoin.zcash.ui.screen.voting.VoteColors
@@ -70,13 +71,17 @@ fun VoteProposalListView(state: VoteProposalListState) {
             )
         },
         content = { padding ->
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .scaffoldPadding(padding)
-            ) {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding =
+                        PaddingValues(
+                            start = ZashiDimensions.Spacing.spacing3xl,
+                            top = padding.calculateTopPadding() + ZashiDimensions.Spacing.spacingLg,
+                            end = ZashiDimensions.Spacing.spacing3xl,
+                            bottom = padding.calculateBottomPadding() + ZashiDimensions.Spacing.spacing3xl
+                        ),
+                ) {
                     item {
                         when (state.mode) {
                             VoteProposalListMode.VOTING,
@@ -112,26 +117,38 @@ fun VoteProposalListView(state: VoteProposalListState) {
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .height(64.dp)
                                 .align(Alignment.BottomCenter)
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors =
-                                            listOf(
-                                                Color.Transparent,
-                                                ZashiColors.Surfaces.bgPrimary
-                                            )
+                                .padding(bottom = padding.calculateBottomPadding())
+                    ) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(64.dp)
+                                    .align(Alignment.BottomCenter)
+                                    .background(
+                                        Brush.verticalGradient(
+                                            colors =
+                                                listOf(
+                                                    Color.Transparent,
+                                                    ZashiColors.Surfaces.bgPrimary
+                                                )
+                                        )
                                     )
-                                )
-                    )
-                    ZashiButton(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .align(Alignment.BottomCenter)
-                                .padding(bottom = ZashiDimensions.Spacing.spacingMd),
-                        state = button
-                    )
+                        )
+                        ZashiButton(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .align(Alignment.BottomCenter)
+                                    .padding(
+                                        start = ZashiDimensions.Spacing.spacing3xl,
+                                        end = ZashiDimensions.Spacing.spacing3xl,
+                                        bottom = ZashiDimensions.Spacing.spacingMd
+                                    ),
+                            state = button
+                        )
+                    }
                 }
             }
         }
@@ -157,8 +174,7 @@ fun VoteProposalListLoadingView() {
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .scaffoldPadding(padding)
-                        .padding(top = 8.dp),
+                        .scaffoldScrollPadding(padding),
                 showDivider = false,
             )
         }

@@ -25,6 +25,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.ExternalUrl
 import co.electriccoin.zcash.ui.screen.voting.isDefaultVotingConfig
 import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptionArgs
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
@@ -120,6 +121,9 @@ class VoteProposalDetailVM(
                     )
                 )
             },
+            onForumClick = {
+                proposal.forumUrl?.let { navigationRouter.forward(ExternalUrl(it)) }
+            },
             onPollEndedClose = ::onBack,
             onPollEndedViewResults = { onPollEndedViewResults(round) },
         )
@@ -132,14 +136,13 @@ class VoteProposalDetailVM(
         isReadOnly: Boolean
     ): List<VoteVoteOptionRowState> {
         val options = proposal.optionsWithAbstain()
-        val total = options.size
 
-        return options.mapIndexed { index, option ->
+        return options.map { option ->
             VoteVoteOptionRowState(
                 index = option.id,
                 label = stringRes(option.label),
                 description = option.description?.let { stringRes(it) },
-                color = option.displayColor(position = index, total = total),
+                color = option.displayColor(),
                 isSelected = selectedOptionId == option.id,
                 isLocked = isReadOnly,
                 onSelect = {

@@ -8,6 +8,7 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.Lce
 import co.electriccoin.zcash.ui.common.model.LceContent
 import co.electriccoin.zcash.ui.common.model.LceSource
+import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.mutableLce
 import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
@@ -141,6 +142,13 @@ class VoteCoinholderPollingVM(
             )
         }
 
+    private val initialLoadingState: VoteCoinholderPollingState
+        get() = VoteCoinholderPollingState(
+            onBack = ::onBack,
+            onRefresh = ::refreshVotingData,
+            onConfigSettings = ::onConfigSettings,
+        )
+
     val state =
         combine(
             apiSnapshotWithConfigReadiness,
@@ -158,7 +166,8 @@ class VoteCoinholderPollingVM(
                     roundsLceState.content is LceContent.Success -> emptyList()
                     else -> null
                 }
-            val currentAccountUuid = accountUuid ?: return@combine null
+
+            val currentAccountUuid = accountUuid ?: return@combine initialLoadingState
 
             rounds?.let {
                 val normalizedEndorsedRoundIds = apiSnapshot.zodlEndorsedRoundIds.normalizedVotingRoundIds()
@@ -228,7 +237,7 @@ class VoteCoinholderPollingVM(
                     onRefresh = ::refreshVotingData,
                     onConfigSettings = ::onConfigSettings,
                 )
-            }
+            } ?: initialLoadingState
         }.let { contentFlow ->
             combine(
                 contentFlow,
@@ -236,8 +245,8 @@ class VoteCoinholderPollingVM(
                 configRefreshPending,
                 configErrorSheet,
                 unverifiedPollWarningSheet
-            ) { content, refreshPending, configPending, configSheet, unverifiedSheet ->
-                content?.copy(
+            ) { content, _, _, configSheet, unverifiedSheet ->
+                content.copy(
                     configErrorSheet = configSheet,
                     unverifiedPollWarningSheet = unverifiedSheet
                 )
@@ -249,7 +258,10 @@ class VoteCoinholderPollingVM(
                 message = stringRes(R.string.vote_error_unable_to_load_polls_message),
                 primaryStyle = ButtonStyle.PRIMARY
             )
-        }.stateIn(this)
+        }.stateIn(
+            viewModel = this,
+            initialValue = LceState(initialLoadingState)
+        )
 
     private fun buildCard(
         round: VotingRound,

@@ -18,13 +18,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.voting.VoteOptionDisplayColor
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
-import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.VerticalSpacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
@@ -35,12 +36,13 @@ import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
+import co.electriccoin.zcash.ui.design.util.scaffoldScrollPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
 import co.electriccoin.zcash.ui.screen.voting.component.VoteAppBar
 import co.electriccoin.zcash.ui.screen.voting.component.VoteViewMoreChip
+import co.electriccoin.zcash.ui.screen.voting.answerColors
 import co.electriccoin.zcash.ui.screen.voting.component.ZipBadge
-import co.electriccoin.zcash.ui.screen.voting.voteResultBarColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,15 +59,19 @@ fun VoteResultsView(state: VoteResultsState) {
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .scaffoldPadding(padding)
             ) {
                 Column(
                     modifier =
                         Modifier
                             .weight(1f)
                             .verticalScroll(rememberScrollState())
+                            .scaffoldScrollPadding(
+                                padding,
+                                start = ZashiDimensions.Spacing.spacing3xl,
+                                end = ZashiDimensions.Spacing.spacing3xl
+                            )
                 ) {
-                    Spacer(24.dp)
+                    Spacer(ZashiDimensions.Spacing.spacingLg)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -124,7 +130,11 @@ fun VoteResultsView(state: VoteResultsState) {
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(bottom = ZashiDimensions.Spacing.spacingMd),
+                            .padding(
+                                start = ZashiDimensions.Spacing.spacing3xl,
+                                end = ZashiDimensions.Spacing.spacing3xl,
+                                bottom = padding.calculateBottomPadding() + ZashiDimensions.Spacing.spacing3xl
+                            ),
                     state = state.doneButton,
                 )
             }
@@ -147,8 +157,7 @@ fun VoteResultsLoadingView(onBack: () -> Unit) {
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .scaffoldPadding(padding)
-                        .padding(top = 8.dp),
+                        .scaffoldScrollPadding(padding),
                 showDivider = false,
             )
         }
@@ -234,8 +243,16 @@ private fun ProposalResultCard(state: VoteProposalResultState) {
 
 @Composable
 private fun OptionResultBar(option: VoteOptionResultState) {
-    val barColor = voteResultBarColor(option.isWinner)
-    val textColor = if (option.isWinner) ZashiColors.Utility.Indigo.utilityIndigo500 else ZashiColors.Text.textTertiary
+    val barColor: Color
+    val textColor: Color
+    if (option.isWinner) {
+        val colors = option.color.answerColors()
+        barColor = colors.labelColor
+        textColor = colors.textColor
+    } else {
+        barColor = ZashiColors.Utility.Gray.utilityGray500
+        textColor = ZashiColors.Text.textPrimary
+    }
     val fontWeight = if (option.isWinner) FontWeight.SemiBold else FontWeight.Normal
 
     Row(
@@ -285,12 +302,14 @@ private fun previewProposalResults() =
                         amountZec = stringRes("1,240,000 ZEC"),
                         fraction = 0.76f,
                         isWinner = true,
+                        color = VoteOptionDisplayColor.SUPPORT,
                     ),
                     VoteOptionResultState(
                         label = stringRes("No"),
                         amountZec = stringRes("390,000 ZEC"),
                         fraction = 0.24f,
                         isWinner = false,
+                        color = VoteOptionDisplayColor.OPPOSE,
                     ),
                 ),
             totalZec = stringRes("Total: 1,630,000 ZEC"),
@@ -307,12 +326,14 @@ private fun previewProposalResults() =
                         amountZec = stringRes("500,000 ZEC"),
                         fraction = 0.5f,
                         isWinner = false,
+                        color = VoteOptionDisplayColor.SUPPORT,
                     ),
                     VoteOptionResultState(
                         label = stringRes("No"),
                         amountZec = stringRes("500,000 ZEC"),
                         fraction = 0.5f,
                         isWinner = false,
+                        color = VoteOptionDisplayColor.OPPOSE,
                     ),
                 ),
             totalZec = stringRes("Total: 1,000,000 ZEC"),
@@ -329,12 +350,14 @@ private fun previewProposalResults() =
                         amountZec = stringRes("500,000 ZEC"),
                         fraction = 0.5f,
                         isWinner = false,
+                        color = VoteOptionDisplayColor.SUPPORT,
                     ),
                     VoteOptionResultState(
                         label = stringRes("No"),
                         amountZec = stringRes("500,000 ZEC"),
                         fraction = 0.5f,
                         isWinner = false,
+                        color = VoteOptionDisplayColor.OPPOSE,
                     ),
                 ),
             totalZec = stringRes("Total: 1,000,000 ZEC"),

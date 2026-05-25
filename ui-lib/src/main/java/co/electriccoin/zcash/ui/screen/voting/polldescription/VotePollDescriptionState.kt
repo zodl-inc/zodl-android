@@ -10,6 +10,7 @@ data class VotePollDescriptionState(
     val title: StringResource,
     val description: StringResource,
     val discussionUrl: String?,
+    val onDiscussionClick: () -> Unit,
     override val onBack: () -> Unit,
 ) : ModalBottomSheetState {
     companion object {
@@ -21,6 +22,7 @@ data class VotePollDescriptionState(
                         "This round covers the allocation of Zcash Foundation grant funds for Q3 2026."
                     ),
                 discussionUrl = null,
+                onDiscussionClick = {},
                 onBack = {},
             )
     }

@@ -71,7 +71,6 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.component.VoteAppBar
 import kotlinx.coroutines.delay
@@ -109,10 +108,14 @@ fun VoteChainConfigView(state: VoteChainConfigState?) {
         },
         content = { padding ->
             LazyColumn(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .scaffoldPadding(padding),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding =
+                    PaddingValues(
+                        start = ZashiDimensions.Spacing.spacing3xl,
+                        top = padding.calculateTopPadding() + ZashiDimensions.Spacing.spacingLg,
+                        end = ZashiDimensions.Spacing.spacing3xl,
+                        bottom = padding.calculateBottomPadding() + ZashiDimensions.Spacing.spacing3xl
+                    ),
                 verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing3xl)
             ) {
                 item(key = "intro") {

@@ -9,11 +9,11 @@ import co.electriccoin.zcash.ui.screen.voting.VoteTrustIndicator
 
 @Immutable
 data class VoteCoinholderPollingState(
-    val activeRounds: List<VotePollCardState>,
-    val pastRounds: List<VotePollCardState>,
     val onBack: () -> Unit,
     val onRefresh: () -> Unit,
     val onConfigSettings: () -> Unit,
+    val pastRounds: List<VotePollCardState>? = null,
+    val activeRounds: List<VotePollCardState>? = null,
     val configErrorSheet: ZashiConfirmationState? = null,
     val unverifiedPollWarningSheet: ZashiConfirmationState? = null,
 ) {
