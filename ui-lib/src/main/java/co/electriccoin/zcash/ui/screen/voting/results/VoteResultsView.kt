@@ -282,6 +282,7 @@ private fun OptionResultBar(option: VoteOptionResultState) {
                 .height(8.dp),
         color = barColor,
         trackColor = ZashiColors.Surfaces.strokeSecondary,
+        drawStopIndicator = {},
     )
 }
 
