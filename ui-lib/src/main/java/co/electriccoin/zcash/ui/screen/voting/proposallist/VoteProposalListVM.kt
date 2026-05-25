@@ -383,7 +383,7 @@ class VoteProposalListVM(
             title = stringRes(proposal.title),
             description = stringRes(proposal.description),
             voteBadge = badge,
-            onClick = { onProposalTapped(roundId, proposal.id, isFromList = true) },
+            onClick = { onProposalTapped(roundId, proposal.id) },
         )
     }
 
@@ -518,11 +518,7 @@ class VoteProposalListVM(
         }
 
 
-    private fun onProposalTapped(
-        roundId: String,
-        proposalId: Int,
-        isFromList: Boolean = false,
-    ) {
+    private fun onProposalTapped(roundId: String, proposalId: Int) {
         if (roundId.isEmpty()) return
 
         navigationRouter.forward(
@@ -531,7 +527,6 @@ class VoteProposalListVM(
                 roundId = roundId,
                 isEditingFromReview = args.mode == VoteProposalListMode.REVIEW,
                 isReadOnly = args.mode == VoteProposalListMode.VOTED,
-                isFromList = isFromList,
             )
         )
     }

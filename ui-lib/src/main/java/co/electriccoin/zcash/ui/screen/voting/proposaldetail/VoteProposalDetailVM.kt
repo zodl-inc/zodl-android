@@ -105,7 +105,6 @@ class VoteProposalDetailVM(
             options = buildOptions(proposal, selectedOptionId, accountUuid, args.isReadOnly || pollEnded),
             isLocked = args.isReadOnly || pollEnded,
             isEditingFromReview = args.isEditingFromReview,
-            isFromList = args.isFromList,
             unansweredSheet = unansweredSheetState?.takeIf { !pollEnded },
             showPollEndedSheet = pollEnded && !args.isReadOnly,
             unverifiedPollWarningSheet = unverifiedSheet,
@@ -166,7 +165,7 @@ class VoteProposalDetailVM(
         accountUuid: String,
         round: VotingRound,
     ) {
-        if (args.isFromList) {
+        if (args.isEditingFromReview) {
             navigationRouter.backTo(VoteProposalListArgs::class)
             return
         }
