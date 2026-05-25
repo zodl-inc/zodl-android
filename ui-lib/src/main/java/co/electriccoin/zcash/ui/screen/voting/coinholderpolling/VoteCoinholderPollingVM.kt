@@ -199,10 +199,15 @@ class VoteCoinholderPollingVM(
                         .partition { round ->
                             round.status == SessionStatus.ACTIVE || round.status == SessionStatus.TALLYING
                         }
+                val sortedActiveSrc =
+                    activeSrc.sortedWith(
+                        compareBy<VotingRound> { round -> round.votingEnd.epochSecond }
+                            .thenBy { round -> round.id }
+                    )
 
                 VoteCoinholderPollingState(
                     activeRounds =
-                        activeSrc.map { round ->
+                        sortedActiveSrc.map { round ->
                             buildCard(
                                 round = round,
                                 roundNumber = roundNumbersById[round.id] ?: 0,
