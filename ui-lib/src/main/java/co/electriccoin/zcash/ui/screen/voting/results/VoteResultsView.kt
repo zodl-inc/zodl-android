@@ -251,7 +251,7 @@ private fun OptionResultBar(option: VoteOptionResultState) {
         textColor = colors.textColor
     } else {
         barColor = ZashiColors.Utility.Gray.utilityGray500
-        textColor = ZashiColors.Text.textPrimary
+        textColor = ZashiColors.Text.textTertiary
     }
     val fontWeight = if (option.isWinner) FontWeight.SemiBold else FontWeight.Normal
 

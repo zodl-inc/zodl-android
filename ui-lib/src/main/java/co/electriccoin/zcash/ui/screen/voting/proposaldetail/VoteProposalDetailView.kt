@@ -289,7 +289,7 @@ private fun previewOptions(selectedIndex: Int? = null) =
             index = 2,
             label = stringRes("Do not include issuance smoothing"),
             description = stringRes("Do not include issuance smoothing in NU7. (Fee burning still proceeds.)"),
-            color = VoteOptionDisplayColor.PURPLE,
+            color = VoteOptionDisplayColor.BLUE,
             isSelected = selectedIndex == 2,
             isLocked = false,
             onSelect = {}

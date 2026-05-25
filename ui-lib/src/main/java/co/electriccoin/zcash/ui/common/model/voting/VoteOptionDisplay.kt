@@ -4,7 +4,7 @@ enum class VoteOptionDisplayColor {
     SUPPORT,
     OPPOSE,
     ABSTAIN,
-    PURPLE,
+    BLUE,
     WARNING,
     INDIGO,
     BRAND,
@@ -72,7 +72,7 @@ fun Proposal.tallyDisplayInfo(
 private fun voteOptionDisplayColor(label: String): VoteOptionDisplayColor =
     when {
         label.contains("abstain", ignoreCase = true) -> VoteOptionDisplayColor.ABSTAIN
-        label.equals("yes", ignoreCase = true) -> VoteOptionDisplayColor.SUPPORT
-        label.equals("no", ignoreCase = true) -> VoteOptionDisplayColor.OPPOSE
-        else -> VoteOptionDisplayColor.PURPLE
+        label.equals("yes", ignoreCase = true) || label.equals("support", ignoreCase = true) -> VoteOptionDisplayColor.SUPPORT
+        label.equals("no", ignoreCase = true) || label.equals("oppose", ignoreCase = true) -> VoteOptionDisplayColor.OPPOSE
+        else -> VoteOptionDisplayColor.BLUE
     }

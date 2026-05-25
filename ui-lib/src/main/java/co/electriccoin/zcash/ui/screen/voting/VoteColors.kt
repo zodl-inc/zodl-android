@@ -11,13 +11,6 @@ data class VoteColors(
     val textColor: Color,
 )
 
-/**
- * Color logic for vote answer containers and result bars:
- * - SUPPORT → green
- * - OPPOSE  → red
- * - ABSTAIN / GRAY → gray
- * - everything else → indigo (blue)
- */
 @Composable
 fun VoteOptionDisplayColor.answerColors(): VoteColors =
     when (this) {
