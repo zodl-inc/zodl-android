@@ -195,7 +195,12 @@ class VoteProposalDetailVM(
             )
         } else {
             val unansweredCount = proposals.count { !drafts.containsKey(it.id) }
-            unansweredSheet.value = buildUnansweredSheet(unansweredCount, accountUuid, round)
+            unansweredSheet.value =
+                if (drafts.isEmpty()) {
+                    buildNoChoicesSheet()
+                } else {
+                    buildUnansweredSheet(unansweredCount, accountUuid, round)
+                }
         }
     }
 
@@ -292,6 +297,16 @@ class VoteProposalDetailVM(
         onSecondary = { unansweredSheet.value = null },
         onBack = { unansweredSheet.value = null },
     )
+
+    private fun buildNoChoicesSheet() =
+        ZashiConfirmationState.error(
+            title = stringRes(R.string.vote_proposal_detail_unanswered_title),
+            message = stringRes(R.string.vote_proposal_detail_no_choices_message),
+            primaryText = stringRes(R.string.vote_dismiss),
+            secondaryText = null,
+            onPrimary = { unansweredSheet.value = null },
+            onBack = { unansweredSheet.value = null },
+        )
 
     private fun buildUnverifiedPollWarningSheet(round: VotingRound) =
         ZashiConfirmationState(

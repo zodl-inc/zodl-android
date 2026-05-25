@@ -415,6 +415,9 @@ class VoteProposalListVM(
         }
 
         if (mode == VoteProposalListMode.REVIEW) {
+            if (drafts.isEmpty()) {
+                return null
+            }
             return ButtonState(
                 text = stringRes(R.string.vote_proposal_list_confirm_submit),
                 style = ButtonStyle.PRIMARY,
