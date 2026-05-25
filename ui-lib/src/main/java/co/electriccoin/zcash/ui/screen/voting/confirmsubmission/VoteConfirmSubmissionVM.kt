@@ -545,7 +545,7 @@ class VoteConfirmSubmissionVM(
     private fun failureMessage(status: VoteSubmissionStatus) =
         when (status) {
             is VoteSubmissionStatus.LocalAuthFailed -> {
-                status.error.toErrorMessageOrDefault(stringRes(R.string.vote_confirm_error_authentication))
+                stringRes(R.string.vote_error_authorization_failed_message)
             }
 
             is VoteSubmissionStatus.ProtocolAuthFailed -> {
@@ -559,7 +559,7 @@ class VoteConfirmSubmissionVM(
             }
 
             else -> {
-                stringRes(R.string.vote_error_something_went_wrong)
+                stringRes(R.string.vote_error_something_went_wrong_message)
             }
         }
 

@@ -134,12 +134,7 @@ object VotingErrorMapper {
                 stringRes(UiR.string.vote_error_mapper_version)
             }
 
-            else -> {
-                rawMessage
-                    .takeIf { it.isNotBlank() }
-                    ?.let(::stringRes)
-                    ?: stringRes(UiR.string.vote_error_mapper_unknown)
-            }
+            else -> stringRes(UiR.string.vote_error_mapper_unknown)
         }
     }
 
