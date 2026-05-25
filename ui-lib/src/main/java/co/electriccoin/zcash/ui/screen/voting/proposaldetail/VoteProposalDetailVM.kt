@@ -12,7 +12,6 @@ import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
 import co.electriccoin.zcash.ui.common.model.voting.displayColor
-import co.electriccoin.zcash.ui.common.model.voting.optionsWithAbstain
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
@@ -135,7 +134,7 @@ class VoteProposalDetailVM(
         accountUuid: String,
         isReadOnly: Boolean
     ): List<VoteVoteOptionRowState> {
-        val options = proposal.optionsWithAbstain()
+        val options = proposal.options
 
         return options.map { option ->
             VoteVoteOptionRowState(
@@ -196,7 +195,12 @@ class VoteProposalDetailVM(
             )
         } else {
             val unansweredCount = proposals.count { !drafts.containsKey(it.id) }
-            unansweredSheet.value = buildUnansweredSheet(unansweredCount, accountUuid, round)
+            unansweredSheet.value =
+                if (drafts.isEmpty()) {
+                    buildNoChoicesSheet()
+                } else {
+                    buildUnansweredSheet(unansweredCount, accountUuid, round)
+                }
         }
     }
 
@@ -293,6 +297,16 @@ class VoteProposalDetailVM(
         onSecondary = { unansweredSheet.value = null },
         onBack = { unansweredSheet.value = null },
     )
+
+    private fun buildNoChoicesSheet() =
+        ZashiConfirmationState.error(
+            title = stringRes(R.string.vote_proposal_detail_unanswered_title),
+            message = stringRes(R.string.vote_proposal_detail_no_choices_message),
+            primaryText = stringRes(R.string.vote_dismiss),
+            secondaryText = null,
+            onPrimary = { unansweredSheet.value = null },
+            onBack = { unansweredSheet.value = null },
+        )
 
     private fun buildUnverifiedPollWarningSheet(round: VotingRound) =
         ZashiConfirmationState(
