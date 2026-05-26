@@ -53,10 +53,10 @@ internal class ScanKeystoneVotingPCZTViewModel(
                 if (scanResult.isFinished) {
                     val recovery = votingRecoveryRepository.get(accountUuid, args.roundIdHex)
                     val bundleCount = recovery?.bundleCount ?: 0
-                    val hasMoreBundles = args.bundleIndex + 1 < bundleCount
-                    navigationRouter.backTo(VoteConfirmSubmissionArgs::class)
-                    if (hasMoreBundles) {
+                    if (args.bundleIndex + 1 < bundleCount) {
                         navigationRouter.forward(SignKeystoneVotingArgs(roundIdHex = args.roundIdHex))
+                    } else {
+                        navigationRouter.backTo(VoteConfirmSubmissionArgs::class)
                     }
                 }
             } catch (_: InvalidKeystonePCZTQRException) {
