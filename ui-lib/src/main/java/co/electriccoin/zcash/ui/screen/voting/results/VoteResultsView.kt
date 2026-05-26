@@ -64,9 +64,11 @@ fun VoteResultsView(state: VoteResultsState) {
                     modifier =
                         Modifier
                             .weight(1f)
+                            .padding(top = padding.calculateTopPadding())
                             .verticalScroll(rememberScrollState())
                             .scaffoldScrollPadding(
                                 padding,
+                                top = ZashiDimensions.Spacing.spacingLg,
                                 start = ZashiDimensions.Spacing.spacing3xl,
                                 end = ZashiDimensions.Spacing.spacing3xl
                             )

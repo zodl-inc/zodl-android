@@ -55,8 +55,9 @@ fun VoteHowToVoteView(state: VoteHowToVoteState) {
                 modifier =
                     Modifier
                         .fillMaxSize()
+                        .padding(top = padding.calculateTopPadding())
                         .verticalScroll(rememberScrollState())
-                        .scaffoldPadding(padding)
+                        .scaffoldPadding(padding, top = ZashiDimensions.Spacing.spacingLg)
             )
         }
     )

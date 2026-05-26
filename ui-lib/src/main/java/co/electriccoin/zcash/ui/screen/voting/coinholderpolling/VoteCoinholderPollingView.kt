@@ -75,13 +75,15 @@ fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
                 )
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = padding.calculateTopPadding()),
                     contentPadding =
                         PaddingValues(
                             start = ZashiDimensions.Spacing.spacing3xl,
-                            top = padding.calculateTopPadding() + ZashiDimensions.Spacing.spacingLg,
+                            top = ZashiDimensions.Spacing.spacingLg,
                             end = ZashiDimensions.Spacing.spacing3xl,
-                            bottom =  padding.calculateBottomPadding() + ZashiDimensions.Spacing.spacing3xl
+                            bottom = padding.calculateBottomPadding() + ZashiDimensions.Spacing.spacing3xl
                         ),
                     verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing4xl)
                 ) {
