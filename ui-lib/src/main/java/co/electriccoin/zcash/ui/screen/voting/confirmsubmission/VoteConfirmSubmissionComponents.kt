@@ -40,14 +40,15 @@ internal fun VoteSubmissionDetailsCard(state: VoteConfirmSubmissionState) {
                 label = stringRes(R.string.vote_confirm_detail_poll),
                 value = state.roundTitle.getValue(),
             )
-            HorizontalDivider(color = ZashiColors.Surfaces.bgPrimary)
-            if (isIdle) {
+            if (isIdle && !state.isKeystoneUser) {
+                HorizontalDivider(color = ZashiColors.Surfaces.bgPrimary)
                 VoteSubmissionDetailRow(
                     label = stringRes(R.string.vote_confirm_detail_memo),
                     value = state.memo.getValue(),
                     valueStyle = ZashiTypography.textXs,
                 )
-            } else {
+            } else if (!isIdle) {
+                HorizontalDivider(color = ZashiColors.Surfaces.bgPrimary)
                 VoteSubmissionDetailRow(
                     label = stringRes(R.string.vote_confirm_detail_voting_power),
                     value = state.votingWeightZEC.getValue(),
