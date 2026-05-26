@@ -15,6 +15,7 @@ import co.electriccoin.zcash.ui.screen.scan.ScanValidationState
 import co.electriccoin.zcash.ui.screen.scankeystone.model.ScanKeystoneState
 import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionArgs
 import co.electriccoin.zcash.ui.screen.voting.scankeystone.ScanKeystoneVotingPCZTRequest
+import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingArgs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -50,7 +51,13 @@ internal class ScanKeystoneVotingPCZTViewModel(
                     )
                 state.update { it.copy(progress = scanResult.progress) }
                 if (scanResult.isFinished) {
+                    val recovery = votingRecoveryRepository.get(accountUuid, args.roundIdHex)
+                    val bundleCount = recovery?.bundleCount ?: 0
+                    val hasMoreBundles = args.bundleIndex + 1 < bundleCount
                     navigationRouter.backTo(VoteConfirmSubmissionArgs::class)
+                    if (hasMoreBundles) {
+                        navigationRouter.forward(SignKeystoneVotingArgs(roundIdHex = args.roundIdHex))
+                    }
                 }
             } catch (_: InvalidKeystonePCZTQRException) {
                 validationState.update { ScanValidationState.INVALID }
