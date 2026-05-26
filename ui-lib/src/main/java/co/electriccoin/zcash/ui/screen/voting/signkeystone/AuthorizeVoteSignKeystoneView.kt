@@ -97,9 +97,7 @@ fun AuthorizeVoteSignKeystoneView(state: AuthorizeVoteSignKeystoneState) {
                     state = state.accountInfo,
                     badgeText = state.badgeText
                 )
-                Spacer(Modifier.height(20.dp))
                 QrCodeCard(state = state)
-                Spacer(Modifier.height(24.dp))
                 ProgressMemoSection(state = state)
                 Spacer(Modifier.height(12.dp))
             }
@@ -113,7 +111,6 @@ fun AuthorizeVoteSignKeystoneView(state: AuthorizeVoteSignKeystoneState) {
                     modifier = Modifier.fillMaxWidth(),
                     state = state.scanButton
                 )
-                Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
             }
         }
     }
