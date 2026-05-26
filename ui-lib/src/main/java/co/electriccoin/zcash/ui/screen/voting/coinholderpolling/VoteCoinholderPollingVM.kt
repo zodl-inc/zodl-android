@@ -186,28 +186,33 @@ class VoteCoinholderPollingVM(
                         endorsedRoundIds = normalizedEndorsedRoundIds,
                         isOnDefaultConfig = apiSnapshotWithConfig.isOnDefaultConfig
                     )
-                val sortedRounds =
-                    visibleRounds
-                        .sortedWith(
-                            compareByDescending<VotingRound> { round -> round.createdAtHeight.takeIf { it > 0 } ?: round.snapshotHeight }
-                                .thenByDescending { round -> round.snapshotHeight }
-                                .thenByDescending { round -> round.votingEnd.epochSecond }
-                                .thenBy { round -> round.id }
-                        )
+                // Only truly ACTIVE rounds can be voted on; TALLYING rounds are already closed.
                 val (activeSrc, pastSrc) =
-                    sortedRounds
-                        .partition { round ->
-                            round.status == SessionStatus.ACTIVE || round.status == SessionStatus.TALLYING
-                        }
-                val sortedActiveSrc =
-                    activeSrc.sortedWith(
-                        compareBy<VotingRound> { round -> round.votingEnd.epochSecond }
-                            .thenBy { round -> round.id }
-                    )
+                    visibleRounds
+                        .partition { round -> round.status == SessionStatus.ACTIVE }
+
+                // Split active rounds into voted (VOTED card) and not-yet-voted (ACTIVE card).
+                val (votedActiveSrc, unvotedActiveSrc) =
+                    activeSrc.partition { round ->
+                        (sessionState.submittedProposalCount(currentAccountUuid, round.id)
+                            ?: persistedVoteCounts[round.id]) != null
+                    }
+
+                val votingEndAsc =
+                    compareBy<VotingRound> { round -> round.votingEnd.epochSecond }
+                        .thenBy { round -> round.id }
+                val votingEndDesc =
+                    compareByDescending<VotingRound> { round -> round.votingEnd.epochSecond }
+                        .thenBy { round -> round.id }
+
+                // Order: Active (unvoted) → Voted (voted) → Closed; each group by votingEnd.
+                val sortedActiveRounds =
+                    unvotedActiveSrc.sortedWith(votingEndAsc) + votedActiveSrc.sortedWith(votingEndAsc)
+                val sortedPastRounds = pastSrc.sortedWith(votingEndDesc)
 
                 VoteCoinholderPollingState(
                     activeRounds =
-                        sortedActiveSrc.map { round ->
+                        sortedActiveRounds.map { round ->
                             buildCard(
                                 round = round,
                                 roundNumber = roundNumbersById[round.id] ?: 0,
@@ -223,7 +228,7 @@ class VoteCoinholderPollingVM(
                             )
                         },
                     pastRounds =
-                        pastSrc.map { round ->
+                        sortedPastRounds.map { round ->
                             buildCard(
                                 round = round,
                                 roundNumber = roundNumbersById[round.id] ?: 0,
