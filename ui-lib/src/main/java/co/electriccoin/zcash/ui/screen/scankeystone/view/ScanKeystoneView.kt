@@ -466,7 +466,6 @@ private fun ScanMainContent(
                                 progress = state.progress / 100f,
                                 size = ZashiLinearProgressIndicatorDefaults.keystoneSize(),
                                 colors = ZashiLinearProgressIndicatorDefaults.keystoneColors()
-
                             )
                         }
                     }

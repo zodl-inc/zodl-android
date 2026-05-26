@@ -109,20 +109,21 @@ class VoteProposalListVM(
         }
 
     private val initialLoadingState: VoteProposalListState
-        get() = VoteProposalListState(
-            mode = args.mode,
-            roundTitle = stringRes(""),
-            snapshotHeight = null,
-            votedCount = 0,
-            totalCount = 0,
-            metaLine = null,
-            description = null,
-            discussionUrl = null,
-            onViewMore = null,
-            proposals = null,
-            ctaButton = null,
-            onBack = ::onBack,
-        )
+        get() =
+            VoteProposalListState(
+                mode = args.mode,
+                roundTitle = stringRes(""),
+                snapshotHeight = null,
+                votedCount = 0,
+                totalCount = 0,
+                metaLine = null,
+                description = null,
+                discussionUrl = null,
+                onViewMore = null,
+                proposals = null,
+                ctaButton = null,
+                onBack = ::onBack,
+            )
 
     val state: StateFlow<LceState<VoteProposalListState>> =
         combine(

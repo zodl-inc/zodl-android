@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
 import co.electriccoin.zcash.ui.common.model.voting.StaticVotingConfig
@@ -13,7 +14,6 @@ import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigSelection
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigState
 import co.electriccoin.zcash.ui.common.repository.VotingCustomChainConfig
-import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle

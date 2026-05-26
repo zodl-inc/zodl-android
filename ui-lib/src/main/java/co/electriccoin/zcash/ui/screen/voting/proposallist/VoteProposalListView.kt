@@ -6,8 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -55,8 +55,6 @@ import co.electriccoin.zcash.ui.screen.voting.component.ZipBadge
 import java.text.NumberFormat
 import java.util.Locale
 
-private const val DOT_FILL_RATIO = 0.6f
-
 @Composable
 fun VoteProposalListView(state: VoteProposalListState) {
     BlankBgScaffold(
@@ -69,9 +67,10 @@ fun VoteProposalListView(state: VoteProposalListState) {
         content = { padding ->
             Column(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
                     contentPadding =
                         PaddingValues(
                             start = ZashiDimensions.Spacing.spacing3xl,
@@ -250,55 +249,6 @@ private fun ReviewHeader() {
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textPrimary,
         )
-    }
-}
-
-@Composable
-private fun VoteProgressBar(
-    votedCount: Int,
-    totalCount: Int,
-    modifier: Modifier = Modifier,
-) {
-    val total = totalCount.coerceAtLeast(1)
-    val ratio = if (totalCount > 0) votedCount.toFloat() / totalCount else 0f
-    val bgColor = ZashiColors.Surfaces.bgQuaternary
-    val fillColor = ZashiColors.Text.textPrimary
-    val dotColor = ZashiColors.Utility.Gray.utilityGray300
-
-    Box(modifier = modifier) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val barHeight = size.height
-            val barWidth = size.width
-            val dotRadius = barHeight / 2 * DOT_FILL_RATIO
-
-            drawRoundRect(
-                color = bgColor,
-                size = Size(barWidth, barHeight),
-                cornerRadius = CornerRadius(barHeight / 2)
-            )
-
-            val fillWidth = barWidth * ratio
-            if (fillWidth > 0f) {
-                drawRoundRect(
-                    color = fillColor,
-                    size = Size(fillWidth.coerceAtLeast(barHeight), barHeight),
-                    cornerRadius = CornerRadius(barHeight / 2)
-                )
-            }
-
-            if (total > 1) {
-                for (index in 1 until total) {
-                    val dotX = barWidth * index.toFloat() / total
-                    if (dotX > fillWidth) {
-                        drawCircle(
-                            color = dotColor,
-                            radius = dotRadius,
-                            center = Offset(dotX, barHeight / 2)
-                        )
-                    }
-                }
-            }
-        }
     }
 }
 

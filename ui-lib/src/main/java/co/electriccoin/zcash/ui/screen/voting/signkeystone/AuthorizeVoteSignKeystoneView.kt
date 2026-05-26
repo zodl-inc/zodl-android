@@ -10,14 +10,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -39,12 +36,12 @@ import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
+import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.QrCodeDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiBadge
 import co.electriccoin.zcash.ui.design.component.ZashiBadgeDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiLinearProgressIndicator
-import co.electriccoin.zcash.ui.design.component.ZashiLinearProgressIndicatorDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiQr
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
@@ -58,7 +55,6 @@ import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.ZashiAccountInfoListItemState
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
@@ -80,16 +76,18 @@ fun AuthorizeVoteSignKeystoneView(state: AuthorizeVoteSignKeystoneState) {
         }
     ) { padding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .scaffoldPadding(padding)
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .scaffoldPadding(padding)
         ) {
             Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
             ) {
                 Spacer(Modifier.height(12.dp))
                 AccountInfoCard(
@@ -102,10 +100,11 @@ fun AuthorizeVoteSignKeystoneView(state: AuthorizeVoteSignKeystoneState) {
                 Spacer(Modifier.height(12.dp))
             }
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
-                    .padding(bottom = ZashiDimensions.Spacing.spacingMd)
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
+                        .padding(bottom = ZashiDimensions.Spacing.spacingMd)
             ) {
                 ZashiButton(
                     modifier = Modifier.fillMaxWidth(),
@@ -157,12 +156,13 @@ private fun AccountInfoCard(
 private fun QrCodeCard(state: AuthorizeVoteSignKeystoneState) {
     state.qrData?.let { _ ->
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(ZashiColors.Surfaces.bgPrimary)
-                .padding(1.dp)
-                .clip(RoundedCornerShape(20.dp)),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(ZashiColors.Surfaces.bgPrimary)
+                    .padding(1.dp)
+                    .clip(RoundedCornerShape(20.dp)),
             contentAlignment = Alignment.Center
         ) {
             ZashiQr(
@@ -183,15 +183,17 @@ private fun QrCodeCard(state: AuthorizeVoteSignKeystoneState) {
 @Composable
 private fun ProgressMemoSection(state: AuthorizeVoteSignKeystoneState) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(ZashiColors.Surfaces.bgSecondary)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(ZashiColors.Surfaces.bgSecondary)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
@@ -200,21 +202,23 @@ private fun ProgressMemoSection(state: AuthorizeVoteSignKeystoneState) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = stringResource(
-                        R.string.authorize_vote_signature_n_of_m,
-                        state.currentBundleNumber,
-                        state.totalBundles
-                    ),
+                    text =
+                        stringResource(
+                            R.string.authorize_vote_signature_n_of_m,
+                            state.currentBundleNumber,
+                            state.totalBundles
+                        ),
                     style = ZashiTypography.textSm,
                     fontWeight = FontWeight.Medium,
                     color = ZashiColors.Text.textPrimary
                 )
                 ZashiBadge(
-                    text = stringRes(
-                        R.string.authorize_vote_signed_badge,
-                        state.signedBundleCount,
-                        state.totalBundles
-                    ),
+                    text =
+                        stringRes(
+                            R.string.authorize_vote_signed_badge,
+                            state.signedBundleCount,
+                            state.totalBundles
+                        ),
                     colors = ZashiBadgeDefaults.hyperBlueColors(),
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                 )
@@ -256,10 +260,11 @@ private fun ProgressMemoSection(state: AuthorizeVoteSignKeystoneState) {
 @Composable
 private fun UseSignedBundlesOnlyRow(state: UseSignedBundlesOnlyState) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = state.onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable(onClick = state.onClick)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -271,10 +276,11 @@ private fun UseSignedBundlesOnlyRow(state: UseSignedBundlesOnlyState) {
                 color = ZashiColors.Text.textPrimary
             )
             Text(
-                text = stringResource(
-                    R.string.authorize_vote_use_signed_bundles_only_subtitle,
-                    state.remainingZec.getValue()
-                ),
+                text =
+                    stringResource(
+                        R.string.authorize_vote_use_signed_bundles_only_subtitle,
+                        state.remainingZec.getValue()
+                    ),
                 style = ZashiTypography.textXs,
                 color = ZashiColors.Text.textTertiary
             )
@@ -291,9 +297,10 @@ private fun UseSignedBundlesOnlyRow(state: UseSignedBundlesOnlyState) {
 @Composable
 private fun MemoSection(memoText: co.electriccoin.zcash.ui.design.util.StringResource) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         Text(
@@ -315,25 +322,31 @@ private fun MemoSection(memoText: co.electriccoin.zcash.ui.design.util.StringRes
 private fun AuthorizeVoteSignKeystoneStep1Preview() =
     ZcashTheme {
         AuthorizeVoteSignKeystoneView(
-            state = AuthorizeVoteSignKeystoneState(
-                onBack = {},
-                accountInfo = ZashiAccountInfoListItemState(
-                    icon = co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone,
-                    title = stringRes("Keystone"),
-                    subtitle = stringRes("u18EgiqpBzgfeFqB6cde...")
-                ),
-                badgeText = stringRes("Hardware"),
-                qrData = "sample-qr-data",
-                generateNextQrCode = {},
-                currentBundleNumber = 1,
-                totalBundles = 2,
-                signedBundleCount = 0,
-                signedZec = stringRes("0.000 ZEC signed"),
-                pendingZec = stringRes("1.625 ZEC awaiting"),
-                memoText = stringRes("I am authorizing this hotkey managed by my wallet to vote on NU7 Sentiment Poll with 1.500 ZEC."),
-                useSignedBundlesOnly = null,
-                scanButton = ButtonState(text = stringRes("Scan signature"), onClick = {})
-            )
+            state =
+                AuthorizeVoteSignKeystoneState(
+                    onBack = {},
+                    accountInfo =
+                        ZashiAccountInfoListItemState(
+                            icon = co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone,
+                            title = stringRes("Keystone"),
+                            subtitle = stringRes("u18EgiqpBzgfeFqB6cde...")
+                        ),
+                    badgeText = stringRes("Hardware"),
+                    qrData = "sample-qr-data",
+                    generateNextQrCode = {},
+                    currentBundleNumber = 1,
+                    totalBundles = 2,
+                    signedBundleCount = 0,
+                    signedZec = stringRes("0.000 ZEC signed"),
+                    pendingZec = stringRes("1.625 ZEC awaiting"),
+                    memoText =
+                        stringRes(
+                            "I am authorizing this hotkey managed by my wallet to vote " +
+                                "on NU7 Sentiment Poll with 1.500 ZEC."
+                        ),
+                    useSignedBundlesOnly = null,
+                    scanButton = ButtonState(text = stringRes("Scan signature"), onClick = {})
+                )
         )
     }
 
@@ -342,27 +355,34 @@ private fun AuthorizeVoteSignKeystoneStep1Preview() =
 private fun AuthorizeVoteSignKeystoneStep2Preview() =
     ZcashTheme {
         AuthorizeVoteSignKeystoneView(
-            state = AuthorizeVoteSignKeystoneState(
-                onBack = {},
-                accountInfo = ZashiAccountInfoListItemState(
-                    icon = co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone,
-                    title = stringRes("Keystone"),
-                    subtitle = stringRes("u18EgiqpBzgfeFqB6cde...")
-                ),
-                badgeText = stringRes("Hardware"),
-                qrData = "sample-qr-data",
-                generateNextQrCode = {},
-                currentBundleNumber = 2,
-                totalBundles = 2,
-                signedBundleCount = 1,
-                signedZec = stringRes("1.500 ZEC signed"),
-                pendingZec = stringRes("0.125 ZEC pending"),
-                memoText = stringRes("I am authorizing this hotkey managed by my wallet to vote on NU7 Sentiment Poll with 0.125 ZEC."),
-                useSignedBundlesOnly = UseSignedBundlesOnlyState(
-                    remainingZec = stringRes("0.125 ZEC"),
-                    onClick = {}
-                ),
-                scanButton = ButtonState(text = stringRes("Scan signature"), onClick = {})
-            )
+            state =
+                AuthorizeVoteSignKeystoneState(
+                    onBack = {},
+                    accountInfo =
+                        ZashiAccountInfoListItemState(
+                            icon = co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone,
+                            title = stringRes("Keystone"),
+                            subtitle = stringRes("u18EgiqpBzgfeFqB6cde...")
+                        ),
+                    badgeText = stringRes("Hardware"),
+                    qrData = "sample-qr-data",
+                    generateNextQrCode = {},
+                    currentBundleNumber = 2,
+                    totalBundles = 2,
+                    signedBundleCount = 1,
+                    signedZec = stringRes("1.500 ZEC signed"),
+                    pendingZec = stringRes("0.125 ZEC pending"),
+                    memoText =
+                        stringRes(
+                            "I am authorizing this hotkey managed by my wallet to vote on " +
+                                "NU7 Sentiment Poll with 0.125 ZEC."
+                        ),
+                    useSignedBundlesOnly =
+                        UseSignedBundlesOnlyState(
+                            remainingZec = stringRes("0.125 ZEC"),
+                            onClick = {}
+                        ),
+                    scanButton = ButtonState(text = stringRes("Scan signature"), onClick = {})
+                )
         )
     }

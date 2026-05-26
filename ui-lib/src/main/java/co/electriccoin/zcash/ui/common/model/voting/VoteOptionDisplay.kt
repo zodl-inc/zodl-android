@@ -72,7 +72,20 @@ fun Proposal.tallyDisplayInfo(
 private fun voteOptionDisplayColor(label: String): VoteOptionDisplayColor =
     when {
         label.contains("abstain", ignoreCase = true) -> VoteOptionDisplayColor.ABSTAIN
-        label.equals("yes", ignoreCase = true) || label.equals("support", ignoreCase = true) -> VoteOptionDisplayColor.SUPPORT
-        label.equals("no", ignoreCase = true) || label.equals("oppose", ignoreCase = true) -> VoteOptionDisplayColor.OPPOSE
+
+        label.equals("yes", ignoreCase = true) ||
+            label.equals(
+                "support",
+                ignoreCase = true
+            )
+        -> VoteOptionDisplayColor.SUPPORT
+
+        label.equals("no", ignoreCase = true) ||
+            label.equals(
+                "oppose",
+                ignoreCase = true
+            )
+        -> VoteOptionDisplayColor.OPPOSE
+
         else -> VoteOptionDisplayColor.BLUE
     }

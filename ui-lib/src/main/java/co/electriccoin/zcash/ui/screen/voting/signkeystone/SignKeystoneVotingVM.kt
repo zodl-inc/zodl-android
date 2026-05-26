@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneResumeSubmissionException
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneRouteStage
@@ -16,7 +17,6 @@ import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.usecase.CreateVotingKeystonePcztEncoderUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.SkipRemainingKeystoneBundlesUseCase
-import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
@@ -239,10 +239,11 @@ class SignKeystoneVotingVM(
                 navigationRouter.backTo(VoteConfirmSubmissionArgs::class)
             }.onFailure { throwable ->
                 Log.e("SignKeystoneVoting", "Failed to skip Keystone voting bundles", throwable)
-                errorSheetState.value = ZashiConfirmationState.error(
-                    onPrimary = ::onConfirmSkipRemainingClick,
-                    onBack = { errorSheetState.value = null }
-                )
+                errorSheetState.value =
+                    ZashiConfirmationState.error(
+                        onPrimary = ::onConfirmSkipRemainingClick,
+                        onBack = { errorSheetState.value = null }
+                    )
             }
         }
     }
@@ -275,35 +276,14 @@ class SignKeystoneVotingVM(
                         "Failed to create Keystone voting QR bundle for ${args.roundIdHex}",
                         throwable
                     )
-                    errorSheetState.value = ZashiConfirmationState.error(
-                        onPrimary = ::loadSigningBundle,
-                        onBack = { errorSheetState.value = null }
-                    )
+                    errorSheetState.value =
+                        ZashiConfirmationState.error(
+                            onPrimary = ::loadSigningBundle,
+                            onBack = { errorSheetState.value = null }
+                        )
                 }
             isLoading.value = false
         }
-    }
-
-    private fun VotingRecoverySnapshot.toSkipRemainingButton(): ButtonState? {
-        val bundleCount = bundleCount ?: return null
-        val signedCount = signedBundlePrefixCount(bundleCount)
-        val remainingCount = bundleCount - signedCount
-        if (signedCount <= 0 || remainingCount <= 0 || bundleWeights.size < bundleCount) {
-            return null
-        }
-
-        val buttonText =
-            if (remainingCount == 1) {
-                stringRes(R.string.sign_keystone_voting_skip_remaining_bundle)
-            } else {
-                stringRes(R.string.sign_keystone_voting_skip_remaining_bundles, remainingCount)
-            }
-
-        return ButtonState(
-            text = buttonText,
-            style = ButtonStyle.SECONDARY,
-            onClick = ::onSkipRemainingClick
-        )
     }
 
     private fun VotingRecoverySnapshot.toSkipBottomSheetState(): SkipKeystoneBundlesBottomSheetState? {

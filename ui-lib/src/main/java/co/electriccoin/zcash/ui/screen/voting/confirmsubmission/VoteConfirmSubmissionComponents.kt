@@ -96,17 +96,21 @@ internal fun VoteSubmissionBottomSection(state: VoteConfirmSubmissionState) {
         val submissionProgress = state.submissionProgress()
         val progressTitle: StringResource? =
             when (val status = state.status) {
-                is VoteSubmissionStatus.Authorizing ->
+                is VoteSubmissionStatus.Authorizing -> {
                     stringRes(R.string.vote_confirm_status_authorizing)
+                }
 
-                is VoteSubmissionStatus.Submitting ->
+                is VoteSubmissionStatus.Submitting -> {
                     stringRes(
                         R.string.vote_confirm_status_submitting,
                         status.current,
                         status.total
                     )
+                }
 
-                else -> null
+                else -> {
+                    null
+                }
             }
 
         if (progressTitle != null) {

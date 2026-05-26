@@ -52,7 +52,6 @@ fun SignKeystoneVotingScreen(args: SignKeystoneVotingArgs) {
     val state by vm.state.collectAsStateWithLifecycle()
     val bottomSheetState by vm.bottomSheetState.collectAsStateWithLifecycle()
     val skipBottomSheetState by vm.skipBottomSheetState.collectAsStateWithLifecycle()
-    val isLoading by vm.loading.collectAsStateWithLifecycle()
     val errorSheet by vm.errorSheet.collectAsStateWithLifecycle()
 
     BackHandler {

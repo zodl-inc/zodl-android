@@ -39,9 +39,9 @@ import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.scaffoldScrollPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
+import co.electriccoin.zcash.ui.screen.voting.answerColors
 import co.electriccoin.zcash.ui.screen.voting.component.VoteAppBar
 import co.electriccoin.zcash.ui.screen.voting.component.VoteViewMoreChip
-import co.electriccoin.zcash.ui.screen.voting.answerColors
 import co.electriccoin.zcash.ui.screen.voting.component.ZipBadge
 
 @OptIn(ExperimentalMaterial3Api::class)

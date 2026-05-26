@@ -143,11 +143,12 @@ class VoteCoinholderPollingVM(
         }
 
     private val initialLoadingState: VoteCoinholderPollingState
-        get() = VoteCoinholderPollingState(
-            onBack = ::onBack,
-            onRefresh = ::refreshVotingData,
-            onConfigSettings = ::onConfigSettings,
-        )
+        get() =
+            VoteCoinholderPollingState(
+                onBack = ::onBack,
+                onRefresh = ::refreshVotingData,
+                onConfigSettings = ::onConfigSettings,
+            )
 
     val state =
         combine(
@@ -194,8 +195,10 @@ class VoteCoinholderPollingVM(
                 // Split active rounds into voted (VOTED card) and not-yet-voted (ACTIVE card).
                 val (votedActiveSrc, unvotedActiveSrc) =
                     activeSrc.partition { round ->
-                        (sessionState.submittedProposalCount(currentAccountUuid, round.id)
-                            ?: persistedVoteCounts[round.id]) != null
+                        (
+                            sessionState.submittedProposalCount(currentAccountUuid, round.id)
+                                ?: persistedVoteCounts[round.id]
+                        ) != null
                     }
 
                 val votingEndAsc =

@@ -81,7 +81,7 @@ fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
                             start = ZashiDimensions.Spacing.spacing3xl,
                             top = padding.calculateTopPadding() + ZashiDimensions.Spacing.spacingLg,
                             end = ZashiDimensions.Spacing.spacing3xl,
-                            bottom =  padding.calculateBottomPadding() + ZashiDimensions.Spacing.spacing3xl
+                            bottom = padding.calculateBottomPadding() + ZashiDimensions.Spacing.spacing3xl
                         ),
                     verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing4xl)
                 ) {

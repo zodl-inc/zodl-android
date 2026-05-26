@@ -79,7 +79,6 @@ fun VoteProposalDetailView(state: VoteProposalDetailState) {
                             .fillMaxWidth()
                             .verticalScroll(rememberScrollState())
                 ) {
-
                     Text(
                         text = state.title.getValue(),
                         style = ZashiTypography.header6,
@@ -114,7 +113,6 @@ fun VoteProposalDetailView(state: VoteProposalDetailState) {
 
                     VerticalSpacer(24.dp)
                     VoteOptions(options = state.options)
-
                 }
 
                 if (!state.isLocked) {
