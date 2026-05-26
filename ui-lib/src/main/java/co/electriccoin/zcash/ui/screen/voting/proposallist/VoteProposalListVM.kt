@@ -34,6 +34,7 @@ import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptio
 import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailArgs
 import co.electriccoin.zcash.ui.screen.voting.votingerror.VotingErrorMapper
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -250,13 +251,19 @@ class VoteProposalListVM(
     }
 
     private fun goBackFromPreparationErrorSheet() {
-        dismissPreparationErrorSheet()
-        onBack()
+        viewModelScope.launch {
+            dismissPreparationErrorSheet()
+            delay(SHEET_DISMISS_DELAY_MS)
+            onBack()
+        }
     }
 
     private fun dismissIneligibleErrorSheet() {
-        preparationErrorSheet.value = null
-        onBack()
+        viewModelScope.launch {
+            ineligibleSheet.value = null
+            // delay(SHEET_DISMISS_DELAY_MS)
+            onBack()
+        }
     }
 
     private fun buildIneligibleSheet(
@@ -273,8 +280,11 @@ class VoteProposalListVM(
         )
 
     private fun dismissWalletSyncingSheet() {
-        walletSyncingSheet.value = null
-        onBack()
+        viewModelScope.launch {
+            walletSyncingSheet.value = null
+            delay(SHEET_DISMISS_DELAY_MS)
+            onBack()
+        }
     }
 
     private fun buildWalletSyncingSheet(): ZashiConfirmationState =
@@ -517,7 +527,6 @@ class VoteProposalListVM(
             stringRes(R.string.vote_proposal_list_meta_line, dateLabel, votingPowerLabel)
         }
 
-
     private fun onProposalTapped(roundId: String, proposalId: Int) {
         if (roundId.isEmpty()) return
 
@@ -557,3 +566,5 @@ private enum class PreparationGate {
     /** Eligibility resolved to `Ready`, or prep is not applicable for this mode. */
     READY,
 }
+
+private const val SHEET_DISMISS_DELAY_MS = 350L

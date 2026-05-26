@@ -100,7 +100,6 @@
     <string name="vote_confirm_cta_sign_keystone">Sign with Keystone</string>
     <string name="vote_confirm_cta_sign_bundle">Sign bundle %1$d/%2$d</string>
     <string name="vote_confirm_cta_submitting_generic">Submitting...</string>
-    <string name="vote_confirm_cta_submit_votes">Submit Votes</string>
     <string name="vote_confirm_cta_authorizing">Authorizing...</string>
     <string name="vote_confirm_cta_submitting">Submitting vote %1$d of %2$d</string>
     <string name="vote_confirm_status_authorizing">Authorizing vote...</string>

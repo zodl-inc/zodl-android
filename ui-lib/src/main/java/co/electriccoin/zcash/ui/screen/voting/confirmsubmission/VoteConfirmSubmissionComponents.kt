@@ -5,33 +5,29 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.VerticalSpacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
+import co.electriccoin.zcash.ui.design.component.ZashiLinearProgressIndicator
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.stringRes
-import kotlin.math.roundToInt
-
-private const val PERCENT_SCALE = 100
 
 @Composable
 internal fun VoteSubmissionDetailsCard(state: VoteConfirmSubmissionState) {
@@ -120,46 +116,33 @@ internal fun VoteSubmissionBottomSection(state: VoteConfirmSubmissionState) {
                 .padding(bottom = ZashiDimensions.Spacing.spacingMd)
     ) {
         val submissionProgress = state.submissionProgress()
-        val showsProgress =
-            state.status is VoteSubmissionStatus.Authorizing ||
-                state.status is VoteSubmissionStatus.Submitting
-        when (val status = state.status) {
-            is VoteSubmissionStatus.Authorizing -> {
-                VoteSubmissionProgressCard(
-                    title = stringRes(R.string.vote_confirm_status_authorizing),
-                    subtitle =
-                        stringRes(
-                            R.string.vote_confirm_status_authorizing_percent,
-                            (submissionProgress * PERCENT_SCALE).roundToInt()
-                        ),
-                    progress = submissionProgress
-                )
+        val progressTitle: StringResource? =
+            when (val status = state.status) {
+                is VoteSubmissionStatus.Authorizing ->
+                    stringRes(R.string.vote_confirm_status_authorizing)
+
+                is VoteSubmissionStatus.Submitting ->
+                    stringRes(
+                        R.string.vote_confirm_status_submitting,
+                        status.current,
+                        status.total
+                    )
+
+                else -> null
             }
 
-            is VoteSubmissionStatus.Submitting -> {
-                VoteSubmissionProgressCard(
-                    title =
-                        stringRes(
-                            R.string.vote_confirm_status_submitting,
-                            status.current,
-                            status.total
-                        ),
-                    subtitle = null,
-                    progress = submissionProgress
-                )
-            }
-
-            else -> {
-                Unit
-            }
+        if (progressTitle != null) {
+            VoteSubmissionProgressCard(
+                title = progressTitle,
+                progress = submissionProgress,
+                ctaButton = state.ctaButton
+            )
+        } else {
+            ZashiButton(
+                modifier = Modifier.fillMaxWidth(),
+                state = state.ctaButton
+            )
         }
-        if (showsProgress) {
-            VerticalSpacer(8.dp)
-        }
-        ZashiButton(
-            modifier = Modifier.fillMaxWidth(),
-            state = state.ctaButton
-        )
     }
 }
 
@@ -188,8 +171,8 @@ private fun VoteConfirmSubmissionState.submissionProgress(): Float {
 @Composable
 private fun VoteSubmissionProgressCard(
     title: StringResource,
-    subtitle: StringResource?,
-    progress: Float
+    progress: Float,
+    ctaButton: ButtonState,
 ) {
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
@@ -199,35 +182,38 @@ private fun VoteSubmissionProgressCard(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = ZashiColors.Surfaces.bgSecondary,
-        shape = RoundedCornerShape(ZashiDimensions.Radius.radiusXl),
+        shape = RoundedCornerShape(16.dp),
     ) {
-        Column(modifier = Modifier.padding(ZashiDimensions.Spacing.spacingXl)) {
-            Text(
-                text = title.getValue(),
-                style = ZashiTypography.textSm,
-                color = ZashiColors.Text.textPrimary,
-                fontWeight = FontWeight.SemiBold,
-            )
-            VerticalSpacer(12.dp)
-            LinearProgressIndicator(
-                progress = { animatedProgress },
+        Column {
+            Column(
+                modifier =
+                    Modifier.padding(
+                        horizontal = 20.dp,
+                        vertical = 20.dp,
+                    )
+            ) {
+                Text(
+                    text = title.getValue(),
+                    style = ZashiTypography.textMd,
+                    color = ZashiColors.Text.textPrimary,
+                    fontWeight = FontWeight.Medium,
+                )
+                VerticalSpacer(12.dp)
+                ZashiLinearProgressIndicator(progress = animatedProgress)
+            }
+            HorizontalDivider(color = ZashiColors.Surfaces.strokeSecondary)
+            ZashiButton(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .height(3.dp),
-                color = ZashiColors.Text.textPrimary,
-                trackColor = ZashiColors.Surfaces.bgTertiary,
-                strokeCap = StrokeCap.Round,
+                        .padding(
+                            start = 8.dp,
+                            top = 2.dp,
+                            end = 8.dp,
+                            bottom = 4.dp
+                        ),
+                state = ctaButton,
             )
-            subtitle?.let {
-                VerticalSpacer(8.dp)
-                Text(
-                    text = it.getValue(),
-                    style = ZashiTypography.textXs,
-                    color = ZashiColors.Text.textTertiary,
-                    fontWeight = FontWeight.Medium,
-                )
-            }
         }
     }
 }

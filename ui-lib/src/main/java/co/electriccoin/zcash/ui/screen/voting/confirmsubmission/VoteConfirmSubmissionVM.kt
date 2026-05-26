@@ -345,12 +345,17 @@ class VoteConfirmSubmissionVM(
                             }
                         }
 
-                        isSubmitting -> {
+                        status is VoteSubmissionStatus.Authorizing ||
+                            status is VoteSubmissionStatus.LocalAuthorizing -> {
+                            stringRes(R.string.vote_confirm_cta_authorizing)
+                        }
+
+                        status is VoteSubmissionStatus.Submitting -> {
                             stringRes(R.string.vote_confirm_cta_submitting_generic)
                         }
 
                         else -> {
-                            stringRes(R.string.vote_confirm_cta_submit_votes)
+                            stringRes(co.electriccoin.zcash.ui.design.R.string.general_confirm)
                         }
                     },
                 style = ButtonStyle.PRIMARY,
