@@ -15,7 +15,6 @@ import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryPhase
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
-import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.usecase.AuthorizeVotingSubmissionUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
@@ -28,8 +27,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
-import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListMode
+import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
 import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingArgs
 import co.electriccoin.zcash.ui.screen.voting.votingerror.VotingErrorMapper
 import kotlinx.coroutines.CancellationException
@@ -48,7 +46,6 @@ class VoteConfirmSubmissionVM(
     private val args: VoteConfirmSubmissionArgs,
     votingApiRepository: VotingApiRepository,
     private val votingRecoveryRepository: VotingRecoveryRepository,
-    private val votingSessionStore: VotingSessionStore,
     private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
     prepareVotingRound: PrepareVotingRoundUseCase,
     private val authorizeVotingSubmission: AuthorizeVotingSubmissionUseCase,
@@ -479,26 +476,7 @@ class VoteConfirmSubmissionVM(
     }
 
     private fun onDone() {
-        viewModelScope.launch {
-            val accountUuid = selectedAccountUuid.value ?: return@launch
-            val recovery = votingRecoveryRepository.get(accountUuid, args.roundIdHex)
-            val persistedDraftChoices = recovery?.draftChoices?.ifEmpty { draftChoices } ?: draftChoices
-            val submittedChoices =
-                recovery
-                    ?.proposalSelections
-                    ?.mapValues { (_, selection) -> selection.choiceId }
-                    .orEmpty()
-            val persistedChoices = persistedDraftChoices + submittedChoices
-            if (persistedChoices.isNotEmpty()) {
-                votingSessionStore.restoreDraftVotes(accountUuid, args.roundIdHex, persistedChoices)
-            }
-            navigationRouter.replace(
-                VoteProposalListArgs(
-                    roundId = args.roundIdHex,
-                    mode = VoteProposalListMode.VOTED
-                )
-            )
-        }
+        navigationRouter.backTo(VoteCoinholderPollingArgs::class)
     }
 
     private fun onBack() {
