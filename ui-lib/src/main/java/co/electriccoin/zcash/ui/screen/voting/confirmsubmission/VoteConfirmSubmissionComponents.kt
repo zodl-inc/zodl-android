@@ -3,7 +3,6 @@ package co.electriccoin.zcash.ui.screen.voting.confirmsubmission
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,9 +12,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -35,18 +33,24 @@ internal fun VoteSubmissionDetailsCard(state: VoteConfirmSubmissionState) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = ZashiColors.Surfaces.bgSecondary,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
     ) {
         Column {
-            VoteSubmissionDetailRow(stringRes(R.string.vote_confirm_detail_poll), state.roundTitle.getValue())
+            VoteSubmissionDetailRow(
+                label = stringRes(R.string.vote_confirm_detail_poll),
+                value = state.roundTitle.getValue(),
+            )
+            HorizontalDivider(color = ZashiColors.Surfaces.bgPrimary)
             if (isIdle) {
-                HorizontalDivider(color = ZashiColors.Surfaces.strokeSecondary)
-                VoteSubmissionMemoRow(state.memo.getValue())
-            } else {
-                HorizontalDivider(color = ZashiColors.Surfaces.strokeSecondary)
                 VoteSubmissionDetailRow(
-                    stringRes(R.string.vote_confirm_detail_voting_power),
-                    state.votingWeightZEC.getValue()
+                    label = stringRes(R.string.vote_confirm_detail_memo),
+                    value = state.memo.getValue(),
+                    valueStyle = ZashiTypography.textXs,
+                )
+            } else {
+                VoteSubmissionDetailRow(
+                    label = stringRes(R.string.vote_confirm_detail_voting_power),
+                    value = state.votingWeightZEC.getValue(),
                 )
             }
         }
@@ -57,51 +61,25 @@ internal fun VoteSubmissionDetailsCard(state: VoteConfirmSubmissionState) {
 private fun VoteSubmissionDetailRow(
     label: StringResource,
     value: String,
+    valueStyle: TextStyle = ZashiTypography.textSm,
 ) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-    ) {
-        Text(
-            text = label.getValue(),
-            style = ZashiTypography.textSm,
-            color = ZashiColors.Text.textSecondary,
-            modifier = Modifier.weight(0.95f)
-        )
-        Text(
-            text = value,
-            style = ZashiTypography.textSm,
-            color = ZashiColors.Text.textPrimary,
-            fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.End,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1.35f)
-        )
-    }
-}
-
-@Composable
-private fun VoteSubmissionMemoRow(memo: String) {
     Column(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(horizontal = 20.dp, vertical = 12.dp)
     ) {
         Text(
-            text = stringRes(R.string.vote_confirm_detail_memo).getValue(),
+            text = label.getValue(),
             style = ZashiTypography.textSm,
-            color = ZashiColors.Text.textSecondary
+            color = ZashiColors.Text.textTertiary,
         )
         VerticalSpacer(4.dp)
         Text(
-            memo,
-            style = ZashiTypography.textSm,
+            text = value,
+            style = valueStyle,
             color = ZashiColors.Text.textPrimary,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Medium,
         )
     }
 }
