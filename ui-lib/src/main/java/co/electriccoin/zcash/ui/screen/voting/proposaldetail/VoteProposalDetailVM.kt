@@ -292,6 +292,8 @@ class VoteProposalDetailVM(
             },
         primaryText = stringRes(R.string.vote_confirm_cta),
         secondaryText = stringRes(R.string.vote_proposal_detail_unanswered_go_back),
+        primaryStyle = ButtonStyle.PRIMARY,
+        secondaryStyle = ButtonStyle.TERTIARY,
         onPrimary = { onConfirmUnanswered(accountUuid, round) },
         onSecondary = { unansweredSheet.value = null },
         onBack = { unansweredSheet.value = null },
@@ -303,6 +305,7 @@ class VoteProposalDetailVM(
             message = stringRes(R.string.vote_proposal_detail_no_choices_message),
             primaryText = stringRes(R.string.vote_dismiss),
             secondaryText = null,
+            primaryStyle = ButtonStyle.PRIMARY,
             onPrimary = { unansweredSheet.value = null },
             onBack = { unansweredSheet.value = null },
         )

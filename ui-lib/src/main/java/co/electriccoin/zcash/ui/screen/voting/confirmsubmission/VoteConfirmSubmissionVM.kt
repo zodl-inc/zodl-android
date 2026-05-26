@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
-import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.stateIn
@@ -22,6 +21,7 @@ import co.electriccoin.zcash.ui.common.usecase.PrepareVotingRoundUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitVotesUseCase
 import co.electriccoin.zcash.ui.common.usecase.VotingAuthorizationException
 import co.electriccoin.zcash.ui.common.usecase.VotingSubmissionAuthorizationResult
+import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
@@ -503,16 +503,16 @@ class VoteConfirmSubmissionVM(
         return ZashiConfirmationState.error(
             title = failureTitle(status),
             message = failureMessage(status),
-            primaryText = stringRes(if (canRetry) R.string.vote_retry else R.string.vote_dismiss),
-            secondaryText = stringRes(R.string.vote_dismiss),
-            primaryStyle = ButtonStyle.PRIMARY,
-            onPrimary = {
-                isFailureSheetVisible.value = false
-                if (canRetry) {
-                    retryAction()
-                }
+            primaryText = stringRes(R.string.vote_dismiss),
+            secondaryText = if (canRetry) stringRes(R.string.vote_retry) else null,
+            primaryStyle = if (canRetry) ButtonStyle.TERTIARY else ButtonStyle.PRIMARY,
+            secondaryStyle = ButtonStyle.PRIMARY,
+            onPrimary = ::dismissFailureSheet,
+            onSecondary = if (canRetry) {
+                { dismissFailureSheet(); retryAction() }
+            } else {
+                null
             },
-            onSecondary = ::dismissFailureSheet,
             onBack = ::dismissFailureSheet,
         )
     }

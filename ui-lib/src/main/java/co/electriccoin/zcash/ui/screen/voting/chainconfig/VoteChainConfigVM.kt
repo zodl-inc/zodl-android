@@ -13,6 +13,7 @@ import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigSelection
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigState
 import co.electriccoin.zcash.ui.common.repository.VotingCustomChainConfig
+import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
@@ -318,23 +319,14 @@ class VoteChainConfigVM(
 
     private fun showError(message: StringResource) {
         errorSheet.value =
-            ZashiConfirmationState(
-                icon = R.drawable.ic_reset_zashi_warning,
+            ZashiConfirmationState.error(
                 title = stringRes(R.string.vote_chain_config_error_title),
                 message = message,
-                primaryAction =
-                    ButtonState(
-                        text = stringRes(R.string.vote_dismiss),
-                        style = ButtonStyle.PRIMARY,
-                        onClick = ::dismissError
-                    ),
-                secondaryAction =
-                    ButtonState(
-                        text = stringRes(R.string.vote_dismiss),
-                        style = ButtonStyle.TERTIARY,
-                        onClick = ::dismissError
-                    ),
-                onBack = ::dismissError
+                primaryText = stringRes(R.string.vote_dismiss),
+                secondaryText = null,
+                primaryStyle = ButtonStyle.PRIMARY,
+                onPrimary = ::dismissError,
+                onBack = ::dismissError,
             )
     }
 
