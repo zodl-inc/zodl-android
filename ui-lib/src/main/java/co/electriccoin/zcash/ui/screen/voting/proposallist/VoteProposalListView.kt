@@ -59,8 +59,6 @@ private const val DOT_FILL_RATIO = 0.6f
 
 @Composable
 fun VoteProposalListView(state: VoteProposalListState) {
-    ZashiConfirmationBottomSheet(state = state.ineligibleSheet)
-    ZashiConfirmationBottomSheet(state = state.walletSyncingSheet)
     BlankBgScaffold(
         topBar = {
             VoteAppBar(

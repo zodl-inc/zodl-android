@@ -61,8 +61,8 @@ class VoteProposalListVM(
     observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase,
 ) : ViewModel() {
     private val preparationErrorSheet = MutableStateFlow<ZashiConfirmationState?>(null)
-    private val ineligibleSheet = MutableStateFlow<ZashiConfirmationState?>(null)
-    private val walletSyncingSheet = MutableStateFlow<ZashiConfirmationState?>(null)
+    val ineligibleSheet = MutableStateFlow<ZashiConfirmationState?>(null)
+    val walletSyncingSheet = MutableStateFlow<ZashiConfirmationState?>(null)
     private var preparationJob: Job? = null
 
     /**
@@ -155,12 +155,12 @@ class VoteProposalListVM(
                 // the proposal list flash before being routed to WalletSyncing or Ineligible.
                 val resolvedContent =
                     when {
-                        gate == PreparationGate.READY -> {
-                            content?.copy(ineligibleSheet = ineligible, walletSyncingSheet = walletSyncing)
+                        gate == PreparationGate.READY && ineligible == null && walletSyncing == null -> {
+                            content
                         }
 
                         errorSheet != null -> {
-                            content?.copy(ineligibleSheet = ineligible, walletSyncingSheet = walletSyncing)
+                            content
                         }
 
                         else -> {

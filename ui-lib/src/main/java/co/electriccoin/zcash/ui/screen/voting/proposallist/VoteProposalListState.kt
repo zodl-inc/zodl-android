@@ -29,8 +29,6 @@ data class VoteProposalListState(
     val proposals: List<VoteProposalRowState>?,
     val ctaButton: ButtonState?,
     val onBack: () -> Unit,
-    val ineligibleSheet: ZashiConfirmationState? = null,
-    val walletSyncingSheet: ZashiConfirmationState? = null,
 ) {
     companion object {
         val preview =
