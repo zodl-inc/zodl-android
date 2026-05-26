@@ -70,11 +70,12 @@ fun VoteProposalListView(state: VoteProposalListState) {
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .weight(1f),
+                            .weight(1f)
+                            .padding(top = padding.calculateTopPadding()),
                     contentPadding =
                         PaddingValues(
                             start = ZashiDimensions.Spacing.spacing3xl,
-                            top = padding.calculateTopPadding() + ZashiDimensions.Spacing.spacingLg,
+                            top = ZashiDimensions.Spacing.spacingLg,
                             end = ZashiDimensions.Spacing.spacing3xl,
                             bottom = ZashiDimensions.Spacing.spacing3xl
                         ),
