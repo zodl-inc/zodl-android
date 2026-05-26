@@ -295,7 +295,10 @@ class VoteProposalDetailVM(
         primaryStyle = ButtonStyle.PRIMARY,
         secondaryStyle = ButtonStyle.TERTIARY,
         onPrimary = { onConfirmUnanswered(accountUuid, round) },
-        onSecondary = { unansweredSheet.value = null },
+        onSecondary = {
+            unansweredSheet.value = null
+            onBack()
+        },
         onBack = { unansweredSheet.value = null },
     )
 
