@@ -33,6 +33,8 @@ import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiInScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
+import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.StringResource
@@ -159,6 +161,37 @@ private fun SignKeystoneVotingLoadingView(onBack: () -> Unit) {
         )
     }
 }
+
+@PreviewScreens
+@Composable
+private fun SignKeystoneVotingLoadingPreview() =
+    ZcashTheme { SignKeystoneVotingLoadingView(onBack = {}) }
+
+@PreviewScreens
+@Composable
+private fun SignKeystoneVotingErrorPreview() =
+    ZcashTheme {
+        SignKeystoneVotingErrorView(
+            message = stringRes("Something went wrong. Please try again."),
+            onBack = {},
+            onRetry = {}
+        )
+    }
+
+@PreviewScreens
+@Composable
+private fun SkipKeystoneBundlesBottomSheetPreview() =
+    ZcashTheme {
+        SkipKeystoneBundlesBottomSheet(
+            state =
+                SkipKeystoneBundlesBottomSheetState(
+                    onBack = {},
+                    message = stringRes("You still have unsigned bundles. Do you want to skip the remaining ones?"),
+                    skipButton = ButtonState(text = stringRes("Skip remaining"), onClick = {}),
+                    cancelButton = ButtonState(text = stringRes("Cancel"), onClick = {})
+                )
+        )
+    }
 
 @Composable
 private fun SignKeystoneVotingErrorView(
