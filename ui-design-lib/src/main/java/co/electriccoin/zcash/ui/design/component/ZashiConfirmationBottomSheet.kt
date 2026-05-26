@@ -33,7 +33,7 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ZashiConfirmationBottomSheet(state: ZashiConfirmationState?) {
-    ZashiScreenModalBottomSheet(
+    ZashiInScreenModalBottomSheet(
         state = state,
         shape =
             if (state?.style == ZashiConfirmationStyle.UNVERIFIED_POLL_WARNING) {
@@ -47,11 +47,10 @@ fun ZashiConfirmationBottomSheet(state: ZashiConfirmationState?) {
             } else {
                 ZashiModalBottomSheetDefaults.ContainerColor
             }
-    ) { innerState, contentPadding ->
+    ) { innerState ->
         ConfirmationContent(
             modifier = Modifier.weight(1f, false),
             state = innerState,
-            contentPadding = contentPadding
         )
     }
 }
@@ -85,7 +84,6 @@ enum class ZashiConfirmationStyle {
 @Composable
 private fun ConfirmationContent(
     state: ZashiConfirmationState,
-    contentPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
     val isUnverifiedPollWarning = state.style == ZashiConfirmationStyle.UNVERIFIED_POLL_WARNING
@@ -100,11 +98,7 @@ private fun ConfirmationContent(
         modifier =
             modifier
                 .verticalScroll(rememberScrollState())
-                .padding(
-                    start = 24.dp,
-                    end = 24.dp,
-                    bottom = contentPadding.calculateBottomPadding()
-                ),
+                .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         ConfirmationIcon(state)
