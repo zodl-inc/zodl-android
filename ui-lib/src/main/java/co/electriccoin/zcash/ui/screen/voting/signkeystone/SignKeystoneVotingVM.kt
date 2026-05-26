@@ -16,9 +16,10 @@ import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.usecase.CreateVotingKeystonePcztEncoderUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.SkipRemainingKeystoneBundlesUseCase
+import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
-import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.addressbook.ADDRESS_MAX_LENGTH
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionBottomSheetState
@@ -56,7 +57,7 @@ class SignKeystoneVotingVM(
             .stateIn(this)
 
     private val isLoading = MutableStateFlow(true)
-    private val errorMessage = MutableStateFlow<StringResource?>(null)
+    private val errorSheetState = MutableStateFlow<ZashiConfirmationState?>(null)
     private val isBottomSheetVisible = MutableStateFlow(false)
     private val isSkipBottomSheetVisible = MutableStateFlow(false)
     private val currentQrPart = MutableStateFlow<String?>(null)
@@ -71,7 +72,7 @@ class SignKeystoneVotingVM(
             }.stateIn(this)
 
     val loading: StateFlow<Boolean> = isLoading
-    val error: StateFlow<StringResource?> = errorMessage
+    val errorSheet: StateFlow<ZashiConfirmationState?> = errorSheetState
 
     val bottomSheetState =
         isBottomSheetVisible
@@ -190,13 +191,6 @@ class SignKeystoneVotingVM(
         navigationRouter.back()
     }
 
-    fun onRetry() {
-        if (isLoading.value) {
-            return
-        }
-        loadSigningBundle()
-    }
-
     private fun onCancelClick() {
         viewModelScope.launch {
             val accountUuid = selectedAccountUuid.value ?: return@launch
@@ -245,12 +239,10 @@ class SignKeystoneVotingVM(
                 navigationRouter.backTo(VoteConfirmSubmissionArgs::class)
             }.onFailure { throwable ->
                 Log.e("SignKeystoneVoting", "Failed to skip Keystone voting bundles", throwable)
-                signingBundle = null
-                signingBundleState.value = null
-                errorMessage.value = throwable.message
-                    ?.takeIf { it.isNotBlank() }
-                    ?.let(::stringRes)
-                    ?: stringRes(R.string.sign_keystone_voting_error_skip_remaining)
+                errorSheetState.value = ZashiConfirmationState.error(
+                    onPrimary = ::onConfirmSkipRemainingClick,
+                    onBack = { errorSheetState.value = null }
+                )
             }
         }
     }
@@ -258,7 +250,7 @@ class SignKeystoneVotingVM(
     private fun loadSigningBundle() {
         viewModelScope.launch {
             isLoading.value = true
-            errorMessage.value = null
+            errorSheetState.value = null
             currentQrPart.value = null
             signingBundle = null
             signingBundleState.value = null
@@ -283,11 +275,10 @@ class SignKeystoneVotingVM(
                         "Failed to create Keystone voting QR bundle for ${args.roundIdHex}",
                         throwable
                     )
-                    errorMessage.value =
-                        throwable.message
-                            ?.takeIf { it.isNotBlank() }
-                            ?.let(::stringRes)
-                            ?: stringRes(R.string.sign_keystone_voting_error_prepare_request)
+                    errorSheetState.value = ZashiConfirmationState.error(
+                        onPrimary = ::loadSigningBundle,
+                        onBack = { errorSheetState.value = null }
+                    )
                 }
             isLoading.value = false
         }

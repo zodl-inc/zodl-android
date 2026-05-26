@@ -1,11 +1,9 @@
 package co.electriccoin.zcash.ui.screen.voting.signkeystone
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -30,6 +28,7 @@ import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
 import co.electriccoin.zcash.ui.design.component.ModalBottomSheetState
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiInScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
@@ -54,7 +53,7 @@ fun SignKeystoneVotingScreen(args: SignKeystoneVotingArgs) {
     val bottomSheetState by vm.bottomSheetState.collectAsStateWithLifecycle()
     val skipBottomSheetState by vm.skipBottomSheetState.collectAsStateWithLifecycle()
     val isLoading by vm.loading.collectAsStateWithLifecycle()
-    val error by vm.error.collectAsStateWithLifecycle()
+    val errorSheet by vm.errorSheet.collectAsStateWithLifecycle()
 
     BackHandler {
         if (state != null) {
@@ -65,23 +64,11 @@ fun SignKeystoneVotingScreen(args: SignKeystoneVotingArgs) {
     }
 
     when {
-        state != null -> {
-            AuthorizeVoteSignKeystoneView(requireNotNull(state))
-        }
-
-        isLoading -> {
-            SignKeystoneVotingLoadingView(onBack = vm::onScreenBack)
-        }
-
-        error != null -> {
-            SignKeystoneVotingErrorView(
-                message = requireNotNull(error),
-                onBack = vm::onScreenBack,
-                onRetry = vm::onRetry
-            )
-        }
+        state != null -> AuthorizeVoteSignKeystoneView(requireNotNull(state))
+        else -> SignKeystoneVotingLoadingView(onBack = vm::onScreenBack)
     }
 
+    ZashiConfirmationBottomSheet(state = errorSheet)
     SignKeystoneTransactionBottomSheet(state = bottomSheetState)
     SkipKeystoneBundlesBottomSheet(state = skipBottomSheetState)
 }
@@ -168,17 +155,6 @@ private fun SignKeystoneVotingLoadingPreview() =
 
 @PreviewScreens
 @Composable
-private fun SignKeystoneVotingErrorPreview() =
-    ZcashTheme {
-        SignKeystoneVotingErrorView(
-            message = stringRes("Something went wrong. Please try again."),
-            onBack = {},
-            onRetry = {}
-        )
-    }
-
-@PreviewScreens
-@Composable
 private fun SkipKeystoneBundlesBottomSheetPreview() =
     ZcashTheme {
         SkipKeystoneBundlesBottomSheet(
@@ -191,57 +167,3 @@ private fun SkipKeystoneBundlesBottomSheetPreview() =
                 )
         )
     }
-
-@Composable
-private fun SignKeystoneVotingErrorView(
-    message: StringResource,
-    onBack: () -> Unit,
-    onRetry: () -> Unit,
-) {
-    BlankBgScaffold(
-        topBar = {
-            ZashiSmallTopAppBar(
-                title = stringResource(R.string.sign_keystone_voting_bar_title),
-                navigationAction = {
-                    ZashiTopAppBarBackNavigation(
-                        onBack = onBack,
-                        modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
-                    )
-                }
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .scaffoldPadding(padding)
-                    .padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = stringResource(R.string.sign_keystone_voting_error_title),
-                style = ZashiTypography.header6,
-                color = ZashiColors.Text.textPrimary,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                modifier = Modifier.padding(top = 8.dp),
-                text = message.getValue(),
-                style = ZashiTypography.textSm,
-                color = ZashiColors.Text.textSecondary
-            )
-            ZashiButton(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(top = 24.dp),
-                state =
-                    ButtonState(
-                        text = stringRes(R.string.vote_try_again),
-                        onClick = onRetry
-                    )
-            )
-        }
-    }
-}
