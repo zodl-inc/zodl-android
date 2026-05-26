@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -239,17 +240,18 @@ class SignKeystoneVotingVM(
 
     private fun loadSigningBundle() {
         viewModelScope.launch {
-            val accountUuid = selectedAccountUuid.value
-            if (accountUuid == null) {
-                errorMessage.value = stringRes(R.string.sign_keystone_voting_error_no_account)
-                isLoading.value = false
-                return@launch
-            }
             isLoading.value = true
             errorMessage.value = null
             currentQrPart.value = null
             signingBundle = null
             signingBundleState.value = null
+            // Await the upstream account + recovery flows. `init { loadSigningBundle() }`
+            // used to read `selectedAccountUuid.value` synchronously, but the
+            // underlying `WhileSubscribed` StateFlows had not warmed up yet on
+            // cold launch — the first encoder attempt failed and only succeeded
+            // after the user hit retry.
+            val accountUuid = selectedAccountUuid.filterNotNull().first()
+            recovery.filterNotNull().first()
             runCatching { createVotingKeystonePcztEncoder(accountUuid, args.roundIdHex) }
                 .onSuccess { bundle ->
                     signingBundle = bundle
