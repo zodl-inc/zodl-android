@@ -342,7 +342,7 @@ private fun AuthorizeVoteSignKeystoneStep1Preview() =
                     memoText =
                         stringRes(
                             "I am authorizing this hotkey managed by my wallet to vote " +
-                                "on NU7 Sentiment Poll with 1.500 ZEC."
+                                "on NU7 Sentiment Poll with 1.50000000 ZEC."
                         ),
                     useSignedBundlesOnly = null,
                     scanButton = ButtonState(text = stringRes("Scan signature"), onClick = {})
@@ -375,7 +375,7 @@ private fun AuthorizeVoteSignKeystoneStep2Preview() =
                     memoText =
                         stringRes(
                             "I am authorizing this hotkey managed by my wallet to vote on " +
-                                "NU7 Sentiment Poll with 0.125 ZEC."
+                                "NU7 Sentiment Poll with 0.12500000 ZEC."
                         ),
                     useSignedBundlesOnly =
                         UseSignedBundlesOnlyState(

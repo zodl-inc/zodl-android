@@ -8,6 +8,7 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.common.model.stateIn
+import co.electriccoin.zcash.ui.common.model.voting.toVotingRawZecLabel
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneResumeSubmissionException
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneRouteStage
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneSigningBundle
@@ -118,8 +119,6 @@ class SignKeystoneVotingVM(
                 val bundleWeights = recovery?.bundleWeights ?: emptyList()
                 val signedWeight = bundleWeights.take(signedCount).sum()
                 val awaitingWeight = bundleWeights.drop(signedCount).sum()
-                val currentBundleWeight =
-                    bundleWeights.getOrElse(bundle.bundleIndex) { awaitingWeight }
 
                 AuthorizeVoteSignKeystoneState(
                     onBack = ::onCancelClick,
@@ -141,7 +140,7 @@ class SignKeystoneVotingVM(
                         stringRes(
                             R.string.vote_confirm_memo_authorize,
                             bundle.roundTitle,
-                            currentBundleWeight.toVotingWeightLabel()
+                            bundle.memoWeightZatoshi.toVotingRawZecLabel()
                         ),
                     useSignedBundlesOnly =
                         if (signedCount > 0) {
