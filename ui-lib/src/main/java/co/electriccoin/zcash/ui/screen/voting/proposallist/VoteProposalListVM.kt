@@ -34,7 +34,6 @@ import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptio
 import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailArgs
 import co.electriccoin.zcash.ui.screen.voting.votingerror.VotingErrorMapper
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -53,10 +52,10 @@ import co.electriccoin.zcash.ui.common.model.voting.VoteIneligibilityReason as M
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class VoteProposalListVM(
+    votingSessionStore: VotingSessionStore,
     private val args: VoteProposalListArgs,
     private val votingApiRepository: VotingApiRepository,
     private val votingRecoveryRepository: VotingRecoveryRepository,
-    private val votingSessionStore: VotingSessionStore,
     private val prepareVotingRound: PrepareVotingRoundUseCase,
     private val navigationRouter: NavigationRouter,
     observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase,
@@ -251,19 +250,13 @@ class VoteProposalListVM(
     }
 
     private fun goBackFromPreparationErrorSheet() {
-        viewModelScope.launch {
-            dismissPreparationErrorSheet()
-            delay(SHEET_DISMISS_DELAY_MS)
-            onBack()
-        }
+        dismissPreparationErrorSheet()
+        onBack()
     }
 
     private fun dismissIneligibleErrorSheet() {
-        viewModelScope.launch {
-            ineligibleSheet.value = null
-            // delay(SHEET_DISMISS_DELAY_MS)
-            onBack()
-        }
+        ineligibleSheet.value = null
+        onBack()
     }
 
     private fun buildIneligibleSheet(
@@ -280,11 +273,8 @@ class VoteProposalListVM(
         )
 
     private fun dismissWalletSyncingSheet() {
-        viewModelScope.launch {
-            walletSyncingSheet.value = null
-            delay(SHEET_DISMISS_DELAY_MS)
-            onBack()
-        }
+        walletSyncingSheet.value = null
+        onBack()
     }
 
     private fun buildWalletSyncingSheet(): ZashiConfirmationState =
@@ -498,7 +488,7 @@ class VoteProposalListVM(
     private fun buildVotedMetaLine(
         round: VotingRound,
         recovery: VotingRecoverySnapshot?
-    ): VoteProposalMetaLineState? {
+    ): VoteProposalMetaLineState {
         val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault())
         val votedAt = recovery?.submittedAtEpochSeconds?.let(Instant::ofEpochSecond)
         val votedLabel =
@@ -566,5 +556,3 @@ private enum class PreparationGate {
     /** Eligibility resolved to `Ready`, or prep is not applicable for this mode. */
     READY,
 }
-
-private const val SHEET_DISMISS_DELAY_MS = 350L
