@@ -223,9 +223,7 @@ private fun ProgressMemoSection(state: AuthorizeVoteSignKeystoneState) {
                 )
             }
             ZashiLinearProgressIndicator(
-                progress = state.bundleProgress,
-                colors = ZashiLinearProgressIndicatorDefaults.keystoneColors(),
-                size = ZashiLinearProgressIndicatorDefaults.keystoneSize()
+                progress = state.bundleProgress
             )
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
