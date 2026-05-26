@@ -23,4 +23,13 @@
     <string name="sign_keystone_voting_skip_remaining_message">You will submit with %1$s signed and give up %2$s from the unsigned bundles.</string>
     <string name="sign_keystone_voting_skip_remaining_confirm">Skip Remaining</string>
     <string name="sign_keystone_voting_cancel">Cancel</string>
+
+    <string name="authorize_vote_bar_title">Authorize Vote</string>
+    <string name="authorize_vote_signature_n_of_m">Signature %1$d of %2$d</string>
+    <string name="authorize_vote_signed_badge">%1$d of %2$d signed</string>
+    <string name="authorize_vote_zec_signed">%1$s signed</string>
+    <string name="authorize_vote_zec_awaiting">%1$s awaiting</string>
+    <string name="authorize_vote_use_signed_bundles_only">Use signed bundles only</string>
+    <string name="authorize_vote_use_signed_bundles_only_subtitle">Continue without the remaining %1$s</string>
+    <string name="authorize_vote_memo_label">Memo</string>
 </resources>

@@ -42,7 +42,6 @@ import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionBottomSheet
-import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionView
 import kotlinx.serialization.Serializable
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -67,7 +66,7 @@ fun SignKeystoneVotingScreen(args: SignKeystoneVotingArgs) {
 
     when {
         state != null -> {
-            SignKeystoneTransactionView(requireNotNull(state))
+            AuthorizeVoteSignKeystoneView(requireNotNull(state))
         }
 
         isLoading -> {

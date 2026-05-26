@@ -22,7 +22,6 @@ import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.addressbook.ADDRESS_MAX_LENGTH
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionBottomSheetState
-import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionState
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.ZashiAccountInfoListItemState
 import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionArgs
 import co.electriccoin.zcash.ui.screen.voting.scankeystone.ScanKeystoneVotingPCZTRequest
@@ -105,7 +104,7 @@ class SignKeystoneVotingVM(
                 ?.toSkipBottomSheetState()
         }.stateIn(this)
 
-    val state: StateFlow<SignKeystoneTransactionState?> =
+    val state: StateFlow<AuthorizeVoteSignKeystoneState?> =
         combine(
             observeSelectedWalletAccount.require(),
             currentQrPart,
@@ -113,10 +112,15 @@ class SignKeystoneVotingVM(
             recovery
         ) { wallet, qrData, bundle, recovery ->
             bundle?.let {
-                SignKeystoneTransactionState(
-                    barTitle = stringRes(R.string.sign_keystone_voting_bar_title),
-                    title = stringRes(R.string.sign_keystone_transaction_title),
-                    subtitle = stringRes(R.string.sign_keystone_voting_subtitle),
+                val signedCount = bundle.bundleIndex
+                val bundleWeights = recovery?.bundleWeights ?: emptyList()
+                val signedWeight = bundleWeights.take(signedCount).sum()
+                val awaitingWeight = bundleWeights.drop(signedCount).sum()
+                val currentBundleWeight =
+                    bundleWeights.getOrElse(bundle.bundleIndex) { awaitingWeight }
+
+                AuthorizeVoteSignKeystoneState(
+                    onBack = ::onCancelClick,
                     accountInfo =
                         ZashiAccountInfoListItemState(
                             icon = wallet.icon,
@@ -124,20 +128,33 @@ class SignKeystoneVotingVM(
                             subtitle = stringRes("${wallet.unified.address.address.take(ADDRESS_MAX_LENGTH)}...")
                         ),
                     badgeText = stringRes(R.string.sign_keystone_transaction_badge),
-                    generateNextQrCode = { currentQrPart.update { signingBundle?.encoder?.nextPart() } },
                     qrData = qrData,
-                    positiveButton =
+                    generateNextQrCode = { currentQrPart.update { signingBundle?.encoder?.nextPart() } },
+                    currentBundleNumber = bundle.bundleIndex + 1,
+                    totalBundles = bundle.bundleCount,
+                    signedBundleCount = signedCount,
+                    signedZec = stringRes(R.string.authorize_vote_zec_signed, signedWeight.toVotingWeightLabel()),
+                    pendingZec = stringRes(R.string.authorize_vote_zec_awaiting, awaitingWeight.toVotingWeightLabel()),
+                    memoText =
+                        stringRes(
+                            R.string.vote_confirm_memo_authorize,
+                            bundle.roundTitle,
+                            currentBundleWeight.toVotingWeightLabel()
+                        ),
+                    useSignedBundlesOnly =
+                        if (signedCount > 0) {
+                            UseSignedBundlesOnlyState(
+                                remainingZec = stringRes(awaitingWeight.toVotingWeightLabel()),
+                                onClick = ::onSkipRemainingClick
+                            )
+                        } else {
+                            null
+                        },
+                    scanButton =
                         ButtonState(
                             text = stringRes(R.string.sign_keystone_voting_scan_signature),
                             onClick = ::onSignTransactionClick
                         ),
-                    negativeButton =
-                        ButtonState(
-                            text = stringRes(R.string.sign_keystone_voting_cancel),
-                            onClick = ::onCancelClick
-                        ),
-                    secondaryButton = recovery?.toSkipRemainingButton(),
-                    onBack = ::onCancelClick,
                 )
             }
         }.stateIn(this)
