@@ -1,7 +1,5 @@
 package co.electriccoin.zcash.ui.common.repository
 
-import co.electriccoin.zcash.ui.common.model.voting.Proposal
-import co.electriccoin.zcash.ui.common.model.voting.abstainOptionId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -51,12 +49,6 @@ interface VotingSessionStore {
         roundId: String,
         proposalId: Int,
         optionId: Int
-    )
-
-    fun abstainUnanswered(
-        accountUuid: String,
-        roundId: String,
-        proposals: List<Proposal>
     )
 
     fun clearDraftVote(
@@ -114,29 +106,6 @@ class VotingSessionStoreImpl : VotingSessionStore {
                 updatedDrafts.remove(proposalId)
             } else {
                 updatedDrafts[proposalId] = optionId
-            }
-
-            current.copy(
-                draftVotesByScope = current.draftVotesByScope + (scope to updatedDrafts)
-            )
-        }
-    }
-
-    override fun abstainUnanswered(
-        accountUuid: String,
-        roundId: String,
-        proposals: List<Proposal>
-    ) {
-        val scope = VotingSessionScope(accountUuid, roundId)
-        mutableState.update { current ->
-            val updatedDrafts = current.draftVotesFor(accountUuid, roundId).toMutableMap()
-
-            proposals.forEach { proposal ->
-                if (updatedDrafts.containsKey(proposal.id)) {
-                    return@forEach
-                }
-
-                updatedDrafts[proposal.id] = proposal.abstainOptionId()
             }
 
             current.copy(

@@ -29,14 +29,6 @@ fun Proposal.voteBadgeInfo(choiceId: Int): VoteOptionDisplayInfo {
         )
     }
 
-    val isSyntheticAbstain = options.none(VoteOption::isAbstainOption) && choiceId == abstainOptionId()
-    if (isSyntheticAbstain) {
-        return VoteOptionDisplayInfo(
-            label = "Abstain",
-            color = VoteOptionDisplayColor.ABSTAIN
-        )
-    }
-
     return VoteOptionDisplayInfo(
         label = "Voted",
         color = VoteOptionDisplayColor.GRAY

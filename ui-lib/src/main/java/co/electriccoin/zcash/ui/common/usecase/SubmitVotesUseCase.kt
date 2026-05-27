@@ -22,7 +22,6 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingTxHashLookup
 import co.electriccoin.zcash.ui.common.model.voting.hasVoteReady
 import co.electriccoin.zcash.ui.common.model.voting.isLastMoment
 import co.electriccoin.zcash.ui.common.model.voting.isRoundPhaseRegression
-import co.electriccoin.zcash.ui.common.model.voting.isSyntheticAbstainChoice
 import co.electriccoin.zcash.ui.common.model.voting.shareSubmissionDeadlineEpochSeconds
 import co.electriccoin.zcash.ui.common.model.voting.toDelegationRegistration
 import co.electriccoin.zcash.ui.common.model.voting.toEncryptedSharesJson
@@ -695,20 +694,7 @@ class SubmitVotesUseCase(
                 return@forEachIndexed
             }
 
-            val hasOnWireOption = proposal.options.any { option -> option.id == choiceId }
-            if (!hasOnWireOption && proposal.isSyntheticAbstainChoice(choiceId)) {
-                onProgress(
-                    VotingSubmissionProgress.Submitting(
-                        current = progressBase,
-                        total = context.totalChoices,
-                        progress = progressBase.toFloat() / context.totalChoices.coerceAtLeast(1)
-                    )
-                )
-                markProposalSubmissionComplete(context.accountUuidString, roundId, proposalId)
-                processedProposalCount++
-                return@forEachIndexed
-            }
-            require(hasOnWireOption) {
+            require(proposal.options.any { option -> option.id == choiceId }) {
                 "Unknown vote option $choiceId for proposal $proposalId"
             }
 

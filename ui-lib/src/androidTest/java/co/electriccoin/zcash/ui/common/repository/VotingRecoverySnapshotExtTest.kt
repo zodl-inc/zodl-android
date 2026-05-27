@@ -38,7 +38,7 @@ class VotingRecoverySnapshotExtTest {
     }
 
     @Test
-    fun effectiveChoices_synthesizesAbstainForMissingPostSubmitChoices() {
+    fun effectiveChoices_omitsSkippedProposalsAfterSubmission() {
         val proposal = proposal(id = 7)
         val recovery =
             VotingRecoverySnapshot(
@@ -49,7 +49,7 @@ class VotingRecoverySnapshotExtTest {
 
         val choices = recovery.effectiveChoices(listOf(proposal))
 
-        assertEquals(mapOf(proposal.id to proposal.abstainChoiceId()), choices)
+        assertEquals(emptyMap<Int, Int>(), choices)
     }
 
     @Test
