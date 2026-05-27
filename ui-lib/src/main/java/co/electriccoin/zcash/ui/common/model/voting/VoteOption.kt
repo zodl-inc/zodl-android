@@ -7,7 +7,8 @@ import kotlinx.serialization.Serializable
 data class VoteOption(
     @SerialName("index")
     val id: Int,
-    val label: String
+    val label: String,
+    val description: String? = null
 )
 
 fun VoteOption.isAbstainOption(): Boolean = label.contains("abstain", ignoreCase = true)

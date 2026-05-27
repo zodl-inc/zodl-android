@@ -6,6 +6,7 @@ import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.voting.canBuildGovernancePczt
+import co.electriccoin.zcash.ui.common.model.voting.votingBundleRawWeights
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
@@ -23,6 +24,7 @@ data class VotingKeystoneSigningBundle(
     val bundleIndex: Int,
     val bundleCount: Int,
     val actionIndex: Int,
+    val memoWeightZatoshi: Long,
     val encoder: UREncoder,
 )
 
@@ -41,6 +43,25 @@ class VotingKeystoneRoundPhaseAdvancedException(
     phase: Any?
 ) : VotingKeystoneResumeSubmissionException(
         "Keystone signing request cannot rebuild PCZT for round $roundId at phase $phase"
+    )
+
+sealed class VotingKeystoneSignatureRejectedException(
+    message: String
+) : Exception(message)
+
+class VotingKeystoneDuplicateSignatureException(
+    val signedBundleIndex: Int,
+    val currentBundleIndex: Int,
+    val bundleCount: Int
+) : VotingKeystoneSignatureRejectedException(
+        "Keystone signature for bundle $signedBundleIndex was scanned while waiting for bundle $currentBundleIndex"
+    )
+
+class VotingKeystoneWrongSignatureException(
+    val currentBundleIndex: Int,
+    val bundleCount: Int
+) : VotingKeystoneSignatureRejectedException(
+        "Signed Keystone PCZT does not match pending bundle $currentBundleIndex"
     )
 
 interface VotingKeystoneRepository {
@@ -97,6 +118,22 @@ class VotingKeystoneRepositoryImpl(
                 (0 until bundleCount)
                     .firstOrNull { index -> index !in recovery.keystoneBundleSignatures }
                     ?: throw VotingKeystoneBundlesAlreadySignedException(roundId)
+
+            val synchronizer = synchronizerProvider.getSynchronizer()
+            val walletDbPath = synchronizerProvider.getVotingWalletDbPath()
+            val networkId = synchronizer.network.toVotingNetworkId()
+            val allNotesJson =
+                votingCryptoClient.getWalletNotesJson(
+                    walletDbPath = walletDbPath,
+                    snapshotHeight = session.snapshotHeight,
+                    networkId = networkId,
+                    accountUuidBytes = selectedAccount.sdkAccount.accountUuid.value
+                )
+            val bundleRawWeights = votingBundleRawWeights(allNotesJson)
+            val memoWeightZatoshi =
+                bundleRawWeights.getOrNull(nextUnsignedBundleIndex)
+                    ?: error("Voting round $roundId has no raw memo weight for bundle $nextUnsignedBundleIndex")
+
             val pendingRequest =
                 recovery.pendingKeystoneRequest
                     ?.takeIf { request ->
@@ -110,6 +147,7 @@ class VotingKeystoneRepositoryImpl(
                     bundleIndex = pendingRequest.bundleIndex,
                     bundleCount = bundleCount,
                     actionIndex = pendingRequest.actionIndex,
+                    memoWeightZatoshi = memoWeightZatoshi,
                     encoder = keystoneSDKProvider.generatePczt(pendingRequest.decodeRedactedPczt())
                 )
             }
@@ -133,22 +171,12 @@ class VotingKeystoneRepositoryImpl(
                 selectedAccount.sdkAccount.seedFingerprint
                     ?: error("Keystone account is missing seed fingerprint")
 
-            val synchronizer = synchronizerProvider.getSynchronizer()
-            val walletDbPath = synchronizerProvider.getVotingWalletDbPath()
             val votingDbPath =
                 File(walletDbPath)
                     .parentFile
                     ?.resolve("voting.sqlite3")
                     ?.absolutePath
                     ?: error("Unable to derive voting DB path from $walletDbPath")
-            val networkId = synchronizer.network.toVotingNetworkId()
-            val allNotesJson =
-                votingCryptoClient.getWalletNotesJson(
-                    walletDbPath = walletDbPath,
-                    snapshotHeight = session.snapshotHeight,
-                    networkId = networkId,
-                    accountUuidBytes = selectedAccount.sdkAccount.accountUuid.value
-                )
 
             val dbHandle = votingCryptoClient.openVotingDb(votingDbPath)
             check(dbHandle != 0L) { "Failed to open voting DB at $votingDbPath" }
@@ -221,6 +249,7 @@ class VotingKeystoneRepositoryImpl(
                         bundleIndex = bundleIndex,
                         bundleCount = bundleCount,
                         actionIndex = governancePczt.actionIndex,
+                        memoWeightZatoshi = memoWeightZatoshi,
                         encoder = keystoneSDKProvider.generatePczt(redactedPcztBytes)
                     ) to precomputeRequest
                 } finally {
@@ -266,11 +295,16 @@ class VotingKeystoneRepositoryImpl(
         require(pendingRequest.actionIndex == actionIndex) {
             "Signed Keystone action $actionIndex does not match pending action ${pendingRequest.actionIndex}"
         }
+        val bundleCount = recovery.bundleCount ?: error("Voting round $roundId has no prepared bundle count")
         val signedPcztBytes = keystoneSDKProvider.parsePczt(signedPcztUr)
         val sighash = votingCryptoClient.extractPcztSighash(signedPcztBytes)
-        require(sighash.contentEquals(pendingRequest.decodeExpectedSighash())) {
-            "Signed Keystone PCZT does not match the pending voting request"
-        }
+        rejectMismatchedKeystoneSighash(
+            scannedSighash = sighash,
+            expectedSighash = pendingRequest.decodeExpectedSighash(),
+            existingSignatures = recovery.keystoneBundleSignatures,
+            currentBundleIndex = bundleIndex,
+            bundleCount = bundleCount
+        )
         val spendAuthSig =
             votingCryptoClient.extractSpendAuthSignatureFromSignedPczt(
                 signedPcztBytes = signedPcztBytes,
@@ -310,6 +344,37 @@ class VotingKeystoneRepositoryImpl(
 
         return votingHotkeySeedProvider.get(accountUuid)
             ?: error("Voting round $roundId has no stored hotkey seed")
+    }
+
+    private fun rejectMismatchedKeystoneSighash(
+        scannedSighash: ByteArray,
+        expectedSighash: ByteArray,
+        existingSignatures: Map<Int, VotingKeystoneBundleSignature>,
+        currentBundleIndex: Int,
+        bundleCount: Int
+    ) {
+        if (scannedSighash.contentEquals(expectedSighash)) {
+            return
+        }
+
+        val duplicateBundleIndex =
+            existingSignatures.entries
+                .firstOrNull { (_, signature) ->
+                    scannedSighash.contentEquals(signature.decodeSighash())
+                }?.key
+
+        if (duplicateBundleIndex != null) {
+            throw VotingKeystoneDuplicateSignatureException(
+                signedBundleIndex = duplicateBundleIndex,
+                currentBundleIndex = currentBundleIndex,
+                bundleCount = bundleCount
+            )
+        }
+
+        throw VotingKeystoneWrongSignatureException(
+            currentBundleIndex = currentBundleIndex,
+            bundleCount = bundleCount
+        )
     }
 
     private companion object {

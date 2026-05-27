@@ -26,12 +26,14 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 @Composable
 fun ZashiTopAppBarBackNavigation(
     onBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) = ZashiTopAppBarNavigation(
     modifier = modifier,
     backContentDescriptionText = stringResource(R.string.back_navigation_content_description),
     drawableRes = R.drawable.ic_zashi_navigation_back,
-    onBack = onBack
+    onBack = onBack,
+    enabled = enabled,
 )
 
 @Composable
@@ -87,12 +89,13 @@ fun ZashiTopAppBarNavigation(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     tint: Color? = null,
+    enabled: Boolean = true,
 ) {
     Row(
         modifier = modifier,
     ) {
         Spacer(modifier = Modifier.width(16.dp))
-        IconButton(onClick = onBack) {
+        IconButton(onClick = onBack, enabled = enabled) {
             Icon(
                 painter = painterResource(drawableRes),
                 contentDescription = backContentDescriptionText,

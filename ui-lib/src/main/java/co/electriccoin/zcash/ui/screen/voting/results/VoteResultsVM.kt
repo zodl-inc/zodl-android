@@ -8,9 +8,9 @@ import co.electriccoin.zcash.ui.common.model.mutableLce
 import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.TallyResults
-import co.electriccoin.zcash.ui.common.model.voting.VoteOptionDisplayColor
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
 import co.electriccoin.zcash.ui.common.model.voting.displayColor
+import co.electriccoin.zcash.ui.common.model.voting.voteBadgeInfo
 import co.electriccoin.zcash.ui.common.model.withLce
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
@@ -18,6 +18,7 @@ import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
+import co.electriccoin.zcash.ui.common.repository.effectiveChoices
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetAllVotingRoundsUseCase
@@ -28,6 +29,7 @@ import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
 import co.electriccoin.zcash.ui.screen.voting.isDefaultVotingConfig
+import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptionArgs
 import kotlinx.coroutines.flow.combine
 import java.time.Instant
 import java.time.ZoneId
@@ -107,7 +109,7 @@ class VoteResultsVM(
     ): VoteResultsState {
         val proposals =
             round.proposals.map { proposal ->
-                buildProposalState(proposal, tally)
+                buildProposalState(proposal, tally, recovery)
             }
 
         return VoteResultsState(
@@ -123,6 +125,18 @@ class VoteResultsVM(
                     onClick = ::onDone,
                 ),
             onBack = ::onBack,
+            onViewMore =
+                round.description.takeIf { it.isNotEmpty() }?.let { description ->
+                    {
+                        navigationRouter.forward(
+                            VotePollDescriptionArgs(
+                                title = round.title,
+                                description = description,
+                                discussionUrl = null,
+                            )
+                        )
+                    }
+                },
         )
     }
 
@@ -137,6 +151,7 @@ class VoteResultsVM(
     private fun buildProposalState(
         proposal: Proposal,
         tally: TallyResults,
+        recovery: VotingRecoverySnapshot?,
     ): VoteProposalResultState {
         val tallyProposal = tally.proposals.firstOrNull { it.proposalId == proposal.id }
         val totalWeight = tallyProposal?.options?.sumOf { it.weight } ?: 0L
@@ -147,23 +162,17 @@ class VoteResultsVM(
         val hasTie = winningOptions.size > 1
 
         val options =
-            proposal.options.mapIndexed { index, option ->
+            proposal.options.map { option ->
                 val weight = tallyProposal?.options?.firstOrNull { it.optionId == option.id }?.weight ?: 0L
-                val color = option.displayColor(position = index, total = proposal.options.size)
 
                 VoteOptionResultState(
                     label = stringRes(option.label),
                     amountZec = stringRes(R.string.vote_results_amount_zec, weight.toZec()),
                     fraction = if (hasVotes) weight / displayWeight else 0f,
-                    color = color,
                     isWinner = hasVotes && !hasTie && weight == maxWeight,
+                    color = option.displayColor(),
                 )
             }
-
-        val winner =
-            proposal.options
-                .zip(options)
-                .firstOrNull { (_, optionState) -> optionState.isWinner }
 
         return VoteProposalResultState(
             zipNumber = proposal.zipNumber?.let(::stringRes),
@@ -171,13 +180,7 @@ class VoteResultsVM(
             description = stringRes(proposal.description),
             options = options,
             totalZec = stringRes(R.string.vote_results_total_zec, totalWeight.toZec()),
-            winnerLabel =
-                when {
-                    hasTie -> stringRes(R.string.vote_results_tie)
-                    else -> winner?.first?.label?.let(::stringRes)
-                },
-            winnerColor = winner?.second?.color ?: VoteOptionDisplayColor.GRAY,
-            showWinnerSeal = hasVotes && !hasTie && winner != null,
+            votedLabel = proposal.votedResultLabel(recovery),
         )
     }
 
@@ -213,3 +216,9 @@ class VoteResultsVM(
 }
 
 private fun Long.toZec(): Double = this / 100_000_000.0
+
+internal fun Proposal.votedResultLabel(recovery: VotingRecoverySnapshot?): StringResource? {
+    val votedOptionId = recovery?.effectiveChoices(listOf(this))?.get(id) ?: return null
+    val badgeInfo = voteBadgeInfo(votedOptionId)
+    return stringRes(R.string.vote_results_voted_option, badgeInfo.label)
+}

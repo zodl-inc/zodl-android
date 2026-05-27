@@ -31,7 +31,11 @@ sealed interface VoteHeaderIconStyle {
 data class VoteWalletHeaderIconsState(
     val isKeystone: Boolean,
     val style: VoteHeaderIconStyle = VoteHeaderIconStyle.ThumbsUp,
-)
+) {
+    companion object {
+        val preview = VoteWalletHeaderIconsState(isKeystone = false)
+    }
+}
 
 @Composable
 fun VoteWalletHeaderIcons(

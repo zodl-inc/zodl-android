@@ -6,9 +6,13 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.common.model.stateIn
+import co.electriccoin.zcash.ui.common.model.voting.toVotingRawZecLabel
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneResumeSubmissionException
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneRouteStage
+import co.electriccoin.zcash.ui.common.repository.VotingKeystoneScanNotice
+import co.electriccoin.zcash.ui.common.repository.VotingKeystoneScanNoticeType
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneSigningBundle
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
@@ -18,11 +22,10 @@ import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCa
 import co.electriccoin.zcash.ui.common.usecase.SkipRemainingKeystoneBundlesUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
-import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.addressbook.ADDRESS_MAX_LENGTH
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionBottomSheetState
-import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionState
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.ZashiAccountInfoListItemState
 import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionArgs
 import co.electriccoin.zcash.ui.screen.voting.scankeystone.ScanKeystoneVotingPCZTRequest
@@ -32,6 +35,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -56,7 +60,7 @@ class SignKeystoneVotingVM(
             .stateIn(this)
 
     private val isLoading = MutableStateFlow(true)
-    private val errorMessage = MutableStateFlow<StringResource?>(null)
+    private val errorSheetState = MutableStateFlow<ZashiConfirmationState?>(null)
     private val isBottomSheetVisible = MutableStateFlow(false)
     private val isSkipBottomSheetVisible = MutableStateFlow(false)
     private val currentQrPart = MutableStateFlow<String?>(null)
@@ -71,7 +75,15 @@ class SignKeystoneVotingVM(
             }.stateIn(this)
 
     val loading: StateFlow<Boolean> = isLoading
-    val error: StateFlow<StringResource?> = errorMessage
+    val errorSheet: StateFlow<ZashiConfirmationState?> = errorSheetState
+    val scanNoticeSheet: StateFlow<ZashiConfirmationState?> =
+        recovery
+            .map { snapshot ->
+                snapshot
+                    ?.pendingKeystoneRequest
+                    ?.scanNotice
+                    ?.toScanNoticeSheet()
+            }.stateIn(this)
 
     val bottomSheetState =
         isBottomSheetVisible
@@ -105,7 +117,7 @@ class SignKeystoneVotingVM(
                 ?.toSkipBottomSheetState()
         }.stateIn(this)
 
-    val state: StateFlow<SignKeystoneTransactionState?> =
+    val state: StateFlow<AuthorizeVoteSignKeystoneState?> =
         combine(
             observeSelectedWalletAccount.require(),
             currentQrPart,
@@ -113,10 +125,13 @@ class SignKeystoneVotingVM(
             recovery
         ) { wallet, qrData, bundle, recovery ->
             bundle?.let {
-                SignKeystoneTransactionState(
-                    barTitle = stringRes(R.string.sign_keystone_voting_bar_title),
-                    title = stringRes(R.string.sign_keystone_transaction_title),
-                    subtitle = stringRes(R.string.sign_keystone_voting_subtitle),
+                val signedCount = bundle.bundleIndex
+                val bundleWeights = recovery?.bundleWeights ?: emptyList()
+                val signedWeight = bundleWeights.take(signedCount).sum()
+                val awaitingWeight = bundleWeights.drop(signedCount).sum()
+
+                AuthorizeVoteSignKeystoneState(
+                    onBack = ::onCancelClick,
                     accountInfo =
                         ZashiAccountInfoListItemState(
                             icon = wallet.icon,
@@ -124,20 +139,33 @@ class SignKeystoneVotingVM(
                             subtitle = stringRes("${wallet.unified.address.address.take(ADDRESS_MAX_LENGTH)}...")
                         ),
                     badgeText = stringRes(R.string.sign_keystone_transaction_badge),
-                    generateNextQrCode = { currentQrPart.update { signingBundle?.encoder?.nextPart() } },
                     qrData = qrData,
-                    positiveButton =
+                    generateNextQrCode = { currentQrPart.update { signingBundle?.encoder?.nextPart() } },
+                    currentBundleNumber = bundle.bundleIndex + 1,
+                    totalBundles = bundle.bundleCount,
+                    signedBundleCount = signedCount,
+                    signedZec = stringRes(R.string.authorize_vote_zec_signed, signedWeight.toVotingWeightLabel()),
+                    pendingZec = stringRes(R.string.authorize_vote_zec_awaiting, awaitingWeight.toVotingWeightLabel()),
+                    memoText =
+                        stringRes(
+                            R.string.vote_confirm_memo_authorize,
+                            bundle.roundTitle,
+                            bundle.memoWeightZatoshi.toVotingRawZecLabel()
+                        ),
+                    useSignedBundlesOnly =
+                        if (signedCount > 0) {
+                            UseSignedBundlesOnlyState(
+                                remainingZec = stringRes(awaitingWeight.toVotingWeightLabel()),
+                                onClick = ::onSkipRemainingClick
+                            )
+                        } else {
+                            null
+                        },
+                    scanButton =
                         ButtonState(
                             text = stringRes(R.string.sign_keystone_voting_scan_signature),
                             onClick = ::onSignTransactionClick
                         ),
-                    negativeButton =
-                        ButtonState(
-                            text = stringRes(R.string.sign_keystone_voting_cancel),
-                            onClick = ::onCancelClick
-                        ),
-                    secondaryButton = recovery?.toSkipRemainingButton(),
-                    onBack = ::onCancelClick,
                 )
             }
         }.stateIn(this)
@@ -170,13 +198,6 @@ class SignKeystoneVotingVM(
 
     fun onScreenBack() {
         navigationRouter.back()
-    }
-
-    fun onRetry() {
-        if (isLoading.value) {
-            return
-        }
-        loadSigningBundle()
     }
 
     private fun onCancelClick() {
@@ -227,29 +248,24 @@ class SignKeystoneVotingVM(
                 navigationRouter.backTo(VoteConfirmSubmissionArgs::class)
             }.onFailure { throwable ->
                 Log.e("SignKeystoneVoting", "Failed to skip Keystone voting bundles", throwable)
-                signingBundle = null
-                signingBundleState.value = null
-                errorMessage.value = throwable.message
-                    ?.takeIf { it.isNotBlank() }
-                    ?.let(::stringRes)
-                    ?: stringRes(R.string.sign_keystone_voting_error_skip_remaining)
+                errorSheetState.value =
+                    ZashiConfirmationState.error(
+                        onPrimary = ::onConfirmSkipRemainingClick,
+                        onBack = { errorSheetState.value = null }
+                    )
             }
         }
     }
 
     private fun loadSigningBundle() {
         viewModelScope.launch {
-            val accountUuid = selectedAccountUuid.value
-            if (accountUuid == null) {
-                errorMessage.value = stringRes(R.string.sign_keystone_voting_error_no_account)
-                isLoading.value = false
-                return@launch
-            }
             isLoading.value = true
-            errorMessage.value = null
+            errorSheetState.value = null
             currentQrPart.value = null
             signingBundle = null
             signingBundleState.value = null
+            val accountUuid = selectedAccountUuid.filterNotNull().first()
+            recovery.filterNotNull().first()
             runCatching { createVotingKeystonePcztEncoder(accountUuid, args.roundIdHex) }
                 .onSuccess { bundle ->
                     signingBundle = bundle
@@ -269,36 +285,14 @@ class SignKeystoneVotingVM(
                         "Failed to create Keystone voting QR bundle for ${args.roundIdHex}",
                         throwable
                     )
-                    errorMessage.value =
-                        throwable.message
-                            ?.takeIf { it.isNotBlank() }
-                            ?.let(::stringRes)
-                            ?: stringRes(R.string.sign_keystone_voting_error_prepare_request)
+                    errorSheetState.value =
+                        ZashiConfirmationState.error(
+                            onPrimary = ::loadSigningBundle,
+                            onBack = { errorSheetState.value = null }
+                        )
                 }
             isLoading.value = false
         }
-    }
-
-    private fun VotingRecoverySnapshot.toSkipRemainingButton(): ButtonState? {
-        val bundleCount = bundleCount ?: return null
-        val signedCount = signedBundlePrefixCount(bundleCount)
-        val remainingCount = bundleCount - signedCount
-        if (signedCount <= 0 || remainingCount <= 0 || bundleWeights.size < bundleCount) {
-            return null
-        }
-
-        val buttonText =
-            if (remainingCount == 1) {
-                stringRes(R.string.sign_keystone_voting_skip_remaining_bundle)
-            } else {
-                stringRes(R.string.sign_keystone_voting_skip_remaining_bundles, remainingCount)
-            }
-
-        return ButtonState(
-            text = buttonText,
-            style = ButtonStyle.SECONDARY,
-            onClick = ::onSkipRemainingClick
-        )
     }
 
     private fun VotingRecoverySnapshot.toSkipBottomSheetState(): SkipKeystoneBundlesBottomSheetState? {
@@ -338,6 +332,46 @@ class SignKeystoneVotingVM(
         (0 until bundleCount)
             .takeWhile { bundleIndex -> bundleIndex in keystoneBundleSignatures }
             .count()
+
+    private fun VotingKeystoneScanNotice.toScanNoticeSheet() =
+        ZashiConfirmationState.error(
+            title = stringRes(R.string.scan_keystone_voting_rejected_title),
+            message = toScanNoticeMessage(),
+            primaryText = stringRes(co.electriccoin.zcash.ui.design.R.string.general_ok),
+            secondaryText = null,
+            primaryStyle = ButtonStyle.PRIMARY,
+            onPrimary = ::onDismissScanNotice,
+            onBack = ::onDismissScanNotice
+        )
+
+    private fun onDismissScanNotice() {
+        viewModelScope.launch {
+            val accountUuid = selectedAccountUuid.filterNotNull().first()
+            votingRecoveryRepository.clearPendingKeystoneScanNotice(
+                accountUuid = accountUuid,
+                roundId = args.roundIdHex
+            )
+        }
+    }
+
+    private fun VotingKeystoneScanNotice.toScanNoticeMessage() =
+        when (type) {
+            VotingKeystoneScanNoticeType.DUPLICATE_SIGNATURE -> {
+                stringRes(
+                    R.string.scan_keystone_voting_duplicate_signature,
+                    bundleNumber,
+                    bundleCount
+                )
+            }
+
+            VotingKeystoneScanNoticeType.WRONG_SIGNATURE -> {
+                stringRes(
+                    R.string.scan_keystone_voting_wrong_signature,
+                    bundleNumber,
+                    bundleCount
+                )
+            }
+        }
 
     private fun Long.toVotingWeightLabel(): String {
         // Keystone bundle weights are quantized in 0.125 ZEC increments, so three decimals are exact here.

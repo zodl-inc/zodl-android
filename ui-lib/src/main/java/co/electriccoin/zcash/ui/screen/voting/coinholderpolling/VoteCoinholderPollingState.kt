@@ -4,18 +4,30 @@ import androidx.compose.runtime.Immutable
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.VoteTrustIndicator
 
 @Immutable
 data class VoteCoinholderPollingState(
-    val activeRounds: List<VotePollCardState>,
-    val pastRounds: List<VotePollCardState>,
     val onBack: () -> Unit,
     val onRefresh: () -> Unit,
     val onConfigSettings: () -> Unit,
+    val pastRounds: List<VotePollCardState>? = null,
+    val activeRounds: List<VotePollCardState>? = null,
     val configErrorSheet: ZashiConfirmationState? = null,
     val unverifiedPollWarningSheet: ZashiConfirmationState? = null,
-)
+) {
+    companion object {
+        val preview =
+            VoteCoinholderPollingState(
+                activeRounds = listOf(VotePollCardState.preview),
+                pastRounds = emptyList(),
+                onBack = {},
+                onRefresh = {},
+                onConfigSettings = {},
+            )
+    }
+}
 
 enum class VotePollCardStatus {
     ACTIVE,
@@ -38,4 +50,23 @@ data class VotePollCardState(
     val proposalCount: Int,
     val votedCount: Int,
     val onAction: () -> Unit,
-)
+) {
+    companion object {
+        val preview =
+            VotePollCardState(
+                roundId = "preview-round-1",
+                roundNumber = 1,
+                title = stringRes("ZF Grant Funding — Q3 2026"),
+                description = stringRes("Shielded vote on the allocation of Zcash Foundation grant funds."),
+                status = VotePollCardStatus.ACTIVE,
+                sessionStatus = SessionStatus.ACTIVE,
+                isActionEnabled = true,
+                dateLabel = stringRes("Closes May 15"),
+                trustIndicator = VoteTrustIndicator.ZODL,
+                votedLabel = null,
+                proposalCount = 2,
+                votedCount = 0,
+                onAction = {},
+            )
+    }
+}

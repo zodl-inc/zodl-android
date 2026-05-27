@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.ExternalUrl
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 
@@ -19,6 +20,9 @@ fun VotePollDescriptionScreen(args: VotePollDescriptionArgs) {
                     title = stringRes(args.title),
                     description = stringRes(args.description),
                     discussionUrl = args.discussionUrl,
+                    onDiscussionClick = {
+                        args.discussionUrl?.let { navigationRouter.forward(ExternalUrl(it)) }
+                    },
                     onBack = navigationRouter::back,
                 )
             }

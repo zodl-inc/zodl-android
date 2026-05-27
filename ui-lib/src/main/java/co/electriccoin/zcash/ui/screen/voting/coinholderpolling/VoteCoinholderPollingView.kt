@@ -22,37 +22,31 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
-import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
-import co.electriccoin.zcash.ui.design.component.IconButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
-import co.electriccoin.zcash.ui.design.component.ZashiIconButton
-import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
-import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
+import co.electriccoin.zcash.ui.design.util.scaffoldScrollPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
 import co.electriccoin.zcash.ui.screen.voting.VoteTrustIndicator
+import co.electriccoin.zcash.ui.screen.voting.component.VoteAppBar
 import co.electriccoin.zcash.ui.screen.voting.component.VoteTrustIndicatorView
-import co.electriccoin.zcash.ui.design.R as DesignR
 
 @Composable
 fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
@@ -60,9 +54,17 @@ fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
     ZashiConfirmationBottomSheet(state = state.unverifiedPollWarningSheet)
 
     BlankBgScaffold(
-        topBar = { AppBar(state) },
+        topBar = {
+            VoteAppBar(
+                title = stringResource(R.string.vote_top_bar_title),
+                onBack = state.onBack,
+                onConfigSettings = state.onConfigSettings,
+            )
+        },
         content = { padding ->
-            if (state.activeRounds.isEmpty() && state.pastRounds.isEmpty()) {
+            val activeRounds = state.activeRounds.orEmpty()
+            val pastRounds = state.pastRounds.orEmpty()
+            if (activeRounds.isEmpty() && pastRounds.isEmpty()) {
                 NoRoundsContent(
                     onGotIt = state.onBack,
                     onRefresh = state.onRefresh,
@@ -73,21 +75,28 @@ fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
                 )
             } else {
                 LazyColumn(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .scaffoldPadding(padding),
+                    modifier = Modifier.fillMaxSize(),
                     contentPadding =
                         PaddingValues(
-                            top = 8.dp,
-                            bottom = 40.dp
+                            start = ZashiDimensions.Spacing.spacing3xl,
+                            top = padding.calculateTopPadding() + ZashiDimensions.Spacing.spacingLg,
+                            end = ZashiDimensions.Spacing.spacing3xl,
+                            bottom = padding.calculateBottomPadding() + ZashiDimensions.Spacing.spacing3xl
                         ),
                     verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing4xl)
                 ) {
-                    items(state.activeRounds, key = { it.roundId }) { round ->
+                    items(
+                        activeRounds,
+                        key = { it.roundId },
+                        contentType = { "pollcard" }
+                    ) { round ->
                         PollCard(round)
                     }
-                    items(state.pastRounds, key = { it.roundId }) { round ->
+                    items(
+                        pastRounds,
+                        key = { it.roundId },
+                        contentType = { "pollcard" }
+                    ) { round ->
                         PollCard(round)
                     }
                 }
@@ -97,26 +106,22 @@ fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
 }
 
 @Composable
-fun VoteCoinholderPollingLoadingView() {
+fun VoteCoinholderPollingLoadingView(state: VoteCoinholderPollingState) {
     BlankBgScaffold(
         topBar = {
-            ZashiSmallTopAppBar(
+            VoteAppBar(
                 title = stringResource(R.string.vote_top_bar_title),
-                colors =
-                    ZcashTheme.colors.topAppBarColors orDark
-                        ZcashTheme.colors.topAppBarColors.copyColors(
-                            containerColor = Color.Transparent
-                        )
+                onBack = state.onBack,
+                onConfigSettings = state.onConfigSettings,
             )
         },
         content = { padding ->
             CommonShimmerLoadingScreen(
-                shimmerItemsCount = 4,
+                shimmerItemsCount = 8,
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .scaffoldPadding(padding)
-                        .padding(top = 8.dp),
+                        .scaffoldScrollPadding(padding),
                 showDivider = false,
             )
         }
@@ -344,99 +349,33 @@ private data class StatusBadgeParams(
     val borderColor: Color,
 )
 
-@Composable
-private fun AppBar(state: VoteCoinholderPollingState) {
-    ZashiSmallTopAppBar(
-        title = stringResource(R.string.vote_top_bar_title),
-        navigationAction = {
-            ZashiTopAppBarBackNavigation(
-                onBack = state.onBack,
-                modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
-            )
-        },
-        regularActions = {
-            ZashiIconButton(
-                state =
-                    IconButtonState(
-                        icon = DesignR.drawable.ic_app_bar_settings,
-                        contentDescription = stringRes(R.string.vote_chain_config_settings_content_description),
-                        onClick = state.onConfigSettings
-                    ),
-                modifier = Modifier.size(40.dp)
-            )
-        },
-        colors =
-            ZcashTheme.colors.topAppBarColors orDark
-                ZcashTheme.colors.topAppBarColors.copyColors(
-                    containerColor = Color.Transparent
-                )
-    )
-}
-
 @PreviewScreens
 @Composable
 private fun CoinholderPollingPreviewWithRounds() =
     ZcashTheme {
         VoteCoinholderPollingView(
             state =
-                VoteCoinholderPollingState(
-                    activeRounds =
-                        listOf(
-                            VotePollCardState(
-                                roundId = "abc123",
-                                roundNumber = 3,
-                                title = stringRes("ZF Grant Funding — Q3 2026"),
-                                description =
-                                    stringRes(
-                                        "Shielded vote on the allocation of Zcash Foundation grant funds for Q3 2026."
-                                    ),
-                                status = VotePollCardStatus.ACTIVE,
-                                sessionStatus = SessionStatus.ACTIVE,
-                                isActionEnabled = true,
-                                dateLabel = stringRes("Closes May 15"),
-                                trustIndicator = VoteTrustIndicator.ZODL,
-                                votedLabel = null,
-                                proposalCount = 2,
-                                votedCount = 0,
-                                onAction = {},
-                            ),
-                        ),
+                VoteCoinholderPollingState.preview.copy(
                     pastRounds =
                         listOf(
-                            VotePollCardState(
+                            VotePollCardState.preview.copy(
                                 roundId = "def456",
                                 roundNumber = 2,
                                 title = stringRes("ZF Grant Funding — Q2 2026"),
-                                description = stringRes("Completed vote on Q2 2026 grant allocation."),
                                 status = VotePollCardStatus.CLOSED,
                                 sessionStatus = SessionStatus.COMPLETED,
-                                isActionEnabled = true,
-                                dateLabel = stringRes("Closed Apr 10"),
-                                trustIndicator = VoteTrustIndicator.ZODL,
                                 votedLabel = stringRes("2 of 2 voted"),
-                                proposalCount = 2,
                                 votedCount = 2,
-                                onAction = {},
                             ),
-                            VotePollCardState(
+                            VotePollCardState.preview.copy(
                                 roundId = "ghi789",
                                 roundNumber = 1,
                                 title = stringRes("ZF Grant Funding — Q1 2026"),
-                                description = stringRes(""),
                                 status = VotePollCardStatus.VOTED,
                                 sessionStatus = SessionStatus.COMPLETED,
-                                isActionEnabled = true,
-                                dateLabel = stringRes("Closed Jan 20"),
                                 trustIndicator = VoteTrustIndicator.UNVERIFIED,
-                                votedLabel = null,
-                                proposalCount = 1,
-                                votedCount = 0,
-                                onAction = {},
                             ),
                         ),
-                    onBack = {},
-                    onRefresh = {},
-                    onConfigSettings = {},
                 )
         )
     }
@@ -447,12 +386,16 @@ private fun CoinholderPollingPreviewEmpty() =
     ZcashTheme {
         VoteCoinholderPollingView(
             state =
-                VoteCoinholderPollingState(
+                VoteCoinholderPollingState.preview.copy(
                     activeRounds = emptyList(),
                     pastRounds = emptyList(),
-                    onBack = {},
-                    onRefresh = {},
-                    onConfigSettings = {},
                 )
         )
+    }
+
+@PreviewScreens
+@Composable
+private fun CoinholderPollingPreviewLoading() =
+    ZcashTheme {
+        VoteCoinholderPollingLoadingView(state = VoteCoinholderPollingState.preview)
     }

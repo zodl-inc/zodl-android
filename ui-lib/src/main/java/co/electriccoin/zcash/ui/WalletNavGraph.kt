@@ -209,8 +209,6 @@ import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingArg
 import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingScreen
 import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingArgs
 import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingScreen
-import co.electriccoin.zcash.ui.screen.voting.walletsyncing.VoteWalletSyncingArgs
-import co.electriccoin.zcash.ui.screen.voting.walletsyncing.VoteWalletSyncingScreen
 import co.electriccoin.zcash.ui.screen.walletbackup.AndroidWalletBackup
 import co.electriccoin.zcash.ui.screen.walletbackup.WalletBackup
 import co.electriccoin.zcash.ui.screen.warning.WrapNotEnoughSpace
@@ -350,7 +348,6 @@ fun NavGraphBuilder.walletNavGraph(
         composable<VoteProposalListArgs> { VoteProposalListScreen(it.toRoute()) }
         composable<VoteProposalDetailArgs> { VoteProposalDetailScreen(it.toRoute()) }
         dialogComposable<VotePollDescriptionArgs> { VotePollDescriptionScreen(it.toRoute()) }
-        composable<VoteWalletSyncingArgs> { VoteWalletSyncingScreen(it.toRoute()) }
         composable<VoteConfirmSubmissionArgs> { VoteConfirmSubmissionScreen(it.toRoute()) }
         composable<VoteTallyingArgs> { VoteTallyingScreen(it.toRoute()) }
         composable<VoteResultsArgs> { VoteResultsScreen(it.toRoute()) }

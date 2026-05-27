@@ -47,23 +47,22 @@ import java.text.NumberFormat
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
 import java.util.Locale
 import co.electriccoin.zcash.ui.common.model.voting.VoteIneligibilityReason as ModelVoteIneligibilityReason
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class VoteProposalListVM(
+    votingSessionStore: VotingSessionStore,
     private val args: VoteProposalListArgs,
     private val votingApiRepository: VotingApiRepository,
     private val votingRecoveryRepository: VotingRecoveryRepository,
-    private val votingSessionStore: VotingSessionStore,
     private val prepareVotingRound: PrepareVotingRoundUseCase,
     private val navigationRouter: NavigationRouter,
     observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase,
 ) : ViewModel() {
     private val preparationErrorSheet = MutableStateFlow<ZashiConfirmationState?>(null)
-    private val ineligibleSheet = MutableStateFlow<ZashiConfirmationState?>(null)
-    private val walletSyncingSheet = MutableStateFlow<ZashiConfirmationState?>(null)
+    val ineligibleSheet = MutableStateFlow<ZashiConfirmationState?>(null)
+    val walletSyncingSheet = MutableStateFlow<ZashiConfirmationState?>(null)
     private var preparationJob: Job? = null
 
     /**
@@ -109,6 +108,23 @@ class VoteProposalListVM(
             }
         }
 
+    private val initialLoadingState: VoteProposalListState
+        get() =
+            VoteProposalListState(
+                mode = args.mode,
+                roundTitle = stringRes(""),
+                snapshotHeight = null,
+                votedCount = 0,
+                totalCount = 0,
+                metaLine = null,
+                description = null,
+                discussionUrl = null,
+                onViewMore = null,
+                proposals = null,
+                ctaButton = null,
+                onBack = ::onBack,
+            )
+
     val state: StateFlow<LceState<VoteProposalListState>> =
         combine(
             votingApiRepository.snapshot,
@@ -136,17 +152,16 @@ class VoteProposalListVM(
                 // confirms `Ready` (or until prep surfaces a recoverable error sheet — in
                 // which case we still want to render the list underneath the sheet so the
                 // "Try again" / "Go back" controls have somewhere to live). When the gate
-                // is PREPARING, fall through to the `content = null` shimmer so the user
-                // never sees the proposal list flash before being routed to WalletSyncing
-                // or Ineligible.
-                val gatedContent =
+                // is PREPARING, fall through to the loading shimmer so the user never sees
+                // the proposal list flash before being routed to WalletSyncing or Ineligible.
+                val resolvedContent =
                     when {
-                        gate == PreparationGate.READY -> {
-                            content?.copy(ineligibleSheet = ineligible, walletSyncingSheet = walletSyncing)
+                        gate == PreparationGate.READY && ineligible == null && walletSyncing == null -> {
+                            content
                         }
 
                         errorSheet != null -> {
-                            content?.copy(ineligibleSheet = ineligible, walletSyncingSheet = walletSyncing)
+                            content
                         }
 
                         else -> {
@@ -154,8 +169,8 @@ class VoteProposalListVM(
                         }
                     }
                 LceState(
-                    content = gatedContent,
-                    isLoading = gatedContent == null,
+                    content = resolvedContent ?: initialLoadingState,
+                    isLoading = resolvedContent == null,
                     error = errorSheet?.let(LceError::BottomSheet)
                 )
             }
@@ -241,7 +256,7 @@ class VoteProposalListVM(
     }
 
     private fun dismissIneligibleErrorSheet() {
-        preparationErrorSheet.value = null
+        ineligibleSheet.value = null
         onBack()
     }
 
@@ -369,7 +384,7 @@ class VoteProposalListVM(
             title = stringRes(proposal.title),
             description = stringRes(proposal.description),
             voteBadge = badge,
-            onClick = { onProposalTapped(roundId, proposal.id, isFromList = true) },
+            onClick = { onProposalTapped(roundId, proposal.id) },
         )
     }
 
@@ -400,23 +415,21 @@ class VoteProposalListVM(
         }
 
         if (mode == VoteProposalListMode.REVIEW) {
-            val allDrafted = proposals.all { drafts.containsKey(it.id) }
-            return if (allDrafted) {
-                ButtonState(
-                    text = stringRes(R.string.vote_proposal_list_confirm_submit),
-                    style = ButtonStyle.PRIMARY,
-                    onClick = {
-                        navigationRouter.forward(
-                            VoteConfirmSubmissionArgs(
-                                roundIdHex = roundId,
-                                choicesJson = drafts.toChoicesJson()
-                            )
-                        )
-                    }
-                )
-            } else {
-                null
+            if (drafts.isEmpty()) {
+                return null
             }
+            return ButtonState(
+                text = stringRes(R.string.vote_proposal_list_confirm_submit),
+                style = ButtonStyle.PRIMARY,
+                onClick = {
+                    navigationRouter.forward(
+                        VoteConfirmSubmissionArgs(
+                            roundIdHex = roundId,
+                            choicesJson = drafts.toChoicesJson()
+                        )
+                    )
+                }
+            )
         }
 
         val draftCount = proposals.count { drafts.containsKey(it.id) }
@@ -469,14 +482,14 @@ class VoteProposalListVM(
 
         return VoteProposalMetaLineState(
             leading = combineMetaLine(dateLabel, votingPowerLabel),
-            trailing = buildTimeLeftLabel(round)
+            trailing = null
         )
     }
 
     private fun buildVotedMetaLine(
         round: VotingRound,
         recovery: VotingRecoverySnapshot?
-    ): VoteProposalMetaLineState? {
+    ): VoteProposalMetaLineState {
         val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault())
         val votedAt = recovery?.submittedAtEpochSeconds?.let(Instant::ofEpochSecond)
         val votedLabel =
@@ -488,11 +501,10 @@ class VoteProposalListVM(
                 stringRes(R.string.vote_proposal_list_voting_power, weight.toVotingWeightLabel())
             }
         val dateLabel = votedLabel ?: stringRes(R.string.vote_proposal_list_ends, formatter.format(round.votingEnd))
-        val trailing = buildTimeLeftLabel(round)
 
         return VoteProposalMetaLineState(
             leading = combineMetaLine(dateLabel, votingPowerLabel),
-            trailing = trailing
+            trailing = null
         )
     }
 
@@ -506,22 +518,7 @@ class VoteProposalListVM(
             stringRes(R.string.vote_proposal_list_meta_line, dateLabel, votingPowerLabel)
         }
 
-    private fun buildTimeLeftLabel(round: VotingRound): StringResource {
-        val remaining = ChronoUnit.SECONDS.between(Instant.now(), round.votingEnd)
-        return when {
-            remaining <= 0 -> stringRes(R.string.vote_proposal_list_time_ended)
-            remaining < 3600 -> stringRes(R.string.vote_proposal_list_time_minutes_left, remaining / 60)
-            remaining < 86400 -> stringRes(R.string.vote_proposal_list_time_hours_left, remaining / 3600)
-            remaining < 172800 -> stringRes(R.string.vote_proposal_list_time_day_left, remaining / 86400)
-            else -> stringRes(R.string.vote_proposal_list_time_days_left, remaining / 86400)
-        }
-    }
-
-    private fun onProposalTapped(
-        roundId: String,
-        proposalId: Int,
-        isFromList: Boolean = false,
-    ) {
+    private fun onProposalTapped(roundId: String, proposalId: Int) {
         if (roundId.isEmpty()) return
 
         navigationRouter.forward(
@@ -530,7 +527,6 @@ class VoteProposalListVM(
                 roundId = roundId,
                 isEditingFromReview = args.mode == VoteProposalListMode.REVIEW,
                 isReadOnly = args.mode == VoteProposalListMode.VOTED,
-                isFromList = isFromList,
             )
         )
     }

@@ -13,6 +13,7 @@ fun ZashiConfirmationState.Companion.error(
     primaryText: StringResource = stringRes(co.electriccoin.zcash.ui.design.R.string.general_try_again),
     secondaryText: StringResource? = stringRes(co.electriccoin.zcash.ui.design.R.string.general_contact_support),
     primaryStyle: ButtonStyle = ButtonStyle.TERTIARY,
+    secondaryStyle: ButtonStyle = ButtonStyle.PRIMARY,
     onPrimary: () -> Unit,
     onSecondary: (() -> Unit)? = null,
     onBack: () -> Unit,
@@ -31,7 +32,7 @@ fun ZashiConfirmationState.Companion.error(
             if (secondaryText != null && onSecondary != null) {
                 ButtonState(
                     text = secondaryText,
-                    style = ButtonStyle.PRIMARY,
+                    style = secondaryStyle,
                     onClick = onSecondary,
                 )
             } else {
