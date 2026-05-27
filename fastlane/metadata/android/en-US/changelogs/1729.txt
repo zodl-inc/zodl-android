@@ -1,2 +1,0 @@
-Added:
-- Coinholder Polling lets you vote on Zcash governance privately, right from your Zodl and Keystone wallets.
