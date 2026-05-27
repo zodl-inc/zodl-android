@@ -33,14 +33,15 @@ import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiButton
+import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.scaffoldScrollPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
@@ -52,6 +53,7 @@ import co.electriccoin.zcash.ui.screen.voting.component.VoteTrustIndicatorView
 fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
     ZashiConfirmationBottomSheet(state = state.configErrorSheet)
     ZashiConfirmationBottomSheet(state = state.unverifiedPollWarningSheet)
+    ZashiConfirmationBottomSheet(state = state.noRoundsSheet)
 
     BlankBgScaffold(
         topBar = {
@@ -65,13 +67,13 @@ fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
             val activeRounds = state.activeRounds.orEmpty()
             val pastRounds = state.pastRounds.orEmpty()
             if (activeRounds.isEmpty() && pastRounds.isEmpty()) {
-                NoRoundsContent(
-                    onGotIt = state.onBack,
-                    onRefresh = state.onRefresh,
+                CommonShimmerLoadingScreen(
+                    shimmerItemsCount = 8,
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .scaffoldPadding(padding)
+                            .scaffoldScrollPadding(padding),
+                    showDivider = false,
                 )
             } else {
                 LazyColumn(
@@ -126,59 +128,6 @@ fun VoteCoinholderPollingLoadingView(state: VoteCoinholderPollingState) {
             )
         }
     )
-}
-
-@Composable
-private fun NoRoundsContent(
-    onGotIt: () -> Unit,
-    onRefresh: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(modifier = Modifier.weight(1f))
-        Text(
-            text = stringResource(R.string.vote_poll_list_empty_title),
-            style = ZashiTypography.header6,
-            color = ZashiColors.Text.textPrimary,
-            fontWeight = FontWeight.SemiBold
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = stringResource(R.string.vote_poll_list_empty_subtitle),
-            style = ZashiTypography.textMd,
-            color = ZashiColors.Text.textTertiary
-        )
-        Spacer(modifier = Modifier.weight(1f))
-        ZashiButton(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = ZashiDimensions.Spacing.spacingMd),
-            state =
-                ButtonState(
-                    text = stringRes(R.string.vote_poll_list_empty_refresh),
-                    style = ButtonStyle.PRIMARY,
-                    onClick = onRefresh
-                )
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        ZashiButton(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = ZashiDimensions.Spacing.spacingMd),
-            state =
-                ButtonState(
-                    text = stringRes(R.string.vote_poll_list_empty_got_it),
-                    style = ButtonStyle.TERTIARY,
-                    onClick = onGotIt
-                )
-        )
-        Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingMd))
-    }
 }
 
 @Composable
@@ -389,6 +338,18 @@ private fun CoinholderPollingPreviewEmpty() =
                 VoteCoinholderPollingState.preview.copy(
                     activeRounds = emptyList(),
                     pastRounds = emptyList(),
+                    noRoundsSheet =
+                        ZashiConfirmationState.error(
+                            title = stringRes(R.string.vote_poll_list_empty_title),
+                            message = stringRes(R.string.vote_poll_list_empty_subtitle),
+                            primaryText = stringRes(R.string.vote_poll_list_empty_refresh),
+                            primaryStyle = ButtonStyle.SECONDARY,
+                            secondaryText = stringRes(R.string.vote_poll_list_empty_got_it),
+                            secondaryStyle = ButtonStyle.PRIMARY,
+                            onPrimary = {},
+                            onSecondary = {},
+                            onBack = {},
+                        )
                 )
         )
     }

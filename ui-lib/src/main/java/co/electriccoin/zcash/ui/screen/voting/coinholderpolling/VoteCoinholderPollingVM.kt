@@ -32,6 +32,7 @@ import co.electriccoin.zcash.ui.common.usecase.RefreshActiveVotingSessionUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshVotingRoundsUseCase
 import co.electriccoin.zcash.ui.common.usecase.TrackVotingSharesUseCase
 import co.electriccoin.zcash.ui.common.usecase.VotingShareTrackingResult
+import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
@@ -259,9 +260,16 @@ class VoteCoinholderPollingVM(
                 configErrorSheet,
                 unverifiedPollWarningSheet
             ) { content, _, _, configSheet, unverifiedSheet ->
+                val noRoundsSheet =
+                    if (content.activeRounds?.isEmpty() == true && content.pastRounds?.isEmpty() == true) {
+                        buildNoRoundsSheet()
+                    } else {
+                        null
+                    }
                 content.copy(
                     configErrorSheet = configSheet,
-                    unverifiedPollWarningSheet = unverifiedSheet
+                    unverifiedPollWarningSheet = unverifiedSheet,
+                    noRoundsSheet = noRoundsSheet
                 )
             }
         }.withLce(pollListLceSource) { error ->
@@ -672,6 +680,19 @@ class VoteCoinholderPollingVM(
     private fun onBack() = navigationRouter.back()
 
     private fun onConfigSettings() = navigationRouter.forward(VoteChainConfigArgs)
+
+    private fun buildNoRoundsSheet() =
+        ZashiConfirmationState.error(
+            title = stringRes(R.string.vote_poll_list_empty_title),
+            message = stringRes(R.string.vote_poll_list_empty_subtitle),
+            primaryText = stringRes(R.string.vote_poll_list_empty_refresh),
+            primaryStyle = ButtonStyle.TERTIARY,
+            secondaryText = stringRes(R.string.vote_poll_list_empty_got_it),
+            secondaryStyle = ButtonStyle.PRIMARY,
+            onPrimary = ::refreshVotingData,
+            onSecondary = ::onBack,
+            onBack = ::onBack,
+        )
 
     private fun buildConfigErrorSheet(rawMessage: String) =
         ZashiConfirmationState(
