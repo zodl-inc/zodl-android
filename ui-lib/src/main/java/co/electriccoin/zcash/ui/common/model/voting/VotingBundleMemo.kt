@@ -9,6 +9,7 @@ import kotlinx.serialization.json.long
 private const val BALLOT_DIVISOR_ZATOSHI = 12_500_000L
 private const val BUNDLE_NOTE_LIMIT = 5
 private const val ZATOSHI_PER_ZEC = 100_000_000L
+private const val ZATOSHI_DECIMAL_DIGITS = 8
 
 internal fun votingBundleRawWeights(notesJson: String): List<Long> {
     val notes = notesJson.toBundleNotes()
@@ -49,7 +50,7 @@ internal fun votingBundleRawWeights(notesJson: String): List<Long> {
 
 internal fun Long.toVotingRawZecLabel(): String {
     val whole = this / ZATOSHI_PER_ZEC
-    val fractional = (this % ZATOSHI_PER_ZEC).toString().padStart(8, '0')
+    val fractional = (this % ZATOSHI_PER_ZEC).toString().padStart(ZATOSHI_DECIMAL_DIGITS, '0')
     return "$whole.$fractional ZEC"
 }
 

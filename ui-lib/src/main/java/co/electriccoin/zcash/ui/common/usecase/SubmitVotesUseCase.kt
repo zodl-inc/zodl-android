@@ -6,6 +6,7 @@ import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.voting.CastVoteSignature
 import co.electriccoin.zcash.ui.common.model.voting.DelegatedShareInfo
+import co.electriccoin.zcash.ui.common.model.voting.RoundStateInfo
 import co.electriccoin.zcash.ui.common.model.voting.SharePayload
 import co.electriccoin.zcash.ui.common.model.voting.TxConfirmation
 import co.electriccoin.zcash.ui.common.model.voting.TxConfirmationProbeResult
@@ -343,242 +344,265 @@ class SubmitVotesUseCase(
         bundleCount: Int,
         onProgress: (VotingSubmissionProgress) -> Unit
     ) {
-        val roundId = context.roundId
         repeat(bundleCount) { bundleIndex ->
-            onProgress(
-                VotingSubmissionProgress.Authorizing(
-                    progress = bundleIndex.toFloat() / bundleCount.coerceAtLeast(1)
-                )
-            )
+            submitSingleDelegationBundle(context, dbHandle, bundleIndex, bundleCount, onProgress)
+        }
 
-            val cachedDelegationTxHash =
-                votingCryptoClient.getDelegationTxHash(
-                    dbHandle = dbHandle,
-                    roundId = roundId,
-                    bundleIndex = bundleIndex
-                )
-            if (cachedDelegationTxHash is VotingTxHashLookup.Present) {
-                // Fast-path probe: mirrors iOS `recoverDelegationVanPosition` with
-                // `confirmationTimeout: 0`. A cached hash that hasn't propagated yet
-                // (or that landed on-chain with a non-zero code) must NOT block this
-                // flow for 90s — return null and fall through to fresh delegation.
-                val confirmation =
-                    awaitTxConfirmation(
-                        txHash = cachedDelegationTxHash.txHash,
-                        maxAttempts = 1
-                    )
-                val vanPosition =
-                    confirmation
-                        ?.takeIf { it.code == 0 }
-                        ?.event("delegate_vote")
-                        ?.attribute("leaf_index")
-                        ?.toIntOrNull()
-                if (vanPosition != null) {
-                    votingCryptoClient.storeVanPosition(
-                        dbHandle = dbHandle,
-                        roundId = roundId,
-                        bundleIndex = bundleIndex,
-                        position = vanPosition
-                    )
-                    return@repeat
-                }
-                // No usable cached confirmation (not yet propagated, failed on-chain,
-                // or missing leaf_index) — fall through and re-run delegation from
-                // scratch for this bundle.
-            }
+        votingRecoveryRepository.setPhase(
+            accountUuid = context.accountUuidString,
+            roundId = context.roundId,
+            phase = VotingRecoveryPhase.DELEGATION_SUBMITTED
+        )
+    }
 
-            // A resumed round may already be past delegation/proving in Rust.
-            // Skip stale rebuild work instead of trying to regress the phase.
-            var rustRoundState = votingCryptoClient.getRoundState(dbHandle, roundId)
-            if (rustRoundState?.phase.hasVoteReady()) {
-                return@repeat
-            }
-
-            if (rustRoundState?.proofGenerated != true) {
-                val witnessesJson =
-                    votingCryptoClient.generateNoteWitnessesJson(
-                        dbHandle = dbHandle,
-                        roundId = roundId,
-                        bundleIndex = bundleIndex,
-                        walletDbPath = context.walletDbPath,
-                        networkId = context.networkId,
-                        notesJson = context.allNotesJson
-                    )
-                votingCryptoClient.storeWitnesses(
-                    dbHandle = dbHandle,
-                    roundId = roundId,
-                    bundleIndex = bundleIndex,
-                    notesJson = context.allNotesJson,
-                    witnessesJson = witnessesJson
-                )
-
-                val precomputeResult =
-                    votingProofPrecomputeRepository.awaitDelegationPirPrecompute(
-                        VotingDelegationPirPrecomputeKey(
-                            accountUuid = context.accountUuidString,
-                            roundId = roundId,
-                            bundleIndex = bundleIndex
-                        )
-                    )
-                precomputeResult?.onFailure { throwable ->
-                    Log.w(TAG, "Voting PIR precompute failed for round $roundId bundle $bundleIndex", throwable)
-                }
-                if (!context.isKeystone && precomputeResult?.isSuccess != true) {
-                    val governancePcztResult =
-                        runCatching {
-                            votingCryptoClient.buildGovernancePcztFromSeed(
-                                dbHandle = dbHandle,
-                                roundId = roundId,
-                                bundleIndex = bundleIndex,
-                                ufvk =
-                                    requireNotNull(context.accountUfvk) {
-                                        "Software wallet account is missing UFVK for voting bundle $bundleIndex"
-                                    },
-                                networkId = context.networkId,
-                                accountIndex = context.accountIndex,
-                                notesJson = context.allNotesJson,
-                                walletSeed =
-                                    requireNotNull(context.senderSeed) {
-                                        "Software wallet seed is missing for voting bundle $bundleIndex"
-                                    },
-                                hotkeySeed = context.hotkeySeed,
-                                seedFingerprint =
-                                    requireNotNull(context.seedFingerprint) {
-                                        "Software wallet account is missing seed fingerprint for voting bundle $bundleIndex"
-                                    },
-                                roundName = context.session.title
-                            )
-                        }
-                    // Foreground or resumed submit may find that Rust already
-                    // advanced past PCZT building; ignore only that stale phase race.
-                    governancePcztResult
-                        .exceptionOrNull()
-                        ?.takeUnless { throwable -> throwable.isRoundPhaseRegression() }
-                        ?.let { throw it }
-                    if (governancePcztResult.exceptionOrNull()?.isRoundPhaseRegression() == true) {
-                        Log.i(
-                            TAG,
-                            "Skipping governance PCZT rebuild for round $roundId bundle $bundleIndex; " +
-                                "Rust round phase already advanced"
-                        )
-                    }
-                }
-
-                rustRoundState = votingCryptoClient.getRoundState(dbHandle, roundId)
-                if (rustRoundState?.proofGenerated != true) {
-                    runVotingAuthorizationStep(context.isKeystone) {
-                        votingCryptoClient.buildAndProveDelegation(
-                            dbHandle = dbHandle,
-                            roundId = roundId,
-                            bundleIndex = bundleIndex,
-                            pirServerUrl = context.pirServerUrl,
-                            networkId = context.networkId,
-                            notesJson = context.allNotesJson,
-                            hotkeyRawAddress = context.hotkeyRawAddress,
-                            proofProgress = { progress ->
-                                onProgress(
-                                    VotingSubmissionProgress.Authorizing(
-                                        progress =
-                                            (
-                                                (bundleIndex + progress.coerceIn(0.0, 1.0)) /
-                                                    bundleCount.coerceAtLeast(1)
-                                            ).toFloat()
-                                    )
-                                )
-                            }
-                        )
-                    }
-                }
-            }
-            votingRecoveryRepository.setPhase(
-                accountUuid = context.accountUuidString,
-                roundId = roundId,
-                phase = VotingRecoveryPhase.DELEGATION_PROVED
-            )
-
-            val txResult =
-                runVotingAuthorizationStep(context.isKeystone) {
-                    val submission =
-                        if (context.isKeystone) {
-                            val keystoneSignature =
-                                context.recovery.keystoneBundleSignatures[bundleIndex]
-                                    ?: error("Keystone signature is missing for voting bundle $bundleIndex")
-                            votingCryptoClient.getDelegationSubmissionWithKeystoneSignature(
-                                dbHandle = dbHandle,
-                                roundId = roundId,
-                                bundleIndex = bundleIndex,
-                                keystoneSig = keystoneSignature.decodeSpendAuthSig(),
-                                keystoneSighash = keystoneSignature.decodeSighash()
-                            )
-                        } else {
-                            votingCryptoClient.getDelegationSubmission(
-                                dbHandle = dbHandle,
-                                roundId = roundId,
-                                bundleIndex = bundleIndex,
-                                senderSeed = requireNotNull(context.senderSeed),
-                                networkId = context.networkId,
-                                accountIndex = context.accountIndex
-                            )
-                        }
-                    if (context.isKeystone) {
-                        val keystoneSignature =
-                            context.recovery.keystoneBundleSignatures[bundleIndex]
-                                ?: error("Keystone signature is missing for voting bundle $bundleIndex")
-                        val expectedSpendAuthSig = keystoneSignature.decodeSpendAuthSig()
-                        require(submission.spendAuthSig.contentEquals(expectedSpendAuthSig)) {
-                            "Delegation signature mismatch for Keystone voting bundle $bundleIndex"
-                        }
-                        require(submission.sighash.contentEquals(keystoneSignature.decodeSighash())) {
-                            "Delegation sighash mismatch for Keystone voting bundle $bundleIndex"
-                        }
-                        keystoneSignature.decodeRk()?.let { expectedRk ->
-                            require(submission.rk.contentEquals(expectedRk)) {
-                                "Delegation rk mismatch for Keystone voting bundle $bundleIndex"
-                            }
-                        }
-                    }
-                    votingApiProvider
-                        .submitDelegation(submission.toDelegationRegistration())
-                        .requireAccepted("Delegation transaction was rejected")
-                }
-            votingCryptoClient.storeDelegationTxHash(
+    @Suppress("LongMethod")
+    private suspend fun buildDelegationProofIfNeeded(
+        context: VotingSubmitContext,
+        dbHandle: Long,
+        bundleIndex: Int,
+        bundleCount: Int,
+        initialRoundState: RoundStateInfo?,
+        onProgress: (VotingSubmissionProgress) -> Unit
+    ) {
+        if (initialRoundState?.proofGenerated == true) return
+        val roundId = context.roundId
+        val witnessesJson =
+            votingCryptoClient.generateNoteWitnessesJson(
                 dbHandle = dbHandle,
                 roundId = roundId,
                 bundleIndex = bundleIndex,
-                txHash = txResult.txHash
+                walletDbPath = context.walletDbPath,
+                networkId = context.networkId,
+                notesJson = context.allNotesJson
             )
+        votingCryptoClient.storeWitnesses(
+            dbHandle = dbHandle,
+            roundId = roundId,
+            bundleIndex = bundleIndex,
+            notesJson = context.allNotesJson,
+            witnessesJson = witnessesJson
+        )
 
-            val confirmation =
-                runVotingAuthorizationStep(context.isKeystone) {
-                    awaitTxConfirmation(txResult.txHash)
-                        ?: throw VotingSubmissionRecoverableException(
-                            VotingErrors.TxConfirmationTimedOut(txResult.txHash)
-                        )
+        val precomputeResult =
+            votingProofPrecomputeRepository.awaitDelegationPirPrecompute(
+                VotingDelegationPirPrecomputeKey(
+                    accountUuid = context.accountUuidString,
+                    roundId = roundId,
+                    bundleIndex = bundleIndex
+                )
+            )
+        precomputeResult?.onFailure { throwable ->
+            Log.w(TAG, "Voting PIR precompute failed for round $roundId bundle $bundleIndex", throwable)
+        }
+        if (!context.isKeystone && precomputeResult?.isSuccess != true) {
+            val governancePcztResult =
+                runCatching {
+                    votingCryptoClient.buildGovernancePcztFromSeed(
+                        dbHandle = dbHandle,
+                        roundId = roundId,
+                        bundleIndex = bundleIndex,
+                        ufvk =
+                            requireNotNull(context.accountUfvk) {
+                                "Software wallet account is missing UFVK for voting bundle $bundleIndex"
+                            },
+                        networkId = context.networkId,
+                        accountIndex = context.accountIndex,
+                        notesJson = context.allNotesJson,
+                        walletSeed =
+                            requireNotNull(context.senderSeed) {
+                                "Software wallet seed is missing for voting bundle $bundleIndex"
+                            },
+                        hotkeySeed = context.hotkeySeed,
+                        seedFingerprint =
+                            requireNotNull(context.seedFingerprint) {
+                                "Software wallet account is missing seed fingerprint for voting bundle $bundleIndex"
+                            },
+                        roundName = context.session.title
+                    )
                 }
-            runVotingAuthorizationStep(context.isKeystone) {
-                confirmation.requireAccepted("Delegation transaction failed")
+            // Foreground or resumed submit may find that Rust already
+            // advanced past PCZT building; ignore only that stale phase race.
+            governancePcztResult
+                .exceptionOrNull()
+                ?.takeUnless { throwable -> throwable.isRoundPhaseRegression() }
+                ?.let { throw it }
+            if (governancePcztResult.exceptionOrNull()?.isRoundPhaseRegression() == true) {
+                Log.i(
+                    TAG,
+                    "Skipping governance PCZT rebuild for round $roundId bundle $bundleIndex; " +
+                        "Rust round phase already advanced"
+                )
             }
+        }
 
-            val vanPosition = confirmation.delegateVoteVanPosition(bundleIndex)
-            traceVotingStep(
+        val updatedRoundState = votingCryptoClient.getRoundState(dbHandle, roundId)
+        if (updatedRoundState?.proofGenerated != true) {
+            runVotingAuthorizationStep(context.isKeystone) {
+                votingCryptoClient.buildAndProveDelegation(
+                    dbHandle = dbHandle,
+                    roundId = roundId,
+                    bundleIndex = bundleIndex,
+                    pirServerUrl = context.pirServerUrl,
+                    networkId = context.networkId,
+                    notesJson = context.allNotesJson,
+                    hotkeyRawAddress = context.hotkeyRawAddress,
+                    proofProgress = { progress ->
+                        onProgress(
+                            VotingSubmissionProgress.Authorizing(
+                                progress =
+                                    (
+                                        (bundleIndex + progress.coerceIn(0.0, 1.0)) /
+                                            bundleCount.coerceAtLeast(1)
+                                    ).toFloat()
+                            )
+                        )
+                    }
+                )
+            }
+        }
+    }
+
+    @Suppress("LongMethod")
+    private suspend fun submitSingleDelegationBundle(
+        context: VotingSubmitContext,
+        dbHandle: Long,
+        bundleIndex: Int,
+        bundleCount: Int,
+        onProgress: (VotingSubmissionProgress) -> Unit
+    ) {
+        val roundId = context.roundId
+        onProgress(
+            VotingSubmissionProgress.Authorizing(
+                progress = bundleIndex.toFloat() / bundleCount.coerceAtLeast(1)
+            )
+        )
+
+        val cachedDelegationTxHash =
+            votingCryptoClient.getDelegationTxHash(
+                dbHandle = dbHandle,
                 roundId = roundId,
-                step = "storeDelegationVanPosition",
                 bundleIndex = bundleIndex
-            ) {
+            )
+        if (cachedDelegationTxHash is VotingTxHashLookup.Present) {
+            // Fast-path probe: mirrors iOS `recoverDelegationVanPosition` with
+            // `confirmationTimeout: 0`. A cached hash that hasn't propagated yet
+            // (or that landed on-chain with a non-zero code) must NOT block this
+            // flow for 90s — return null and fall through to fresh delegation.
+            val confirmation =
+                awaitTxConfirmation(
+                    txHash = cachedDelegationTxHash.txHash,
+                    maxAttempts = 1
+                )
+            val vanPosition =
+                confirmation
+                    ?.takeIf { it.code == 0 }
+                    ?.event("delegate_vote")
+                    ?.attribute("leaf_index")
+                    ?.toIntOrNull()
+            if (vanPosition != null) {
                 votingCryptoClient.storeVanPosition(
                     dbHandle = dbHandle,
                     roundId = roundId,
                     bundleIndex = bundleIndex,
                     position = vanPosition
                 )
+                return
             }
+            // No usable cached confirmation (not yet propagated, failed on-chain,
+            // or missing leaf_index) — fall through and re-run delegation from
+            // scratch for this bundle.
         }
 
+        // A resumed round may already be past delegation/proving in Rust.
+        // Skip stale rebuild work instead of trying to regress the phase.
+        val rustRoundState = votingCryptoClient.getRoundState(dbHandle, roundId)
+        if (rustRoundState?.phase.hasVoteReady()) {
+            return
+        }
+
+        buildDelegationProofIfNeeded(context, dbHandle, bundleIndex, bundleCount, rustRoundState, onProgress)
         votingRecoveryRepository.setPhase(
             accountUuid = context.accountUuidString,
             roundId = roundId,
-            phase = VotingRecoveryPhase.DELEGATION_SUBMITTED
+            phase = VotingRecoveryPhase.DELEGATION_PROVED
         )
+
+        val txResult =
+            runVotingAuthorizationStep(context.isKeystone) {
+                val submission =
+                    if (context.isKeystone) {
+                        val keystoneSignature =
+                            context.recovery.keystoneBundleSignatures[bundleIndex]
+                                ?: error("Keystone signature is missing for voting bundle $bundleIndex")
+                        votingCryptoClient.getDelegationSubmissionWithKeystoneSignature(
+                            dbHandle = dbHandle,
+                            roundId = roundId,
+                            bundleIndex = bundleIndex,
+                            keystoneSig = keystoneSignature.decodeSpendAuthSig(),
+                            keystoneSighash = keystoneSignature.decodeSighash()
+                        )
+                    } else {
+                        votingCryptoClient.getDelegationSubmission(
+                            dbHandle = dbHandle,
+                            roundId = roundId,
+                            bundleIndex = bundleIndex,
+                            senderSeed = requireNotNull(context.senderSeed),
+                            networkId = context.networkId,
+                            accountIndex = context.accountIndex
+                        )
+                    }
+                if (context.isKeystone) {
+                    val keystoneSignature =
+                        context.recovery.keystoneBundleSignatures[bundleIndex]
+                            ?: error("Keystone signature is missing for voting bundle $bundleIndex")
+                    val expectedSpendAuthSig = keystoneSignature.decodeSpendAuthSig()
+                    require(submission.spendAuthSig.contentEquals(expectedSpendAuthSig)) {
+                        "Delegation signature mismatch for Keystone voting bundle $bundleIndex"
+                    }
+                    require(submission.sighash.contentEquals(keystoneSignature.decodeSighash())) {
+                        "Delegation sighash mismatch for Keystone voting bundle $bundleIndex"
+                    }
+                    keystoneSignature.decodeRk()?.let { expectedRk ->
+                        require(submission.rk.contentEquals(expectedRk)) {
+                            "Delegation rk mismatch for Keystone voting bundle $bundleIndex"
+                        }
+                    }
+                }
+                votingApiProvider
+                    .submitDelegation(submission.toDelegationRegistration())
+                    .requireAccepted("Delegation transaction was rejected")
+            }
+        votingCryptoClient.storeDelegationTxHash(
+            dbHandle = dbHandle,
+            roundId = roundId,
+            bundleIndex = bundleIndex,
+            txHash = txResult.txHash
+        )
+
+        val confirmation =
+            runVotingAuthorizationStep(context.isKeystone) {
+                awaitTxConfirmation(txResult.txHash)
+                    ?: throw VotingSubmissionRecoverableException(
+                        VotingErrors.TxConfirmationTimedOut(txResult.txHash)
+                    )
+            }
+        runVotingAuthorizationStep(context.isKeystone) {
+            confirmation.requireAccepted("Delegation transaction failed")
+        }
+
+        val vanPosition = confirmation.delegateVoteVanPosition(bundleIndex)
+        traceVotingStep(
+            roundId = roundId,
+            step = "storeDelegationVanPosition",
+            bundleIndex = bundleIndex
+        ) {
+            votingCryptoClient.storeVanPosition(
+                dbHandle = dbHandle,
+                roundId = roundId,
+                bundleIndex = bundleIndex,
+                position = vanPosition
+            )
+        }
     }
 
     private suspend fun submitVoteCommitmentsAndShares(
@@ -733,6 +757,31 @@ class SubmitVotesUseCase(
         return processedProposalCount
     }
 
+    private suspend fun resolveReusableCachedVoteConfirmation(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        proposalId: Int
+    ): TxConfirmationProbeResult.Confirmed? {
+        val cachedVoteTxHash =
+            votingCryptoClient.getVoteTxHash(
+                dbHandle = dbHandle,
+                roundId = roundId,
+                bundleIndex = bundleIndex,
+                proposalId = proposalId
+            ) as? VotingTxHashLookup.Present ?: return null
+        return probeCachedTx(cachedVoteTxHash.txHash)
+            .also { confirmation ->
+                if (confirmation !is TxConfirmationProbeResult.Confirmed) {
+                    Log.i(
+                        TAG,
+                        "Cached vote tx ${cachedVoteTxHash.txHash} for round $roundId " +
+                            "is not reusable ($confirmation); rebuilding commitment"
+                    )
+                }
+            }.takeIf { it is TxConfirmationProbeResult.Confirmed } as? TxConfirmationProbeResult.Confirmed
+    }
+
     private suspend fun submitCachedVoteIfReusable(
         context: VotingSubmitContext,
         dbHandle: Long,
@@ -743,26 +792,13 @@ class SubmitVotesUseCase(
         delegatedShareIndicesByTarget: MutableMap<ShareDelegationTarget, MutableSet<Int>>
     ): Boolean {
         val roundId = context.roundId
-        val cachedVoteTxHash =
-            votingCryptoClient.getVoteTxHash(
+        val cachedConfirmation =
+            resolveReusableCachedVoteConfirmation(
                 dbHandle = dbHandle,
                 roundId = roundId,
                 bundleIndex = bundleIndex,
                 proposalId = proposalId
-            )
-        if (cachedVoteTxHash !is VotingTxHashLookup.Present) {
-            return false
-        }
-
-        val cachedConfirmation = probeCachedTx(cachedVoteTxHash.txHash)
-        if (cachedConfirmation !is TxConfirmationProbeResult.Confirmed) {
-            Log.i(
-                TAG,
-                "Cached vote tx ${cachedVoteTxHash.txHash} for round $roundId " +
-                    "is not reusable ($cachedConfirmation); rebuilding commitment"
-            )
-            return false
-        }
+            ) ?: return false
 
         val confirmation = cachedConfirmation.confirmation
         val (confirmedVanPosition, vcTreePosition) = confirmation.castVoteLeafPositions()
