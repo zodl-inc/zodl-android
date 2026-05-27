@@ -15,11 +15,3 @@ data class Proposal(
     val forumUrl: String? = null
 )
 
-fun Proposal.abstainOptionId(): Int =
-    options
-        .firstOrNull(VoteOption::isAbstainOption)
-        ?.id
-        ?: ((options.maxOfOrNull(VoteOption::id) ?: 0) + 1)
-
-internal fun Proposal.isSyntheticAbstainChoice(choiceId: Int): Boolean =
-    options.none(VoteOption::isAbstainOption) && choiceId == abstainOptionId()

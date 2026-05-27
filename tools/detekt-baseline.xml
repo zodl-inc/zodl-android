@@ -79,7 +79,6 @@
     <ID>ReturnCount:SubmitVotesUseCase.kt$SubmitVotesUseCase$private fun randomSubmitAt(deadlineEpochSeconds: Long?): Long</ID>
     <ID>ReturnCount:VoteChainConfigVM.kt$VoteChainConfigVM$private fun onSaveEditor()</ID>
     <ID>ReturnCount:VoteOptionDisplay.kt$fun Proposal.tallyDisplayInfo( decision: Int, fallbackLabel: String, ): VoteOptionDisplayInfo</ID>
-    <ID>ReturnCount:VoteOptionDisplay.kt$fun Proposal.voteBadgeInfo(choiceId: Int): VoteOptionDisplayInfo</ID>
     <ID>ReturnCount:VoteOptionDisplay.kt$private fun voteOptionDisplayColor( label: String, position: Int, total: Int, ): VoteOptionDisplayColor</ID>
     <ID>ReturnCount:VoteProposalListVM.kt$VoteProposalListVM$private fun buildCtaButton( mode: VoteProposalListMode, proposals: List&lt;Proposal&gt;, drafts: Map&lt;Int, Int&gt;, roundId: String, ): ButtonState?</ID>
     <ID>ReturnCount:VotingApiProvider.kt$private suspend fun ResponseException.isNoActiveRoundResponse(): Boolean</ID>

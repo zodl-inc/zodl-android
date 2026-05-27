@@ -31,7 +31,7 @@ class VoteResultsVMTest {
     }
 
     @Test
-    fun votedResultLabelUsesSyntheticAbstainAfterSubmission() {
+    fun votedResultLabelIsNullForSkippedProposalAfterSubmission() {
         val proposal = proposal()
         val recovery =
             VotingRecoverySnapshot(
@@ -40,7 +40,7 @@ class VoteResultsVMTest {
                 submittedAtEpochSeconds = 1L
             )
 
-        assertVotedLabel("Abstain", proposal.votedResultLabel(recovery))
+        assertNull(proposal.votedResultLabel(recovery))
     }
 
     @Test
