@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.common.model.Lce
 import co.electriccoin.zcash.ui.common.model.LceContent
 import co.electriccoin.zcash.ui.common.model.LceSource
@@ -61,6 +62,7 @@ import kotlinx.coroutines.launch
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+@Suppress("LargeClass")
 class VoteCoinholderPollingVM(
     private val refreshActiveVotingSession: RefreshActiveVotingSessionUseCase,
     private val refreshVotingRounds: RefreshVotingRoundsUseCase,
@@ -259,9 +261,16 @@ class VoteCoinholderPollingVM(
                 configErrorSheet,
                 unverifiedPollWarningSheet
             ) { content, _, _, configSheet, unverifiedSheet ->
+                val noRoundsSheet =
+                    if (content.activeRounds?.isEmpty() == true && content.pastRounds?.isEmpty() == true) {
+                        buildNoRoundsSheet()
+                    } else {
+                        null
+                    }
                 content.copy(
                     configErrorSheet = configSheet,
-                    unverifiedPollWarningSheet = unverifiedSheet
+                    unverifiedPollWarningSheet = unverifiedSheet,
+                    noRoundsSheet = noRoundsSheet
                 )
             }
         }.withLce(pollListLceSource) { error ->
@@ -672,6 +681,19 @@ class VoteCoinholderPollingVM(
     private fun onBack() = navigationRouter.back()
 
     private fun onConfigSettings() = navigationRouter.forward(VoteChainConfigArgs)
+
+    private fun buildNoRoundsSheet() =
+        ZashiConfirmationState.error(
+            title = stringRes(R.string.vote_poll_list_empty_title),
+            message = stringRes(R.string.vote_poll_list_empty_subtitle),
+            primaryText = stringRes(R.string.vote_poll_list_empty_refresh),
+            primaryStyle = ButtonStyle.TERTIARY,
+            secondaryText = stringRes(R.string.vote_poll_list_empty_got_it),
+            secondaryStyle = ButtonStyle.PRIMARY,
+            onPrimary = ::refreshVotingData,
+            onSecondary = ::onBack,
+            onBack = ::onBack,
+        )
 
     private fun buildConfigErrorSheet(rawMessage: String) =
         ZashiConfirmationState(

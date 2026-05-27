@@ -67,8 +67,9 @@ fun VoteTallyingView(state: VoteTallyingState) {
                 modifier =
                     Modifier
                         .fillMaxSize()
+                        .padding(top = padding.calculateTopPadding())
                         .verticalScroll(rememberScrollState())
-                        .scaffoldPadding(padding),
+                        .scaffoldPadding(padding, top = ZashiDimensions.Spacing.spacingLg),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {

@@ -16,6 +16,7 @@ data class VoteCoinholderPollingState(
     val activeRounds: List<VotePollCardState>? = null,
     val configErrorSheet: ZashiConfirmationState? = null,
     val unverifiedPollWarningSheet: ZashiConfirmationState? = null,
+    val noRoundsSheet: ZashiConfirmationState? = null,
 ) {
     companion object {
         val preview =
