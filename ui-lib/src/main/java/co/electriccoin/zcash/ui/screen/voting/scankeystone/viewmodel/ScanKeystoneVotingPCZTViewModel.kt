@@ -45,42 +45,46 @@ internal class ScanKeystoneVotingPCZTViewModel(
         viewModelScope.launch {
             try {
                 val accountUuid = getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId()
-                val scanResult =
-                    parseVotingKeystonePCZT(
-                        accountUuid = accountUuid,
-                        roundId = args.roundIdHex,
-                        bundleIndex = args.bundleIndex,
-                        actionIndex = args.actionIndex,
-                        result = result
-                    )
-                validationState.update { ScanValidationState.NONE }
-                state.update {
-                    it.copy(
-                        message = stringRes(R.string.scan_keystone_info_transaction),
-                        progress = scanResult.progress
-                    )
-                }
-                if (scanResult.isFinished) {
-                    val recovery = votingRecoveryRepository.get(accountUuid, args.roundIdHex)
-                    val bundleCount = recovery?.bundleCount ?: 0
-                    if (args.bundleIndex + 1 < bundleCount) {
-                        navigationRouter.forward(SignKeystoneVotingArgs(roundIdHex = args.roundIdHex))
-                    } else {
-                        navigationRouter.backTo(VoteConfirmSubmissionArgs::class)
+                try {
+                    val scanResult =
+                        parseVotingKeystonePCZT(
+                            accountUuid = accountUuid,
+                            roundId = args.roundIdHex,
+                            bundleIndex = args.bundleIndex,
+                            actionIndex = args.actionIndex,
+                            result = result
+                        )
+                    validationState.update { ScanValidationState.NONE }
+                    state.update {
+                        it.copy(
+                            message = stringRes(R.string.scan_keystone_info_transaction),
+                            progress = scanResult.progress
+                        )
                     }
+                    if (scanResult.isFinished) {
+                        val recovery = votingRecoveryRepository.get(accountUuid, args.roundIdHex)
+                        val bundleCount = recovery?.bundleCount ?: 0
+                        if (args.bundleIndex + 1 < bundleCount) {
+                            navigationRouter.forward(SignKeystoneVotingArgs(roundIdHex = args.roundIdHex))
+                        } else {
+                            navigationRouter.backTo(VoteConfirmSubmissionArgs::class)
+                        }
+                    }
+                } catch (exception: VotingKeystoneDuplicateSignatureException) {
+                    storeRejectedScanNoticeAndReturn(
+                        accountUuid = accountUuid,
+                        type = VotingKeystoneScanNoticeType.DUPLICATE_SIGNATURE,
+                        bundleNumber = exception.signedBundleIndex + 1,
+                        bundleCount = exception.bundleCount
+                    )
+                } catch (exception: VotingKeystoneWrongSignatureException) {
+                    storeRejectedScanNoticeAndReturn(
+                        accountUuid = accountUuid,
+                        type = VotingKeystoneScanNoticeType.WRONG_SIGNATURE,
+                        bundleNumber = exception.currentBundleIndex + 1,
+                        bundleCount = exception.bundleCount
+                    )
                 }
-            } catch (exception: VotingKeystoneDuplicateSignatureException) {
-                storeRejectedScanNoticeAndReturn(
-                    type = VotingKeystoneScanNoticeType.DUPLICATE_SIGNATURE,
-                    bundleNumber = exception.signedBundleIndex + 1,
-                    bundleCount = exception.bundleCount
-                )
-            } catch (exception: VotingKeystoneWrongSignatureException) {
-                storeRejectedScanNoticeAndReturn(
-                    type = VotingKeystoneScanNoticeType.WRONG_SIGNATURE,
-                    bundleNumber = exception.currentBundleIndex + 1,
-                    bundleCount = exception.bundleCount
-                )
             } catch (_: InvalidKeystonePCZTQRException) {
                 validationState.update { ScanValidationState.INVALID }
             } catch (_: Exception) {
@@ -89,11 +93,11 @@ internal class ScanKeystoneVotingPCZTViewModel(
         }
 
     private suspend fun storeRejectedScanNoticeAndReturn(
+        accountUuid: String,
         type: VotingKeystoneScanNoticeType,
         bundleNumber: Int,
         bundleCount: Int
     ) {
-        val accountUuid = getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId()
         votingRecoveryRepository.storePendingKeystoneScanNotice(
             accountUuid = accountUuid,
             roundId = args.roundIdHex,
