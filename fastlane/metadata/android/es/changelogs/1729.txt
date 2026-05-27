@@ -1,2 +1,0 @@
-Añadido:
-- Coinholder Polling te permite votar en la gobernanza de Zcash de forma privada, directamente desde tus billeteras Zodl y Keystone.

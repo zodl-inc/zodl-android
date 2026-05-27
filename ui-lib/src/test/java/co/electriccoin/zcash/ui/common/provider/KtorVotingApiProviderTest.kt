@@ -11,6 +11,7 @@ import co.electriccoin.zcash.ui.common.repository.VotingCustomChainConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
+import io.ktor.client.plugins.HttpTimeoutCapability
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
@@ -21,6 +22,7 @@ import java.lang.reflect.Proxy
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 
 class KtorVotingApiProviderTest {
     @Test
@@ -47,21 +49,79 @@ class KtorVotingApiProviderTest {
             assertEquals(listOf("/static-voting-config.json", "/dynamic-voting-config.json"), requests)
         }
 
-    private fun newProvider(requests: MutableList<String>) =
+    @Test
+    fun fetchShareStatusUsesHelperTimeoutWhenSupported() =
+        runBlocking {
+            val requests = mutableListOf<String>()
+            val requestTimeoutCapabilities = mutableListOf<Boolean>()
+            val provider =
+                newProvider(
+                    requests = requests,
+                    supportsKtorTimeouts = true,
+                    requestTimeoutCapabilities = requestTimeoutCapabilities
+                )
+
+            runCatching {
+                provider.fetchShareStatus(
+                    helperBaseUrl = "https://example.com",
+                    roundIdHex = "round-id",
+                    nullifierHex = "nullifier"
+                )
+            }
+
+            assertEquals(listOf("/shielded-vote/v1/share-status/round-id/nullifier"), requests)
+            assertEquals(listOf(true), requestTimeoutCapabilities)
+        }
+
+    @Test
+    fun fetchShareStatusSkipsHelperTimeoutWhenUnsupported() =
+        runBlocking {
+            val requests = mutableListOf<String>()
+            val requestTimeoutCapabilities = mutableListOf<Boolean>()
+            val provider =
+                newProvider(
+                    requests = requests,
+                    supportsKtorTimeouts = false,
+                    requestTimeoutCapabilities = requestTimeoutCapabilities
+                )
+
+            runCatching {
+                provider.fetchShareStatus(
+                    helperBaseUrl = "https://example.com",
+                    roundIdHex = "round-id",
+                    nullifierHex = "nullifier"
+                )
+            }
+
+            assertEquals(listOf("/shielded-vote/v1/share-status/round-id/nullifier"), requests)
+            assertEquals(listOf(false), requestTimeoutCapabilities)
+            assertFalse(requestTimeoutCapabilities.single())
+        }
+
+    private fun newProvider(
+        requests: MutableList<String>,
+        supportsKtorTimeouts: Boolean = true,
+        requestTimeoutCapabilities: MutableList<Boolean> = mutableListOf()
+    ) =
         KtorVotingApiProvider(
-            httpClientProvider = TestHttpClientProvider(requests),
+            httpClientProvider = TestHttpClientProvider(requests, supportsKtorTimeouts, requestTimeoutCapabilities),
             configurationRepository = TestConfigurationRepository(),
             votingChainConfigRepository = TestVotingChainConfigRepository(),
             votingCryptoClient = unusedVotingCryptoClient()
         )
 
     private class TestHttpClientProvider(
-        private val requests: MutableList<String>
+        private val requests: MutableList<String>,
+        private val supportsKtorTimeouts: Boolean,
+        private val requestTimeoutCapabilities: MutableList<Boolean>
     ) : HttpClientProvider {
+        override suspend fun supportsKtorTimeouts(): Boolean = supportsKtorTimeouts
+
         override suspend fun create(): HttpClient =
             HttpClient(
                 MockEngine { request ->
                     requests += request.url.encodedPath
+                    requestTimeoutCapabilities += (request.getCapabilityOrNull(HttpTimeoutCapability) != null)
                     when (request.url.encodedPath) {
                         "/static-voting-config.json" -> {
                             respond(
@@ -75,6 +135,14 @@ class KtorVotingApiProviderTest {
                             respond(
                                 content = "temporary dynamic config failure",
                                 status = HttpStatusCode.InternalServerError
+                            )
+                        }
+
+                        "/shielded-vote/v1/share-status/round-id/nullifier" -> {
+                            respond(
+                                content = """{"status":"confirmed"}""",
+                                status = HttpStatusCode.OK,
+                                headers = headersOf(HttpHeaders.ContentType, "application/json")
                             )
                         }
 

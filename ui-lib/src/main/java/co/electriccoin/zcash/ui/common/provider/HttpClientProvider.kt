@@ -16,6 +16,8 @@ import io.ktor.serialization.kotlinx.json.json
 
 interface HttpClientProvider {
     suspend fun create(): HttpClient
+
+    suspend fun supportsKtorTimeouts(): Boolean = true
 }
 
 class HttpClientProviderImpl(
@@ -25,17 +27,19 @@ class HttpClientProviderImpl(
     override suspend fun create(): HttpClient =
         if (isTorEnabledStorageProvider.get() == true) createTor() else createDirect()
 
+    override suspend fun supportsKtorTimeouts(): Boolean = isTorEnabledStorageProvider.get() != true
+
     private suspend fun createTor() =
         synchronizerProvider
             .getSynchronizer()
             .getTorHttpClient {
-                configureHttpClient()
+                configureHttpClient(installTimeouts = false)
             }
 
     @Suppress("MagicNumber")
     private fun createDirect() =
         HttpClient(OkHttp) {
-            configureHttpClient()
+            configureHttpClient(installTimeouts = true)
             install(HttpRequestRetry) {
                 maxRetries = MAX_RETRIES
                 retryIf { request, response ->
@@ -49,12 +53,16 @@ class HttpClientProviderImpl(
             }
         }
 
-    private fun <T : HttpClientEngineConfig> HttpClientConfig<T>.configureHttpClient() {
+    private fun <T : HttpClientEngineConfig> HttpClientConfig<T>.configureHttpClient(
+        installTimeouts: Boolean
+    ) {
         install(ContentNegotiation) { json() }
-        install(HttpTimeout) {
-            requestTimeoutMillis = DEFAULT_REQUEST_TIMEOUT_MILLIS
-            socketTimeoutMillis = DEFAULT_REQUEST_TIMEOUT_MILLIS
-            connectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT_MILLIS
+        if (installTimeouts) {
+            install(HttpTimeout) {
+                requestTimeoutMillis = DEFAULT_REQUEST_TIMEOUT_MILLIS
+                socketTimeoutMillis = DEFAULT_REQUEST_TIMEOUT_MILLIS
+                connectTimeoutMillis = DEFAULT_CONNECT_TIMEOUT_MILLIS
+            }
         }
         install(Logging) {
             logger = KtorLogger()
