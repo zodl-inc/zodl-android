@@ -24,7 +24,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import java.lang.reflect.Proxy
 import java.util.Base64
 import kotlin.test.Test
@@ -35,7 +35,7 @@ import kotlin.test.assertFailsWith
 class VotingKeystoneRepositoryTest {
     @Test
     fun duplicateSignedPcztIsRejectedBeforeSpendAuthExtraction() =
-        runBlocking {
+        runTest {
             val duplicateSighash = byteArrayOf(0x01)
             val fixture =
                 repositoryFixture(
@@ -59,7 +59,7 @@ class VotingKeystoneRepositoryTest {
 
     @Test
     fun wrongSignedPcztIsRejectedBeforeSpendAuthExtraction() =
-        runBlocking {
+        runTest {
             val fixture =
                 repositoryFixture(
                     scannedSighash = byteArrayOf(0x03),
@@ -80,7 +80,7 @@ class VotingKeystoneRepositoryTest {
 
     @Test
     fun matchingSignedPcztStoresSpendAuthSignature() =
-        runBlocking {
+        runTest {
             val expectedSighash = byteArrayOf(0x05)
             val spendAuthSig = byteArrayOf(0x06)
             val fixture =
