@@ -297,12 +297,14 @@ class VotingKeystoneRepositoryImpl(
         }
         val signedPcztBytes = keystoneSDKProvider.parsePczt(signedPcztUr)
         val sighash = votingCryptoClient.extractPcztSighash(signedPcztBytes)
+        // bundleCount should be set once signing bundles are prepared; fall back to the minimum known count.
+        val bundleCount = recovery.bundleCount ?: (bundleIndex + 1)
         rejectMismatchedKeystoneSighash(
             scannedSighash = sighash,
             expectedSighash = pendingRequest.decodeExpectedSighash(),
             existingSignatures = recovery.keystoneBundleSignatures,
             currentBundleIndex = bundleIndex,
-            bundleCount = recovery.bundleCount ?: (bundleIndex + 1)
+            bundleCount = bundleCount
         )
         val spendAuthSig =
             votingCryptoClient.extractSpendAuthSignatureFromSignedPczt(
