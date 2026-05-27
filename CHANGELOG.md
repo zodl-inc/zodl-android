@@ -9,6 +9,11 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ### Changed:
 - Voting round responses now require explicit option indices from vote servers.
 
+## [3.5.0 (1729)] - 2026-05-27
+
+### Added:
+- Coinholder Polling lets you vote on Zcash governance privately, right from your Zodl and Keystone wallets.
+
 ## [3.4.1 (1698)] - 2026-05-19
 
 ### Changed:

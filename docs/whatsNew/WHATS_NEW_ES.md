@@ -12,6 +12,11 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.5.0 (1729)] - 2026-05-27
+
+### Añadido:
+- Coinholder Polling te permite votar en la gobernanza de Zcash de forma privada, directamente desde tus billeteras Zodl y Keystone.
+
 ## [3.4.1 (1698)] - 2026-05-19
 
 ### Cambiado:
