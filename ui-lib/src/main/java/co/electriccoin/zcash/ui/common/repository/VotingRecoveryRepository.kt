@@ -44,13 +44,25 @@ enum class VotingKeystoneRouteStage {
     SCAN
 }
 
+enum class VotingKeystoneScanNoticeType {
+    DUPLICATE_SIGNATURE,
+    WRONG_SIGNATURE
+}
+
+data class VotingKeystoneScanNotice(
+    val type: VotingKeystoneScanNoticeType,
+    val bundleNumber: Int,
+    val bundleCount: Int
+)
+
 data class VotingPendingKeystoneRequest(
     val bundleIndex: Int,
     val actionIndex: Int,
     val redactedPcztBase64: String,
     val expectedSighashBase64: String,
     val expectedRkBase64: String? = null,
-    val routeStage: VotingKeystoneRouteStage = VotingKeystoneRouteStage.SIGN
+    val routeStage: VotingKeystoneRouteStage = VotingKeystoneRouteStage.SIGN,
+    val scanNotice: VotingKeystoneScanNotice? = null
 ) {
     fun decodeRedactedPczt(): ByteArray = Base64.getDecoder().decode(redactedPcztBase64)
 
@@ -178,6 +190,12 @@ interface VotingRecoveryRepository {
         accountUuid: String,
         roundId: String,
         routeStage: VotingKeystoneRouteStage
+    )
+
+    suspend fun storePendingKeystoneScanNotice(
+        accountUuid: String,
+        roundId: String,
+        scanNotice: VotingKeystoneScanNotice
     )
 
     suspend fun clearPendingKeystoneRequest(
@@ -526,7 +544,32 @@ class VotingRecoveryRepositoryImpl(
         }
         store(
             current.copy(
-                pendingKeystoneRequest = pendingRequest.copy(routeStage = routeStage),
+                pendingKeystoneRequest =
+                    pendingRequest.copy(
+                        routeStage = routeStage,
+                        scanNotice =
+                            pendingRequest.scanNotice
+                                .takeUnless { routeStage == VotingKeystoneRouteStage.SCAN }
+                    ),
+                updatedAt = Instant.now()
+            )
+        )
+    }
+
+    override suspend fun storePendingKeystoneScanNotice(
+        accountUuid: String,
+        roundId: String,
+        scanNotice: VotingKeystoneScanNotice
+    ) {
+        val current = get(accountUuid, roundId) ?: return
+        val pendingRequest = current.pendingKeystoneRequest ?: return
+        store(
+            current.copy(
+                pendingKeystoneRequest =
+                    pendingRequest.copy(
+                        routeStage = VotingKeystoneRouteStage.SIGN,
+                        scanNotice = scanNotice
+                    ),
                 updatedAt = Instant.now()
             )
         )
@@ -774,6 +817,15 @@ private fun VotingRecoverySnapshot.encode(): String =
                     .put("expected_sighash", request.expectedSighashBase64)
                     .put("expected_rk", request.expectedRkBase64)
                     .put("route_stage", request.routeStage.name)
+                    .put(
+                        "scan_notice",
+                        request.scanNotice?.let { notice ->
+                            JSONObject()
+                                .put("type", notice.type.name)
+                                .put("bundle_number", notice.bundleNumber)
+                                .put("bundle_count", notice.bundleCount)
+                        }
+                    )
             }
         ).put("submitted_proposal_ids", JSONArray(submittedProposalIds.sorted()))
         .put("updated_at", updatedAt.toEpochMilli())
@@ -885,7 +937,17 @@ private fun String.toVotingRecoverySnapshot(): VotingRecoverySnapshot {
                                 .optString("route_stage")
                                 .takeIf(String::isNotEmpty)
                                 ?.let(VotingKeystoneRouteStage::valueOf)
-                                ?: VotingKeystoneRouteStage.SIGN
+                                ?: VotingKeystoneRouteStage.SIGN,
+                        scanNotice =
+                            request
+                                .optJSONObject("scan_notice")
+                                ?.let { notice ->
+                                    VotingKeystoneScanNotice(
+                                        type = VotingKeystoneScanNoticeType.valueOf(notice.getString("type")),
+                                        bundleNumber = notice.getInt("bundle_number"),
+                                        bundleCount = notice.getInt("bundle_count")
+                                    )
+                                }
                     )
                 },
         submittedProposalIds =

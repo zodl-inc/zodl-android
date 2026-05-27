@@ -45,6 +45,25 @@ class VotingKeystoneRoundPhaseAdvancedException(
         "Keystone signing request cannot rebuild PCZT for round $roundId at phase $phase"
     )
 
+sealed class VotingKeystoneSignatureRejectedException(
+    message: String
+) : Exception(message)
+
+class VotingKeystoneDuplicateSignatureException(
+    val signedBundleIndex: Int,
+    val currentBundleIndex: Int,
+    val bundleCount: Int
+) : VotingKeystoneSignatureRejectedException(
+        "Keystone signature for bundle $signedBundleIndex was scanned while waiting for bundle $currentBundleIndex"
+    )
+
+class VotingKeystoneWrongSignatureException(
+    val currentBundleIndex: Int,
+    val bundleCount: Int
+) : VotingKeystoneSignatureRejectedException(
+        "Signed Keystone PCZT does not match pending bundle $currentBundleIndex"
+    )
+
 interface VotingKeystoneRepository {
     suspend fun createPcztEncoder(
         accountUuid: String,
@@ -278,9 +297,13 @@ class VotingKeystoneRepositoryImpl(
         }
         val signedPcztBytes = keystoneSDKProvider.parsePczt(signedPcztUr)
         val sighash = votingCryptoClient.extractPcztSighash(signedPcztBytes)
-        require(sighash.contentEquals(pendingRequest.decodeExpectedSighash())) {
-            "Signed Keystone PCZT does not match the pending voting request"
-        }
+        rejectMismatchedKeystoneSighash(
+            scannedSighash = sighash,
+            expectedSighash = pendingRequest.decodeExpectedSighash(),
+            existingSignatures = recovery.keystoneBundleSignatures,
+            currentBundleIndex = bundleIndex,
+            bundleCount = recovery.bundleCount ?: (bundleIndex + 1)
+        )
         val spendAuthSig =
             votingCryptoClient.extractSpendAuthSignatureFromSignedPczt(
                 signedPcztBytes = signedPcztBytes,
@@ -320,6 +343,37 @@ class VotingKeystoneRepositoryImpl(
 
         return votingHotkeySeedProvider.get(accountUuid)
             ?: error("Voting round $roundId has no stored hotkey seed")
+    }
+
+    private fun rejectMismatchedKeystoneSighash(
+        scannedSighash: ByteArray,
+        expectedSighash: ByteArray,
+        existingSignatures: Map<Int, VotingKeystoneBundleSignature>,
+        currentBundleIndex: Int,
+        bundleCount: Int
+    ) {
+        if (scannedSighash.contentEquals(expectedSighash)) {
+            return
+        }
+
+        val duplicateBundleIndex =
+            existingSignatures.entries
+                .firstOrNull { (_, signature) ->
+                    scannedSighash.contentEquals(signature.decodeSighash())
+                }?.key
+
+        if (duplicateBundleIndex != null) {
+            throw VotingKeystoneDuplicateSignatureException(
+                signedBundleIndex = duplicateBundleIndex,
+                currentBundleIndex = currentBundleIndex,
+                bundleCount = bundleCount
+            )
+        }
+
+        throw VotingKeystoneWrongSignatureException(
+            currentBundleIndex = currentBundleIndex,
+            bundleCount = bundleCount
+        )
     }
 
     private companion object {

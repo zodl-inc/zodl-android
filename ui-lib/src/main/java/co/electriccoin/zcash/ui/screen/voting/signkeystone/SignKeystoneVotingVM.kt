@@ -11,6 +11,8 @@ import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.voting.toVotingRawZecLabel
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneResumeSubmissionException
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneRouteStage
+import co.electriccoin.zcash.ui.common.repository.VotingKeystoneScanNotice
+import co.electriccoin.zcash.ui.common.repository.VotingKeystoneScanNoticeType
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneSigningBundle
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
@@ -142,6 +144,7 @@ class SignKeystoneVotingVM(
                             bundle.roundTitle,
                             bundle.memoWeightZatoshi.toVotingRawZecLabel()
                         ),
+                    signingNotice = recovery?.pendingKeystoneRequest?.scanNotice?.toSigningNotice(),
                     useSignedBundlesOnly =
                         if (signedCount > 0) {
                             UseSignedBundlesOnlyState(
@@ -322,6 +325,25 @@ class SignKeystoneVotingVM(
         (0 until bundleCount)
             .takeWhile { bundleIndex -> bundleIndex in keystoneBundleSignatures }
             .count()
+
+    private fun VotingKeystoneScanNotice.toSigningNotice() =
+        when (type) {
+            VotingKeystoneScanNoticeType.DUPLICATE_SIGNATURE -> {
+                stringRes(
+                    R.string.scan_keystone_voting_duplicate_signature,
+                    bundleNumber,
+                    bundleCount
+                )
+            }
+
+            VotingKeystoneScanNoticeType.WRONG_SIGNATURE -> {
+                stringRes(
+                    R.string.scan_keystone_voting_wrong_signature,
+                    bundleNumber,
+                    bundleCount
+                )
+            }
+        }
 
     private fun Long.toVotingWeightLabel(): String {
         // Keystone bundle weights are quantized in 0.125 ZEC increments, so three decimals are exact here.

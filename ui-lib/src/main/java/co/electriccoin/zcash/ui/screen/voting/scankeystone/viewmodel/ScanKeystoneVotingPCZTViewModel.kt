@@ -4,7 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.repository.VotingKeystoneDuplicateSignatureException
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneRouteStage
+import co.electriccoin.zcash.ui.common.repository.VotingKeystoneScanNotice
+import co.electriccoin.zcash.ui.common.repository.VotingKeystoneScanNoticeType
+import co.electriccoin.zcash.ui.common.repository.VotingKeystoneWrongSignatureException
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
@@ -49,7 +53,13 @@ internal class ScanKeystoneVotingPCZTViewModel(
                         actionIndex = args.actionIndex,
                         result = result
                     )
-                state.update { it.copy(progress = scanResult.progress) }
+                validationState.update { ScanValidationState.NONE }
+                state.update {
+                    it.copy(
+                        message = stringRes(R.string.scan_keystone_info_transaction),
+                        progress = scanResult.progress
+                    )
+                }
                 if (scanResult.isFinished) {
                     val recovery = votingRecoveryRepository.get(accountUuid, args.roundIdHex)
                     val bundleCount = recovery?.bundleCount ?: 0
@@ -59,12 +69,43 @@ internal class ScanKeystoneVotingPCZTViewModel(
                         navigationRouter.backTo(VoteConfirmSubmissionArgs::class)
                     }
                 }
+            } catch (exception: VotingKeystoneDuplicateSignatureException) {
+                storeRejectedScanNoticeAndReturn(
+                    type = VotingKeystoneScanNoticeType.DUPLICATE_SIGNATURE,
+                    bundleNumber = exception.signedBundleIndex + 1,
+                    bundleCount = exception.bundleCount
+                )
+            } catch (exception: VotingKeystoneWrongSignatureException) {
+                storeRejectedScanNoticeAndReturn(
+                    type = VotingKeystoneScanNoticeType.WRONG_SIGNATURE,
+                    bundleNumber = exception.currentBundleIndex + 1,
+                    bundleCount = exception.bundleCount
+                )
             } catch (_: InvalidKeystonePCZTQRException) {
                 validationState.update { ScanValidationState.INVALID }
             } catch (_: Exception) {
                 validationState.update { ScanValidationState.INVALID }
             }
         }
+
+    private suspend fun storeRejectedScanNoticeAndReturn(
+        type: VotingKeystoneScanNoticeType,
+        bundleNumber: Int,
+        bundleCount: Int
+    ) {
+        val accountUuid = getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId()
+        votingRecoveryRepository.storePendingKeystoneScanNotice(
+            accountUuid = accountUuid,
+            roundId = args.roundIdHex,
+            scanNotice =
+                VotingKeystoneScanNotice(
+                    type = type,
+                    bundleNumber = bundleNumber,
+                    bundleCount = bundleCount
+                )
+        )
+        navigationRouter.back()
+    }
 
     fun onBack() =
         viewModelScope.launch {

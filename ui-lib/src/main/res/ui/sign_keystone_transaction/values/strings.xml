@@ -17,6 +17,8 @@
     <string name="sign_keystone_voting_error_skip_remaining">Unable to skip remaining Keystone bundles.</string>
     <string name="sign_keystone_voting_error_no_account">No selected Keystone account is available.</string>
     <string name="sign_keystone_voting_error_prepare_request">Failed to prepare the Keystone signing request.</string>
+    <string name="scan_keystone_voting_duplicate_signature">That Keystone signature was already scanned for bundle %1$d of %2$d. Sign the current bundle on Keystone, then scan the new QR.</string>
+    <string name="scan_keystone_voting_wrong_signature">That signature is for a different bundle. Sign bundle %1$d of %2$d on Keystone, then scan the new QR.</string>
     <string name="sign_keystone_voting_skip_remaining_bundle">Skip remaining bundle</string>
     <string name="sign_keystone_voting_skip_remaining_bundles">Skip %1$d remaining bundles</string>
     <string name="sign_keystone_voting_skip_remaining_title">Skip remaining bundles?</string>

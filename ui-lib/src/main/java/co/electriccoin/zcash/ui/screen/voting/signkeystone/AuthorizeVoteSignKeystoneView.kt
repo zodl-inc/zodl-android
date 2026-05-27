@@ -245,6 +245,14 @@ private fun ProgressMemoSection(state: AuthorizeVoteSignKeystoneState) {
                     color = ZashiColors.Text.textTertiary
                 )
             }
+            state.signingNotice?.let { notice ->
+                Text(
+                    text = notice.getValue(),
+                    style = ZashiTypography.textXs,
+                    fontWeight = FontWeight.Medium,
+                    color = ZashiColors.Text.textPrimary
+                )
+            }
         }
 
         if (state.useSignedBundlesOnly != null) {
@@ -344,6 +352,7 @@ private fun AuthorizeVoteSignKeystoneStep1Preview() =
                             "I am authorizing this hotkey managed by my wallet to vote " +
                                 "on NU7 Sentiment Poll with 1.50000000 ZEC."
                         ),
+                    signingNotice = null,
                     useSignedBundlesOnly = null,
                     scanButton = ButtonState(text = stringRes("Scan signature"), onClick = {})
                 )
@@ -376,6 +385,11 @@ private fun AuthorizeVoteSignKeystoneStep2Preview() =
                         stringRes(
                             "I am authorizing this hotkey managed by my wallet to vote on " +
                                 "NU7 Sentiment Poll with 0.12500000 ZEC."
+                        ),
+                    signingNotice =
+                        stringRes(
+                            "That signature is for a different bundle. Sign bundle 2 of 2 on Keystone, " +
+                                "then scan the new QR."
                         ),
                     useSignedBundlesOnly =
                         UseSignedBundlesOnlyState(
