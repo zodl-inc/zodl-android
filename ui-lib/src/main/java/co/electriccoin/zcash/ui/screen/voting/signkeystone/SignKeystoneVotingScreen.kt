@@ -53,6 +53,7 @@ fun SignKeystoneVotingScreen(args: SignKeystoneVotingArgs) {
     val bottomSheetState by vm.bottomSheetState.collectAsStateWithLifecycle()
     val skipBottomSheetState by vm.skipBottomSheetState.collectAsStateWithLifecycle()
     val errorSheet by vm.errorSheet.collectAsStateWithLifecycle()
+    val scanNoticeSheet by vm.scanNoticeSheet.collectAsStateWithLifecycle()
 
     BackHandler {
         if (state != null) {
@@ -68,6 +69,7 @@ fun SignKeystoneVotingScreen(args: SignKeystoneVotingArgs) {
     }
 
     ZashiConfirmationBottomSheet(state = errorSheet)
+    ZashiConfirmationBottomSheet(state = scanNoticeSheet)
     SignKeystoneTransactionBottomSheet(state = bottomSheetState)
     SkipKeystoneBundlesBottomSheet(state = skipBottomSheetState)
 }

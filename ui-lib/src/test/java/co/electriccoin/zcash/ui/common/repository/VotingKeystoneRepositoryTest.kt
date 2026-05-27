@@ -334,6 +334,11 @@ class VotingKeystoneRepositoryTest {
             scanNotice: VotingKeystoneScanNotice
         ) = unsupported()
 
+        override suspend fun clearPendingKeystoneScanNotice(
+            accountUuid: String,
+            roundId: String
+        ) = unsupported()
+
         override suspend fun clearPendingKeystoneRequest(
             accountUuid: String,
             roundId: String

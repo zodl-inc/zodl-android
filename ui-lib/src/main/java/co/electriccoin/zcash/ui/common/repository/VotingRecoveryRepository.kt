@@ -198,6 +198,11 @@ interface VotingRecoveryRepository {
         scanNotice: VotingKeystoneScanNotice
     )
 
+    suspend fun clearPendingKeystoneScanNotice(
+        accountUuid: String,
+        roundId: String
+    )
+
     suspend fun clearPendingKeystoneRequest(
         accountUuid: String,
         roundId: String
@@ -573,6 +578,22 @@ class VotingRecoveryRepositoryImpl(
                 updatedAt = Instant.now()
             )
         )
+    }
+
+    override suspend fun clearPendingKeystoneScanNotice(
+        accountUuid: String,
+        roundId: String
+    ) {
+        val current = get(accountUuid, roundId) ?: return
+        val pendingRequest = current.pendingKeystoneRequest
+        if (pendingRequest?.scanNotice != null) {
+            store(
+                current.copy(
+                    pendingKeystoneRequest = pendingRequest.copy(scanNotice = null),
+                    updatedAt = Instant.now()
+                )
+            )
+        }
     }
 
     override suspend fun clearPendingKeystoneRequest(

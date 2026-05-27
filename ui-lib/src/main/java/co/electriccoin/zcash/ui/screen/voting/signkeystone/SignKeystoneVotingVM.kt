@@ -76,6 +76,14 @@ class SignKeystoneVotingVM(
 
     val loading: StateFlow<Boolean> = isLoading
     val errorSheet: StateFlow<ZashiConfirmationState?> = errorSheetState
+    val scanNoticeSheet: StateFlow<ZashiConfirmationState?> =
+        recovery
+            .map { snapshot ->
+                snapshot
+                    ?.pendingKeystoneRequest
+                    ?.scanNotice
+                    ?.toScanNoticeSheet()
+            }.stateIn(this)
 
     val bottomSheetState =
         isBottomSheetVisible
@@ -144,7 +152,6 @@ class SignKeystoneVotingVM(
                             bundle.roundTitle,
                             bundle.memoWeightZatoshi.toVotingRawZecLabel()
                         ),
-                    signingNotice = recovery?.pendingKeystoneRequest?.scanNotice?.toSigningNotice(),
                     useSignedBundlesOnly =
                         if (signedCount > 0) {
                             UseSignedBundlesOnlyState(
@@ -326,7 +333,28 @@ class SignKeystoneVotingVM(
             .takeWhile { bundleIndex -> bundleIndex in keystoneBundleSignatures }
             .count()
 
-    private fun VotingKeystoneScanNotice.toSigningNotice() =
+    private fun VotingKeystoneScanNotice.toScanNoticeSheet() =
+        ZashiConfirmationState.error(
+            title = stringRes(R.string.scan_keystone_voting_rejected_title),
+            message = toScanNoticeMessage(),
+            primaryText = stringRes(co.electriccoin.zcash.ui.design.R.string.general_ok),
+            secondaryText = null,
+            primaryStyle = ButtonStyle.PRIMARY,
+            onPrimary = ::onDismissScanNotice,
+            onBack = ::onDismissScanNotice
+        )
+
+    private fun onDismissScanNotice() {
+        viewModelScope.launch {
+            val accountUuid = selectedAccountUuid.filterNotNull().first()
+            votingRecoveryRepository.clearPendingKeystoneScanNotice(
+                accountUuid = accountUuid,
+                roundId = args.roundIdHex
+            )
+        }
+    }
+
+    private fun VotingKeystoneScanNotice.toScanNoticeMessage() =
         when (type) {
             VotingKeystoneScanNoticeType.DUPLICATE_SIGNATURE -> {
                 stringRes(

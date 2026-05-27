@@ -17,7 +17,6 @@ data class AuthorizeVoteSignKeystoneState(
     val signedZec: StringResource,
     val pendingZec: StringResource,
     val memoText: StringResource,
-    val signingNotice: StringResource?,
     val useSignedBundlesOnly: UseSignedBundlesOnlyState?,
     val scanButton: ButtonState,
 ) {
