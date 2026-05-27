@@ -295,10 +295,9 @@ class VotingKeystoneRepositoryImpl(
         require(pendingRequest.actionIndex == actionIndex) {
             "Signed Keystone action $actionIndex does not match pending action ${pendingRequest.actionIndex}"
         }
+        val bundleCount = recovery.bundleCount ?: error("Voting round $roundId has no prepared bundle count")
         val signedPcztBytes = keystoneSDKProvider.parsePczt(signedPcztUr)
         val sighash = votingCryptoClient.extractPcztSighash(signedPcztBytes)
-        // bundleCount should be set once signing bundles are prepared; fall back to the minimum known count.
-        val bundleCount = recovery.bundleCount ?: (bundleIndex + 1)
         rejectMismatchedKeystoneSighash(
             scannedSighash = sighash,
             expectedSighash = pendingRequest.decodeExpectedSighash(),

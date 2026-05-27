@@ -101,6 +101,27 @@ class VotingKeystoneRepositoryTest {
             assertContentEquals(EXPECTED_RK, stored.rk)
         }
 
+    @Test
+    fun missingBundleCountIsRejectedBeforeSpendAuthExtraction() =
+        runTest {
+            val fixture =
+                repositoryFixture(
+                    scannedSighash = byteArrayOf(0x07),
+                    expectedSighash = byteArrayOf(0x08),
+                    bundleCount = null
+                )
+
+            val failure =
+                assertFailsWith<IllegalStateException> {
+                    fixture.storeBundleSignature()
+                }
+
+            assertEquals("Voting round $ROUND_ID has no prepared bundle count", failure.message)
+            assertEquals(0, fixture.crypto.extractSighashCalls)
+            assertEquals(0, fixture.crypto.extractSpendAuthCalls)
+            assertEquals(emptyList(), fixture.recovery.storedSignatures)
+        }
+
     private suspend fun RepositoryFixture.storeBundleSignature() {
         repository.storeBundleSignature(
             accountUuid = accountUuid,
@@ -115,7 +136,8 @@ class VotingKeystoneRepositoryTest {
         scannedSighash: ByteArray,
         expectedSighash: ByteArray,
         existingSignatures: Map<Int, VotingKeystoneBundleSignature> = emptyMap(),
-        spendAuthSig: ByteArray = byteArrayOf(0x09)
+        spendAuthSig: ByteArray = byteArrayOf(0x09),
+        bundleCount: Int? = BUNDLE_COUNT
     ): RepositoryFixture {
         val selectedAccount = keystoneAccount()
         val accountUuid = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
@@ -124,7 +146,7 @@ class VotingKeystoneRepositoryTest {
                 VotingRecoverySnapshot(
                     accountUuid = accountUuid,
                     roundId = ROUND_ID,
-                    bundleCount = BUNDLE_COUNT,
+                    bundleCount = bundleCount,
                     keystoneBundleSignatures = existingSignatures,
                     pendingKeystoneRequest =
                         VotingPendingKeystoneRequest(
