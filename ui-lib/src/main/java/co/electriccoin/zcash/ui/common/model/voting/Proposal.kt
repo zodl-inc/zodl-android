@@ -23,10 +23,3 @@ fun Proposal.abstainOptionId(): Int =
 
 internal fun Proposal.isSyntheticAbstainChoice(choiceId: Int): Boolean =
     options.none(VoteOption::isAbstainOption) && choiceId == abstainOptionId()
-
-fun Proposal.optionsWithAbstain(): List<VoteOption> =
-    if (options.any(VoteOption::isAbstainOption)) {
-        options
-    } else {
-        options + VoteOption(id = abstainOptionId(), label = "Abstain")
-    }

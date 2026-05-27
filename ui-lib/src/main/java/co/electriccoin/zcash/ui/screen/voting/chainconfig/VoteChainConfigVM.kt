@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.component.error
 import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
 import co.electriccoin.zcash.ui.common.model.voting.StaticVotingConfig
@@ -318,23 +319,14 @@ class VoteChainConfigVM(
 
     private fun showError(message: StringResource) {
         errorSheet.value =
-            ZashiConfirmationState(
-                icon = R.drawable.ic_reset_zashi_warning,
+            ZashiConfirmationState.error(
                 title = stringRes(R.string.vote_chain_config_error_title),
                 message = message,
-                primaryAction =
-                    ButtonState(
-                        text = stringRes(R.string.vote_dismiss),
-                        style = ButtonStyle.PRIMARY,
-                        onClick = ::dismissError
-                    ),
-                secondaryAction =
-                    ButtonState(
-                        text = stringRes(R.string.vote_dismiss),
-                        style = ButtonStyle.TERTIARY,
-                        onClick = ::dismissError
-                    ),
-                onBack = ::dismissError
+                primaryText = stringRes(R.string.vote_dismiss),
+                secondaryText = null,
+                primaryStyle = ButtonStyle.PRIMARY,
+                onPrimary = ::dismissError,
+                onBack = ::dismissError,
             )
     }
 

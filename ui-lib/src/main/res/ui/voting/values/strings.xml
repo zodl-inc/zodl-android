@@ -72,6 +72,7 @@
     <string name="vote_error_unable_to_load_round_title">Unable to load round</string>
     <string name="vote_error_unable_to_load_round_message">Could not fetch voting round data. Please try again.</string>
     <string name="vote_error_something_went_wrong">Something Went Wrong</string>
+    <string name="vote_error_something_went_wrong_message">We couldn\'t connect to the voting service. Please try again later, or contact support if the issue persists.</string>
     <string name="vote_error_wallet_update_required">Wallet Update Required</string>
     <string name="vote_error_insufficient_funds_title">Insufficient Funds</string>
     <string name="vote_error_insufficient_funds_message">You don\'t have enough ZEC to cover the transaction fee. Add funds to your wallet and try again.</string>
@@ -99,7 +100,6 @@
     <string name="vote_confirm_cta_sign_keystone">Sign with Keystone</string>
     <string name="vote_confirm_cta_sign_bundle">Sign bundle %1$d/%2$d</string>
     <string name="vote_confirm_cta_submitting_generic">Submitting...</string>
-    <string name="vote_confirm_cta_submit_votes">Submit Votes</string>
     <string name="vote_confirm_cta_authorizing">Authorizing...</string>
     <string name="vote_confirm_cta_submitting">Submitting vote %1$d of %2$d</string>
     <string name="vote_confirm_status_authorizing">Authorizing vote...</string>
@@ -111,13 +111,13 @@
     <string name="vote_confirm_title_authorizing">Authorizing vote...</string>
     <string name="vote_confirm_title_submitting">Submitting vote...</string>
     <string name="vote_confirm_title_confirmed">Submission Confirmed!</string>
-    <string name="vote_confirm_title_auth_failed">Authentication Failed</string>
+    <string name="vote_confirm_title_auth_failed">Authorization Failed</string>
     <string name="vote_confirm_title_failed">Submission Failed</string>
     <string name="vote_confirm_subtitle_idle_keystone">Review before signing the voting authorization with your Keystone. This is final. Your vote will be published and cannot be changed.</string>
     <string name="vote_confirm_subtitle_idle">Review before confirming the voting authorization. This is final. Your vote will be published and cannot be changed.</string>
     <string name="vote_confirm_subtitle_in_progress">Vote submission is in progress, please don\'t leave this screen until it is finished.</string>
     <string name="vote_confirm_subtitle_completed">Your vote was successfully published and cannot be changed.</string>
-    <string name="vote_confirm_error_submission">Vote submission failed. Please check your connection and try again.</string>
+    <string name="vote_confirm_error_submission">Your vote couldn\'t be submitted. Check your connection and try again.</string>
     <string name="vote_confirm_error_auth">Authorization transaction failed. Please try again.</string>
     <string name="vote_confirm_error_no_choices">No vote choices are available to submit.</string>
     <string name="vote_confirm_error_authentication">Authentication failed. Please try again.</string>
@@ -173,8 +173,9 @@
     <string name="vote_proposal_detail_save">Save</string>
     <string name="vote_proposal_detail_forum_link">View Forum Discussion</string>
     <string name="vote_proposal_detail_unanswered_title">Unanswered Questions</string>
-    <string name="vote_proposal_detail_unanswered_message_singular">You have not responded to 1 question. Confirm to abstain from this question or go back to respond.</string>
-    <string name="vote_proposal_detail_unanswered_message_plural">You have not responded to %1$d questions. Confirm to abstain from these questions or go back to respond.</string>
+    <string name="vote_proposal_detail_unanswered_message_singular">You have not responded to 1 question. Confirm to skip this question or go back to respond.</string>
+    <string name="vote_proposal_detail_unanswered_message_plural">You have not responded to %1$d questions. Confirm to skip these questions or go back to respond.</string>
+    <string name="vote_proposal_detail_no_choices_message">Select at least one answer before reviewing and submitting your vote.</string>
     <string name="vote_proposal_detail_unanswered_go_back">Go back</string>
     <string name="vote_proposal_list_review_title">Review and submit vote</string>
     <string name="vote_proposal_list_review_subtitle">Tap on the question to edit any of your answers. After you review your answers, tap on Confirm &amp; Submit.</string>

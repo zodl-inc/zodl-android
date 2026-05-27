@@ -15,7 +15,6 @@ import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryPhase
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
-import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.usecase.AuthorizeVotingSubmissionUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
@@ -28,8 +27,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
-import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListMode
+import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
 import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingArgs
 import co.electriccoin.zcash.ui.screen.voting.votingerror.VotingErrorMapper
 import kotlinx.coroutines.CancellationException
@@ -48,7 +46,6 @@ class VoteConfirmSubmissionVM(
     private val args: VoteConfirmSubmissionArgs,
     votingApiRepository: VotingApiRepository,
     private val votingRecoveryRepository: VotingRecoveryRepository,
-    private val votingSessionStore: VotingSessionStore,
     private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
     prepareVotingRound: PrepareVotingRoundUseCase,
     private val authorizeVotingSubmission: AuthorizeVotingSubmissionUseCase,
@@ -348,12 +345,17 @@ class VoteConfirmSubmissionVM(
                             }
                         }
 
-                        isSubmitting -> {
+                        status is VoteSubmissionStatus.Authorizing ||
+                            status is VoteSubmissionStatus.LocalAuthorizing -> {
+                            stringRes(R.string.vote_confirm_cta_authorizing)
+                        }
+
+                        status is VoteSubmissionStatus.Submitting -> {
                             stringRes(R.string.vote_confirm_cta_submitting_generic)
                         }
 
                         else -> {
-                            stringRes(R.string.vote_confirm_cta_submit_votes)
+                            stringRes(co.electriccoin.zcash.ui.design.R.string.general_confirm)
                         }
                     },
                 style = ButtonStyle.PRIMARY,
@@ -479,26 +481,7 @@ class VoteConfirmSubmissionVM(
     }
 
     private fun onDone() {
-        viewModelScope.launch {
-            val accountUuid = selectedAccountUuid.value ?: return@launch
-            val recovery = votingRecoveryRepository.get(accountUuid, args.roundIdHex)
-            val persistedDraftChoices = recovery?.draftChoices?.ifEmpty { draftChoices } ?: draftChoices
-            val submittedChoices =
-                recovery
-                    ?.proposalSelections
-                    ?.mapValues { (_, selection) -> selection.choiceId }
-                    .orEmpty()
-            val persistedChoices = persistedDraftChoices + submittedChoices
-            if (persistedChoices.isNotEmpty()) {
-                votingSessionStore.restoreDraftVotes(accountUuid, args.roundIdHex, persistedChoices)
-            }
-            navigationRouter.replace(
-                VoteProposalListArgs(
-                    roundId = args.roundIdHex,
-                    mode = VoteProposalListMode.VOTED
-                )
-            )
-        }
+        navigationRouter.backTo(VoteCoinholderPollingArgs::class)
     }
 
     private fun onBack() {
@@ -520,16 +503,20 @@ class VoteConfirmSubmissionVM(
         return ZashiConfirmationState.error(
             title = failureTitle(status),
             message = failureMessage(status),
-            primaryText = stringRes(if (canRetry) R.string.vote_retry else R.string.vote_dismiss),
-            secondaryText = stringRes(R.string.vote_dismiss),
-            primaryStyle = ButtonStyle.PRIMARY,
-            onPrimary = {
-                isFailureSheetVisible.value = false
+            primaryText = stringRes(R.string.vote_dismiss),
+            secondaryText = if (canRetry) stringRes(R.string.vote_retry) else null,
+            primaryStyle = if (canRetry) ButtonStyle.TERTIARY else ButtonStyle.PRIMARY,
+            secondaryStyle = ButtonStyle.PRIMARY,
+            onPrimary = ::dismissFailureSheet,
+            onSecondary =
                 if (canRetry) {
-                    retryAction()
-                }
-            },
-            onSecondary = ::dismissFailureSheet,
+                    {
+                        dismissFailureSheet()
+                        retryAction()
+                    }
+                } else {
+                    null
+                },
             onBack = ::dismissFailureSheet,
         )
     }
@@ -545,7 +532,7 @@ class VoteConfirmSubmissionVM(
     private fun failureMessage(status: VoteSubmissionStatus) =
         when (status) {
             is VoteSubmissionStatus.LocalAuthFailed -> {
-                status.error.toErrorMessageOrDefault(stringRes(R.string.vote_confirm_error_authentication))
+                stringRes(R.string.vote_error_authorization_failed_message)
             }
 
             is VoteSubmissionStatus.ProtocolAuthFailed -> {
@@ -559,7 +546,7 @@ class VoteConfirmSubmissionVM(
             }
 
             else -> {
-                stringRes(R.string.vote_error_something_went_wrong)
+                stringRes(R.string.vote_error_something_went_wrong_message)
             }
         }
 

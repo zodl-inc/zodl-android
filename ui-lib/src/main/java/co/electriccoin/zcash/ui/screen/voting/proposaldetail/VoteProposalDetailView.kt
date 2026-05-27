@@ -20,7 +20,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -49,11 +48,11 @@ import co.electriccoin.zcash.ui.screen.voting.component.VoteRadioIndicator
 import co.electriccoin.zcash.ui.screen.voting.component.VoteViewMoreChip
 import co.electriccoin.zcash.ui.screen.voting.escapeHorizontalPadding
 import co.electriccoin.zcash.ui.screen.voting.proposaldetail.bottomsheet.PollEndedBottomSheet
-import co.electriccoin.zcash.ui.screen.voting.proposaldetail.bottomsheet.UnansweredBottomSheet
 
 @Composable
 fun VoteProposalDetailView(state: VoteProposalDetailState) {
     ZashiConfirmationBottomSheet(state = state.unverifiedPollWarningSheet)
+    ZashiConfirmationBottomSheet(state = state.unansweredSheet)
 
     val isDescriptionExpanded = remember { mutableStateOf(false) }
     val isDescriptionOverflowing = remember { mutableStateOf(false) }
@@ -80,8 +79,6 @@ fun VoteProposalDetailView(state: VoteProposalDetailState) {
                             .fillMaxWidth()
                             .verticalScroll(rememberScrollState())
                 ) {
-                    VerticalSpacer(24.dp)
-
                     Text(
                         text = state.title.getValue(),
                         style = ZashiTypography.header6,
@@ -116,28 +113,18 @@ fun VoteProposalDetailView(state: VoteProposalDetailState) {
 
                     VerticalSpacer(24.dp)
                     VoteOptions(options = state.options)
-                    VerticalSpacer(32.dp)
-
-                    state.forumUrl?.let { forumUrl ->
-                        ForumLinkRow(url = forumUrl)
-                        VerticalSpacer(16.dp)
-                    }
                 }
 
                 if (!state.isLocked) {
+                    if (state.forumUrl != null) {
+                        ForumLinkRow(onClick = state.onForumClick)
+                        VerticalSpacer(16.dp)
+                    }
                     NavigationButtons(state = state)
                 }
             }
         }
     )
-
-    if (state.showUnansweredSheet) {
-        UnansweredBottomSheet(
-            unansweredCount = state.unansweredCount,
-            onConfirm = state.onConfirmUnanswered,
-            onDismiss = state.onDismissUnanswered,
-        )
-    }
 
     if (state.showPollEndedSheet) {
         PollEndedBottomSheet(
@@ -148,15 +135,13 @@ fun VoteProposalDetailView(state: VoteProposalDetailState) {
 }
 
 @Composable
-private fun ForumLinkRow(url: String) {
-    val uriHandler = LocalUriHandler.current
-
+private fun ForumLinkRow(onClick: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier =
             Modifier
                 .fillMaxWidth()
-                .clickable { uriHandler.openUri(url) }
+                .clickable(onClick = onClick)
     ) {
         Surface(
             shape = CircleShape,
@@ -244,7 +229,6 @@ private fun NavigationButtons(state: VoteProposalDetailState) {
                 ButtonState(
                     text = stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_next),
                     style = ButtonStyle.PRIMARY,
-                    isEnabled = false,
                     onClick = state.onNext
                 )
         )
@@ -256,19 +240,8 @@ private fun NavigationButtons(state: VoteProposalDetailState) {
             modifier = Modifier.weight(1f),
             state =
                 ButtonState(
-                    text = stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_back),
-                    style = ButtonStyle.TERTIARY,
-                    onClick = state.onBack
-                )
-        )
-
-        Spacer(12.dp)
-        ZashiButton(
-            modifier = Modifier.weight(1f),
-            state =
-                ButtonState(
                     text =
-                        if (state.isEditingFromReview || state.isFromList) {
+                        if (state.isEditingFromReview) {
                             stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_save)
                         } else {
                             stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_next)
@@ -314,7 +287,7 @@ private fun previewOptions(selectedIndex: Int? = null) =
             index = 2,
             label = stringRes("Do not include issuance smoothing"),
             description = stringRes("Do not include issuance smoothing in NU7. (Fee burning still proceeds.)"),
-            color = VoteOptionDisplayColor.PURPLE,
+            color = VoteOptionDisplayColor.BLUE,
             isSelected = selectedIndex == 2,
             isLocked = false,
             onSelect = {}
@@ -331,8 +304,7 @@ private fun previewOptions(selectedIndex: Int? = null) =
     )
 
 private fun previewState(selectedIndex: Int? = null) =
-    VoteProposalDetailState(
-        positionLabel = stringRes("1 of 6"),
+    VoteProposalDetailState.preview.copy(
         title = stringRes("NSM issuance smoothing"),
         description =
             stringRes(
@@ -341,20 +313,6 @@ private fun previewState(selectedIndex: Int? = null) =
             ),
         forumUrl = "https://forum.zcashcommunity.com",
         options = previewOptions(selectedIndex),
-        isLocked = false,
-        isEditingFromReview = false,
-        isFromList = false,
-        showUnansweredSheet = false,
-        unansweredCount = 0,
-        showPollEndedSheet = false,
-        unverifiedPollWarningSheet = null,
-        onBack = {},
-        onNext = {},
-        onViewMore = {},
-        onConfirmUnanswered = {},
-        onDismissUnanswered = {},
-        onPollEndedClose = {},
-        onPollEndedViewResults = {},
     )
 
 @PreviewScreens

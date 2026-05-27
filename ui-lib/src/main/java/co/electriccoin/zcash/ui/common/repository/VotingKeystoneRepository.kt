@@ -6,6 +6,7 @@ import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.voting.canBuildGovernancePczt
+import co.electriccoin.zcash.ui.common.model.voting.votingBundleRawWeights
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
@@ -23,6 +24,7 @@ data class VotingKeystoneSigningBundle(
     val bundleIndex: Int,
     val bundleCount: Int,
     val actionIndex: Int,
+    val memoWeightZatoshi: Long,
     val encoder: UREncoder,
 )
 
@@ -97,6 +99,22 @@ class VotingKeystoneRepositoryImpl(
                 (0 until bundleCount)
                     .firstOrNull { index -> index !in recovery.keystoneBundleSignatures }
                     ?: throw VotingKeystoneBundlesAlreadySignedException(roundId)
+
+            val synchronizer = synchronizerProvider.getSynchronizer()
+            val walletDbPath = synchronizerProvider.getVotingWalletDbPath()
+            val networkId = synchronizer.network.toVotingNetworkId()
+            val allNotesJson =
+                votingCryptoClient.getWalletNotesJson(
+                    walletDbPath = walletDbPath,
+                    snapshotHeight = session.snapshotHeight,
+                    networkId = networkId,
+                    accountUuidBytes = selectedAccount.sdkAccount.accountUuid.value
+                )
+            val bundleRawWeights = votingBundleRawWeights(allNotesJson)
+            val memoWeightZatoshi =
+                bundleRawWeights.getOrNull(nextUnsignedBundleIndex)
+                    ?: error("Voting round $roundId has no raw memo weight for bundle $nextUnsignedBundleIndex")
+
             val pendingRequest =
                 recovery.pendingKeystoneRequest
                     ?.takeIf { request ->
@@ -110,6 +128,7 @@ class VotingKeystoneRepositoryImpl(
                     bundleIndex = pendingRequest.bundleIndex,
                     bundleCount = bundleCount,
                     actionIndex = pendingRequest.actionIndex,
+                    memoWeightZatoshi = memoWeightZatoshi,
                     encoder = keystoneSDKProvider.generatePczt(pendingRequest.decodeRedactedPczt())
                 )
             }
@@ -133,22 +152,12 @@ class VotingKeystoneRepositoryImpl(
                 selectedAccount.sdkAccount.seedFingerprint
                     ?: error("Keystone account is missing seed fingerprint")
 
-            val synchronizer = synchronizerProvider.getSynchronizer()
-            val walletDbPath = synchronizerProvider.getVotingWalletDbPath()
             val votingDbPath =
                 File(walletDbPath)
                     .parentFile
                     ?.resolve("voting.sqlite3")
                     ?.absolutePath
                     ?: error("Unable to derive voting DB path from $walletDbPath")
-            val networkId = synchronizer.network.toVotingNetworkId()
-            val allNotesJson =
-                votingCryptoClient.getWalletNotesJson(
-                    walletDbPath = walletDbPath,
-                    snapshotHeight = session.snapshotHeight,
-                    networkId = networkId,
-                    accountUuidBytes = selectedAccount.sdkAccount.accountUuid.value
-                )
 
             val dbHandle = votingCryptoClient.openVotingDb(votingDbPath)
             check(dbHandle != 0L) { "Failed to open voting DB at $votingDbPath" }
@@ -221,6 +230,7 @@ class VotingKeystoneRepositoryImpl(
                         bundleIndex = bundleIndex,
                         bundleCount = bundleCount,
                         actionIndex = governancePczt.actionIndex,
+                        memoWeightZatoshi = memoWeightZatoshi,
                         encoder = keystoneSDKProvider.generatePczt(redactedPcztBytes)
                     ) to precomputeRequest
                 } finally {

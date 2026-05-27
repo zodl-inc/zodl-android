@@ -52,7 +52,8 @@ fun VoteConfirmSubmissionView(state: VoteConfirmSubmissionState) {
                 navigationAction = {
                     ZashiTopAppBarBackNavigation(
                         onBack = state.onBack,
-                        modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
+                        modifier = Modifier.testTag(ZashiTopAppBarTags.BACK),
+                        enabled = !state.status.isInFlight(),
                     )
                 },
                 colors =
@@ -214,7 +215,7 @@ private fun headerSubtitle(state: VoteConfirmSubmissionState): StringResource =
         }
 
         is VoteSubmissionStatus.LocalAuthFailed -> {
-            status.error.toMessageOrDefault(stringRes(R.string.vote_confirm_error_authentication))
+            stringRes(R.string.vote_error_authorization_failed_message)
         }
 
         is VoteSubmissionStatus.ProtocolAuthFailed -> {
@@ -236,23 +237,7 @@ private fun String?.toMessageOrDefault(default: StringResource): StringResource 
     }
 
 private fun previewState(status: VoteSubmissionStatus) =
-    VoteConfirmSubmissionState(
-        status = status,
-        roundTitle = stringRes("NU7 Sentiment Poll"),
-        votingWeightZEC = stringRes("1.2500 ZEC"),
-        hotkeyAddress = stringRes("zs1xk9...f7q2m"),
-        isKeystoneUser = false,
-        includesAuthorizationProgress = true,
-        memo = stringRes("I am authorizing this hotkey managed by my wallet to vote on NU7 Sentiment Poll with 1.2500 ZEC."),
-        ctaButton =
-            ButtonState(
-                text = stringRes("Confirm"),
-                style = ButtonStyle.PRIMARY,
-                onClick = {}
-            ),
-        errorSheet = null,
-        onBack = {},
-    )
+    VoteConfirmSubmissionState.preview.copy(status = status)
 
 @PreviewScreens
 @Composable

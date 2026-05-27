@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -37,15 +38,13 @@ import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.VerticalSpacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
-import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.orDark
-import co.electriccoin.zcash.ui.design.util.scaffoldPadding
+import co.electriccoin.zcash.ui.design.util.scaffoldScrollPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
 import co.electriccoin.zcash.ui.screen.voting.VoteColors
@@ -56,12 +55,8 @@ import co.electriccoin.zcash.ui.screen.voting.component.ZipBadge
 import java.text.NumberFormat
 import java.util.Locale
 
-private const val DOT_FILL_RATIO = 0.6f
-
 @Composable
 fun VoteProposalListView(state: VoteProposalListState) {
-    ZashiConfirmationBottomSheet(state = state.ineligibleSheet)
-    ZashiConfirmationBottomSheet(state = state.walletSyncingSheet)
     BlankBgScaffold(
         topBar = {
             VoteAppBar(
@@ -70,15 +65,21 @@ fun VoteProposalListView(state: VoteProposalListState) {
             )
         },
         content = { padding ->
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .scaffoldPadding(padding)
-            ) {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                    contentPadding =
+                        PaddingValues(
+                            start = ZashiDimensions.Spacing.spacing3xl,
+                            top = padding.calculateTopPadding() + ZashiDimensions.Spacing.spacingLg,
+                            end = ZashiDimensions.Spacing.spacing3xl,
+                            bottom = ZashiDimensions.Spacing.spacing3xl
+                        ),
+                ) {
                     item {
-                        VerticalSpacer(24.dp)
                         when (state.mode) {
                             VoteProposalListMode.VOTING,
                             VoteProposalListMode.VOTED -> {
@@ -95,7 +96,7 @@ fun VoteProposalListView(state: VoteProposalListState) {
                         VerticalSpacer(24.dp)
                     }
 
-                    items(state.proposals, key = { it.id }) { proposal ->
+                    items(state.proposals.orEmpty(), key = { it.id }) { proposal ->
                         ProposalCard(
                             state = proposal,
                             modifier = Modifier.fillMaxWidth()
@@ -109,28 +110,15 @@ fun VoteProposalListView(state: VoteProposalListState) {
                 }
 
                 state.ctaButton?.let { button ->
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .height(64.dp)
-                                .align(Alignment.BottomCenter)
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors =
-                                            listOf(
-                                                Color.Transparent,
-                                                ZashiColors.Surfaces.bgPrimary
-                                            )
-                                    )
-                                )
-                    )
                     ZashiButton(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .align(Alignment.BottomCenter)
-                                .padding(bottom = ZashiDimensions.Spacing.spacingMd),
+                                .padding(
+                                    start = ZashiDimensions.Spacing.spacing3xl,
+                                    end = ZashiDimensions.Spacing.spacing3xl,
+                                    bottom = padding.calculateBottomPadding() + ZashiDimensions.Spacing.spacing3xl
+                                ),
                         state = button
                     )
                 }
@@ -140,16 +128,12 @@ fun VoteProposalListView(state: VoteProposalListState) {
 }
 
 @Composable
-fun VoteProposalListLoadingView() {
+fun VoteProposalListLoadingView(state: VoteProposalListState) {
     BlankBgScaffold(
         topBar = {
-            ZashiSmallTopAppBar(
+            VoteAppBar(
                 title = stringResource(R.string.vote_top_bar_title),
-                colors =
-                    ZcashTheme.colors.topAppBarColors orDark
-                        ZcashTheme.colors.topAppBarColors.copyColors(
-                            containerColor = Color.Transparent
-                        )
+                onBack = state.onBack,
             )
         },
         content = { padding ->
@@ -158,8 +142,7 @@ fun VoteProposalListLoadingView() {
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .scaffoldPadding(padding)
-                        .padding(top = 8.dp),
+                        .scaffoldScrollPadding(padding),
                 showDivider = false,
             )
         }
@@ -173,7 +156,7 @@ private fun VotingHeader(
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
@@ -197,15 +180,6 @@ private fun VotingHeader(
 
         Spacer(12.dp)
 
-        VoteProgressBar(
-            votedCount = state.votedCount,
-            totalCount = state.totalCount,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .height(10.dp)
-        )
-
         state.metaLine?.let { metaLine ->
             Spacer(8.dp)
             HeaderMetaLine(metaLine)
@@ -215,7 +189,7 @@ private fun VotingHeader(
             Spacer(8.dp)
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.End,
+                horizontalAlignment = Alignment.Start,
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
@@ -279,55 +253,6 @@ private fun ReviewHeader() {
 }
 
 @Composable
-private fun VoteProgressBar(
-    votedCount: Int,
-    totalCount: Int,
-    modifier: Modifier = Modifier,
-) {
-    val total = totalCount.coerceAtLeast(1)
-    val ratio = if (totalCount > 0) votedCount.toFloat() / totalCount else 0f
-    val bgColor = ZashiColors.Surfaces.bgQuaternary
-    val fillColor = ZashiColors.Text.textPrimary
-    val dotColor = ZashiColors.Utility.Gray.utilityGray300
-
-    Box(modifier = modifier) {
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val barHeight = size.height
-            val barWidth = size.width
-            val dotRadius = barHeight / 2 * DOT_FILL_RATIO
-
-            drawRoundRect(
-                color = bgColor,
-                size = Size(barWidth, barHeight),
-                cornerRadius = CornerRadius(barHeight / 2)
-            )
-
-            val fillWidth = barWidth * ratio
-            if (fillWidth > 0f) {
-                drawRoundRect(
-                    color = fillColor,
-                    size = Size(fillWidth.coerceAtLeast(barHeight), barHeight),
-                    cornerRadius = CornerRadius(barHeight / 2)
-                )
-            }
-
-            if (total > 1) {
-                for (index in 1 until total) {
-                    val dotX = barWidth * index.toFloat() / total
-                    if (dotX > fillWidth) {
-                        drawCircle(
-                            color = dotColor,
-                            radius = dotRadius,
-                            center = Offset(dotX, barHeight / 2)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun ProposalCard(
     state: VoteProposalRowState,
     modifier: Modifier = Modifier,
@@ -338,8 +263,7 @@ private fun ProposalCard(
         shape = RoundedCornerShape(ZashiDimensions.Radius.radius2xl),
         border = BorderStroke(1.dp, ZashiColors.Surfaces.strokeSecondary),
         onClick = state.onClick,
-        shadowElevation = 4.dp,
-        tonalElevation = 0.dp,
+        shadowElevation = 1.dp,
     ) {
         Column(
             modifier =
@@ -363,6 +287,7 @@ private fun ProposalCard(
                         style = ZashiTypography.textXs,
                         color = ZashiColors.Text.textTertiary,
                         maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
@@ -437,6 +362,7 @@ private fun previewProposals(withBadge: Boolean) =
             description =
                 stringRes(
                     "Replace the current fixed fee with a proportional " +
+                        "fee based on the number of logical actions " +
                         "fee based on the number of logical actions."
                 ),
             voteBadge =
@@ -482,23 +408,10 @@ private fun previewState(
     mode: VoteProposalListMode,
     withBadge: Boolean = false,
     withCta: Boolean = false,
-) = VoteProposalListState(
+) = VoteProposalListState.preview.copy(
     mode = mode,
-    roundTitle = stringRes("Round 3"),
-    snapshotHeight = 2_500_000L,
-    votedCount = 2,
-    totalCount = 3,
-    metaLine =
-        VoteProposalMetaLineState(
-            leading = stringRes("Voting open · ends in 3 days"),
-            trailing = stringRes("2 / 3 voted"),
-        ),
-    description = stringRes("This round covers protocol upgrades and fee structure changes proposed by the community."),
-    discussionUrl = null,
-    onViewMore = {},
     proposals = previewProposals(withBadge),
     ctaButton = if (withCta) ButtonState(text = stringRes("Submit votes")) else null,
-    onBack = {},
 )
 
 @PreviewScreens
@@ -524,4 +437,4 @@ private fun VoteProposalListReviewPreview() =
 @PreviewScreens
 @Composable
 private fun VoteProposalListLoadingPreview() =
-    ZcashTheme { VoteProposalListLoadingView() }
+    ZcashTheme { VoteProposalListLoadingView(state = VoteProposalListState.preview) }

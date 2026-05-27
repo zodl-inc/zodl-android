@@ -18,7 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -44,8 +43,6 @@ fun VotePollDescriptionView(
         sheetState = sheetState,
     ) { sheetState, contentPadding ->
         Column(modifier = Modifier.padding(contentPadding)) {
-            val uriHandler = LocalUriHandler.current
-
             Box(
                 modifier =
                     Modifier
@@ -106,7 +103,7 @@ fun VotePollDescriptionView(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .clickable { uriHandler.openUri(sheetState.discussionUrl) }
+                                .clickable(onClick = sheetState.onDiscussionClick)
                     ) {
                         Surface(
                             shape = CircleShape,
@@ -148,15 +145,8 @@ private fun PollDescriptionPreview() =
     ZcashTheme {
         VotePollDescriptionView(
             state =
-                VotePollDescriptionState(
-                    title = stringRes("NU7 Sentiment Poll"),
-                    description =
-                        stringRes(
-                            "This poll gauges coinholder and community sentiment on proposed Zcash protocol " +
-                                "features and initiatives. It includes questions focused on protocol proposals."
-                        ),
+                VotePollDescriptionState.preview.copy(
                     discussionUrl = "https://forum.zcashcommunity.com",
-                    onBack = {}
                 )
         )
     }
@@ -165,14 +155,4 @@ private fun PollDescriptionPreview() =
 @PreviewScreens
 @Composable
 private fun PollDescriptionNoUrlPreview() =
-    ZcashTheme {
-        VotePollDescriptionView(
-            state =
-                VotePollDescriptionState(
-                    title = stringRes("NU7 Sentiment Poll"),
-                    description = stringRes("This poll gauges coinholder sentiment on proposed Zcash protocol features."),
-                    discussionUrl = null,
-                    onBack = {}
-                )
-        )
-    }
+    ZcashTheme { VotePollDescriptionView(VotePollDescriptionState.preview) }
