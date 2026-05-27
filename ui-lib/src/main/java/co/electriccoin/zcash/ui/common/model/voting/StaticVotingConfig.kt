@@ -55,8 +55,8 @@ data class StaticVotingConfig(
 
         const val BUNDLED_PINNED_SOURCE =
             "https://raw.githubusercontent.com/valargroup/token-holder-voting-config/" +
-                "d19edb058081d72aba8a955a57607eabf815e5df/static-voting-config.json" +
-                "?checksum=sha256:f56224c6552178e64f9cc75e8ee2a663130c46172b2470fc02efdf94c522f2ac"
+                "2785311d45758e85567d70a1f13709fa01b62c6b/prod/static-voting-config.json" +
+                "?checksum=sha256:bed0116f961226b256a574b52461ce81d9f5294a57e190987dc155f07eb1e431"
 
         fun decodeAndVerify(data: ByteArray, expectedSHA256: ByteArray?): StaticVotingConfig {
             if (expectedSHA256 != null) {
