@@ -237,9 +237,9 @@ class KtorVotingApiProvider(
         shares: List<SharePayload>,
         roundIdHex: String
     ): List<DelegatedShareInfo> =
-        execute {
+        executeWithKtorTimeoutSupport delegateShares@{ supportsKtorTimeouts ->
             if (shares.isEmpty()) {
-                return@execute emptyList()
+                return@delegateShares emptyList()
             }
 
             val config = getResolvedConfig().serviceConfig
@@ -260,7 +260,8 @@ class KtorVotingApiProvider(
                     val healthyServers = serverHealthTracker.healthyServers(serverUrls)
                     val quorum = max(1, (healthyServers.size + 1) / 2)
                     val targets = healthyServers.shuffled().take(quorum)
-                    val acceptedByServers = postShareToTargets(targets, body).toMutableList()
+                    val acceptedByServers =
+                        postShareToTargets(targets, body, supportsKtorTimeouts).toMutableList()
                     if (acceptedByServers.isEmpty()) {
                         val fallbackTargets =
                             serverHealthTracker
@@ -268,7 +269,7 @@ class KtorVotingApiProvider(
                                 .filterNot { serverUrl -> serverUrl in targets }
                                 .shuffled()
                         for (fallbackTarget in fallbackTargets) {
-                            if (postShare(fallbackTarget, body)) {
+                            if (postShare(fallbackTarget, body, supportsKtorTimeouts)) {
                                 acceptedByServers += fallbackTarget
                                 break
                             }
@@ -295,7 +296,7 @@ class KtorVotingApiProvider(
         roundIdHex: String,
         nullifierHex: String
     ): ShareConfirmationResult =
-        execute {
+        executeWithKtorTimeoutSupport { supportsKtorTimeouts ->
             val normalizedHelperBaseUrl = helperBaseUrl.trimEnd('/')
             try {
                 val responseJson =
@@ -304,11 +305,7 @@ class KtorVotingApiProvider(
                     ) {
                         header("Accept", "application/json")
                         header("X-Helper-Token", "voting-helper")
-                        timeout {
-                            requestTimeoutMillis = HELPER_REQUEST_TIMEOUT_MILLIS
-                            socketTimeoutMillis = HELPER_SOCKET_TIMEOUT_MILLIS
-                            connectTimeoutMillis = HELPER_CONNECT_TIMEOUT_MILLIS
-                        }
+                        helperRequestTimeout(supportsKtorTimeouts)
                     }.bodyAsText()
                 serverHealthTracker.recordSuccess(normalizedHelperBaseUrl)
                 when (JSONObject(responseJson).optString("status")) {
@@ -327,11 +324,11 @@ class KtorVotingApiProvider(
         candidateUrls: List<String>,
         excludeUrls: List<String>
     ): List<String> =
-        execute {
+        executeWithKtorTimeoutSupport resubmitShare@{ supportsKtorTimeouts ->
             val allServers = candidateUrls.normalizeServerUrls()
             val excludedServers = excludeUrls.normalizeServerUrls().toSet()
             if (allServers.isEmpty()) {
-                return@execute emptyList()
+                return@resubmitShare emptyList()
             }
             serverHealthTracker.remember(allServers)
 
@@ -341,27 +338,27 @@ class KtorVotingApiProvider(
 
             if (candidateServers.isEmpty()) {
                 for (serverUrl in healthyServers.shuffled()) {
-                    if (postShare(serverUrl, body)) {
-                        return@execute listOf(serverUrl)
+                    if (postShare(serverUrl, body, supportsKtorTimeouts)) {
+                        return@resubmitShare listOf(serverUrl)
                     }
                 }
-                return@execute emptyList()
+                return@resubmitShare emptyList()
             }
 
             val shuffledCandidates = candidateServers.shuffled()
             val quorum = max(1, (shuffledCandidates.size + 1) / 2)
             val primaryTargets = shuffledCandidates.take(quorum)
-            val acceptedByPrimary = postShareToTargets(primaryTargets, body)
+            val acceptedByPrimary = postShareToTargets(primaryTargets, body, supportsKtorTimeouts)
             if (acceptedByPrimary.isNotEmpty()) {
-                return@execute acceptedByPrimary
+                return@resubmitShare acceptedByPrimary
             }
 
             val fallbackServers =
                 shuffledCandidates.drop(quorum) +
                     healthyServers.filter { serverUrl -> serverUrl in excludedServers }.shuffled()
             for (serverUrl in fallbackServers) {
-                if (postShare(serverUrl, body)) {
-                    return@execute listOf(serverUrl)
+                if (postShare(serverUrl, body, supportsKtorTimeouts)) {
+                    return@resubmitShare listOf(serverUrl)
                 }
             }
             emptyList()
@@ -535,19 +532,28 @@ class KtorVotingApiProvider(
     private suspend inline fun <T> execute(
         crossinline block: suspend HttpClient.() -> T
     ): T =
+        executeWithKtorTimeoutSupport { block() }
+
+    private suspend inline fun <T> executeWithKtorTimeoutSupport(
+        crossinline block: suspend HttpClient.(Boolean) -> T
+    ): T =
         withContext(Dispatchers.IO) {
-            httpClientProvider.create().use { block(it) }
+            val supportsKtorTimeouts = httpClientProvider.supportsKtorTimeouts()
+            httpClientProvider.create().use { httpClient ->
+                block(httpClient, supportsKtorTimeouts)
+            }
         }
 
     private suspend fun HttpClient.postShareToTargets(
         targetUrls: List<String>,
-        body: String
+        body: String,
+        supportsKtorTimeouts: Boolean
     ): List<String> =
         coroutineScope {
             targetUrls
                 .map { targetUrl ->
                     async {
-                        if (postShare(targetUrl, body)) {
+                        if (postShare(targetUrl, body, supportsKtorTimeouts)) {
                             targetUrl
                         } else {
                             null
@@ -559,16 +565,13 @@ class KtorVotingApiProvider(
 
     private suspend fun HttpClient.postShare(
         serverUrl: String,
-        body: String
+        body: String,
+        supportsKtorTimeouts: Boolean
     ): Boolean =
         try {
             post("$serverUrl/shielded-vote/v1/shares") {
                 setBody(TextContent(body, ContentType.Application.Json))
-                timeout {
-                    requestTimeoutMillis = HELPER_REQUEST_TIMEOUT_MILLIS
-                    socketTimeoutMillis = HELPER_SOCKET_TIMEOUT_MILLIS
-                    connectTimeoutMillis = HELPER_CONNECT_TIMEOUT_MILLIS
-                }
+                helperRequestTimeout(supportsKtorTimeouts)
             }
             serverHealthTracker.recordSuccess(serverUrl)
             true
@@ -692,6 +695,16 @@ private data class ResolvedVotingConfig(
 private fun HttpRequestBuilder.noCache() {
     header("Cache-Control", "no-cache")
     header("Pragma", "no-cache")
+}
+
+private fun HttpRequestBuilder.helperRequestTimeout(supportsKtorTimeouts: Boolean) {
+    if (supportsKtorTimeouts) {
+        timeout {
+            requestTimeoutMillis = HELPER_REQUEST_TIMEOUT_MILLIS
+            socketTimeoutMillis = HELPER_SOCKET_TIMEOUT_MILLIS
+            connectTimeoutMillis = HELPER_CONNECT_TIMEOUT_MILLIS
+        }
+    }
 }
 
 private const val HELPER_REQUEST_TIMEOUT_MILLIS = 5_000L
