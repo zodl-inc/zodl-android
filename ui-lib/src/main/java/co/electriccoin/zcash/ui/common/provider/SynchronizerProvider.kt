@@ -21,11 +21,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.lang.reflect.InvocationTargetException
-import kotlin.coroutines.intrinsics.COROUTINE_SUSPENDED
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
-import kotlin.coroutines.suspendCoroutine
 
 interface SynchronizerProvider {
     val error: StateFlow<SynchronizerError?>
@@ -87,7 +82,7 @@ class SynchronizerProviderImpl(
         }
 
     override suspend fun getVotingWalletDbPath(): String =
-        getSynchronizer().getVotingWalletDbPathByReflection()
+        getSynchronizer().getWalletDbPathForVoting()
 
     override fun resetSynchronizer() {
         walletCoordinator.resetSynchronizer()
@@ -123,23 +118,3 @@ class SynchronizerProviderImpl(
         return pipeline
     }
 }
-
-@Suppress("TooGenericExceptionCaught")
-private suspend fun Synchronizer.getVotingWalletDbPathByReflection(): String =
-    suspendCoroutine { continuation ->
-        try {
-            val method =
-                javaClass.methods.firstOrNull { method ->
-                    method.name.startsWith("getWalletDbPathForVoting") &&
-                        method.parameterTypes.size == 1
-                } ?: error("SDK synchronizer does not expose voting wallet DB path")
-            val result = method.invoke(this, continuation)
-            if (result !== COROUTINE_SUSPENDED) {
-                continuation.resume(result as String)
-            }
-        } catch (exception: InvocationTargetException) {
-            continuation.resumeWithException(exception.targetException ?: exception)
-        } catch (throwable: Throwable) {
-            continuation.resumeWithException(throwable)
-        }
-    }
