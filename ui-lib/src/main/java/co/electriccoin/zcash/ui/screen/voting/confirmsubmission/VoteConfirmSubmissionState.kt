@@ -50,6 +50,7 @@ internal fun VoteSubmissionStatus.isFailure() =
 @Immutable
 data class VoteConfirmSubmissionState(
     val status: VoteSubmissionStatus,
+    val isScreenKeptOn: Boolean,
     val roundTitle: StringResource,
     val votingWeightZEC: StringResource,
     val hotkeyAddress: StringResource,
@@ -64,6 +65,7 @@ data class VoteConfirmSubmissionState(
         val preview =
             VoteConfirmSubmissionState(
                 status = VoteSubmissionStatus.Idle,
+                isScreenKeptOn = false,
                 roundTitle = stringRes("ZF Grant Funding — Q3 2026"),
                 votingWeightZEC = stringRes("12.345 ZEC"),
                 hotkeyAddress = stringRes("u1abc...xyz"),
