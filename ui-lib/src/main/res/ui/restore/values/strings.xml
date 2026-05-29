@@ -9,7 +9,7 @@
     <string name="restore_dialog_message_1_bold_part">The Secret Recovery Phrase</string>
     <string name="restore_dialog_message_1">is a unique set of 24 words, appearing in a
         precise order. It can be used to gain full control of your funds from any device via any Zcash wallet app.
-        Think of it as the master key to your wallet. It is stored in Zodl’s Advanced Settings.</string>
+        Think of it as the master key to your wallet. It is stored in Zodlâ€™s Advanced Settings.</string>
     <string name="restore_dialog_message_2_bold_part">The Wallet Birthday Height</string>
     <string name="restore_dialog_message_2">is the block height (block # in the
         blockchain) at which your wallet was created. If you ever lose access to your Zodl app and need to recover
@@ -19,7 +19,9 @@
     <string name="restore_bd_height_btn">Estimate my block height</string>
     <string name="restore_bd_restore_btn">Restore</string>
 
-    <string name="restore_bd_date_message">Decide how far Zodl should scan. Enter a date before your first received transaction. If you\’re not sure, choose an earlier date.</string>
+    <string name="restore_bd_date_message">Decide how far Zodl should scan. Enter a date before your first received transaction. If you\â€™re not sure, choose an earlier date.</string>
+    <string name="restore_bd_text_field_error_integer">Enter a whole block height.</string>
+    <string name="restore_bd_text_field_error_minimum">Enter a block height of %1$s or higher.</string>
 
     <string name="restore_bd_estimation_restore">Restore</string>
 
@@ -46,6 +48,6 @@
     <string name="resync_wbh_confirm_button">Confirm</string>
 
     <string name="resync_confirm_failed_title">Resync Failed</string>
-    <string name="resync_confirm_failed_message">Resync of the wallet couldn’t be finalized. Please try again or report an issue.</string>
+    <string name="resync_confirm_failed_message">Resync of the wallet couldnâ€™t be finalized. Please try again or report an issue.</string>
 
 </resources>
