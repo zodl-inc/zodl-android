@@ -39,8 +39,8 @@
     <string name="vote_how_to_vote_step1_title">Voting on Proposals</string>
     <string name="vote_how_to_vote_step1_description">Vote on each question by selecting an answer. You can skip questions and update your choices anytime before submitting.</string>
     <string name="vote_how_to_vote_step2_title">Authorize and Submit</string>
-    <string name="vote_how_to_vote_step2_description">When you're ready, you'll confirm a small authorization transaction and submit your vote in one step. After submission, your vote cannot be changed.</string>
-    <string name="vote_how_to_vote_disclaimer">Your balance at the snapshot time determines your voting weight. You don't need to move your funds anywhere.</string>
+    <string name="vote_how_to_vote_step2_description">When you\'re ready, you\'ll confirm a small authorization transaction and submit your vote in one step. After submission, your vote cannot be changed.</string>
+    <string name="vote_how_to_vote_disclaimer">Your balance at the snapshot time determines your voting weight. You don\'t need to move your funds anywhere.</string>
 
     <string name="vote_poll_list_empty_title">No Polls Right Now</string>
     <string name="vote_poll_list_empty_subtitle">There aren\'t any active polls at the moment. Check back later.</string>
