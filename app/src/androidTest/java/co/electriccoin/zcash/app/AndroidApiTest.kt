@@ -18,7 +18,7 @@ class AndroidApiTest {
         // target the new API level.
         assertThat(
             ApplicationProvider.getApplicationContext<Application>().applicationInfo.targetSdkVersion,
-            lessThanOrEqualTo(Build.VERSION_CODES.VANILLA_ICE_CREAM)
+            lessThanOrEqualTo(Build.VERSION_CODES.BAKLAVA)
         )
     }
 

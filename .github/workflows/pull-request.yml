@@ -222,10 +222,13 @@ jobs:
         uses: ./.github/actions/setup-gradle
         timeout-minutes: 5
       - name: Test
-        timeout-minutes: 10
+        timeout-minutes: 15
         run: |
-          # Note that we explicitly check just the Kotlin modules, to avoid compiling the Android modules here
+          # Pure-Kotlin module :check (fast)
           ./gradlew :configuration-api-lib:check :crash-lib:check :preference-api-lib:check :spackle-lib:check :ui-design-lib:check
+          # JVM unit tests in Android modules (compiles Compose, so a bit slower) —
+          # currently covers ui-lib's 22 src/test/ unit tests.
+          ./gradlew :ui-lib:testZcashmainnetStoreDebugUnitTest
       - name: Collect Artifacts
         if: ${{ always() }}
         timeout-minutes: 1

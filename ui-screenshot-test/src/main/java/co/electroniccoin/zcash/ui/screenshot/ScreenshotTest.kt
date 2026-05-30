@@ -53,6 +53,7 @@ import co.electriccoin.zcash.ui.screen.restore.height.RestoreHeightTags
 import co.electriccoin.zcash.ui.screen.restore.seed.RestoreSeedTag
 import co.electriccoin.zcash.ui.screen.send.SendTag
 import co.electriccoin.zcash.ui.screen.walletbackup.WalletBackup
+import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -465,7 +466,7 @@ private fun receiveZecScreenshots(
 ) {
     composeTestRule.waitUntilAtLeastOneExists(
         hasText(
-            text = resContext.getString(R.string.receive_title),
+            text = resContext.getString(R.string.receive_title, CURRENCY_TICKER),
             ignoreCase = true
         ),
         15.seconds.inWholeMilliseconds
@@ -474,7 +475,7 @@ private fun receiveZecScreenshots(
     composeTestRule
         .onNode(
             hasText(
-                text = resContext.getString(R.string.receive_title),
+                text = resContext.getString(R.string.receive_title, CURRENCY_TICKER),
                 ignoreCase = true
             )
         ).also {
