@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+
 package co.electriccoin.zcash.ui.screen.addressbook
 
 import androidx.annotation.DrawableRes
@@ -16,8 +18,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
@@ -61,10 +65,16 @@ private fun Tooltip(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Material3 TooltipBox renders in a separate Compose Popup
+            // window — re-enable testTagsAsResourceId inline so testTags
+            // surface as resource-ids inside the popup.
             TextButton(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag(AddressBookTag.MANUAL_ENTRY),
+                    .semantics {
+                        testTagsAsResourceId = true
+                        testTag = AddressBookTag.MANUAL_ENTRY
+                    },
                 state = state.manualButton,
                 res = R.drawable.ic_add_contact_manual,
                 onDismissRequest = onDismissRequest
@@ -72,7 +82,10 @@ private fun Tooltip(
             TextButton(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag(AddressBookTag.SCAN_ENTRY),
+                    .semantics {
+                        testTagsAsResourceId = true
+                        testTag = AddressBookTag.SCAN_ENTRY
+                    },
                 state = state.scanButton,
                 res = R.drawable.ic_add_contact_qr,
                 onDismissRequest = onDismissRequest
