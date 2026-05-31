@@ -95,9 +95,8 @@ private fun Content(
             state = state.blockHeight,
             modifier = Modifier.fillMaxWidth(),
             innerModifier =
-                state.blockHeightFieldTestTag
-                    ?.let { ZashiTextFieldDefaults.innerModifier.testTag(it) }
-                    ?: ZashiTextFieldDefaults.innerModifier,
+                ZashiTextFieldDefaults.innerModifier
+                    .then(state.blockHeightFieldTestTag?.let { Modifier.testTag(it) } ?: Modifier),
             placeholder = { ZashiTextFieldPlaceholder(state.textFieldHint) },
             keyboardOptions =
                 KeyboardOptions(
@@ -130,9 +129,7 @@ private fun Content(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .let { mod ->
-                        state.primaryButtonTestTag?.let { mod.testTag(it) } ?: mod
-                    },
+                    .then(state.primaryButtonTestTag?.let { Modifier.testTag(it) } ?: Modifier),
         )
     }
 }

@@ -40,6 +40,7 @@ import co.electriccoin.zcash.ui.MainActivity
 import co.electriccoin.zcash.ui.NavigationTargets
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
+import co.electriccoin.zcash.ui.common.model.VersionInfo
 import co.electriccoin.zcash.ui.common.viewmodel.SecretState
 import co.electriccoin.zcash.ui.design.component.ConfigurationOverride
 import co.electriccoin.zcash.ui.design.component.UiMode
@@ -271,7 +272,10 @@ class ScreenshotTest : UiTestPrerequisites() {
         )
         composeTestRule
             .onNodeWithTag(RestoreHeightTags.BLOCK_HEIGHT_FIELD)
-            .performTextInput("3337500")
+            .performTextInput(
+                VersionInfo.NETWORK.saplingActivationHeight.value
+                    .toString()
+            )
 
         composeTestRule.waitUntilAtLeastOneExists(
             hasTestTag(RestoreHeightTags.RESTORE_BTN),
