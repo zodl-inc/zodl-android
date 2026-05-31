@@ -20,4 +20,8 @@ data class BlockHeightState(
     val secondaryButton: ButtonState?,
     val dialogButton: IconButtonState?,
     val onBack: () -> Unit,
+    // Optional testTag for the primary button so reusable BlockHeightView
+    // callers (Restore, Keystone, Resync, …) can each provide a
+    // flow-specific tag. Null = no testTag.
+    val primaryButtonTestTag: String? = null,
 )
