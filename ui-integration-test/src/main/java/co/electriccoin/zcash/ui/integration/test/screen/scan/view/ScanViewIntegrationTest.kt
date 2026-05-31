@@ -73,11 +73,8 @@ class ScanViewIntegrationTest : UiTestPrerequisites() {
         testSetup.denyPermission()
     }
 
-    // scan_views_restoration crashes on API 34+ with
-    // `ArrayIndexOutOfBoundsException` in `SlotWriter.moveSlotGapTo` during
-    // Compose disposal — Compose + CameraX AndroidView + StateRestorationTester
-    // interaction. Passes on API 27, fails on API 34. Suppressed here so the
-    // wtf_coverage CI job can be green; revisit when Compose / CameraX update.
+    // Crashes on API 34+ in Compose SlotWriter during disposal
+    // (Compose + CameraX + StateRestorationTester interop).
     @Test
     @LargeTest
     @SdkSuppress(maxSdkVersion = Build.VERSION_CODES.TIRAMISU)

@@ -224,10 +224,7 @@ jobs:
       - name: Test
         timeout-minutes: 15
         run: |
-          # Pure-Kotlin module :check (fast)
           ./gradlew :configuration-api-lib:check :crash-lib:check :preference-api-lib:check :spackle-lib:check :ui-design-lib:check
-          # JVM unit tests in Android modules (compiles Compose, so a bit slower) —
-          # currently covers ui-lib's 22 src/test/ unit tests.
           ./gradlew :ui-lib:testZcashmainnetStoreDebugUnitTest
       - name: Collect Artifacts
         if: ${{ always() }}
@@ -407,9 +404,7 @@ jobs:
           path: ~/artifacts
 
   # Performs a button mash test on the debug build of the app with strict mode enabled.
-  # TEMPORARILY DISABLED — Firebase Test Lab matrix-fails with 0 test cases on Pixel2
-  # API 27 + 33 (app likely crashes during Robo crawl). Needs Firebase console access
-  # to diagnose. Re-enable by removing the `if: false &&` prefix once fixed.
+  # Temporarily disabled — app crashes during Robo crawl (needs Firebase console to diagnose).
   test_robo_debug:
     if: false && needs.check_firebase_secrets.outputs.has-secrets == 'true'
     needs: [check_firebase_secrets]

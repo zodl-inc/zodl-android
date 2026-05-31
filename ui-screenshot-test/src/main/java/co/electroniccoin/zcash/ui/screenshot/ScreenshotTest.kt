@@ -51,6 +51,7 @@ import co.electriccoin.zcash.ui.screen.home.HomeTags
 import co.electriccoin.zcash.ui.screen.more.MoreArgs
 import co.electriccoin.zcash.ui.screen.restore.height.RestoreHeightTags
 import co.electriccoin.zcash.ui.screen.restore.seed.RestoreSeedTag
+import co.electriccoin.zcash.ui.screen.restore.tor.RestoreTorTags
 import co.electriccoin.zcash.ui.screen.send.SendTag
 import co.electriccoin.zcash.ui.screen.walletbackup.WalletBackup
 import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
@@ -271,6 +272,14 @@ class ScreenshotTest : UiTestPrerequisites() {
             it.performScrollTo()
             it.performClick()
         }
+
+        // Tor confirmation step (added in MOB-371).
+        composeTestRule.waitUntilAtLeastOneExists(
+            hasTestTag(RestoreTorTags.RESTORE_BTN),
+            timeoutMillis = DEFAULT_TIMEOUT_MILLISECONDS
+        )
+        takeScreenshot(tag, "Import 4")
+        composeTestRule.onNodeWithTag(RestoreTorTags.RESTORE_BTN).performClick()
 
         composeTestRule.waitUntil(DEFAULT_TIMEOUT_MILLISECONDS) {
             composeTestRule
