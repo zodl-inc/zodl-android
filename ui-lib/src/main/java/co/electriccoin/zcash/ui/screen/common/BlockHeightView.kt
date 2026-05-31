@@ -27,6 +27,7 @@ import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiIconButton
 import co.electriccoin.zcash.ui.design.component.ZashiNumberTextField
+import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTextFieldPlaceholder
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
@@ -93,6 +94,10 @@ private fun Content(
         ZashiNumberTextField(
             state = state.blockHeight,
             modifier = Modifier.fillMaxWidth(),
+            innerModifier =
+                state.blockHeightFieldTestTag
+                    ?.let { ZashiTextFieldDefaults.innerModifier.testTag(it) }
+                    ?: ZashiTextFieldDefaults.innerModifier,
             placeholder = { ZashiTextFieldPlaceholder(state.textFieldHint) },
             keyboardOptions =
                 KeyboardOptions(

@@ -263,6 +263,16 @@ class ScreenshotTest : UiTestPrerequisites() {
 
         takeScreenshot(tag, "Import 3")
 
+        // Enter a block height — the Restore button is disabled until one
+        // is provided (must be at or after sapling activation).
+        composeTestRule.waitUntilAtLeastOneExists(
+            hasTestTag(RestoreHeightTags.BLOCK_HEIGHT_FIELD),
+            timeoutMillis = DEFAULT_TIMEOUT_MILLISECONDS
+        )
+        composeTestRule
+            .onNodeWithTag(RestoreHeightTags.BLOCK_HEIGHT_FIELD)
+            .performTextInput("3337500")
+
         composeTestRule.waitUntilAtLeastOneExists(
             hasTestTag(RestoreHeightTags.RESTORE_BTN),
             timeoutMillis = DEFAULT_TIMEOUT_MILLISECONDS
