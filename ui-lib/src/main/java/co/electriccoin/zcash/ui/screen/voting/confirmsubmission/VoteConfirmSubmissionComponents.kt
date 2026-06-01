@@ -88,11 +88,7 @@ private fun VoteSubmissionDetailRow(
 @Composable
 internal fun VoteSubmissionBottomSection(state: VoteConfirmSubmissionState) {
     Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
-                .padding(bottom = ZashiDimensions.Spacing.spacingMd)
+        modifier = Modifier.fillMaxWidth()
     ) {
         val submissionProgress = state.submissionProgress()
         val progressTitle: StringResource? =
