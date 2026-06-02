@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import co.electriccoin.zcash.ui.common.compose.DisableScreenTimeout
 import co.electriccoin.zcash.ui.screen.common.LceRenderer
 import kotlinx.serialization.Serializable
 import org.koin.androidx.compose.koinViewModel
@@ -21,6 +22,9 @@ fun VoteConfirmSubmissionScreen(args: VoteConfirmSubmissionArgs) {
             }
         }
     ) {
+        if (it.isScreenKeptOn) {
+            DisableScreenTimeout()
+        }
         BackHandler { it.onBack() }
         VoteConfirmSubmissionView(it)
     }
