@@ -186,6 +186,7 @@ dependencies {
     implementation(libs.kotlinx.serializable.json)
     "storeImplementation"(libs.mlkit.scanning)
     "internalImplementation"(libs.mlkit.scanning)
+    "fossImplementation"(libs.zxingcpp)
     api(libs.zcash.sdk)
     implementation(libs.zcash.sdk.backend)
     implementation(libs.zcash.sdk.incubator)
