@@ -84,6 +84,7 @@
     <string name="send_confirmation_pending_payment_subtitle">Your cross-chain payment is being processed. Follow its status on the transaction screen.</string>
     <string name="send_confirmation_pending_shielding_title">Shielding Pending</string>
     <string name="send_confirmation_pending_shielding_subtitle">Your shielding transaction is being processed.</string>
+    <string name="send_confirmation_pending_timeout_subtitle">Timed out waiting for a server response. Your transaction may still have been broadcast.</string>
 
     <!-- Cross-chain payment success -->
     <string name="send_confirmation_success_cross_chain_subtitle">You successfully initiated a cross-chain payment.\nFollow its status on the transaction screen.</string>

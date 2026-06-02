@@ -5,6 +5,7 @@ import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.exception.PcztException
 import cash.z.ecc.android.sdk.exception.TransactionEncoderException
 import cash.z.ecc.android.sdk.ext.convertZecToZatoshi
+import cash.z.ecc.android.sdk.model.CreatedTransaction
 import cash.z.ecc.android.sdk.model.Memo
 import cash.z.ecc.android.sdk.model.Pczt
 import cash.z.ecc.android.sdk.model.Proposal
@@ -15,6 +16,7 @@ import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZecSend
 import cash.z.ecc.android.sdk.model.proposeSend
 import cash.z.ecc.android.sdk.type.AddressType
+import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.NetworkDimension
@@ -22,10 +24,11 @@ import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.model.VersionInfo
 import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
+import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
+import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.withContext
 import org.zecdev.zip321.ZIP321
 import org.zecdev.zip321.parser.ParserContext
@@ -96,6 +99,9 @@ class TexUnsupportedOnKSException : Exception("TEX addresses are unsupported on 
 @Suppress("TooManyFunctions")
 class ProposalDataSourceImpl(
     private val synchronizerProvider: SynchronizerProvider,
+    private val lightWalletEndpointProvider: LightWalletEndpointProvider,
+    private val isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
+    private val persistableWalletProvider: PersistableWalletProvider,
 ) : ProposalDataSource {
     override suspend fun createProposal(account: WalletAccount, send: ZecSend): RegularTransactionProposal =
         withContext(Dispatchers.IO) {
@@ -230,16 +236,16 @@ class ProposalDataSourceImpl(
         }
 
     override suspend fun submitTransaction(pcztWithProofs: Pczt, pcztWithSignatures: Pczt): SubmitResult =
-        submitTransactionInternal {
-            it.createTransactionFromPczt(
+        submitTransactionInternal(MULTI_SUBMIT_PCZT_TAG) {
+            it.broadcaster.createTransactionFromPczt(
                 pcztWithProofs = pcztWithProofs,
                 pcztWithSignatures = pcztWithSignatures,
             )
         }
 
     override suspend fun submitTransaction(proposal: Proposal, usk: UnifiedSpendingKey): SubmitResult =
-        submitTransactionInternal {
-            it.createProposedTransactions(
+        submitTransactionInternal(MULTI_SUBMIT_TAG) {
+            it.broadcaster.createProposedTransactions(
                 proposal = proposal,
                 usk = usk,
             )
@@ -268,84 +274,67 @@ class ProposalDataSourceImpl(
 
     @Suppress("CyclomaticComplexMethod", "TooGenericExceptionCaught")
     private suspend fun submitTransactionInternal(
-        block: suspend (Synchronizer) -> Flow<TransactionSubmitResult>
+        logTag: String,
+        block: suspend (SdkSynchronizer) -> List<CreatedTransaction>
     ): SubmitResult =
         withContext(Dispatchers.IO) {
             val synchronizer = synchronizerProvider.getSynchronizer() as SdkSynchronizer
-            val submitResults = block(synchronizer).toList()
+            val transactions = block(synchronizer)
+
+            if (transactions.isEmpty()) {
+                return@withContext SubmitResult.Failure(
+                    txIds = emptyList(),
+                    code = MULTI_SUBMIT_EMPTY_TRANSACTION_CODE,
+                    description = MULTI_SUBMIT_EMPTY_TRANSACTION_DESCRIPTION
+                )
+            }
+
+            val endpoints = getSubmissionEndpoints()
+            Twig.info {
+                "$logTag Created ${transactions.size} transaction(s); submitting to ${endpoints.size} endpoint(s)."
+            }
+
+            val submitResults =
+                submitCreatedTransactions(
+                    synchronizer = synchronizer,
+                    transactions = transactions,
+                    endpoints = endpoints,
+                    logTag = logTag
+                )
+
             Twig.debug { "Internal transaction submit results: $submitResults" }
 
-            val successCount =
-                submitResults
-                    .count { it is TransactionSubmitResult.Success }
-            val txIds =
-                submitResults
-                    .map { it.txIdString() }
-            val statuses =
-                submitResults
-                    .map {
-                        when (it) {
-                            is TransactionSubmitResult.Success -> {
-                                "success"
-                            }
-
-                            is TransactionSubmitResult.Failure -> {
-                                if (it.grpcError) {
-                                    it.description.orEmpty()
-                                } else {
-                                    "code: ${it.code} desc: ${it.description}"
-                                }
-                            }
-
-                            is TransactionSubmitResult.NotAttempted -> {
-                                "notAttempted"
-                            }
-                        }
-                    }
-            val resubmittableFailures =
-                submitResults
-                    .mapNotNull {
-                        when (it) {
-                            is TransactionSubmitResult.Failure -> it.grpcError
-                            is TransactionSubmitResult.NotAttempted -> null
-                            is TransactionSubmitResult.Success -> null
-                        }
-                    }
-
-            val (errCode, errDesc) =
-                submitResults
-                    .filterIsInstance<TransactionSubmitResult.Failure>()
-                    .lastOrNull { !it.grpcError }
-                    ?.let { it.code to it.description } ?: (0 to "")
-
-            val result =
-                when (successCount) {
-                    0 -> {
-                        if (resubmittableFailures.all { it }) {
-                            SubmitResult.GrpcFailure(txIds = txIds)
-                        } else {
-                            SubmitResult.Failure(txIds = txIds, code = errCode, description = errDesc)
-                        }
-                    }
-
-                    txIds.size -> {
-                        SubmitResult.Success(txIds = txIds)
-                    }
-
-                    else -> {
-                        if (resubmittableFailures.all { it }) {
-                            SubmitResult.GrpcFailure(txIds = txIds)
-                        } else {
-                            SubmitResult.Partial(txIds = txIds, statuses = statuses)
-                        }
-                    }
-                }
-
+            val result = submitResults.toSubmitResult()
             synchronizer.refreshTransactions()
             synchronizer.refreshAllBalances()
             Twig.debug { "Transaction submit result: $result" }
             result
         }
+
+    private suspend fun submitCreatedTransactions(
+        synchronizer: SdkSynchronizer,
+        transactions: List<CreatedTransaction>,
+        endpoints: List<LightWalletEndpoint>,
+        logTag: String
+    ): List<TransactionSubmitResult> =
+        MultiEndpointTransactionSubmitter(
+            submit = { transaction, endpoint ->
+                synchronizer.broadcaster.submit(transaction, endpoint)
+            }
+        ).submitTransactions(
+            transactions = transactions,
+            endpoints = endpoints,
+            logTag = logTag
+        )
+
+    private suspend fun getSubmissionEndpoints(): List<LightWalletEndpoint> {
+        val isAutomatic = isServerSelectionAutomaticProvider.get() != false
+        return if (isAutomatic) {
+            lightWalletEndpointProvider.getEndpoints()
+        } else {
+            listOf(persistableWalletProvider.requirePersistableWallet().endpoint)
+        }
+    }
 
     @Suppress("TooGenericExceptionCaught")
     private suspend inline fun <T : Any> getOrThrow(block: (Synchronizer) -> T): T =
@@ -378,6 +367,87 @@ class ProposalDataSourceImpl(
             is AddressType.Invalid -> error("Invalid address type")
         }
 }
+
+internal fun List<TransactionSubmitResult>.toSubmitResult(): SubmitResult {
+    if (isEmpty()) {
+        return SubmitResult.Failure(
+            txIds = emptyList(),
+            code = MULTI_SUBMIT_EMPTY_TRANSACTION_CODE,
+            description = MULTI_SUBMIT_EMPTY_TRANSACTION_DESCRIPTION
+        )
+    }
+
+    val successCount = count { it is TransactionSubmitResult.Success }
+    val txIds = map { it.txIdString() }
+    val failures = filterIsInstance<TransactionSubmitResult.Failure>()
+    val hasNotAttempted = any { it is TransactionSubmitResult.NotAttempted }
+    val hasTimeoutFailure =
+        failures.any { it.grpcError && it.description == MULTI_SUBMIT_TIMEOUT_DESCRIPTION }
+    val grpcFailureReason =
+        if (hasTimeoutFailure) {
+            SubmitResult.GrpcFailure.Reason.TIMEOUT
+        } else {
+            null
+        }
+    val grpcFailureDescription =
+        if (hasTimeoutFailure) {
+            MULTI_SUBMIT_TIMEOUT_DESCRIPTION
+        } else {
+            null
+        }
+
+    val (errCode, errDesc) =
+        failures
+            .firstOrNull { !it.grpcError }
+            ?.let { it.code to it.description } ?: (0 to "")
+
+    return when (successCount) {
+        0 -> {
+            if (failures.size == size && failures.all { it.grpcError }) {
+                SubmitResult.GrpcFailure(
+                    txIds = txIds,
+                    description = grpcFailureDescription,
+                    reason = grpcFailureReason
+                )
+            } else if (hasNotAttempted && failures.none { !it.grpcError }) {
+                SubmitResult.Partial(txIds = txIds, statuses = map { it.statusDescription() })
+            } else {
+                SubmitResult.Failure(txIds = txIds, code = errCode, description = errDesc)
+            }
+        }
+
+        txIds.size -> {
+            SubmitResult.Success(txIds = txIds)
+        }
+
+        else -> {
+            SubmitResult.Partial(txIds = txIds, statuses = map { it.statusDescription() })
+        }
+    }
+}
+
+private fun TransactionSubmitResult.statusDescription() =
+    when (this) {
+        is TransactionSubmitResult.Success -> {
+            "success"
+        }
+
+        is TransactionSubmitResult.Failure -> {
+            if (grpcError) {
+                if (description == MULTI_SUBMIT_TIMEOUT_DESCRIPTION) {
+                    MULTI_SUBMIT_TIMEOUT_DESCRIPTION
+                } else {
+                    MULTI_SUBMIT_GRPC_FAILURE_STATUS
+                }
+            } else {
+                "code: $code desc: $description"
+            }
+        }
+
+        is TransactionSubmitResult.NotAttempted -> {
+            "notAttempted"
+        }
+    }
 
 sealed interface TransactionProposal {
     val proposal: Proposal
@@ -434,3 +504,8 @@ data class ExactOutputSwapTransactionProposal(
 ) : SwapTransactionProposal
 
 private const val DEFAULT_SHIELDING_THRESHOLD = 100000L
+private const val MULTI_SUBMIT_TAG = "[MultiSubmit]"
+private const val MULTI_SUBMIT_PCZT_TAG = "[MultiSubmit/PCZT]"
+private const val MULTI_SUBMIT_EMPTY_TRANSACTION_CODE = -1
+private const val MULTI_SUBMIT_EMPTY_TRANSACTION_DESCRIPTION = "No transactions created"
+private const val MULTI_SUBMIT_GRPC_FAILURE_STATUS = "grpcFailure"

@@ -79,6 +79,7 @@
     <string name="send_confirmation_pending_payment_subtitle">Tu cross-chain pago se está procesando. Siga el estado en la pantalla de transacción.</string>
     <string name="send_confirmation_pending_shielding_title">Fondos Protegidos Pendiente</string>
     <string name="send_confirmation_pending_shielding_subtitle">Tus Fondos Protegidos se están procesando.</string>
+    <string name="send_confirmation_pending_timeout_subtitle">Se agotó el tiempo de espera de la respuesta del servidor. Es posible que tu transacción aún se haya transmitido.</string>
 
     <!-- Cross-chain payment success -->
     <string name="send_confirmation_success_cross_chain_subtitle">Has iniciado un pago entre cadenas exitosamente. Sigue su estado en la pantalla de transacciones.</string>

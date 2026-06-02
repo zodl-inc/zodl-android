@@ -8,6 +8,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Changed:
 - Voting round responses now require explicit option indices from vote servers.
+- Automatic transaction submission may broadcast to multiple bundled servers. Use Manual mode to submit only through the selected server.
 
 ## [3.4.1 (1698)] - 2026-05-19
 
