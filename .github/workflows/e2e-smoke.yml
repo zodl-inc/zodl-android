@@ -53,13 +53,39 @@ jobs:
 
       - name: Run smoke tests
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          # Wallet config consumed by scripts/run-smoke-android.sh — the
+          # wrapper sources .env locally, but on CI we read each value
+          # from GitHub Secrets / repo variables instead. The wrapper
+          # resolves ZODL_TEST_DIRECTION (AUTO_ALTERNATE flips a state
+          # file each run so sender/receiver rotate), pre-splits the
+          # chosen seed into ZODL_WORD_1..24, and passes everything to
+          # Maestro via --env=KEY=VAL.
+          ZODL_TEST_SEED_ANDROID: ${{ secrets.ZODL_TEST_SEED_ANDROID }}
+          ZODL_TEST_BIRTHDAY_ANDROID: ${{ secrets.ZODL_TEST_BIRTHDAY_ANDROID }}
+          ZODL_TEST_ADDRESS_ANDROID: ${{ secrets.ZODL_TEST_ADDRESS_ANDROID }}
+          ZODL_TEST_CONTACT_NAME_ANDROID: ${{ vars.ZODL_TEST_CONTACT_NAME_ANDROID || 'Android Shield' }}
+          ZODL_TEST_SEED_IOS: ${{ secrets.ZODL_TEST_SEED_IOS }}
+          ZODL_TEST_BIRTHDAY_IOS: ${{ secrets.ZODL_TEST_BIRTHDAY_IOS }}
+          ZODL_TEST_ADDRESS_IOS: ${{ secrets.ZODL_TEST_ADDRESS_IOS }}
+          ZODL_TEST_CONTACT_NAME_IOS: ${{ vars.ZODL_TEST_CONTACT_NAME_IOS || 'iOS Shield' }}
+          ZODL_TEST_DIRECTION: ${{ vars.ZODL_TEST_DIRECTION || 'AUTO_ALTERNATE' }}
+          ZODL_TEST_SEND_AMOUNT: ${{ vars.ZODL_TEST_SEND_AMOUNT || '0.005' }}
+          ZODL_TEST_BALANCE_MIN: ${{ vars.ZODL_TEST_BALANCE_MIN || '1.3' }}
+          ZODL_TEST_BALANCE_WARN: ${{ vars.ZODL_TEST_BALANCE_WARN || '1.36' }}
+          ZODL_TEST_CROSSPAY_TARGET_ADDRESS: ${{ vars.ZODL_TEST_CROSSPAY_TARGET_ADDRESS || '0xf90bd7c30fd538efde8729ea61fdf20920ed3171' }}
+          ZODL_TEST_CROSSPAY_TARGET_NAME: ${{ vars.ZODL_TEST_CROSSPAY_TARGET_NAME || 'USDC Base' }}
+          ZODL_TEST_CROSSPAY_CHAIN: ${{ vars.ZODL_TEST_CROSSPAY_CHAIN || 'BASE' }}
+          ZODL_TEST_CROSSPAY_AMOUNT: ${{ vars.ZODL_TEST_CROSSPAY_AMOUNT || '0.5' }}
+          ZODL_TEST_STATE_DIR: ${{ github.workspace }}/.zodl-qa-state
         with:
           api-level: 34
           arch: x86_64
           profile: pixel_6
           script: |
             adb install app/build/outputs/apk/zcashmainnetInternal/debug/*.apk
-            maestro test zodl-qa/maestro/smoke/ --include-tags="android"
+            chmod +x zodl-qa/scripts/run-smoke-android.sh
+            ./zodl-qa/scripts/run-smoke-android.sh
 
       - name: Upload test results
         if: always()
