@@ -1,0 +1,3 @@
+Cambiado:
+- Compatibilidad actualizada con los últimos cambios de la red Zcash. Esta actualización es necesaria para garantizar el correcto funcionamiento de la billetera.
+- Actualizamos el servidor predeterminado.

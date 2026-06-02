@@ -12,6 +12,12 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.5.1 (1741)] - 2026-06-02
+
+### Cambiado:
+- Compatibilidad actualizada con los últimos cambios de la red Zcash. Esta actualización es necesaria para garantizar el correcto funcionamiento de la billetera.
+- Actualizamos el servidor predeterminado.
+
 ## [3.5.0 (1736)] - 2026-05-28
 
 ### Añadido:

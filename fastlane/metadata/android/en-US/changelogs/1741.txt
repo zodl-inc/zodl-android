@@ -1,0 +1,3 @@
+Changed:
+- Updated compatibility with the latest Zcash network changes. This update is required to ensure continued wallet functionality.
+- We updated the default server.

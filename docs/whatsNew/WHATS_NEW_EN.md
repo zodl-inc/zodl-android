@@ -12,6 +12,12 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.5.1 (1741)] - 2026-06-02
+
+### Changed:
+- Updated compatibility with the latest Zcash network changes. This update is required to ensure continued wallet functionality.
+- We updated the default server.
+
 ## [3.5.0 (1736)] - 2026-05-28
 
 ### Added:
