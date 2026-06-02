@@ -46,6 +46,15 @@ class CreateFlexaTransactionUseCase(
                         )
                 }
 
+                is SubmitResult.GrpcFailure -> {
+                    Flexa
+                        .buildSpend()
+                        .transactionSent(
+                            commerceSessionId = transaction.getOrNull()?.commerceSessionId.orEmpty(),
+                            txSignature = result.txIds.first()
+                        )
+                }
+
                 else -> {
                     // do nothing
                 }

@@ -213,6 +213,10 @@ internal class MockSynchronizer(
         error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
     }
 
+    override suspend fun getWalletDbPathForVoting(): String {
+        error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
+    }
+
     override suspend fun rewindToNearestHeight(height: BlockHeight): BlockHeight? {
         error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
     }

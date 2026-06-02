@@ -4,7 +4,7 @@ import android.app.Application
 import cash.z.ecc.android.sdk.ext.convertZatoshiToZec
 import cash.z.ecc.android.sdk.internal.Twig
 import co.electriccoin.zcash.ui.BuildConfig
-import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
+import co.electriccoin.zcash.ui.common.usecase.ObserveZashiAccountUseCase
 import com.flexa.core.Flexa
 import com.flexa.core.shared.AssetAccount
 import com.flexa.core.shared.AvailableAsset
@@ -29,7 +29,7 @@ interface FlexaRepository {
 class FlexaRepositoryImpl(
     private val application: Application,
     private val configurationRepository: ConfigurationRepository,
-    private val accountDataSource: AccountDataSource
+    private val observeZashiAccountUseCase: ObserveZashiAccountUseCase
 ) : FlexaRepository {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -44,7 +44,7 @@ class FlexaRepositoryImpl(
                 Flexa.init(configuration)
                 Twig.info { "Flexa initialized" }
 
-                accountDataSource.zashiAccount
+                observeZashiAccountUseCase()
                     .map { it?.totalShieldedBalance to it?.spendableShieldedBalance }
                     .collect { (total, available) ->
                         val totalZec = total.convertZatoshiToZec().toDouble()

@@ -20,13 +20,16 @@ import co.electriccoin.zcash.ui.common.component.ZashiEndpointTextFieldParser
 import co.electriccoin.zcash.ui.common.model.FastestServersState
 import co.electriccoin.zcash.ui.common.model.SynchronizerError
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
+import co.electriccoin.zcash.ui.common.provider.ApplicationStateProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
+import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.WalletRepository
 import co.electriccoin.zcash.ui.common.usecase.GetAutomaticEndpointUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedEndpointUseCase
+import co.electriccoin.zcash.ui.common.usecase.IsServerAutomaticUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveFastestServersUseCase
 import co.electriccoin.zcash.ui.common.usecase.PersistServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshFastestServersUseCase
@@ -213,11 +216,19 @@ private fun createViewModel(
             lightWalletEndpointProvider = lightWalletEndpointProvider,
             getSelectedEndpoint = getSelectedEndpoint,
         )
+    val automaticServerRepository =
+        AutomaticServerRepositoryImpl(
+            applicationStateProvider = ApplicationStateProviderImpl(),
+            isServerSelectionAutomaticProvider = isServerSelectionAutomaticProvider,
+            walletRepository = walletRepository,
+            lightWalletEndpointProvider = lightWalletEndpointProvider,
+            persistableWalletProvider = persistableWalletProvider,
+        )
     return ChooseServerVM(
         application = application,
         observeFastestServers = ObserveFastestServersUseCase(walletRepository),
         getSelectedEndpoint = getSelectedEndpoint,
-        isServerSelectionAutomaticProvider = isServerSelectionAutomaticProvider,
+        isServerAutomatic = IsServerAutomaticUseCase(automaticServerRepository),
         lightWalletEndpointProvider = lightWalletEndpointProvider,
         refreshFastestServersUseCase = RefreshFastestServersUseCase(walletRepository),
         persistServerSelection =

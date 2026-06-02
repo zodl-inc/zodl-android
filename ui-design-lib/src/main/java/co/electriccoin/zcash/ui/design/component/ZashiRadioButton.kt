@@ -179,12 +179,10 @@ data class RadioButtonState(
     val isChecked: Boolean,
     val isEnabled: Boolean = true,
     val hapticFeedbackType: HapticFeedbackType? =
-        if (!isEnabled) {
-            null
-        } else if (isChecked) {
-            HapticFeedbackType.ToggleOff
-        } else {
-            HapticFeedbackType.ToggleOn
+        when {
+            !isEnabled -> null
+            isChecked -> HapticFeedbackType.ToggleOff
+            else -> HapticFeedbackType.ToggleOn
         },
     val subtitle: StringResource? = null,
     val onClick: () -> Unit,
