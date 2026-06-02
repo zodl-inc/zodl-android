@@ -179,3 +179,7 @@ internal object TransparentColorPalette {
     val Light = Color(0xFFFFFFFF)
     val Dark = Color(0xFF231F20)
 }
+
+internal object Accent {
+    val Green = Color(0xFF34C759)
+}

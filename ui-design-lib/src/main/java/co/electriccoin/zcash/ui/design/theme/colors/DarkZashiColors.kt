@@ -562,6 +562,10 @@ val DarkZashiColorsInternal =
                         utilityEspresso950 = Espresso.`25`
                     )
             ),
+        Accents =
+            Accents(
+                green = Accent.Green
+            ),
         Transparent =
             Transparent(
                 bgPrimary = TransparentColorPalette.Dark
