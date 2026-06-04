@@ -1,0 +1,81 @@
+name: Create Release from tag
+
+# Fires when a `<version>-<versionCode>` tag is pushed (e.g. `3.5.1-1740`).
+# The workflow:
+#   1. Validates the tag shape.
+#   2. Extracts the matching `## [<version> (<versionCode>)] - <date>` section
+#      from `docs/whatsNew/WHATS_NEW_EN.md`.
+#   3. Creates a published GitHub Release with title `Release <version> (<versionCode>)`
+#      and the changelog section as the body.
+#
+# Publishing the release fires the existing `release.yaml` workflow, which
+# does the actual build + APK signing + Solana / F-Droid publishing. We do
+# NOT do any of that here — this workflow's only job is "tag -> release".
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+-[0-9]+'
+
+permissions:
+  contents: write  # required to create the release
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Parse tag and extract changelog section
+        id: meta
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          # Tag shape was already filtered by the tag pattern above, but
+          # double-check before we do anything destructive.
+          if [[ ! "${TAG}" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-([0-9]+)$ ]]; then
+            echo "ERROR: tag '${TAG}' does not match <version>-<versionCode>." >&2
+            exit 1
+          fi
+          VERSION="${BASH_REMATCH[1]}"
+          VERSION_CODE="${BASH_REMATCH[2]}"
+          TITLE="Release ${VERSION} (${VERSION_CODE})"
+          HEADER="## [${VERSION} (${VERSION_CODE})]"
+
+          # Awk pulls the block that starts with the matching `## [version (code)]`
+          # header up to the next `## [` header (exclusive), preserving the
+          # changelog formatting. If no such block exists the workflow fails
+          # loudly so we don't publish an empty body.
+          BODY="$(awk -v want="${HEADER}" '
+            $0 ~ "^## \\[" {
+              if (capturing) exit
+              if (index($0, want) == 1) { capturing = 1 }
+            }
+            capturing
+          ' docs/whatsNew/WHATS_NEW_EN.md)"
+
+          if [ -z "${BODY}" ]; then
+            echo "ERROR: no changelog section '${HEADER}' in docs/whatsNew/WHATS_NEW_EN.md." >&2
+            echo "Add the section before pushing the tag." >&2
+            exit 1
+          fi
+
+          echo "title=${TITLE}" >> "$GITHUB_OUTPUT"
+          {
+            echo "body<<__BODY_EOF__"
+            echo "${BODY}"
+            echo "__BODY_EOF__"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ steps.meta.outputs.title }}
+          body: ${{ steps.meta.outputs.body }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

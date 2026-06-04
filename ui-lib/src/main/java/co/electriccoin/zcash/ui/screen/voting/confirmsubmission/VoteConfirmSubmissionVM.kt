@@ -234,6 +234,7 @@ class VoteConfirmSubmissionVM(
 
         return VoteConfirmSubmissionState(
             status = status,
+            isScreenKeptOn = status.isInFlight(),
             roundTitle = stringRes(round.title),
             votingWeightZEC =
                 recovery?.eligibleWeight?.toVotingWeightLabel()?.let(::stringRes)

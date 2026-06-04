@@ -37,7 +37,7 @@
     <string name="vote_how_to_vote_title">How to vote with %1$s</string>
     <string name="vote_how_to_vote_subtitle">Your ZEC gives you a voice. Shape the future of the Zcash network by voting on active proposals.</string>
     <string name="vote_how_to_vote_step1_title">Voting on Proposals</string>
-    <string name="vote_how_to_vote_step1_description">Vote Support, Oppose, or Abstain on each question. You can skip questions and change your vote before submitting.</string>
+    <string name="vote_how_to_vote_step1_description">Vote on each question by selecting an answer. You can skip questions and update your choices anytime before submitting.</string>
     <string name="vote_how_to_vote_step2_title">Authorize and Submit</string>
     <string name="vote_how_to_vote_step2_description">When you\'re ready, you\'ll confirm a small authorization transaction and submit your vote in one step. After submission, your vote cannot be changed.</string>
     <string name="vote_how_to_vote_disclaimer">Your balance at the snapshot time determines your voting weight. You don\'t need to move your funds anywhere.</string>

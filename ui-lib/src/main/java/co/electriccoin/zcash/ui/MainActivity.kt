@@ -1,4 +1,5 @@
 @file:Suppress("DEPRECATION")
+@file:OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 
 package co.electriccoin.zcash.ui
 
@@ -16,6 +17,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
@@ -158,6 +161,10 @@ class MainActivity : FragmentActivity() {
                             .fillMaxWidth()
                             .fillMaxHeight()
                             .imePadding()
+                            // Maestro reads Compose testTags as resource-ids only
+                            // when this flag is on at the root. File-level
+                            // @OptIn(ExperimentalComposeUiApi::class) opts into the API.
+                            .semantics { testTagsAsResourceId = true }
                     ) {
                         BindCompLocalProvider {
                             MainContent()
