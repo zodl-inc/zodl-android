@@ -6,6 +6,12 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [3.5.2 (1742)] - 2026-06-04
+
+### Changed:
+- Updated compatibility with the latest Zcash network changes. This update is required to ensure continued wallet functionality.
+- We updated the default server.
+
 ### Changed:
 - Voting round responses now require explicit option indices from vote servers.
 
