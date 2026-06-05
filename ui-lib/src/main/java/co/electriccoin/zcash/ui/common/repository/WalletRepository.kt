@@ -193,6 +193,17 @@ class WalletRepositoryImpl(
                 initialValue = WalletRestoringState.NONE
             )
 
+    init {
+        scope.launch { migrateDecommissionedEndpointIfNeeded() }
+    }
+
+    private suspend fun migrateDecommissionedEndpointIfNeeded() {
+        val wallet = persistableWalletProvider.getPersistableWallet() ?: return
+        if (wallet.endpoint.host in lightWalletEndpointProvider.getDecommissionedHosts()) {
+            persistWalletInternal(wallet.copy(endpoint = lightWalletEndpointProvider.getDefaultEndpoint()))
+        }
+    }
+
     override suspend fun updateWalletEndpoint(endpoint: LightWalletEndpoint) {
         val selectedWallet = persistableWalletProvider.getPersistableWallet() ?: return
         val selectedEndpoint = selectedWallet.endpoint
