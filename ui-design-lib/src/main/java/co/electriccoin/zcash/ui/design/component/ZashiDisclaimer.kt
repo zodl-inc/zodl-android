@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.design.component
 
-import android.R.attr.text
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.CardDefaults

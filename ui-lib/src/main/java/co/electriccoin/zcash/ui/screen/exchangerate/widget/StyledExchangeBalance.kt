@@ -152,7 +152,11 @@ internal fun createExchangeRateText(
     zatoshi: Zatoshi,
     isHideBalances: Boolean
 ): String {
-    val currencySymbol = state.fiatCurrency.symbol
+    val currencySymbol =
+        state.currencyConversion
+            ?.fiatCurrency
+            ?.symbol
+            .orEmpty()
     val text =
         if (isHideBalances) {
             "${currencySymbol}${hiddenBalancePlaceholder.getValue()}"

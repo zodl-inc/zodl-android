@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="exchange_rate_info_title_1">IP Address Protection</string>
-    <string name="exchange_rate_info_subtitle_1">If Tor Protection is enabled (Advanced Settings), Zodl protects your IP address.</string>
+    <string name="exchange_rate_info_subtitle_1">Zodl\'s currency conversion feature doesn\'t compromise your IP address.</string>
     <string name="exchange_rate_info_subtitle_1_no_cmc">Exchange rates are fetched over Tor to protect your IP address. Ensure Tor use is allowed in your region.</string>
     <string name="exchange_rate_info_title_2">Rate Refresh</string>
     <string name="exchange_rate_info_subtitle_2">The rate is refreshed automatically and can also be refreshed manually.</string>
@@ -15,19 +15,18 @@
 
     <string name="exchange_rate_opt_in_enable">Enable</string>
     <string name="exchange_rate_opt_in_save">Save changes</string>
-    <string name="exchange_rate_opt_in_skip">Skip</string>
+    <string name="exchange_rate_opt_in_skip">Skip for now</string>
     <string name="exchange_rate_opt_in_note">Note for the super privacy-conscious: Because we pull the conversion rate
         from exchanges, an exchange might be able to see that the exchange rate was queried before a transaction occurred.</string>
 
     <string name="exchange_rate_opt_in_option_title">Enable</string>
-    <string name="exchange_rate_opt_in_option_subtitle">Show me the currency conversion.</string>
+    <string name="exchange_rate_opt_in_option_subtitle">Show currency conversion.</string>
     <string name="exchange_rate_opt_out_option_title">Disable</string>
-    <string name="exchange_rate_opt_out_option_subtitle">Don\’t show the currency conversion.</string>
-    <string name="exchange_rate_opt_in_description">Display your balance and payment amounts in USD.\nYou can manage
-        this feature in Advanced Settings.</string>
-    <string name="exchange_rate_opt_in_description_settings">View your balance and payment amounts in USD with added
-        privacy. Exchange rates are fetched over Tor to protect your IP address.\n\nCheck if Tor use is permitted in
-        your region before enabling.</string>
+    <string name="exchange_rate_opt_out_option_subtitle">Don\’t show currency conversion.</string>
+    <string name="exchange_rate_opt_in_description">Display your balance and payment amounts in selected currency.
+        You can manage this feature in Advanced Settings.</string>
+    <string name="exchange_rate_opt_in_description_settings">Display your balance and payment amounts in selected
+        currency.</string>
 
     <string name="exchange_rate_tor_opt_in_title">Tor Required for Currency Conversion</string>
     <string name="exchange_rate_tor_opt_in_description">Tor Protection is a beta feature that provides additional
@@ -37,5 +36,9 @@
 
     <string name="exchange_rate_tor_enabled_footer">Disabling Tor Protection will also disable the Currency Conversion feature until re-enabled.</string>
     <string name="exchange_rate_tor_disabled_footer">If you would like to protect your IP address, enable Tor Protection in Advanced Settings.</string>
+
+    <!-- Currency conversion picker -->
+    <string name="exchange_rate_settings_select_currency">Select currency</string>
+    <string name="exchange_rate_currency_picker_title">Select currency</string>
 
 </resources>

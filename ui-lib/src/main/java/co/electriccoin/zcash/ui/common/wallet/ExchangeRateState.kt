@@ -9,7 +9,6 @@ sealed interface ExchangeRateState {
         val isStale: Boolean = false,
         val isRefreshEnabled: Boolean = true,
         val currencyConversion: FiatCurrencyConversion? = null,
-        val fiatCurrency: FiatCurrency = FiatCurrency.USD,
         val onRefresh: () -> Unit,
     ) : ExchangeRateState
 

@@ -5,7 +5,6 @@ import cash.z.ecc.android.sdk.ext.convertUsdToZec
 import cash.z.ecc.android.sdk.ext.convertZecToZatoshi
 import cash.z.ecc.android.sdk.model.FiatCurrencyConversion
 import cash.z.ecc.android.sdk.model.Memo
-import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.sdk.extension.floor
 import co.electriccoin.zcash.ui.design.util.TickerLocation
 import co.electriccoin.zcash.ui.design.util.getPreferredLocale

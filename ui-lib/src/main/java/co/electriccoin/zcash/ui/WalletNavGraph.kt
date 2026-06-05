@@ -61,6 +61,8 @@ import co.electriccoin.zcash.ui.screen.error.SyncErrorArgs
 import co.electriccoin.zcash.ui.screen.error.SyncErrorScreen
 import co.electriccoin.zcash.ui.screen.exchangerate.optin.ExchangeRateOptInArgs
 import co.electriccoin.zcash.ui.screen.exchangerate.optin.ExchangeRateOptInScreen
+import co.electriccoin.zcash.ui.screen.exchangerate.picker.CurrencyConversionPickerArgs
+import co.electriccoin.zcash.ui.screen.exchangerate.picker.CurrencyConversionPickerScreen
 import co.electriccoin.zcash.ui.screen.exchangerate.settings.ExchangeRateSettingsArgs
 import co.electriccoin.zcash.ui.screen.exchangerate.settings.ExchangeRateSettingsScreen
 import co.electriccoin.zcash.ui.screen.exportdata.WrapExportPrivateData
@@ -310,6 +312,7 @@ fun NavGraphBuilder.walletNavGraph(
         composable<ThirdPartyScan> { AndroidThirdPartyScan() }
         dialogComposable<SwapAssetPickerArgs> { SwapAssetPickerScreen(it.toRoute()) }
         dialogComposable<SwapBlockchainPickerArgs> { SwapBlockchainPickerScreen(it.toRoute()) }
+        dialogComposable<CurrencyConversionPickerArgs> { CurrencyConversionPickerScreen(it.toRoute()) }
         composable<SwapArgs> { SwapScreen() }
         dialogComposable<SwapSlippageArgs> { SwapSlippageScreen(it.toRoute()) }
         dialogComposable<SwapInfoArgs> { SwapInfoScreen() }

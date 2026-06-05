@@ -23,6 +23,9 @@ import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.exchangerate.settings.CurrencyField
+import co.electriccoin.zcash.ui.screen.exchangerate.settings.CurrencyFieldState
 
 @Composable
 fun ExchangeRateOptInView(state: ExchangeRateOptInState) {
@@ -54,6 +57,13 @@ fun ExchangeRateOptInView(state: ExchangeRateOptInState) {
                 title = stringResource(R.string.exchange_rate_info_title_2),
                 subtitle = stringResource(R.string.exchange_rate_info_subtitle_2),
             )
+            state.currencyField?.let { field ->
+                Spacer(modifier = Modifier.height(24.dp))
+                CurrencyField(
+                    modifier = Modifier.fillMaxWidth(),
+                    state = field
+                )
+            }
         },
         info = null,
         footer = {
@@ -87,6 +97,12 @@ private fun CurrencyConversionOptInPreview() =
             ExchangeRateOptInView(
                 state =
                     ExchangeRateOptInState(
+                        currencyField =
+                            CurrencyFieldState(
+                                code = stringRes("USD"),
+                                name = stringRes("US Dollar"),
+                                onClick = {}
+                            ),
                         onEnableClick = {},
                         onBack = {},
                         onSkipClick = {},

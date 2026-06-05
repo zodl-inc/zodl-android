@@ -122,7 +122,11 @@ private fun RequestAmountWithMainFiatView(
         val fiatText =
             buildAnnotatedString {
                 withStyle(style = SpanStyle(color = ZashiColors.Text.textQuaternary)) {
-                    append(state.exchangeRateState.fiatCurrency.symbol)
+                    append(
+                        state.exchangeRateState.currencyConversion
+                            ?.fiatCurrency
+                            ?.symbol
+                    )
                 }
                 append("\u2009") // Add an extra thin space between the texts
                 withStyle(style = SpanStyle(color = ZashiColors.Text.textPrimary)) {
@@ -226,7 +230,11 @@ private fun RequestAmountWithMainZecView(
             val fiatText =
                 buildAnnotatedString {
                     withStyle(style = SpanStyle(color = ZashiColors.Text.textQuaternary)) {
-                        append(state.exchangeRateState.fiatCurrency.symbol)
+                        append(
+                            state.exchangeRateState.currencyConversion
+                                ?.fiatCurrency
+                                ?.symbol
+                        )
                     }
                     append(" ") // Add an extra space between the texts
                     withStyle(style = SpanStyle(color = ZashiColors.Text.textPrimary)) {
