@@ -78,6 +78,7 @@ import co.electriccoin.zcash.ui.design.component.SmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.TopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiLinearProgressIndicator
+import co.electriccoin.zcash.ui.design.component.ZashiLinearProgressIndicatorDefaults
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -462,7 +463,9 @@ private fun ScanMainContent(
 
                             ZashiLinearProgressIndicator(
                                 modifier = Modifier.padding(horizontal = 100.dp),
-                                progress = state.progress / 100f
+                                progress = state.progress / 100f,
+                                size = ZashiLinearProgressIndicatorDefaults.keystoneSize(),
+                                colors = ZashiLinearProgressIndicatorDefaults.keystoneColors()
                             )
                         }
                     }
@@ -518,8 +521,8 @@ private fun ScanMainContent(
                 Modifier
                     .constrainAs(frame) {
                         top.linkTo(parent.top)
-                        start.linkTo(parent.start, 78.dp)
-                        end.linkTo(parent.end, 78.dp)
+                        start.linkTo(parent.start, 66.dp)
+                        end.linkTo(parent.end, 66.dp)
                         bottom.linkTo(bottomItems.top)
                         this.height = Dimension.ratio("1:1.08") // height is 8% larger than width
                         width = Dimension.fillToConstraints

@@ -76,6 +76,9 @@ class SignKeystoneTransactionVM(
             currentQrPart
         ) { proposal, wallet, qrData ->
             SignKeystoneTransactionState(
+                barTitle = stringRes(R.string.sign_keystone_transaction_bar_title),
+                title = stringRes(R.string.sign_keystone_transaction_title),
+                subtitle = stringRes(R.string.sign_keystone_transaction_subtitle),
                 accountInfo =
                     ZashiAccountInfoListItemState(
                         icon = R.drawable.ic_settings_info,
@@ -87,6 +90,7 @@ class SignKeystoneTransactionVM(
                                 stringRes("${wallet.unified.address.address.take(ADDRESS_MAX_LENGTH)}...")
                             }
                     ),
+                badgeText = stringRes(R.string.sign_keystone_transaction_badge),
                 generateNextQrCode = { currentQrPart.update { encoder?.nextPart() } },
                 qrData = qrData,
                 positiveButton =
@@ -99,7 +103,7 @@ class SignKeystoneTransactionVM(
                         text = stringRes(R.string.sign_keystone_transaction_negative),
                         onClick = ::onRejectClick
                     ),
-                shareButton =
+                secondaryButton =
                     ButtonState(
                         text = stringRes("Share PCZT"),
                         onClick = ::onSharePCZTClick

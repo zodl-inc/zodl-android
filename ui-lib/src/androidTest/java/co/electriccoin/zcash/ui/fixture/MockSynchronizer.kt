@@ -38,7 +38,9 @@ import kotlinx.coroutines.flow.StateFlow
  * Mocked Synchronizer that can be used instead of the production SdkSynchronizer e.g. for tests.
  */
 @Suppress("TooManyFunctions", "UNUSED_PARAMETER")
-internal class MockSynchronizer : CloseableSynchronizer {
+internal class MockSynchronizer(
+    private val serverValidation: ServerValidation? = null
+) : CloseableSynchronizer {
     override val exchangeRateUsd: StateFlow<ObserveFiatCurrencyResult>
         get() = error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
 
@@ -73,6 +75,9 @@ internal class MockSynchronizer : CloseableSynchronizer {
         get() = error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
 
     override val networkHeight: StateFlow<BlockHeight?>
+        get() = error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
+
+    override val fullyScannedHeight: StateFlow<BlockHeight?>
         get() = error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
 
     override val walletBalances: StateFlow<Map<AccountUuid, AccountBalance>?>
@@ -204,6 +209,14 @@ internal class MockSynchronizer : CloseableSynchronizer {
         error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
     }
 
+    override suspend fun getTreeState(height: BlockHeight): ByteArray {
+        error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
+    }
+
+    override suspend fun getWalletDbPathForVoting(): String {
+        error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
+    }
+
     override suspend fun rewindToNearestHeight(height: BlockHeight): BlockHeight? {
         error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
     }
@@ -221,9 +234,10 @@ internal class MockSynchronizer : CloseableSynchronizer {
     override suspend fun validateServerEndpoint(
         context: Context,
         endpoint: LightWalletEndpoint
-    ): ServerValidation {
-        error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
-    }
+    ): ServerValidation =
+        serverValidation ?: error(
+            "Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation."
+        )
 
     override suspend fun getExistingDataDbFilePath(
         context: Context,

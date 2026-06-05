@@ -1,0 +1,11 @@
+Añadido:
+- Añadimos altura de cumpleaños al conectar una billetera Keystone.
+
+Cambiado:
+- Actualizamos los textos del flujo de Restauración.
+
+Corregido:
+- Errores de localización con separador decimal de coma.
+- Un error que permitía reutilizar una dirección protegida como reembolso de swap.
+- Falta de confirmación al copiar una dirección de recepción.
+- Tor desactivado tras una alerta de poco espacio, además de otros detalles de UX/UI.

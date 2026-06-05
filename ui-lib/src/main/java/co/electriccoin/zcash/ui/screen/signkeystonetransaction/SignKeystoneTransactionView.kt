@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.signkeystonetransaction
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -8,6 +9,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -16,7 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment.Companion.CenterHorizontally
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -31,14 +34,15 @@ import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiQr
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
+import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.listitem.BaseListItem
 import co.electriccoin.zcash.ui.design.component.listitem.ZashiListItemDefaults
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
+import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import kotlinx.collections.immutable.persistentListOf
@@ -50,7 +54,10 @@ fun SignKeystoneTransactionView(state: SignKeystoneTransactionState) {
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
-                title = stringResource(co.electriccoin.zcash.ui.R.string.sign_keystone_transaction_bar_title),
+                title = state.barTitle.getValue(),
+                navigationAction = {
+                    ZashiTopAppBarBackNavigation(onBack = state.onBack)
+                }
             )
         }
     ) {
@@ -58,32 +65,50 @@ fun SignKeystoneTransactionView(state: SignKeystoneTransactionState) {
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
                     .scaffoldPadding(it)
         ) {
-            ZashiAccountInfoListItem(state.accountInfo)
-            Spacer(Modifier.height(32.dp))
-            QrContent(state)
-            Spacer(Modifier.height(32.dp))
-            Text(
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
-                text = stringResource(co.electriccoin.zcash.ui.R.string.sign_keystone_transaction_title),
-                style = ZashiTypography.textMd,
-                fontWeight = FontWeight.Medium,
-                color = ZashiColors.Text.textPrimary
+            Column(
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
+            ) {
+                ZashiAccountInfoListItem(
+                    modifier = Modifier.fillMaxWidth(),
+                    state = state.accountInfo,
+                    badgeText = state.badgeText
+                )
+                Spacer(Modifier.height(32.dp))
+                QrContent(state)
+                Spacer(Modifier.height(32.dp))
+                Text(
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    text = state.title.getValue(),
+                    style = ZashiTypography.textMd,
+                    fontWeight = FontWeight.Medium,
+                    color = ZashiColors.Text.textPrimary
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    text = state.subtitle.getValue(),
+                    style = ZashiTypography.textSm,
+                    color = ZashiColors.Text.textTertiary
+                )
+                Spacer(Modifier.height(32.dp))
+            }
+            BottomSection(
+                state = state,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
+                        .padding(bottom = ZashiDimensions.Spacing.spacingMd)
             )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
-                text = stringResource(co.electriccoin.zcash.ui.R.string.sign_keystone_transaction_subtitle),
-                style = ZashiTypography.textSm,
-                color = ZashiColors.Text.textTertiary
-            )
-            Spacer(Modifier.height(32.dp))
-            Spacer(Modifier.weight(1f))
-            BottomSection(state)
         }
     }
 }
@@ -91,6 +116,7 @@ fun SignKeystoneTransactionView(state: SignKeystoneTransactionState) {
 @Composable
 private fun ZashiAccountInfoListItem(
     state: ZashiAccountInfoListItemState,
+    badgeText: co.electriccoin.zcash.ui.design.util.StringResource,
     modifier: Modifier = Modifier,
 ) {
     val color = ZashiListItemDefaults.secondaryColors()
@@ -99,10 +125,9 @@ private fun ZashiAccountInfoListItem(
         modifier = modifier,
         contentPadding = PaddingValues(16.dp),
         leading = {
-            ZashiListItemDefaults.LeadingItem(
-                modifier = it,
-                icon = imageRes(state.icon),
-                badge = null,
+            Image(
+                modifier = it.size(40.dp),
+                painter = painterResource(state.icon),
                 contentDescription = state.title.getValue()
             )
         },
@@ -117,7 +142,7 @@ private fun ZashiAccountInfoListItem(
         },
         trailing = {
             ZashiBadge(
-                text = stringResource(co.electriccoin.zcash.ui.R.string.sign_keystone_transaction_badge),
+                text = badgeText.getValue(),
                 colors = ZashiBadgeDefaults.hyperBlueColors()
             )
         },
@@ -155,18 +180,20 @@ private fun BottomSection(
     Column(
         modifier
     ) {
-        if (state.shareButton != null) {
+        if (state.secondaryButton != null) {
             ZashiButton(
                 modifier = Modifier.fillMaxWidth(),
-                state = state.shareButton,
+                state = state.secondaryButton,
                 defaultPrimaryColors = ZashiButtonDefaults.secondaryColors()
             )
+            Spacer(Modifier.height(12.dp))
         }
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),
             state = state.negativeButton,
             defaultPrimaryColors = ZashiButtonDefaults.destructive1Colors()
         )
+        Spacer(Modifier.height(12.dp))
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),
             state = state.positiveButton
@@ -181,15 +208,19 @@ private fun Preview() =
         SignKeystoneTransactionView(
             state =
                 SignKeystoneTransactionState(
+                    barTitle = stringRes("Sign Transaction"),
+                    title = stringRes("Scan with your Keystone wallet"),
+                    subtitle = stringRes("After you have signed with Keystone, tap on the Get Signature button below."),
                     accountInfo =
                         ZashiAccountInfoListItemState(
                             icon = R.drawable.ic_item_keystone,
                             title = stringRes("title"),
                             subtitle = stringRes("subtitle"),
                         ),
+                    badgeText = stringRes("Hardware"),
                     generateNextQrCode = {},
                     qrData = "tralala",
-                    shareButton = null,
+                    secondaryButton = null,
                     positiveButton = ButtonState(stringRes("Get Signature")),
                     negativeButton = ButtonState(stringRes("Reject")),
                     onBack = {},
@@ -204,15 +235,19 @@ private fun DebugPreview() =
         SignKeystoneTransactionView(
             state =
                 SignKeystoneTransactionState(
+                    barTitle = stringRes("Sign Transaction"),
+                    title = stringRes("Scan with your Keystone wallet"),
+                    subtitle = stringRes("After you have signed with Keystone, tap on the Get Signature button below."),
                     accountInfo =
                         ZashiAccountInfoListItemState(
                             icon = R.drawable.ic_item_keystone,
                             title = stringRes("title"),
                             subtitle = stringRes("subtitle"),
                         ),
+                    badgeText = stringRes("Hardware"),
                     generateNextQrCode = {},
                     qrData = "tralala",
-                    shareButton = ButtonState(stringRes("Share PCZT")),
+                    secondaryButton = ButtonState(stringRes("Share PCZT")),
                     positiveButton = ButtonState(stringRes("Get Signature")),
                     negativeButton = ButtonState(stringRes("Reject")),
                     onBack = {},

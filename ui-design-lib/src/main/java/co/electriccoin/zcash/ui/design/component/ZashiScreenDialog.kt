@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+
 package co.electriccoin.zcash.ui.design.component
 
 import android.view.WindowManager
@@ -7,6 +9,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
@@ -51,10 +56,29 @@ private fun Dialog(
     AlertDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {
-            ZashiButton(state = positive)
+            // AlertDialog renders in a separate Compose Popup window.
+            // The activity-level testTagsAsResourceId doesn't reach here,
+            // so we re-enable it inline so the testTag surfaces to
+            // Maestro / uiautomator as a resource-id.
+            ZashiButton(
+                state = positive,
+                modifier =
+                    Modifier.semantics {
+                        testTagsAsResourceId = true
+                        testTag = ZashiScreenDialogTag.CONFIRM
+                    }
+            )
         },
         dismissButton = {
-            ZashiButton(state = negative, defaultPrimaryColors = ZashiButtonDefaults.secondaryColors())
+            ZashiButton(
+                state = negative,
+                modifier =
+                    Modifier.semantics {
+                        testTagsAsResourceId = true
+                        testTag = ZashiScreenDialogTag.DISMISS
+                    },
+                defaultPrimaryColors = ZashiButtonDefaults.secondaryColors()
+            )
         },
         title = {
             Text(
@@ -86,3 +110,8 @@ data class DialogState(
     val title: StringResource,
     val message: StringResource,
 )
+
+object ZashiScreenDialogTag {
+    const val CONFIRM = "DIALOG_CONFIRM"
+    const val DISMISS = "DIALOG_DISMISS"
+}

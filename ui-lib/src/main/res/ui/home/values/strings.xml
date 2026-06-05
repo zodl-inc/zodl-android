@@ -12,7 +12,7 @@
     <string name="home_message_wallet_disconnected_title">Wallet Disconnected</string>
     <string name="home_message_wallet_disconnected_subtitle">Check your connection and reload Zodl</string>
     <string name="home_message_transparent_balance_subtitle">%1$s %2$s</string>
-    <string name="home_message_transparent_balance_title">Transparent Balance Detected</string>
+    <string name="home_message_transparent_balance_title">Unshielded Balance</string>
     <string name="home_message_transparent_balance_button">Shield</string>
     <string name="home_message_currency_conversion_title">Currency Conversion</string>
     <string name="home_message_currency_conversion_subtitle">Enable to display USD values</string>

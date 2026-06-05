@@ -184,14 +184,16 @@ private fun NavButtons(
             modifier =
                 Modifier
                     .minHeight106Percent()
-                    .weight(1f),
+                    .weight(1f)
+                    .testTag(HomeTags.PAY),
             state = state.thirdButton,
         )
         ZashiBigIconButton(
             modifier =
                 Modifier
                     .minHeight106Percent()
-                    .weight(1f),
+                    .weight(1f)
+                    .testTag(HomeTags.SWAP),
             state = state.fourthButton,
         )
     }

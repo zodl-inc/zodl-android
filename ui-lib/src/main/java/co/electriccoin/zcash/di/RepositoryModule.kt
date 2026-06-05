@@ -2,6 +2,8 @@ package co.electriccoin.zcash.di
 
 import co.electriccoin.zcash.ui.common.repository.ApplicationStateRepository
 import co.electriccoin.zcash.ui.common.repository.ApplicationStateRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
+import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.BiometricRepository
 import co.electriccoin.zcash.ui.common.repository.BiometricRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
@@ -22,6 +24,20 @@ import co.electriccoin.zcash.ui.common.repository.TransactionFilterRepository
 import co.electriccoin.zcash.ui.common.repository.TransactionFilterRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.TransactionRepository
 import co.electriccoin.zcash.ui.common.repository.TransactionRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
+import co.electriccoin.zcash.ui.common.repository.VotingApiRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
+import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.VotingConfigRepository
+import co.electriccoin.zcash.ui.common.repository.VotingConfigRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.VotingKeystoneRepository
+import co.electriccoin.zcash.ui.common.repository.VotingKeystoneRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepository
+import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
+import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
+import co.electriccoin.zcash.ui.common.repository.VotingSessionStoreImpl
 import co.electriccoin.zcash.ui.common.repository.WalletRepository
 import co.electriccoin.zcash.ui.common.repository.WalletRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.WalletSnapshotRepository
@@ -46,6 +62,19 @@ val repositoryModule =
         singleOf(::HomeMessageCacheRepositoryImpl) bind HomeMessageCacheRepository::class
         singleOf(::WalletSnapshotRepositoryImpl) bind WalletSnapshotRepository::class
         singleOf(::ApplicationStateRepositoryImpl) bind ApplicationStateRepository::class
+        singleOf(::AutomaticServerRepositoryImpl) bind AutomaticServerRepository::class
         singleOf(::SwapRepositoryImpl) bind SwapRepository::class
         singleOf(::EphemeralAddressRepositoryImpl) bind EphemeralAddressRepository::class
+        singleOf(::VotingConfigRepositoryImpl) bind VotingConfigRepository::class
+        singleOf(::VotingChainConfigRepositoryImpl) bind VotingChainConfigRepository::class
+        singleOf(::VotingApiRepositoryImpl) bind VotingApiRepository::class
+        singleOf(::VotingRecoveryRepositoryImpl) bind VotingRecoveryRepository::class
+        single<VotingProofPrecomputeRepository> {
+            VotingProofPrecomputeRepositoryImpl(
+                votingCryptoClient = get(),
+                pirSnapshotResolver = get()
+            )
+        }
+        singleOf(::VotingKeystoneRepositoryImpl) bind VotingKeystoneRepository::class
+        singleOf(::VotingSessionStoreImpl) bind VotingSessionStore::class
     }

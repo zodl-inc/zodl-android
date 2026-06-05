@@ -187,6 +187,28 @@ import co.electriccoin.zcash.ui.screen.transactionnote.AndroidTransactionNote
 import co.electriccoin.zcash.ui.screen.transactionnote.TransactionNote
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressArgs
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressScreen
+import co.electriccoin.zcash.ui.screen.voting.chainconfig.VoteChainConfigArgs
+import co.electriccoin.zcash.ui.screen.voting.chainconfig.VoteChainConfigScreen
+import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
+import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingScreen
+import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionArgs
+import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionScreen
+import co.electriccoin.zcash.ui.screen.voting.howtovote.VoteHowToVoteArgs
+import co.electriccoin.zcash.ui.screen.voting.howtovote.VoteHowToVoteScreen
+import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptionArgs
+import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptionScreen
+import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailArgs
+import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailScreen
+import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
+import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListScreen
+import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsArgs
+import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsScreen
+import co.electriccoin.zcash.ui.screen.voting.scankeystone.ScanKeystoneVotingPCZTRequest
+import co.electriccoin.zcash.ui.screen.voting.scankeystone.WrapScanKeystoneVotingPCZTRequest
+import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingArgs
+import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingScreen
+import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingArgs
+import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingScreen
 import co.electriccoin.zcash.ui.screen.walletbackup.AndroidWalletBackup
 import co.electriccoin.zcash.ui.screen.walletbackup.WalletBackup
 import co.electriccoin.zcash.ui.screen.warning.WrapNotEnoughSpace
@@ -220,6 +242,8 @@ fun NavGraphBuilder.walletNavGraph(
         composable<ScanKeystoneSignInRequest> { WrapScanKeystoneSignInRequest() }
         composable<ScanKeystonePCZTRequest> { WrapScanKeystonePCZTRequest() }
         composable<SignKeystoneTransactionArgs> { SignKeystoneTransactionScreen() }
+        composable<ScanKeystoneVotingPCZTRequest> { WrapScanKeystoneVotingPCZTRequest(it.toRoute()) }
+        composable<SignKeystoneVotingArgs> { SignKeystoneVotingScreen(it.toRoute()) }
         dialogComposable<AccountListArgs> { AccountListScreen() }
         composable<ScanArgs> { ScanZashiAddressScreen(it.toRoute()) }
         composable(NavigationTargets.EXPORT_PRIVATE_DATA) { WrapExportPrivateData() }
@@ -318,5 +342,14 @@ fun NavGraphBuilder.walletNavGraph(
         composable<ResyncEstimationArgs> { ResyncEstimationScreen(it.toRoute()) }
         composable<ResyncHeightArgs> { ResyncHeightScreen() }
         composable<DisconnectArgs> { DisconnectScreen() }
+        composable<VoteHowToVoteArgs> { VoteHowToVoteScreen() }
+        composable<VoteCoinholderPollingArgs> { VoteCoinholderPollingScreen() }
+        composable<VoteChainConfigArgs> { VoteChainConfigScreen() }
+        composable<VoteProposalListArgs> { VoteProposalListScreen(it.toRoute()) }
+        composable<VoteProposalDetailArgs> { VoteProposalDetailScreen(it.toRoute()) }
+        dialogComposable<VotePollDescriptionArgs> { VotePollDescriptionScreen(it.toRoute()) }
+        composable<VoteConfirmSubmissionArgs> { VoteConfirmSubmissionScreen(it.toRoute()) }
+        composable<VoteTallyingArgs> { VoteTallyingScreen(it.toRoute()) }
+        composable<VoteResultsArgs> { VoteResultsScreen(it.toRoute()) }
     }
 }

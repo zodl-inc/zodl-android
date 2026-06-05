@@ -23,6 +23,7 @@ data class ZashiColorsInternal(
     val HintTooltips: HintTooltips,
     val TwoFA: TwoFA,
     val Utility: Utility,
+    val Accents: Accents,
     val Transparent: Transparent,
     val NoTheme: NoTheme
 )
@@ -615,6 +616,10 @@ data class UtilityEspresso(
     val utilityEspresso900: Color,
     val utilityEspresso950: Color,
     val utilityEspresso800: Color
+)
+
+data class Accents(
+    val green: Color
 )
 
 data class Transparent(

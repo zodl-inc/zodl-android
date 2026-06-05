@@ -146,7 +146,10 @@ internal fun SwapView(
             }
             if (state.primaryButton != null) {
                 ZashiButton(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .testTag(SwapTag.SWAP_REVIEW_BUTTON),
                     state = state.primaryButton
                 )
             }
@@ -225,7 +228,10 @@ private fun SlippageSeparator(
             color = ZashiColors.Utility.Gray.utilityGray100
         )
 
-        ZashiImageButton(state.changeModeButton)
+        ZashiImageButton(
+            state = state.changeModeButton,
+            modifier = Modifier.testTag(SwapTag.SWAP_CHANGE_MODE_BUTTON)
+        )
 
         ZashiHorizontalDivider(
             modifier = Modifier.weight(1f),
@@ -362,12 +368,18 @@ private fun ColumnScope.AddressTextField(state: SwapState) {
                 verticalAlignment = Alignment.Top
             ) {
                 ZashiImageButton(
-                    modifier = Modifier.size(36.dp),
+                    modifier =
+                        Modifier
+                            .size(36.dp)
+                            .testTag(SwapTag.SWAP_ADDRESS_BOOK_BUTTON),
                     state = state.addressBookButton
                 )
                 Spacer(4.dp)
                 ZashiImageButton(
-                    modifier = Modifier.size(36.dp),
+                    modifier =
+                        Modifier
+                            .size(36.dp)
+                            .testTag(SwapTag.SWAP_SCAN_BUTTON),
                     state = state.qrScannerButton
                 )
             }

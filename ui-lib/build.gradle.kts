@@ -82,6 +82,7 @@ android {
                     "src/main/res/ui/tax_export",
                     "src/main/res/ui/tex_unsupported",
                     "src/main/res/ui/feedback",
+                    "src/main/res/ui/voting",
                     "src/main/res/ui/update",
                     "src/main/res/ui/update_contact",
                     "src/main/res/ui/wallet_address",
@@ -188,6 +189,7 @@ dependencies {
     "storeImplementation"(libs.mlkit.scanning)
     "internalImplementation"(libs.mlkit.scanning)
     api(libs.zcash.sdk)
+    implementation(libs.zcash.sdk.backend)
     implementation(libs.zcash.sdk.incubator)
     implementation(libs.zcash.bip39)
     implementation(libs.tink)
@@ -211,6 +213,11 @@ dependencies {
     api(libs.bundles.androidx.biometric)
 
     api(libs.keystone)
+
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation("io.ktor:ktor-client-mock")
+    testImplementation(libs.kotlinx.coroutines.test)
 
     androidTestImplementation(projects.testLib)
     androidTestImplementation(libs.bundles.androidx.test)

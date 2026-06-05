@@ -30,6 +30,7 @@ import co.electriccoin.zcash.ui.common.usecase.PrefillSendUseCase
 import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
+import co.electriccoin.zcash.ui.design.util.TickerLocation
 import co.electriccoin.zcash.ui.design.util.getString
 import co.electriccoin.zcash.ui.design.util.rememberDesiredFormatLocale
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -249,7 +250,7 @@ internal fun WrapSend(
 
                     setAmountState(
                         AmountState.newFromZec(
-                            value = stringRes(value).getString(context),
+                            value = stringRes(value, TickerLocation.HIDDEN).getString(context),
                             fiatValue = amountState.fiatValue.getString(context),
                             isTransparentOrTextRecipient = type == AddressType.Transparent,
                             exchangeRateState = exchangeRateState,

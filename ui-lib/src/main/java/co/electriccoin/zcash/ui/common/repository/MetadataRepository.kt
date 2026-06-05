@@ -11,6 +11,7 @@ import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapStatus
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.ZecSimpleSwapAsset
 import co.electriccoin.zcash.ui.common.model.metadata.SwapMetadataV3
 import co.electriccoin.zcash.ui.common.provider.MetadataKeyStorageProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
@@ -217,23 +218,25 @@ class MetadataRepositoryImpl(
             }.distinctUntilChanged()
     }
 
-    private fun SwapMetadataV3.toBusinessObject(): TransactionSwapMetadata =
-        TransactionSwapMetadata(
+    private fun SwapMetadataV3.toBusinessObject(): TransactionSwapMetadata {
+        val origin = simpleSwapAssetProvider.get(tokenTicker = fromAsset.token, chainTicker = fromAsset.chain)
+        return TransactionSwapMetadata(
             depositAddress = depositAddress,
             lastUpdated = lastUpdated,
-            origin =
-                fromAsset.let {
-                    simpleSwapAssetProvider.get(tokenTicker = it.token, chainTicker = it.chain)
-                },
+            origin = origin,
             destination =
                 toAsset.let {
                     simpleSwapAssetProvider.get(tokenTicker = it.token, chainTicker = it.chain)
                 },
             mode =
-                when (exactInput) {
-                    true -> SwapMode.EXACT_INPUT
-                    false -> SwapMode.EXACT_OUTPUT
-                    null -> SwapMode.EXACT_INPUT
+                if (origin is ZecSimpleSwapAsset) {
+                    when (exactInput) {
+                        true -> SwapMode.EXACT_INPUT
+                        false -> SwapMode.EXACT_OUTPUT
+                        null -> SwapMode.EXACT_INPUT
+                    }
+                } else {
+                    SwapMode.FLEX_INPUT
                 },
             status = status ?: SwapStatus.SUCCESS,
             amountOutFormatted = amountOutFormatted ?: BigDecimal(0),
@@ -241,6 +244,7 @@ class MetadataRepositoryImpl(
             totalFees = totalFees,
             totalFeesUsd = totalFeesUsd,
         )
+    }
 
     override fun observeSwapMetadata(): Flow<List<TransactionSwapMetadata>?> =
         metadata

@@ -40,7 +40,7 @@ class ExchangeRateDataSourceImpl(
     private val synchronizerProvider: SynchronizerProvider,
 ) : ExchangeRateDataSource {
     override suspend fun getExchangeRate(): FiatCurrencyConversion {
-        @Suppress("ThrowsCount", "MagicNumber")
+        @Suppress("ThrowsCount")
         suspend fun getCMCExchangeRate(apiKey: String): FiatCurrencyConversion {
             val exchangeRate =
                 try {
@@ -51,7 +51,7 @@ class ExchangeRateDataSourceImpl(
                         ?.get("USD")
                         ?.price
                 } catch (e: ResponseException) {
-                    if (e.response.status.value in 500..599) throw ExchangeRateUnavailable(cause = e) else throw e
+                    throw ExchangeRateUnavailable(cause = e)
                 }
             val price = exchangeRate ?: throw ExchangeRateUnavailable(message = "Exchange rate not found in response")
             return FiatCurrencyConversion(timestamp = Clock.System.now(), priceOfZec = price.toDouble())

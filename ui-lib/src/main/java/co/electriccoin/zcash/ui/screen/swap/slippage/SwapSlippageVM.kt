@@ -7,15 +7,16 @@ import cash.z.ecc.android.sdk.model.FiatCurrency
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
+import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT
 import co.electriccoin.zcash.ui.common.repository.DEFAULT_SLIPPAGE
 import co.electriccoin.zcash.ui.common.usecase.GetSlippageUseCase
 import co.electriccoin.zcash.ui.common.usecase.SetSlippageUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiDisclaimerState
 import co.electriccoin.zcash.ui.design.util.StringResourceColor
-import co.electriccoin.zcash.ui.design.util.StyledStringResource
 import co.electriccoin.zcash.ui.design.util.StyledStringStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByDynamicCurrencyNumber
@@ -159,7 +160,9 @@ class SwapSlippageVM(
 
                 fiatAmount == null -> {
                     when (args.mode) {
-                        EXACT_INPUT -> stringRes(R.string.swap_slippage_info, percentString)
+                        EXACT_INPUT,
+                        FLEX_INPUT -> stringRes(R.string.swap_slippage_info, percentString)
+
                         EXACT_OUTPUT -> stringRes(R.string.pay_slippage_info, percentString)
                     }
                 }
@@ -174,7 +177,7 @@ class SwapSlippageVM(
                     val slippageFiatString = stringResByDynamicCurrencyNumber(slippageFiat, FiatCurrency.USD.symbol)
                     val infoString = percentString + stringRes(" (") + slippageFiatString + stringRes(")")
                     when (args.mode) {
-                        EXACT_INPUT -> stringRes(R.string.swap_slippage_info, infoString)
+                        EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.swap_slippage_info, infoString)
                         EXACT_OUTPUT -> stringRes(R.string.pay_slippage_info, infoString)
                     }
                 }

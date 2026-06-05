@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Overlay from sdk-ext-lib. -->
+    <bool name="zcash_is_testnet">true</bool>
+</resources>

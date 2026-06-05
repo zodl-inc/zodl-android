@@ -42,7 +42,7 @@ class WriteAtomicallyTest {
                 }
 
                 assertNotNull(tempFile)
-                assertFalse(tempFile!!.exists())
+                assertFalse(tempFile.exists())
             } finally {
                 testFile.delete()
             }

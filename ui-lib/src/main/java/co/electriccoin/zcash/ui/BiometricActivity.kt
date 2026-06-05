@@ -29,7 +29,7 @@ class BiometricActivity : FragmentActivity() {
                         errString: CharSequence
                     ) {
                         super.onAuthenticationError(errorCode, errString)
-                        biometricRepository.onBiometricResult(BiometricResult.Failure(requestCode))
+                        biometricRepository.onBiometricResult(errorCode.toBiometricResult(requestCode))
                         finish()
                     }
 
@@ -68,3 +68,12 @@ class BiometricActivity : FragmentActivity() {
         }
     }
 }
+
+internal fun Int.toBiometricResult(requestCode: String): BiometricResult =
+    when (this) {
+        BiometricPrompt.ERROR_CANCELED,
+        BiometricPrompt.ERROR_NEGATIVE_BUTTON,
+        BiometricPrompt.ERROR_USER_CANCELED -> BiometricResult.Cancelled(requestCode)
+
+        else -> BiometricResult.Failure(requestCode)
+    }

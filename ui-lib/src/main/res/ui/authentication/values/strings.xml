@@ -11,6 +11,7 @@
     <string name="authentication_use_case_export_data">Export Private Data feature</string>
     <string name="authentication_use_case_seed_recovery">Seed Recovery feature</string>
     <string name="authentication_use_case_send_funds">Send Funds feature</string>
+    <string name="authentication_use_case_vote_submission">Vote submission</string>
     <string name="authentication_use_case_adress_book">Address Book feature</string>
     <string name="authentication_use_case_tax_export">Tax export</string>
 

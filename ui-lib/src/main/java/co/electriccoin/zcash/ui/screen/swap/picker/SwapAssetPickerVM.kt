@@ -48,7 +48,7 @@ class SwapAssetPickerVM(
                 assets = assets,
                 latestUsedAssets = latestUsedAssets,
                 text = text,
-                onlyChainTicker = args.chainTicker
+                onlyChainTicker = args.onlyChainTicker
             )
         }
 

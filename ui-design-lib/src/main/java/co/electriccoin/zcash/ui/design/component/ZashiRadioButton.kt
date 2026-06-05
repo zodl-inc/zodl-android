@@ -61,6 +61,7 @@ fun ZashiRadioButton(
             modifier
                 .clip(RoundedCornerShape(12.dp))
                 .clickable(
+                    enabled = state.isEnabled,
                     indication = if (isRippleEnabled) ripple() else null,
                     interactionSource = remember { MutableInteractionSource() },
                     onClick =
@@ -95,10 +96,15 @@ fun ZashiRadioButton(
                 Text(
                     text = state.text.getValue(),
                     style = ZashiTypography.textSm,
-                    color = ZashiColors.Text.textPrimary,
+                    color =
+                        if (state.isEnabled) {
+                            ZashiColors.Text.textPrimary
+                        } else {
+                            ZashiColors.Text.textDisabled
+                        },
                     modifier =
                         Modifier.padding(
-                            top = 14.dp,
+                            top = if (state.subtitle == null) 14.dp else 6.dp,
                             bottom = if (state.subtitle == null) 14.dp else 0.dp,
                             start = 0.dp,
                             end = ZcashTheme.dimens.spacingDefault
@@ -109,7 +115,12 @@ fun ZashiRadioButton(
                     Text(
                         text = state.subtitle.getValue(),
                         style = ZashiTypography.textSm,
-                        color = ZashiColors.Text.textTertiary,
+                        color =
+                            if (state.isEnabled) {
+                                ZashiColors.Text.textTertiary
+                            } else {
+                                ZashiColors.Text.textDisabled
+                            },
                         modifier =
                             Modifier.padding(
                                 bottom = 6.dp,
@@ -166,11 +177,12 @@ private fun RadioButtonIndicator(
 data class RadioButtonState(
     val text: StringResource,
     val isChecked: Boolean,
+    val isEnabled: Boolean = true,
     val hapticFeedbackType: HapticFeedbackType? =
-        if (isChecked) {
-            HapticFeedbackType.ToggleOff
-        } else {
-            HapticFeedbackType.ToggleOn
+        when {
+            !isEnabled -> null
+            isChecked -> HapticFeedbackType.ToggleOff
+            else -> HapticFeedbackType.ToggleOn
         },
     val subtitle: StringResource? = null,
     val onClick: () -> Unit,
@@ -202,6 +214,7 @@ private fun RadioButtonPreview() =
                         text = stringRes("test"),
                         isChecked = true,
                         onClick = {},
+                        subtitle = stringRes("subtitle")
                     ),
             )
         }
