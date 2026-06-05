@@ -12,6 +12,11 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.5.3 (1744)] - 2026-06-05
+
+### Cambiado:
+- Se eliminaron los servidores desmantelados de la lista de servidores.
+
 ## [3.5.2 (1742)] - 2026-06-04
 
 ### Cambiado:
