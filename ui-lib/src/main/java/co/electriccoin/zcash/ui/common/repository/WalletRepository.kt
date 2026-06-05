@@ -62,6 +62,8 @@ interface WalletRepository {
         birthday: BlockHeight
     )
 
+    fun init()
+
     fun updateWalletEndpoint(endpoint: LightWalletEndpoint)
 
     fun refreshFastestServers()
@@ -157,6 +159,17 @@ class WalletRepositoryImpl(
                 started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
                 initialValue = WalletRestoringState.NONE
             )
+
+    override fun init() {
+        scope.launch { migrateDecommissionedEndpointIfNeeded() }
+    }
+
+    private suspend fun migrateDecommissionedEndpointIfNeeded() {
+        val wallet = persistableWalletProvider.getPersistableWallet() ?: return
+        if (wallet.endpoint.host in lightWalletEndpointProvider.getDecommissionedHosts()) {
+            persistWalletInternal(wallet.copy(endpoint = lightWalletEndpointProvider.getDefaultEndpoint()))
+        }
+    }
 
     override fun updateWalletEndpoint(endpoint: LightWalletEndpoint) {
         scope.launch {
