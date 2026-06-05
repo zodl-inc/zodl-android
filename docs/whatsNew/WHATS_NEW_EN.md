@@ -12,7 +12,7 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
-## [3.5.3 (1744)] - 2026-06-05
+## [3.5.3 (1853)] - 2026-06-05
 
 ### Changed:
 - Removed servers scheduled for decommissioning from the server list.
