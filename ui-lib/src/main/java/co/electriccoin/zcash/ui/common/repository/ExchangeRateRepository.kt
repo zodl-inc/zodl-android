@@ -1,9 +1,11 @@
 package co.electriccoin.zcash.ui.common.repository
 
+import cash.z.ecc.android.sdk.model.FiatCurrency
 import cash.z.ecc.android.sdk.model.ObserveFiatCurrencyResult
 import co.electriccoin.zcash.ui.common.datasource.ExchangeRateDataSource
 import co.electriccoin.zcash.ui.common.datasource.ExchangeRateUnavailable
 import co.electriccoin.zcash.ui.common.provider.IsExchangeRateEnabledStorageProvider
+import co.electriccoin.zcash.ui.common.provider.PreferredFiatProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.common.wallet.RefreshLock
@@ -40,6 +42,7 @@ interface ExchangeRateRepository {
 
 class ExchangeRateRepositoryImpl(
     isExchangeRateEnabledStorageProvider: IsExchangeRateEnabledStorageProvider,
+    preferredFiatProvider: PreferredFiatProvider,
     private val exchangeRateDataSource: ExchangeRateDataSource,
     private val synchronizerProvider: SynchronizerProvider,
 ) : ExchangeRateRepository {
@@ -56,10 +59,16 @@ class ExchangeRateRepositoryImpl(
                 initialValue = null
             )
 
+    private val preferredFiat =
+        preferredFiatProvider
+            .observe()
+            .map { it ?: FiatCurrency.USD }
+            .distinctUntilChanged()
+
     @OptIn(ExperimentalCoroutinesApi::class)
     private val exchangeRateUsdInternal =
-        isExchangeRateOptedIn
-            .flatMapLatest { optedIn ->
+        combine(isExchangeRateOptedIn, preferredFiat) { optedIn, fiat -> optedIn to fiat }
+            .flatMapLatest { (optedIn, fiat) ->
                 if (optedIn == true) {
                     channelFlow {
                         var cache = ObserveFiatCurrencyResult()
@@ -73,7 +82,9 @@ class ExchangeRateRepositoryImpl(
                                             emit(
                                                 cache.copy(
                                                     isLoading = false,
-                                                    currencyConversion = exchangeRateDataSource.getExchangeRate()
+                                                    currencyConversion =
+                                                        exchangeRateDataSource
+                                                            .getExchangeRate(fiat)
                                                 )
                                             )
                                         } catch (e: ExchangeRateUnavailable) {

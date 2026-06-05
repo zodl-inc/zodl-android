@@ -8,6 +8,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -42,10 +43,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import cash.z.ecc.android.sdk.model.Memo
@@ -64,6 +67,7 @@ import co.electriccoin.zcash.ui.design.component.AppAlertDialog
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.BlankSurface
 import co.electriccoin.zcash.ui.design.component.Spacer
+import co.electriccoin.zcash.ui.design.component.ZashiAutoSizeText
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiTextField
 import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
@@ -76,6 +80,7 @@ import co.electriccoin.zcash.ui.design.util.getString
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.rememberDesiredFormatLocale
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
+import co.electriccoin.zcash.ui.design.util.stringResByFiatDisplayName
 import co.electriccoin.zcash.ui.screen.balances.BalanceWidget
 import co.electriccoin.zcash.ui.screen.balances.BalanceWidgetState
 import co.electriccoin.zcash.ui.screen.send.SendTag
@@ -654,13 +659,17 @@ fun SendFormAmountTextField(
                     },
                     modifier = Modifier.weight(1f),
                     placeholder = {
-                        Text(
+                        ZashiAutoSizeText(
                             text =
-                                stringResource(
-                                    id = R.string.send_usd_amount_hint
-                                ),
+                                exchangeRateState.currencyConversion
+                                    ?.fiatCurrency
+                                    ?.let {
+                                        stringResByFiatDisplayName(it).getValue()
+                                    }.orEmpty(),
                             style = ZashiTypography.textMd,
-                            color = LocalContentColor.current
+                            color = LocalContentColor.current,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     },
                     keyboardOptions =
@@ -678,16 +687,19 @@ fun SendFormAmountTextField(
                             }
                         ),
                     prefix = {
-                        Image(
-                            painter = painterResource(R.drawable.ic_send_usd),
-                            contentDescription = null,
-                            colorFilter =
-                                if (!exchangeRateState.isStale) {
-                                    ColorFilter.tint(color = ZashiColors.Inputs.Default.text)
-                                } else {
-                                    ColorFilter.tint(color = ZashiColors.Inputs.Disabled.text)
-                                }
-                        )
+                        if (exchangeRateState.currencyConversion?.fiatCurrency != null) {
+                            Text(
+                                text = exchangeRateState.currencyConversion.fiatCurrency.symbol,
+                                color =
+                                    if (!exchangeRateState.isStale) {
+                                        ZashiColors.Inputs.Default.text
+                                    } else {
+                                        ZashiColors.Inputs.Disabled.text
+                                    },
+                                style = ZashiTypography.textLg,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 )
             }

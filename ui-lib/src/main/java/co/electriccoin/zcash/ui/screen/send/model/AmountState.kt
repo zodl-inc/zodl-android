@@ -6,7 +6,6 @@ import cash.z.ecc.android.sdk.ext.convertZatoshiToZec
 import cash.z.ecc.android.sdk.ext.convertZecToZatoshi
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.toZatoshi
-import cash.z.ecc.android.sdk.model.toZecString
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.design.component.ZashiNumberTextFieldParser
 import co.electriccoin.zcash.ui.design.util.StringResource

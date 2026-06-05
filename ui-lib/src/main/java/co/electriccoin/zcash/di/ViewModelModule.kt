@@ -28,6 +28,7 @@ import co.electriccoin.zcash.ui.screen.disconnect.DisconnectVM
 import co.electriccoin.zcash.ui.screen.error.ErrorVM
 import co.electriccoin.zcash.ui.screen.error.SyncErrorVM
 import co.electriccoin.zcash.ui.screen.exchangerate.optin.ExchangeRateOptInVM
+import co.electriccoin.zcash.ui.screen.exchangerate.picker.CurrencyConversionPickerVM
 import co.electriccoin.zcash.ui.screen.exchangerate.settings.ExchangeRateSettingsVM
 import co.electriccoin.zcash.ui.screen.feedback.FeedbackVM
 import co.electriccoin.zcash.ui.screen.flexa.FlexaViewModel
@@ -172,6 +173,7 @@ val viewModelModule =
         viewModelOf(::ScanGenericAddressVM)
         viewModelOf(::SelectSwapABRecipientVM)
         viewModelOf(::SwapBlockchainPickerVM)
+        viewModelOf(::CurrencyConversionPickerVM)
         viewModelOf(::AddZashiABContactVM)
         viewModelOf(::AddSwapABContactVM)
         viewModelOf(::AddGenericABContactVM)
