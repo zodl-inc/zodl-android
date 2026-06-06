@@ -17,9 +17,17 @@ concurrency:
 jobs:
   e2e-android:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     permissions:
       contents: read
+    strategy:
+      # Run the two suite phases in parallel jobs to halve wall time.
+      # Each job boots its own emulator; phase 1 uses fresh wallets,
+      # phase 2 restores once and runs cache-dependent tests.
+      fail-fast: false
+      matrix:
+        phase: [1, 2]
+    name: e2e-android (phase ${{ matrix.phase }})
     steps:
       - name: Checkout app
         uses: actions/checkout@v4
@@ -70,6 +78,7 @@ jobs:
           ZODL_TEST_ADDRESS_IOS: ${{ secrets.ZODL_TEST_ADDRESS_IOS }}
           ZODL_TEST_CONTACT_NAME_IOS: ${{ vars.ZODL_TEST_CONTACT_NAME_IOS || 'iOS Shield' }}
           ZODL_TEST_DIRECTION: ${{ vars.ZODL_TEST_DIRECTION || 'AUTO_ALTERNATE' }}
+          ZODL_TEST_PHASE: ${{ matrix.phase }}
           ZODL_TEST_SEND_AMOUNT: ${{ vars.ZODL_TEST_SEND_AMOUNT || '0.005' }}
           ZODL_TEST_BALANCE_MIN: ${{ vars.ZODL_TEST_BALANCE_MIN || '1.3' }}
           ZODL_TEST_BALANCE_WARN: ${{ vars.ZODL_TEST_BALANCE_WARN || '1.36' }}
@@ -91,5 +100,5 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: maestro-android-results
+          name: maestro-android-results-phase-${{ matrix.phase }}
           path: ~/.maestro/tests/
