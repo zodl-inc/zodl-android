@@ -33,7 +33,17 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Restore cached APK
+        # Keyed on hashes of every input that affects the APK output.
+        # On hit, skip the gradle build and just upload the restored APK.
+        id: apk-cache
+        uses: actions/cache@v5
+        with:
+          path: app/build/outputs/apk/zcashmainnetInternal/debug
+          key: ${{ runner.os }}-android-apk-${{ hashFiles('app/src/**', 'ui-lib/src/**', 'sdk-ext-lib/src/**', 'ui-design-lib/src/**', '**/*.gradle.kts', 'gradle.properties', 'gradle/libs.versions.toml') }}
+
       - name: Build debug APK
+        if: steps.apk-cache.outputs.cache-hit != 'true'
         run: ./gradlew assembleZcashmainnetInternalDebug
 
       - name: Upload APK
