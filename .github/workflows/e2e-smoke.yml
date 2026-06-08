@@ -125,11 +125,15 @@ jobs:
           ZODL_TEST_CROSSPAY_AMOUNT: ${{ vars.ZODL_TEST_CROSSPAY_AMOUNT || '0.5' }}
           ZODL_TEST_STATE_DIR: ${{ github.workspace }}/.zodl-qa-state
         with:
-          # Match the local dev AVD (Pixel_9 / API 35) so we test the
-          # same Android version on CI as devs run against locally.
+          # API 35 matches the local dev AVD (Pixel_9 / API 35). The
+          # device profile stays `pixel_6` — the GH runner's bundled
+          # avdmanager doesn't ship a `pixel_9` device definition (only
+          # Android Studio does), and the device profile is just
+          # screen size + density anyway; what we actually care about
+          # is the Android version.
           api-level: 35
           arch: x86_64
-          profile: pixel_9
+          profile: pixel_6
           script: |
             adb install apk/*.apk
             chmod +x zodl-qa/scripts/run-smoke-android.sh
