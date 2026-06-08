@@ -109,6 +109,10 @@ class NearSwapDataSourceImpl(
 
         return try {
             val response = nearApiProvider.requestQuote(request)
+            require(response.quoteRequest.swapType == request.swapType) {
+                "Swap quote type mismatch: requested ${request.swapType} " +
+                    "but server returned ${response.quoteRequest.swapType}"
+            }
             NearSwapQuote(
                 response = response,
                 originAsset = originAsset,

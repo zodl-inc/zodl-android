@@ -25,7 +25,6 @@ data class NearSwapQuote(
     override val destinationAddress: SwapAddress,
     override val refundAddress: SwapAddress,
 ) : SwapQuote {
-
     init {
         require(response.quoteRequest.originAsset == originAsset.assetId) {
             "Swap quote asset mismatch: requested originAsset=${originAsset.assetId} " +
@@ -47,6 +46,49 @@ data class NearSwapQuote(
             formatted = response.quote.amountOutFormatted,
             decimals = destinationAsset.decimals
         )
+        requireWithinSlippage()
+    }
+
+    /**
+     * Fail-closed slippage check on the server-determined (floating) side of the quote. The user-fixed
+     * side is already pinned by requireQuoteMatchesUserAmount in the use case; this asserts the server's
+     * own worst-case guarantee (minAmountOut / minAmountIn) does not exceed the slippage the user
+     * requested. Only enforced when the server actually returns the bound — see the nullability note in
+     * QuoteDetails.
+     */
+    private fun requireWithinSlippage() {
+        val slippageFraction =
+            BigDecimal(response.quoteRequest.slippageTolerance)
+                .divide(BigDecimal("10000"), MathContext.DECIMAL128)
+        when (response.quoteRequest.swapType) {
+            // Output floats: the guaranteed minimum out must not be worse than amountOut * (1 - slippage).
+            SwapType.EXACT_INPUT, SwapType.FLEX_INPUT -> {
+                response.quote.minAmountOut?.let { min ->
+                    val floor =
+                        response.quote.amountOut.multiply(BigDecimal.ONE - slippageFraction, MathContext.DECIMAL128)
+                    require(min >= floor) {
+                        "Swap slippage exceeded: server-guaranteed minAmountOut=$min is below the slippage " +
+                            "floor=$floor (amountOut=${response.quote.amountOut}, slippage=$slippageFraction)"
+                    }
+                }
+            }
+
+            // Input floats: the guaranteed input must not exceed amountIn * (1 + slippage).
+            SwapType.EXACT_OUTPUT -> {
+                response.quote.minAmountIn?.let { min ->
+                    val ceiling =
+                        response.quote.amountIn.multiply(BigDecimal.ONE + slippageFraction, MathContext.DECIMAL128)
+                    require(min <= ceiling) {
+                        "Swap slippage exceeded: server-guaranteed minAmountIn=$min is above the slippage " +
+                            "ceiling=$ceiling (amountIn=${response.quote.amountIn}, slippage=$slippageFraction)"
+                    }
+                }
+            }
+
+            null -> {
+                // do nothing
+            }
+        }
     }
 
     override val slippage: BigDecimal =

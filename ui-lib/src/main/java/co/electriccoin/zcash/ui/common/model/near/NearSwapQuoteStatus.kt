@@ -20,7 +20,6 @@ data class NearSwapQuoteStatus(
     val destinationAddress: SwapAddress,
     val refundAddress: SwapAddress,
 ) : SwapQuoteStatus {
-
     init {
         val details = response.swapDetails
         if (details != null) {
