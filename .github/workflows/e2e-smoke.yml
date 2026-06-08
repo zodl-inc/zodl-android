@@ -125,9 +125,11 @@ jobs:
           ZODL_TEST_CROSSPAY_AMOUNT: ${{ vars.ZODL_TEST_CROSSPAY_AMOUNT || '0.5' }}
           ZODL_TEST_STATE_DIR: ${{ github.workspace }}/.zodl-qa-state
         with:
-          api-level: 34
+          # Match the local dev AVD (Pixel_9 / API 35) so we test the
+          # same Android version on CI as devs run against locally.
+          api-level: 35
           arch: x86_64
-          profile: pixel_6
+          profile: pixel_9
           script: |
             adb install apk/*.apk
             chmod +x zodl-qa/scripts/run-smoke-android.sh
