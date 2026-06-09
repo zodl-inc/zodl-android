@@ -150,7 +150,7 @@ jobs:
           ZODL_TEST_CROSSPAY_TARGET_NAME: ${{ vars.ZODL_TEST_CROSSPAY_TARGET_NAME || 'USDC Base' }}
           ZODL_TEST_CROSSPAY_CHAIN: ${{ vars.ZODL_TEST_CROSSPAY_CHAIN || 'BASE' }}
           ZODL_TEST_CROSSPAY_USDC_AMOUNT: ${{ vars.ZODL_TEST_CROSSPAY_USDC_AMOUNT || '0.5' }}
-          ZODL_TEST_SWAP_ZEC_AMOUNT: ${{ vars.ZODL_TEST_SWAP_ZEC_AMOUNT || '0.001' }}
+          ZODL_TEST_SWAP_ZEC_AMOUNT: ${{ vars.ZODL_TEST_SWAP_ZEC_AMOUNT || '0.005' }}
           ZODL_TEST_SWAP_RECV_USDC_AMOUNT: ${{ vars.ZODL_TEST_SWAP_RECV_USDC_AMOUNT || '1.2' }}
           # Layer-2b: the wrapper auto-funds the reverse-swap deposit
           # address (USDC on Base) after swap-receive-usdc-to-zec.yaml
