@@ -31,20 +31,17 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
-import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.withIndex
 import kotlinx.coroutines.launch
 
 interface WalletRepository {
@@ -62,9 +59,9 @@ interface WalletRepository {
         birthday: BlockHeight
     )
 
-    fun init()
+    suspend fun updateWalletEndpoint(endpoint: LightWalletEndpoint)
 
-    fun updateWalletEndpoint(endpoint: LightWalletEndpoint)
+    fun init()
 
     fun refreshFastestServers()
 }
@@ -82,7 +79,7 @@ class WalletRepositoryImpl(
 ) : WalletRepository {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    private val refreshFastestServersRequest = MutableSharedFlow<Unit>(replay = 1)
+    private val refreshFastestServersRequest = MutableSharedFlow<Unit>()
 
     private val onboardingState =
         flow {
@@ -112,44 +109,69 @@ class WalletRepositoryImpl(
             initialValue = SecretState.LOADING
         )
 
+    private var previousFastestEndpoints: FastestServersState? = null
+
+    @Suppress("ComplexCondition", "ReturnCount")
     @OptIn(ExperimentalCoroutinesApi::class)
     override val fastestEndpoints =
-        channelFlow {
-            var previousFastestServerState: FastestServersState? = null
+        refreshFastestServersRequest
+            .onStart { emit(Unit) }
+            .flatMapLatest {
+                var synchronizerEmitted = false
 
-            combine(
-                refreshFastestServersRequest.onStart { emit(Unit) },
-                synchronizerProvider.synchronizer
-            ) { _, synchronizer -> synchronizer }
-                .withIndex()
-                .flatMapLatest { (_, synchronizer) ->
-                    synchronizer
-                        ?.getFastestServers(lightWalletEndpointProvider.getEndpoints())
-                        ?.map {
-                            when (it) {
-                                FastestServersResult.Measuring -> {
-                                    previousFastestServerState?.copy(isLoading = true)
-                                        ?: FastestServersState(servers = null, isLoading = true)
-                                }
-
-                                is FastestServersResult.Validating -> {
-                                    FastestServersState(servers = it.servers, isLoading = true)
-                                }
-
-                                is FastestServersResult.Done -> {
-                                    FastestServersState(servers = it.servers, isLoading = false)
-                                }
+                synchronizerProvider
+                    .synchronizer
+                    .mapLatest { synchronizer ->
+                        val previousState = previousFastestEndpoints
+                        val result =
+                            if (synchronizer == null || (
+                                    synchronizerEmitted &&
+                                        !previousState?.servers.isNullOrEmpty() &&
+                                        !previousState.isLoading
+                                    )
+                            ) {
+                                null
+                            } else {
+                                synchronizer
                             }
-                        } ?: emptyFlow()
-                }.onEach {
-                    previousFastestServerState = it
-                    send(it)
-                }.launchIn(this)
-        }.stateIn(
-            scope = scope,
-            started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
-            initialValue = FastestServersState(servers = emptyList(), isLoading = true)
-        )
+
+                        if (synchronizer != null) {
+                            synchronizerEmitted = true
+                        }
+
+                        result
+                    }
+            }.flatMapLatest { synchronizer ->
+                synchronizer
+                    ?.getFastestServers(lightWalletEndpointProvider.getEndpoints())
+                    ?.map {
+                        when (it) {
+                            FastestServersResult.Measuring -> {
+                                previousFastestEndpoints?.copy(isLoading = true)
+                                    ?: FastestServersState(servers = null, isLoading = true)
+                            }
+
+                            is FastestServersResult.Validating -> {
+                                FastestServersState(servers = it.servers, isLoading = true)
+                            }
+
+                            is FastestServersResult.Done -> {
+                                FastestServersState(servers = it.servers, isLoading = false)
+                            }
+                        }
+                    } ?: flowOf(
+                    previousFastestEndpoints ?: FastestServersState(
+                        servers = emptyList(),
+                        isLoading = false
+                    )
+                )
+            }.onEach {
+                previousFastestEndpoints = it
+            }.stateIn(
+                scope = scope,
+                started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
+                initialValue = FastestServersState(servers = emptyList(), isLoading = true)
+            )
 
     override val walletRestoringState: StateFlow<WalletRestoringState> =
         walletRestoringStateProvider
@@ -171,13 +193,11 @@ class WalletRepositoryImpl(
         }
     }
 
-    override fun updateWalletEndpoint(endpoint: LightWalletEndpoint) {
-        scope.launch {
-            val selectedWallet = persistableWalletProvider.getPersistableWallet() ?: return@launch
-            val selectedEndpoint = selectedWallet.endpoint
-            if (selectedEndpoint == endpoint) return@launch
-            persistWalletInternal(selectedWallet.copy(endpoint = endpoint))
-        }
+    override suspend fun updateWalletEndpoint(endpoint: LightWalletEndpoint) {
+        val selectedWallet = persistableWalletProvider.getPersistableWallet() ?: return
+        val selectedEndpoint = selectedWallet.endpoint
+        if (selectedEndpoint == endpoint) return
+        persistWalletInternal(selectedWallet.copy(endpoint = endpoint))
     }
 
     private suspend fun persistWalletInternal(persistableWallet: PersistableWallet) {
@@ -210,7 +230,7 @@ class WalletRepositoryImpl(
 
     override fun refreshFastestServers() {
         scope.launch {
-            if (!fastestEndpoints.first().isLoading) {
+            if (!fastestEndpoints.value.isLoading) {
                 refreshFastestServersRequest.emit(Unit)
             }
         }

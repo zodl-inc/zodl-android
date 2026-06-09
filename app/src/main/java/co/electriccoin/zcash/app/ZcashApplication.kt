@@ -19,6 +19,7 @@ import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.provider.CrashReportingStorageProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.ApplicationStateRepository
+import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
 import co.electriccoin.zcash.ui.common.repository.FlexaRepository
 import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepository
 import co.electriccoin.zcash.ui.common.repository.WalletRepository
@@ -43,6 +44,7 @@ class ZcashApplication : CoroutineApplication() {
         parametersOf(ProcessLifecycleOwner.get().lifecycle)
     }
     private val walletRepository: WalletRepository by inject()
+    private val automaticServerRepository: AutomaticServerRepository by inject()
     private val synchronizerProvider: SynchronizerProvider by inject()
     private val navigateToError: NavigateToErrorUseCase by inject()
 
@@ -78,6 +80,7 @@ class ZcashApplication : CoroutineApplication() {
         homeMessageCacheRepository.init()
         walletSnapshotRepository.init()
         applicationStateRepository.init()
+        automaticServerRepository.init()
         walletRepository.init()
         observeSynchronizerError()
     }

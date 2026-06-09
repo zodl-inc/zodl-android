@@ -33,6 +33,7 @@ import co.electriccoin.zcash.ui.common.usecase.GetABContactsUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetABSwapContactsUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetActivitiesUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetAllVotingRoundsUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetAutomaticEndpointUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetConfigurationUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetExchangeRateUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetFilteredActivitiesUseCase
@@ -63,6 +64,7 @@ import co.electriccoin.zcash.ui.common.usecase.IsABContactHintVisibleUseCase
 import co.electriccoin.zcash.ui.common.usecase.IsEphemeralAddressLockedUseCase
 import co.electriccoin.zcash.ui.common.usecase.IsRestoreSuccessDialogVisibleUseCase
 import co.electriccoin.zcash.ui.common.usecase.IsScreenTimeoutDisabledDuringRestoreUseCase
+import co.electriccoin.zcash.ui.common.usecase.IsServerAutomaticUseCase
 import co.electriccoin.zcash.ui.common.usecase.IsTorEnabledUseCase
 import co.electriccoin.zcash.ui.common.usecase.MarkTxMemoAsReadUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToAddressBookUseCase
@@ -97,7 +99,7 @@ import co.electriccoin.zcash.ui.common.usecase.ParseKeystonePCZTUseCase
 import co.electriccoin.zcash.ui.common.usecase.ParseKeystoneSignInRequestUseCase
 import co.electriccoin.zcash.ui.common.usecase.ParseKeystoneUrToZashiAccountsUseCase
 import co.electriccoin.zcash.ui.common.usecase.ParseVotingKeystonePCZTUseCase
-import co.electriccoin.zcash.ui.common.usecase.PersistEndpointUseCase
+import co.electriccoin.zcash.ui.common.usecase.PersistServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.PrefillSendUseCase
 import co.electriccoin.zcash.ui.common.usecase.PrepareVotingRoundUseCase
 import co.electriccoin.zcash.ui.common.usecase.PreselectSwapAssetUseCase
@@ -136,7 +138,6 @@ import co.electriccoin.zcash.ui.common.usecase.TrackVotingSharesUseCase
 import co.electriccoin.zcash.ui.common.usecase.UpdateABContactUseCase
 import co.electriccoin.zcash.ui.common.usecase.UpdateSwapActivityMetadataUseCase
 import co.electriccoin.zcash.ui.common.usecase.ValidateAddressUseCase
-import co.electriccoin.zcash.ui.common.usecase.ValidateEndpointUseCase
 import co.electriccoin.zcash.ui.common.usecase.ValidateGenericABContactNameUseCase
 import co.electriccoin.zcash.ui.common.usecase.ValidateSeedUseCase
 import co.electriccoin.zcash.ui.common.usecase.ValidateSwapABContactAddressUseCase
@@ -169,8 +170,7 @@ val useCaseModule =
         factoryOf(::SkipRemainingKeystoneBundlesUseCase)
         factoryOf(::SubmitVotesUseCase)
         factoryOf(::TrackVotingSharesUseCase)
-        factoryOf(::PersistEndpointUseCase)
-        factoryOf(::ValidateEndpointUseCase)
+        factoryOf(::PersistServerSelectionUseCase)
         factoryOf(::GetConfigurationUseCase)
         factoryOf(::RescanBlockchainUseCase)
         factoryOf(::ValidateZashiABContactAddressUseCase)
@@ -306,4 +306,6 @@ val useCaseModule =
         factoryOf(::GetSwapStatusUseCase)
         factoryOf(::ExecuteDebugDBQueryUseCase)
         factoryOf(::SwapSupportMapper)
+        factoryOf(::GetAutomaticEndpointUseCase)
+        factoryOf(::IsServerAutomaticUseCase)
     }

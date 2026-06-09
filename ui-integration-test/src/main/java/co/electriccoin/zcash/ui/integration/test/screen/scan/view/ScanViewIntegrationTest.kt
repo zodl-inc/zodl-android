@@ -1,10 +1,12 @@
 package co.electriccoin.zcash.ui.integration.test.screen.scan.view
 
+import android.os.Build
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.test.filters.LargeTest
+import androidx.test.filters.SdkSuppress
 import co.electriccoin.zcash.test.UiTestPrerequisites
 import co.electriccoin.zcash.ui.integration.test.common.IntegrationTestingActivity
 import co.electriccoin.zcash.ui.integration.test.common.getPermissionPositiveButtonUiObject
@@ -71,8 +73,11 @@ class ScanViewIntegrationTest : UiTestPrerequisites() {
         testSetup.denyPermission()
     }
 
+    // Crashes on API 34+ in Compose SlotWriter during disposal
+    // (Compose + CameraX + StateRestorationTester interop).
     @Test
     @LargeTest
+    @SdkSuppress(maxSdkVersion = Build.VERSION_CODES.TIRAMISU)
     fun scan_views_restoration() {
         val restorationTester = StateRestorationTester(composeTestRule)
 

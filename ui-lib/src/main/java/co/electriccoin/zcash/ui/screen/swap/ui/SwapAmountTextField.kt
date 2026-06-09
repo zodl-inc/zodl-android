@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -48,6 +49,7 @@ import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByDynamicCurrencyNumber
+import co.electriccoin.zcash.ui.screen.swap.SwapTag
 
 @Composable
 internal fun SwapAmountTextField(
@@ -117,7 +119,8 @@ private fun SwapTextFieldCard(
                     modifier = Modifier.weight(.425f)
                 ) {
                     ZashiAssetCard(
-                        state = state.token
+                        state = state.token,
+                        modifier = Modifier.testTag(SwapTag.SWAP_ASSET_CARD)
                     )
                 }
                 Spacer(modifier = Modifier.weight(.025f))
@@ -127,7 +130,8 @@ private fun SwapTextFieldCard(
                     modifier =
                         Modifier
                             .weight(.55f)
-                            .focusRequester(focusRequester),
+                            .focusRequester(focusRequester)
+                            .testTag(SwapTag.SWAP_AMOUNT_FIELD),
                     textStyle =
                         ZashiTypography.header4.copy(
                             fontWeight = FontWeight.SemiBold,

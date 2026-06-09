@@ -66,6 +66,8 @@ class RestoreHeightVM(
                     isEnabled = isValid,
                     hapticFeedbackType = HapticFeedbackType.Confirm
                 ),
+            primaryButtonTestTag = RestoreHeightTags.RESTORE_BTN,
+            blockHeightFieldTestTag = RestoreHeightTags.BLOCK_HEIGHT_FIELD,
             secondaryButton = ButtonState(stringRes(R.string.restore_bd_height_btn), onClick = ::onEstimateClick),
             blockHeight = NumberTextFieldState(innerState = blockHeight, onValueChange = ::onValueChanged)
         )

@@ -28,7 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -105,7 +105,7 @@ private fun Content(
             state = state.secondary,
         )
         ZashiButton(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().testTag(RestoreTorTags.RESTORE_BTN),
             state = state.primary
         )
     }
@@ -151,7 +151,7 @@ private fun Switch(state: CheckboxState) {
             Spacer(22.dp)
             val switchColor by animateColorAsState(
                 if (state.isChecked) {
-                    Color(0xFF34C759)
+                    ZashiColors.Accents.green
                 } else {
                     ZashiColors.Utility.Gray.utilityGray200
                 }

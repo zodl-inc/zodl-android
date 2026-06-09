@@ -11,4 +11,6 @@ class GetSelectedEndpointUseCase(
         persistableWalletProvider.persistableWallet
             .map { it?.endpoint }
             .distinctUntilChanged()
+
+    suspend operator fun invoke() = persistableWalletProvider.getPersistableWallet()?.endpoint
 }

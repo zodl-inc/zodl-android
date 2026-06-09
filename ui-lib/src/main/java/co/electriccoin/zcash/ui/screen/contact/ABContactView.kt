@@ -35,6 +35,7 @@ import co.electriccoin.zcash.ui.design.component.ZashiIconButton
 import co.electriccoin.zcash.ui.design.component.ZashiPicker
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTextField
+import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
@@ -96,6 +97,10 @@ private fun ContactViewInternal(
                 Modifier
                     .fillMaxWidth()
                     .focusRequester(addressFocusRequester),
+            innerModifier =
+                ZashiTextFieldDefaults
+                    .innerModifier
+                    .testTag(ABContactTag.WALLET_ADDRESS_FIELD),
             state = state.walletAddress,
             placeholder = {
                 Text(
@@ -122,6 +127,10 @@ private fun ContactViewInternal(
                 Modifier
                     .fillMaxWidth()
                     .focusRequester(nameFocusRequester),
+            innerModifier =
+                ZashiTextFieldDefaults
+                    .innerModifier
+                    .testTag(ABContactTag.CONTACT_NAME_FIELD),
             state = state.contactName,
             keyboardOptions =
                 KeyboardOptions(
@@ -146,19 +155,22 @@ private fun ContactViewInternal(
                 color = ZashiColors.Inputs.Filled.label
             )
             Spacer(6.dp)
-            ZashiPicker(state = state.chain)
+            ZashiPicker(
+                state = state.chain,
+                modifier = Modifier.testTag(ABContactTag.CHAIN_SELECTOR)
+            )
         }
         Spacer(1f)
         Spacer(24.dp)
         ZashiButton(
             state = state.positiveButton,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().testTag(ABContactTag.SAVE_BUTTON)
         )
 
         state.negativeButton?.let {
             ZashiButton(
                 state = it,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag(ABContactTag.DELETE_BUTTON),
                 defaultPrimaryColors = ZashiButtonDefaults.destructive1Colors()
             )
         }

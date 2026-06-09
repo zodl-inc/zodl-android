@@ -23,6 +23,8 @@ import co.electriccoin.zcash.ui.common.provider.IsExchangeRateEnabledStorageProv
 import co.electriccoin.zcash.ui.common.provider.IsExchangeRateEnabledStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsKeepScreenOnDuringRestoreProvider
 import co.electriccoin.zcash.ui.common.provider.IsKeepScreenOnDuringRestoreProviderImpl
+import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
+import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProvider
@@ -78,6 +80,7 @@ val providerModule =
         singleOf(::GetZcashCurrencyProvider)
         singleOf(::SelectedAccountUUIDProviderImpl) bind SelectedAccountUUIDProvider::class
         singleOf(::PersistableWalletProviderImpl) bind PersistableWalletProvider::class
+        singleOf(::IsServerSelectionAutomaticProviderImpl) bind IsServerSelectionAutomaticProvider::class
         singleOf(::SynchronizerProviderImpl) bind SynchronizerProvider::class
         singleOf(::ApplicationStateProviderImpl) bind ApplicationStateProvider::class
         singleOf(::RestoreTimestampStorageProviderImpl) bind RestoreTimestampStorageProvider::class

@@ -13,6 +13,7 @@
     </string>
     <string name="choose_server_textfield_hint">&lt;nombre del host&gt;:&lt;puerto&gt;</string>
     <string name="choose_server_save">Guardar selección</string>
+    <string name="choose_server_saving">Guardando selección</string>
 
     <string name="choose_server_validation_dialog_error_title">Punto final del servidor no válido</string>
     <string name="choose_server_validation_dialog_error_text">Error: El intento de cambiar el punto final falló.
@@ -25,12 +26,17 @@
     <string name="choose_server_save_success_dialog_btn">OK</string>
     <string name="choose_server_save_default">Predeterminado</string>
 
-    <string name="choose_server_loading_title">Realizando prueba de servidor</string>
+    <string name="choose_server_loading_title">Realizando prueba de servidor…</string>
     <string name="choose_server_loading_subtitle">Esto puede tardar un momento…</string>
 
+    <string name="choose_server_connection_mode">Modo de conexión</string>
+    <string name="choose_server_automatic">Automático</string>
+    <string name="choose_server_manual">Manual</string>
     <string name="choose_server_fastest_servers">Servidores más rápidos</string>
     <string name="choose_server_other_servers">Otros servidores</string>
+    <string name="choose_server_browse_servers">Explorar todos los servidores</string>
     <string name="choose_server_refresh">Actualizar</string>
     <string name="choose_server_active">Activo</string>
+    <string name="choose_server_testing">Probando</string>
     <string name="choose_server_default">Predeterminado</string>
 </resources>

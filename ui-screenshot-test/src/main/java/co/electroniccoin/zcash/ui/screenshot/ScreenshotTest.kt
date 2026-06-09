@@ -40,6 +40,7 @@ import co.electriccoin.zcash.ui.MainActivity
 import co.electriccoin.zcash.ui.NavigationTargets
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
+import co.electriccoin.zcash.ui.common.model.VersionInfo
 import co.electriccoin.zcash.ui.common.viewmodel.SecretState
 import co.electriccoin.zcash.ui.design.component.ConfigurationOverride
 import co.electriccoin.zcash.ui.design.component.UiMode
@@ -51,8 +52,10 @@ import co.electriccoin.zcash.ui.screen.home.HomeTags
 import co.electriccoin.zcash.ui.screen.more.MoreArgs
 import co.electriccoin.zcash.ui.screen.restore.height.RestoreHeightTags
 import co.electriccoin.zcash.ui.screen.restore.seed.RestoreSeedTag
+import co.electriccoin.zcash.ui.screen.restore.tor.RestoreTorTags
 import co.electriccoin.zcash.ui.screen.send.SendTag
 import co.electriccoin.zcash.ui.screen.walletbackup.WalletBackup
+import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -261,6 +264,19 @@ class ScreenshotTest : UiTestPrerequisites() {
 
         takeScreenshot(tag, "Import 3")
 
+        // Enter a block height — the Restore button is disabled until one
+        // is provided (must be at or after sapling activation).
+        composeTestRule.waitUntilAtLeastOneExists(
+            hasTestTag(RestoreHeightTags.BLOCK_HEIGHT_FIELD),
+            timeoutMillis = DEFAULT_TIMEOUT_MILLISECONDS
+        )
+        composeTestRule
+            .onNodeWithTag(RestoreHeightTags.BLOCK_HEIGHT_FIELD)
+            .performTextInput(
+                VersionInfo.NETWORK.saplingActivationHeight.value
+                    .toString()
+            )
+
         composeTestRule.waitUntilAtLeastOneExists(
             hasTestTag(RestoreHeightTags.RESTORE_BTN),
             timeoutMillis = DEFAULT_TIMEOUT_MILLISECONDS
@@ -270,6 +286,14 @@ class ScreenshotTest : UiTestPrerequisites() {
             it.performScrollTo()
             it.performClick()
         }
+
+        // Tor confirmation step (added in MOB-371).
+        composeTestRule.waitUntilAtLeastOneExists(
+            hasTestTag(RestoreTorTags.RESTORE_BTN),
+            timeoutMillis = DEFAULT_TIMEOUT_MILLISECONDS
+        )
+        takeScreenshot(tag, "Import 4")
+        composeTestRule.onNodeWithTag(RestoreTorTags.RESTORE_BTN).performClick()
 
         composeTestRule.waitUntil(DEFAULT_TIMEOUT_MILLISECONDS) {
             composeTestRule
@@ -465,7 +489,7 @@ private fun receiveZecScreenshots(
 ) {
     composeTestRule.waitUntilAtLeastOneExists(
         hasText(
-            text = resContext.getString(R.string.receive_title),
+            text = resContext.getString(R.string.receive_title, CURRENCY_TICKER),
             ignoreCase = true
         ),
         15.seconds.inWholeMilliseconds
@@ -474,7 +498,7 @@ private fun receiveZecScreenshots(
     composeTestRule
         .onNode(
             hasText(
-                text = resContext.getString(R.string.receive_title),
+                text = resContext.getString(R.string.receive_title, CURRENCY_TICKER),
                 ignoreCase = true
             )
         ).also {

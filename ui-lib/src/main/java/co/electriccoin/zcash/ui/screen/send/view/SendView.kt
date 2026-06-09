@@ -466,12 +466,13 @@ fun SendFormAddressTextField(
                         ) {
                             Image(
                                 modifier =
-                                    Modifier.clickable(
-                                        onClick = sendAddressBookState.onButtonClick,
-                                        role = Role.Button,
-                                        indication = ripple(radius = 4.dp),
-                                        interactionSource = remember { MutableInteractionSource() }
-                                    ),
+                                    Modifier
+                                        .clickable(
+                                            onClick = sendAddressBookState.onButtonClick,
+                                            role = Role.Button,
+                                            indication = ripple(radius = 4.dp),
+                                            interactionSource = remember { MutableInteractionSource() }
+                                        ).testTag(SendTag.SEND_ADDRESS_BOOK_BUTTON),
                                 painter = painterResource(sendAddressBookState.mode.icon),
                                 contentDescription = stringResource(R.string.send_address_book_content_description),
                             )
@@ -480,12 +481,13 @@ fun SendFormAddressTextField(
 
                             Image(
                                 modifier =
-                                    Modifier.clickable(
-                                        onClick = onQrScannerOpen,
-                                        role = Role.Button,
-                                        indication = ripple(radius = 4.dp),
-                                        interactionSource = remember { MutableInteractionSource() }
-                                    ),
+                                    Modifier
+                                        .clickable(
+                                            onClick = onQrScannerOpen,
+                                            role = Role.Button,
+                                            indication = ripple(radius = 4.dp),
+                                            interactionSource = remember { MutableInteractionSource() }
+                                        ).testTag(SendTag.SEND_SCAN_BUTTON),
                                 painter = painterResource(R.drawable.qr_code_icon),
                                 contentDescription = stringResource(R.string.send_scan_content_description),
                             )

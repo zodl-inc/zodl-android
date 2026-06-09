@@ -15,21 +15,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  e2e-android:
+  # Build the APK once and share it with both phase matrix jobs via
+  # actions/upload-artifact. The previous matrix design rebuilt the
+  # APK in each phase job, paying ~7 min twice.
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
       - name: Checkout app
         uses: actions/checkout@v4
-
-      - name: Checkout smoke tests
-        uses: actions/checkout@v4
-        with:
-          repository: zodl-inc/zodl-qa
-          path: zodl-qa
-          token: ${{ secrets.ZODL_QA }}
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -37,8 +33,63 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
+      - name: Restore cached APK
+        # Keyed on hashes of every input that affects the APK output.
+        # On hit, skip the gradle build and just upload the restored APK.
+        # buildSrc/src/** + build-conventions-secant/src/** hold Kotlin
+        # source (Git.kt, ChangelogParser.kt, Dimensions.kt, BuildType.kt)
+        # that affects the build but isn't matched by the
+        # **/*.gradle.kts glob. Without those entries a change there
+        # would leave the cache valid and the workflow could install a
+        # stale APK.
+        id: apk-cache
+        uses: actions/cache@v5
+        with:
+          path: app/build/outputs/apk/zcashmainnetInternal/debug
+          key: ${{ runner.os }}-android-apk-${{ hashFiles('app/src/**', 'ui-lib/src/**', 'sdk-ext-lib/src/**', 'ui-design-lib/src/**', 'buildSrc/src/**', 'build-conventions-secant/src/**', '**/*.gradle.kts', 'gradle.properties', 'gradle/libs.versions.toml') }}
+
       - name: Build debug APK
+        if: steps.apk-cache.outputs.cache-hit != 'true'
         run: ./gradlew assembleZcashmainnetInternalDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: zodl-android-debug-apk
+          path: app/build/outputs/apk/zcashmainnetInternal/debug/*.apk
+          retention-days: 1
+
+  e2e-android:
+    needs: build
+    runs-on: ubuntu-latest
+    # Cold-cache phase 2 runs (no cached SDK DB yet for the seed)
+    # spend most of the budget scanning blocks from birthday height.
+    # 45 min leaves headroom for the first run; warm-cache runs
+    # finish in ~10-15 min.
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    strategy:
+      # Run the two suite phases in parallel jobs to halve wall time.
+      # Each job boots its own emulator; phase 1 uses fresh wallets,
+      # phase 2 restores once and runs cache-dependent tests.
+      fail-fast: false
+      matrix:
+        phase: [1, 2]
+    name: e2e-android (phase ${{ matrix.phase }})
+    steps:
+      - name: Checkout smoke tests
+        uses: actions/checkout@v4
+        with:
+          repository: zodl-inc/zodl-qa
+          path: zodl-qa
+          token: ${{ secrets.ZODL_QA }}
+
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: zodl-android-debug-apk
+          path: apk
 
       - name: Enable KVM
         run: |
@@ -53,17 +104,53 @@ jobs:
 
       - name: Run smoke tests
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          # Wallet config consumed by scripts/run-smoke-android.sh — the
+          # wrapper sources .env locally, but on CI we read each value
+          # from GitHub Secrets / repo variables instead. The wrapper
+          # resolves ZODL_TEST_DIRECTION (AUTO_ALTERNATE flips a state
+          # file each run so sender/receiver rotate), pre-splits the
+          # chosen seed into ZODL_WORD_1..24, and passes everything to
+          # Maestro via --env=KEY=VAL.
+          ZODL_TEST_SEED_ANDROID: ${{ secrets.ZODL_TEST_SEED_ANDROID }}
+          ZODL_TEST_BIRTHDAY_ANDROID: ${{ secrets.ZODL_TEST_BIRTHDAY_ANDROID }}
+          ZODL_TEST_ADDRESS_ANDROID: ${{ secrets.ZODL_TEST_ADDRESS_ANDROID }}
+          ZODL_TEST_CONTACT_NAME_ANDROID: ${{ vars.ZODL_TEST_CONTACT_NAME_ANDROID || 'Android Shield' }}
+          ZODL_TEST_SEED_IOS: ${{ secrets.ZODL_TEST_SEED_IOS }}
+          ZODL_TEST_BIRTHDAY_IOS: ${{ secrets.ZODL_TEST_BIRTHDAY_IOS }}
+          ZODL_TEST_ADDRESS_IOS: ${{ secrets.ZODL_TEST_ADDRESS_IOS }}
+          ZODL_TEST_CONTACT_NAME_IOS: ${{ vars.ZODL_TEST_CONTACT_NAME_IOS || 'iOS Shield' }}
+          ZODL_TEST_DIRECTION: ${{ vars.ZODL_TEST_DIRECTION || 'AUTO_ALTERNATE' }}
+          ZODL_TEST_PHASE: ${{ matrix.phase }}
+          ZODL_TEST_SEND_AMOUNT: ${{ vars.ZODL_TEST_SEND_AMOUNT || '0.005' }}
+          ZODL_TEST_BALANCE_MIN: ${{ vars.ZODL_TEST_BALANCE_MIN || '1.3' }}
+          ZODL_TEST_BALANCE_WARN: ${{ vars.ZODL_TEST_BALANCE_WARN || '1.36' }}
+          ZODL_TEST_CROSSPAY_TARGET_ADDRESS: ${{ vars.ZODL_TEST_CROSSPAY_TARGET_ADDRESS || '0xf90bd7c30fd538efde8729ea61fdf20920ed3171' }}
+          ZODL_TEST_CROSSPAY_TARGET_NAME: ${{ vars.ZODL_TEST_CROSSPAY_TARGET_NAME || 'USDC Base' }}
+          ZODL_TEST_CROSSPAY_CHAIN: ${{ vars.ZODL_TEST_CROSSPAY_CHAIN || 'BASE' }}
+          ZODL_TEST_CROSSPAY_USDC_AMOUNT: ${{ vars.ZODL_TEST_CROSSPAY_USDC_AMOUNT || '0.5' }}
+          ZODL_TEST_SWAP_ZEC_AMOUNT: ${{ vars.ZODL_TEST_SWAP_ZEC_AMOUNT || '0.005' }}
+          ZODL_TEST_STATE_DIR: ${{ github.workspace }}/.zodl-qa-state
         with:
-          api-level: 34
+          # API 35 matches the local dev AVD (Pixel_9 / API 35). The
+          # device profile stays `pixel_6` — the GH runner's bundled
+          # avdmanager doesn't ship a `pixel_9` device definition (only
+          # Android Studio does), and the device profile is just
+          # screen size + density anyway; what we actually care about
+          # is the Android version.
+          api-level: 35
           arch: x86_64
           profile: pixel_6
           script: |
-            adb install app/build/outputs/apk/zcashmainnetInternal/debug/*.apk
-            maestro test zodl-qa/maestro/smoke/ --include-tags="android"
+            adb install apk/*.apk
+            chmod +x zodl-qa/scripts/run-smoke-android.sh
+            ./zodl-qa/scripts/run-smoke-android.sh
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: maestro-android-results
-          path: ~/.maestro/tests/
+          name: maestro-android-results-phase-${{ matrix.phase }}
+          path: |
+            ~/.maestro/tests/
+            ${{ runner.temp }}/zodl-enroll-fail/

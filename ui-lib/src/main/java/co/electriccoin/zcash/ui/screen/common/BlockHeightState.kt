@@ -20,4 +20,6 @@ data class BlockHeightState(
     val secondaryButton: ButtonState?,
     val dialogButton: IconButtonState?,
     val onBack: () -> Unit,
+    val primaryButtonTestTag: String? = null,
+    val blockHeightFieldTestTag: String? = null,
 )

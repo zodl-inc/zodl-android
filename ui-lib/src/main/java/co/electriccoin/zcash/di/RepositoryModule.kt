@@ -2,6 +2,8 @@ package co.electriccoin.zcash.di
 
 import co.electriccoin.zcash.ui.common.repository.ApplicationStateRepository
 import co.electriccoin.zcash.ui.common.repository.ApplicationStateRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
+import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.BiometricRepository
 import co.electriccoin.zcash.ui.common.repository.BiometricRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
@@ -60,6 +62,7 @@ val repositoryModule =
         singleOf(::HomeMessageCacheRepositoryImpl) bind HomeMessageCacheRepository::class
         singleOf(::WalletSnapshotRepositoryImpl) bind WalletSnapshotRepository::class
         singleOf(::ApplicationStateRepositoryImpl) bind ApplicationStateRepository::class
+        singleOf(::AutomaticServerRepositoryImpl) bind AutomaticServerRepository::class
         singleOf(::SwapRepositoryImpl) bind SwapRepository::class
         singleOf(::EphemeralAddressRepositoryImpl) bind EphemeralAddressRepository::class
         singleOf(::VotingConfigRepositoryImpl) bind VotingConfigRepository::class

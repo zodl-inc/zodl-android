@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -27,6 +28,7 @@ import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiIconButton
 import co.electriccoin.zcash.ui.design.component.ZashiNumberTextField
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
+import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiTextFieldPlaceholder
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
@@ -92,6 +94,9 @@ private fun Content(
         ZashiNumberTextField(
             state = state.blockHeight,
             modifier = Modifier.fillMaxWidth(),
+            innerModifier =
+                ZashiTextFieldDefaults.innerModifier
+                    .then(state.blockHeightFieldTestTag?.let { Modifier.testTag(it) } ?: Modifier),
             placeholder = { ZashiTextFieldPlaceholder(state.textFieldHint) },
             keyboardOptions =
                 KeyboardOptions(
@@ -121,7 +126,10 @@ private fun Content(
 
         ZashiButton(
             state.primaryButton,
-            modifier = Modifier.fillMaxWidth(),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .then(state.primaryButtonTestTag?.let { Modifier.testTag(it) } ?: Modifier),
         )
     }
 }
