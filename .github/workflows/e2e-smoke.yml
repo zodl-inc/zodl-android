@@ -102,6 +102,27 @@ jobs:
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
 
+      # Foundry / cast — needed by Layer-2b for the on-chain USDC
+      # transfer that funds the swap-receive-usdc-to-zec deposit
+      # address. Action installs forge/cast/anvil + adds them to
+      # $GITHUB_PATH so the wrapper finds `cast` without sourcing.
+      # GITHUB_TOKEN passes the runner's auth so the action's
+      # release-tag fetch against api.github.com isn't rate-limited
+      # to the unauthenticated 60-req/hr/IP shared with other jobs
+      # on the same runner pool (saw 403 on first run otherwise).
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # zbar / zbarimg — needed by the wrapper to decode the deposit
+      # address QR code from the maestro screenshot (the on-screen
+      # text is truncated to "0xc0033345...38342d66E9", clipboard
+      # reads are blocked at shell UID on Android 10+, so the QR
+      # is the only reliable surface for the full 0x... address).
+      - name: Install zbar
+        run: sudo apt-get install -y zbar-tools
+
       - name: Run smoke tests
         uses: reactivecircus/android-emulator-runner@v2
         env:
@@ -122,7 +143,7 @@ jobs:
           ZODL_TEST_CONTACT_NAME_IOS: ${{ vars.ZODL_TEST_CONTACT_NAME_IOS || 'iOS Shield' }}
           ZODL_TEST_DIRECTION: ${{ vars.ZODL_TEST_DIRECTION || 'AUTO_ALTERNATE' }}
           ZODL_TEST_PHASE: ${{ matrix.phase }}
-          ZODL_TEST_SEND_AMOUNT: ${{ vars.ZODL_TEST_SEND_AMOUNT || '0.005' }}
+          ZODL_TEST_SEND_AMOUNT: ${{ vars.ZODL_TEST_SEND_AMOUNT || '0.001' }}
           ZODL_TEST_BALANCE_MIN: ${{ vars.ZODL_TEST_BALANCE_MIN || '1.3' }}
           ZODL_TEST_BALANCE_WARN: ${{ vars.ZODL_TEST_BALANCE_WARN || '1.36' }}
           ZODL_TEST_CROSSPAY_TARGET_ADDRESS: ${{ vars.ZODL_TEST_CROSSPAY_TARGET_ADDRESS || '0xf90bd7c30fd538efde8729ea61fdf20920ed3171' }}
@@ -130,6 +151,23 @@ jobs:
           ZODL_TEST_CROSSPAY_CHAIN: ${{ vars.ZODL_TEST_CROSSPAY_CHAIN || 'BASE' }}
           ZODL_TEST_CROSSPAY_USDC_AMOUNT: ${{ vars.ZODL_TEST_CROSSPAY_USDC_AMOUNT || '0.5' }}
           ZODL_TEST_SWAP_ZEC_AMOUNT: ${{ vars.ZODL_TEST_SWAP_ZEC_AMOUNT || '0.005' }}
+          ZODL_TEST_SWAP_RECV_USDC_AMOUNT: ${{ vars.ZODL_TEST_SWAP_RECV_USDC_AMOUNT || '1.2' }}
+          # Layer-2b: the wrapper auto-funds the reverse-swap deposit
+          # address (USDC on Base) after swap-receive-usdc-to-zec.yaml
+          # runs whenever ZODL_USDC_BASE_PRIVKEY is set. Same model
+          # as the other tx tests in the suite — they spend real
+          # mainnet funds whenever their respective secrets/seeds
+          # are present. Each fire = ~$1.20 USDC + ~$0.05 ETH gas
+          # from the counterparty wallet. NEAR 1Click JWT is
+          # auto-extracted by the wrapper from the in-checkout
+          # NearApiProvider.kt (FDroid reproducible-build constraint
+          # forces the partner token to live in source), so no JWT
+          # secret is required — kept here as an override hatch only.
+          ZODL_USDC_BASE_PRIVKEY: ${{ secrets.ZODL_USDC_BASE_PRIVKEY }}
+          ZODL_NEAR_1CLICK_JWT: ${{ secrets.ZODL_NEAR_1CLICK_JWT }}
+          # Phase 2 verifies arrival via activity-accuracy at the
+          # suite tail rather than blocking on the 10-min 1Click poll.
+          ZODL_LAYER_2B_POLL: ${{ vars.ZODL_LAYER_2B_POLL || '0' }}
           ZODL_TEST_STATE_DIR: ${{ github.workspace }}/.zodl-qa-state
         with:
           # API 35 matches the local dev AVD (Pixel_9 / API 35). The
