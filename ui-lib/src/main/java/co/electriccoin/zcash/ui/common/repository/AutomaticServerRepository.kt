@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.onEach
 interface AutomaticServerRepository {
     val isServerAutomatic: Flow<Boolean>
 
+    suspend fun isServerAutomatic(): Boolean
+
     fun init()
 }
 
@@ -59,6 +61,15 @@ class AutomaticServerRepositoryImpl(
                         }
             }.distinctUntilChanged()
 
+    @Suppress("ReturnCount")
+    override suspend fun isServerAutomatic(): Boolean {
+        val isAutomatic = isServerSelectionAutomaticProvider.get()
+        if (isAutomatic != null) return isAutomatic
+        val endpoint = persistableWalletProvider.getPersistableWallet()?.endpoint ?: return true
+        val isCustomEndpoint = !lightWalletEndpointProvider.getEndpoints().contains(endpoint)
+        return !isCustomEndpoint
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun init() {
         isServerAutomatic
@@ -79,7 +90,7 @@ class AutomaticServerRepositoryImpl(
         applicationStateProvider
             .observeOnForeground()
             .onEach {
-                if (isServerSelectionAutomaticProvider.get() != false && !isAppInTransactionState) {
+                if (isServerAutomatic() && !isAppInTransactionState) {
                     walletRepository.refreshFastestServers()
                 }
             }.launchIn(scope)

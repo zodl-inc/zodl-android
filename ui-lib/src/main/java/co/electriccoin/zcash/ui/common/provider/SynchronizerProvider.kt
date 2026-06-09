@@ -32,13 +32,19 @@ interface SynchronizerProvider {
      */
     suspend fun getSynchronizer(): Synchronizer
 
+    /**
+     * Returns null if there is no persistable wallet, otherwise waits for the loaded synchronizer.
+     */
+    suspend fun getSynchronizerOrNull(): Synchronizer?
+
     suspend fun getVotingWalletDbPath(): String
 
     fun resetSynchronizer()
 }
 
 class SynchronizerProviderImpl(
-    private val walletCoordinator: WalletCoordinator
+    private val walletCoordinator: WalletCoordinator,
+    private val persistableWalletProvider: PersistableWalletProvider,
 ) : SynchronizerProvider {
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
@@ -79,6 +85,15 @@ class SynchronizerProviderImpl(
             synchronizer
                 .filterNotNull()
                 .first()
+        }
+
+    override suspend fun getSynchronizerOrNull(): Synchronizer? =
+        withContext(Dispatchers.IO) {
+            if (persistableWalletProvider.getPersistableWallet() == null) {
+                null
+            } else {
+                getSynchronizer()
+            }
         }
 
     override suspend fun getVotingWalletDbPath(): String =
