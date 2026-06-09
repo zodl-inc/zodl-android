@@ -106,8 +106,14 @@ jobs:
       # transfer that funds the swap-receive-usdc-to-zec deposit
       # address. Action installs forge/cast/anvil + adds them to
       # $GITHUB_PATH so the wrapper finds `cast` without sourcing.
+      # GITHUB_TOKEN passes the runner's auth so the action's
+      # release-tag fetch against api.github.com isn't rate-limited
+      # to the unauthenticated 60-req/hr/IP shared with other jobs
+      # on the same runner pool (saw 403 on first run otherwise).
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # zbar / zbarimg — needed by the wrapper to decode the deposit
       # address QR code from the maestro screenshot (the on-screen
