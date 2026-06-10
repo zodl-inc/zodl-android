@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.common.usecase
 
-import androidx.test.filters.SmallTest
 import cash.z.ecc.android.sdk.model.Zatoshi
 import org.junit.Test
 import java.math.BigDecimal
@@ -9,7 +8,6 @@ import kotlin.test.assertFailsWith
 
 class RequestSwapQuoteUseCaseTest {
     @Test
-    @SmallTest
     fun toExactQuoteZatoshi_acceptsWholeNumber() {
         val result = BigDecimal("123").toExactQuoteZatoshi()
 
@@ -17,7 +15,6 @@ class RequestSwapQuoteUseCaseTest {
     }
 
     @Test
-    @SmallTest
     fun toExactQuoteZatoshi_acceptsEquivalentWholeNumberWithScale() {
         val result = BigDecimal("123.0").toExactQuoteZatoshi()
 
@@ -25,7 +22,6 @@ class RequestSwapQuoteUseCaseTest {
     }
 
     @Test
-    @SmallTest
     fun toExactQuoteZatoshi_rejectsNonIntegralAmount() {
         val exception =
             assertFailsWith<InvalidSwapQuoteAmountException> {
@@ -36,7 +32,6 @@ class RequestSwapQuoteUseCaseTest {
     }
 
     @Test
-    @SmallTest
     fun toExactQuoteZatoshi_rejectsOverflow() {
         val exception =
             assertFailsWith<InvalidSwapQuoteAmountException> {

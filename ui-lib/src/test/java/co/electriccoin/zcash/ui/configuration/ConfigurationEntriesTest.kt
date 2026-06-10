@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.configuration
 
-import androidx.test.filters.SmallTest
 import co.electriccoin.zcash.configuration.model.entry.DefaultEntry
 import org.junit.Test
 import kotlin.reflect.full.memberProperties
@@ -8,7 +7,6 @@ import kotlin.test.assertFalse
 
 class ConfigurationEntriesTest {
     // This test is primary to prevent copy-paste errors in configuration keys
-    @SmallTest
     @Test
     fun keys_unique() {
         val fieldValueSet = mutableSetOf<String>()
