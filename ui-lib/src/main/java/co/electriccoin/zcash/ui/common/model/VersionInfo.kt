@@ -7,7 +7,6 @@ import co.electriccoin.zcash.build.gitCommitCount
 import co.electriccoin.zcash.build.gitSha
 import co.electriccoin.zcash.build.releaseNotesEn
 import co.electriccoin.zcash.build.releaseNotesEs
-import co.electriccoin.zcash.spackle.EmulatorWtfUtil
 import co.electriccoin.zcash.spackle.FirebaseTestLabUtil
 import co.electriccoin.zcash.spackle.getPackageInfoCompat
 import co.electriccoin.zcash.spackle.versionCodeCompat
@@ -50,10 +49,7 @@ data class VersionInfo(
                 // Should only be 0 during tests
                 versionCode = packageInfo.versionCodeCompat,
                 isDebuggable = (0 != applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE),
-                isRunningUnderTestService = (
-                    FirebaseTestLabUtil.isFirebaseTestLab(context.applicationContext) ||
-                        EmulatorWtfUtil.isEmulatorWtf(context.applicationContext)
-                ),
+                isRunningUnderTestService = FirebaseTestLabUtil.isFirebaseTestLab(context.applicationContext),
                 gitSha = gitSha,
                 gitCommitCount = gitCommitCount.toLong(),
                 changelog = Changelog.new(json = resolveBestReleaseNotes(context)),

@@ -16,19 +16,7 @@ rm -rf buildSrc/.gradle/
 rm -rf ui-screenshot-test
 rm -rf .gradle
 
-echo "Removing emulator.wtf conventions..."
-rm -f build-conventions-secant/src/main/kotlin/secant.emulator-wtf-conventions.gradle.kts
-
-echo "Stripping emulator.wtf from settings.gradle.kts..."
-sed -i '/\/\/ start wtf maven/,/\/\/ end wtf maven/d' settings.gradle.kts
-
-echo "Removing emulator.wtf references from build files..."
-find . -type f -name "build.gradle.kts" -exec sed -i -e '/wtf.emulator.gradle/d' {} +
-find . -type f -name "build.gradle.kts" -exec sed -i -e '/secant.emulator-wtf-conventions/d' {} +
-
 echo "Cleaning gradle lockfiles..."
-find . -type f -name "gradle.lockfile" -exec sed -i -e '/wtf.emulator/d' {} +
-find . -type f -name "buildscript-gradle.lockfile" -exec sed -i -e '/wtf.emulator/d' {} +
 find . -type f -name "gradle.lockfile" -exec sed -i -e '/com.vdurmont/d' {} +
 find . -type f -name "buildscript-gradle.lockfile" -exec sed -i -e '/com.vdurmont/d' {} +
 find . -type f -name "gradle.lockfile" -exec sed -i -e '/org.json:json/d' {} +

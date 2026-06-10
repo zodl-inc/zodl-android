@@ -85,8 +85,6 @@ tasks {
             "ZCASH_FIREBASE_TEST_LAB_API_KEY_PATH" to "",
             "ZCASH_FIREBASE_TEST_LAB_PROJECT" to "",
 
-            "ZCASH_EMULATOR_WTF_API_KEY" to "",
-
             "IS_MINIFY_ENABLED" to "true",
             "NDK_DEBUG_SYMBOL_LEVEL" to "symbol_table",
 

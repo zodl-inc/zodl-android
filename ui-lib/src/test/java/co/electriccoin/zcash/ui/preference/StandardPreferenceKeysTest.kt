@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.preference
 
-import androidx.test.filters.SmallTest
 import co.electriccoin.zcash.preference.model.entry.PreferenceDefault
 import org.junit.Test
 import kotlin.reflect.full.memberProperties
@@ -8,7 +7,6 @@ import kotlin.test.assertFalse
 
 class StandardPreferenceKeysTest {
     // This test is primary to prevent copy-paste errors in preference keys
-    @SmallTest
     @Test
     fun unique_keys() {
         val fieldValueSet = mutableSetOf<String>()

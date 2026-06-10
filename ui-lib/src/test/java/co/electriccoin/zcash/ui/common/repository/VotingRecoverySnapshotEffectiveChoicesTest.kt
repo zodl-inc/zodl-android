@@ -5,7 +5,7 @@ import co.electriccoin.zcash.ui.common.model.voting.VoteOption
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-class VotingRecoverySnapshotExtTest {
+class VotingRecoverySnapshotEffectiveChoicesTest {
     @Test
     fun effectiveChoices_mergesSubmittedSelectionsWithPersistedDraftAbstains() {
         val firstProposal = proposal(id = 1)
