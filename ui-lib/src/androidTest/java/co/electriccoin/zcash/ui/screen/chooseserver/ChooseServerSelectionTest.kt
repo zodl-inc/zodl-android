@@ -53,7 +53,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-@Ignore("Bit-rotted: FakeWalletRepository missing init(), FakeSynchronizerProvider missing getSynchronizerOrNull(), AutomaticServerRepositoryImpl gained ZashiProposalRepository/KeystoneProposalRepository constructor params. Re-enable after stubbing the new dependencies.")
+@Ignore("Bit-rotted fakes; re-enable after stubbing new ZashiProposalRepository / KeystoneProposalRepository deps")
 class ChooseServerSelectionTest {
     @Test
     @SmallTest

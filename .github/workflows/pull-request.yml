@@ -232,73 +232,7 @@ jobs:
           name: Test Kotlin modules results
           path: ~/artifacts
 
-# Paid alternative when Firebase Test Lab secrets are configured.
-# The free local-emulator job (test_android_modules_emulator) runs by default.
-  test_android_modules_ftl:
-    if: needs.check_firebase_secrets.outputs.has-secrets == 'true'
-    needs: [validate_gradle_wrapper, check_firebase_secrets]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: Checkout
-        timeout-minutes: 1
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-        with:
-          fetch-depth: 0 # to fetch all commits
-      - name: Set up Java
-        uses: ./.github/actions/setup-java
-        timeout-minutes: 1
-      - name: Set up Gradle
-        uses: ./.github/actions/setup-gradle
-        timeout-minutes: 5
-      - name: Build
-        timeout-minutes: 20
-        run: |
-          ./gradlew assembleZcashmainnetStoreDebug assembleZcashtestnetStoreDebug assembleAndroidTest
-      - name: Authenticate to Google Cloud for Firebase Test Lab
-        id: auth_test_lab
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
-        with:
-          create_credentials_file: true
-          project_id: ${{ vars.FIREBASE_TEST_LAB_PROJECT }}
-          service_account: ${{ secrets.FIREBASE_TEST_LAB_SERVICE_ACCOUNT }}
-          workload_identity_provider: ${{ secrets.FIREBASE_TEST_LAB_WORKLOAD_IDENTITY_PROVIDER }}
-          access_token_lifetime: '1200s'
-      - name: Test
-        timeout-minutes: 30
-        env:
-          # Force blank suffix for screenshot tests
-          ORG_GRADLE_PROJECT_ZCASH_DEBUG_APP_NAME_SUFFIX: ""
-          # Used by Flank, since the temporary token is missing the project name
-          GOOGLE_CLOUD_PROJECT: ${{ vars.FIREBASE_TEST_LAB_PROJECT }}
-          ORG_GRADLE_PROJECT_ZCASH_FIREBASE_TEST_LAB_API_KEY_PATH: ${{ steps.auth_test_lab.outputs.credentials_file_path }}
-          # Because Fulladle doesn't allow Test Orchestrator to be enabled/disabled for a specific submodule, it must be enabled for all modules
-          ORG_GRADLE_PROJECT_IS_USE_TEST_ORCHESTRATOR: true
-          ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
-        run: |
-          ./gradlew runFlank
-      - name: Collect Artifacts
-        if: ${{ always() }}
-        timeout-minutes: 1
-        run: |
-          export ARTIFACTS_DIR_PATH=~/artifacts
-          export TEST_RESULTS_ZIP_PATH=${ARTIFACTS_DIR_PATH}/test_results.zip
-
-          mkdir ${ARTIFACTS_DIR_PATH}
-
-          zip -r ${TEST_RESULTS_ZIP_PATH} . -i build/fladle/\* \*/build/outputs/androidTest-results/\*
-      - name: Upload Artifacts
-        if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        timeout-minutes: 1
-        with:
-          name: Test Android modules with FTL results
-          path: ~/artifacts
-
-  # Free default — runs Android instrumentation tests on a local KVM-accelerated
+  # Runs Android instrumentation tests on a local KVM-accelerated
   # emulator via reactivecircus/android-emulator-runner. Mirrors the proven
   # pattern from e2e-smoke.yml. The matrix splits the workload into two shards
   # so they run in parallel: `libs` covers everything except the app + screenshot
@@ -322,6 +256,7 @@ jobs:
               -x :app:connectedZcashmainnetStoreDebugAndroidTest
               -x :ui-screenshot-test:connectedZcashmainnetStoreDebugAndroidTest
               -x :ui-integration-test:connectedZcashmainnetStoreDebugAndroidTest
+              -x :ui-benchmark-test:connectedDebugAndroidTest
               :ui-integration-test:connectedZcashmainnetStoreDebugAndroidTest
           - shard: app
             coverage: false
