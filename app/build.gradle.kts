@@ -11,8 +11,6 @@ plugins {
     kotlin("android")
     id("secant.android-build-conventions")
     id("com.osacky.fladle")
-    id("wtf.emulator.gradle")
-    id("secant.emulator-wtf-conventions")
     id("publish.secant.publish-conventions")
 }
 

@@ -154,17 +154,6 @@ The Firebase Test Lab tasks DO NOT build the app, so they rely on existing build
 1. Build the debug and test APKs: `./gradlew assembleDebug assembleZcashmainnetDebug assembleZcashtestnetDebug assembleAndroidTest`
 1. Run the tests: `./gradlew runFlank`
 
-### Emulator WTF
-This section is optional.  
-
-For Continuous Integration, see [CI.md](CI.md).  The rest of this section is regarding local development.
-
-1. Configure or request access to emulator.wtf
-    1. If you are an Electric Coin Co team member: We are still setting up a process for this, because emulator.wtf does not yet support individual API tokens
-    1. If you are an open source contributor: Visit http://emulator.wtf and request an API key
-1. Set the emulator.wtf API key as a global Gradle property `ZCASH_EMULATOR_WTF_API_KEY` under `~/.gradle/gradle.properties`
-1. Run the Gradle task `./gradlew testDebugWithEmulatorWtf :app:testZcashmainnetDebugWithEmulatorWtf :ui-integration-test:testDebugWithEmulatorWtf :ui-screenshot-test:testDebugWithEmulatorWtf` (emulator.wtf tasks do build the app, so you don't need to build them beforehand)
-
 ## Testnet funds
 
 The Zcash testnet is an alternative blockchain that attempts to mimic the mainnet (main Zcash network) for testing purposes. Testnet coins are distinct from actual ZEC and do not have value. Developers and users can experiment with the testnet without having to use valuable currency. The testnet is also used to test network upgrades and their activation before committing to the upgrade on the main Zcash network. For more information on how to add testnet funds visit [Testnet Guide](https://zcash.readthedocs.io/en/latest/rtd_pages/testnet_guide.html) or go right to the [Testnet Faucet](https://faucet.zecpages.com/).

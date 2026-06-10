@@ -7,8 +7,6 @@ plugins {
     kotlin("android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("secant.android-build-conventions")
-    id("wtf.emulator.gradle")
-    id("secant.emulator-wtf-conventions")
 }
 
 // Force orchestrator to be used for this module, because we need cleared state to generate screenshots

@@ -28,10 +28,6 @@ When coverage is enabled, running instrumentation tests will automatically gener
 - `./gradlew <android-module-name>:connectedCheck -PIS_ANDROID_INSTRUMENTATION_TEST_COVERAGE_ENABLED=true` for Android modules. These modules internally use JaCoCo to generate test coverage. You can then find the coverage report in `<android-module-name>/build/reports/coverage/androidTest/debug/connected/index.html`.
 - `./gradlew <kotlin-only-module-name>:check` for Kotlin modules. These modules internally use Kover to generate test coverage. You can then find the coverage report in `<kotlin-only-module-name>/build/kover/html/index.html`. 
 
-### Generating code coverage with emulator.wtf
-1. `./gradlew <module-name>:testDebugWithEmulatorWtf -PIS_ANDROID_INSTRUMENTATION_TEST_COVERAGE_ENABLED=true`
-1. `./gradlew <module-name>:jacocoReport`. The command above only generates `.ec` files, so this separate Gradle task is needed to convert those into a human-readable report.
-
 ## Benchmarking
 This section provides information about available benchmark tests integrated in this project as well as how to use them. Currently, we support macrobenchmark tests run locally as described in the Android [documentation](https://developer.android.com/topic/performance/benchmarking/benchmarking-overview).
 

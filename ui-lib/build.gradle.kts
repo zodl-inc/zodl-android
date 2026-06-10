@@ -8,8 +8,6 @@ plugins {
     kotlin("plugin.serialization")
     id("org.jetbrains.kotlin.plugin.compose")
     id("secant.android-build-conventions")
-    id("wtf.emulator.gradle")
-    id("secant.emulator-wtf-conventions")
     id("secant.jacoco-conventions")
 }
 
