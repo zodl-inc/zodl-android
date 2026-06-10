@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.provider
 
 import android.util.Log
+import co.electriccoin.zcash.ui.BuildConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngineConfig
@@ -66,16 +67,12 @@ class HttpClientProviderImpl(
         }
         install(Logging) {
             logger = KtorLogger()
-            level = LogLevel.ALL
-            sanitizeHeader { header -> header == HttpHeaders.Authorization }
+            // MOB-1346: full request/response bodies (swap recipient + refund addresses + amounts,
+            // voting payloads) must not reach logcat/bugreports in release. Bodies only in debug.
+            level = if (BuildConfig.DEBUG) LogLevel.ALL else LogLevel.NONE
+            sanitizeHeader { header -> header in SANITIZED_HEADERS }
         }
         expectSuccess = true
-    }
-
-    private companion object {
-        const val MAX_RETRIES = 4
-        const val DEFAULT_REQUEST_TIMEOUT_MILLIS = 120_000L
-        const val DEFAULT_CONNECT_TIMEOUT_MILLIS = 15_000L
     }
 }
 
@@ -92,3 +89,11 @@ private class KtorLogger : Logger {
 private fun String.isVotingHelperPath(): Boolean =
     contains("/shielded-vote/v1/shares") ||
         contains("/shielded-vote/v1/share-status/")
+
+private const val MAX_RETRIES = 4
+private const val DEFAULT_REQUEST_TIMEOUT_MILLIS = 120_000L
+private const val DEFAULT_CONNECT_TIMEOUT_MILLIS = 15_000L
+
+// Credential-bearing headers redacted from logs even in debug. The shared client also serves the
+// CMC quote API (X-CMC_PRO_API_KEY) and the voting helper (X-Helper-Token).
+private val SANITIZED_HEADERS = setOf(HttpHeaders.Authorization, "X-CMC_PRO_API_KEY", "X-Helper-Token")

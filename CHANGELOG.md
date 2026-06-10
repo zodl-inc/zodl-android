@@ -9,6 +9,9 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ### Added:
 - Currency Conversion now supports multiple fiat currencies. You can pick which currency your balances and payment amounts are shown in from the Currency Conversion settings and opt-in screens.
 
+### Fixed:
+- Network request/response bodies and voting diagnostics are no longer written to logs in release builds, preventing sensitive data (recipient/refund addresses, amounts, transaction hashes) from leaking to logcat, bug reports, and crash dumps. Credential headers are also redacted from logs.
+
 ## [3.5.2 (1742)] - 2026-06-04
 
 ### Changed:
