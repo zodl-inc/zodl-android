@@ -4,6 +4,7 @@ import cash.z.ecc.android.sdk.model.FiatCurrency
 import cash.z.ecc.android.sdk.model.ObserveFiatCurrencyResult
 import co.electriccoin.zcash.ui.common.datasource.ExchangeRateDataSource
 import co.electriccoin.zcash.ui.common.datasource.ExchangeRateUnavailable
+import co.electriccoin.zcash.ui.common.model.VersionInfo
 import co.electriccoin.zcash.ui.common.provider.IsExchangeRateEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.PreferredFiatProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -93,8 +94,10 @@ class ExchangeRateRepositoryImpl(
                                             emit(cache.copy(isLoading = false))
                                         }
                                     }.catch {
-                                        synchronizerProvider.getSynchronizer().refreshExchangeRateUsd()
-                                        emitAll(exchangeRateDataSource.observeSynchronizerRoute())
+                                        if (!VersionInfo.IS_CMC_AVAILABLE || fiat == FiatCurrency.USD) {
+                                            synchronizerProvider.getSynchronizer().refreshExchangeRateUsd()
+                                            emitAll(exchangeRateDataSource.observeSynchronizerRoute())
+                                        }
                                     }
                                 }.collect {
                                     cache = it
