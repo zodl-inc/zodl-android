@@ -227,7 +227,7 @@ fun StringResource.getString(
     )
 )
 
-@Suppress("CyclomaticComplexMethod]")
+@Suppress("CyclomaticComplexMethod")
 fun StringResource.getString(
     context: StringContext
 ): String {
