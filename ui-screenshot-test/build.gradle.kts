@@ -98,12 +98,3 @@ dependencies {
         }
     }
 }
-
-emulatorwtf {
-    directoriesToPull.set(listOf("/sdcard/googletest/test_outputfiles"))
-
-    // Because screenshot tests can be flaky, allow this module to always re-run
-    // which is helpful on GitHub Actions.  Once the tests are fully stabilized, this can be
-    // removed.
-    sideEffects.set(true)
-}
