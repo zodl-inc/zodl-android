@@ -151,13 +151,13 @@ jobs:
           ZODL_TEST_CROSSPAY_CHAIN: ${{ vars.ZODL_TEST_CROSSPAY_CHAIN || 'BASE' }}
           ZODL_TEST_CROSSPAY_USDC_AMOUNT: ${{ vars.ZODL_TEST_CROSSPAY_USDC_AMOUNT || '0.5' }}
           ZODL_TEST_SWAP_ZEC_AMOUNT: ${{ vars.ZODL_TEST_SWAP_ZEC_AMOUNT || '0.005' }}
-          ZODL_TEST_SWAP_RECV_USDC_AMOUNT: ${{ vars.ZODL_TEST_SWAP_RECV_USDC_AMOUNT || '1.2' }}
+          ZODL_TEST_SWAP_RECV_USDC_AMOUNT: ${{ vars.ZODL_TEST_SWAP_RECV_USDC_AMOUNT || '2.3' }}
           # Layer-2b: the wrapper auto-funds the reverse-swap deposit
           # address (USDC on Base) after swap-receive-usdc-to-zec.yaml
           # runs whenever ZODL_USDC_BASE_PRIVKEY is set. Same model
           # as the other tx tests in the suite — they spend real
           # mainnet funds whenever their respective secrets/seeds
-          # are present. Each fire = ~$1.20 USDC + ~$0.05 ETH gas
+          # are present. Each fire = ~$2.30 USDC + ~$0.05 ETH gas
           # from the counterparty wallet. NEAR 1Click JWT is
           # auto-extracted by the wrapper from the in-checkout
           # NearApiProvider.kt (FDroid reproducible-build constraint
