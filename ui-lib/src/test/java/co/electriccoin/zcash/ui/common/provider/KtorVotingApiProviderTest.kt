@@ -117,6 +117,8 @@ class KtorVotingApiProviderTest {
     ) : HttpClientProvider {
         override suspend fun supportsKtorTimeouts(): Boolean = supportsKtorTimeouts
 
+        override suspend fun createTor(): HttpClient = create()
+
         override suspend fun create(): HttpClient =
             HttpClient(
                 MockEngine { request ->

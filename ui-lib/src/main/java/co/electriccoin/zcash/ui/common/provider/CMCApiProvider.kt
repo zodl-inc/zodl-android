@@ -34,5 +34,8 @@ class CMCApiProviderImpl(
     @Throws(ResponseException::class)
     private suspend inline fun <T> execute(
         crossinline block: suspend HttpClient.() -> T
-    ): T = withContext(Dispatchers.IO) { httpClientProvider.create().use { block(it) } }
+    ): T =
+        // MOB-1378: exchange rates must only ever be fetched over Tor to protect the user's IP, so use
+        // the Tor-only client rather than create(), which would fall back to clearnet when Tor is off.
+        withContext(Dispatchers.IO) { httpClientProvider.createTor().use { block(it) } }
 }

@@ -8,6 +8,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Fixed:
 - Network request/response bodies and voting diagnostics are no longer written to logs in release builds, preventing sensitive data (recipient/refund addresses, amounts, transaction hashes) from leaking to logcat, bug reports, and crash dumps. Credential headers are also redacted from logs.
+- Exchange rates are no longer requested over a direct (non-Tor) connection. When Tor Protection is disabled the request to the rate provider is now blocked instead of falling back to clearnet, preventing the user's IP address and request timing from being exposed.
 
 ## [3.5.3 (1745)] - 2026-06-05
 

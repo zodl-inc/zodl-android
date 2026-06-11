@@ -14,9 +14,16 @@ import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
+import java.io.IOException
 
 interface HttpClientProvider {
     suspend fun create(): HttpClient
+
+    /**
+     * Returns a client that always routes over Tor, regardless of the user's Tor preference. Used for
+     * requests that must never touch clearnet (e.g. exchange-rate fetching, MOB-1378).
+     */
+    suspend fun createTor(): HttpClient
 
     suspend fun supportsKtorTimeouts(): Boolean = true
 }
@@ -30,7 +37,7 @@ class HttpClientProviderImpl(
 
     override suspend fun supportsKtorTimeouts(): Boolean = isTorEnabledStorageProvider.get() != true
 
-    private suspend fun createTor() =
+    override suspend fun createTor() =
         synchronizerProvider
             .getSynchronizer()
             .getTorHttpClient {
@@ -41,14 +48,33 @@ class HttpClientProviderImpl(
     private fun createDirect() =
         HttpClient(OkHttp) {
             configureHttpClient(installTimeouts = true)
+            engine {
+                // MOB-1378: Currency Conversion exchange rates must only ever be fetched over Tor
+                // (the in-app copy promises rates are fetched over Tor to protect the user's IP). This
+                // is the clearnet client, so refuse the CMC request at the network layer rather than
+                // silently leaking the user's IP / request timing to the rate provider when Tor is off.
+                addInterceptor { chain ->
+                    if (chain
+                            .request()
+                            .url
+                            .toString()
+                            .isExchangeRateRequest()
+                    ) {
+                        throw IOException("Exchange rate fetching over clearnet is not allowed while Tor is disabled")
+                    }
+                    chain.proceed(chain.request())
+                }
+            }
             install(HttpRequestRetry) {
                 maxRetries = MAX_RETRIES
                 retryIf { request, response ->
                     !request.url.toString().isVotingHelperPath() &&
+                        !request.url.toString().isExchangeRateRequest() &&
                         response.status.value in 500..599
                 }
                 retryOnExceptionIf { request, _ ->
-                    !request.url.toString().isVotingHelperPath()
+                    !request.url.toString().isVotingHelperPath() &&
+                        !request.url.toString().isExchangeRateRequest()
                 }
                 exponentialDelay()
             }
@@ -90,6 +116,11 @@ private fun String.isVotingHelperPath(): Boolean =
     contains("/shielded-vote/v1/shares") ||
         contains("/shielded-vote/v1/share-status/")
 
+// MOB-1378: the CMC quote API is the exchange-rate provider; requests to it must never leave over the
+// direct (clearnet) client.
+private fun String.isExchangeRateRequest(): Boolean = contains(CMC_API_HOST)
+
+private const val CMC_API_HOST = "pro-api.coinmarketcap.com"
 private const val MAX_RETRIES = 4
 private const val DEFAULT_REQUEST_TIMEOUT_MILLIS = 120_000L
 private const val DEFAULT_CONNECT_TIMEOUT_MILLIS = 15_000L
