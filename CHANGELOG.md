@@ -8,6 +8,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Fixed:
 - Network request/response bodies and voting diagnostics are no longer written to logs in release builds, preventing sensitive data (recipient/refund addresses, amounts, transaction hashes) from leaking to logcat, bug reports, and crash dumps. Credential headers are also redacted from logs.
+- Crash reporting (Firebase Crashlytics) collection is now off by default and is only enabled after the user opts in, so no crash data can be sent before consent.
 
 ## [3.5.3 (1745)] - 2026-06-05
 

@@ -9,6 +9,17 @@
             android:name="google_analytics_adid_collection_enabled"
             android:value="false" />
 
+        <!-- Collection must stay OFF by default until the user opts in. Crashlytics auto-collection
+             is on by default and runtime disabling only applies on the next run, so without these
+             flags an early crash could send a payload before consent. Runtime enables collection via
+             setCrashlyticsCollectionEnabled(true) only after the user opts in. -->
+        <meta-data
+            android:name="firebase_crashlytics_collection_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="firebase_analytics_collection_enabled"
+            android:value="false" />
+
         <!-- We want better control over the timing of Firebase initialization -->
         <provider
             android:name="com.google.firebase.provider.FirebaseInitProvider"
