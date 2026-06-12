@@ -42,6 +42,8 @@ fun ZashiSeedText(
     state: SeedTextState,
     modifier: Modifier = Modifier
 ) {
+    val maskedSeedWord = stringResource(R.string.general_masked_seed_word)
+    val hiddenSeedWordDescription = stringResource(R.string.general_hidden_seed_word)
     val blur by animateDpAsState(if (state.isRevealed) 0.dp else 14.dp, label = "")
     val color by animateColorAsState(
         when {
@@ -54,12 +56,17 @@ fun ZashiSeedText(
     Box(
         modifier = modifier.background(color, RoundedCornerShape(10.dp)),
     ) {
+        // Until the user passes the biometric reveal, the plaintext mnemonic must not enter the
+        // composable's Text/semantics nodes - the blur is only a cosmetic effect (a no-op for
+        // accessibility services and view-tree inspection). We therefore render masked placeholders
+        // and only substitute the real words once the state is revealed. See security ticket MOB-1376.
         val rowItems =
-            remember(state) {
+            remember(state, maskedSeedWord) {
                 state.seed
                     .split(" ")
-                    .withIndex()
-                    .chunked(3)
+                    .mapIndexed { index, word ->
+                        IndexedValue(index, if (state.isRevealed) word else maskedSeedWord)
+                    }.chunked(3)
             }
 
         Column(
@@ -82,6 +89,7 @@ fun ZashiSeedText(
                             content = { mod, text ->
                                 ZashiSeedWordTextContent(
                                     text = text,
+                                    contentDescription = if (state.isRevealed) null else hiddenSeedWordDescription,
                                     modifier = mod.blurCompat(blur, 14.dp)
                                 )
                             },

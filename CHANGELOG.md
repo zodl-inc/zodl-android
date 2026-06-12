@@ -11,6 +11,8 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Fixed:
 - Network request/response bodies and voting diagnostics are no longer written to logs in release builds, preventing sensitive data (recipient/refund addresses, amounts, transaction hashes) from leaking to logcat, bug reports, and crash dumps. Credential headers are also redacted from logs.
+- Crash reporting (Firebase Crashlytics) collection is now off by default and is only enabled after the user opts in, so no crash data can be sent before consent.
+- On the wallet-backup screen the recovery phrase is now masked until the biometric reveal, so the plaintext words can no longer be read from the accessibility/view tree behind the visual blur. While hidden, each word is announced to screen readers as a single descriptive label instead of spelling out the mask characters.
 
 ## [3.5.3 (1745)] - 2026-06-05
 

@@ -1,5 +1,4 @@
 # Expected secrets
-# EMULATOR_WTF_API_KEY - Optional API key for emulator.wtf
 # FIREBASE_TEST_LAB_SERVICE_ACCOUNT - Email address of Firebase Test Lab service account
 # FIREBASE_TEST_LAB_WORKLOAD_IDENTITY_PROVIDER - Workload identity provider to generate temporary service account key
 # FIREBASE_DEBUG_JSON_BASE64 - Optional JSON to enable Firebase (e.g. Crashlytics) for debug builds
@@ -49,17 +48,6 @@ jobs:
           FIREBASE_TEST_LAB_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_TEST_LAB_SERVICE_ACCOUNT }}
           FIREBASE_TEST_LAB_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.FIREBASE_TEST_LAB_WORKLOAD_IDENTITY_PROVIDER }}
         if: "${{ env.FIREBASE_TEST_LAB_PROJECT != '' && env.FIREBASE_TEST_LAB_SERVICE_ACCOUNT != '' && env.FIREBASE_TEST_LAB_WORKLOAD_IDENTITY_PROVIDER != '' }}"
-        run: echo "defined=true" >> $GITHUB_OUTPUT
-
-  check_emulator_wtf_secrets:
-    runs-on: ubuntu-latest
-    outputs:
-      has-secrets: ${{ steps.check_emulator_wtf_secrets.outputs.defined }}
-    steps:
-      - id: check_emulator_wtf_secrets
-        env:
-          EMULATOR_WTF_API_KEY: ${{ secrets.EMULATOR_WTF_API_KEY }}
-        if: "${{ env.EMULATOR_WTF_API_KEY != '' }}"
         run: echo "defined=true" >> $GITHUB_OUTPUT
 
   check_properties:
@@ -244,14 +232,37 @@ jobs:
           name: Test Kotlin modules results
           path: ~/artifacts
 
-# Emulator.wtf is preferred if it has an API key.
-  test_android_modules_ftl:
-    if: needs.check_firebase_secrets.outputs.has-secrets == 'true' && needs.check_emulator_wtf_secrets.outputs.has-secrets == 'false'
-    needs: [validate_gradle_wrapper, check_firebase_secrets, check_emulator_wtf_secrets]
+  # Runs Android instrumentation tests on a local KVM-accelerated
+  # emulator via reactivecircus/android-emulator-runner. Mirrors the proven
+  # pattern from e2e-smoke.yml. The matrix splits the workload into two shards
+  # so they run in parallel: `libs` covers everything except the app + screenshot
+  # tests (with Jacoco coverage on), and `app` covers `:app` and `:ui-screenshot-test`
+  # (coverage off, because Jacoco bytecode rewrite breaks screenshot tests).
+  test_android_modules_emulator:
+    name: test_android_modules_emulator (${{ matrix.shard }})
+    needs: [validate_gradle_wrapper]
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
       contents: read
-      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: libs
+            coverage: true
+            gradle-tasks: >-
+              connectedDebugAndroidTest
+              -x :app:connectedZcashmainnetStoreDebugAndroidTest
+              -x :ui-screenshot-test:connectedZcashmainnetStoreDebugAndroidTest
+              -x :ui-integration-test:connectedZcashmainnetStoreDebugAndroidTest
+              -x :ui-benchmark-test:connectedDebugAndroidTest
+              :ui-integration-test:connectedZcashmainnetStoreDebugAndroidTest
+          - shard: app
+            coverage: false
+            gradle-tasks: >-
+              :app:connectedZcashmainnetStoreDebugAndroidTest
+              :ui-screenshot-test:connectedZcashmainnetStoreDebugAndroidTest
     steps:
       - name: Checkout
         timeout-minutes: 1
@@ -264,33 +275,48 @@ jobs:
       - name: Set up Gradle
         uses: ./.github/actions/setup-gradle
         timeout-minutes: 5
-      - name: Build
-        timeout-minutes: 20
+      - name: Enable KVM
         run: |
-          ./gradlew assembleZcashmainnetStoreDebug assembleZcashtestnetStoreDebug assembleAndroidTest
-      - name: Authenticate to Google Cloud for Firebase Test Lab
-        id: auth_test_lab
-        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: AVD cache
+        uses: actions/cache@v5
+        id: avd-cache
         with:
-          create_credentials_file: true
-          project_id: ${{ vars.FIREBASE_TEST_LAB_PROJECT }}
-          service_account: ${{ secrets.FIREBASE_TEST_LAB_SERVICE_ACCOUNT }}
-          workload_identity_provider: ${{ secrets.FIREBASE_TEST_LAB_WORKLOAD_IDENTITY_PROVIDER }}
-          access_token_lifetime: '1200s'
-      - name: Test
-        timeout-minutes: 30
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-api-35-x86_64-pixel_6-default-v1
+      - name: Create AVD and generate snapshot for caching
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          target: default
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "Generated AVD snapshot for caching"
+      - name: Run instrumentation tests
+        uses: reactivecircus/android-emulator-runner@v2
         env:
           # Force blank suffix for screenshot tests
           ORG_GRADLE_PROJECT_ZCASH_DEBUG_APP_NAME_SUFFIX: ""
-          # Used by Flank, since the temporary token is missing the project name
-          GOOGLE_CLOUD_PROJECT: ${{ vars.FIREBASE_TEST_LAB_PROJECT }}
-          ORG_GRADLE_PROJECT_ZCASH_FIREBASE_TEST_LAB_API_KEY_PATH: ${{ steps.auth_test_lab.outputs.credentials_file_path }}
-          # Because Fulladle doesn't allow Test Orchestrator to be enabled/disabled for a specific submodule, it must be enabled for all modules
-          ORG_GRADLE_PROJECT_IS_USE_TEST_ORCHESTRATOR: true
+          ORG_GRADLE_PROJECT_IS_ANDROID_INSTRUMENTATION_TEST_COVERAGE_ENABLED: ${{ matrix.coverage }}
           ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
           ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
-        run: |
-          ./gradlew runFlank
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          target: default
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: ./gradlew ${{ matrix.gradle-tasks }}
       - name: Collect Artifacts
         if: ${{ always() }}
         timeout-minutes: 1
@@ -300,107 +326,13 @@ jobs:
 
           mkdir ${ARTIFACTS_DIR_PATH}
 
-          zip -r ${TEST_RESULTS_ZIP_PATH} . -i build/fladle/\* \*/build/outputs/androidTest-results/\*
+          zip -r ${TEST_RESULTS_ZIP_PATH} . -i \*/build/outputs/androidTest-results/\* \*/build/reports/androidTests/\*
       - name: Upload Artifacts
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         timeout-minutes: 1
         with:
-          name: Test Android modules with FTL results
-          path: ~/artifacts
-
-  test_android_modules_wtf_coverage:
-    if: needs.check_emulator_wtf_secrets.outputs.has-secrets == 'true'
-    needs: [ validate_gradle_wrapper, check_emulator_wtf_secrets]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        timeout-minutes: 1
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-        with:
-          fetch-depth: 0 # to fetch all commits
-      - name: Set up Java
-        uses: ./.github/actions/setup-java
-        timeout-minutes: 1
-      - name: Set up Gradle
-        uses: ./.github/actions/setup-gradle
-        timeout-minutes: 5
-      - name: Build and test
-        timeout-minutes: 30
-        env:
-          # Force blank suffix for screenshot tests
-          ORG_GRADLE_PROJECT_ZCASH_DEBUG_APP_NAME_SUFFIX: ""
-          ORG_GRADLE_PROJECT_ZCASH_EMULATOR_WTF_API_KEY: ${{ secrets.EMULATOR_WTF_API_KEY }}
-          ORG_GRADLE_PROJECT_IS_ANDROID_INSTRUMENTATION_TEST_COVERAGE_ENABLED: true
-          ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
-        run: |
-          ./gradlew testDebugWithEmulatorWtf :ui-integration-test:testZcashmainnetStoreDebugWithEmulatorWtf
-      - name: Collect Artifacts
-        if: ${{ always() }}
-        timeout-minutes: 1
-        run: |
-          export ARTIFACTS_DIR_PATH=~/artifacts
-          export TEST_RESULTS_ZIP_PATH=${ARTIFACTS_DIR_PATH}/test_results.zip
-
-          mkdir ${ARTIFACTS_DIR_PATH}
-
-          zip -r ${TEST_RESULTS_ZIP_PATH} . -i \*/build/test-results/\*
-      - name: Upload Artifacts
-        if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        timeout-minutes: 1
-        with:
-          name: Test Android libs with WTF results
-          path: ~/artifacts
-
-  test_android_modules_wtf_no_coverage:
-    if: needs.check_emulator_wtf_secrets.outputs.has-secrets == 'true'
-    needs: [ validate_gradle_wrapper, check_emulator_wtf_secrets]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        timeout-minutes: 1
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
-        with:
-          fetch-depth: 0 # to fetch all commits
-      - name: Set up Java
-        uses: ./.github/actions/setup-java
-        timeout-minutes: 1
-      - name: Set up Gradle
-        uses: ./.github/actions/setup-gradle
-        timeout-minutes: 5
-      - name: Build and test
-        timeout-minutes: 30
-        env:
-          # Force blank suffix for screenshot tests
-          ORG_GRADLE_PROJECT_ZCASH_DEBUG_APP_NAME_SUFFIX: ""
-          ORG_GRADLE_PROJECT_ZCASH_EMULATOR_WTF_API_KEY: ${{ secrets.EMULATOR_WTF_API_KEY }}
-          ORG_GRADLE_PROJECT_IS_ANDROID_INSTRUMENTATION_TEST_COVERAGE_ENABLED: false
-          ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
-        run: |
-          ./gradlew :app:testZcashmainnetStoreDebugWithEmulatorWtf :ui-screenshot-test:testZcashmainnetStoreDebugWithEmulatorWtf
-      - name: Collect Artifacts
-        if: ${{ always() }}
-        timeout-minutes: 1
-        run: |
-          export ARTIFACTS_DIR_PATH=~/artifacts
-          export TEST_RESULTS_ZIP_PATH=${ARTIFACTS_DIR_PATH}/test_results.zip
-
-          mkdir ${ARTIFACTS_DIR_PATH}
-
-          zip -r ${TEST_RESULTS_ZIP_PATH} . -i \*/build/test-results/\*
-      - name: Upload Artifacts
-        if: ${{ always() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        timeout-minutes: 1
-        with:
-          name: Test Android app with WTF results
+          name: Test Android modules emulator results (${{ matrix.shard }})
           path: ~/artifacts
 
   # Performs a button mash test on the debug build of the app with strict mode enabled.
@@ -531,7 +463,7 @@ jobs:
         uses: ./.github/actions/foss/strip
 
       - name: Build FOSS APK
-        timeout-minutes: 25
+        timeout-minutes: 35
         env:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PATH: ${{ format('{0}/release.jks', env.home) }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: android

@@ -6,7 +6,6 @@ import android.content.Context
 import androidx.annotation.AnyThread
 import co.electriccoin.zcash.crash.android.R
 import co.electriccoin.zcash.crash.android.internal.CrashReporter
-import co.electriccoin.zcash.spackle.EmulatorWtfUtil
 import co.electriccoin.zcash.spackle.FirebaseTestLabUtil
 import co.electriccoin.zcash.spackle.SuspendingLazy
 import co.electriccoin.zcash.spackle.Twig
@@ -110,7 +109,7 @@ private class FirebaseCrashReporterImpl(
                         FirebaseCrashlytics.getInstance().apply {
                             setCustomKey(
                                 CrashlyticsUserProperties.IS_TEST,
-                                EmulatorWtfUtil.isEmulatorWtf(it) || FirebaseTestLabUtil.isFirebaseTestLab(it)
+                                FirebaseTestLabUtil.isFirebaseTestLab(it)
                             )
                         }
 

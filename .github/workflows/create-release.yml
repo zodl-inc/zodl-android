@@ -83,6 +83,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ steps.tag.outputs.tag }}
+          fetch-depth: 0  # full history so the Linear release action sees every commit since the previous tag
 
       - name: Parse tag and extract changelog section
         id: meta
@@ -145,3 +146,11 @@ jobs:
           # App token (cascades into release.yaml) when available; otherwise
           # GITHUB_TOKEN (no cascade — see CASCADE CAVEAT in the header).
           GITHUB_TOKEN: ${{ steps.app_token.outputs.token || secrets.GITHUB_TOKEN }}
+
+      - name: Create Linear release
+        # Scans commits since the previous tag for MOB-### references and creates
+        # a Linear release with those issues attached. Reads LINEAR_ACCESS_KEY from
+        # the repo's Actions secrets (configured per-pipeline in Linear settings).
+        uses: linear/linear-release-action@v0
+        with:
+          access_key: ${{ secrets.LINEAR_ACCESS_KEY }}

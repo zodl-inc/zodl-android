@@ -32,7 +32,6 @@ dependencies {
     implementation(
         "org.jetbrains.kotlin:compose-compiler-gradle-plugin:${rootProperties.getProperty("KOTLIN_VERSION")}"
     )
-    implementation("wtf.emulator:gradle-plugin:${rootProperties.getProperty("EMULATOR_WTF_GRADLE_PLUGIN_VERSION")}")
     implementation(
         "org.jetbrains.kotlinx.kover:org.jetbrains.kotlinx.kover.gradle.plugin:" +
             rootProperties.getProperty("KOVER_VERSION")
