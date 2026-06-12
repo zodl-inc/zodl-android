@@ -123,11 +123,11 @@ class NearSwapQuoteStatusTest {
                     amountIn = BigDecimal("100000000"),
                     amountInFormatted = BigDecimal("1"),
                     amountInUsd = BigDecimal("10"),
-                    minAmountIn = null,
+                    minAmountIn = BigDecimal("100000000"),
                     amountOut = BigDecimal("2000000"),
                     amountOutFormatted = BigDecimal("2"),
                     amountOutUsd = BigDecimal("10"),
-                    minAmountOut = null,
+                    minAmountOut = BigDecimal("2000000"),
                     deadline = deadline
                 )
         )

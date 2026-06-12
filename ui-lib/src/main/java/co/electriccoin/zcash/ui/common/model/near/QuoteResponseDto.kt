@@ -37,7 +37,7 @@ data class QuoteDetails(
     val amountInUsd: BigDecimal,
     @SerialName("minAmountIn")
     @Serializable(with = BigDecimalSerializer::class)
-    val minAmountIn: BigDecimal? = null,
+    val minAmountIn: BigDecimal,
     @SerialName("amountOut")
     @Serializable(with = BigDecimalSerializer::class)
     val amountOut: BigDecimal,
@@ -49,7 +49,7 @@ data class QuoteDetails(
     val amountOutUsd: BigDecimal,
     @SerialName("minAmountOut")
     @Serializable(with = BigDecimalSerializer::class)
-    val minAmountOut: BigDecimal? = null,
+    val minAmountOut: BigDecimal,
     @SerialName("deadline")
     val deadline: Instant
 )

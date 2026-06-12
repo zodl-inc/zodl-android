@@ -104,11 +104,11 @@ class NearSwapQuoteTest {
         amountIn: BigDecimal = BigDecimal("100000000"),
         amountInFormatted: BigDecimal = BigDecimal("1"),
         amountInUsd: BigDecimal = BigDecimal("10"),
-        minAmountIn: BigDecimal? = null,
+        minAmountIn: BigDecimal = amountIn,
         amountOut: BigDecimal = BigDecimal("2000000"),
         amountOutFormatted: BigDecimal = BigDecimal("2"),
         amountOutUsd: BigDecimal = BigDecimal("10"),
-        minAmountOut: BigDecimal? = null
+        minAmountOut: BigDecimal = amountOut
     ): QuoteResponseDto =
         QuoteResponseDto(
             timestamp = EPOCH,

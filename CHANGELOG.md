@@ -10,6 +10,8 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - Network request/response bodies and voting diagnostics are no longer written to logs in release builds, preventing sensitive data (recipient/refund addresses, amounts, transaction hashes) from leaking to logcat, bug reports, and crash dumps. Credential headers are also redacted from logs.
 - Crash reporting (Firebase Crashlytics) collection is now off by default and is only enabled after the user opts in, so no crash data can be sent before consent.
 - On the wallet-backup screen the recovery phrase is now masked until the biometric reveal, so the plaintext words can no longer be read from the accessibility/view tree behind the visual blur. While hidden, each word is announced to screen readers as a single descriptive label instead of spelling out the mask characters.
+- The cross-chain swap slippage guarantee is now always enforced: the swap provider's minimum-amount bounds are treated as required, so a malicious or tampered response can no longer skip the slippage check by omitting them.
+- Swap quotes rejected by the amount-consistency safety check are now reported to monitoring (without any amounts), so a future swap-provider format change surfaces as an observable signal instead of silently blocking swaps.
 - Exchange rates are no longer requested over a direct (non-Tor) connection. When Tor Protection is disabled the request to the rate provider is now blocked instead of falling back to clearnet, preventing the user's IP address and request timing from being exposed.
 
 ## [3.5.3 (1745)] - 2026-06-05
