@@ -32,6 +32,7 @@
     <string name="exchange_rate_opt_out_option_title">Disable</string>
     <string name="exchange_rate_opt_out_option_subtitle">Don\’t show currency conversion.</string>
     <string name="exchange_rate_opt_in_description">Display your balance and payment amounts in selected currency.
+        For Swap and Pay, exchange rates will continue to be shown in USD.
         You can manage this feature in Advanced Settings.</string>
     <string name="exchange_rate_opt_in_description_settings">Display your balance and payment amounts in selected
         currency.</string>
