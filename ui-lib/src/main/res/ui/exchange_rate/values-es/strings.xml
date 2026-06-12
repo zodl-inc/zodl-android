@@ -29,6 +29,7 @@
     <string name="exchange_rate_opt_out_option_title">Desactivar</string>
     <string name="exchange_rate_opt_out_option_subtitle">No mostrar la conversión de moneda.</string>
     <string name="exchange_rate_opt_in_description">Muestra tu saldo y montos de pago en la moneda seleccionada.
+        Para Swap y Pay, las tasas de cambio se seguirán mostrando en USD.
         Puedes administrar esta función en Configuración avanzada.</string>
     <string name="exchange_rate_opt_in_description_settings">Muestra tu saldo y montos de pago en la moneda
         seleccionada.</string>
