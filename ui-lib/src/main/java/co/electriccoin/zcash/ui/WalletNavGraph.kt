@@ -65,6 +65,8 @@ import co.electriccoin.zcash.ui.screen.exchangerate.picker.CurrencyConversionPic
 import co.electriccoin.zcash.ui.screen.exchangerate.picker.CurrencyConversionPickerScreen
 import co.electriccoin.zcash.ui.screen.exchangerate.settings.ExchangeRateSettingsArgs
 import co.electriccoin.zcash.ui.screen.exchangerate.settings.ExchangeRateSettingsScreen
+import co.electriccoin.zcash.ui.screen.exchangerateunavailable.ExchangeRateUnavailableArgs
+import co.electriccoin.zcash.ui.screen.exchangerateunavailable.ExchangeRateUnavailableScreen
 import co.electriccoin.zcash.ui.screen.exportdata.WrapExportPrivateData
 import co.electriccoin.zcash.ui.screen.feedback.FeedbackArgs
 import co.electriccoin.zcash.ui.screen.feedback.FeedbackScreen
@@ -114,6 +116,7 @@ import co.electriccoin.zcash.ui.screen.receive.info.ShieldedAddressInfoArgs
 import co.electriccoin.zcash.ui.screen.receive.info.ShieldedAddressInfoScreen
 import co.electriccoin.zcash.ui.screen.receive.info.TransparentAddressInfoArgs
 import co.electriccoin.zcash.ui.screen.receive.info.TransparentAddressInfoScreen
+import co.electriccoin.zcash.ui.screen.request.RequestArgs
 import co.electriccoin.zcash.ui.screen.request.RequestScreen
 import co.electriccoin.zcash.ui.screen.restore.info.AndroidSeedInfo
 import co.electriccoin.zcash.ui.screen.restore.info.SeedInfo
@@ -266,14 +269,7 @@ fun NavGraphBuilder.walletNavGraph(
                 backStackEntry.arguments?.getInt(NavigationArgs.ADDRESS_TYPE) ?: ReceiveAddressType.Unified.ordinal
             QrCodeScreen(addressType)
         }
-        composable(
-            route = "${NavigationTargets.REQUEST}/{${NavigationArgs.ADDRESS_TYPE}}",
-            arguments = listOf(navArgument(NavigationArgs.ADDRESS_TYPE) { type = NavType.Companion.IntType })
-        ) { backStackEntry ->
-            val addressType =
-                backStackEntry.arguments?.getInt(NavigationArgs.ADDRESS_TYPE) ?: ReceiveAddressType.Unified.ordinal
-            RequestScreen(addressType)
-        }
+        composable<RequestArgs> { RequestScreen(it.toRoute()) }
         composable<ConnectKeystoneArgs> { ConnectKeystoneScreen() }
         dialogComposable<KeystoneExplainerScreenArgs> { KeystoneExplainerScreen() }
         composable<KeystoneNewOrActiveArgs> { KeystoneNewOrActiveScreen(it.toRoute()) }
@@ -306,6 +302,7 @@ fun NavGraphBuilder.walletNavGraph(
         dialogComposable<WalletUpdatingInfo> { AndroidWalletUpdatingInfo() }
         dialogComposable<ErrorDialog> { AndroidErrorDialog() }
         dialogComposable<ErrorBottomSheet> { AndroidErrorBottomSheet() }
+        dialogComposable<ExchangeRateUnavailableArgs> { ExchangeRateUnavailableScreen() }
         dialogComposable<SyncErrorArgs> { SyncErrorScreen() }
         dialogComposable<SpendableBalanceArgs> { SpendableBalanceScreen() }
         composable<CrashReportOptIn> { AndroidCrashReportOptIn() }

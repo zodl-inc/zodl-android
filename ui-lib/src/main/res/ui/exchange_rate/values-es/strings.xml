@@ -8,6 +8,13 @@
 
     <string name="exchange_rate_unavailable_title">Tasa de cambio no disponible</string>
     <string name="exchange_rate_unavailable_subtitle">Intentamos actualizar la tasa de cambio, pero no pudimos. Verifica tu conexión, reinicia la app e intentaremos nuevamente.</string>
+
+    <!-- Hoja inferior de conversión no disponible -->
+    <string name="exchange_rate_unavailable_sheet_title">Conversión de %1$s no disponible</string>
+    <string name="exchange_rate_unavailable_sheet_subtitle">No se pueden obtener las tasas en vivo de %1$s en este momento. Puedes usar USD como alternativa o seguir introduciendo importes solo en ZEC.</string>
+    <string name="exchange_rate_unavailable_sheet_switch_usd">Cambiar a USD</string>
+    <string name="exchange_rate_unavailable_sheet_continue_zec">Continuar en ZEC</string>
+
     <string name="exchange_rate_opt_in_title">Nueva función</string>
     <string name="exchange_rate_opt_in_subtitle">Conversión de Moneda</string>
     <string name="exchange_rate_opt_in_primary_btn">Revisar</string>

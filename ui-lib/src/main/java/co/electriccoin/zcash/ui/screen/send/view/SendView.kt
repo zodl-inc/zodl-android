@@ -660,12 +660,7 @@ fun SendFormAmountTextField(
                     modifier = Modifier.weight(1f),
                     placeholder = {
                         ZashiAutoSizeText(
-                            text =
-                                exchangeRateState.currencyConversion
-                                    ?.fiatCurrency
-                                    ?.let {
-                                        stringResByFiatDisplayName(it).getValue()
-                                    }.orEmpty(),
+                            text = stringResByFiatDisplayName(exchangeRateState.expectedCurrency).getValue(),
                             style = ZashiTypography.textMd,
                             color = LocalContentColor.current,
                             maxLines = 1,
@@ -687,19 +682,17 @@ fun SendFormAmountTextField(
                             }
                         ),
                     prefix = {
-                        if (exchangeRateState.currencyConversion?.fiatCurrency != null) {
-                            Text(
-                                text = exchangeRateState.currencyConversion.fiatCurrency.symbol,
-                                color =
-                                    if (!exchangeRateState.isStale) {
-                                        ZashiColors.Inputs.Default.text
-                                    } else {
-                                        ZashiColors.Inputs.Disabled.text
-                                    },
-                                style = ZashiTypography.textLg,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
+                        Text(
+                            text = exchangeRateState.expectedCurrency.symbol,
+                            color =
+                                if (!exchangeRateState.isStale) {
+                                    ZashiColors.Inputs.Default.text
+                                } else {
+                                    ZashiColors.Inputs.Disabled.text
+                                },
+                            style = ZashiTypography.textLg,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 )
             }

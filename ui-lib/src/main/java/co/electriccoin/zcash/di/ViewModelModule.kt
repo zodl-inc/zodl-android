@@ -30,6 +30,7 @@ import co.electriccoin.zcash.ui.screen.error.SyncErrorVM
 import co.electriccoin.zcash.ui.screen.exchangerate.optin.ExchangeRateOptInVM
 import co.electriccoin.zcash.ui.screen.exchangerate.picker.CurrencyConversionPickerVM
 import co.electriccoin.zcash.ui.screen.exchangerate.settings.ExchangeRateSettingsVM
+import co.electriccoin.zcash.ui.screen.exchangerateunavailable.ExchangeRateUnavailableVM
 import co.electriccoin.zcash.ui.screen.feedback.FeedbackVM
 import co.electriccoin.zcash.ui.screen.flexa.FlexaViewModel
 import co.electriccoin.zcash.ui.screen.home.HomeVM
@@ -120,6 +121,7 @@ val viewModelModule =
         viewModelOf(::ReceiveVM)
         viewModelOf(::QrCodeVM)
         viewModelOf(::RequestVM)
+        viewModelOf(::ExchangeRateUnavailableVM)
         viewModelOf(::ScanZashiAddressVM)
         viewModelOf(::ScanKeystoneSignInRequestViewModel)
         viewModelOf(::ScanKeystonePCZTViewModel)

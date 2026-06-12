@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheetDefaults
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SheetValue.Expanded
@@ -35,6 +37,8 @@ import co.electriccoin.zcash.ui.design.util.LocalNavRoute
 @Composable
 fun <T : ModalBottomSheetState> ZashiScreenModalBottomSheet(
     state: T?,
+    sheetGesturesEnabled: Boolean = true,
+    properties: ModalBottomSheetProperties = ModalBottomSheetDefaults.properties,
     sheetState: SheetState = rememberScreenModalBottomSheetState(),
     shape: Shape = ZashiModalBottomSheetDefaults.SheetShape,
     containerColor: Color = ZashiModalBottomSheetDefaults.ContainerColor,
@@ -50,6 +54,7 @@ fun <T : ModalBottomSheetState> ZashiScreenModalBottomSheet(
     state?.let {
         ZashiModalBottomSheet(
             sheetState = sheetState,
+            sheetGesturesEnabled = sheetGesturesEnabled,
             shape = shape,
             containerColor = containerColor,
             dragHandle = dragHandle,
@@ -79,6 +84,7 @@ fun <T : ModalBottomSheetState> ZashiScreenModalBottomSheet(
                 HookupKeyboardController()
             },
             onDismissRequest = it.onBack,
+            properties = properties,
         )
     }
 }

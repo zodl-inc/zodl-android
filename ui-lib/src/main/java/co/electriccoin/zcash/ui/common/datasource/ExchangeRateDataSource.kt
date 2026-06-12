@@ -45,16 +45,12 @@ class ExchangeRateDataSourceImpl(
         @Suppress("ThrowsCount")
         suspend fun getCMCExchangeRate(apiKey: String): FiatCurrencyConversion {
             val exchangeRate =
-                try {
-                    cmcApiProvider
-                        .getExchangeRateQuote(apiKey = apiKey, fiat = fiatCurrency.code)
-                        .data["ZEC"]
-                        ?.quote
-                        ?.get(fiatCurrency.code)
-                        ?.price
-                } catch (e: ResponseException) {
-                    throw ExchangeRateUnavailable(cause = e)
-                }
+                cmcApiProvider
+                    .getExchangeRateQuote(apiKey = apiKey, fiat = fiatCurrency.code)
+                    .data["ZEC"]
+                    ?.quote
+                    ?.get(fiatCurrency.code)
+                    ?.price
             val price = exchangeRate ?: throw ExchangeRateUnavailable(message = "Exchange rate not found in response")
             return FiatCurrencyConversion(
                 timestamp = Clock.System.now(),

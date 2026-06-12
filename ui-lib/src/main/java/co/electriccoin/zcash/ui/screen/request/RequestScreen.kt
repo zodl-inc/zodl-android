@@ -15,8 +15,8 @@ import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
 @Composable
-internal fun RequestScreen(addressType: Int) {
-    val vm = koinViewModel<RequestVM> { parametersOf(addressType) }
+internal fun RequestScreen(args: RequestArgs) {
+    val vm = koinViewModel<RequestVM> { parametersOf(args.addressType) }
     val requestState by vm.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     BackHandler {

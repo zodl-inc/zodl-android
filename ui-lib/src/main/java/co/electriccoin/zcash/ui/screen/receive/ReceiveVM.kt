@@ -10,6 +10,7 @@ import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
+import co.electriccoin.zcash.ui.common.usecase.NavigateToRequestZecUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.design.component.IconButtonState
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -33,6 +34,7 @@ class ReceiveVM(
     observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase,
     private val copyToClipboard: CopyToClipboardUseCase,
     private val navigationRouter: NavigationRouter,
+    private val navigateToRequestZec: NavigateToRequestZecUseCase,
 ) : ViewModel() {
     private val expandedIndex = MutableStateFlow(0)
 
@@ -138,8 +140,7 @@ class ReceiveVM(
             )
     )
 
-    private fun onRequestClick(addressType: ReceiveAddressType) =
-        navigationRouter.forward("${NavigationTargets.REQUEST}/${addressType.ordinal}")
+    private fun onRequestClick(addressType: ReceiveAddressType) = navigateToRequestZec(addressType.ordinal)
 
     private fun onQrCodeClick(addressType: ReceiveAddressType) =
         navigationRouter.forward("${NavigationTargets.QR_CODE}/${addressType.ordinal}")
