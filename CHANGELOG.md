@@ -13,6 +13,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - The cross-chain swap slippage guarantee is now always enforced: the swap provider's minimum-amount bounds are treated as required, so a malicious or tampered response can no longer skip the slippage check by omitting them.
 - Swap quotes rejected by the amount-consistency safety check are now reported to monitoring (without any amounts), so a future swap-provider format change surfaces as an observable signal instead of silently blocking swaps.
 - Exchange rates are no longer requested over a direct (non-Tor) connection. When Tor Protection is disabled the request to the rate provider is now blocked instead of falling back to clearnet, preventing the user's IP address and request timing from being exposed.
+- We fixed a bug where a successful TEX send could show a misleading "transaction failed" screen.
 
 ## [3.5.3 (1745)] - 2026-06-05
 

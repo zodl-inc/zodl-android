@@ -277,7 +277,7 @@ class ProposalDataSourceImpl(
 
             val successCount =
                 submitResults
-                    .count { it is TransactionSubmitResult.Success }
+                    .count { it.isEffectiveSuccess() }
             val txIds =
                 submitResults
                     .map { it.txIdString() }
@@ -290,7 +290,9 @@ class ProposalDataSourceImpl(
                             }
 
                             is TransactionSubmitResult.Failure -> {
-                                if (it.grpcError) {
+                                if (it.isEffectiveSuccess()) {
+                                    "success (already known to network): ${it.description}"
+                                } else if (it.grpcError) {
                                     it.description.orEmpty()
                                 } else {
                                     "code: ${it.code} desc: ${it.description}"
@@ -306,7 +308,8 @@ class ProposalDataSourceImpl(
                 submitResults
                     .mapNotNull {
                         when (it) {
-                            is TransactionSubmitResult.Failure -> it.grpcError
+                            is TransactionSubmitResult.Failure ->
+                                if (it.isEffectiveSuccess()) null else it.grpcError
                             is TransactionSubmitResult.NotAttempted -> null
                             is TransactionSubmitResult.Success -> null
                         }
@@ -315,6 +318,7 @@ class ProposalDataSourceImpl(
             val (errCode, errDesc) =
                 submitResults
                     .filterIsInstance<TransactionSubmitResult.Failure>()
+                    .filterNot { it.isEffectiveSuccess() }
                     .lastOrNull { !it.grpcError }
                     ?.let { it.code to it.description } ?: (0 to "")
 
@@ -434,3 +438,13 @@ data class ExactOutputSwapTransactionProposal(
 ) : SwapTransactionProposal
 
 private const val DEFAULT_SHIELDING_THRESHOLD = 100000L
+
+private fun isAlreadyKnownToNetwork(description: String?): Boolean {
+    val lower = description?.lowercase() ?: return false
+    return lower.contains("already exists in mempool") ||
+        lower.contains("already queued for download")
+}
+
+private fun TransactionSubmitResult.isEffectiveSuccess(): Boolean =
+    this is TransactionSubmitResult.Success ||
+        (this is TransactionSubmitResult.Failure && !grpcError && isAlreadyKnownToNetwork(description))
