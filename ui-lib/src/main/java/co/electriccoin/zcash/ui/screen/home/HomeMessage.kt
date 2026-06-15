@@ -37,6 +37,8 @@ import androidx.compose.ui.zIndex
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.screen.home.backup.WalletBackupMessage
 import co.electriccoin.zcash.ui.screen.home.backup.WalletBackupMessageState
+import co.electriccoin.zcash.ui.screen.home.migration.MigrationMessage
+import co.electriccoin.zcash.ui.screen.home.migration.MigrationMessageState
 import co.electriccoin.zcash.ui.screen.home.currency.EnableCurrencyConversionMessage
 import co.electriccoin.zcash.ui.screen.home.currency.EnableCurrencyConversionMessageState
 import co.electriccoin.zcash.ui.screen.home.disconnected.WalletDisconnectedMessage
@@ -216,6 +218,14 @@ fun HomeMessage(
                         innerModifier = innerModifier,
                         state = normalizedState as ORSwapMessageState,
                         contentPadding = contentPadding
+                    )
+                }
+
+                is MigrationMessageState -> {
+                    MigrationMessage(
+                        contentPadding = contentPadding,
+                        state = normalizedState as MigrationMessageState,
+                        innerModifier = innerModifier
                     )
                 }
 

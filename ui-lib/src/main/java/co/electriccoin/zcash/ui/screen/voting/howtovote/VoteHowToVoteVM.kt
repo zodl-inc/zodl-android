@@ -12,8 +12,8 @@ import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.common.WalletHeaderIconsState
 import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
-import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIconsState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -56,7 +56,11 @@ class VoteHowToVoteVM(
                                     ),
                                 ),
                             infoText = stringRes(R.string.coinVote_howToVote_infoCard),
-                            walletHeaderIcons = VoteWalletHeaderIconsState(isKeystone = isKeystone),
+                            walletHeaderIcons =
+                                WalletHeaderIconsState(
+                                    isKeystone = isKeystone,
+                                    badgeIcon = R.drawable.ic_vote_thumbs_up,
+                                ),
                             continueButton =
                                 ButtonState(
                                     text = stringRes(R.string.coinVote_common_continue),

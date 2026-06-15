@@ -210,6 +210,28 @@ import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsArgs
 import co.electriccoin.zcash.ui.screen.voting.results.VoteResultsScreen
 import co.electriccoin.zcash.ui.screen.voting.scankeystone.ScanKeystoneVotingPCZTRequest
 import co.electriccoin.zcash.ui.screen.voting.scankeystone.WrapScanKeystoneVotingPCZTRequest
+import co.electriccoin.zcash.ui.screen.migration.progress.MigrationProgressArgs
+import co.electriccoin.zcash.ui.screen.migration.progress.MigrationProgressScreen
+import co.electriccoin.zcash.ui.screen.migration.setup.MigrationSetupArgs
+import co.electriccoin.zcash.ui.screen.migration.setup.MigrationSetupScreen
+import co.electriccoin.zcash.ui.screen.migration.review.MigrationReviewArgs
+import co.electriccoin.zcash.ui.screen.migration.review.MigrationReviewScreen
+import co.electriccoin.zcash.ui.screen.migration.sending.MigrationSendingArgs
+import co.electriccoin.zcash.ui.screen.migration.sending.MigrationSendingScreen
+import co.electriccoin.zcash.ui.screen.migration.success.MigrationSuccessArgs
+import co.electriccoin.zcash.ui.screen.migration.success.MigrationSuccessScreen
+import co.electriccoin.zcash.ui.screen.migration.scheduled.MigrationScheduledArgs
+import co.electriccoin.zcash.ui.screen.migration.scheduled.MigrationScheduledScreen
+import co.electriccoin.zcash.ui.screen.migration.notesplit.MigrationNoteSplitArgs
+import co.electriccoin.zcash.ui.screen.migration.notesplit.MigrationNoteSplitScreen
+import co.electriccoin.zcash.ui.screen.migration.battery.MigrationBatteryArgs
+import co.electriccoin.zcash.ui.screen.migration.battery.MigrationBatteryScreen
+import co.electriccoin.zcash.ui.screen.migration.notification.MigrationNotificationArgs
+import co.electriccoin.zcash.ui.screen.migration.notification.MigrationNotificationScreen
+import co.electriccoin.zcash.ui.screen.migration.privacy.MigrationPrivacyArgs
+import co.electriccoin.zcash.ui.screen.migration.privacy.MigrationPrivacyScreen
+import co.electriccoin.zcash.ui.screen.migration.invalid.MigrationTransferInvalidArgs
+import co.electriccoin.zcash.ui.screen.migration.invalid.MigrationTransferInvalidScreen
 import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingArgs
 import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingScreen
 import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingArgs
@@ -351,5 +373,16 @@ fun NavGraphBuilder.walletNavGraph(
         composable<VoteConfirmSubmissionArgs> { VoteConfirmSubmissionScreen(it.toRoute()) }
         composable<VoteTallyingArgs> { VoteTallyingScreen(it.toRoute()) }
         composable<VoteResultsArgs> { VoteResultsScreen(it.toRoute()) }
+        composable<MigrationSetupArgs> { MigrationSetupScreen() }
+        composable<MigrationNoteSplitArgs> { MigrationNoteSplitScreen() }
+        composable<MigrationReviewArgs> { MigrationReviewScreen(it.toRoute()) }
+        composable<MigrationBatteryArgs> { MigrationBatteryScreen() }
+        composable<MigrationNotificationArgs> { MigrationNotificationScreen() }
+        composable<MigrationPrivacyArgs> { MigrationPrivacyScreen(it.toRoute()) }
+        composable<MigrationSendingArgs> { MigrationSendingScreen() }
+        composable<MigrationSuccessArgs> { MigrationSuccessScreen() }
+        composable<MigrationScheduledArgs> { MigrationScheduledScreen() }
+        composable<MigrationProgressArgs> { MigrationProgressScreen() }
+        composable<MigrationTransferInvalidArgs> { MigrationTransferInvalidScreen() }
     }
 }

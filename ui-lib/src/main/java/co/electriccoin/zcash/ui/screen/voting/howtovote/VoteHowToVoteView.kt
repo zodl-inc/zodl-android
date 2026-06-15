@@ -31,8 +31,8 @@ import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
+import co.electriccoin.zcash.ui.screen.common.WalletHeaderIcons
 import co.electriccoin.zcash.ui.screen.voting.component.VoteAppBar
-import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIcons
 import co.electriccoin.zcash.ui.R as AppR
 
 @Composable
@@ -64,7 +64,7 @@ private fun Content(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
-        VoteWalletHeaderIcons(state = state.walletHeaderIcons)
+        WalletHeaderIcons(state = state.walletHeaderIcons)
         Spacer(24.dp)
         Text(
             text = state.title.getValue(),

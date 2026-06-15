@@ -32,9 +32,9 @@ import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.voting.component.VoteHeaderIconStyle
-import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIcons
-import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIconsState
+import co.electriccoin.zcash.ui.screen.common.WalletHeaderBadgeChrome
+import co.electriccoin.zcash.ui.screen.common.WalletHeaderIcons
+import co.electriccoin.zcash.ui.screen.common.WalletHeaderIconsState
 import co.electriccoin.zcash.ui.screen.voting.votingerror.VotingErrorMapper
 
 @Composable
@@ -127,15 +127,21 @@ fun VoteConfirmSubmissionLoadingView() {
 @Composable
 private fun HeaderSection(state: VoteConfirmSubmissionState) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        VoteWalletHeaderIcons(
+        WalletHeaderIcons(
             state =
-                VoteWalletHeaderIconsState(
+                WalletHeaderIconsState(
                     isKeystone = state.isKeystoneUser,
-                    style =
+                    badgeIcon =
                         if (state.status is VoteSubmissionStatus.Completed) {
-                            VoteHeaderIconStyle.Confirmed
+                            R.drawable.ic_vote_check_verified_solid
                         } else {
-                            VoteHeaderIconStyle.ThumbsUp
+                            R.drawable.ic_vote_thumbs_up
+                        },
+                    badgeChrome =
+                        if (state.status is VoteSubmissionStatus.Completed) {
+                            WalletHeaderBadgeChrome.Success
+                        } else {
+                            WalletHeaderBadgeChrome.Neutral
                         }
                 )
         )

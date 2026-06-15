@@ -67,8 +67,12 @@ import co.electriccoin.zcash.ui.common.provider.WalletBackupRemindMeCountStorage
 import co.electriccoin.zcash.ui.common.provider.WalletBackupRemindMeCountStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.WalletBackupRemindMeTimestampStorageProvider
 import co.electriccoin.zcash.ui.common.provider.WalletBackupRemindMeTimestampStorageProviderImpl
+import cash.z.ecc.android.sdk.OrchardMigrationSdk
+import co.electriccoin.zcash.ui.common.migration.OrchardMigrationSdkMock
+import co.electriccoin.zcash.ui.common.provider.MigrationNotifier
 import co.electriccoin.zcash.ui.common.provider.WalletRestoringStateProvider
 import co.electriccoin.zcash.ui.common.provider.WalletRestoringStateProviderImpl
+import co.electriccoin.zcash.work.MigrationScheduler
 import co.electriccoin.zcash.work.VotingShareTrackingScheduler
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
@@ -117,4 +121,7 @@ val providerModule =
         singleOf(::VotingHotkeySeedProviderImpl) bind VotingHotkeySeedProvider::class
         singleOf(::KtorVotingApiProvider) bind VotingApiProvider::class
         singleOf(::VotingShareTrackingScheduler)
+        singleOf(::MigrationNotifier)
+        singleOf(::OrchardMigrationSdkMock) bind OrchardMigrationSdk::class
+        factoryOf(::MigrationScheduler)
     }

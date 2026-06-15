@@ -53,6 +53,7 @@ android {
                     "src/main/res/ui/keep_open",
                     "src/main/res/ui/insufficient_funds",
                     "src/main/res/ui/choose_server",
+                    "src/main/res/ui/migration",
                     "src/main/res/ui/integrations",
                     "src/main/res/ui/onboarding",
                     "src/main/res/ui/pay",

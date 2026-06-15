@@ -92,6 +92,7 @@ class MainActivity : FragmentActivity() {
         if (intent.data != null) {
             navigationRouter.forward(ThirdPartyScan)
         }
+        handleMigrationIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -99,6 +100,17 @@ class MainActivity : FragmentActivity() {
 
         if (intent.data != null) {
             navigationRouter.forward(ThirdPartyScan)
+        }
+        handleMigrationIntent(intent)
+    }
+
+    private fun handleMigrationIntent(intent: Intent) {
+        if (intent.getBooleanExtra(co.electriccoin.zcash.ui.common.provider.MigrationNotifier.EXTRA_OPEN_MIGRATION, false)) {
+            // replaceAll ensures Home is always on the back stack regardless of how the app was opened.
+            navigationRouter.replaceAll(
+                co.electriccoin.zcash.ui.screen.home.HomeArgs,
+                co.electriccoin.zcash.ui.screen.migration.progress.MigrationProgressArgs,
+            )
         }
     }
 

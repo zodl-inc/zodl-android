@@ -1,10 +1,11 @@
 package co.electriccoin.zcash.ui.screen.voting.howtovote
 
 import androidx.compose.runtime.Immutable
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.voting.component.VoteWalletHeaderIconsState
+import co.electriccoin.zcash.ui.screen.common.WalletHeaderIconsState
 
 @Immutable
 data class VoteHowToVoteState(
@@ -12,7 +13,7 @@ data class VoteHowToVoteState(
     val subtitle: StringResource? = null,
     val steps: List<VoteStep>,
     val infoText: StringResource? = null,
-    val walletHeaderIcons: VoteWalletHeaderIconsState,
+    val walletHeaderIcons: WalletHeaderIconsState,
     val continueButton: ButtonState,
     val onBack: () -> Unit,
 ) {
@@ -23,7 +24,11 @@ data class VoteHowToVoteState(
                 subtitle = stringRes("Follow the steps below to cast your vote."),
                 steps = listOf(VoteStep.preview),
                 infoText = null,
-                walletHeaderIcons = VoteWalletHeaderIconsState.preview,
+                walletHeaderIcons =
+                    WalletHeaderIconsState(
+                        isKeystone = false,
+                        badgeIcon = R.drawable.ic_vote_thumbs_up,
+                    ),
                 continueButton = ButtonState.preview,
                 onBack = {},
             )

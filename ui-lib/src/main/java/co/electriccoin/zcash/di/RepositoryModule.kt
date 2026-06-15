@@ -18,6 +18,10 @@ import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepository
 import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.MigrationPlanRepository
+import co.electriccoin.zcash.ui.common.repository.MigrationPlanRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.MockOrchardBalanceRepository
+import co.electriccoin.zcash.ui.common.repository.MockOrchardBalanceRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.TransactionFilterRepository
@@ -77,4 +81,6 @@ val repositoryModule =
         }
         singleOf(::VotingKeystoneRepositoryImpl) bind VotingKeystoneRepository::class
         singleOf(::VotingSessionStoreImpl) bind VotingSessionStore::class
+        singleOf(::MigrationPlanRepositoryImpl) bind MigrationPlanRepository::class
+        singleOf(::MockOrchardBalanceRepositoryImpl) bind MockOrchardBalanceRepository::class
     }

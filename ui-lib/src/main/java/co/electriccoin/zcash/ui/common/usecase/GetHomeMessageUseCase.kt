@@ -6,6 +6,7 @@ import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.MessageAvailabilityDataSource
 import co.electriccoin.zcash.ui.common.datasource.WalletSnapshotDataSource
 import co.electriccoin.zcash.ui.common.model.SynchronizerError
+import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
 import co.electriccoin.zcash.ui.common.model.WalletSnapshot
 import co.electriccoin.zcash.ui.common.provider.CrashReportingStorageProvider
@@ -13,6 +14,7 @@ import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.repository.ExchangeRateRepository
 import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepository
 import co.electriccoin.zcash.ui.common.repository.HomeMessageData
+import co.electriccoin.zcash.ui.common.repository.MigrationPlanRepository
 import co.electriccoin.zcash.ui.common.repository.RuntimeMessage
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import kotlinx.coroutines.CancellationException
@@ -41,6 +43,7 @@ class GetHomeMessageUseCase(
     private val messageAvailabilityDataSource: MessageAvailabilityDataSource,
     private val cache: HomeMessageCacheRepository,
     private val isTorEnabledStorageProvider: IsTorEnabledStorageProvider,
+    private val migrationPlanRepository: MigrationPlanRepository,
 ) {
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     fun observe(): Flow<HomeMessageData?> =
@@ -84,6 +87,20 @@ class GetHomeMessageUseCase(
             .map { message -> prioritizeMessage(message) }
 
     @OptIn(ExperimentalCoroutinesApi::class)
+    private fun observeMigrationMessage(): Flow<HomeMessageData.Migration?> =
+        accountDataSource.selectedAccount.flatMapLatest { account ->
+            if (account == null) return@flatMapLatest flowOf(null)
+            migrationPlanRepository.observe().map { plan ->
+                when {
+                    plan != null && !plan.isComplete -> HomeMessageData.Migration(plan)
+                    co.electriccoin.zcash.ui.BuildConfig.DEBUG && plan != null -> HomeMessageData.Migration(plan)
+                    (co.electriccoin.zcash.ui.BuildConfig.DEBUG || account.spendableShieldedBalance.value > 0L) && plan == null -> HomeMessageData.Migration(null)
+                    else -> null
+                }
+            }
+        }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeShieldFundsMessage() =
         accountDataSource.selectedAccount.flatMapLatest { account ->
             when {
@@ -107,39 +124,52 @@ class GetHomeMessageUseCase(
             }
         }
 
+    private data class RuntimeMessageInputs(
+        val shieldFunds: HomeMessageData.ShieldFunds?,
+        val migration: HomeMessageData.Migration?,
+        val account: WalletAccount?,
+        val walletSnapshot: WalletSnapshot
+    )
+
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeRuntimeMessage(): Flow<RuntimeMessage?> {
         return channelFlow {
             var firstSyncingMessage: HomeMessageData.Syncing? = null
             combine(
                 observeShieldFundsMessage(),
+                observeMigrationMessage(),
                 accountDataSource.selectedAccount,
                 walletSnapshotDataSource.observe().filterNotNull()
-            ) { availability, account, walletSnapshot ->
-                Triple(availability, account, walletSnapshot)
-            }.collect { (shieldFundsMessage, account, walletSnapshot) ->
-                if (walletSnapshot.status in listOf(Synchronizer.Status.STOPPED, Synchronizer.Status.INITIALIZING)) {
-                    return@collect
+            ) { sf, mig, acc, ws -> RuntimeMessageInputs(sf, mig, acc, ws) }
+                .collect { inputs ->
+                    val shieldFundsMessage = inputs.shieldFunds
+                    val migrationMessage = inputs.migration
+                    val account = inputs.account
+                    val walletSnapshot = inputs.walletSnapshot
+
+                    if (walletSnapshot.status in listOf(Synchronizer.Status.STOPPED, Synchronizer.Status.INITIALIZING)) {
+                        return@collect
+                    }
+
+                    val message =
+                        createDisconnectedMessage(walletSnapshot)
+                            ?: createSynchronizerErrorMessage(walletSnapshot)
+                            ?: createSyncingMessage(
+                                walletSnapshot,
+                                syncMessageShownBefore = firstSyncingMessage != null,
+                                someBalance = (account?.spendableShieldedBalance?.value ?: 0) > 0
+                            )
+                            ?: migrationMessage
+                            ?: shieldFundsMessage
+
+                    if (message is HomeMessageData.Syncing && firstSyncingMessage == null) {
+                        firstSyncingMessage = message
+                    } else if (message !is HomeMessageData.Syncing) {
+                        firstSyncingMessage = null
+                    }
+
+                    send(message)
                 }
-
-                val message =
-                    createDisconnectedMessage(walletSnapshot)
-                        ?: createSynchronizerErrorMessage(walletSnapshot)
-                        ?: createSyncingMessage(
-                            walletSnapshot,
-                            syncMessageShownBefore = firstSyncingMessage != null,
-                            someBalance = (account?.spendableShieldedBalance?.value ?: 0) > 0
-                        )
-                        ?: shieldFundsMessage
-
-                if (message is HomeMessageData.Syncing && firstSyncingMessage == null) {
-                    firstSyncingMessage = message
-                } else if (message !is HomeMessageData.Syncing) {
-                    firstSyncingMessage = null
-                }
-
-                send(message)
-            }
         }
     }
 

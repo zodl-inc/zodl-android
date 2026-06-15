@@ -15,6 +15,7 @@ import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
+import co.electriccoin.zcash.ui.common.usecase.CheckMigrationRecoveryUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetHomeMessageUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.IsRestoreSuccessDialogVisibleUseCase
@@ -32,6 +33,9 @@ import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.screen.exchangerate.optin.ExchangeRateOptInArgs
 import co.electriccoin.zcash.ui.screen.home.backup.SeedBackupInfo
+import co.electriccoin.zcash.ui.screen.home.migration.MigrationMessageState
+import co.electriccoin.zcash.ui.screen.migration.progress.MigrationProgressArgs
+import co.electriccoin.zcash.ui.screen.migration.setup.MigrationSetupArgs
 import co.electriccoin.zcash.ui.screen.home.backup.WalletBackupDetail
 import co.electriccoin.zcash.ui.screen.home.backup.WalletBackupMessageState
 import co.electriccoin.zcash.ui.screen.home.currency.EnableCurrencyConversionMessageState
@@ -91,12 +95,17 @@ class HomeVM(
     private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
     private val refreshActiveVotingSession: RefreshActiveVotingSessionUseCase,
     private val votingShareTrackingScheduler: VotingShareTrackingScheduler,
+    private val checkMigrationRecovery: CheckMigrationRecoveryUseCase,
 ) : ViewModel() {
     private var hasSyncErrorBeenShown = false
     private var hasRestoreSuccessBeenShown = false
     private var hasAttemptedPendingVotingRouteRecovery = false
     private var hasRecoveredPendingVotingRoute = false
     private var hasResumedShareTracking = false
+
+    init {
+        viewModelScope.launch { checkMigrationRecovery() }
+    }
 
     private val messageData =
         getHomeMessage
@@ -373,10 +382,34 @@ class HomeVM(
                 )
             }
 
+            is HomeMessageData.Migration -> {
+                val plan = data.plan
+                val (title, subtitle) = when {
+                    plan == null -> false to null
+                    plan.isComplete -> true to "All transfers complete"
+                    plan.completedCount == 0 -> false to "First transfer sending…"
+                    else -> true to "${plan.completedCount} of ${plan.totalCount} transfers complete"
+                }
+                MigrationMessageState(
+                    isInProgress = title,
+                    progressLabel = subtitle,
+                    onClick = { onMigrationMessageClick(hasActivePlan = plan != null) },
+                    onButtonClick = { onMigrationMessageClick(hasActivePlan = plan != null) },
+                )
+            }
+
             null -> {
                 null
             }
         }
+
+    private fun onMigrationMessageClick(hasActivePlan: Boolean) = viewModelScope.launch {
+        if (hasActivePlan) {
+            navigationRouter.forward(MigrationProgressArgs)
+        } else {
+            navigationRouter.forward(MigrationSetupArgs)
+        }
+    }
 
     private fun onCrashReportMessageClick() = navigationRouter.forward(CrashReportOptIn)
 

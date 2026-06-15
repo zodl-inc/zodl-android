@@ -17,6 +17,7 @@ import co.electriccoin.zcash.di.viewModelModule
 import co.electriccoin.zcash.spackle.StrictModeCompat
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.provider.CrashReportingStorageProvider
+import co.electriccoin.zcash.ui.common.provider.MigrationNotifier
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.ApplicationStateRepository
 import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
@@ -47,6 +48,7 @@ class ZcashApplication : CoroutineApplication() {
     private val automaticServerRepository: AutomaticServerRepository by inject()
     private val synchronizerProvider: SynchronizerProvider by inject()
     private val navigateToError: NavigateToErrorUseCase by inject()
+    private val migrationNotifier: MigrationNotifier by inject()
 
     override fun onCreate() {
         super.onCreate()
@@ -76,6 +78,7 @@ class ZcashApplication : CoroutineApplication() {
         // mode is configured to ensure none of that IO happens on the main thread
         configureAnalytics()
 
+        migrationNotifier.createChannel()
         flexaRepository.init()
         homeMessageCacheRepository.init()
         walletSnapshotRepository.init()
