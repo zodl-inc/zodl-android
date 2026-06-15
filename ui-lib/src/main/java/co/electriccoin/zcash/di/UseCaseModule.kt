@@ -72,11 +72,14 @@ import co.electriccoin.zcash.ui.common.usecase.NavigateToExportPrivateDataUseCas
 import co.electriccoin.zcash.ui.common.usecase.NavigateToNearPayUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToReceiveUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToRequestShieldedUseCase
+import co.electriccoin.zcash.ui.common.usecase.NavigateToRequestZecUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToResetWalletUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToScanGenericAddressUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSelectABSwapRecipientUseCase
+import co.electriccoin.zcash.ui.common.usecase.NavigateToSelectFiatCurrencyUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSelectRecipientUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSelectSwapBlockchainUseCase
+import co.electriccoin.zcash.ui.common.usecase.NavigateToSendUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapInfoUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapQuoteIfAvailableUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapUseCase
@@ -260,6 +263,8 @@ val useCaseModule =
         factoryOf(::ShieldFundsFromMessageUseCase)
         factoryOf(::NavigateToReceiveUseCase)
         factoryOf(::NavigateToRequestShieldedUseCase)
+        factoryOf(::NavigateToRequestZecUseCase)
+        factoryOf(::NavigateToSendUseCase)
         factoryOf(::IsTorEnabledUseCase)
         factoryOf(::OptInExchangeRateUseCase)
         factoryOf(::OptInExchangeRateAndTorUseCase)
@@ -282,6 +287,7 @@ val useCaseModule =
         singleOf(::NavigateToScanGenericAddressUseCase)
         singleOf(::NavigateToSelectABSwapRecipientUseCase)
         singleOf(::NavigateToSelectSwapBlockchainUseCase)
+        singleOf(::NavigateToSelectFiatCurrencyUseCase)
         factoryOf(::ConfirmResyncUseCase)
         factoryOf(::ValidateSwapABContactAddressUseCase)
         factoryOf(::NavigateToNearPayUseCase)

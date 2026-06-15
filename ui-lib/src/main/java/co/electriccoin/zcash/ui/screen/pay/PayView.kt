@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import cash.z.ecc.android.sdk.model.FiatCurrency
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiMainTopAppBarState
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
@@ -259,7 +260,7 @@ private fun AmountTextFields(state: PayState) {
                             color = ZashiColors.Inputs.Default.text
                         ),
                     fontWeight = FontWeight.Normal,
-                    text = stringResource(R.string.send_usd_amount_hint)
+                    text = FiatCurrency.USD.code
                 )
             },
             prefix = {

@@ -25,7 +25,7 @@ class CMCApiProviderTest {
             val httpClientProvider = RecordingHttpClientProvider()
             val provider = CMCApiProviderImpl(httpClientProvider)
 
-            val response = provider.getExchangeRateQuote(apiKey = "key")
+            val response = provider.getExchangeRateQuote(apiKey = "key", fiat = "USD")
 
             assertEquals(1, httpClientProvider.createTorCalls, "CMC must use the Tor-only client")
             assertEquals(

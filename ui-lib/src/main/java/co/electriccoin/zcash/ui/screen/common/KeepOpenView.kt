@@ -29,12 +29,9 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
-import co.electriccoin.zcash.ui.design.util.StringResourceColor
-import co.electriccoin.zcash.ui.design.util.StyledStringStyle
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.design.util.styledStringResource
 
 @Composable
 fun KeepOpenView(state: KeepOpenState) {

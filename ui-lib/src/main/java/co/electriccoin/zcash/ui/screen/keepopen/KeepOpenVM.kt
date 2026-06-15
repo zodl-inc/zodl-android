@@ -1,7 +1,6 @@
 package co.electriccoin.zcash.ui.screen.keepopen
 
 import android.app.Application
-import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
@@ -10,10 +9,7 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.provider.IsKeepScreenOnDuringRestoreProvider
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiDisclaimerState
-import co.electriccoin.zcash.ui.design.util.StringResourceColor
-import co.electriccoin.zcash.ui.design.util.StyledStringStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.design.util.styledStringResource
 import co.electriccoin.zcash.ui.screen.common.KeepOpenState
 import co.electriccoin.zcash.ui.screen.connectkeystone.connected.KeystoneConnectedArgs
 import kotlinx.coroutines.flow.MutableStateFlow

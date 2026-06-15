@@ -4,7 +4,6 @@ import cash.z.ecc.android.sdk.ext.convertZecToZatoshi
 import cash.z.ecc.android.sdk.model.FiatCurrency
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.DynamicSwapAsset
-import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT

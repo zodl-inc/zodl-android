@@ -14,17 +14,17 @@ import kotlinx.coroutines.withContext
 
 interface CMCApiProvider {
     @Throws(ResponseException::class)
-    suspend fun getExchangeRateQuote(apiKey: String): GetCMCQuoteResponse
+    suspend fun getExchangeRateQuote(apiKey: String, fiat: String): GetCMCQuoteResponse
 }
 
 class CMCApiProviderImpl(
     private val httpClientProvider: HttpClientProvider
 ) : CMCApiProvider {
-    override suspend fun getExchangeRateQuote(apiKey: String): GetCMCQuoteResponse =
+    override suspend fun getExchangeRateQuote(apiKey: String, fiat: String): GetCMCQuoteResponse =
         execute {
             get("https://$CMC_API_HOST/v1/cryptocurrency/quotes/latest") {
                 parameter("symbol", "ZEC")
-                parameter("convert", "USD")
+                parameter("convert", fiat)
                 contentType(ContentType.Application.Json)
                 header("X-CMC_PRO_API_KEY", apiKey)
             }.body()

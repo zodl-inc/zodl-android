@@ -19,7 +19,6 @@ import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiButton
-import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiHorizontalDivider
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation

@@ -2,7 +2,6 @@ package co.electriccoin.zcash.ui.common.mapper
 
 import cash.z.ecc.android.sdk.model.TransactionPool
 import co.electriccoin.zcash.ui.R
-import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT

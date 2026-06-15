@@ -24,7 +24,6 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.advancedsettings.debug.DebugArgs
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerArgs
 import co.electriccoin.zcash.ui.screen.disconnect.DisconnectArgs
-import co.electriccoin.zcash.ui.screen.resync.confirm.ResyncConfirmArgs
 import co.electriccoin.zcash.ui.screen.tor.settings.TorSettingsArgs
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
