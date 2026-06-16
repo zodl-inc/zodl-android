@@ -11,7 +11,7 @@
 
     <!-- Hoja inferior de conversión no disponible -->
     <string name="exchange_rate_unavailable_sheet_title">Conversión de %1$s no disponible</string>
-    <string name="exchange_rate_unavailable_sheet_subtitle">No se pueden obtener las tasas en vivo de %1$s en este momento. Puedes usar USD como alternativa o seguir introduciendo importes solo en ZEC.</string>
+    <string name="exchange_rate_unavailable_sheet_subtitle">No se pueden obtener las tasas en tiempo real de XYZ en este momento. Puedes usar USD como alternativa o seguir ingresando montos solo en ZEC.</string>
     <string name="exchange_rate_unavailable_sheet_switch_usd">Cambiar a USD</string>
     <string name="exchange_rate_unavailable_sheet_continue_zec">Continuar en ZEC</string>
 
@@ -28,8 +28,8 @@
     <string name="exchange_rate_opt_in_option_subtitle">Mostrar la conversión de moneda.</string>
     <string name="exchange_rate_opt_out_option_title">Desactivar</string>
     <string name="exchange_rate_opt_out_option_subtitle">No mostrar la conversión de moneda.</string>
-    <string name="exchange_rate_opt_in_description">Muestra tu saldo y montos de pago en la moneda seleccionada. Para Swap y Pay, los tipos de cambio se seguirán mostrando en USD. Puedes administrar esta función en Configuración avanzada.</string>
-    <string name="exchange_rate_opt_in_description_settings">Muestra tu saldo y montos de pago en la moneda seleccionada. Para Swap y Pay, los tipos de cambio se seguirán mostrando en USD.</string>
+    <string name="exchange_rate_opt_in_description">Muestra tu saldo y montos de pago en tu moneda seleccionada. Para Swap y Pay, los tipos de cambio se seguirán mostrando en USD. Puedes administrar esta función en Configuración avanzada.</string>
+    <string name="exchange_rate_opt_in_description_settings">Muestra tu saldo y montos de pago en tu moneda seleccionada. Para Swap y Pay, los tipos de cambio se seguirán mostrando en USD.</string>
 
     <string name="exchange_rate_tor_opt_in_title">Tor requerido para la conversión de moneda</string>
     <string name="exchange_rate_tor_opt_in_description">La protección con Tor es una función beta que ofrece protecciones adicionales para tu dirección IP. Las tasas de cambio en USD solo están disponibles cuando esta opción está activada.\n\nSi Tor está permitido en tu región, te recomendamos activarlo. Puedes administrarlo en Configuración avanzada.</string>
