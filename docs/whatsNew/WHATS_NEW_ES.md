@@ -12,7 +12,7 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
-## [3.6.0 (1907)] - 2026-06-15
+## [3.6.0 (1911)] - 2026-06-16
 
 ### Añadido:
 - Hasta ahora los saldos solo se mostraban en USD. Añadimos soporte multimoneda: elige tu moneda en Conversión de Moneda y en el widget de Estado de la Billetera.

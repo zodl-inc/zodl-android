@@ -12,7 +12,7 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
-## [3.6.0 (1907)] - 2026-06-15
+## [3.6.0 (1911)] - 2026-06-16
 
 ### Added:
 - Until now, balances only displayed in US dollars. We added multi-currency support — pick your preferred fiat in Currency Conversion settings and on the Wallet Status Widget opt-in.
