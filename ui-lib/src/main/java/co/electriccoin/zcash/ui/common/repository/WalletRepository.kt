@@ -1,7 +1,6 @@
 package co.electriccoin.zcash.ui.common.repository
 
 import android.app.Application
-import cash.z.ecc.android.sdk.SdkSynchronizer
 import cash.z.ecc.android.sdk.WalletInitMode
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.FastestServersResult
@@ -201,7 +200,6 @@ class WalletRepositoryImpl(
     }
 
     private suspend fun persistWalletInternal(persistableWallet: PersistableWallet) {
-        synchronizerProvider.synchronizer.firstOrNull()?.let { (it as? SdkSynchronizer)?.close() }
         persistableWalletProvider.store(persistableWallet)
     }
 
