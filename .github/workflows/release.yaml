@@ -322,144 +322,40 @@ jobs:
           echo "Config updated in GCS"
           echo "Backup: gs://${{ secrets.SOLANA_GCS_BUCKET }}/backups/encrypted_config.yaml.kms.${TIMESTAMP}"
 
+  # Publishes the FOSS APK to the self-hosted F-Droid repo at foss.zodl.com.
+  #
+  # The repo is served by GitLab Pages (project zodl-inc/fdroid on gitlab.com).
+  # A GitLab CI "pages" job downloads this release's FOSS APK from the GitHub
+  # release, builds + signs the F-Droid index (with the long-lived index key
+  # held as a GitLab CI variable), and publishes via Pages -- which, unlike
+  # GitHub Pages (100 MB/file hard limit), can serve the ~181 MB APK.
+  #
+  # This job's only responsibility is to TRIGGER that GitLab pipeline with the
+  # release tag, so the right APK version gets published. All the AWS Secrets
+  # Manager / keystore / fdroidserver / git-push work now lives in GitLab CI.
+  #
+  # Best-effort: a failed trigger must not fail the release.
   publish_to_fdroid:
     needs: [release]
-    environment: deployment
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write  # Required for OIDC -> AWS
     steps:
-      - name: Get release tag
-        id: release_info
+      - name: Trigger GitLab Pages F-Droid publish
         env:
-          GH_TOKEN: ${{ github.token }}
+          GITLAB_FDROID_TRIGGER_TOKEN: ${{ secrets.GITLAB_FDROID_TRIGGER_TOKEN }}
         run: |
-          TAG="${GITHUB_REF_NAME}"
-          VERSION_NAME=$(echo "$TAG" | sed 's/^v//' | cut -d'-' -f1)
-          VERSION_CODE=$(echo "$TAG" | cut -d'-' -f2)
-
-          echo "tag=${TAG}" >> $GITHUB_OUTPUT
-          echo "version_name=${VERSION_NAME}" >> $GITHUB_OUTPUT
-          echo "version_code=${VERSION_CODE}" >> $GITHUB_OUTPUT
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
-        with:
-          role-to-assume: ${{ secrets.AWS_RELEASE_ROLE_ARN }}
-          aws-region: us-east-1
-
-      - name: Load F-Droid index keystore + SSH deploy key from Secrets Manager
-        id: secrets
-        run: |
-          KEYSTORE_JSON=$(aws secretsmanager get-secret-value \
-            --secret-id /infra/zodl-android/fdroid_index_keystore \
-            --query SecretString --output text)
-          echo "$KEYSTORE_JSON" | jq -r '.keystore_b64' | base64 -d > /tmp/fdroid-index.jks
-
-          # Read into shell vars first, register the mask, then write to
-          # GITHUB_OUTPUT. Reversing this order risks the runner flushing
-          # the output line to the log before the mask command takes effect.
-          KEYSTORE_PASS=$(echo "$KEYSTORE_JSON" | jq -r '.keystore_password')
-          KEY_ALIAS=$(echo "$KEYSTORE_JSON" | jq -r '.key_alias')
-          KEY_PASS=$(echo "$KEYSTORE_JSON" | jq -r '.key_password')
-          echo "::add-mask::${KEYSTORE_PASS}"
-          echo "::add-mask::${KEY_PASS}"
-
-          echo "keystore_password=${KEYSTORE_PASS}" >> "$GITHUB_OUTPUT"
-          echo "key_alias=${KEY_ALIAS}"             >> "$GITHUB_OUTPUT"
-          echo "key_password=${KEY_PASS}"           >> "$GITHUB_OUTPUT"
-
-          mkdir -p ~/.ssh
-          aws secretsmanager get-secret-value \
-            --secret-id /infra/zodl-android/fdroid_deploy_ssh_key \
-            --query SecretString --output text > ~/.ssh/id_fdroid
-          chmod 600 ~/.ssh/id_fdroid
-          ssh-keyscan -t ed25519,rsa github.com >> ~/.ssh/known_hosts
-          cat > ~/.ssh/config <<'EOF'
-          Host github.com-fdroid
-            HostName github.com
-            User git
-            IdentityFile ~/.ssh/id_fdroid
-            IdentitiesOnly yes
-          EOF
-          chmod 600 ~/.ssh/config
-
-      - name: Install fdroidserver + deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            fdroidserver openjdk-21-jdk-headless apksigner git python3
-          fdroid --version
-
-      - name: Clone zodl-inc/fdroid (SSH)
-        run: |
-          git config --global user.name  "zodl-inc-bot"
-          git config --global user.email "sysadmin@zodl.com"
-          git clone --depth 1 \
-            git@github.com-fdroid:zodl-inc/fdroid.git fdroid-repo
-          mkdir -p fdroid-repo/fdroid/repo fdroid-repo/fdroid/archive
-
-      - name: Download FOSS APK from GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.release_info.outputs.tag }}
-        run: |
-          gh release download "$TAG" \
-            --repo zodl-inc/zodl-android \
-            -p "app-zcashmainnet-foss-release-full-externallibs.apk" \
-            -D fdroid-repo/fdroid/repo/
-
-      - name: Initialize fdroid config
-        working-directory: fdroid-repo/fdroid
-        env:
-          KEYSTORE_PASSWORD: ${{ steps.secrets.outputs.keystore_password }}
-          KEY_ALIAS: ${{ steps.secrets.outputs.key_alias }}
-          KEY_PASSWORD: ${{ steps.secrets.outputs.key_password }}
-        run: |
-          # fdroid init expects config.yml at repo root; write one pointing at
-          # the shared keystore that lives in /tmp.
-          cat > config.yml <<EOF
-          repo_url: https://foss.zodl.com/fdroid/repo
-          repo_name: Zodl F-Droid Repo
-          repo_icon: icon.png
-          repo_description: >-
-            Official self-hosted F-Droid repository for the Zodl Zcash Wallet.
-            APKs are built by zodl-inc/zodl-android CI and signed with the
-            production upload key (same as Google Play).
-          archive_url: https://foss.zodl.com/fdroid/archive
-          archive_name: Zodl F-Droid Archive
-          archive_description: Archive of older Zodl wallet builds.
-          archive_older: 3
-          keystore: /tmp/fdroid-index.jks
-          repo_keyalias: ${KEY_ALIAS}
-          keystorepass: ${KEYSTORE_PASSWORD}
-          keypass: ${KEY_PASSWORD}
-          EOF
-
-      - name: Run fdroid update
-        working-directory: fdroid-repo/fdroid
-        run: |
-          fdroid update --create-metadata --pretty --verbose
-          # config.yml contains plaintext keystore + key passwords.
-          # Use shred to match how the other key material in this job is
-          # disposed of (JKS, SSH deploy key) and to reduce recoverability.
-          shred -u config.yml
-
-      - name: Commit + push
-        working-directory: fdroid-repo
-        env:
-          TAG: ${{ steps.release_info.outputs.tag }}
-        run: |
-          git add fdroid/repo fdroid/archive fdroid/metadata || true
-          if git diff --cached --quiet; then
-            echo "No changes to publish."
-            exit 0
+          echo "Triggering GitLab F-Droid pipeline for ${GITHUB_REF_NAME}"
+          HTTP_CODE=$(curl -s -o /tmp/trigger.json -w '%{http_code}' \
+            -X POST "https://gitlab.com/api/v4/projects/83433564/trigger/pipeline" \
+            -F token="${GITLAB_FDROID_TRIGGER_TOKEN}" \
+            -F ref=main \
+            -F "variables[APK_TAG]=${GITHUB_REF_NAME}")
+          cat /tmp/trigger.json
+          echo
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "GitLab pipeline triggered: $(jq -r '.web_url // empty' /tmp/trigger.json)"
+          else
+            # Publishing is best-effort -- never fail the release on a trigger error.
+            echo "::warning::GitLab F-Droid trigger returned HTTP ${HTTP_CODE}; F-Droid publish skipped. Re-run manually if needed."
           fi
-          git commit -m "Publish ${TAG}"
-          git push origin HEAD:main
-
-      - name: Cleanup
-        if: always()
-        run: |
-          shred -u /tmp/fdroid-index.jks ~/.ssh/id_fdroid 2>/dev/null || true
