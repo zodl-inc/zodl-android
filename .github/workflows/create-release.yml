@@ -1,0 +1,156 @@
+name: Create Release from tag
+
+# Creates a published GitHub Release for a `<version>-<versionCode>` tag.
+# The workflow:
+#   1. Resolves the target tag (push event ref, or the `tag` dispatch input).
+#   2. Checks out that tag so the changelog is read from the tagged tree.
+#   3. Validates the tag shape.
+#   4. Extracts the matching `## [<version> (<versionCode>)] - <date>` section
+#      from `docs/whatsNew/WHATS_NEW_EN.md`.
+#   5. Creates a published GitHub Release with title `Release <version> (<versionCode>)`
+#      and the changelog section as the body.
+#
+# Publishing the release fires the existing `release.yaml` workflow, which
+# does the actual build + APK signing + Solana / F-Droid publishing. We do
+# NOT do any of that here — this workflow's only job is "tag -> release".
+#
+# Two trigger paths:
+#
+#   * push:tags — fires automatically when a matching tag is pushed. NOTE:
+#     GitHub runs the workflow file *as it exists in the tagged commit*, not
+#     on the default branch. A release branch (e.g. `prerelease/*`) that
+#     forked from `main` BEFORE this file was added will not contain it, so
+#     the push trigger silently does nothing for that tag. That is exactly
+#     what happened to tag `3.5.3-1745`.
+#
+#   * workflow_dispatch — runs this file *from the selected branch* (default
+#     `main`), so it works for ANY existing tag regardless of whether the
+#     tagged commit carries this workflow. This is the escape hatch for
+#     prerelease branches: push the tag, then run this workflow from `main`
+#     with the tag name. Use the Actions UI or:
+#       gh workflow run create-release.yml -f tag=3.5.3-1745
+#
+# CASCADE CAVEAT: releases created with the default `GITHUB_TOKEN` do NOT
+# trigger other workflows (GitHub's anti-recursion rule), so `release.yaml`
+# (on: release published) will NOT auto-fire from this workflow's release.
+# To make the build+publish chain run automatically, this workflow mints a
+# short-lived GitHub App installation token (preferred over a long-lived PAT
+# in a PUBLIC repo) and creates the release with it. Wiring:
+#   * repo variable  RELEASE_BOT_APP_ID    — the App's numeric id (not secret)
+#   * repo secret     RELEASE_BOT_APP_KEY  — the App's PEM private key
+# The App needs only `contents: write` on this single repo. If the variable
+# is unset, the workflow falls back to GITHUB_TOKEN and an operator must
+# (re)publish the release manually to kick off release.yaml.
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+-[0-9]+'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to create a release for (e.g. 3.5.3-1745)'
+        required: true
+        type: string
+
+permissions:
+  contents: write  # required to create the release
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve target tag
+        id: tag
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_REF: ${{ github.ref_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            TAG="${INPUT_TAG}"
+          else
+            TAG="${PUSH_REF}"
+          fi
+          if [[ ! "${TAG}" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-([0-9]+)$ ]]; then
+            echo "ERROR: tag '${TAG}' does not match <version>-<versionCode>." >&2
+            exit 1
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout tag
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+          fetch-depth: 0  # full history so the Linear release action sees every commit since the previous tag
+
+      - name: Parse tag and extract changelog section
+        id: meta
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # Shape already validated in the resolve step; re-derive the parts.
+          [[ "${TAG}" =~ ^([0-9]+\.[0-9]+\.[0-9]+)-([0-9]+)$ ]]
+          VERSION="${BASH_REMATCH[1]}"
+          VERSION_CODE="${BASH_REMATCH[2]}"
+          TITLE="Release ${VERSION} (${VERSION_CODE})"
+          HEADER="## [${VERSION} (${VERSION_CODE})]"
+
+          # Awk pulls the block that starts with the matching `## [version (code)]`
+          # header up to the next `## [` header (exclusive), preserving the
+          # changelog formatting. If no such block exists the workflow fails
+          # loudly so we don't publish an empty body.
+          BODY="$(awk -v want="${HEADER}" '
+            $0 ~ "^## \\[" {
+              if (capturing) exit
+              if (index($0, want) == 1) { capturing = 1 }
+            }
+            capturing
+          ' docs/whatsNew/WHATS_NEW_EN.md)"
+
+          if [ -z "${BODY}" ]; then
+            echo "ERROR: no changelog section '${HEADER}' in docs/whatsNew/WHATS_NEW_EN.md." >&2
+            echo "Add the section before pushing the tag." >&2
+            exit 1
+          fi
+
+          echo "title=${TITLE}" >> "$GITHUB_OUTPUT"
+          {
+            echo "body<<__BODY_EOF__"
+            echo "${BODY}"
+            echo "__BODY_EOF__"
+          } >> "$GITHUB_OUTPUT"
+
+      # Mint a short-lived App installation token so the published release
+      # cascades into release.yaml. Skipped when RELEASE_BOT_APP_ID is unset;
+      # the create step then falls back to GITHUB_TOKEN (no cascade).
+      - name: Mint App token
+        id: app_token
+        if: ${{ vars.RELEASE_BOT_APP_ID != '' }}
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
+        with:
+          app-id: ${{ vars.RELEASE_BOT_APP_ID }}
+          private-key: ${{ secrets.RELEASE_BOT_APP_KEY }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.meta.outputs.title }}
+          body: ${{ steps.meta.outputs.body }}
+          draft: false
+          prerelease: false
+        env:
+          # App token (cascades into release.yaml) when available; otherwise
+          # GITHUB_TOKEN (no cascade — see CASCADE CAVEAT in the header).
+          GITHUB_TOKEN: ${{ steps.app_token.outputs.token || secrets.GITHUB_TOKEN }}
+
+      - name: Create Linear release
+        # Scans commits since the previous tag for MOB-### references and creates
+        # a Linear release with those issues attached. Reads LINEAR_ACCESS_KEY from
+        # the repo's Actions secrets (configured per-pipeline in Linear settings).
+        uses: linear/linear-release-action@v0
+        with:
+          access_key: ${{ secrets.LINEAR_ACCESS_KEY }}

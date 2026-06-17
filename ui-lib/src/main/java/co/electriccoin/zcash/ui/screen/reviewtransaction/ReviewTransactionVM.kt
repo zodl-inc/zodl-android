@@ -26,8 +26,6 @@ import co.electriccoin.zcash.ui.design.component.ChipButtonState
 import co.electriccoin.zcash.ui.design.util.Ellipsize
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByAddress
-import co.electriccoin.zcash.ui.design.util.styleAsAddress
-import co.electriccoin.zcash.ui.screen.addressbook.ADDRESS_MAX_LENGTH
 import co.electriccoin.zcash.ui.screen.contact.AddZashiABContactArgs
 import co.electriccoin.zcash.ui.util.Quintuple
 import kotlinx.coroutines.ExperimentalCoroutinesApi

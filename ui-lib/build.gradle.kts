@@ -8,8 +8,6 @@ plugins {
     kotlin("plugin.serialization")
     id("org.jetbrains.kotlin.plugin.compose")
     id("secant.android-build-conventions")
-    id("wtf.emulator.gradle")
-    id("secant.emulator-wtf-conventions")
     id("secant.jacoco-conventions")
 }
 
@@ -188,6 +186,7 @@ dependencies {
     implementation(libs.kotlinx.serializable.json)
     "storeImplementation"(libs.mlkit.scanning)
     "internalImplementation"(libs.mlkit.scanning)
+    "fossImplementation"(libs.zxingcpp)
     api(libs.zcash.sdk)
     implementation(libs.zcash.sdk.backend)
     implementation(libs.zcash.sdk.incubator)
@@ -215,8 +214,10 @@ dependencies {
     api(libs.keystone)
 
     testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlin.reflect)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation("io.ktor:ktor-client-mock")
+    testImplementation(libs.kotlinx.coroutines.test)
 
     androidTestImplementation(projects.testLib)
     androidTestImplementation(libs.bundles.androidx.test)

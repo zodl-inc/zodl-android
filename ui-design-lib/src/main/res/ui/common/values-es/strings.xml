@@ -4,6 +4,8 @@
     <string name="back_navigation_content_description">Atrás</string>
     <string name="triple_dots">…</string>
     <string name="seed_recovery_reveal">Mostrar frase de recuperación</string>
+    <string name="general_masked_seed_word">•••••</string>
+    <string name="general_hidden_seed_word">Palabra oculta de la frase de recuperación</string>
 
     <string name="general_service_unavailable">El servicio no está disponible</string>
     <string name="general_unexpected_error">Error inesperado</string>

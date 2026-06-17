@@ -15,7 +15,7 @@
     <string name="home_message_transparent_balance_title">Unshielded Balance</string>
     <string name="home_message_transparent_balance_button">Shield</string>
     <string name="home_message_currency_conversion_title">Currency Conversion</string>
-    <string name="home_message_currency_conversion_subtitle">Enable to display USD values</string>
+    <string name="home_message_currency_conversion_subtitle">Enable to display fiat values</string>
     <string name="home_message_currency_conversion_button">Start</string>
     <string name="home_message_wallet_updating_title">Updating Balance…</string>
     <string name="home_message_wallet_updating_subtitle">Waiting for last transaction to process</string>

@@ -16,8 +16,6 @@ import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
-import co.electriccoin.zcash.ui.design.component.ButtonState
-import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.VerticalSpacer

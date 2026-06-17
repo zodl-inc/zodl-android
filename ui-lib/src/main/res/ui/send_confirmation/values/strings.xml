@@ -78,6 +78,7 @@
     <!-- Pending states -->
     <string name="send_confirmation_pending_transaction_title">Transaction Pending</string>
     <string name="send_confirmation_pending_transaction_subtitle">Your transaction is being processed.</string>
+    <string name="send_confirmation_pending_timeout_subtitle">Timed out waiting for a server response. Your transaction may still have been broadcast.</string>
     <string name="send_confirmation_pending_swap_title">Swap Pending</string>
     <string name="send_confirmation_pending_swap_subtitle">Your swap is being processed. Follow its status on the transaction screen.</string>
     <string name="send_confirmation_pending_payment_title">Payment Pending</string>

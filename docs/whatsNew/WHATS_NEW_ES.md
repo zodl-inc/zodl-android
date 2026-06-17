@@ -12,6 +12,28 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.5.3 (1745)] - 2026-06-05
+
+### Cambiado:
+- Se eliminaron los servidores desmantelados de la lista de servidores.
+
+## [3.5.2 (1742)] - 2026-06-04
+
+### Cambiado:
+- Compatibilidad actualizada con los últimos cambios de la red Zcash. Esta actualización es necesaria para garantizar el correcto funcionamiento de la billetera.
+- Actualizamos el servidor predeterminado.
+
+## [3.5.1 (1741)] - 2026-06-02
+
+### Cambiado:
+- Compatibilidad actualizada con los últimos cambios de la red Zcash. Esta actualización es necesaria para garantizar el correcto funcionamiento de la billetera.
+- Actualizamos el servidor predeterminado.
+
+## [3.5.0 (1736)] - 2026-05-28
+
+### Añadido:
+- Coinholder Polling te permite votar en la gobernanza de Zcash de forma privada, directamente desde tus billeteras Zodl y Keystone.
+
 ## [3.4.1 (1698)] - 2026-05-19
 
 ### Cambiado:

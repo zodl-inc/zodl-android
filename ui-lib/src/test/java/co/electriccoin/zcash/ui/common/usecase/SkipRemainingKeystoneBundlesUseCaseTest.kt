@@ -219,6 +219,8 @@ private class FakeSynchronizerProvider(
 
     override suspend fun getSynchronizer(): Synchronizer = fakeSynchronizer
 
+    override suspend fun getSynchronizerOrNull(): Synchronizer? = fakeSynchronizer
+
     override suspend fun getVotingWalletDbPath(): String = walletDbPath
 
     override fun resetSynchronizer() = Unit

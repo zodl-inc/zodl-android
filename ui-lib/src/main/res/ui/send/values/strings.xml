@@ -7,7 +7,6 @@
     <string name="send_address_invalid">Invalid address</string>
     <string name="send_amount_label">Amount</string>
     <string name="send_amount_hint"><xliff:g id="currency" example="ZEC">%1$s</xliff:g></string>
-    <string name="send_usd_amount_hint">USD</string>
     <string name="send_amount_insufficient_balance">Insufficient funds</string>
     <string name="send_amount_invalid">Invalid amount</string>
     <string name="send_memo_label">Message</string>

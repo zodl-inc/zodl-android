@@ -15,7 +15,7 @@
     <string name="home_message_transparent_balance_title">Saldo No Protegido</string>
     <string name="home_message_transparent_balance_button">Proteger</string>
     <string name="home_message_currency_conversion_title">Conversión de Moneda</string>
-    <string name="home_message_currency_conversion_subtitle">Activa para mostrar valores en USD</string>
+    <string name="home_message_currency_conversion_subtitle">Activa para mostrar valores fiat</string>
     <string name="home_message_currency_conversion_button">Iniciar</string>
     <string name="home_message_wallet_updating_title">Actualizando Balance…</string>
     <string name="home_message_wallet_updating_subtitle">Esperando que se procese la última transacción</string>

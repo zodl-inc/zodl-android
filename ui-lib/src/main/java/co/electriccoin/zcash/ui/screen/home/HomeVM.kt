@@ -20,6 +20,7 @@ import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.IsRestoreSuccessDialogVisibleUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToNearPayUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToReceiveUseCase
+import co.electriccoin.zcash.ui.common.usecase.NavigateToSendUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshActiveVotingSessionUseCase
 import co.electriccoin.zcash.ui.common.usecase.ShieldFundsFromMessageUseCase
@@ -51,7 +52,6 @@ import co.electriccoin.zcash.ui.screen.home.updating.WalletUpdatingInfo
 import co.electriccoin.zcash.ui.screen.home.updating.WalletUpdatingMessageState
 import co.electriccoin.zcash.ui.screen.keepopen.KeepOpenArgs
 import co.electriccoin.zcash.ui.screen.keepopen.KeepOpenFlow
-import co.electriccoin.zcash.ui.screen.send.Send
 import co.electriccoin.zcash.ui.screen.tor.optin.TorOptInArgs
 import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmissionArgs
 import co.electriccoin.zcash.ui.screen.voting.proposallist.VoteProposalListArgs
@@ -82,6 +82,7 @@ class HomeVM(
     private val shieldFundsFromMessage: ShieldFundsFromMessageUseCase,
     private val navigateToError: NavigateToErrorUseCase,
     private val navigateToReceive: NavigateToReceiveUseCase,
+    private val navigateToSend: NavigateToSendUseCase,
     private val navigateToNearPay: NavigateToNearPayUseCase,
     private val navigateToSwap: NavigateToSwapUseCase,
     private val votingRecoveryRepository: VotingRecoveryRepository,
@@ -384,7 +385,7 @@ class HomeVM(
         onSwapButtonClick = viewModelScope.launch { navigateToSwap() }
     }
 
-    private fun onSendButtonClick() = navigationRouter.forward(Send())
+    private fun onSendButtonClick() = navigateToSend()
 
     private fun onReceiveButtonClick() = viewModelScope.launch { navigateToReceive() }
 

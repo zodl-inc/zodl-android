@@ -442,6 +442,7 @@ private fun BottomBar(state: ReviewTransactionState) {
                 Modifier
                     .padding(horizontal = 24.dp)
                     .fillMaxWidth()
+                    .testTag(ReviewTransactionTag.REVIEW_TX_PRIMARY_BUTTON)
         )
     }
 }

@@ -431,6 +431,12 @@ private fun onboardingScreenshots(
         composeTestRule.activity.walletViewModel.secretState.value == SecretState.NONE
     }
 
+    composeTestRule.waitUntil(DEFAULT_TIMEOUT_MILLISECONDS_LONG) {
+        composeTestRule.activity.window
+            .decorView
+            .hasWindowFocus()
+    }
+
     // Welcome screen
     composeTestRule
         .onNodeWithText(

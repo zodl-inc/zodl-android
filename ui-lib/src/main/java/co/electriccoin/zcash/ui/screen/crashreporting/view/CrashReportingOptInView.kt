@@ -171,7 +171,6 @@ fun CrashReportingOptInOptions(
         Spacer(modifier = Modifier.height(24.dp))
         Option(
             modifier = Modifier.fillMaxWidth(),
-            image = R.drawable.ic_opt_in,
             isChecked = isOptInSelected,
             title = stringResource(R.string.crash_reporting_opt_in_positive),
             subtitle = stringResource(R.string.crash_reporting_opt_in_positive_desc),
@@ -180,7 +179,6 @@ fun CrashReportingOptInOptions(
         Spacer(modifier = Modifier.height(12.dp))
         Option(
             modifier = Modifier.fillMaxWidth(),
-            image = R.drawable.ic_opt_out,
             isChecked = !isOptInSelected,
             title = stringResource(R.string.crash_reporting_opt_in_negative),
             subtitle = stringResource(R.string.crash_reporting_opt_in_negative_desc),

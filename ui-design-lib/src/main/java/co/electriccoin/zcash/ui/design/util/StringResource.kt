@@ -3,6 +3,7 @@
 package co.electriccoin.zcash.ui.design.util
 
 import android.content.Context
+import android.icu.util.Currency
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -85,6 +86,10 @@ sealed interface StringResource {
     data class ByDynamicNumber(
         val number: Number,
         val includeGroupingSeparator: Boolean
+    ) : StringResource
+
+    data class ByFiatDisplayName(
+        val fiatCurrency: FiatCurrency
     ) : StringResource
 
     operator fun plus(other: StringResource): StringResource = CompositeStringResource(listOf(this, other))
@@ -185,6 +190,10 @@ fun stringResByDynamicNumber(number: Number, includeGroupingSeparator: Boolean =
     StringResource.ByDynamicNumber(number, includeGroupingSeparator)
 
 @Stable
+fun stringResByFiatDisplayName(fiatCurrency: FiatCurrency): StringResource =
+    StringResource.ByFiatDisplayName(fiatCurrency)
+
+@Stable
 infix fun StringResource.asPrivacySensitive(
     other: StringResource = stringRes(R.string.hide_balance_placeholder)
 ): StringResource = PrivacySensitiveResource(this, other)
@@ -218,6 +227,7 @@ fun StringResource.getString(
     )
 )
 
+@Suppress("CyclomaticComplexMethod")
 fun StringResource.getString(
     context: StringContext
 ): String {
@@ -234,6 +244,7 @@ fun StringResource.getString(
             is StringResource.ByTransactionId -> convertTransactionId()
             is StringResource.ByNumber -> convertNumber(context)
             is StringResource.ByDynamicNumber -> convertDynamicNumber(context)
+            is StringResource.ByFiatDisplayName -> convertFiatDisplayName(context)
             is CompositeStringResource -> convertComposite(context)
             is PrivacySensitiveResource -> convertPrivacySensitive(context)
         }
@@ -313,6 +324,9 @@ private fun StringResource.ByDynamicCurrencyNumber.convertDynamicCurrencyNumber(
 
 private fun StringResource.ByDynamicNumber.convertDynamicNumber(context: StringContext): String =
     convertDynamicNumberToString(number, includeGroupingSeparator, context.locale)
+
+private fun StringResource.ByFiatDisplayName.convertFiatDisplayName(context: StringContext): String =
+    Currency.getInstance(fiatCurrency.code).getDisplayName(context.locale)
 
 private fun convertDynamicNumberToString(
     number: Number,

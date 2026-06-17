@@ -12,6 +12,28 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.5.3 (1745)] - 2026-06-05
+
+### Changed:
+- Removed servers scheduled for decommissioning from the server list.
+
+## [3.5.2 (1742)] - 2026-06-04
+
+### Changed:
+- Updated compatibility with the latest Zcash network changes. This update is required to ensure continued wallet functionality.
+- We updated the default server.
+
+## [3.5.1 (1741)] - 2026-06-02
+
+### Changed:
+- Updated compatibility with the latest Zcash network changes. This update is required to ensure continued wallet functionality.
+- We updated the default server.
+
+## [3.5.0 (1736)] - 2026-05-28
+
+### Added:
+- Coinholder Polling lets you vote on Zcash governance privately, right from your Zodl and Keystone wallets.
+
 ## [3.4.1 (1698)] - 2026-05-19
 
 ### Changed:

@@ -10,6 +10,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -64,13 +66,22 @@ fun ZashiSeedWordPrefixContent(
 @Composable
 fun ZashiSeedWordTextContent(
     text: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    contentDescription: String? = null
 ) {
     Box(
         modifier = modifier then Modifier.padding(start = 32.dp, top = 8.dp, bottom = 10.dp),
     ) {
         Text(
-            modifier = Modifier,
+            // While hidden the visible text is a meaningless mask ("•••••"); override the
+            // accessibility node so a screen reader announces a single descriptive label instead
+            // of spelling out the mask for every word. Does not affect the security invariant.
+            modifier =
+                if (contentDescription != null) {
+                    Modifier.clearAndSetSemantics { this.contentDescription = contentDescription }
+                } else {
+                    Modifier
+                },
             text = text,
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.textMd,

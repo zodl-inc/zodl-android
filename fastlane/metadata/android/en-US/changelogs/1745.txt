@@ -1,0 +1,2 @@
+Changed:
+- Removed servers scheduled for decommissioning from the server list.

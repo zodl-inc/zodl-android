@@ -1,9 +1,8 @@
 package co.electriccoin.zcash.ui.common.datasource
 
 import cash.z.ecc.android.sdk.type.AddressType
+import co.electriccoin.zcash.crash.android.GlobalCrashReporter
 import co.electriccoin.zcash.ui.common.model.DynamicSwapAddress
-import co.electriccoin.zcash.ui.common.model.NearSwapQuote
-import co.electriccoin.zcash.ui.common.model.NearSwapQuoteStatus
 import co.electriccoin.zcash.ui.common.model.SwapAddress
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapMode
@@ -14,11 +13,14 @@ import co.electriccoin.zcash.ui.common.model.ZcashSwapAddress
 import co.electriccoin.zcash.ui.common.model.ZcashTransparentSwapAddress
 import co.electriccoin.zcash.ui.common.model.ZecSwapAsset
 import co.electriccoin.zcash.ui.common.model.near.AppFee
+import co.electriccoin.zcash.ui.common.model.near.NearSwapQuote
+import co.electriccoin.zcash.ui.common.model.near.NearSwapQuoteStatus
 import co.electriccoin.zcash.ui.common.model.near.QuoteRequest
 import co.electriccoin.zcash.ui.common.model.near.QuoteResponseDto
 import co.electriccoin.zcash.ui.common.model.near.RecipientType
 import co.electriccoin.zcash.ui.common.model.near.RefundType
 import co.electriccoin.zcash.ui.common.model.near.SubmitDepositTransactionRequest
+import co.electriccoin.zcash.ui.common.model.near.SwapAmountInconsistencyException
 import co.electriccoin.zcash.ui.common.model.near.SwapType
 import co.electriccoin.zcash.ui.common.provider.NearApiProvider
 import co.electriccoin.zcash.ui.common.provider.ResponseWithNearErrorException
@@ -56,7 +58,7 @@ class NearSwapDataSourceImpl(
                 }
         }
 
-    @Suppress("MagicNumber")
+    @Suppress("MagicNumber", "CyclomaticComplexMethod")
     override suspend fun requestQuote(
         swapMode: SwapMode,
         amount: BigDecimal,
@@ -77,6 +79,8 @@ class NearSwapDataSourceImpl(
         val integer = shifted.toBigInteger().toBigDecimal()
         val normalizedAmount = shifted.round(MathContext(integer.precision(), RoundingMode.DOWN))
 
+        val slippageToleranceBps = slippage.multiply(BigDecimal(100), MathContext.DECIMAL128).toInt()
+
         val request =
             QuoteRequest(
                 dry = false,
@@ -86,7 +90,7 @@ class NearSwapDataSourceImpl(
                         SwapMode.FLEX_INPUT -> SwapType.FLEX_INPUT
                         SwapMode.EXACT_OUTPUT -> SwapType.EXACT_OUTPUT
                     },
-                slippageTolerance = slippage.multiply(BigDecimal(100), MathContext.DECIMAL128).toInt(),
+                slippageTolerance = slippageToleranceBps,
                 originAsset = originAsset.assetId,
                 depositType = RefundType.ORIGIN_CHAIN,
                 destinationAsset = destinationAsset.assetId,
@@ -109,6 +113,10 @@ class NearSwapDataSourceImpl(
 
         return try {
             val response = nearApiProvider.requestQuote(request)
+            require(response.quoteRequest.swapType == request.swapType) {
+                "Swap quote type mismatch: requested ${request.swapType} " +
+                    "but server returned ${response.quoteRequest.swapType}"
+            }
             NearSwapQuote(
                 response = response,
                 originAsset = originAsset,
@@ -116,7 +124,18 @@ class NearSwapDataSourceImpl(
                 depositAddress = getDepositAddress(response, originAsset),
                 destinationAddress = getDestinationAddress(response, originAsset),
                 refundAddress = getRefundAddress(response, originAsset),
+                expectedSlippageToleranceBps = slippageToleranceBps,
             )
+        } catch (e: SwapAmountInconsistencyException) {
+            // MOB-1371 monitoring signal: the exact-equality amount-consistency check rejected this quote.
+            // Report a sanitized non-fatal (field + decimals only, never the amounts — see the release
+            // log-redaction hardening) so that a future 1Click change to rounded display values surfaces as
+            // an observable "quotes blocked" signal instead of silent breakage. Keep failing closed: rethrow
+            // so the quote is still rejected.
+            GlobalCrashReporter.reportCaughtException(
+                SwapAmountConsistencyRejectedSignal(field = e.field, decimals = e.decimals)
+            )
+            throw e
         } catch (e: ResponseWithNearErrorException) {
             when {
                 e.error.message.contains("Amount is too low for bridge, try at least", true) -> {
@@ -210,3 +229,13 @@ class NearSwapDataSourceImpl(
 const val AFFILIATE_FEE_BPS = 67
 const val AFFILIATE_ADDRESS = "d78abd5477432c9d9c5e32c4a1a0056cd7b8be6580d3c49e1f97185b786592db"
 private const val QUOTE_WAITING_TIME = 3000
+
+/**
+ * Sanitized non-fatal reported to crash monitoring when the swap amount-consistency check rejects a quote
+ * (MOB-1371). Carries only the field name and decimal precision — never the amounts — so it does not leak
+ * transaction values to crash reporting.
+ */
+private class SwapAmountConsistencyRejectedSignal(
+    field: String,
+    decimals: Int
+) : Exception("Swap amount-consistency check rejected a quote (field=$field, decimals=$decimals)")

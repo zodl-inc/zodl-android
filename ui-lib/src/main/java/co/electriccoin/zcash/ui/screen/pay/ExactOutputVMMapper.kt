@@ -62,12 +62,14 @@ internal class ExactOutputVMMapper {
             abButton =
                 IconButtonState(
                     icon = R.drawable.send_address_book,
+                    contentDescription = stringRes(R.string.send_address_book_content_description),
                     onClick = onAddressBookClick,
                     isEnabled = !state.isRequestingQuote
                 ),
             qrButton =
                 IconButtonState(
                     icon = R.drawable.qr_code_icon,
+                    contentDescription = stringRes(R.string.send_scan_content_description),
                     onClick = onQrCodeScannerClick,
                     isEnabled = !state.isRequestingQuote
                 ),

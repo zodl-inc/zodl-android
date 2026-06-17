@@ -4,7 +4,6 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiDisclaimerState
 import co.electriccoin.zcash.ui.design.util.StringResource
-import co.electriccoin.zcash.ui.design.util.StyledStringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 
 data class KeepOpenState(

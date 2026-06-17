@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import cash.z.ecc.android.sdk.model.FiatCurrency
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiMainTopAppBarState
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
@@ -111,7 +112,7 @@ internal fun PayView(
                 color = ZashiColors.Text.textPrimary
             )
             Spacer(12.dp)
-            ZashiAssetCard(state.asset)
+            ZashiAssetCard(state.asset, modifier = Modifier.testTag(PayTag.PAY_ASSET_CARD))
             Spacer(28.dp)
             AddressTextField(
                 state = state
@@ -154,7 +155,10 @@ internal fun PayView(
             }
             if (state.primaryButton != null) {
                 ZashiButton(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .testTag(PayTag.PAY_REVIEW_BUTTON),
                     state = state.primaryButton
                 )
             }
@@ -208,7 +212,10 @@ private fun AmountTextFields(state: PayState) {
         val isAmountFocused by amountInteractionSource.collectIsFocusedAsState()
 
         ZashiNumberTextField(
-            modifier = Modifier.weight(1f),
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .testTag(PayTag.PAY_AMOUNT_TOKEN_FIELD),
             state = state.amount,
             interactionSource = amountInteractionSource,
             placeholder =
@@ -240,7 +247,10 @@ private fun AmountTextFields(state: PayState) {
         Spacer(12.dp)
 
         ZashiNumberTextField(
-            modifier = Modifier.weight(1f),
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .testTag(PayTag.PAY_AMOUNT_FIAT_FIELD),
             state = state.amountFiat,
             placeholder = {
                 ZashiNumberTextFieldDefaults.Placeholder(
@@ -250,7 +260,7 @@ private fun AmountTextFields(state: PayState) {
                             color = ZashiColors.Inputs.Default.text
                         ),
                     fontWeight = FontWeight.Normal,
-                    text = stringResource(R.string.send_usd_amount_hint)
+                    text = FiatCurrency.USD.code
                 )
             },
             prefix = {
@@ -368,12 +378,18 @@ private fun AddressTextField(
                 verticalAlignment = Alignment.Top
             ) {
                 ZashiImageButton(
-                    modifier = Modifier.size(36.dp),
+                    modifier =
+                        Modifier
+                            .size(36.dp)
+                            .testTag(PayTag.PAY_ADDRESS_BOOK_BUTTON),
                     state = state.abButton
                 )
                 Spacer(4.dp)
                 ZashiImageButton(
-                    modifier = Modifier.size(36.dp),
+                    modifier =
+                        Modifier
+                            .size(36.dp)
+                            .testTag(PayTag.PAY_SCAN_BUTTON),
                     state = state.qrButton
                 )
             }

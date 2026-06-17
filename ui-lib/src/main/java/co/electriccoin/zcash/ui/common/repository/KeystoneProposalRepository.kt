@@ -24,8 +24,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -35,9 +35,9 @@ import kotlinx.coroutines.withContext
 
 @Suppress("TooManyFunctions")
 interface KeystoneProposalRepository {
-    val transactionProposal: Flow<TransactionProposal?>
+    val transactionProposal: StateFlow<TransactionProposal?>
 
-    val submitState: Flow<SubmitProposalState?>
+    val submitState: StateFlow<SubmitProposalState?>
 
     @Throws(
         TransactionProposalNotCreatedException::class,

@@ -3,7 +3,7 @@ package co.electriccoin.zcash.ui.common.usecase
 import co.electriccoin.zcash.ui.common.datasource.SwapDataSource
 import co.electriccoin.zcash.ui.common.datasource.TokenNotFoundException
 import co.electriccoin.zcash.ui.common.model.SwapQuoteStatus
-import co.electriccoin.zcash.ui.common.model.SwapStatus
+import co.electriccoin.zcash.ui.common.model.near.requireMatchingAsset
 import co.electriccoin.zcash.ui.common.repository.MetadataRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import kotlinx.coroutines.channels.awaitClose
@@ -50,9 +50,27 @@ class GetSwapStatusUseCase(
                         }
                     }
 
+                val expectedMetadata = metadataRepository.getSwapMetadata(depositAddress)
+
                 while (true) {
                     try {
                         val result = swapDataSource.checkSwapStatus(depositAddress, supportedAssets)
+                        expectedMetadata?.origin?.let {
+                            requireMatchingAsset(
+                                name = "origin",
+                                expectedTokenTicker = it.tokenTicker,
+                                expectedChainTicker = it.chainTicker,
+                                actual = result.quote.originAsset
+                            )
+                        }
+                        expectedMetadata?.destination?.let {
+                            requireMatchingAsset(
+                                name = "destination",
+                                expectedTokenTicker = it.tokenTicker,
+                                expectedChainTicker = it.chainTicker,
+                                actual = result.quote.destinationAsset
+                            )
+                        }
                         metadataRepository.updateSwap(
                             depositAddress = depositAddress,
                             amountOutFormatted = result.amountOutFormatted,
@@ -68,7 +86,7 @@ class GetSwapStatusUseCase(
                                 error = null
                             )
                         }
-                        if (result.status in listOf(SwapStatus.SUCCESS, SwapStatus.REFUNDED)) {
+                        if (result.status.isTerminal) {
                             break
                         }
                     } catch (e: TokenNotFoundException) {

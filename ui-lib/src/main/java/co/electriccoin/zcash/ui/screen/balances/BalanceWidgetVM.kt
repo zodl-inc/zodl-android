@@ -37,15 +37,15 @@ class BalanceWidgetVM(
             initialValue =
                 createState(
                     account = accountDataSource.allAccounts.value?.firstOrNull { it.isSelected },
-                    exchangeRateUsd = exchangeRateRepository.state.value
+                    exchangeRate = exchangeRateRepository.state.value
                 )
         )
 
     @Suppress("CyclomaticComplexMethod")
-    private fun createState(account: WalletAccount?, exchangeRateUsd: ExchangeRateState) =
+    private fun createState(account: WalletAccount?, exchangeRate: ExchangeRateState) =
         BalanceWidgetState(
             totalBalance = account?.totalBalance ?: Zatoshi(0),
-            exchangeRate = if (args.isExchangeRateButtonEnabled) exchangeRateUsd else null,
+            exchangeRate = if (args.isExchangeRateButtonEnabled) exchangeRate else null,
             button =
                 when {
                     !args.isBalanceButtonEnabled -> {

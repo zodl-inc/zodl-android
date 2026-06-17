@@ -22,6 +22,7 @@ open class ZcashUiTestRunner : AndroidJUnitRunner() {
         @Suppress("DEPRECATION")
         val flags = PowerManager.FULL_WAKE_LOCK or PowerManager.ON_AFTER_RELEASE
         wakeLock = powerManager.newWakeLock(flags, "zcash:keep_screen_on_for_tests")
+        wakeLock.acquire()
     }
 
     override fun onDestroy() {

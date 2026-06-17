@@ -18,7 +18,6 @@ import co.electriccoin.zcash.ui.common.usecase.ShareQRUseCase
 import co.electriccoin.zcash.ui.design.component.BigIconButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.IconButtonState
-import co.electriccoin.zcash.ui.design.util.Ellipsize
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getString
 import co.electriccoin.zcash.ui.design.util.stringRes

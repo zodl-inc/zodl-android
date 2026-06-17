@@ -1,0 +1,2 @@
+Cambiado:
+- Se eliminaron los servidores desmantelados de la lista de servidores.

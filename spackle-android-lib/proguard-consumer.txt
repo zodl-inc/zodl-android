@@ -7,3 +7,16 @@
     public static *** error(...);
     public static *** assertLoggingStripped();
 }
+
+# Strip out direct android.util.Log calls in release as well, so any logging that bypasses the Twig
+# wrapper still cannot leak to logcat/bugreports/crash dumps. We declare this explicitly instead of
+# relying on it being contributed transitively by an SDK dependency's consumer rules (MOB-1346).
+# Requires R8 optimizations (proguard-android-optimize.txt).
+-assumenosideeffects class android.util.Log {
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+    public static int w(...);
+    public static int e(...);
+    public static int wtf(...);
+}

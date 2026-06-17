@@ -9,10 +9,10 @@ import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun ExchangeRateSettingsScreen() {
-    val viewModel = koinViewModel<ExchangeRateSettingsVM>()
-    val state by viewModel.state.collectAsStateWithLifecycle()
-    BackHandler { state.onBack() }
-    ExchangeRateSettingsView(state = state)
+    val vm = koinViewModel<ExchangeRateSettingsVM>()
+    val state by vm.state.collectAsStateWithLifecycle()
+    BackHandler { state?.onBack() }
+    state?.let { ExchangeRateSettingsView(state = it) }
 }
 
 @Serializable

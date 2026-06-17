@@ -3,7 +3,6 @@ package co.electriccoin.zcash.ui.screen.voting.proposallist
 import androidx.compose.runtime.Immutable
 import co.electriccoin.zcash.ui.common.model.voting.VoteOptionDisplayColor
 import co.electriccoin.zcash.ui.design.component.ButtonState
-import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import kotlinx.serialization.Serializable

@@ -13,9 +13,7 @@ import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.ShareQRUseCase
 import co.electriccoin.zcash.ui.design.util.Ellipsize
-import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByAddress
-import co.electriccoin.zcash.ui.design.util.styleAsAddress
 import co.electriccoin.zcash.ui.screen.qrcode.ext.fromReceiveAddressType
 import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressType
 import co.electriccoin.zcash.ui.util.CURRENCY_TICKER

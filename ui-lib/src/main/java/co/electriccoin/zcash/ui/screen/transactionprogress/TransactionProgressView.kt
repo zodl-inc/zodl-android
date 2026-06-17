@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -108,6 +109,7 @@ private fun BottomBar(state: TransactionProgressState) {
                     Modifier
                         .fillMaxWidth()
                         .padding(horizontal = ZashiDimensions.Spacing.spacing2xl)
+                        .testTag(TransactionProgressTag.TX_PROGRESS_SECONDARY_BUTTON)
             )
         }
         if (state.primaryButton != null) {
@@ -116,7 +118,8 @@ private fun BottomBar(state: TransactionProgressState) {
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = ZashiDimensions.Spacing.spacing2xl),
+                        .padding(horizontal = ZashiDimensions.Spacing.spacing2xl)
+                        .testTag(TransactionProgressTag.TX_PROGRESS_PRIMARY_BUTTON),
             )
         }
     }

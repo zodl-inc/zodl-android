@@ -11,8 +11,6 @@ plugins {
     kotlin("android")
     id("secant.android-build-conventions")
     id("com.osacky.fladle")
-    id("wtf.emulator.gradle")
-    id("secant.emulator-wtf-conventions")
     id("publish.secant.publish-conventions")
 }
 
@@ -145,7 +143,10 @@ android {
         getByName(BuildType.RELEASE.value).apply {
             isMinifyEnabled = project.property("IS_MINIFY_ENABLED").toString().toBoolean()
             isShrinkResources = project.property("IS_MINIFY_ENABLED").toString().toBoolean()
-            ndk.debugSymbolLevel = project.property("NDK_DEBUG_SYMBOL_LEVEL").toString()
+            ndk {
+                debugSymbolLevel = project.property("NDK_DEBUG_SYMBOL_LEVEL").toString()
+                abiFilters.addAll(setOf("arm64-v8a", "armeabi-v7a"))
+            }
 
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

@@ -13,17 +13,7 @@ pluginManagement {
             "androidx\\..*",
             "com\\.android(\\.|\\:).*"
         )
-        val wtfGroups = listOf("wtf.emulator")
 
-        mavenCentral {
-            if (isRepoRestrictionEnabled) {
-                content {
-                    wtfGroups.forEach {
-                        includeGroup(it)
-                    }
-                }
-            }
-        }
         google {
             if (isRepoRestrictionEnabled) {
                 content {
@@ -39,7 +29,7 @@ pluginManagement {
         gradlePluginPortal {
             if (isRepoRestrictionEnabled) {
                 content {
-                    (wtfGroups + googleGroups).forEach {
+                    googleGroups.forEach {
                         excludeGroup(it)
                     }
                     googleRegexes.forEach {
@@ -61,7 +51,6 @@ pluginManagement {
         id("com.osacky.fulladle") version (extra["FULLADLE_VERSION"].toString()) apply false
         id("org.jetbrains.kotlinx.kover") version (extra["KOVER_VERSION"].toString()) apply false
         id("org.jetbrains.kotlin.plugin.compose") version (kotlinVersion) apply (false)
-        id("wtf.emulator.gradle") version (extra["EMULATOR_WTF_GRADLE_PLUGIN_VERSION"].toString()) apply false
         kotlin("android") version (kotlinVersion) apply false
         kotlin("jvm") version (kotlinVersion) apply false
         kotlin("multiplatform") version (kotlinVersion) apply false
@@ -95,7 +84,6 @@ dependencyResolutionManagement {
             "androidx\\..*",
             "com\\.android(\\.|\\:).*",
         )
-        val wtfGroups = listOf("wtf.emulator")
 
         google {
             if (isRepoRestrictionEnabled) {
@@ -112,7 +100,7 @@ dependencyResolutionManagement {
         mavenCentral {
             if (isRepoRestrictionEnabled) {
                 content {
-                    (wtfGroups + googleGroups).forEach {
+                    googleGroups.forEach {
                         excludeGroup(it)
                     }
                     googleRegexes.forEach {
@@ -141,15 +129,6 @@ dependencyResolutionManagement {
                 }
             }
         }
-        // start wtf maven
-        maven("https://maven.emulator.wtf/releases/") {
-            if (isRepoRestrictionEnabled) {
-                content {
-                    includeGroup("wtf.emulator")
-                }
-            }
-        }
-        // end wtf maven
         maven("https://jitpack.io")
     }
 
@@ -201,6 +180,7 @@ dependencyResolutionManagement {
             val zcashSdkVersion = extra["ZCASH_SDK_VERSION"].toString()
             val zip321Version = extra["ZIP_321_VERSION"].toString()
             val zxingVersion = extra["ZXING_VERSION"].toString()
+            val zxingCppVersion = extra["ZXING_CPP_VERSION"].toString()
             val koinVersion = extra["KOIN_VERSION"].toString()
             val flexaVersion = extra["FLEXA_VERSION"].toString()
             val keystoneVersion = extra["KEYSTONE_VERSION"].toString()
@@ -269,6 +249,7 @@ dependencyResolutionManagement {
             library("zcash-bip39", "cash.z.ecc.android:kotlin-bip39:$zcashBip39Version")
             library("zip321", "org.zecdev:zip321:$zip321Version")
             library("zxing", "com.google.zxing:core:$zxingVersion")
+            library("zxingcpp", "io.github.zxing-cpp:android:$zxingCppVersion")
             library("koin", "io.insert-koin:koin-android:$koinVersion")
             library("koin-compose", "io.insert-koin:koin-androidx-compose:$koinVersion")
             library("flexa-core", "co.flexa:core:$flexaVersion")

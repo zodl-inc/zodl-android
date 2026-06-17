@@ -2,7 +2,9 @@ package co.electriccoin.zcash.ui.screen.voting.confirmsubmission
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,8 +22,9 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.VerticalSpacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiLinearProgressIndicator
+import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreenSizes
+import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
-import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
@@ -64,18 +67,19 @@ private fun VoteSubmissionDetailRow(
     value: String,
     valueStyle: TextStyle = ZashiTypography.textSm,
 ) {
-    Column(
+    FlowRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp)
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
             text = label.getValue(),
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textTertiary,
         )
-        VerticalSpacer(4.dp)
         Text(
             text = value,
             style = valueStyle,
@@ -196,3 +200,34 @@ private fun VoteSubmissionProgressCard(
         }
     }
 }
+
+@PreviewScreenSizes
+@Composable
+private fun VoteSubmissionDetailRowInlinePreview() =
+    ZcashTheme {
+        Surface(
+            color = ZashiColors.Surfaces.bgSecondary,
+            shape = RoundedCornerShape(16.dp),
+        ) {
+            VoteSubmissionDetailRow(
+                label = stringRes("Poll"),
+                value = "ZF Grant Q3 2026",
+            )
+        }
+    }
+
+@PreviewScreenSizes
+@Composable
+private fun VoteSubmissionDetailRowWrappedPreview() =
+    ZcashTheme {
+        Surface(
+            color = ZashiColors.Surfaces.bgSecondary,
+            shape = RoundedCornerShape(16.dp),
+        ) {
+            VoteSubmissionDetailRow(
+                label = stringRes("Memo"),
+                value = "u1abc...xyz · Round 1 · 2 proposals · ZF Grant Funding Q3 2026 Zcash Foundation",
+                valueStyle = ZashiTypography.textXs,
+            )
+        }
+    }
