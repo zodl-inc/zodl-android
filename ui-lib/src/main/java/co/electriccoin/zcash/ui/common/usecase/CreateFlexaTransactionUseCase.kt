@@ -37,7 +37,11 @@ class CreateFlexaTransactionUseCase(
             zashiProposalRepository.createProposal(getZecSend(transaction.getOrNull()))
 
             when (val result = zashiProposalRepository.submit()) {
-                is SubmitResult.Success -> {
+                // A GrpcFailure (timeout or gRPC-level rejection) is resubmittable precisely because the
+                // transaction was likely broadcast, so notify Flexa as we would on success - otherwise a paid
+                // commerce session is left hanging even though the network may already have the transaction.
+                is SubmitResult.Success,
+                is SubmitResult.GrpcFailure -> {
                     Flexa
                         .buildSpend()
                         .transactionSent(
