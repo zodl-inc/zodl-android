@@ -90,7 +90,7 @@ class MultiEndpointTransactionSubmitterTest {
                     submit = { _, submittedEndpoint ->
                         when (submittedEndpoint.host) {
                             "late.example.com" -> {
-                                delay(150)
+                                delay(150.milliseconds)
                                 TransactionSubmitResult.Success(transaction.txId)
                             }
 
@@ -133,7 +133,7 @@ class MultiEndpointTransactionSubmitterTest {
                             }
 
                             "late.example.com" -> {
-                                delay(50)
+                                delay(50.milliseconds)
                                 lateEndpointCompleted.complete(Unit)
                                 TransactionSubmitResult.Success(transaction.txId)
                             }
@@ -155,7 +155,7 @@ class MultiEndpointTransactionSubmitterTest {
             assertEquals(listOf(TransactionSubmitResult.Success(transaction.txId)), results)
             assertEquals(false, lateEndpointCompleted.isCompleted)
 
-            advanceTimeBy(50)
+            advanceTimeBy(50.milliseconds)
             runCurrent()
 
             assertEquals(true, lateEndpointCompleted.isCompleted)
@@ -175,7 +175,7 @@ class MultiEndpointTransactionSubmitterTest {
                     submit = { _, submittedEndpoint ->
                         when (submittedEndpoint) {
                             first -> {
-                                delay(1_000)
+                                delay(1_000.milliseconds)
                                 failure(transaction, code = 1, grpcError = true)
                             }
 
@@ -184,7 +184,7 @@ class MultiEndpointTransactionSubmitterTest {
                             }
 
                             third -> {
-                                delay(1_000)
+                                delay(1_000.milliseconds)
                                 TransactionSubmitResult.Success(transaction.txId)
                             }
 
@@ -536,6 +536,49 @@ class MultiEndpointTransactionSubmitterTest {
                 txIds = emptyList(),
                 code = -1,
                 description = "No transactions created"
+            ),
+            result
+        )
+    }
+
+    @Test
+    fun allSuccessesMapToSuccessResult() {
+        val firstTransaction = transaction(25)
+        val secondTransaction = transaction(26)
+
+        val result =
+            listOf(
+                TransactionSubmitResult.Success(firstTransaction.txId),
+                TransactionSubmitResult.Success(secondTransaction.txId)
+            ).toSubmitResult()
+
+        assertEquals(
+            SubmitResult.Success(
+                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString())
+            ),
+            result
+        )
+    }
+
+    @Test
+    fun partialWithNonGrpcFailureRedactsServerDescription() {
+        // A multi-transaction proposal where one transaction broadcast and another was rejected for a
+        // real (non-gRPC) reason is Partial. The rejected transaction's status carries only the code:
+        // the server-provided description must not leak into the partial-failure support email.
+        // Matches the iOS Broadcaster integration, which redacts to "rejected code: <code>".
+        val firstTransaction = transaction(27)
+        val secondTransaction = transaction(28)
+
+        val result =
+            listOf(
+                TransactionSubmitResult.Success(firstTransaction.txId),
+                failure(secondTransaction, code = 18, grpcError = false)
+            ).toSubmitResult()
+
+        assertEquals(
+            SubmitResult.Partial(
+                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString()),
+                statuses = listOf("success", "rejected code: 18")
             ),
             result
         )

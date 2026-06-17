@@ -443,7 +443,10 @@ private fun TransactionSubmitResult.statusDescription() =
                     MULTI_SUBMIT_GRPC_FAILURE_STATUS
                 }
             } else {
-                "code: $code desc: $description"
+                // Code only: the server-provided description must not flow into the partial-failure
+                // support email. Matches the iOS Broadcaster integration, which redacts the rejection
+                // message to "rejected code: <code>" so a privately configured server cannot leak.
+                "$MULTI_SUBMIT_REJECTED_STATUS_PREFIX$code"
             }
         }
 
@@ -512,3 +515,4 @@ private const val MULTI_SUBMIT_PCZT_TAG = "[MultiSubmit/PCZT]"
 private const val MULTI_SUBMIT_EMPTY_TRANSACTION_CODE = -1
 private const val MULTI_SUBMIT_EMPTY_TRANSACTION_DESCRIPTION = "No transactions created"
 private const val MULTI_SUBMIT_GRPC_FAILURE_STATUS = "grpcFailure"
+private const val MULTI_SUBMIT_REJECTED_STATUS_PREFIX = "rejected code: "
