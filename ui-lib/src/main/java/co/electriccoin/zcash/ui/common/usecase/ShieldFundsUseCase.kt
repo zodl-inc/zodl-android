@@ -54,9 +54,17 @@ class ShieldFundsUseCase(
     private suspend fun shieldZashiFunds() {
         try {
             zashiProposalRepository.createShieldProposal()
-            val result = zashiProposalRepository.submit()
-            if (result.isShieldingError()) {
-                navigateToError(ErrorArgs.ShieldingError(result))
+            when (val result = zashiProposalRepository.submit()) {
+                is SubmitResult.Failure,
+                is SubmitResult.GrpcFailure,
+                is SubmitResult.Error,
+                is SubmitResult.Partial -> {
+                    navigateToError(ErrorArgs.ShieldingError(result))
+                }
+
+                is SubmitResult.Success -> {
+                    // do nothing
+                }
             }
         } catch (e: Exception) {
             navigateToError(ErrorArgs.ShieldingGeneralError(e))
@@ -77,18 +85,3 @@ class ShieldFundsUseCase(
         }
     }
 }
-
-/**
- * Whether a shielding submission result should route to the error screen. Unlike a send, shielding
- * has no pending screen, so every non-success outcome - including a [SubmitResult.Partial] and a
- * resubmittable [SubmitResult.GrpcFailure] - is surfaced as an error rather than silently ignored.
- */
-internal fun SubmitResult.isShieldingError(): Boolean =
-    when (this) {
-        is SubmitResult.Success -> false
-
-        is SubmitResult.Failure,
-        is SubmitResult.GrpcFailure,
-        is SubmitResult.Error,
-        is SubmitResult.Partial -> true
-    }

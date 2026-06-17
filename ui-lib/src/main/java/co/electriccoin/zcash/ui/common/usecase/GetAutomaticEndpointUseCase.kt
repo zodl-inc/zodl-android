@@ -17,6 +17,9 @@ class GetAutomaticEndpointUseCase(
             persisted = getSelectedEndpoint()
         )
 
+    // Picks the endpoint for Automatic mode: prefer the freshly benchmarked fastest; otherwise keep the
+    // persisted endpoint only while it is still bundled; otherwise fall back to the default. A persisted
+    // custom (non-bundled) endpoint is intentionally dropped so Automatic never pins to a private server.
     operator fun invoke(fastest: LightWalletEndpoint?, persisted: LightWalletEndpoint?) =
         fastest
             ?: persisted?.takeIf { lightWalletEndpointProvider.getEndpoints().contains(it) }

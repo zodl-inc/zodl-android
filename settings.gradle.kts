@@ -175,6 +175,7 @@ dependencyResolutionManagement {
             val lottieVersion = extra["LOTTIE_VERSION"].toString()
             val markdownVersion = extra["MARKDOWN_VERSION"].toString()
             val mlkitScanningVersion = extra["MLKIT_SCANNING_VERSION"].toString()
+            val mockkVersion = extra["MOCKK_VERSION"].toString()
             val tinkVersion = extra["TINK_VERSION"].toString()
             val zcashBip39Version = extra["ZCASH_BIP39_VERSION"].toString()
             val zcashSdkVersion = extra["ZCASH_SDK_VERSION"].toString()
@@ -278,6 +279,7 @@ dependencyResolutionManagement {
             library("androidx-test-services","androidx.test.services:test-services:$androidxTestServices")
             library("androidx-uiAutomator", "androidx.test.uiautomator:uiautomator:$androidxUiAutomatorVersion")
             library("kotlinx-coroutines-test", "org.jetbrains.kotlinx:kotlinx-coroutines-test:$kotlinxCoroutinesVersion")
+            library("mockk", "io.mockk:mockk:$mockkVersion")
             // Bundles
             bundle(
                 "androidx-biometric",
