@@ -344,12 +344,20 @@ jobs:
       - name: Trigger GitLab Pages F-Droid publish
         env:
           GITLAB_FDROID_TRIGGER_TOKEN: ${{ secrets.GITLAB_FDROID_TRIGGER_TOKEN }}
+          # Project id + target ref live in repo variables so they can be updated
+          # in one place if the GitLab project is recreated or the pipeline moves
+          # to an environment branch (review: noop-sk). Default to the known
+          # values if the vars are unset, so the step still works pre-config.
+          GITLAB_FDROID_PROJECT_ID: ${{ vars.GITLAB_FDROID_PROJECT_ID || '83433564' }}
+          GITLAB_FDROID_REF: ${{ vars.GITLAB_FDROID_REF || 'main' }}
         run: |
           echo "Triggering GitLab F-Droid pipeline for ${GITHUB_REF_NAME}"
-          HTTP_CODE=$(curl -s -o /tmp/trigger.json -w '%{http_code}' \
-            -X POST "https://gitlab.com/api/v4/projects/83433564/trigger/pipeline" \
+          # -m 30 bounds the wait: without it, an unreachable GitLab would block
+          # until the runner's job-level timeout (~6h) fires (review: noop-sk).
+          HTTP_CODE=$(curl -s -m 30 -o /tmp/trigger.json -w '%{http_code}' \
+            -X POST "https://gitlab.com/api/v4/projects/${GITLAB_FDROID_PROJECT_ID}/trigger/pipeline" \
             -F token="${GITLAB_FDROID_TRIGGER_TOKEN}" \
-            -F ref=main \
+            -F "ref=${GITLAB_FDROID_REF}" \
             -F "variables[APK_TAG]=${GITHUB_REF_NAME}")
           cat /tmp/trigger.json
           echo
