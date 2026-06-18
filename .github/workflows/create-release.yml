@@ -35,7 +35,16 @@ name: Create Release from tag
 # (on: release published) will NOT auto-fire from this workflow's release.
 # To make the build+publish chain run automatically, this workflow mints a
 # short-lived GitHub App installation token (preferred over a long-lived PAT
-# in a PUBLIC repo) and creates the release with it. Wiring:
+# in a PUBLIC repo) and creates the release with it.
+#
+# A second subtlety bit 3.6.0: action-gh-release UPDATES a pre-existing
+# release instead of creating it, and an *update* does not emit a
+# `release: published` event, so release.yaml never fired. To cover that, a
+# follow-up step flips the release draft->published with the App token,
+# which re-emits `published` regardless of whether the release was new or
+# already existed (see the "Force published event" step below).
+#
+# Wiring:
 #   * repo variable  RELEASE_BOT_APP_ID    — the App's numeric id (not secret)
 #   * repo secret     RELEASE_BOT_APP_KEY  — the App's PEM private key
 # The App needs only `contents: write` on this single repo. If the variable
@@ -146,6 +155,46 @@ jobs:
           # App token (cascades into release.yaml) when available; otherwise
           # GITHUB_TOKEN (no cascade — see CASCADE CAVEAT in the header).
           GITHUB_TOKEN: ${{ steps.app_token.outputs.token || secrets.GITHUB_TOKEN }}
+
+      # Force a fresh `release: published` event so the build+publish chain in
+      # release.yaml always cascades — even when the release already existed.
+      #
+      # WHY: softprops/action-gh-release UPDATES an already-existing release
+      # rather than creating it, and *updating* a release does NOT emit a
+      # `release: published` event (only the create-as-published transition
+      # does). This is exactly what broke 3.6.0: the GitHub Release was created
+      # out-of-band before this workflow ran, the create step above silently
+      # turned into an update, no `published` event fired, and release.yaml
+      # (build + F-Droid + Solana) never ran.
+      #
+      # FIX: with the App token (which CAN trigger downstream workflows; the
+      # default GITHUB_TOKEN cannot — see CASCADE CAVEAT in the header), flip
+      # the release draft -> published. The draft=true PATCH followed by
+      # draft=false produces a genuine state transition into "published",
+      # which re-emits `release: published`. This is idempotent and safe to
+      # re-run: a release already published ends up published again, and a
+      # brand-new release (the create step published it) is re-published,
+      # which still emits the event we need. Skipped when no App token is
+      # available (GITHUB_TOKEN can't cascade anyway), same guard as the mint.
+      - name: Force published event (cascade into release.yaml)
+        if: ${{ vars.RELEASE_BOT_APP_ID != '' }}
+        env:
+          GH_TOKEN: ${{ steps.app_token.outputs.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # Resolve the release id from the tag.
+          RELEASE_ID="$(gh api "repos/${REPO}/releases/tags/${TAG}" --jq '.id')"
+          if [ -z "${RELEASE_ID}" ] || [ "${RELEASE_ID}" = "null" ]; then
+            echo "ERROR: could not resolve release id for tag '${TAG}'." >&2
+            exit 1
+          fi
+          echo "Re-publishing release ${RELEASE_ID} (tag ${TAG}) to force a published event..."
+          # draft -> published transition re-emits `release: published`.
+          gh api -X PATCH "repos/${REPO}/releases/${RELEASE_ID}" -F draft=true  >/dev/null
+          gh api -X PATCH "repos/${REPO}/releases/${RELEASE_ID}" -F draft=false >/dev/null
+          echo "Done; release.yaml should now cascade."
 
       - name: Create Linear release
         # Scans commits since the previous tag for MOB-### references and creates
