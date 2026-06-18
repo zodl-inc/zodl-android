@@ -53,7 +53,8 @@ private class MultiEndpointTransactionSubmitterImpl(
     private val gracePeriod: Duration,
     private val logger: MultiEndpointTransactionSubmitterLogger,
     private val submit: suspend (CreatedTransaction, LightWalletEndpoint) -> TransactionSubmitResult
-) : MultiEndpointTransactionSubmitter, CloseableScopeHolder by closeableScopeHolder {
+) : MultiEndpointTransactionSubmitter,
+    CloseableScopeHolder by closeableScopeHolder {
     override suspend fun submitTransactions(
         transactions: List<CreatedTransaction>,
         endpoints: List<LightWalletEndpoint>,
