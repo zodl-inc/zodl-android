@@ -1,10 +1,9 @@
-package cash.z.ecc.sdk.extension
+package co.electriccoin.zcash.ui.design.util
 
 import androidx.test.filters.SmallTest
 import org.junit.Test
 import java.math.BigDecimal
 import java.math.RoundingMode
-import java.util.Locale
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -14,8 +13,8 @@ class CurrencyFormatterExtTest {
 
     @Test
     @SmallTest
-    fun zatoshiFormatter_usLocale_formatsCorrectly() {
-        val formatter = zatoshiFormatter(Locale.US)
+    fun zatoshiFormatter_formatsCorrectly() {
+        val formatter = zatoshiFormatter()
         val result = formatter.format(BigDecimal("1.23456789"))
 
         assertNotNull(result)
@@ -25,7 +24,7 @@ class CurrencyFormatterExtTest {
     @Test
     @SmallTest
     fun zatoshiFormatter_maxFractionDigits_isEight() {
-        val formatter = zatoshiFormatter(Locale.US)
+        val formatter = zatoshiFormatter()
 
         assertEquals(8, formatter.maximumFractionDigits)
     }
@@ -33,7 +32,7 @@ class CurrencyFormatterExtTest {
     @Test
     @SmallTest
     fun zatoshiFormatter_minFractionDigits_isThree() {
-        val formatter = zatoshiFormatter(Locale.US)
+        val formatter = zatoshiFormatter()
 
         assertEquals(3, formatter.minimumFractionDigits)
     }
@@ -41,7 +40,7 @@ class CurrencyFormatterExtTest {
     @Test
     @SmallTest
     fun zatoshiFormatter_roundingMode_isHalfEven() {
-        val formatter = zatoshiFormatter(Locale.US)
+        val formatter = zatoshiFormatter()
 
         assertEquals(RoundingMode.HALF_EVEN, formatter.roundingMode)
     }
@@ -49,7 +48,7 @@ class CurrencyFormatterExtTest {
     @Test
     @SmallTest
     fun zatoshiFormatter_preservesPrecision_eightDecimals() {
-        val formatter = zatoshiFormatter(Locale.US)
+        val formatter = zatoshiFormatter()
         val result = formatter.format(BigDecimal("0.12345678"))
 
         assertEquals("0.12345678", result)
@@ -58,7 +57,7 @@ class CurrencyFormatterExtTest {
     @Test
     @SmallTest
     fun zatoshiFormatter_truncatesNinthDecimal() {
-        val formatter = zatoshiFormatter(Locale.US)
+        val formatter = zatoshiFormatter()
         val result = formatter.format(BigDecimal("0.123456789"))
 
         // HALF_EVEN rounds 9th decimal: 0.123456789 -> 0.12345679
@@ -68,7 +67,7 @@ class CurrencyFormatterExtTest {
     @Test
     @SmallTest
     fun zatoshiFormatter_padsToThreeDecimals() {
-        val formatter = zatoshiFormatter(Locale.US)
+        val formatter = zatoshiFormatter()
         val result = formatter.format(BigDecimal("1"))
 
         // Should show "1.000" (3 min decimals)
@@ -82,7 +81,7 @@ class CurrencyFormatterExtTest {
     @Test
     @SmallTest
     fun currencyFormatter_defaultParams_maxSixDecimals() {
-        val formatter = currencyFormatter(Locale.US)
+        val formatter = currencyFormatter()
 
         assertEquals(6, formatter.maximumFractionDigits)
     }
@@ -90,7 +89,7 @@ class CurrencyFormatterExtTest {
     @Test
     @SmallTest
     fun currencyFormatter_defaultParams_minZeroDecimals() {
-        val formatter = currencyFormatter(Locale.US)
+        val formatter = currencyFormatter()
 
         assertEquals(0, formatter.minimumFractionDigits)
     }
@@ -100,7 +99,6 @@ class CurrencyFormatterExtTest {
     fun currencyFormatter_customMaxDecimals() {
         val formatter =
             currencyFormatter(
-                locale = Locale.US,
                 maximumFractionDigits = 2,
                 minimumFractionDigits = 2
             )
@@ -112,10 +110,10 @@ class CurrencyFormatterExtTest {
     @Test
     @SmallTest
     fun currencyFormatter_formatsLargeNumber_withGrouping() {
-        val formatter = currencyFormatter(Locale.US)
+        val formatter = currencyFormatter()
         val result = formatter.format(BigDecimal("1234567.89"))
 
-        // US locale should use comma grouping: "1,234,567.89"
+        // Forced number locale uses comma grouping: "1,234,567.89"
         assertTrue(
             result.contains("1,234,567"),
             "Large number should have grouping separator: \"$result\""
@@ -125,7 +123,7 @@ class CurrencyFormatterExtTest {
     @Test
     @SmallTest
     fun currencyFormatter_formatsZero() {
-        val formatter = currencyFormatter(Locale.US)
+        val formatter = currencyFormatter()
         val result = formatter.format(BigDecimal.ZERO)
 
         assertEquals("0", result)
@@ -133,14 +131,14 @@ class CurrencyFormatterExtTest {
 
     @Test
     @SmallTest
-    fun currencyFormatter_germanLocale_usesCommaDecimal() {
-        val formatter = currencyFormatter(Locale.GERMANY)
+    fun currencyFormatter_forcesPeriodDecimalSeparator() {
+        val formatter = currencyFormatter()
         val result = formatter.format(BigDecimal("1234.56"))
 
-        // German locale uses comma as decimal separator
+        // Regardless of device region, the forced number locale uses a period decimal separator.
         assertTrue(
-            result.contains(","),
-            "German locale should use comma as decimal separator: \"$result\""
+            result.contains("."),
+            "Forced number locale should use a period decimal separator: \"$result\""
         )
     }
 
@@ -149,42 +147,12 @@ class CurrencyFormatterExtTest {
     fun currencyFormatter_nullMaxDecimals_noLimit() {
         val formatter =
             currencyFormatter(
-                locale = Locale.US,
                 maximumFractionDigits = null,
                 minimumFractionDigits = null
             )
 
-        // When null, the formatter inherits US locale's default (3 fraction digits)
+        // When null, the formatter inherits the forced locale's default (3 fraction digits)
         assertEquals(3, formatter.maximumFractionDigits)
-    }
-
-    // endregion
-
-    // region ZcashDecimalFormatSymbols
-
-    @Test
-    @SmallTest
-    fun zcashDecimalFormatSymbols_usLocale_hasDecimalSeparator() {
-        val symbols = ZcashDecimalFormatSymbols(Locale.US)
-
-        assertEquals('.', symbols.decimalSeparator)
-    }
-
-    @Test
-    @SmallTest
-    fun zcashDecimalFormatSymbols_germanLocale_hasCommaDecimalSeparator() {
-        val symbols = ZcashDecimalFormatSymbols(Locale.GERMANY)
-
-        assertEquals(',', symbols.decimalSeparator)
-    }
-
-    @Test
-    @SmallTest
-    fun zcashDecimalFormatSymbols_usLocale_hasGroupingSeparator() {
-        val symbols = ZcashDecimalFormatSymbols(Locale.US)
-
-        // US locale uses comma as grouping separator
-        assertEquals(',', symbols.groupingSeparator, "US locale should have comma as grouping separator")
     }
 
     // endregion

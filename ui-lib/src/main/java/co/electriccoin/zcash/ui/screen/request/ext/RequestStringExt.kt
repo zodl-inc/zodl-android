@@ -1,15 +1,13 @@
 package co.electriccoin.zcash.ui.screen.request.ext
 
-import cash.z.ecc.sdk.extension.currencyFormatter
+import co.electriccoin.zcash.ui.design.util.currencyFormatter
 import java.math.BigDecimal
 import java.text.ParseException
-import java.util.Locale
 
-internal fun String.toBigDecimalLocalized(locale: Locale): BigDecimal? =
+internal fun String.toBigDecimalLocalized(): BigDecimal? =
     try {
         val currencyFormatter =
             currencyFormatter(
-                locale = locale,
                 maximumFractionDigits = null,
                 minimumFractionDigits = null
             ).apply {

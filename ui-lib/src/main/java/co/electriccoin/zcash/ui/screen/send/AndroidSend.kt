@@ -30,9 +30,9 @@ import co.electriccoin.zcash.ui.common.usecase.PrefillSendUseCase
 import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
+import co.electriccoin.zcash.ui.design.util.StringResource.Companion.NUMBER_FORMAT_LOCALE
 import co.electriccoin.zcash.ui.design.util.TickerLocation
 import co.electriccoin.zcash.ui.design.util.getString
-import co.electriccoin.zcash.ui.design.util.rememberDesiredFormatLocale
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.balances.BalanceWidgetArgs
 import co.electriccoin.zcash.ui.screen.balances.BalanceWidgetState
@@ -127,8 +127,6 @@ internal fun WrapSend(
 
     val zashiMainTopAppBarState by topAppBarViewModel.state.collectAsStateWithLifecycle()
 
-    val locale = rememberDesiredFormatLocale()
-
     val context = LocalContext.current
 
     val (sendStage, setSendStage) =
@@ -157,17 +155,16 @@ internal fun WrapSend(
 
     // Amount computation:
     val (amountState, setAmountState) =
-        rememberSaveable(locale, stateSaver = AmountState.getSaver(context)) {
+        rememberSaveable(stateSaver = AmountState.getSaver(context)) {
             // Default amount state
             mutableStateOf(
                 AmountState.newFromZec(
-                    value = zecSend?.amount?.toZecString(locale) ?: "",
+                    value = zecSend?.amount?.toZecString(NUMBER_FORMAT_LOCALE) ?: "",
                     fiatValue = "",
                     isTransparentOrTextRecipient =
                         recipientAddressState.type?.let { it == AddressType.Transparent }
                             ?: false,
                     exchangeRateState = exchangeRateState,
-                    locale = locale,
                 )
             )
         }
@@ -186,7 +183,6 @@ internal fun WrapSend(
                             ?.let { it == AddressType.Transparent } ?: false,
                     exchangeRateState = exchangeRateState,
                     lastFieldChangedByUser = amountState.lastFieldChangedByUser,
-                    locale = locale,
                 )
             } else {
                 AmountState.newFromFiat(
@@ -196,7 +192,6 @@ internal fun WrapSend(
                         recipientAddressState.type
                             ?.let { it == AddressType.Transparent } ?: false,
                     exchangeRateState = exchangeRateState,
-                    locale = locale,
                 )
             }
         )
@@ -208,7 +203,7 @@ internal fun WrapSend(
             mutableStateOf(MemoState.new(zecSend?.memo?.value ?: ""))
         }
 
-    LaunchedEffect(locale) {
+    LaunchedEffect(Unit) {
         observeClearSend().collect {
             setSendStage(SendStage.Form)
             setZecSend(null)
@@ -219,14 +214,13 @@ internal fun WrapSend(
                     fiatValue = "",
                     isTransparentOrTextRecipient = false,
                     exchangeRateState = exchangeRateState,
-                    locale = locale
                 )
             )
             setMemoState(MemoState.new(""))
         }
     }
 
-    LaunchedEffect(locale) {
+    LaunchedEffect(Unit) {
         prefillSend().collect {
             when (it) {
                 is PrefillSendData.All -> {
@@ -254,7 +248,6 @@ internal fun WrapSend(
                             fiatValue = amountState.fiatValue.getString(context),
                             isTransparentOrTextRecipient = type == AddressType.Transparent,
                             exchangeRateState = exchangeRateState,
-                            locale = locale
                         )
                     )
                     setMemoState(MemoState.new(it.memos?.firstOrNull().orEmpty()))

@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.sdk.model.FiatCurrencyConversion
 import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
-import cash.z.ecc.sdk.extension.ZcashDecimalFormatSymbols
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
@@ -18,7 +17,7 @@ import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCa
 import co.electriccoin.zcash.ui.common.usecase.ShareQRUseCase
 import co.electriccoin.zcash.ui.common.usecase.Zip321BuildUriUseCase
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
-import co.electriccoin.zcash.ui.design.util.getPreferredLocale
+import co.electriccoin.zcash.ui.design.util.StringResource.Companion.NUMBER_FORMAT_LOCALE
 import co.electriccoin.zcash.ui.screen.qrcode.ext.fromReceiveAddressType
 import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressType
 import co.electriccoin.zcash.ui.screen.request.ext.toBigDecimalLocalized
@@ -39,6 +38,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.MathContext
+import java.text.DecimalFormatSymbols
 
 @Suppress("TooManyFunctions")
 class RequestVM(
@@ -57,8 +57,8 @@ class RequestVM(
         private const val DEFAULT_URI = ""
     }
 
-    private val decimalFormatSymbols: ZcashDecimalFormatSymbols
-        get() = ZcashDecimalFormatSymbols(application.resources.configuration.getPreferredLocale())
+    private val decimalFormatSymbols: DecimalFormatSymbols
+        get() = DecimalFormatSymbols(NUMBER_FORMAT_LOCALE)
 
     private val decimal: String
         get() = Regex.escape(decimalFormatSymbols.decimalSeparator.toString())
@@ -304,9 +304,8 @@ class RequestVM(
 
         // Check for max Zcash supply
         return newAmount.amount
-            .toBigDecimalLocalized(
-                application.resources.configuration.getPreferredLocale()
-            )?.let { currentValue ->
+            .toBigDecimalLocalized()
+            ?.let { currentValue ->
                 val zecValue =
                     if (newAmount.currency == RequestCurrency.FIAT && conversion != null) {
                         currentValue.divide(conversion.priceOfZec.toBigDecimal(), MathContext.DECIMAL128)
@@ -474,8 +473,7 @@ class RequestVM(
         memo: String,
         zip321BuildUriUseCase: Zip321BuildUriUseCase,
     ): String {
-        val locale = application.resources.configuration.getPreferredLocale()
-        val amountNumber = amount.toBigDecimalLocalized(locale)
+        val amountNumber = amount.toBigDecimalLocalized()
         return if (amountNumber == null) {
             Twig.error { "Unexpected amount state" }
             DEFAULT_URI

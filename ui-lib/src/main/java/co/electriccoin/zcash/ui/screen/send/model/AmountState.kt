@@ -37,17 +37,16 @@ sealed interface AmountState {
     companion object {
         @Suppress("LongParameterList", "ReturnCount")
         fun newFromZec(
-            locale: java.util.Locale,
             value: String,
             fiatValue: String,
             isTransparentOrTextRecipient: Boolean,
             exchangeRateState: ExchangeRateState,
             lastFieldChangedByUser: AmountField = AmountField.ZEC
         ): AmountState {
-            val normalized = ZashiNumberTextFieldParser.normalizeInput(value, locale)
+            val normalized = ZashiNumberTextFieldParser.normalizeInput(value)
 
             val zecAmount =
-                ZashiNumberTextFieldParser.toBigDecimalOrNull(normalized, locale)
+                ZashiNumberTextFieldParser.toBigDecimalOrNull(normalized)
                     ?: return Invalid(
                         stringRes(normalized),
                         stringRes(if (normalized.isBlank()) "" else fiatValue),
@@ -104,16 +103,15 @@ sealed interface AmountState {
 
         @Suppress("LongParameterList")
         fun newFromFiat(
-            locale: java.util.Locale,
             value: String,
             fiatValue: String,
             isTransparentOrTextRecipient: Boolean,
             exchangeRateState: ExchangeRateState,
         ): AmountState {
-            val normalized = ZashiNumberTextFieldParser.normalizeInput(fiatValue, locale)
+            val normalized = ZashiNumberTextFieldParser.normalizeInput(fiatValue)
 
             val fiatAmount =
-                ZashiNumberTextFieldParser.toBigDecimalOrNull(normalized, locale)
+                ZashiNumberTextFieldParser.toBigDecimalOrNull(normalized)
                     ?: return Invalid(
                         value = stringRes(if (normalized.isBlank()) "" else value),
                         fiatValue = stringRes(normalized),

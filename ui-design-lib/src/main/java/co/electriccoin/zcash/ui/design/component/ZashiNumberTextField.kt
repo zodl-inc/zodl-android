@@ -20,20 +20,19 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import cash.z.ecc.sdk.extension.ZcashDecimalFormatSymbols
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.util.StringResource.Companion.NUMBER_FORMAT_LOCALE
 import co.electriccoin.zcash.ui.design.util.getString
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.rememberDesiredFormatLocale
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByDynamicNumber
 import co.electriccoin.zcash.ui.design.util.stringResByNumber
 import java.math.BigDecimal
 import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
 import java.text.ParseException
-import java.util.Locale
 
 @Suppress("LongParameterList")
 @Composable
@@ -87,7 +86,6 @@ fun ZashiNumberTextField(
 @Composable
 private fun createTextFieldState(state: NumberTextFieldState): EnhancedTextFieldState {
     val context = LocalContext.current
-    val locale = rememberDesiredFormatLocale()
     val text =
         state.innerState.innerTextFieldState.value
             .getValue()
@@ -119,18 +117,14 @@ private fun createTextFieldState(state: NumberTextFieldState): EnhancedTextField
             isEnabled = state.isEnabled,
             error = state.explicitError ?: state.defaultNumberError.takeIf { state.innerState.isError },
             onValueChange = { innerState ->
-                val newText = innerState.value.getString(context, locale).replace(" ", "")
+                val newText = innerState.value.getString(context).replace(" ", "")
                 val normalized: String
                 val amount: BigDecimal?
                 val lastValidAmount: BigDecimal?
 
                 if (newText != text) {
-                    normalized =
-                        ZashiNumberTextFieldParser.normalizeInput(
-                            input = innerState.value.getString(context, locale),
-                            locale = locale
-                        )
-                    amount = ZashiNumberTextFieldParser.toBigDecimalOrNull(normalized, locale)
+                    normalized = ZashiNumberTextFieldParser.normalizeInput(innerState.value.getString(context))
+                    amount = ZashiNumberTextFieldParser.toBigDecimalOrNull(normalized)
                     lastValidAmount = amount ?: state.innerState.lastValidAmount
                 } else {
                     normalized = text
@@ -215,39 +209,58 @@ object ZashiNumberTextFieldDefaults {
 }
 
 object ZashiNumberTextFieldParser {
-    fun normalizeInput(input: String, locale: Locale): String {
-        val symbols = ZcashDecimalFormatSymbols(locale)
+    /**
+     * Sanitize raw user [input] into a string the parser can read. Whitespace grouping is stripped, and
+     * mixed separators (e.g. a pasted "1,234.56" or the European "1.234,56") keep only the LAST separator
+     * as the decimal point while the earlier ones are treated as grouping and removed — both become
+     * "1234.56".
+     *
+     * When every separator is the same character (e.g. "1,234,567" or "1.234.567") they are all treated
+     * as grouping and dropped, yielding "1234567".
+     */
+    @Suppress("ReturnCount")
+    fun normalizeInput(input: String): String {
+        val symbols = DecimalFormatSymbols(NUMBER_FORMAT_LOCALE)
+        val decimalSeparator = symbols.decimalSeparator
+        val separators = setOf(decimalSeparator, symbols.groupingSeparator)
 
-        val withoutGrouping =
+        val cleaned =
             input
                 .replace("\u00A0", "") // NO-BREAK SPACE
                 .replace("\u202F", "") // NARROW NO-BREAK SPACE
                 .replace("\u0020", "") // REGULAR SPACE
-                .replace(symbols.groupingSeparator.toString(), symbols.decimalSeparator.toString())
 
-        return if (symbols.decimalSeparator == '.') {
-            withoutGrouping.replace(',', '.')
-        } else {
-            withoutGrouping.replace('.', symbols.decimalSeparator)
+        val presentSeparators = cleaned.filter { it in separators }
+        if (presentSeparators.length > 1 && presentSeparators.toSet().size == 1) {
+            // All separators are identical → pure grouping (e.g. "1,234,567"); drop them all.
+            return cleaned.filterNot { it in separators }
         }
+
+        // Otherwise the last separator is the decimal point; earlier separators are grouping.
+        val lastSeparatorIndex = cleaned.indexOfLast { it in separators }
+        if (lastSeparatorIndex < 0) return cleaned
+
+        val integerPart = cleaned.substring(0, lastSeparatorIndex).filterNot { it in separators }
+        val fractionPart = cleaned.substring(lastSeparatorIndex + 1)
+        return "$integerPart$decimalSeparator$fractionPart"
     }
 
     /**
-     * Convert user's [input] to a number of type [BigDecimal]. Decimal separator is derived from [locale].
+     * Convert user's [input] to a number of type [BigDecimal]. The decimal separator is derived from the
+     * forced number locale ([StringResource.NUMBER_FORMAT_LOCALE]).
      *
      * This function first validates the input format, then uses DecimalFormat with isParseBigDecimal=true
      * to parse the string. According to Java documentation, when isParseBigDecimal is true, parse() should
      * always return BigDecimal directly, making type conversion unnecessary in most cases.
      *
      * @param input The normalized string to parse (should be already processed by normalizeInput)
-     * @param locale The locale to use for parsing (determines decimal separator)
      * @return [BigDecimal] if [input] is a valid number representation, null otherwise
      */
     @Suppress("ReturnCount")
-    fun toBigDecimalOrNull(input: String, locale: Locale): BigDecimal? {
-        val symbols = ZcashDecimalFormatSymbols(locale)
+    fun toBigDecimalOrNull(input: String): BigDecimal? {
+        val symbols = DecimalFormatSymbols(NUMBER_FORMAT_LOCALE)
         if (!isValidNumericWithOptionalDecimalSeparator(input = input, symbols = symbols)) return null
-        val pattern = (DecimalFormat.getInstance(locale) as? DecimalFormat)?.toPattern()
+        val pattern = (DecimalFormat.getInstance(NUMBER_FORMAT_LOCALE) as? DecimalFormat)?.toPattern()
 
         val decimalFormat =
             if (pattern != null) {
@@ -302,7 +315,7 @@ object ZashiNumberTextFieldParser {
      */
     private fun isValidNumericWithOptionalDecimalSeparator(
         input: String,
-        symbols: ZcashDecimalFormatSymbols
+        symbols: DecimalFormatSymbols
     ): Boolean {
         if (input.isEmpty()) return false
 

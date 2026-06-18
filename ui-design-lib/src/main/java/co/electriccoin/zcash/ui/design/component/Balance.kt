@@ -14,12 +14,12 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import cash.z.ecc.android.sdk.model.Zatoshi
-import cash.z.ecc.sdk.extension.ZcashDecimalFormatSymbols
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
+import co.electriccoin.zcash.ui.design.util.StringResource.Companion.NUMBER_FORMAT_LOCALE
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.rememberDesiredFormatLocale
 import co.electriccoin.zcash.ui.design.util.stringRes
+import java.text.DecimalFormatSymbols
 
 /**
  * This accepts string with balance and displays it in the UI component styled according to the design
@@ -91,12 +91,11 @@ private const val CUT_POSITION_OFFSET = 4
 @Composable
 private fun splitBalance(zatoshi: Zatoshi): Pair<String, String> {
     val balance = stringRes(zatoshi).getValue()
-    val locale = rememberDesiredFormatLocale()
     val cutPosition =
         balance
             .indexOf(
                 startIndex = 0,
-                char = ZcashDecimalFormatSymbols(locale).decimalSeparator,
+                char = DecimalFormatSymbols(NUMBER_FORMAT_LOCALE).decimalSeparator,
                 ignoreCase = true
             ).let { separatorPosition ->
                 if (separatorPosition + CUT_POSITION_OFFSET < balance.length) {

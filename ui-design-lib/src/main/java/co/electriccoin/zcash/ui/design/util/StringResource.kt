@@ -11,8 +11,6 @@ import androidx.compose.ui.platform.LocalContext
 import cash.z.ecc.android.sdk.ext.convertZatoshiToZec
 import cash.z.ecc.android.sdk.model.FiatCurrency
 import cash.z.ecc.android.sdk.model.Zatoshi
-import cash.z.ecc.sdk.extension.currencyFormatter
-import cash.z.ecc.sdk.extension.zatoshiFormatter
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.theme.balances.LocalBalancesAvailable
 import java.math.BigDecimal
@@ -97,6 +95,18 @@ sealed interface StringResource {
     operator fun plus(other: String): StringResource = CompositeStringResource(listOf(this, stringRes(other)))
 
     fun isEmpty(): Boolean = if (this is ByString) value.isEmpty() else false
+
+    companion object {
+        /**
+         * Locale used for formatting and parsing every monetary/number value across the app (both
+         * displayed Texts and editable TextFields). We deliberately force a period decimal separator
+         * and comma grouping regardless of the device region/language so amounts render and parse
+         * uniformly everywhere. Dates and other locale-sensitive copy keep using the device locale.
+         *
+         * See MOB-1356 (Android regression: en-ZA showed a comma) and MOB-1394 (force periods everywhere).
+         */
+        val NUMBER_FORMAT_LOCALE: Locale = Locale.US
+    }
 }
 
 private data class CompositeStringResource(
@@ -235,15 +245,15 @@ fun StringResource.getString(
         when (this) {
             is StringResource.ByResource -> convertResource(context)
             is StringResource.ByString -> value
-            is StringResource.ByZatoshi -> convertZatoshi(context)
-            is StringResource.ByCurrencyNumber -> convertCurrencyNumber(context)
-            is StringResource.ByDynamicCurrencyNumber -> convertDynamicCurrencyNumber(context)
+            is StringResource.ByZatoshi -> convertZatoshi()
+            is StringResource.ByCurrencyNumber -> convertCurrencyNumber()
+            is StringResource.ByDynamicCurrencyNumber -> convertDynamicCurrencyNumber()
             is StringResource.ByDateTime -> convertDateTime(context)
             is StringResource.ByYearMonth -> convertYearMonth(context)
             is StringResource.ByAddress -> convertAddress()
             is StringResource.ByTransactionId -> convertTransactionId()
-            is StringResource.ByNumber -> convertNumber(context)
-            is StringResource.ByDynamicNumber -> convertDynamicNumber(context)
+            is StringResource.ByNumber -> convertNumber()
+            is StringResource.ByDynamicNumber -> convertDynamicNumber()
             is StringResource.ByFiatDisplayName -> convertFiatDisplayName(context)
             is CompositeStringResource -> convertComposite(context)
             is PrivacySensitiveResource -> convertPrivacySensitive(context)
@@ -269,12 +279,12 @@ private fun StringResource.ByResource.convertResource(context: StringContext) =
         *args.map { if (it is StringResource) it.getString(context) else it }.toTypedArray()
     )
 
-private fun StringResource.ByNumber.convertNumber(context: StringContext): String =
-    convertNumberToString(number, context.locale, minDecimals, maxDecimals, includeGroupingSeparator)
+private fun StringResource.ByNumber.convertNumber(): String =
+    convertNumberToString(number, minDecimals, maxDecimals, includeGroupingSeparator)
 
-private fun StringResource.ByZatoshi.convertZatoshi(context: StringContext): String {
+private fun StringResource.ByZatoshi.convertZatoshi(): String {
     val zec = this.zatoshi.convertZatoshiToZec(scale = 8)
-    val amount = zatoshiFormatter(context.locale).format(zec)
+    val amount = zatoshiFormatter().format(zec)
     return when (this.tickerLocation) {
         TickerLocation.BEFORE -> "ZEC $amount"
         TickerLocation.AFTER -> "$amount ZEC"
@@ -282,8 +292,8 @@ private fun StringResource.ByZatoshi.convertZatoshi(context: StringContext): Str
     }
 }
 
-private fun StringResource.ByCurrencyNumber.convertCurrencyNumber(context: StringContext): String {
-    val amount = convertNumberToString(amount, context.locale, minDecimals, maxDecimals, includeGroupingSeparator)
+private fun StringResource.ByCurrencyNumber.convertCurrencyNumber(): String {
+    val amount = convertNumberToString(amount, minDecimals, maxDecimals, includeGroupingSeparator)
     return when (this.tickerLocation) {
         TickerLocation.BEFORE -> "$ticker$amount"
         TickerLocation.AFTER -> "$amount $ticker"
@@ -293,7 +303,6 @@ private fun StringResource.ByCurrencyNumber.convertCurrencyNumber(context: Strin
 
 private fun convertNumberToString(
     amount: Number,
-    locale: Locale,
     minDecimals: Int,
     maxDecimals: Int?,
     includeGroupingSeparator: Boolean
@@ -302,7 +311,6 @@ private fun convertNumberToString(
     val maxFractionDigits = maxDecimals ?: bigDecimalAmount.scale().coerceAtLeast(minDecimals)
     val formatter =
         currencyFormatter(
-            locale,
             maximumFractionDigits = maxFractionDigits,
             minimumFractionDigits = minDecimals,
         ).apply {
@@ -313,8 +321,8 @@ private fun convertNumberToString(
     return formatter.format(bigDecimalAmount)
 }
 
-private fun StringResource.ByDynamicCurrencyNumber.convertDynamicCurrencyNumber(context: StringContext): String {
-    val amount = convertDynamicNumberToString(amount, includeGroupingSeparator, context.locale)
+private fun StringResource.ByDynamicCurrencyNumber.convertDynamicCurrencyNumber(): String {
+    val amount = convertDynamicNumberToString(amount, includeGroupingSeparator)
     return when (this.tickerLocation) {
         TickerLocation.BEFORE -> "$ticker$amount"
         TickerLocation.AFTER -> "$amount $ticker"
@@ -322,23 +330,21 @@ private fun StringResource.ByDynamicCurrencyNumber.convertDynamicCurrencyNumber(
     }
 }
 
-private fun StringResource.ByDynamicNumber.convertDynamicNumber(context: StringContext): String =
-    convertDynamicNumberToString(number, includeGroupingSeparator, context.locale)
+private fun StringResource.ByDynamicNumber.convertDynamicNumber(): String =
+    convertDynamicNumberToString(number, includeGroupingSeparator)
 
 private fun StringResource.ByFiatDisplayName.convertFiatDisplayName(context: StringContext): String =
     Currency.getInstance(fiatCurrency.code).getDisplayName(context.locale)
 
 private fun convertDynamicNumberToString(
     number: Number,
-    includeGroupingSeparator: Boolean,
-    locale: Locale
+    includeGroupingSeparator: Boolean
 ): String {
     val bigDecimalAmount = number.toBigDecimal().stripTrailingZeros()
     val dynamicAmount = bigDecimalAmount.stripFractionsDynamically()
     val maxDecimals = if (bigDecimalAmount.scale() > 0) bigDecimalAmount.scale() else 0
     val formatter =
         currencyFormatter(
-            locale,
             minimumFractionDigits = 2,
             maximumFractionDigits = maxDecimals.coerceAtLeast(2)
         ).apply {

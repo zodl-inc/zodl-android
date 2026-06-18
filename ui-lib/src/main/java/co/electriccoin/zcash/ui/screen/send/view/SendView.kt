@@ -76,9 +76,9 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.RobotoMonoFontFamily
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.StringResource.Companion.NUMBER_FORMAT_LOCALE
 import co.electriccoin.zcash.ui.design.util.getString
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.rememberDesiredFormatLocale
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringResByFiatDisplayName
 import co.electriccoin.zcash.ui.screen.balances.BalanceWidget
@@ -315,7 +315,6 @@ fun SendButton(
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val locale = rememberDesiredFormatLocale()
 
     // Common conditions continuously checked for validity
     val sendButtonEnabled =
@@ -333,7 +332,7 @@ fun SendButton(
                 // SDK side validations
                 val zecSendValidation =
                     ZecSendExt.new(
-                        locale = locale,
+                        locale = NUMBER_FORMAT_LOCALE,
                         destinationString = recipientAddressState.address,
                         zecString = amountState.value.getString(context),
                         // Take memo for a valid non-transparent receiver only
@@ -535,8 +534,6 @@ fun SendFormAmountTextField(
 
     val zcashCurrency = ZcashCurrency.getLocalizedName(context)
 
-    val locale = rememberDesiredFormatLocale()
-
     val amountError =
         when (amountState) {
             is AmountState.Invalid -> {
@@ -588,7 +585,6 @@ fun SendFormAmountTextField(
                             fiatValue = amountState.fiatValue.getString(context),
                             isTransparentOrTextRecipient = isTransparentOrTextRecipient,
                             exchangeRateState = exchangeRateState,
-                            locale = locale
                         )
                     )
                 },
@@ -653,7 +649,6 @@ fun SendFormAmountTextField(
                                 fiatValue = newValue,
                                 isTransparentOrTextRecipient = isTransparentOrTextRecipient,
                                 exchangeRateState = exchangeRateState,
-                                locale = locale
                             )
                         )
                     },

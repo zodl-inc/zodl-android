@@ -33,24 +33,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import cash.z.ecc.android.sdk.ext.convertZatoshiToZec
-import cash.z.ecc.android.sdk.model.Zatoshi
-import cash.z.ecc.android.sdk.model.fromZecString
-import cash.z.ecc.sdk.extension.ZcashDecimalFormatSymbols
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
-import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.rememberDesiredFormatLocale
-import co.electriccoin.zcash.ui.design.util.stringResByNumber
+import co.electriccoin.zcash.ui.design.util.StringResource.Companion.NUMBER_FORMAT_LOCALE
 import co.electriccoin.zcash.ui.screen.request.model.AmountState
 import co.electriccoin.zcash.ui.screen.request.model.OnAmount
 import co.electriccoin.zcash.ui.screen.request.model.RequestCurrency
 import co.electriccoin.zcash.ui.screen.request.model.RequestState
-import java.math.BigDecimal
-import java.math.MathContext
+import java.text.DecimalFormatSymbols
 
 @Composable
 internal fun RequestAmountView(
@@ -112,7 +105,6 @@ private fun RequestAmountWithMainFiatView(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val locale = rememberDesiredFormatLocale()
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -193,7 +185,6 @@ private fun RequestAmountWithMainZecView(
     onFiatPreferenceSwitch: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val locale = rememberDesiredFormatLocale()
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = modifier
@@ -307,7 +298,7 @@ private fun RequestAmountKeyboardView(
     state: RequestState.Amount,
     modifier: Modifier = Modifier
 ) {
-    val locale = rememberDesiredFormatLocale()
+    val locale = NUMBER_FORMAT_LOCALE
     Row(
         horizontalArrangement = Arrangement.SpaceEvenly,
         modifier =
@@ -332,9 +323,9 @@ private fun RequestAmountKeyboardView(
                 onClick = { state.onAmount(OnAmount.Number(KEYBOARD_SEVEN)) }
             )
             RequestAmountKeyboardTextButton(
-                text = ZcashDecimalFormatSymbols(locale).decimalSeparator.toString(),
+                text = DecimalFormatSymbols(locale).decimalSeparator.toString(),
                 onClick = {
-                    state.onAmount(OnAmount.Separator(ZcashDecimalFormatSymbols(locale).decimalSeparator.toString()))
+                    state.onAmount(OnAmount.Separator(DecimalFormatSymbols(locale).decimalSeparator.toString()))
                 }
             )
         }

@@ -7,7 +7,6 @@ import cash.z.ecc.android.sdk.model.FiatCurrencyConversion
 import cash.z.ecc.android.sdk.model.Memo
 import cash.z.ecc.sdk.extension.floor
 import co.electriccoin.zcash.ui.design.util.TickerLocation
-import co.electriccoin.zcash.ui.design.util.getPreferredLocale
 import co.electriccoin.zcash.ui.design.util.getString
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByNumber
@@ -26,30 +25,25 @@ data class AmountState(
     val currency: RequestCurrency,
     val isValid: Boolean?
 ) {
-    fun toZecString(conversion: FiatCurrencyConversion, context: Context): String {
-        val locale = context.resources.configuration.getPreferredLocale()
-        return stringResByNumber(
-            amount.toBigDecimalLocalized(locale).convertUsdToZec(conversion.priceOfZec.toBigDecimal()),
+    fun toZecString(conversion: FiatCurrencyConversion, context: Context): String =
+        stringResByNumber(
+            amount.toBigDecimalLocalized().convertUsdToZec(conversion.priceOfZec.toBigDecimal()),
             minDecimals = 3,
             maxDecimals = 8
         ).getString(context)
-    }
 
-    fun toZecStringFloored(conversion: FiatCurrencyConversion, context: Context): String {
-        val locale = context.resources.configuration.getPreferredLocale()
-        return stringRes(
+    fun toZecStringFloored(conversion: FiatCurrencyConversion, context: Context): String =
+        stringRes(
             amount
-                .toBigDecimalLocalized(locale)
+                .toBigDecimalLocalized()
                 .convertUsdToZec(conversion.priceOfZec.toBigDecimal())
                 .convertZecToZatoshi()
                 .floor(),
             tickerLocation = TickerLocation.HIDDEN
         ).getString(context)
-    }
 
     fun toFiatString(context: Context, conversion: FiatCurrencyConversion): String {
-        val locale = context.resources.configuration.getPreferredLocale()
-        val zecAmount = amount.toBigDecimalLocalized(locale) ?: return ""
+        val zecAmount = amount.toBigDecimalLocalized() ?: return ""
         val priceOfZec = BigDecimal(conversion.priceOfZec)
         val fiat = zecAmount.multiply(priceOfZec, MathContext.DECIMAL128)
         return stringResByNumber(fiat, maxDecimals = 2).getString(context)

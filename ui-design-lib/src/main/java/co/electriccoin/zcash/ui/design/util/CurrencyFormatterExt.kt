@@ -1,29 +1,31 @@
-package cash.z.ecc.sdk.extension
+package co.electriccoin.zcash.ui.design.util
 
-import android.os.Build
 import java.math.RoundingMode
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
-import java.util.Locale
 
 private const val ZEC_MAXIMUM_FRACTION_DIGITS = 6
 private const val ZEC_MINIMUM_FRACTION_DIGITS = 0
 private const val ZATOSHI_MAXIMUM_FRACTION_DIGITS = 8
 private const val ZATOSHI_MINIMUM_FRACTION_DIGITS = 3
 
-fun zatoshiFormatter(locale: Locale): DecimalFormat =
+fun zatoshiFormatter(): DecimalFormat =
     currencyFormatter(
-        locale = locale,
         maximumFractionDigits = ZATOSHI_MAXIMUM_FRACTION_DIGITS,
         minimumFractionDigits = ZATOSHI_MINIMUM_FRACTION_DIGITS
     )
 
+/**
+ * Builds a [DecimalFormat] for monetary/number values. The locale is intentionally fixed to
+ * [StringResource.NUMBER_FORMAT_LOCALE] so amounts always render with a period decimal separator and
+ * comma grouping regardless of the device region/language. See MOB-1356 / MOB-1394.
+ */
 fun currencyFormatter(
-    locale: Locale,
     maximumFractionDigits: Int? = ZEC_MAXIMUM_FRACTION_DIGITS,
     minimumFractionDigits: Int? = ZEC_MINIMUM_FRACTION_DIGITS
 ): DecimalFormat {
-    val symbols = ZcashDecimalFormatSymbols(locale)
+    val locale = StringResource.NUMBER_FORMAT_LOCALE
+    val symbols = DecimalFormatSymbols(locale)
     val pattern = (DecimalFormat.getInstance(locale) as? DecimalFormat)?.toPattern()
 
     return if (pattern != null) {
@@ -36,28 +38,5 @@ fun currencyFormatter(
         roundingMode = RoundingMode.HALF_EVEN
         maximumFractionDigits?.let { this.maximumFractionDigits = it }
         minimumFractionDigits?.let { this.minimumFractionDigits = it }
-    }
-}
-
-class ZcashDecimalFormatSymbols(
-    locale: Locale
-) : DecimalFormatSymbols(locale) {
-    init {
-        val originalDecimalSeparator = decimalSeparator
-        val originalGroupingSeparator = groupingSeparator
-
-        groupingSeparator =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                monetaryGroupingSeparator
-            } else {
-                originalGroupingSeparator
-            }
-
-        decimalSeparator =
-            when {
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> monetaryDecimalSeparator
-                originalGroupingSeparator == monetaryDecimalSeparator -> originalDecimalSeparator
-                else -> monetaryDecimalSeparator
-            }
     }
 }
