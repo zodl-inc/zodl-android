@@ -234,7 +234,7 @@ jobs:
 
           echo "Decrypting config.yaml..."
           gcloud kms decrypt \
-            --key=config \
+            --key=gpg \
             --keyring=gpg \
             --location=global \
             --plaintext-file=/tmp/config.yaml \
@@ -263,40 +263,46 @@ jobs:
             "stores/solana/release-notes-template.yaml" \
             "docs/whatsNew/WHATS_NEW_EN.md"
 
-      - name: Create Solana dApp Store Release
+      # ---------------------------------------------------------------------
+      # Solana dApp Store CLI 0.15.0 -> 1.0.0 migration (2026-06)
+      #
+      # The previous flow used `@solana-mobile/dapp-store-cli@latest` with the
+      # 0.15.x interface: `create release ... -k <keypair> --config config.yaml`
+      # followed by `publish update ... --config config.yaml`. Solana Mobile
+      # shipped dapp-store-cli@1.0.0, a portal-backed CLI that REMOVED
+      # `create release`, `publish update`, `-k`, and `--config`. The legacy
+      # 0.15.0 is now hard-gated server-side and refuses to run, so neither the
+      # old pinned version nor `@latest` works any more.
+      #
+      # The 1.0.0 interface is a single invocation:
+      #   dapp-store --apk-file <apk> --keypair <keypair> --whats-new "<text>"
+      # plus a portal API key supplied via the env var DAPP_STORE_API_KEY
+      # (or `--api-key-stdin`). The release/version metadata that config.yaml
+      # used to carry now lives in the publish.solanamobile.com portal, so the
+      # GCS-backed config.yaml decrypt/re-encrypt scaffolding above is largely
+      # vestigial in the 1.0.0 model. We keep the KMS key fix (--key=gpg) and
+      # the keypair decrypt (still required to sign the on-chain submission)
+      # rather than rip the scaffolding out in this same PR.
+      #
+      # HUMAN PREREQUISITE: the DAPP_STORE_API_KEY repo secret does NOT exist
+      # yet. Generate it at publish.solanamobile.com -> settings -> API keys,
+      # then `gh secret set DAPP_STORE_API_KEY`. Until it exists this job will
+      # fail at this step; `continue-on-error: true` on the job keeps that from
+      # failing the release.
+      # ---------------------------------------------------------------------
+      - name: Publish to Solana dApp Store
         working-directory: stores/solana
+        env:
+          DAPP_STORE_API_KEY: ${{ secrets.DAPP_STORE_API_KEY }}
         run: |
-          echo "Creating release on Solana dApp Store..."
+          echo "Publishing to Solana dApp Store (dapp-store-cli 1.0.0)..."
 
-          npx @solana-mobile/dapp-store-cli@latest create release \
-            -k /tmp/solana-keypair.json \
-            -b $ANDROID_SDK_ROOT/build-tools/35.0.0 \
-            -u https://api.mainnet-beta.solana.com \
-            --config config.yaml
+          npx @solana-mobile/dapp-store-cli@1.0.0 \
+            --apk-file solana.apk \
+            --keypair /tmp/solana-keypair.json \
+            --whats-new "New features and improvements in this release."
 
-          echo "Release created successfully"
-
-      - name: Publish Update to Solana dApp Store
-        working-directory: stores/solana
-        run: |
-          echo "Publishing update to Solana dApp Store..."
-
-          npx @solana-mobile/dapp-store-cli@latest publish update \
-            -k /tmp/solana-keypair.json \
-            -u https://api.mainnet-beta.solana.com \
-            --complies-with-solana-dapp-store-policies \
-            --requestor-is-authorized \
-            --config config.yaml
-
-          echo "Update published successfully"
-
-      - name: Display publish information
-        working-directory: stores/solana
-        run: |
-          echo "Solana dApp Store Publishing Complete"
-          echo "Release Address: $(yq eval '.release.address' config.yaml)"
-          echo "Version: $(yq eval '.release.android_details.version' config.yaml)"
-          echo "Version Code: $(yq eval '.release.android_details.version_code' config.yaml)"
+          echo "Published successfully"
 
       - name: Re-encrypt and upload config.yaml to GCS
         run: |
@@ -308,7 +314,7 @@ jobs:
 
           echo "Re-encrypting config.yaml..."
           gcloud kms encrypt \
-            --key=config \
+            --key=gpg \
             --keyring=gpg \
             --location=global \
             --plaintext-file=stores/solana/config.yaml \
