@@ -13,12 +13,6 @@ pluginManager.withPlugin("com.android.application") {
             minSdk = project.property("ANDROID_MIN_SDK_VERSION").toString().toInt()
             targetSdk = project.property("ANDROID_TARGET_SDK_VERSION").toString().toInt()
 
-            // en_XA and ar_XB are pseudolocales for debugging.
-            // The rest of the locales provides an explicit list of the languages to keep in the
-            // final app.  Doing this will strip out additional locales from libraries like
-            // Google Play Services and Firebase, which add unnecessary bloat.
-            resourceConfigurations.addAll(listOf("en", "en-rUS", "en-rGB", "en-rAU", "es", "en_XA", "ar_XB"))
-
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
             testInstrumentationRunnerArguments["useTestStorageService"] = "true"
@@ -26,6 +20,14 @@ pluginManager.withPlugin("com.android.application") {
                 testInstrumentationRunnerArguments["clearPackageData"] = "true"
             }
         }
+    }
+
+    // en_XA and ar_XB are pseudolocales for debugging.
+    // The rest of the locales provides an explicit list of the languages to keep in the
+    // final app.  Doing this will strip out additional locales from libraries like
+    // Google Play Services and Firebase, which add unnecessary bloat.
+    project.the<com.android.build.api.dsl.ApplicationExtension>().androidResources {
+        localeFilters.addAll(listOf("en", "en-rUS", "en-rGB", "en-rAU", "es", "en_XA", "ar_XB"))
     }
 }
 
@@ -35,18 +37,6 @@ pluginManager.withPlugin("com.android.library") {
 
         defaultConfig {
             minSdk = project.property("ANDROID_MIN_SDK_VERSION").toString().toInt()
-            // This is deprecated but we don't have a replacement for the instrumentation APKs yet
-            // TODO [#1815]: Gradle targetSdk deprecated #1815
-            // TODO [#1815]: https://github.com/Electric-Coin-Company/zashi-android/issues/1815
-            targetSdk = project.property("ANDROID_TARGET_SDK_VERSION").toString().toInt()
-
-            // The last two are for support of pseudolocales in debug builds.
-            // If we add other localizations, they should be included in this list.
-            // By explicitly setting supported locales, we strip out unused localizations from third party
-            // libraries (e.g. play services)
-            // TODO [#1816]: Gradle resourceConfigurations deprecation #1816
-            // TODO [#1816]: https://github.com/Electric-Coin-Company/zashi-android/issues/1816
-            resourceConfigurations.addAll(listOf("en", "en-rUS", "en-rGB", "en-rAU", "es", "en_XA", "ar_XB"))
 
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
             consumerProguardFiles("proguard-consumer.txt")
@@ -60,6 +50,14 @@ pluginManager.withPlugin("com.android.library") {
             jacocoVersion = project.property("JACOCO_VERSION").toString()
         }
     }
+
+    // targetSdk in a library's defaultConfig is deprecated (removed from the library DSL in AGP 9);
+    // for libraries it only sets the instrumentation-test APK target, so it moves to testOptions.
+    // Locale filtering likewise moved to the application module (androidResources.localeFilters);
+    // AGP exposes no library-module equivalent, so the former resourceConfigurations is dropped.
+    project.the<com.android.build.api.dsl.LibraryExtension>().testOptions {
+        targetSdk = project.property("ANDROID_TARGET_SDK_VERSION").toString().toInt()
+    }
 }
 
 pluginManager.withPlugin("com.android.test") {
@@ -69,14 +67,6 @@ pluginManager.withPlugin("com.android.test") {
         defaultConfig {
             minSdk = project.property("ANDROID_MIN_SDK_VERSION").toString().toInt()
             targetSdk = project.property("ANDROID_TARGET_SDK_VERSION").toString().toInt()
-
-            // The last two are for support of pseudolocales in debug builds.
-            // If we add other localizations, they should be included in this list.
-            // By explicitly setting supported locales, we strip out unused localizations from third party
-            // libraries (e.g. play services)
-            // TODO [#1816]: Gradle resourceConfigurations deprecation #1816
-            // TODO [#1816]: https://github.com/Electric-Coin-Company/zashi-android/issues/1816
-            resourceConfigurations.addAll(listOf("en", "en-rUS", "en-rGB", "en-rAU", "es", "en_XA", "ar_XB"))
 
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -89,6 +79,10 @@ pluginManager.withPlugin("com.android.test") {
             jacocoVersion = project.property("JACOCO_VERSION").toString()
         }
     }
+
+    // Locale filtering moved to the application module's androidResources.localeFilters.
+    // AGP exposes no com.android.test-module equivalent, and the former resourceConfigurations
+    // only trimmed locales from the generated test APK, so it is dropped here.
 }
 
 @Suppress("LongMethod")
