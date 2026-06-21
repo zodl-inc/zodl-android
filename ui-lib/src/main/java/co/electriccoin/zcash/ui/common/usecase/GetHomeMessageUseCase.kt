@@ -244,6 +244,7 @@ class GetHomeMessageUseCase(
 
 internal const val SYNCING_BANNER_HIDE_BELOW_BLOCKS = 3456L
 
+@Suppress("MagicNumber")
 internal fun syncingMessageFor(
     walletSnapshot: WalletSnapshot,
     syncMessageShownBefore: Boolean,

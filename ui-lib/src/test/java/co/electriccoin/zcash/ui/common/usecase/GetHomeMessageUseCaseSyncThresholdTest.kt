@@ -25,7 +25,12 @@ class GetHomeMessageUseCaseSyncThresholdTest {
 
     @Test
     fun blocksRemainingAboveThresholdShowsSyncBanner() {
-        val result = syncingMessageFor(snapshot(blocksRemaining = 5000), syncMessageShownBefore = false, someBalance = false)
+        val result =
+            syncingMessageFor(
+                snapshot(blocksRemaining = 5000),
+                syncMessageShownBefore = false,
+                someBalance = false,
+            )
         assertEquals(HomeMessageData.Syncing(progress = 50f), result)
     }
 
@@ -42,19 +47,34 @@ class GetHomeMessageUseCaseSyncThresholdTest {
 
     @Test
     fun blocksRemainingBelowThresholdHidesSyncBanner() {
-        val result = syncingMessageFor(snapshot(blocksRemaining = 100), syncMessageShownBefore = false, someBalance = false)
+        val result =
+            syncingMessageFor(
+                snapshot(blocksRemaining = 100),
+                syncMessageShownBefore = false,
+                someBalance = false,
+            )
         assertNull(result)
     }
 
     @Test
     fun blocksRemainingZeroHidesSyncBanner() {
-        val result = syncingMessageFor(snapshot(blocksRemaining = 0), syncMessageShownBefore = false, someBalance = false)
+        val result =
+            syncingMessageFor(
+                snapshot(blocksRemaining = 0),
+                syncMessageShownBefore = false,
+                someBalance = false,
+            )
         assertNull(result)
     }
 
     @Test
     fun sentinelMinusOneHidesSyncBanner() {
-        val result = syncingMessageFor(snapshot(blocksRemaining = -1L), syncMessageShownBefore = false, someBalance = false)
+        val result =
+            syncingMessageFor(
+                snapshot(blocksRemaining = -1L),
+                syncMessageShownBefore = false,
+                someBalance = false,
+            )
         assertNull(result)
     }
 
@@ -67,8 +87,12 @@ class GetHomeMessageUseCaseSyncThresholdTest {
 
     @Test
     fun thresholdNotAppliedAfterFirstShow() {
-        // Once the banner has been shown once, subsequent low-blocks-remaining still keeps it visible.
-        val result = syncingMessageFor(snapshot(blocksRemaining = 10), syncMessageShownBefore = true, someBalance = false)
+        val result =
+            syncingMessageFor(
+                snapshot(blocksRemaining = 10),
+                syncMessageShownBefore = true,
+                someBalance = false,
+            )
         assertEquals(HomeMessageData.Syncing(progress = 50f), result)
     }
 
