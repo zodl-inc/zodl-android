@@ -31,7 +31,12 @@ class GetHomeMessageUseCaseSyncThresholdTest {
 
     @Test
     fun blocksRemainingAtThresholdShowsSyncBanner() {
-        val result = syncingMessageFor(snapshot(blocksRemaining = SYNCING_BANNER_HIDE_BELOW_BLOCKS), syncMessageShownBefore = false, someBalance = false)
+        val result =
+            syncingMessageFor(
+                snapshot(blocksRemaining = SYNCING_BANNER_HIDE_BELOW_BLOCKS),
+                syncMessageShownBefore = false,
+                someBalance = false
+            )
         assertEquals(HomeMessageData.Syncing(progress = 50f), result)
     }
 
@@ -69,21 +74,23 @@ class GetHomeMessageUseCaseSyncThresholdTest {
 
     @Test
     fun restoringStateBypassesThresholdAndAlwaysShows() {
-        val result = syncingMessageFor(
-            snapshot(blocksRemaining = 10, restoringState = WalletRestoringState.RESTORING),
-            syncMessageShownBefore = false,
-            someBalance = true,
-        )
+        val result =
+            syncingMessageFor(
+                snapshot(blocksRemaining = 10, restoringState = WalletRestoringState.RESTORING),
+                syncMessageShownBefore = false,
+                someBalance = true,
+            )
         assertEquals(HomeMessageData.Restoring(isSpendable = false, progress = 50f), result)
     }
 
     @Test
     fun resyncingStateBypassesThresholdAndAlwaysShows() {
-        val result = syncingMessageFor(
-            snapshot(blocksRemaining = 10, restoringState = WalletRestoringState.RESYNCING),
-            syncMessageShownBefore = false,
-            someBalance = false,
-        )
+        val result =
+            syncingMessageFor(
+                snapshot(blocksRemaining = 10, restoringState = WalletRestoringState.RESYNCING),
+                syncMessageShownBefore = false,
+                someBalance = false,
+            )
         assertEquals(HomeMessageData.Resyncing(progress = 50f), result)
     }
 }
