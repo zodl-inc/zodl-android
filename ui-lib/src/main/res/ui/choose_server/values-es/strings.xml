@@ -39,4 +39,6 @@
     <string name="choose_server_active">Activo</string>
     <string name="choose_server_testing">Probando</string>
     <string name="choose_server_default">Predeterminado</string>
+
+    <string name="choose_server_multi_server_info">Podemos usar varios servidores para optimizar el rendimiento. Para reducir la exposición de metadatos, selecciona el modo de conexión Manual para elegir un único servidor de tu preferencia y asegúrate de que Tor esté habilitado en Configuración Avanzada.</string>
 </resources>

@@ -64,6 +64,7 @@ import co.electriccoin.zcash.ui.design.component.ZashiBadge
 import co.electriccoin.zcash.ui.design.component.ZashiBadgeDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiHorizontalDivider
+import co.electriccoin.zcash.ui.design.component.ZashiInfoText
 import co.electriccoin.zcash.ui.design.component.ZashiRadioButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
@@ -253,6 +254,18 @@ private fun ErrorDialog(dialogState: ServerDialogState) {
 }
 
 @Composable
+private fun MultiServerInfoFooter() {
+    ZashiInfoText(
+        text = stringResource(R.string.choose_server_multi_server_info),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.Top,
+    )
+}
+
+@Composable
 fun ChooseServerBottomBar(saveButtonState: ButtonState) {
     Column(
         modifier =
@@ -260,6 +273,7 @@ fun ChooseServerBottomBar(saveButtonState: ButtonState) {
                 .fillMaxWidth()
                 .background(ZashiColors.Surfaces.bgPrimary)
     ) {
+        MultiServerInfoFooter()
         ZashiHorizontalDivider()
         Spacer(modifier = Modifier.height(20.dp))
         ZashiButton(

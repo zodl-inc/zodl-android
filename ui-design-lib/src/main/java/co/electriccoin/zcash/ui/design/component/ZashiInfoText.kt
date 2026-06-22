@@ -26,10 +26,11 @@ fun ZashiInfoText(
     color: Color = ZashiColors.Text.textTertiary,
     style: TextStyle = ZashiTypography.textXs,
     textAlign: TextAlign = TextAlign.Start,
+    verticalAlignment: Alignment.Vertical = Alignment.CenterVertically,
 ) {
     Row(
         modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = verticalAlignment
     ) {
         Image(
             modifier = Modifier,

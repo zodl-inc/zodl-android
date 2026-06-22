@@ -39,4 +39,6 @@
     <string name="choose_server_active">Active</string>
     <string name="choose_server_testing">Testing</string>
     <string name="choose_server_default">Default</string>
+
+    <string name="choose_server_multi_server_info">We may use multiple servers to optimize performance. To reduce metadata exposure, choose Manual connection mode to select your single server of choice, and ensure Tor is enabled in Advanced Settings.</string>
 </resources>
