@@ -1,29 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="connect_keystone_title">Connect Hardware Wallet</string>
-    <string name="connect_keystone_subtitle">Scan your device’s QR code to connect.</string>
-    <string name="connect_keystone_subtitle_clickable">View Keystone tutorial</string>
-    <string name="connect_keystone_item_1">Unlock your Keystone</string>
-    <string name="connect_keystone_item_2">Tap the menu icon</string>
-    <string name="connect_keystone_item_3">Tap on Connect Software Wallet</string>
-    <string name="connect_keystone_item_4">Select Zodl app and scan QR code</string>
-    <string name="connect_keystone_item_title">Instructions:</string>
-    <string name="connect_keystone_positive">Ready to Scan</string>
+    <string name="keystone_addHWWallet_scan">Scan your device’s QR code to connect.</string>
+    <string name="keystone_addHWWallet_tutorial">View Keystone tutorial</string>
+    <string name="keystone_addHWWallet_step1">Unlock your Keystone</string>
+    <string name="keystone_addHWWallet_step2">Tap the menu icon</string>
+    <string name="keystone_addHWWallet_step3">Tap on Connect Software Wallet</string>
+    <string name="keystone_addHWWallet_step4">Select Zodl app and scan QR code</string>
+    <string name="keystone_addHWWallet_howTo">Instructions:</string>
+    <string name="keystone_addHWWallet_readyToScan">Ready to Scan</string>
 
     <!-- New or Active Device -->
-    <string name="keystone_new_or_active_subtitle">New or Active Device ?</string>
-    <string name="keystone_new_or_active_message">Connecting to a hardware wallet that was previously connected to Zodl will require synchronization to discover your transaction history. We\'ll guide you through it.</string>
-    <string name="keystone_new_device_button">Connect new device</string>
-    <string name="keystone_active_device_button">Connect active device</string>
+    <string name="keystone_addHWWallet_deviceQuestion">New or Active Device ?</string>
+    <string name="keystone_addHWWallet_deviceDesc">Connecting to a hardware wallet that was previously connected to Zodl will require synchronization to discover your transaction history. We\'ll guide you through it.</string>
+    <string name="keystone_addHWWallet_connectNew">Connect new device</string>
+    <string name="keystone_addHWWallet_connectActive">Connect active device</string>
 
     <!-- Connected -->
-    <string name="keystone_connected_subtitle">Connected!</string>
-    <string name="keystone_connected_message">Your Keystone Hardware Wallet has been successfully connected.</string>
+    <string name="keystone_addHWWallet_connected">Connected!</string>
+    <string name="keystone_addHWWallet_connectedDesc">Your Keystone Hardware Wallet has been successfully connected.</string>
     <string name="keystone_connected_button">Close</string>
 
     <!-- First Transaction -->
     <string name="keystone_first_transaction_title">Connect Hardware Wallet</string>
-    <string name="keystone_first_transaction_message">Entering the block height at which your wallet was created ensures that correct number of blocks will be scanned. If you\’re not sure, choose an earlier date.</string>
+    <string name="firstWalletTransactionSubtitleHWWallet">Entering the block height at which your wallet was created ensures that correct number of blocks will be scanned. If you\’re not sure, choose an earlier date.</string>
     <string name="keystone_first_transaction_note">If you\’re not sure, choose an earlier date.</string>
 
     <!-- First Transaction Estimation -->
@@ -31,16 +31,16 @@
     <string name="keystone_first_transaction_estimation_confirm">Connect</string>
 
     <!-- Hardware Wallet Explainer -->
-    <string name="keystone_explainer_title">What\'s a Hardware Wallet?</string>
-    <string name="keystone_explainer_description">A hardware wallet (HW wallet) is a physical device that stores your cryptocurrency private keys offline, keeping them safe from online hackers and malware.</string>
-    <string name="keystone_explainer_security_title">Maximum Security</string>
-    <string name="keystone_explainer_security_message">Your keys never leave the device, even when signing transactions</string>
-    <string name="keystone_explainer_malware_title">Protection from Malware</string>
-    <string name="keystone_explainer_malware_message">Immune to computer viruses and phishing attacks</string>
-    <string name="keystone_explainer_control_title">Full Control</string>
-    <string name="keystone_explainer_control_message">You own your keys, you own your crypto</string>
-    <string name="keystone_explainer_about_title">About Keystone</string>
-    <string name="keystone_explainer_about_message">Keystone is a popular hardware wallet brand that offers air-gapped security with QR code signing. It\'s one of many trusted hardware wallet options, alongside Ledger and others.</string>
+    <string name="hardwareWalletExplainer_title">What\'s a Hardware Wallet?</string>
+    <string name="hardwareWalletExplainer_description">A hardware wallet (HW wallet) is a physical device that stores your cryptocurrency private keys offline, keeping them safe from online hackers and malware.</string>
+    <string name="hardwareWalletExplainer_featureTitle1">Maximum Security</string>
+    <string name="hardwareWalletExplainer_featureDescription1">Your keys never leave the device, even when signing transactions</string>
+    <string name="hardwareWalletExplainer_featureTitle2">Protection from Malware</string>
+    <string name="hardwareWalletExplainer_featureDescription2">Immune to computer viruses and phishing attacks</string>
+    <string name="hardwareWalletExplainer_featureTitle3">Full Control</string>
+    <string name="hardwareWalletExplainer_featureDescription3">You own your keys, you own your crypto</string>
+    <string name="hardwareWalletExplainer_infoBoxTitle">About Keystone</string>
+    <string name="hardwareWalletExplainer_infoBoxDescription">Keystone is a popular hardware wallet brand that offers air-gapped security with QR code signing. It\'s one of many trusted hardware wallet options, alongside Ledger and others.</string>
     <string name="keystone_explainer_button">Got It</string>
 
     <!-- Wallet Birthday Height Info -->

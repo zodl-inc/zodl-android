@@ -54,7 +54,7 @@ class MoreVM(
                         onClick = ::onCurrencyConversionClick
                     ),
                     ListItemState(
-                        title = stringRes(R.string.settings_voting),
+                        title = stringRes(R.string.settings_coinholderPolling),
                         bigIcon = imageRes(R.drawable.ic_settings_voting),
                         onClick = ::onVotingClick
                     ),

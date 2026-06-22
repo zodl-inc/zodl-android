@@ -34,6 +34,6 @@
     <string name="authentication_failed_button_support">Contact Support</string>
 
     <string name="authentication_failed_welcome_icon_cont_desc">Tap to unlock <xliff:g id="app_name" example="Zodl">%1$s</xliff:g> app</string>
-    <string name="authentication_failed_welcome_title">Your Zodl account is secured.</string>
+    <string name="splash_authTitle">Your Zodl account is secured.</string>
     <string name="authentication_failed_welcome_subtitle">Tap the key icon to unlock it.</string>
 </resources>

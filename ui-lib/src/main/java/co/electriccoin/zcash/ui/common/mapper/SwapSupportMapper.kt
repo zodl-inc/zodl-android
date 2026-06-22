@@ -25,8 +25,8 @@ class SwapSupportMapper {
         when (quoteStatus?.status) {
             SwapStatus.REFUNDED -> {
                 ZashiMessageState(
-                    title = stringRes(R.string.transaction_detail_info_refunded_title),
-                    text = styledStringResource(R.string.transaction_detail_info_refunded_message),
+                    title = stringRes(R.string.swapAndPay_refundTitle),
+                    text = styledStringResource(R.string.swapAndPay_refundInfo),
                     type = ZashiMessageState.Type.WARNING,
                 )
             }
@@ -34,7 +34,7 @@ class SwapSupportMapper {
             SwapStatus.FAILED -> {
                 ZashiMessageState(
                     title = stringRes(R.string.transaction_detail_info_failed_title),
-                    text = styledStringResource(R.string.transaction_detail_info_failed_message),
+                    text = styledStringResource(R.string.swapAndPay_failedMsg),
                     type = ZashiMessageState.Type.ERROR,
                 )
             }
@@ -42,7 +42,7 @@ class SwapSupportMapper {
             SwapStatus.EXPIRED -> {
                 ZashiMessageState(
                     title = stringRes(R.string.transaction_detail_info_expired_title),
-                    text = styledStringResource(R.string.transaction_detail_info_expired_message),
+                    text = styledStringResource(R.string.swapAndPay_expiredMsg),
                     type = ZashiMessageState.Type.ERROR,
                 )
             }
@@ -55,7 +55,7 @@ class SwapSupportMapper {
                 if (isProcessingLongEnough(quoteStatus)) {
                     ZashiMessageState(
                         title = stringRes(R.string.swap_detail_title_swap_processing),
-                        text = styledStringResource(R.string.transaction_detail_info_pending_deposit_message),
+                        text = styledStringResource(R.string.swapAndPay_processingMsg),
                         type = ZashiMessageState.Type.INFO,
                     )
                 } else {

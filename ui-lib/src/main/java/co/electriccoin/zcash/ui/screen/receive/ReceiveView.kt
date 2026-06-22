@@ -122,7 +122,7 @@ private fun ReceiveContents(
         )
         Spacer(8.dp)
         Text(
-            text = stringResource(id = R.string.receive_prioritize_shielded),
+            text = stringResource(id = R.string.receive_warning),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textSm,
             modifier =
@@ -244,7 +244,7 @@ private fun AddressPanel(
                     contentColor = buttonTextColor,
                     iconPainter = painterResource(id = R.drawable.ic_qr_code_shielded),
                     onClick = state.onQrClicked,
-                    text = stringResource(id = R.string.receive_qr_code),
+                    text = stringResource(id = R.string.receive_qrCode),
                     modifier = Modifier.weight(1f)
                 )
 

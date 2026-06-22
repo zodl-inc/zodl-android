@@ -42,14 +42,14 @@ class KeepOpenVM(
             KeepOpenFlow.RESTORE -> {
                 KeepOpenState(
                     description = stringRes(R.string.keep_open_restore_description),
-                    subtitle = stringRes(R.string.keep_open_restore_subtitle),
+                    subtitle = stringRes(R.string.keepZodlOpenSubtitleRestore),
                     disclaimer = getDisclaimer(R.string.keep_open_restore_warning),
-                    checkboxLabel = stringRes(R.string.keep_open_restore_checkbox),
+                    checkboxLabel = stringRes(R.string.keepScreenOnRestoring),
                     isChecked = isChecked,
                     onCheckedChange = { onChecked() },
                     button =
                         ButtonState(
-                            text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_got_it),
+                            text = stringRes(co.electriccoin.zcash.ui.design.R.string.restoreInfo_gotIt),
                             onClick = ::onButtonClick,
                         ),
                 )
@@ -57,10 +57,10 @@ class KeepOpenVM(
 
             KeepOpenFlow.RESYNC -> {
                 KeepOpenState(
-                    description = stringRes(R.string.keep_open_resync_description),
-                    subtitle = stringRes(R.string.keep_open_resync_subtitle),
+                    description = stringRes(R.string.keepZodlOpenInstructionsResyncing),
+                    subtitle = stringRes(R.string.keepZodlOpenSubtitleResync),
                     disclaimer = getDisclaimer(R.string.keep_open_resync_warning),
-                    checkboxLabel = stringRes(R.string.keep_open_resync_checkbox),
+                    checkboxLabel = stringRes(R.string.keepScreenOnResyncing),
                     isChecked = isChecked,
                     onCheckedChange = { onChecked() },
                     button =
@@ -73,10 +73,10 @@ class KeepOpenVM(
 
             KeepOpenFlow.KEYSTONE -> {
                 KeepOpenState(
-                    description = stringRes(R.string.keep_open_keystone_description),
-                    subtitle = stringRes(R.string.keep_open_keystone_subtitle),
+                    description = stringRes(R.string.keepZodlOpenInstructionsHWWallet),
+                    subtitle = stringRes(R.string.keepZodlOpenSubtitleHWWallet),
                     disclaimer = getDisclaimer(R.string.keep_open_keystone_warning),
-                    checkboxLabel = stringRes(R.string.keep_open_keystone_checkbox),
+                    checkboxLabel = stringRes(R.string.keepScreenOnSyncing),
                     isChecked = isChecked,
                     onCheckedChange = { onChecked() },
                     button =

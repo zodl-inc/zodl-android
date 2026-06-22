@@ -135,14 +135,14 @@ private fun KeepOpenViewPreview() =
         KeepOpenView(
             KeepOpenState(
                 description = stringRes(R.string.keep_open_restore_description),
-                subtitle = stringRes(R.string.keep_open_restore_subtitle),
+                subtitle = stringRes(R.string.keepZodlOpenSubtitleRestore),
                 disclaimer = ZashiDisclaimerState.warning(stringRes(R.string.keep_open_keystone_warning)),
-                checkboxLabel = stringRes(R.string.keep_open_restore_checkbox),
+                checkboxLabel = stringRes(R.string.keepScreenOnRestoring),
                 isChecked = true,
                 onCheckedChange = { },
                 button =
                     ButtonState(
-                        text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_got_it),
+                        text = stringRes(co.electriccoin.zcash.ui.design.R.string.restoreInfo_gotIt),
                         onClick = { },
                     ),
             )

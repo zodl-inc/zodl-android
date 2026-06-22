@@ -46,7 +46,7 @@ fun SendShielded(
         var isExpanded by rememberSaveable { mutableStateOf(false) }
 
         TransactionDetailRowHeader(
-            title = stringRes(R.string.transaction_detail_info_transaction_details),
+            title = stringRes(R.string.transactionHistory_details),
             isExpanded = isExpanded,
             onButtonClick = { isExpanded = !isExpanded }
         )
@@ -60,7 +60,7 @@ fun SendShielded(
                     modifier = Modifier.fillMaxWidth(),
                     state =
                         TransactionDetailInfoRowState(
-                            title = stringRes(R.string.transaction_detail_info_sent_to),
+                            title = stringRes(R.string.transactionHistory_sentTo),
                             message = state.contact?.withStyle() ?: state.address,
                             trailingIcon = R.drawable.ic_transaction_detail_info_copy,
                             onClick = state.onTransactionAddressClick
@@ -104,9 +104,9 @@ fun SendShielded(
                                 TransactionDetailInfoRowState(
                                     title =
                                         if (state.isPending) {
-                                            stringRes(R.string.transaction_detail_info_transaction_status)
+                                            stringRes(R.string.swapAndPay_status)
                                         } else {
-                                            stringRes(R.string.transaction_detail_info_timestamp)
+                                            stringRes(R.string.transactionHistory_timestamp)
                                         },
                                     message = state.completedTimestamp.withStyle()
                                 )
@@ -120,7 +120,7 @@ fun SendShielded(
                     modifier = Modifier.fillMaxWidth(),
                     state =
                         TransactionDetailInfoColumnState(
-                            title = stringRes(R.string.transaction_detail_info_note),
+                            title = stringRes(R.string.annotation_title),
                             message = state.note,
                             onClick = null
                         )

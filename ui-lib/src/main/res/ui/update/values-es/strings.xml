@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="update_title_available">Zodl aquí.</string>
-    <string name="update_title_required">No eres tú, soy yo.</string>
+    <string name="osStatusError_title">No eres tú, soy yo.</string>
     <string name="update_description_required">
         Hay una actualización requerida para Zodl que realiza importantes mejoras en el rendimiento y/o la seguridad.
     </string>

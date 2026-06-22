@@ -37,7 +37,7 @@ fun AndroidWalletUpdatingInfo() {
         )
         Spacer(12.dp)
         Text(
-            text = stringResource(R.string.home_info_updating_message),
+            text = stringResource(R.string.smartBanner_help_updatingBalance_info),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textMd,
         )

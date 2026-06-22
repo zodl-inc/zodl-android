@@ -116,7 +116,7 @@ private fun Info() {
         )
         Spacer(modifier = Modifier.width(12.dp))
         Text(
-            text = stringResource(id = R.string.advanced_settings_info),
+            text = stringResource(id = R.string.settings_deleteZashiWarning),
             fontSize = 12.sp,
             color = ZashiColors.Text.textTertiary,
         )
@@ -148,7 +148,7 @@ private fun AdvancedSettingsPreview() =
                     items =
                         persistentListOf(
                             ListItemState(
-                                title = stringRes(R.string.advanced_settings_recovery),
+                                title = stringRes(R.string.settings_recoveryPhrase),
                                 bigIcon = imageRes(R.drawable.ic_advanced_settings_recovery),
                                 onClick = {}
                             ),
@@ -158,7 +158,7 @@ private fun AdvancedSettingsPreview() =
                                 onClick = {}
                             ),
                             ListItemState(
-                                title = stringRes(R.string.advanced_settings_choose_server),
+                                title = stringRes(R.string.settings_chooseServer),
                                 bigIcon = imageRes(R.drawable.ic_advanced_settings_choose_server),
                                 onClick = {}
                             ),

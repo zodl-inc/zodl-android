@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="export_data_title">Data Export</string>
-    <string name="export_data_header">Consent for Exporting Private Data</string>
+    <string name="privateDataConsent_title">Consent for Exporting Private Data</string>
     <string name="export_data_text">
         By clicking “I Agree” below, you give your consent to export all of your wallets’ private data such as the
         entire history of your wallet(s), including any connected hardware wallets. All private information, memos,
@@ -12,7 +12,7 @@
         to see what you do with your funds.
     </string>
     <string name="export_data_confirm">Export Private Data</string>
-    <string name="export_data_agree">I agree to Zodl\'s Export Private Data Policies and Privacy Policy</string>
+    <string name="privateDataConsent_confirmation">I agree to Zodl\'s Export Private Data Policies and Privacy Policy</string>
     <string name="export_data_export_data_chooser_title">Share internal Zodl data with:</string>
     <string name="export_data_unable_to_share">Unable to find an application to share with.</string>
     <string name="export_data_share_text">Export Tax File</string>

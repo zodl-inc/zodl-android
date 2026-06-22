@@ -49,7 +49,7 @@ internal fun ExchangeRateSettingsView(state: ExchangeRateSettingsState) {
         content = {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = stringResource(R.string.exchange_rate_opt_in_description_settings),
+                text = stringResource(R.string.currencyConversion_settingsDesc),
                 style = ZashiTypography.textSm,
                 color = ZashiColors.Text.textTertiary,
             )
@@ -58,7 +58,7 @@ internal fun ExchangeRateSettingsView(state: ExchangeRateSettingsState) {
                 modifier = Modifier.fillMaxWidth(),
                 isChecked = state.isOptedIn.isChecked,
                 title = stringResource(R.string.exchange_rate_opt_in_option_title),
-                subtitle = stringResource(R.string.exchange_rate_opt_in_option_subtitle),
+                subtitle = stringResource(R.string.currencyConversion_learnMoreOptionEnableDesc),
                 onClick = state.isOptedIn.onClick
             )
             Spacer(modifier = Modifier.height(12.dp))
@@ -66,7 +66,7 @@ internal fun ExchangeRateSettingsView(state: ExchangeRateSettingsState) {
                 modifier = Modifier.fillMaxWidth(),
                 isChecked = state.isOptedOut.isChecked,
                 title = stringResource(R.string.exchange_rate_opt_out_option_title),
-                subtitle = stringResource(R.string.exchange_rate_opt_out_option_subtitle),
+                subtitle = stringResource(R.string.currencyConversion_learnMoreOptionDisableDesc),
                 onClick = state.isOptedOut.onClick
             )
             state.currencyField?.let { field ->
@@ -239,7 +239,7 @@ private fun SettingsExchangeRateOptInPreview() =
                                 onClick = {}
                             ),
                         onBack = {},
-                        info = stringRes(R.string.exchange_rate_tor_enabled_footer)
+                        info = stringRes(R.string.currencyConversion_torOnInfo)
                     )
             )
         }

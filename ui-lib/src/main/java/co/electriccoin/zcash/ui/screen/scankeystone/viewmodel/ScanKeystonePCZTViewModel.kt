@@ -22,7 +22,7 @@ internal class ScanKeystonePCZTViewModel(
         MutableStateFlow(
             ScanKeystoneState(
                 progress = null,
-                message = stringRes(R.string.scan_keystone_info_transaction),
+                message = stringRes(R.string.coinVote_delegationSigning_scanInstructions),
             )
         )
 

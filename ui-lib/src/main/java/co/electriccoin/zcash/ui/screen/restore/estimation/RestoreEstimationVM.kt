@@ -36,7 +36,7 @@ class RestoreEstimationVM(
             blockHeightText = stringResByNumber(args.blockHeight, 0),
             copyButton =
                 ButtonState(
-                    text = stringRes(R.string.wbh_copy),
+                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_copy),
                     icon = R.drawable.ic_copy,
                     onClick = ::onCopyClick
                 ),

@@ -110,11 +110,11 @@ private fun Preview() =
     ZcashTheme {
         Content(
             SwapSupportState(
-                title = stringRes(R.string.transaction_detail_support_disclaimer_title),
-                message = stringRes(R.string.transaction_detail_support_disclaimer_message),
+                title = stringRes(R.string.reportSwap_title),
+                message = stringRes(R.string.reportSwap_msg),
                 reportIssueButton =
                     ButtonState(
-                        text = stringRes(R.string.transaction_detail_report_issue),
+                        text = stringRes(R.string.reportSwap_report),
                         onClick = { }
                     ),
                 onBack = { }

@@ -84,7 +84,7 @@ fun NotEnoughSpaceView(
                 Text(
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center,
-                    text = stringResource(id = R.string.not_enough_space_title),
+                    text = stringResource(id = R.string.notEnoughFreeSpace_title),
                     style = ZashiTypography.header6,
                     fontWeight = FontWeight.SemiBold,
                     color = ZashiColors.Text.textPrimary

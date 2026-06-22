@@ -34,9 +34,9 @@ internal class SwapQuoteVMMapper {
             return SwapQuoteState.Success(
                 title =
                     when {
-                        quote.destinationAsset is ZecSwapAsset -> stringRes(R.string.swap_quote_review)
-                        quote.mode in listOf(EXACT_INPUT, FLEX_INPUT) -> stringRes(R.string.swap_quote_title)
-                        quote.mode == EXACT_OUTPUT -> stringRes(R.string.pay_quote_title)
+                        quote.destinationAsset is ZecSwapAsset -> stringRes(R.string.swapToZec_review)
+                        quote.mode in listOf(EXACT_INPUT, FLEX_INPUT) -> stringRes(R.string.swapAndPay_swapNow)
+                        quote.mode == EXACT_OUTPUT -> stringRes(R.string.swapAndPay_payNow)
                         else -> throw IllegalStateException("Unknown swap mode")
                     },
                 rotateIcon = quote.mode == EXACT_OUTPUT,
@@ -65,7 +65,7 @@ internal class SwapQuoteVMMapper {
         if (quote.mode == EXACT_OUTPUT) return null
         val slippageUsd = quote.amountOutUsd.multiply(quote.slippage.divide(BigDecimal(100)))
         return stringRes(
-            R.string.swap_quote_info,
+            R.string.swapAndPay_swapQuoteSlippageWarn,
             stringResByDynamicCurrencyNumber(slippageUsd, FiatCurrency.USD.symbol),
             stringResByNumber(quote.slippage, minDecimals = 0) + stringRes("%")
         )
@@ -77,8 +77,8 @@ internal class SwapQuoteVMMapper {
             SwapQuoteInfoItem(
                 description =
                     when (quote.mode) {
-                        EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.swap_quote_from)
-                        EXACT_OUTPUT -> stringRes(R.string.pay_from)
+                        EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.swapAndPay_swapFrom)
+                        EXACT_OUTPUT -> stringRes(R.string.swapAndPay_payFrom)
                     },
                 title = stringRes(R.string.swap_quote_zashi).withStyle(),
                 subtitle = null
@@ -86,8 +86,8 @@ internal class SwapQuoteVMMapper {
             SwapQuoteInfoItem(
                 description =
                     when (quote.mode) {
-                        EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.swap_quote_to)
-                        EXACT_OUTPUT -> stringRes(R.string.pay_to)
+                        EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.swapAndPay_swapTo)
+                        EXACT_OUTPUT -> stringRes(R.string.swapAndPay_payTo)
                     },
                 title = stringResByAddress(quote.destinationAddress.address),
                 subtitle = null
@@ -119,7 +119,7 @@ internal class SwapQuoteVMMapper {
                 SwapQuoteInfoItem(
                     description =
                         stringRes(
-                            R.string.swap_quote_max_slippage,
+                            R.string.swapAndPay_maxSlippage,
                             stringResByNumber(quote.slippage, minDecimals = 0) + stringRes("%")
                         ),
                     title = stringRes(slippageZatoshi).withStyle(),

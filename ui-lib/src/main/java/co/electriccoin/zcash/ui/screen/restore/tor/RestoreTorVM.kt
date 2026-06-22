@@ -39,7 +39,7 @@ class RestoreTorVM(
             checkbox =
                 CheckboxState(
                     title = stringRes(R.string.restore_tor_checkbox_title),
-                    subtitle = stringRes(R.string.restore_tor_checkbox_subtitle),
+                    subtitle = stringRes(R.string.torSettingsSheet_desc),
                     isChecked = isChecked,
                     onClick = { this.isChecked.update { !it } }
                 ),

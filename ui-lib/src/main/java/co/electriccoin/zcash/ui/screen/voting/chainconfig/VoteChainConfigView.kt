@@ -90,7 +90,7 @@ fun VoteChainConfigView(state: VoteChainConfigState?) {
     BlankBgScaffold(
         topBar = {
             VoteAppBar(
-                title = stringResource(R.string.vote_chain_config_title),
+                title = stringResource(R.string.coinVote_configSettings_screenTitle),
                 onBack = state.onBack,
             )
         },
@@ -143,13 +143,13 @@ fun VoteChainConfigView(state: VoteChainConfigState?) {
 private fun Intro() {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
-            text = stringResource(R.string.vote_chain_config_intro_title),
+            text = stringResource(R.string.coinVote_configSettings_sectionTitle),
             style = ZashiTypography.header6,
             fontWeight = FontWeight.SemiBold,
             color = ZashiColors.Text.textPrimary
         )
         Text(
-            text = stringResource(R.string.vote_chain_config_intro_subtitle),
+            text = stringResource(R.string.coinVote_configSettings_sectionSubtitle),
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textTertiary
         )
@@ -406,7 +406,7 @@ private fun EditorSheet(
                 color = ZashiColors.Text.textPrimary
             )
             Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing3xl))
-            FieldLabel(text = stringResource(R.string.vote_chain_config_name_label))
+            FieldLabel(text = stringResource(R.string.coinVote_configSettings_titleField))
             Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingMd))
             ZashiTextField(
                 state = state.name,
@@ -419,13 +419,13 @@ private fun EditorSheet(
                 colors = sheetTextFieldColors(isFocusedByDefault = true)
             )
             Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
-            FieldLabel(text = stringResource(R.string.vote_chain_config_url_label))
+            FieldLabel(text = stringResource(R.string.coinVote_configSettings_urlField))
             Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingMd))
             ZashiTextField(
                 state = state.url,
                 placeholder = {
                     Text(
-                        text = stringResource(R.string.vote_chain_config_url_placeholder),
+                        text = stringResource(R.string.coinVote_configSettings_urlPlaceholder),
                         style = ZashiTypography.textMd,
                         color = ZashiColors.Text.textTertiary
                     )
@@ -440,7 +440,8 @@ private fun EditorSheet(
                             ) {
                                 Icon(
                                     painter = painterResource(R.drawable.ic_copy),
-                                    contentDescription = stringResource(R.string.wbh_copy),
+                                    contentDescription =
+                                        stringResource(co.electriccoin.zcash.ui.design.R.string.general_copy),
                                     tint = ZashiColors.Text.textTertiary,
                                     modifier = Modifier.size(20.dp)
                                 )

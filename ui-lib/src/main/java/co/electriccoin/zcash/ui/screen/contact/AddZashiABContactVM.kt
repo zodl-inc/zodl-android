@@ -82,11 +82,11 @@ class AddZashiABContactVM(
                 } else {
                     when (validateContactName(name)) {
                         ValidateContactNameResult.TooLong -> {
-                            stringRes(R.string.contact_name_error_too_long)
+                            stringRes(R.string.addressBook_error_nameLength)
                         }
 
                         ValidateContactNameResult.NotUnique -> {
-                            stringRes(R.string.contact_name_error_not_unique)
+                            stringRes(R.string.addressBook_error_nameExists)
                         }
 
                         ValidateContactNameResult.Valid -> {

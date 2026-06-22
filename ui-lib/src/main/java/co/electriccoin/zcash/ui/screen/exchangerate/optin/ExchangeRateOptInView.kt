@@ -36,17 +36,17 @@ fun ExchangeRateOptInView(state: ExchangeRateOptInState) {
         content = {
             Spacer(modifier = Modifier.height(20.dp))
             Text(
-                text = stringResource(R.string.exchange_rate_opt_in_description),
+                text = stringResource(R.string.currencyConversion_learnMoreDesc),
                 color = ZashiColors.Text.textTertiary,
                 fontSize = 14.sp,
             )
             Spacer(modifier = Modifier.height(24.dp))
             ZashiInfoRow(
                 icon = R.drawable.ic_exchange_rate_info_1,
-                title = stringResource(R.string.exchange_rate_info_title_1),
+                title = stringResource(R.string.currencyConversion_ipTitle),
                 subtitle =
                     if (VersionInfo.IS_CMC_AVAILABLE) {
-                        stringResource(R.string.exchange_rate_info_subtitle_1)
+                        stringResource(R.string.currencyConversion_ipDesc)
                     } else {
                         stringResource(R.string.exchange_rate_info_subtitle_1_no_cmc)
                     },
@@ -54,8 +54,8 @@ fun ExchangeRateOptInView(state: ExchangeRateOptInState) {
             Spacer(modifier = Modifier.height(16.dp))
             ZashiInfoRow(
                 icon = R.drawable.ic_exchange_rate_info_2,
-                title = stringResource(R.string.exchange_rate_info_title_2),
-                subtitle = stringResource(R.string.exchange_rate_info_subtitle_2),
+                title = stringResource(R.string.currencyConversion_refresh),
+                subtitle = stringResource(R.string.currencyConversion_refreshDesc),
             )
             state.currencyField?.let { field ->
                 Spacer(modifier = Modifier.height(24.dp))
@@ -72,7 +72,7 @@ fun ExchangeRateOptInView(state: ExchangeRateOptInState) {
                 onClick = state.onSkipClick,
             ) {
                 Text(
-                    text = stringResource(R.string.exchange_rate_opt_in_skip),
+                    text = stringResource(R.string.currencyConversion_skipBtn),
                     style = ZashiTypography.textMd,
                     fontWeight = FontWeight.SemiBold
                 )

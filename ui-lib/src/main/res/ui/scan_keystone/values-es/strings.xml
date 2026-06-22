@@ -2,7 +2,6 @@
 <resources>
     <string name="scan_keystone_failure">Este código QR no es un wallet Keystone válido.</string>
     <string name="scan_keystone_preview_content_description">Cámara</string>
-    <string name="scan_keystone_cancel_button">Cancelar</string>
     <string name="scan_keystone_settings_button">Abrir Configuración</string>
     <string name="scan_keystone_settings_open_failed">No se pudo abrir la aplicación de Configuración.</string>
     <string name="scan_keystone_state_permission">La cámara no está autorizada. Por favor, ve a la configuración del sistema de
@@ -12,5 +11,5 @@
     <string name="scan_keystone_torch_content_description">Alternar linterna de la cámara</string>
     <string name="scan_keystone_gallery_content_description">Galería</string>
     <string name="scan_keystone_info">Escanea tu wallet Keystone para conectarte</string>
-    <string name="scan_keystone_info_transaction">Escanea tu wallet Keystone para firmar la transacción</string>
+    <string name="coinVote_delegationSigning_scanInstructions">Escanea tu wallet Keystone para firmar la transacción</string>
 </resources>

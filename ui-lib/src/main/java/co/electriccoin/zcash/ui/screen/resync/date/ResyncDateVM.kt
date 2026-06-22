@@ -60,7 +60,7 @@ class ResyncDateVM(
         isLoading: Boolean,
     ) = BirthdayPickerState(
         title = stringRes(R.string.resync_title),
-        message = stringRes(R.string.resync_bd_date_message),
+        message = stringRes(R.string.firstWalletTransactionSubtitleResync),
         logo = null,
         primaryButton =
             ButtonState(
@@ -70,7 +70,7 @@ class ResyncDateVM(
             ),
         secondaryButton =
             ButtonState(
-                text = stringRes(R.string.wbh_enter_block_height),
+                text = stringRes(R.string.keystone_addHWWallet_enterManually),
                 onClick = ::onEnterBlockHeightClick,
             ),
         dialogButton =

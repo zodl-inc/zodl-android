@@ -92,7 +92,7 @@ private fun Content(
         )
         Spacer(8.dp)
         Text(
-            stringResource(R.string.restore_tor_subtitle),
+            stringResource(R.string.torSettingsSheet_msg),
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textTertiary
         )
@@ -195,7 +195,7 @@ private fun Preview() =
                     checkbox =
                         CheckboxState(
                             title = stringRes(stringResource(R.string.restore_tor_checkbox_title)),
-                            subtitle = stringRes(stringResource(R.string.restore_tor_checkbox_subtitle)),
+                            subtitle = stringRes(stringResource(R.string.torSettingsSheet_desc)),
                             isChecked = isChecked,
                             onClick = { isChecked = !isChecked }
                         ),

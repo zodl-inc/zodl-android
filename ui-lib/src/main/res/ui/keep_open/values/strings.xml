@@ -1,22 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="keep_open_title">Keep Zodl open!</string>
+    <string name="restoreInfo_title">Keep Zodl open!</string>
     <string name="keep_open_description">Zodl is scanning the blockchain to retrieve your transactions. Older wallets can take hours to sync. Follow these steps to prevent interruption:</string>
     <string name="keep_open_bullet_1">Keep the Zodl app open on an active phone screen.</string>
     <string name="keep_open_bullet_2">To prevent your phone screen from going dark, turn off power-saving mode and keep your phone plugged in.</string>
 
-    <string name="keep_open_keystone_description">Zodl is scanning the blockchain to retrieve your transactions. Older wallets can take hours to complete syncing. Follow these steps to prevent interruption:</string>
-    <string name="keep_open_keystone_subtitle">Your wallet is being synced.</string>
+    <string name="keepZodlOpenInstructionsHWWallet">Zodl is scanning the blockchain to retrieve your transactions. Older wallets can take hours to complete syncing. Follow these steps to prevent interruption:</string>
+    <string name="keepZodlOpenSubtitleHWWallet">Your wallet is being synced.</string>
     <string name="keep_open_keystone_warning">Your Zodl funds cannot be spent until your Keystone wallet is synced.</string>
-    <string name="keep_open_keystone_checkbox">Keep screen on while syncing</string>
+    <string name="keepScreenOnSyncing">Keep screen on while syncing</string>
 
-    <string name="keep_open_resync_description">Zodl is scanning the blockchain to retrieve your transactions. Older wallets can take hours to resync. Follow these steps to prevent interruption:</string>
-    <string name="keep_open_resync_subtitle">Your wallet is being resynced.</string>
+    <string name="keepZodlOpenInstructionsResyncing">Zodl is scanning the blockchain to retrieve your transactions. Older wallets can take hours to resync. Follow these steps to prevent interruption:</string>
+    <string name="keepZodlOpenSubtitleResync">Your wallet is being resynced.</string>
     <string name="keep_open_resync_warning">Your funds cannot be spent until your wallet is resynced.</string>
-    <string name="keep_open_resync_checkbox">Keep screen on while resyncing</string>
+    <string name="keepScreenOnResyncing">Keep screen on while resyncing</string>
 
     <string name="keep_open_restore_description">Zodl is scanning the blockchain to retrieve your transactions. Older wallets can take hours to restore. Follow these steps to prevent interruption:</string>
-    <string name="keep_open_restore_subtitle">Your wallet is being restored.</string>
+    <string name="keepZodlOpenSubtitleRestore">Your wallet is being restored.</string>
     <string name="keep_open_restore_warning">Your funds cannot be spent until your wallet is restored.</string>
-    <string name="keep_open_restore_checkbox">Keep screen on while restoring</string>
+    <string name="keepScreenOnRestoring">Keep screen on while restoring</string>
 </resources>

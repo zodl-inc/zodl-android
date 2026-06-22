@@ -108,7 +108,7 @@ fun SwapDetailView(
                 ZashiSwapQuoteHeader(state.quoteHeader)
                 Spacer(20.dp)
                 TransactionDetailRowHeader(
-                    title = stringRes(R.string.swap_detail_row_header),
+                    title = stringRes(R.string.swapToZec_swapDetails),
                     isExpanded = isExpanded,
                     onButtonClick = { isExpanded = !isExpanded }
                 )

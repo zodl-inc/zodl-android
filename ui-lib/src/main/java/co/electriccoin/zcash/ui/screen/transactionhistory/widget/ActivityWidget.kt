@@ -107,7 +107,7 @@ private fun LazyListScope.emptyWidget(state: ActivityWidgetState.Empty) {
                 )
                 Spacer(Modifier.height(20.dp))
                 Text(
-                    text = stringResource(R.string.transaction_history_widget_empty_title),
+                    text = stringResource(R.string.transactionHistory_nothingHere),
                     color = ZashiColors.Text.textPrimary,
                     style = ZashiTypography.textLg,
                     fontWeight = FontWeight.SemiBold

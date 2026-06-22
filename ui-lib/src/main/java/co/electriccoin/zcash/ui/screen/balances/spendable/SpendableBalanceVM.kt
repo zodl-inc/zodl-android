@@ -55,7 +55,7 @@ class SpendableBalanceVM(
     private fun createState(account: WalletAccount?, transactions: List<ListTransactionData>?): SpendableBalanceState? {
         if (account == null) return null
         return SpendableBalanceState(
-            title = stringRes(R.string.balance_action_title),
+            title = stringRes(R.string.balances_spendableBalance_title),
             message = createMessage(account, transactions),
             positive = createPositiveButton(account),
             onBack = ::onBack,
@@ -68,16 +68,16 @@ class SpendableBalanceVM(
         val pending =
             when {
                 account.isAllShielded -> {
-                    stringRes(R.string.balance_action_all_shielded)
+                    stringRes(R.string.balances_everythingDone)
                 }
 
                 account.totalBalance > account.spendableShieldedBalance &&
                     transactions.orEmpty().any { it.transaction.isPending } -> {
-                    stringRes(R.string.balance_action_pending)
+                    stringRes(R.string.balances_infoPending)
                 }
 
                 account.totalBalance > account.spendableShieldedBalance -> {
-                    stringRes(R.string.balance_action_syncing)
+                    stringRes(R.string.balances_infoSyncing)
                 }
 
                 else -> {
@@ -87,7 +87,7 @@ class SpendableBalanceVM(
 
         val shielding =
             stringRes(
-                R.string.balance_action_shield_message,
+                R.string.balances_infoShielding,
                 CURRENCY_TICKER,
                 stringRes(Zatoshi.typicalFee, HIDDEN),
                 CURRENCY_TICKER
@@ -118,7 +118,7 @@ class SpendableBalanceVM(
         val hasPendingTransaction = transactions.orEmpty().any { it.transaction.isPending }
         return listOfNotNull(
             SpendableBalanceRowState(
-                title = stringRes(R.string.balance_action_info_shielded),
+                title = stringRes(R.string.balances_spendableBalance),
                 icon = imageRes(R.drawable.ic_balance_shield),
                 value =
                     stringRes(account.spendableShieldedBalance)

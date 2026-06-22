@@ -47,21 +47,21 @@ fun ShieldFundsInfoView(
         Image(painterResource(R.drawable.ic_info_shield), contentDescription = null)
         Spacer(12.dp)
         Text(
-            stringResource(R.string.home_info_transparent_title),
+            stringResource(R.string.smartBanner_help_shield_title),
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.textXl,
             fontWeight = FontWeight.SemiBold,
         )
         Spacer(12.dp)
         Text(
-            stringResource(R.string.home_info_transparent_subtitle, CURRENCY_TICKER),
+            stringResource(R.string.smartBanner_help_shield_info1, CURRENCY_TICKER),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textMd,
         )
         Spacer(24.dp)
         Text(
             stringRes(
-                R.string.home_info_transparent_message,
+                R.string.smartBanner_help_shield_info2,
                 stringRes(Zatoshi.typicalFee, HIDDEN),
                 CURRENCY_TICKER,
             ).getValue(),
@@ -124,7 +124,7 @@ private fun Preview() =
                         ),
                     checkbox =
                         CheckboxState(
-                            title = stringRes(R.string.home_info_transparent_checkbox),
+                            title = stringRes(R.string.smartBanner_help_shield_doNotShowAgain),
                             onClick = {},
                             isChecked = false,
                         ),

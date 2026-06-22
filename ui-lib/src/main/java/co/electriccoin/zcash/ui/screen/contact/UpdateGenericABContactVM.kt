@@ -142,11 +142,11 @@ class UpdateGenericABContactVM(
             } else {
                 when (validateGenericABContactName(name = name, exclude = contact)) {
                     ValidateContactNameResult.TooLong -> {
-                        stringRes(R.string.contact_name_error_too_long)
+                        stringRes(R.string.addressBook_error_nameLength)
                     }
 
                     ValidateContactNameResult.NotUnique -> {
-                        stringRes(R.string.contact_name_error_not_unique)
+                        stringRes(R.string.addressBook_error_nameExists)
                     }
 
                     ValidateContactNameResult.Valid -> {
@@ -288,15 +288,15 @@ class UpdateGenericABContactVM(
             _dialogState.value =
                 ErrorState(
                     title = stringRes(R.string.delete_contact_confirmation_title),
-                    message = stringRes(R.string.delete_contact_confirmation_message),
+                    message = stringRes(R.string.addressBook_alert_message),
                     positive =
                         ButtonState(
-                            text = stringRes(R.string.delete_contact_confirmation_confirm),
+                            text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_confirm),
                             onClick = ::onDeleteConfirmed
                         ),
                     negative =
                         ButtonState(
-                            text = stringRes(R.string.delete_contact_confirmation_cancel),
+                            text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_cancel),
                             onClick = ::onDeleteCancelled
                         ),
                     onBack = { _dialogState.value = null }

@@ -46,7 +46,7 @@ fun EnableCurrencyConversionMessage(
         },
         subtitle = {
             Text(
-                text = stringResource(R.string.home_message_currency_conversion_subtitle),
+                text = stringResource(R.string.smartBanner_content_currencyConversion_info),
             )
         },
         end = {

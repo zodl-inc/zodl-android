@@ -164,7 +164,7 @@ private fun Data(state: AssetCardState.Data, modifier: Modifier = Modifier) {
                             fontWeight = FontWeight.SemiBold
                         )
                     ) + space +
-                        stringRes(R.string.general_on).withStyle(
+                        stringRes(R.string.tokenOnChain).withStyle(
                             StyledStringStyle(
                                 color = StringResourceColor.TERTIARY,
                                 fontWeight = FontWeight.Medium

@@ -134,19 +134,19 @@ class ActivityHistoryVM(
                             ?.toLocalDate() ?: now
                     when {
                         now == other -> {
-                            stringRes(R.string.transaction_history_today) to "today"
+                            stringRes(R.string.filter_today) to "today"
                         }
 
                         other == now.minusDays(1) -> {
-                            stringRes(R.string.transaction_history_yesterday) to "yesterday"
+                            stringRes(R.string.filter_yesterday) to "yesterday"
                         }
 
                         other >= now.minusDays(WEEK_THRESHOLD) -> {
-                            stringRes(R.string.transaction_history_previous_7_days) to "previous_7_days"
+                            stringRes(R.string.filter_previous7days) to "previous_7_days"
                         }
 
                         other >= now.minusDays(MONTH_THRESHOLD) -> {
-                            stringRes(R.string.transaction_history_previous_30_days) to "previous_30_days"
+                            stringRes(R.string.filter_previous30days) to "previous_30_days"
                         }
 
                         else -> {

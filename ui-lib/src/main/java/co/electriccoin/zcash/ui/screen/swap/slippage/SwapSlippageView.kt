@@ -63,14 +63,14 @@ fun SwapSlippageView(state: SwapSlippageState?) {
                             .padding(padding.asScaffoldPaddingValues())
                 ) {
                     Text(
-                        text = stringResource(R.string.swap_slippage_title),
+                        text = stringResource(R.string.swapAndPay_slippage),
                         style = ZashiTypography.header6,
                         fontWeight = FontWeight.SemiBold,
                         color = ZashiColors.Text.textPrimary
                     )
                     Spacer(8.dp)
                     Text(
-                        text = stringResource(R.string.swap_slippage_subtitle),
+                        text = stringResource(R.string.swapAndPay_slippageDesc),
                         style = ZashiTypography.textSm,
                         color = ZashiColors.Text.textTertiary
                     )

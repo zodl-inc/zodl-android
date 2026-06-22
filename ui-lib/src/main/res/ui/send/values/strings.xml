@@ -3,28 +3,26 @@
     <string name="send_stage_send_title">Send</string>
     <string name="send_scan_content_description">Scan</string>
     <string name="send_address_label">Send to</string>
-    <string name="send_address_hint">Zcash Address</string>
+    <string name="send_addressPlaceholder">Zcash Address</string>
     <string name="send_address_invalid">Invalid address</string>
     <string name="send_amount_label">Amount</string>
     <string name="send_amount_hint"><xliff:g id="currency" example="ZEC">%1$s</xliff:g></string>
     <string name="send_amount_insufficient_balance">Insufficient funds</string>
-    <string name="send_amount_invalid">Invalid amount</string>
+    <string name="send_error_invalidAmount">Invalid amount</string>
     <string name="send_memo_label">Message</string>
-    <string name="send_memo_hint">Write encrypted message here…</string>
+    <string name="send_memoPlaceholder">Write encrypted message here…</string>
     <string name="send_memo_bytes_counter">
         <xliff:g id="typed_bytes" example="12">%1$s</xliff:g>/<xliff:g id="max_bytes" example="512">%2$s</xliff:g>
     </string>
-    <string name="send_create">Review</string>
     <string name="send_fee">(Typical Fee &lt; <xliff:g id="fee_amount" example="0.001">%1$s</xliff:g>)</string>
 
-    <string name="send_dialog_error_title">Failed to send funds</string>
+    <string name="send_alert_failure_title">Failed to send funds</string>
     <string name="send_dialog_error_text">Error: The attempt to send funds failed. Try it again, please.</string>
-    <string name="send_dialog_error_btn">OK</string>
 
     <string name="send_abbreviated_address_format" formatted="true"><xliff:g id="first_five" example="zs1g7">%1$s</xliff:g>…<xliff:g id="last_five" example="mvyzg">%2$s</xliff:g></string>
-    <string name="send_transparent_memo">Transparent transactions can\'t have memos</string>
+    <string name="send_info_memo">Transparent transactions can\'t have memos</string>
 
-    <string name="send_address_book_hint">Add contact by tapping on Address Book icon.</string>
+    <string name="send_addressNotInBook">Add contact by tapping on Address Book icon.</string>
     <string name="send_address_book_content_description">Open address book</string>
 
 </resources>

@@ -9,7 +9,7 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 
 fun ZashiConfirmationState.Companion.error(
     title: StringResource = stringRes(co.electriccoin.zcash.ui.design.R.string.general_error_title),
-    message: StringResource = stringRes(co.electriccoin.zcash.ui.design.R.string.general_please_try_again),
+    message: StringResource = stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_laterDesc),
     primaryText: StringResource = stringRes(co.electriccoin.zcash.ui.design.R.string.general_try_again),
     secondaryText: StringResource? = stringRes(co.electriccoin.zcash.ui.design.R.string.general_contact_support),
     primaryStyle: ButtonStyle = ButtonStyle.TERTIARY,

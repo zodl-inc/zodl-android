@@ -2,11 +2,11 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="address_book_title">Address Book</string>
     <string name="address_book_add">Add New Contact</string>
-    <string name="address_book_empty">Your address book is empty</string>
+    <string name="addressBook_empty">Your address book is empty</string>
     <string name="address_book_version">Version <xliff:g example="1" id="version">%s</xliff:g></string>
-    <string name="address_book_scan_btn">Scan QR code</string>
-    <string name="address_book_manual_btn">Manual entry</string>
-    <string name="address_book_multiple_wallets_title">Your Wallets</string>
-    <string name="address_book_multiple_wallets_contacts_title">Address Book Contacts</string>
-    <string name="address_book_select_recipient_title">Select recipient</string>
+    <string name="addressBook_scanAddress">Scan QR code</string>
+    <string name="addressBook_manualEntry">Manual entry</string>
+    <string name="accounts_addressBook_your">Your Wallets</string>
+    <string name="accounts_addressBook_contacts">Address Book Contacts</string>
+    <string name="addressBook_selectRecipient">Select recipient</string>
 </resources>

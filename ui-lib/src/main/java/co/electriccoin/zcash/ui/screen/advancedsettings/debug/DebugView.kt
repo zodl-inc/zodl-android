@@ -81,7 +81,7 @@ private fun AdvancedSettingsPreview() =
                     items =
                         persistentListOf(
                             ListItemState(
-                                title = stringRes(R.string.advanced_settings_recovery),
+                                title = stringRes(R.string.settings_recoveryPhrase),
                                 bigIcon = imageRes(R.drawable.ic_advanced_settings_recovery),
                                 onClick = {}
                             )

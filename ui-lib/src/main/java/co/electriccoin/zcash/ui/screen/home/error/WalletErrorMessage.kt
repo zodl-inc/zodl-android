@@ -37,12 +37,12 @@ fun WalletErrorMessage(
         },
         title = {
             Text(
-                stringResource(R.string.home_message_error_title),
+                stringResource(R.string.smartBanner_content_syncingError_title),
             )
         },
         subtitle = {
             Text(
-                text = stringResource(R.string.home_message_error_subtitle),
+                text = stringResource(R.string.smartBanner_content_syncingError_info),
             )
         },
         end = null

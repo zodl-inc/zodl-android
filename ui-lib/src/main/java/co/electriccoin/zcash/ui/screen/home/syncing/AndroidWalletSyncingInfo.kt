@@ -30,14 +30,14 @@ fun AndroidWalletSyncingInfo() {
             ),
     ) {
         Text(
-            text = stringResource(R.string.home_info_syncing_title),
+            text = stringResource(R.string.smartBanner_help_sync_title),
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.textXl,
             fontWeight = FontWeight.SemiBold,
         )
         Spacer(12.dp)
         Text(
-            text = stringResource(R.string.home_info_syncing_message),
+            text = stringResource(R.string.smartBanner_help_sync_info),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textMd,
         )

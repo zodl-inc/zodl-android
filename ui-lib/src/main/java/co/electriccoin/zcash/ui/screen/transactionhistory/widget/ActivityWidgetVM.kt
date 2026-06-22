@@ -66,7 +66,7 @@ class ActivityWidgetVM(
                                 title = stringRes(R.string.transaction_history_widget_title),
                                 button =
                                     ButtonState(
-                                        text = stringRes(R.string.transaction_history_widget_header_button),
+                                        text = stringRes(R.string.transactionHistory_seeAll),
                                         onClick = ::onSeeAllTransactionsClick
                                     ).takeIf {
                                         activities.size > MAX_TRANSACTION_COUNT

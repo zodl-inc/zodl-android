@@ -3,5 +3,5 @@
     <string name="tax_export_title">Exportación de Datos</string>
     <string name="tax_export_subtitle">Exportar Archivo de Impuestos</string>
     <string name="tax_export_message">Descarga el historial de transacciones de <xliff:g example="Zodl" id="account_name">%s</xliff:g> del año calendario anterior en formato .csv.</string>
-    <string name="tax_export_export_button">Descargar</string>
+    <string name="taxExport_download">Descargar</string>
 </resources>

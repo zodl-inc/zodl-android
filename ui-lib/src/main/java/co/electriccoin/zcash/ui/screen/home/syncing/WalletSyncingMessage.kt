@@ -42,7 +42,7 @@ fun WalletSyncingMessage(
         },
         subtitle = {
             Text(
-                text = stringResource(R.string.home_message_syncing_subtitle),
+                text = stringResource(R.string.smartBanner_content_sync_info),
             )
         },
         end = null

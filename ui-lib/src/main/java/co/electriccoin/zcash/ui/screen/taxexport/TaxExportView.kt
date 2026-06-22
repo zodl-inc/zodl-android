@@ -97,7 +97,7 @@ private fun ExportPrivateDataPreview() =
                     onBack = {},
                     exportButton =
                         ButtonState(
-                            text = stringRes(R.string.tax_export_export_button),
+                            text = stringRes(R.string.taxExport_download),
                             onClick = {}
                         ),
                     text =

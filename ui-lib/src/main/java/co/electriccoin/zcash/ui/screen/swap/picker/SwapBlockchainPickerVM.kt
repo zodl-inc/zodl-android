@@ -104,7 +104,7 @@ class SwapBlockchainPickerVM(
                     else -> {
                         SwapAssetPickerDataState.Error(
                             stringRes(co.electriccoin.zcash.ui.design.R.string.general_error_title),
-                            stringRes(co.electriccoin.zcash.ui.design.R.string.general_error_message),
+                            stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_wrongDesc),
                             ButtonState(
                                 text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_try_again),
                                 onClick = ::onRetry

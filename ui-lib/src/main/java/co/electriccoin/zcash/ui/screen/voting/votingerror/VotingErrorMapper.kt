@@ -27,7 +27,7 @@ object VotingErrorMapper {
             rawMessage.lowercase().contains("total_weight must yield at least 1 ballot")
         ) {
             return stringRes(
-                UiR.string.vote_error_mapper_insufficient_snapshot_balance,
+                UiR.string.coinVote_delegation_insufficientSnapshotBalance,
                 eligibleWeightZatoshi.toZecLabel(),
                 ballotDivisorZatoshi.toZecLabel()
             )
@@ -41,73 +41,73 @@ object VotingErrorMapper {
             lower.contains("no voting server accepted share") ||
                 lower.contains("no reachable vote servers") ||
                 lower.contains("all configured vote servers failed") -> {
-                stringRes(UiR.string.vote_error_mapper_no_reachable_vote_servers)
+                stringRes(UiR.string.coinVote_store_userError_noReachableVoteServers)
             }
 
             lower.contains("nullifier") && lower.contains("spent") -> {
-                stringRes(UiR.string.vote_error_mapper_nullifier_spent)
+                stringRes(UiR.string.coinVote_store_userError_nullifierAlreadySpent)
             }
 
             lower.contains("vote round not found") -> {
-                stringRes(UiR.string.vote_error_mapper_round_not_found)
+                stringRes(UiR.string.coinVote_store_userError_roundNotFound)
             }
 
             lower.contains("round") && (lower.contains("not active") || lower.contains("inactive") || lower.contains("closed")) -> {
-                stringRes(UiR.string.vote_error_mapper_round_closed)
+                stringRes(UiR.string.coinVote_store_userError_roundNotActive)
             }
 
             lower.contains("no active voting round") -> {
-                stringRes(UiR.string.vote_error_mapper_round_closed)
+                stringRes(UiR.string.coinVote_store_userError_roundNotActive)
             }
 
             lower.contains("pir proof root mismatch") ||
                 lower.contains("no pir server matches") -> {
-                stringRes(UiR.string.vote_error_mapper_pir_snapshot_mismatch)
+                stringRes(UiR.string.coinVote_store_userError_pirSnapshotMismatch)
             }
 
             lower.contains("pir proof verification failed") -> {
-                stringRes(UiR.string.vote_error_mapper_pir_invalid_proof)
+                stringRes(UiR.string.coinVote_store_userError_pirInvalidProofData)
             }
 
             lower.contains("pir server connect failed") ||
                 lower.contains("pir parallel fetch failed") -> {
-                stringRes(UiR.string.vote_error_mapper_pir_unavailable)
+                stringRes(UiR.string.coinVote_store_userError_pirUnavailable)
             }
 
             lower.contains("no pir endpoints are configured") -> {
-                stringRes(UiR.string.vote_error_mapper_pir_endpoints_missing)
+                stringRes(UiR.string.coinVote_store_userError_pirEndpointsMissing)
             }
 
             lower.contains("commitment tree did not grow") -> {
-                stringRes(UiR.string.vote_error_mapper_commitment_tree_not_grown)
+                stringRes(UiR.string.coinVote_store_userError_commitmentTreeNotGrown)
             }
 
             lower.contains("invalid commitment tree anchor height") -> {
-                stringRes(UiR.string.vote_error_mapper_invalid_anchor_height)
+                stringRes(UiR.string.coinVote_store_userError_invalidAnchorHeight)
             }
 
             lower.contains("invalid zero-knowledge proof") -> {
-                stringRes(UiR.string.vote_error_mapper_invalid_proof)
+                stringRes(UiR.string.coinVote_store_userError_invalidProof)
             }
 
             lower.contains("delegation bundle build failed") ||
                 lower.contains("create_proof failed") -> {
-                stringRes(UiR.string.vote_error_mapper_proof_generation_failed)
+                stringRes(UiR.string.coinVote_store_userError_proofGenerationFailed)
             }
 
             lower.contains("notreestate") ||
                 lower.contains("no tree state") -> {
-                stringRes(UiR.string.vote_error_mapper_no_tree_state)
+                stringRes(UiR.string.coinVote_store_userError_noTreeState)
             }
 
             lower.contains("http 5") -> {
-                stringRes(UiR.string.vote_error_mapper_http_5)
+                stringRes(UiR.string.coinVote_store_userError_http5)
             }
 
             lower.contains("grpcstatus") ||
                 lower.contains("rpc timed out") ||
                 lower.contains("transport became inactive") -> {
-                stringRes(UiR.string.vote_error_mapper_lightwalletd_unavailable)
+                stringRes(UiR.string.coinVote_store_userError_lightwalletdUnavailable)
             }
 
             lower.contains("pir") || lower.contains("private information retrieval") -> {
@@ -127,7 +127,7 @@ object VotingErrorMapper {
             }
 
             lower.contains("proof") || lower.contains("zkp") -> {
-                stringRes(UiR.string.vote_error_mapper_proof)
+                stringRes(UiR.string.coinVote_store_userError_proofGenerationFailed)
             }
 
             lower.contains("config") || lower.contains("version") -> {
@@ -142,9 +142,9 @@ object VotingErrorMapper {
 
     fun toConfigErrorTitle(rawMessage: String): StringResource =
         if (rawMessage.isWalletUpdateRequired()) {
-            stringRes(UiR.string.vote_error_config_title)
+            stringRes(UiR.string.coinVote_configError_title)
         } else {
-            stringRes(UiR.string.vote_error_voting_unavailable_title)
+            stringRes(UiR.string.coinVote_error_configUnavailableTitle)
         }
 
     fun toConfigErrorMessage(rawMessage: String): StringResource =

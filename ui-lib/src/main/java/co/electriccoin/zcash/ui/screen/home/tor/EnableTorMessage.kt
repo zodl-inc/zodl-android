@@ -46,7 +46,7 @@ fun EnableTorMessage(
         },
         subtitle = {
             Text(
-                text = stringResource(R.string.home_message_tor_subtitle),
+                text = stringResource(R.string.smartBanner_content_tor_info),
             )
         },
         end = {

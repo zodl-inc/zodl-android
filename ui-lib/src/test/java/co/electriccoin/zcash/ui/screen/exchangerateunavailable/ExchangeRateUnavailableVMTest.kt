@@ -45,10 +45,10 @@ class ExchangeRateUnavailableVMTest {
         val state = vm.state.value
 
         // Title uses the currency code, subtitle uses the localized display name.
-        assertEquals(stringRes(R.string.exchange_rate_unavailable_sheet_title, "JPY"), state.title)
+        assertEquals(stringRes(R.string.send_currencyUnavailable_title, "JPY"), state.title)
         assertEquals(
             stringRes(
-                R.string.exchange_rate_unavailable_sheet_subtitle,
+                R.string.send_currencyUnavailable_desc,
                 stringResByFiatDisplayName(FiatCurrency("JPY"))
             ),
             state.subtitle
@@ -59,7 +59,7 @@ class ExchangeRateUnavailableVMTest {
     fun fallsBackToUsdCopyWhenStateIsNotData() {
         val vm = vm(repositoryState = ExchangeRateState.OptIn)
 
-        assertEquals(stringRes(R.string.exchange_rate_unavailable_sheet_title, "USD"), vm.state.value.title)
+        assertEquals(stringRes(R.string.send_currencyUnavailable_title, "USD"), vm.state.value.title)
     }
 
     @Test

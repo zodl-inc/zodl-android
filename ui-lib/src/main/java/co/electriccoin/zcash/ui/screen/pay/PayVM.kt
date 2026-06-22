@@ -93,7 +93,7 @@ internal class PayVM(
                     SwapCancelState(
                         icon = imageRes(R.drawable.ic_swap_quote_cancel),
                         title = stringRes(R.string.swap_cancel_title),
-                        subtitle = stringRes(R.string.swap_cancel_subtitle),
+                        subtitle = stringRes(R.string.swapAndPay_cancelMsg),
                         negativeButton =
                             ButtonState(
                                 text = stringRes(R.string.swap_cancel_negative),

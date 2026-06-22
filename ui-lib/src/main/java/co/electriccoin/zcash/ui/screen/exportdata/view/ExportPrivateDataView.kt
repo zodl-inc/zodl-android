@@ -79,7 +79,7 @@ private fun ExportPrivateDataContent(
 ) {
     Column(modifier = modifier) {
         Text(
-            text = stringResource(R.string.export_data_header),
+            text = stringResource(R.string.privateDataConsent_title),
             style = ZashiTypography.header6,
             fontWeight = FontWeight.SemiBold,
             color = ZashiColors.Text.textPrimary
@@ -105,7 +105,7 @@ private fun ExportPrivateDataContent(
                 checkedState.value = new
                 onAgree(new)
             },
-            text = stringRes(R.string.export_data_agree),
+            text = stringRes(R.string.privateDataConsent_confirmation),
         )
 
         Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingLarge))

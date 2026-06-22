@@ -68,7 +68,11 @@ class RestoreHeightVM(
                 ),
             primaryButtonTestTag = RestoreHeightTags.RESTORE_BTN,
             blockHeightFieldTestTag = RestoreHeightTags.BLOCK_HEIGHT_FIELD,
-            secondaryButton = ButtonState(stringRes(R.string.restore_bd_height_btn), onClick = ::onEstimateClick),
+            secondaryButton =
+                ButtonState(
+                    stringRes(R.string.restoreWallet_birthday_estimate),
+                    onClick = ::onEstimateClick
+                ),
             blockHeight = NumberTextFieldState(innerState = blockHeight, onValueChange = ::onValueChanged)
         )
     }

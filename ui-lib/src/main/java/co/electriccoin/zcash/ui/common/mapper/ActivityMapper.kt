@@ -216,7 +216,7 @@ class ActivityMapper {
                     if (transaction is SendTransaction.Failed) {
                         when (data.metadata.swapMetadata.mode) {
                             EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.transaction_history_swap_failed)
-                            EXACT_OUTPUT -> stringRes(R.string.transaction_history_payment_failed)
+                            EXACT_OUTPUT -> stringRes(R.string.swapStatus_paymentFailed)
                         }
                     } else {
                         when (data.metadata.swapMetadata.mode) {
@@ -242,13 +242,13 @@ class ActivityMapper {
                                     PROCESSING,
                                     PENDING -> stringRes(R.string.transaction_history_paying)
 
-                                    SUCCESS -> stringRes(R.string.transaction_history_paid)
+                                    SUCCESS -> stringRes(R.string.swapStatus_paid)
 
-                                    REFUNDED -> stringRes(R.string.transaction_history_payment_refunded)
+                                    REFUNDED -> stringRes(R.string.swapStatus_paymentRefunded)
 
-                                    FAILED -> stringRes(R.string.transaction_history_payment_failed)
+                                    FAILED -> stringRes(R.string.swapStatus_paymentFailed)
 
-                                    EXPIRED -> stringRes(R.string.transaction_history_payment_expired)
+                                    EXPIRED -> stringRes(R.string.swapStatus_paymentExpired)
                                 }
                             }
                         }
@@ -263,11 +263,11 @@ class ActivityMapper {
         val daysBetween = ChronoUnit.DAYS.between(transactionDate.toLocalDate(), LocalDate.now())
         return when {
             LocalDate.now() == transactionDate.toLocalDate() -> {
-                stringRes(R.string.transaction_history_today)
+                stringRes(R.string.filter_today)
             }
 
             LocalDate.now().minusDays(1) == transactionDate.toLocalDate() -> {
-                stringRes(R.string.transaction_history_yesterday)
+                stringRes(R.string.filter_yesterday)
             }
 
             daysBetween < MONTH_THRESHOLD -> {

@@ -137,7 +137,7 @@ class ReviewTransactionVM(
                     address = stringResByAddress(transactionProposal.destination.address, Ellipsize.NONE)
                 ),
                 SenderState(
-                    title = stringRes(R.string.send_confirmation_address_from),
+                    title = stringRes(R.string.accounts_sendingFrom),
                     icon = selectedWallet.icon,
                     name = selectedWallet.name
                 ).takeIf { (accounts?.size ?: 0) > 1 },
@@ -159,7 +159,7 @@ class ReviewTransactionVM(
                     }?.takeIf { transactionProposal.destination !is WalletAddress.Transparent },
                 MessagePlaceholderState(
                     title = stringRes(R.string.send_memo_label),
-                    message = stringRes(R.string.send_transparent_memo),
+                    message = stringRes(R.string.send_info_memo),
                     icon = R.drawable.ic_confirmation_message_info,
                 ).takeIf { transactionProposal.destination is WalletAddress.Transparent },
             ),
@@ -191,12 +191,12 @@ class ReviewTransactionVM(
                     exchangeRate = exchangeRateState,
                 ),
                 SenderState(
-                    title = stringRes(R.string.send_confirmation_address_from),
+                    title = stringRes(R.string.accounts_sendingFrom),
                     icon = selectedWallet.icon,
                     name = selectedWallet.name
                 ),
                 ReceiverExpandedState(
-                    title = stringRes(R.string.payment_request_requested_by),
+                    title = stringRes(R.string.send_requestPayment_requestedBy),
                     name = addressBookContact?.name?.let { stringRes(it) },
                     address =
                         stringResByAddress(
@@ -211,7 +211,7 @@ class ReviewTransactionVM(
                                 } else {
                                     co.electriccoin.zcash.ui.design.R.drawable.ic_chevron_down
                                 },
-                            text = stringRes(R.string.payment_request_btn_show_address),
+                            text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_show),
                             onClick = ::onExpandReceiverClick
                         ),
                     saveButton =
@@ -223,7 +223,7 @@ class ReviewTransactionVM(
                 ),
                 transactionProposal.memo.takeIf { it.value.isNotEmpty() }?.let {
                     MessageState(
-                        title = stringRes(R.string.payment_request_memo),
+                        title = stringRes(R.string.send_requestPayment_for),
                         message = stringRes(it.value)
                     )
                 },

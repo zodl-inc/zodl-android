@@ -73,7 +73,14 @@ fun TransactionDetailButtonHeader(
     ZashiButton(
         modifier = modifier.height(36.dp),
         onClick = state.onClick,
-        text = if (state.isExpanded) stringResource(R.string.general_less) else stringResource(R.string.general_more),
+        text =
+            if (state.isExpanded) {
+                stringResource(
+                    R.string.general_less
+                )
+            } else {
+                stringResource(co.electriccoin.zcash.ui.design.R.string.general_more)
+            },
         trailingIcon = if (state.isExpanded) R.drawable.ic_chevron_up else R.drawable.ic_chevron_down,
         colors = ZashiButtonDefaults.tertiaryColors(),
         contentPadding = PaddingValues(start = 8.dp, end = 8.dp),

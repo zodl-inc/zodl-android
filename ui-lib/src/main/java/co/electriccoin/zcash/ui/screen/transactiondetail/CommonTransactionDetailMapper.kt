@@ -41,15 +41,15 @@ class CommonTransactionDetailMapper {
         return ErrorFooter(
             title =
                 if (isServiceUnavailableError) {
-                    stringRes(co.electriccoin.zcash.ui.design.R.string.general_service_unavailable)
+                    stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_laterTitle)
                 } else {
-                    stringRes(co.electriccoin.zcash.ui.design.R.string.general_unexpected_error)
+                    stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_retryTitle)
                 },
             subtitle =
                 if (isServiceUnavailableError) {
-                    stringRes(co.electriccoin.zcash.ui.design.R.string.general_please_try_again)
+                    stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_laterDesc)
                 } else {
-                    stringRes(co.electriccoin.zcash.ui.design.R.string.general_check_connection)
+                    stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_retryDesc)
                 }
         )
     }

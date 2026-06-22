@@ -58,7 +58,7 @@ fun KeystoneConnectedView(state: KeystoneConnectedState) {
                 )
                 Spacer(Modifier.height(32.dp))
                 Text(
-                    text = stringResource(R.string.keystone_connected_subtitle),
+                    text = stringResource(R.string.keystone_addHWWallet_connected),
                     style = ZashiTypography.header6,
                     color = ZashiColors.Text.textPrimary,
                     fontWeight = FontWeight.SemiBold,
@@ -66,7 +66,7 @@ fun KeystoneConnectedView(state: KeystoneConnectedState) {
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = stringResource(R.string.keystone_connected_message),
+                    text = stringResource(R.string.keystone_addHWWallet_connectedDesc),
                     style = ZashiTypography.textSm,
                     color = ZashiColors.Text.textTertiary,
                     textAlign = TextAlign.Center,

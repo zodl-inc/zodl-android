@@ -10,7 +10,7 @@ class ResyncErrorMapperUseCase(
     fun mapToState(error: LceContent.Error) =
         errorStateMapper.mapToState(
             error = error,
-            title = stringRes(R.string.resync_confirm_failed_title),
-            message = stringRes(R.string.resync_confirm_failed_message),
+            title = stringRes(R.string.resyncWallet_failedTitle),
+            message = stringRes(R.string.resyncWallet_failedDescription),
         )
 }

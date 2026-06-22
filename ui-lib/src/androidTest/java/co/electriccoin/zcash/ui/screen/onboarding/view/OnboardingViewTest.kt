@@ -31,7 +31,7 @@ class OnboardingViewTest : UiTestPrerequisites() {
 
         composeTestRule
             .onNodeWithText(
-                text = getStringResource(R.string.onboarding_create_new_wallet),
+                text = getStringResource(R.string.plainOnboarding_button_createNewWallet),
                 ignoreCase = true
             ).also {
                 it.assertExists()
@@ -41,7 +41,7 @@ class OnboardingViewTest : UiTestPrerequisites() {
 
         composeTestRule
             .onNodeWithText(
-                text = getStringResource(R.string.onboarding_import_existing_wallet),
+                text = getStringResource(R.string.plainOnboarding_button_restoreWallet),
                 ignoreCase = true
             ).also {
                 it.assertExists()
@@ -57,7 +57,7 @@ class OnboardingViewTest : UiTestPrerequisites() {
 
         val newWalletButton =
             composeTestRule.onNodeWithText(
-                text = getStringResource(R.string.onboarding_create_new_wallet),
+                text = getStringResource(R.string.plainOnboarding_button_createNewWallet),
                 ignoreCase = true
             )
         newWalletButton.performClick()
@@ -74,7 +74,7 @@ class OnboardingViewTest : UiTestPrerequisites() {
 
         val newWalletButton =
             composeTestRule.onNodeWithText(
-                text = getStringResource(R.string.onboarding_import_existing_wallet),
+                text = getStringResource(R.string.plainOnboarding_button_restoreWallet),
                 ignoreCase = true
             )
         newWalletButton.performClick()

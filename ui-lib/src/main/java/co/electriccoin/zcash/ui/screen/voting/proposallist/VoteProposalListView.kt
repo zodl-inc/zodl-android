@@ -50,7 +50,7 @@ fun VoteProposalListView(state: VoteProposalListState) {
     BlankBgScaffold(
         topBar = {
             VoteAppBar(
-                title = stringResource(R.string.vote_top_bar_title),
+                title = stringResource(R.string.coinVote_common_screenTitle),
                 onBack = state.onBack,
             )
         },
@@ -123,7 +123,7 @@ fun VoteProposalListLoadingView(state: VoteProposalListState) {
     BlankBgScaffold(
         topBar = {
             VoteAppBar(
-                title = stringResource(R.string.vote_top_bar_title),
+                title = stringResource(R.string.coinVote_common_screenTitle),
                 onBack = state.onBack,
             )
         },
@@ -229,14 +229,14 @@ private fun HeaderMetaLine(state: VoteProposalMetaLineState) {
 private fun ReviewHeader() {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = stringResource(R.string.vote_proposal_list_review_title),
+            text = stringResource(R.string.coinVote_proposalList_reviewTitle),
             style = ZashiTypography.header6,
             color = ZashiColors.Text.textPrimary,
             fontWeight = FontWeight.SemiBold,
         )
         Spacer(8.dp)
         Text(
-            text = stringResource(R.string.vote_proposal_list_review_subtitle),
+            text = stringResource(R.string.coinVote_proposalList_reviewSubtitle),
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textPrimary,
         )
@@ -334,7 +334,7 @@ private fun Value(label: String, colors: VoteColors) {
 @Composable
 private fun Label(colors: VoteColors) {
     Text(
-        text = stringResource(R.string.vote_proposal_list_your_vote),
+        text = stringResource(R.string.coinVote_proposalList_yourVote),
         style = ZashiTypography.textXxs,
         fontWeight = FontWeight.Medium,
         color = colors.labelColor,

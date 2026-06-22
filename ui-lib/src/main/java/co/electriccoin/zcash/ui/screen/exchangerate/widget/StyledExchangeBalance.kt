@@ -207,7 +207,7 @@ private fun ExchangeRateUnavailableButton(
             textColor = textColor,
         ) {
             Text(
-                text = stringResource(id = R.string.exchange_rate_unavailable_title),
+                text = stringResource(id = R.string.tooltip_exchangeRate_title),
                 style = style,
                 maxLines = 1,
                 color = textColor

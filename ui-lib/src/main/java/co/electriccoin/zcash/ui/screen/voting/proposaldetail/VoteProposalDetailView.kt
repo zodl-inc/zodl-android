@@ -155,7 +155,7 @@ private fun ForumLinkRow(onClick: () -> Unit) {
         }
         Spacer(16.dp)
         Text(
-            text = stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_forum_link).getValue(),
+            text = stringRes(co.electriccoin.zcash.ui.R.string.coinVote_proposalDetail_viewForumDiscussion).getValue(),
             style = ZashiTypography.textMd,
             color = ZashiColors.Text.textPrimary,
             fontWeight = FontWeight.SemiBold,
@@ -240,7 +240,7 @@ private fun NavigationButtons(state: VoteProposalDetailState) {
                 ButtonState(
                     text =
                         if (state.isEditingFromReview) {
-                            stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_save)
+                            stringRes(co.electriccoin.zcash.ui.R.string.coinVote_common_save)
                         } else {
                             stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_next)
                         },

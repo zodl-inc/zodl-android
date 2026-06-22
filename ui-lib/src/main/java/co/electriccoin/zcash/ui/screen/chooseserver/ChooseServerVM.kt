@@ -79,7 +79,7 @@ class ChooseServerVM(
         return ServerConnectionModeState(
             automatic =
                 RadioButtonState(
-                    text = stringRes(R.string.choose_server_automatic),
+                    text = stringRes(R.string.serverSetup_automatic),
                     subtitle =
                         if (local.isAutomatic) {
                             val automaticEndpoint =
@@ -102,10 +102,10 @@ class ChooseServerVM(
                 ),
             manual =
                 RadioButtonState(
-                    text = stringRes(R.string.choose_server_manual),
+                    text = stringRes(R.string.serverSetup_manual),
                     subtitle =
                         if (!local.isAutomatic && fastestServers.isLoading) {
-                            stringRes(R.string.choose_server_loading_title)
+                            stringRes(R.string.serverSetup_performingTest)
                         } else {
                             null
                         },
@@ -114,7 +114,7 @@ class ChooseServerVM(
                     hapticFeedbackType = if (!local.isAutomatic) null else HapticFeedbackType.SegmentTick
                 ),
             automaticBadge =
-                if (fastestServers.isLoading) stringRes(R.string.choose_server_testing) else null
+                if (fastestServers.isLoading) stringRes(R.string.serverSetup_testing) else null
         )
     }
 
@@ -124,7 +124,7 @@ class ChooseServerVM(
         fastestServers: FastestServersState,
     ): ServerListState.Fastest =
         ServerListState.Fastest(
-            title = stringRes(R.string.choose_server_fastest_servers),
+            title = stringRes(R.string.serverSetup_fastestServers),
             servers =
                 fastestServers.servers
                     ?.map { endpoint ->
@@ -154,9 +154,9 @@ class ChooseServerVM(
         return ServerListState.Other(
             title =
                 if (fastestServers.servers.isNullOrEmpty()) {
-                    stringRes(R.string.choose_server_browse_servers)
+                    stringRes(R.string.serverSetup_allServers)
                 } else {
-                    stringRes(R.string.choose_server_other_servers)
+                    stringRes(R.string.serverSetup_otherServers)
                 },
             servers =
                 innerState.value.availableServers
@@ -183,7 +183,7 @@ class ChooseServerVM(
                 if (isSaveInProgress) {
                     stringRes(R.string.choose_server_saving)
                 } else {
-                    stringRes(R.string.choose_server_save)
+                    stringRes(R.string.serverSetup_save)
                 },
             isEnabled = !isSaveInProgress && hasUnsavedChanges(local, persisted),
             isLoading = isSaveInProgress,
@@ -422,7 +422,7 @@ class ChooseServerVM(
                             text = stringRes(R.string.choose_server_validation_dialog_error_text),
                             confirmButtonState =
                                 ButtonState(
-                                    text = stringRes(R.string.choose_server_save_success_dialog_btn),
+                                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_ok),
                                     onClick = ::onConfirmDialogButtonClicked
                                 ),
                         ),

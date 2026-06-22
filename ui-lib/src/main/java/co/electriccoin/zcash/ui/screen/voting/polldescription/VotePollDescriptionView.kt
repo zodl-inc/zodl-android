@@ -119,7 +119,7 @@ fun VotePollDescriptionView(
                         }
                         Spacer(16.dp)
                         Text(
-                            text = stringRes(R.string.vote_proposal_detail_forum_discussions).getValue(),
+                            text = stringRes(R.string.coinVote_proposalList_viewForumDiscussions).getValue(),
                             style = ZashiTypography.textMd,
                             fontWeight = FontWeight.SemiBold,
                             color = ZashiColors.Text.textPrimary,

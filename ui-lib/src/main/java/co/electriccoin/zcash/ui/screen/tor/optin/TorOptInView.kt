@@ -38,19 +38,19 @@ fun TorOptInView(state: TorOptInState) {
             ZashiInfoRow(
                 icon = R.drawable.ic_tor_opt_in_item_1,
                 title = stringResource(R.string.tor_opt_in_item_title_1),
-                subtitle = stringResource(R.string.tor_opt_in_item_subtitle_1),
+                subtitle = stringResource(R.string.torSetup_option1_desc),
             )
             Spacer(20.dp)
             ZashiInfoRow(
                 icon = R.drawable.ic_tor_opt_in_item_2,
-                title = stringResource(R.string.tor_opt_in_item_title_2),
-                subtitle = stringResource(R.string.tor_opt_in_item_subtitle_2),
+                title = stringResource(R.string.torSetup_option2_title),
+                subtitle = stringResource(R.string.torSetup_option2_desc),
             )
             Spacer(20.dp)
             ZashiInfoRow(
                 icon = R.drawable.ic_tor_opt_in_item_3,
                 title = stringResource(R.string.tor_opt_in_item_title_3),
-                subtitle = stringResource(R.string.tor_opt_in_item_subtitle_3),
+                subtitle = stringResource(R.string.torSetup_option3_desc),
             )
         },
         info = null,

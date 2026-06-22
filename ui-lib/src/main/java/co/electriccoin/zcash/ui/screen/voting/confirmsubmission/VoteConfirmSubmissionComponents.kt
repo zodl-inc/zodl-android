@@ -40,7 +40,7 @@ internal fun VoteSubmissionDetailsCard(state: VoteConfirmSubmissionState) {
     ) {
         Column {
             VoteSubmissionDetailRow(
-                label = stringRes(R.string.vote_confirm_detail_poll),
+                label = stringRes(R.string.coinVote_confirmSubmission_detailPoll),
                 value = state.roundTitle.getValue(),
             )
             if (isIdle && !state.isKeystoneUser) {
@@ -53,7 +53,7 @@ internal fun VoteSubmissionDetailsCard(state: VoteConfirmSubmissionState) {
             } else if (!isIdle) {
                 HorizontalDivider(color = ZashiColors.Surfaces.bgPrimary)
                 VoteSubmissionDetailRow(
-                    label = stringRes(R.string.vote_confirm_detail_voting_power),
+                    label = stringRes(R.string.coinVote_confirmSubmission_detailVotingPower),
                     value = state.votingWeightZEC.getValue(),
                 )
             }
@@ -103,7 +103,7 @@ internal fun VoteSubmissionBottomSection(state: VoteConfirmSubmissionState) {
 
                 is VoteSubmissionStatus.Submitting -> {
                     stringRes(
-                        R.string.vote_confirm_status_submitting,
+                        R.string.coinVote_confirmSubmission_progressSubmittingVoteCount,
                         status.current,
                         status.total
                     )

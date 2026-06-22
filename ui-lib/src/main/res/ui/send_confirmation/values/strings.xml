@@ -4,37 +4,35 @@
     <string name="send_stage_confirmation_title">Confirmation</string>
     <string name="send_confirmation_amount">Total Amount</string>
     <string name="send_confirmation_address">Send to</string>
-    <string name="send_confirmation_address_from">Send from</string>
+    <string name="accounts_sendingFrom">Send from</string>
     <string name="send_confirmation_memo">Message</string>
     <string name="send_confirmation_fee">Fee</string>
     <string name="send_confirmation_amount_item">Amount</string>
     <string name="send_confirmation_send_button">Send</string>
-    <string name="send_confirmation_back_button">Cancel</string>
 
     <string name="send_confirmation_sending_title">Sending…</string>
-    <string name="send_confirmation_sending_subtitle">Your coins are being sent to\n
+    <string name="send_sendingInfo">Your coins are being sent to\n
         <xliff:g example="zs12ghrbdjfs24383x5T…" id="index">%1$s</xliff:g>
     </string>
     <string name="send_confirmation_sending_title_transparent">Shielding…</string>
-    <string name="send_confirmation_sending_subtitle_transparent">Your coins are getting shielded</string>
-    <string name="send_confirmation_success_title_transparent">Shielded!</string>
-    <string name="send_confirmation_success_subtitle_transparent">Your coins have been successfully shielded</string>
-    <string name="send_confirmation_failure_title_transparent">Unable to shield</string>
-    <string name="send_confirmation_failure_subtitle_transparent">There was an error attempting to shield your
+    <string name="send_shieldingInfo">Your coins are getting shielded</string>
+    <string name="send_successShielding">Shielded!</string>
+    <string name="send_successShieldingInfo">Your coins have been successfully shielded</string>
+    <string name="send_failureShielding">Unable to shield</string>
+    <string name="send_failureShieldingInfo">There was an error attempting to shield your
         coins. Try it again, please.</string>
 
-    <string name="send_confirmation_success_title">Sent!</string>
-    <string name="send_confirmation_success_subtitle">Your coins were successfully sent to\n
+    <string name="send_success">Sent!</string>
+    <string name="send_successInfo">Your coins were successfully sent to\n
         <xliff:g example="zs12ghrbdjfs24383x5T…" id="index">%1$s</xliff:g>
     </string>
     <string name="send_confirmation_success_view_trx">View Transaction</string>
     <string name="send_confirmation_success_btn_close">Close</string>
 
     <string name="send_confirmation_failure_title">Send Failed</string>
-    <string name="send_confirmation_failure_subtitle">There was an error attempting to send coins.\nTry it again, please.</string>
+    <string name="send_failureInfo">There was an error attempting to send coins.\nTry it again, please.</string>
     <string name="send_confirmation_failure_view_trx">View Transaction</string>
     <string name="send_confirmation_failure_close_button">Close</string>
-    <string name="send_confirmation_failure_report_button">Report</string>
 
     <string name="send_confirmation_failure_grpc_title">Connection Issue</string>
     <string name="send_confirmation_failure_grpc_subtitle">Zodl encountered connection issues when submitting the
@@ -67,26 +65,26 @@
     </string>
     <string name="send_confirmation_multiple_trx_failure_report_unable_open_email">Unable to launch email app.</string>
     <string name="send_confirmation_multiple_trx_failure_copy_tag">Transaction IDs</string>
-    <string name="send_confirmation_success_swap_subtitle">You successfully initiated a swap.\nFollow its status on the transaction screen.</string>
-    <string name="send_confirmation_error_swap_subtitle">There was an error initiating a swap.\nTry it again, please.</string>
-    <string name="send_confirmation_swapping_subtitle_transparent">Your coins are being sent to the deposit address…</string>
-    <string name="send_confirmation_success_btn_check_status">Check status</string>
+    <string name="swapAndPay_successSwapInfo">You successfully initiated a swap.\nFollow its status on the transaction screen.</string>
+    <string name="swapAndPay_failureSwapInfo">There was an error initiating a swap.\nTry it again, please.</string>
+    <string name="swapAndPay_sendingInfo">Your coins are being sent to the deposit address…</string>
+    <string name="swapAndPay_checkStatus">Check status</string>
     <string name="send_confirmation_total">Total</string>
-    <string name="send_confirmation_pay_with_keystone">Pay with Keystone</string>
+    <string name="keystone_confirmPay">Pay with Keystone</string>
     <string name="send_confirmation_pay">Pay</string>
 
     <!-- Pending states -->
-    <string name="send_confirmation_pending_transaction_title">Transaction Pending</string>
-    <string name="send_confirmation_pending_transaction_subtitle">Your transaction is being processed.</string>
-    <string name="send_confirmation_pending_timeout_subtitle">Timed out waiting for a server response. Your transaction may still have been broadcast.</string>
+    <string name="send_pendingTitle">Transaction Pending</string>
+    <string name="send_pendingInfo">Your transaction is being processed.</string>
+    <string name="send_pendingTimeoutInfo">Timed out waiting for a server response. Your transaction may still have been broadcast.</string>
     <string name="send_confirmation_pending_swap_title">Swap Pending</string>
-    <string name="send_confirmation_pending_swap_subtitle">Your swap is being processed. Follow its status on the transaction screen.</string>
-    <string name="send_confirmation_pending_payment_title">Payment Pending</string>
-    <string name="send_confirmation_pending_payment_subtitle">Your cross-chain payment is being processed. Follow its status on the transaction screen.</string>
-    <string name="send_confirmation_pending_shielding_title">Shielding Pending</string>
-    <string name="send_confirmation_pending_shielding_subtitle">Your shielding transaction is being processed.</string>
+    <string name="swapAndPay_pendingSwapInfo">Your swap is being processed. Follow its status on the transaction screen.</string>
+    <string name="swapAndPay_pendingPayTitle">Payment Pending</string>
+    <string name="swapAndPay_pendingPayInfo">Your cross-chain payment is being processed. Follow its status on the transaction screen.</string>
+    <string name="send_pendingShieldingTitle">Shielding Pending</string>
+    <string name="send_pendingShieldingInfo">Your shielding transaction is being processed.</string>
 
     <!-- Cross-chain payment success -->
-    <string name="send_confirmation_success_cross_chain_subtitle">You successfully initiated a cross-chain payment.\nFollow its status on the transaction screen.</string>
+    <string name="swapAndPay_successPayInfo">You successfully initiated a cross-chain payment.\nFollow its status on the transaction screen.</string>
 
 </resources>

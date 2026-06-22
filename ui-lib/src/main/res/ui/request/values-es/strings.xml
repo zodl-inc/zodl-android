@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="request_title">Solicitar</string>
-    <string name="request_amount_invalid">Este monto de transacción no es válido</string>
+    <string name="zecKeyboard_invalid">Este monto de transacción no es válido</string>
     <string name="request_amount_btn">Siguiente</string>
     <string name="request_memo_btn">Solicitar</string>
     <string name="request_qr_share_btn">Compartir Código QR</string>
@@ -23,7 +23,7 @@
     <string name="request_amount_keyboard_delete">Eliminar</string>
 
     <string name="request_memo_payment_request_subtitle">Solicitud de Pago</string>
-    <string name="request_memo_text_field_hint">¿Para qué es esto?</string>
+    <string name="requestZec_whatFor">¿Para qué es esto?</string>
     <string name="request_memo_bytes_counter">
         <xliff:g id="typed_bytes" example="12">%1$s</xliff:g>/<xliff:g id="max_bytes" example="512">%2$s</xliff:g>
     </string>

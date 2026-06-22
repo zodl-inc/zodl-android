@@ -2,7 +2,6 @@
 <resources>
     <string name="scan_keystone_failure">This QR code is not a valid Keystone wallet.</string>
     <string name="scan_keystone_preview_content_description">Camera</string>
-    <string name="scan_keystone_cancel_button">Cancel</string>
     <string name="scan_keystone_settings_button">Open Settings</string>
     <string name="scan_keystone_settings_open_failed">Unable to launch Settings app.</string>
     <string name="scan_keystone_state_permission">The camera is not authorized. Please go to the system settings of
@@ -12,6 +11,6 @@
     <string name="scan_keystone_torch_content_description">Camera torch toggle</string>
     <string name="scan_keystone_gallery_content_description">Gallery</string>
     <string name="scan_keystone_info">Scan your Keystone wallet to connect</string>
-    <string name="scan_keystone_info_transaction">Scan Keystone QR code to sign the transaction</string>
+    <string name="coinVote_delegationSigning_scanInstructions">Scan Keystone QR code to sign the transaction</string>
 
 </resources>

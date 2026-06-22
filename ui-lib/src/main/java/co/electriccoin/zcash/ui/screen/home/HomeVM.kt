@@ -261,7 +261,7 @@ class HomeVM(
         HomeState(
             firstButton =
                 BigIconButtonState(
-                    text = stringRes(R.string.home_button_receive),
+                    text = stringRes(R.string.tabs_receive),
                     icon = R.drawable.ic_home_receive,
                     onClick = ::onReceiveButtonClick,
                 ),

@@ -45,7 +45,7 @@ class RestoreDateVM(
     private fun createState(selection: YearMonth, isLoading: Boolean) =
         BirthdayPickerState(
             title = stringRes(R.string.restore_title),
-            message = stringRes(R.string.restore_bd_date_message),
+            message = stringRes(R.string.firstWalletTransactionSubtitleRestore),
             logo = null,
             primaryButton =
                 ButtonState(

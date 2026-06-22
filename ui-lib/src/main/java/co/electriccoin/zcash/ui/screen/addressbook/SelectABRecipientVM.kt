@@ -59,7 +59,7 @@ class SelectABRecipientVM(
     ): AddressBookState {
         val accountItems =
             listOf(
-                AddressBookItem.Title(stringRes(R.string.address_book_multiple_wallets_title)),
+                AddressBookItem.Title(stringRes(R.string.accounts_addressBook_your)),
                 *accounts
                     .filter { !it.isSelected }
                     .map { account ->
@@ -95,7 +95,7 @@ class SelectABRecipientVM(
                 listOf(AddressBookItem.Empty)
             } else {
                 listOf(
-                    AddressBookItem.Title(stringRes(R.string.address_book_multiple_wallets_contacts_title)),
+                    AddressBookItem.Title(stringRes(R.string.accounts_addressBook_contacts)),
                     *contacts
                         .map { contact ->
                             AddressBookItem.Contact(
@@ -119,14 +119,14 @@ class SelectABRecipientVM(
             manualButton =
                 ButtonState(
                     onClick = ::onAddContactManuallyClick,
-                    text = stringRes(R.string.address_book_manual_btn)
+                    text = stringRes(R.string.addressBook_manualEntry)
                 ),
             scanButton =
                 ButtonState(
                     onClick = ::onScanContactClick,
-                    text = stringRes(R.string.address_book_scan_btn)
+                    text = stringRes(R.string.addressBook_scanAddress)
                 ),
-            title = stringRes(R.string.address_book_select_recipient_title),
+            title = stringRes(R.string.addressBook_selectRecipient),
             info = null
         )
     }
@@ -152,14 +152,14 @@ class SelectABRecipientVM(
             manualButton =
                 ButtonState(
                     onClick = ::onAddContactManuallyClick,
-                    text = stringRes(R.string.address_book_manual_btn)
+                    text = stringRes(R.string.addressBook_manualEntry)
                 ),
             scanButton =
                 ButtonState(
                     onClick = ::onScanContactClick,
-                    text = stringRes(R.string.address_book_scan_btn)
+                    text = stringRes(R.string.addressBook_scanAddress)
                 ),
-            title = stringRes(R.string.address_book_select_recipient_title),
+            title = stringRes(R.string.addressBook_selectRecipient),
             info = null
         )
 

@@ -40,7 +40,7 @@ fun VoteHowToVoteView(state: VoteHowToVoteState) {
     BlankBgScaffold(
         topBar = {
             VoteAppBar(
-                title = stringResource(AppR.string.vote_top_bar_title),
+                title = stringResource(AppR.string.coinVote_common_screenTitle),
                 onBack = state.onBack,
             )
         },

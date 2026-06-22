@@ -1,22 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="scan_preview_content_description">Camera</string>
-
-    <string name="scan_cancel_button">Cancel</string>
     <string name="scan_settings_button">Open Settings</string>
     <string name="scan_settings_open_failed">Unable to launch Settings app.</string>
 
-    <string name="scan_state_permission">The camera is not authorized. Please go to the system settings of Zodl and turn in on.</string>
+    <string name="scan_cameraSettings">The camera is not authorized. Please go to the system settings of Zodl and turn in on.</string>
     <string name="scan_state_failed">Camera initialization failed. Try it again, please.</string>
-    <string name="scan_address_validation_failed">This QR code doesn`t contain a valid Zcash address.</string>
-    <string name="scan_invalid_image">This image doesn`t contain a valid Zcash address.</string>
-    <string name="scan_several_codes_found">This image contains several valid Zcash addresses.</string>
+    <string name="scan_invalidQR">This QR code doesn`t contain a valid Zcash address.</string>
+    <string name="scan_invalidImage">This image doesn`t contain a valid Zcash address.</string>
+    <string name="scan_severalCodesFound">This image contains several valid Zcash addresses.</string>
 
     <string name="scan_torch_content_description">Camera torch toggle</string>
     <string name="gallery_content_description">Gallery</string>
 
-    <string name="third_party_scan_title">Hello!</string>
-    <string name="third_party_scan_subtitle">Looks like you used a third-party app to scan for payment.</string>
-    <string name="third_party_scan_message">For better safety and security, rescan the QR code with Zodl.</string>
-    <string name="third_party_scan_button">Rescan in Zodl</string>
+    <string name="deeplinkWarning_screenTitle">Hello!</string>
+    <string name="deeplinkWarning_title">Looks like you used a third-party app to scan for payment.</string>
+    <string name="deeplinkWarning_desc">For better safety and security, rescan the QR code with Zodl.</string>
+    <string name="deeplinkWarning_cta">Rescan in Zodl</string>
 </resources>

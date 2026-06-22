@@ -17,7 +17,7 @@ class TransactionProgressPendingDescriptionTest {
     @Test
     fun timeoutReasonUsesDedicatedTimeoutCopy() {
         assertEquals(
-            stringRes(R.string.send_confirmation_pending_timeout_subtitle).withStyle(),
+            stringRes(R.string.send_pendingTimeoutInfo).withStyle(),
             SubmitResult
                 .GrpcFailure(txIds = listOf("a"), reason = SubmitResult.GrpcFailure.Reason.TIMEOUT)
                 .pendingDescription()

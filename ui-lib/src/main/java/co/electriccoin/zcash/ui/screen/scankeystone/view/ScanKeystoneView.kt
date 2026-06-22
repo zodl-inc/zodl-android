@@ -255,7 +255,7 @@ fun ScanBottomItems(
                 ZashiButton(
                     modifier = Modifier.fillMaxWidth(),
                     onClick = onBack,
-                    text = stringResource(id = R.string.scan_keystone_cancel_button)
+                    text = stringResource(id = co.electriccoin.zcash.ui.design.R.string.general_cancel)
                 )
             }
 

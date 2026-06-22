@@ -30,7 +30,7 @@ fun AndroidWalletResyncingInfo() {
             ),
     ) {
         Text(
-            text = stringResource(R.string.home_info_resyncing_title),
+            text = stringResource(R.string.smartBanner_help_resync_title),
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.textXl,
             fontWeight = FontWeight.SemiBold,

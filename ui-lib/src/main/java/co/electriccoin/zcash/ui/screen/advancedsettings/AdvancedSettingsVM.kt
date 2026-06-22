@@ -72,7 +72,7 @@ class AdvancedSettingsVM(
             items =
                 listOfNotNull(
                     ListItemState(
-                        title = stringRes(R.string.advanced_settings_recovery),
+                        title = stringRes(R.string.settings_recoveryPhrase),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_recovery),
                         onClick = ::onSeedRecoveryClick
                     ),
@@ -95,7 +95,7 @@ class AdvancedSettingsVM(
                         onClick = ::onTaxExportClick
                     ),
                     ListItemState(
-                        title = stringRes(R.string.advanced_settings_choose_server),
+                        title = stringRes(R.string.settings_chooseServer),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_choose_server),
                         onClick = ::onChooseServerClick
                     ),
@@ -116,7 +116,7 @@ class AdvancedSettingsVM(
                         onClick = ::onCrashReportingClick
                     ).takeIf { versionInfo.distribution == DistributionDimension.STORE },
                     ListItemState(
-                        title = stringRes(R.string.advanced_settings_disconnect_hw_wallet),
+                        title = stringRes(R.string.disconnectHWWallet_cta),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_disconnect_hw),
                         onClick = ::onDisconnectHwWalletClick
                     ).takeIf { hasKeystoneAccount },

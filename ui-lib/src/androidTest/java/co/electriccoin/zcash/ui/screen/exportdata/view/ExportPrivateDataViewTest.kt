@@ -120,7 +120,7 @@ private fun ComposeContentTestRule.clickConfirm() {
 }
 
 private fun ComposeContentTestRule.clickAgree() {
-    onNodeWithText(getStringResource(R.string.export_data_agree)).also {
+    onNodeWithText(getStringResource(R.string.privateDataConsent_confirmation)).also {
         it.performScrollTo()
         it.performClick()
     }

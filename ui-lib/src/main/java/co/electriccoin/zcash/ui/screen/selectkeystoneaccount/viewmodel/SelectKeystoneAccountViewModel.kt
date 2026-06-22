@@ -48,8 +48,8 @@ class SelectKeystoneAccountViewModel(
     private suspend fun createState(selection: ZcashAccount?): SelectKeystoneAccountState =
         SelectKeystoneAccountState(
             onBackClick = ::onBackClick,
-            title = stringRes(co.electriccoin.zcash.ui.R.string.select_keystone_account_title),
-            subtitle = stringRes(co.electriccoin.zcash.ui.R.string.select_keystone_account_subtitle),
+            title = stringRes(co.electriccoin.zcash.ui.R.string.keystone_addHWWallet_title),
+            subtitle = stringRes(co.electriccoin.zcash.ui.R.string.keystone_addHWWallet_desc),
             items = listOfNotNull(account?.let { createCheckboxState(account, selection) }),
             positiveButtonState =
                 ButtonState(
@@ -68,7 +68,7 @@ class SelectKeystoneAccountViewModel(
             account.name
                 ?.takeIf { it.isNotBlank() }
                 ?.let { stringRes(it) }
-                ?: stringRes(co.electriccoin.zcash.ui.R.string.select_keystone_account_default),
+                ?: stringRes(co.electriccoin.zcash.ui.R.string.keystone_wallet),
         subtitle = stringResByAddress(deriveKeystoneAccountUnifiedAddress(account)),
         icon = R.drawable.ic_item_keystone,
         isSelected = selection == account,

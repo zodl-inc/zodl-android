@@ -551,7 +551,7 @@ private fun TransparentPreview() =
                             ),
                             MessagePlaceholderState(
                                 title = stringRes("Message"),
-                                message = stringRes(co.electriccoin.zcash.ui.R.string.send_transparent_memo),
+                                message = stringRes(co.electriccoin.zcash.ui.R.string.send_info_memo),
                                 icon = co.electriccoin.zcash.ui.R.drawable.ic_confirmation_message_info,
                             )
                         ),
@@ -591,19 +591,19 @@ private fun Zip321Preview() =
                                     ),
                             ),
                             SenderState(
-                                title = stringRes(co.electriccoin.zcash.ui.R.string.send_confirmation_address_from),
+                                title = stringRes(co.electriccoin.zcash.ui.R.string.accounts_sendingFrom),
                                 icon = R.drawable.ic_item_keystone,
                                 name = stringRes("Keystone wallet"),
                             ),
                             ReceiverExpandedState(
-                                title = stringRes(co.electriccoin.zcash.ui.R.string.payment_request_requested_by),
+                                title = stringRes(co.electriccoin.zcash.ui.R.string.send_requestPayment_requestedBy),
                                 name = stringRes("Name"),
                                 address = stringRes("Address").styleAsAddress(),
                                 ChipButtonState(
                                     startIcon = R.drawable.ic_chevron_down,
                                     text =
                                         stringRes(
-                                            co.electriccoin.zcash.ui.R.string.payment_request_btn_show_address,
+                                            co.electriccoin.zcash.ui.design.R.string.general_show,
                                         ),
                                     onClick = {}
                                 ),
@@ -617,7 +617,7 @@ private fun Zip321Preview() =
                                 )
                             ),
                             MessageState(
-                                title = stringRes(co.electriccoin.zcash.ui.R.string.payment_request_memo),
+                                title = stringRes(co.electriccoin.zcash.ui.R.string.send_requestPayment_for),
                                 message = stringRes("Message"),
                             ),
                             FinancialInfoState(

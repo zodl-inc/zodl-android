@@ -80,7 +80,7 @@ private fun BottomSection(state: KeystoneConnectState) {
     Column {
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),
-            text = stringResource(R.string.connect_keystone_positive),
+            text = stringResource(R.string.keystone_addHWWallet_readyToScan),
             onClick = state.onContinueClick
         )
     }
@@ -91,29 +91,29 @@ private fun HowToConnectSection() {
     val listItemContentPadding = PaddingValues(top = 8.dp, end = 20.dp, bottom = 8.dp)
     Column {
         Text(
-            stringResource(R.string.connect_keystone_item_title),
+            stringResource(R.string.keystone_addHWWallet_howTo),
             style = ZashiTypography.textLg,
             color = ZashiColors.Text.textPrimary,
             fontWeight = FontWeight.SemiBold
         )
         Spacer(Modifier.height(8.dp))
         ZashiListItem(
-            title = stringResource(R.string.connect_keystone_item_1),
+            title = stringResource(R.string.keystone_addHWWallet_step1),
             contentPadding = listItemContentPadding,
             icon = imageRes(R.drawable.ic_connect_keystone_1)
         )
         ZashiListItem(
-            title = stringResource(R.string.connect_keystone_item_2),
+            title = stringResource(R.string.keystone_addHWWallet_step2),
             contentPadding = listItemContentPadding,
             icon = imageRes(R.drawable.ic_connect_keystone_2)
         )
         ZashiListItem(
-            title = stringResource(R.string.connect_keystone_item_3),
+            title = stringResource(R.string.keystone_addHWWallet_step3),
             contentPadding = listItemContentPadding,
             icon = imageRes(R.drawable.ic_connect_keystone_3)
         )
         ZashiListItem(
-            title = stringResource(R.string.connect_keystone_item_4),
+            title = stringResource(R.string.keystone_addHWWallet_step4),
             contentPadding = listItemContentPadding,
             icon = imageRes(R.drawable.ic_connect_keystone_4)
         )
@@ -140,7 +140,7 @@ private fun HeaderSection(
         Spacer(Modifier.height(8.dp))
         Text(
             buildAnnotatedString {
-                append(stringResource(R.string.connect_keystone_subtitle))
+                append(stringResource(R.string.keystone_addHWWallet_scan))
                 // appendLine()
                 // appendLine()
                 // withLink(
@@ -156,7 +156,7 @@ private fun HeaderSection(
                 //                 )
                 //                 .toSpanStyle()
                 //     ) {
-                //         append(stringResource(R.string.connect_keystone_subtitle_clickable))
+                //         append(stringResource(R.string.keystone_addHWWallet_tutorial))
                 //     }
                 // }
             },

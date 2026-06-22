@@ -1,43 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="exchange_rate_info_title_1">Protección de dirección IP</string>
-    <string name="exchange_rate_info_subtitle_1">La función de conversión de moneda de Zodl no compromete tu dirección IP.</string>
+    <string name="currencyConversion_ipTitle">Protección de dirección IP</string>
+    <string name="currencyConversion_ipDesc">La función de conversión de moneda de Zodl no compromete tu dirección IP.</string>
     <string name="exchange_rate_info_subtitle_1_no_cmc">Las tasas de cambio son obtenidas a travez de Tor para proteger tu dirección IP. Verifica si el uso de Tor esta permitido en tu region.</string>
-    <string name="exchange_rate_info_title_2">Actualización de tasa</string>
-    <string name="exchange_rate_info_subtitle_2">La tasa se actualiza automáticamente y también se puede actualizar manualmente.</string>
+    <string name="currencyConversion_refresh">Actualización de tasa</string>
+    <string name="currencyConversion_refreshDesc">La tasa se actualiza automáticamente y también se puede actualizar manualmente.</string>
 
-    <string name="exchange_rate_unavailable_title">Tasa de cambio no disponible</string>
-    <string name="exchange_rate_unavailable_subtitle">Intentamos actualizar la tasa de cambio, pero no pudimos. Verifica tu conexión, reinicia la app e intentaremos nuevamente.</string>
+    <string name="tooltip_exchangeRate_title">Tasa de cambio no disponible</string>
+    <string name="tooltip_exchangeRate_desc">Intentamos actualizar la tasa de cambio, pero no pudimos. Verifica tu conexión, reinicia la app e intentaremos nuevamente.</string>
 
     <!-- Hoja inferior de conversión no disponible -->
-    <string name="exchange_rate_unavailable_sheet_title">Conversión de %1$s no disponible</string>
-    <string name="exchange_rate_unavailable_sheet_subtitle">No se pueden obtener las tasas en vivo de %1$s en este momento. Puedes usar USD como alternativa o seguir introduciendo importes solo en ZEC.</string>
-    <string name="exchange_rate_unavailable_sheet_switch_usd">Cambiar a USD</string>
-    <string name="exchange_rate_unavailable_sheet_continue_zec">Continuar en ZEC</string>
+    <string name="send_currencyUnavailable_title">Conversión de %1$s no disponible</string>
+    <string name="send_currencyUnavailable_desc">No se pueden obtener las tasas en vivo de %1$s en este momento. Puedes usar USD como alternativa o seguir introduciendo importes solo en ZEC.</string>
+    <string name="send_currencyUnavailable_switchToUSD">Cambiar a USD</string>
+    <string name="send_currencyUnavailable_continueInZEC">Continuar en ZEC</string>
 
     <string name="exchange_rate_opt_in_title">Nueva función</string>
     <string name="exchange_rate_opt_in_subtitle">Conversión de Moneda</string>
-    <string name="exchange_rate_opt_in_primary_btn">Revisar</string>
 
     <string name="exchange_rate_opt_in_enable">Activar</string>
     <string name="exchange_rate_opt_in_save">Guardar cambios</string>
-    <string name="exchange_rate_opt_in_skip">Omitir por ahora</string>
-    <string name="exchange_rate_opt_in_note">Nota para quienes valoran al máximo la privacidad: debido a que obtenemos la tasa de cambio desde casas de cambio, estas podrían ver que se consultó la tasa antes de que ocurriera una transacción.</string>
+    <string name="currencyConversion_skipBtn">Omitir por ahora</string>
+    <string name="currencyConversion_note">Nota para quienes valoran al máximo la privacidad: debido a que obtenemos la tasa de cambio desde casas de cambio, estas podrían ver que se consultó la tasa antes de que ocurriera una transacción.</string>
 
     <string name="exchange_rate_opt_in_option_title">Activar</string>
-    <string name="exchange_rate_opt_in_option_subtitle">Mostrar la conversión de moneda.</string>
+    <string name="currencyConversion_learnMoreOptionEnableDesc">Mostrar la conversión de moneda.</string>
     <string name="exchange_rate_opt_out_option_title">Desactivar</string>
-    <string name="exchange_rate_opt_out_option_subtitle">No mostrar la conversión de moneda.</string>
-    <string name="exchange_rate_opt_in_description">Muestra tu saldo y montos de pago en la moneda seleccionada. Para Swap y Pay, los tipos de cambio se seguirán mostrando en USD. Puedes administrar esta función en Configuración avanzada.</string>
-    <string name="exchange_rate_opt_in_description_settings">Muestra tu saldo y montos de pago en la moneda seleccionada. Para Swap y Pay, los tipos de cambio se seguirán mostrando en USD.</string>
+    <string name="currencyConversion_learnMoreOptionDisableDesc">No mostrar la conversión de moneda.</string>
+    <string name="currencyConversion_learnMoreDesc">Muestra tu saldo y montos de pago en la moneda seleccionada. Para Swap y Pay, los tipos de cambio se seguirán mostrando en USD. Puedes administrar esta función en Configuración avanzada.</string>
+    <string name="currencyConversion_settingsDesc">Muestra tu saldo y montos de pago en la moneda seleccionada. Para Swap y Pay, los tipos de cambio se seguirán mostrando en USD.</string>
 
-    <string name="exchange_rate_tor_opt_in_title">Tor requerido para la conversión de moneda</string>
+    <string name="torSetup_ccSheet_title">Tor requerido para la conversión de moneda</string>
     <string name="exchange_rate_tor_opt_in_description">La protección con Tor es una función beta que ofrece protecciones adicionales para tu dirección IP. Las tasas de cambio en USD solo están disponibles cuando esta opción está activada.\n\nSi Tor está permitido en tu región, te recomendamos activarlo. Puedes administrarlo en Configuración avanzada.</string>
     <string name="exchange_rate_tor_opt_in_positive">Activar</string>
-    <string name="exchange_rate_tor_opt_in_negative">Hacerlo después</string>
+    <string name="torSetup_ccSheet_later">Hacerlo después</string>
 
-    <string name="exchange_rate_tor_enabled_footer">Desactivar la Protección Tor también desactivará la función de Conversión de Moneda hasta que se vuelva a activar.</string>
-    <string name="exchange_rate_tor_disabled_footer">Si deseas proteger tu dirección IP, activa la Protección Tor en la Configuración Avanzada.</string>
+    <string name="currencyConversion_torOnInfo">Desactivar la Protección Tor también desactivará la función de Conversión de Moneda hasta que se vuelva a activar.</string>
+    <string name="currencyConversion_torOffInfo">Si deseas proteger tu dirección IP, activa la Protección Tor en la Configuración Avanzada.</string>
 
     <!-- Currency conversion picker -->
     <string name="exchange_rate_settings_select_currency">Seleccionar moneda</string>

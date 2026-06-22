@@ -71,7 +71,7 @@ private fun BottomSheetContent(
     ) {
         Text(
             modifier = Modifier.padding(horizontal = 24.dp),
-            text = stringResource(R.string.transaction_filters_title),
+            text = stringResource(R.string.filter_title),
             style = ZashiTypography.textXl,
             fontWeight = FontWeight.SemiBold,
             color = ZashiColors.Text.textPrimary

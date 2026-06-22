@@ -2,7 +2,7 @@
 <resources>
     <string name="restore_title">Restore</string>
     <string name="restore_subtitle">Seed Recovery Phrase</string>
-    <string name="restore_message">Please type in your 24-word secret recovery phrase in the correct order.</string>
+    <string name="restoreWallet_info">Please type in your 24-word secret recovery phrase in the correct order.</string>
     <string name="restore_button">Next</string>
 
     <string name="restore_dialog_title">Need to know more?</string>
@@ -16,36 +16,33 @@
         your funds, providing the block height along with your recovery phrase can significantly speed up the process.
     </string>
 
-    <string name="restore_bd_height_btn">Estimate my block height</string>
+    <string name="restoreWallet_birthday_estimate">Estimate my block height</string>
     <string name="restore_bd_restore_btn">Restore</string>
 
-    <string name="restore_bd_date_message">Decide how far Zodl should scan. Enter a date before your first received transaction. If you\’re not sure, choose an earlier date.</string>
+    <string name="firstWalletTransactionSubtitleRestore">Decide how far Zodl should scan. Enter a date before your first received transaction. If you\’re not sure, choose an earlier date.</string>
 
     <string name="restore_bd_estimation_restore">Restore</string>
 
     <string name="restore_seed_warning_suggestions">This word is not in the seed phrase dictionary.  Please select the correct one from the suggestions.</string>
 
     <string name="restore_tor_title">Enable Tor Protection</string>
-    <string name="restore_tor_subtitle">If Tor is available in your region, we recommend enabling it for enhanced privacy during wallet restoration. This step is completely optional.</string>
+    <string name="torSettingsSheet_msg">If Tor is available in your region, we recommend enabling it for enhanced privacy during wallet restoration. This step is completely optional.</string>
     <string name="restore_tor_checkbox_title">Enable Tor Protection</string>
-    <string name="restore_tor_checkbox_subtitle">Routes your connection through the Tor network for enhanced anonymity and privacy protection.</string>
+    <string name="torSettingsSheet_desc">Routes your connection through the Tor network for enhanced anonymity and privacy protection.</string>
 
     <string name="resync_title">Resync Wallet</string>
-    <string name="resync_bd_date_message">Decide how far Zodl should resync. Enter a date before your first received transaction. If you\'re not sure, choose an earlier date.</string>
+    <string name="firstWalletTransactionSubtitleResync">Decide how far Zodl should resync. Enter a date before your first received transaction. If you\'re not sure, choose an earlier date.</string>
 
     <string name="resync_bd_estimation_message">Your wallet will be resynced from %1$s (%2$s blocks). Zodl will scan and recover all transactions made after the following block number.</string>
-    <string name="confirm_resync_title">Confirm Resync</string>
+    <string name="resyncWallet_confirmTitle">Confirm Resync</string>
     <string name="confirm_resync_subtitle">Resync the current wallet without resetting the app. This can be used to
         troubleshoot issues that would normally require restoring your wallet like fixing your Keystone
         balance.\n\nUnless you specify otherwise below, Zodl will resync from the date displayed.</string>
-    <string name="confirm_resync_message">Unless you specify otherwise below, Zodl will resync from the date displayed.</string>
+    <string name="resyncWallet_dateInfo">Unless you specify otherwise below, Zodl will resync from the date displayed.</string>
     <string name="confirm_resync_info">Your wallet will be resynced from %1$s (%2$s blocks). Use the button below if you wish to change it.</string>
-    <string name="confirm_resync_change">Change</string>
-    <string name="confirm_resync_confirm">Confirm</string>
+    <string name="resyncWallet_change">Change</string>
 
-    <string name="resync_wbh_confirm_button">Confirm</string>
-
-    <string name="resync_confirm_failed_title">Resync Failed</string>
-    <string name="resync_confirm_failed_message">Resync of the wallet couldn’t be finalized. Please try again or report an issue.</string>
+    <string name="resyncWallet_failedTitle">Resync Failed</string>
+    <string name="resyncWallet_failedDescription">Resync of the wallet couldn’t be finalized. Please try again or report an issue.</string>
 
 </resources>

@@ -193,9 +193,9 @@ fun ScanBottomItems(
 
         failureText =
             when (validationResult) {
-                ScanValidationState.INVALID -> stringResource(id = R.string.scan_address_validation_failed)
-                ScanValidationState.INVALID_IMAGE -> stringResource(id = R.string.scan_invalid_image)
-                ScanValidationState.SEVERAL_CODES_FOUND -> stringResource(id = R.string.scan_several_codes_found)
+                ScanValidationState.INVALID -> stringResource(id = R.string.scan_invalidQR)
+                ScanValidationState.INVALID_IMAGE -> stringResource(id = R.string.scan_invalidImage)
+                ScanValidationState.SEVERAL_CODES_FOUND -> stringResource(id = R.string.scan_severalCodesFound)
                 else -> null
             }
 
@@ -204,7 +204,7 @@ fun ScanBottomItems(
             when (scanState) {
                 ScanScreenState.Permission -> {
                     stringResource(
-                        id = R.string.scan_state_permission,
+                        id = R.string.scan_cameraSettings,
                         stringResource(id = R.string.app_name)
                     )
                 }
@@ -245,7 +245,7 @@ fun ScanBottomItems(
                 ZashiButton(
                     modifier = Modifier.fillMaxWidth(),
                     onClick = onBack,
-                    text = stringResource(id = R.string.scan_cancel_button)
+                    text = stringResource(id = co.electriccoin.zcash.ui.design.R.string.general_cancel)
                 )
             }
 

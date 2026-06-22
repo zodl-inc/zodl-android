@@ -45,8 +45,8 @@ class ErrorVM(
 
     private fun createSdkSynchronizerError(): ErrorState =
         ErrorState(
-            title = stringRes(R.string.error_tor_title),
-            message = stringRes(R.string.error_tor_message),
+            title = stringRes(R.string.torSetup_alert_title),
+            message = stringRes(R.string.torSetup_alert_msg),
             positive =
                 ButtonState(
                     text = stringRes(R.string.error_tor_negative),
@@ -54,7 +54,7 @@ class ErrorVM(
                 ),
             negative =
                 ButtonState(
-                    text = stringRes(R.string.error_tor_positive),
+                    text = stringRes(R.string.torSetup_alert_dontDisable),
                     onClick = { navigationRouter.back() }
                 ),
             onBack = ::onBack,
@@ -62,7 +62,7 @@ class ErrorVM(
 
     private fun createSyncErrorState(args: ErrorArgs.SyncError) =
         ErrorState(
-            title = stringRes(R.string.error_sync_title),
+            title = stringRes(R.string.smartBanner_help_syncError_title),
             message = stringRes(args.synchronizerError.getStackTrace(STACKTRACE_LIMIT).orEmpty()),
             positive =
                 ButtonState(
@@ -79,17 +79,17 @@ class ErrorVM(
 
     private fun createShieldingErrorState(args: ErrorArgs.ShieldingError) =
         ErrorState(
-            title = stringRes(R.string.error_shielding_title),
+            title = stringRes(R.string.shieldFunds_error_title),
             message =
                 when (args.error) {
                     is SubmitResult.Error,
                     is SubmitResult.GrpcFailure -> {
-                        stringRes(R.string.error_shielding_message_grpc)
+                        stringRes(R.string.shieldFunds_error_gprc_message)
                     }
 
                     is SubmitResult.Failure -> {
                         stringRes(
-                            R.string.error_shielding_message,
+                            R.string.shieldFunds_error_failure_message,
                             stringRes(
                                 buildString {
                                     appendLine("Error code: ${args.error.code}")
@@ -101,7 +101,7 @@ class ErrorVM(
 
                     is SubmitResult.Partial -> {
                         stringRes(
-                            R.string.error_shielding_message,
+                            R.string.shieldFunds_error_failure_message,
                             args.error.statuses.joinToString()
                         )
                     }
@@ -146,10 +146,10 @@ class ErrorVM(
 
     private fun createGeneralShieldingErrorState(args: ErrorArgs.ShieldingGeneralError) =
         ErrorState(
-            title = stringRes(R.string.error_shielding_title),
+            title = stringRes(R.string.shieldFunds_error_title),
             message =
                 stringRes(
-                    R.string.error_shielding_message,
+                    R.string.shieldFunds_error_failure_message,
                     stringRes(args.exception.stackTraceToString().take(STACKTRACE_LIMIT))
                 ),
             positive =

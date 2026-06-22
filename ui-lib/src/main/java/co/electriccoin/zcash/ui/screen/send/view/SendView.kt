@@ -387,7 +387,7 @@ fun SendButton(
                 }
             }
         },
-        text = stringResource(id = R.string.send_create),
+        text = stringResource(id = co.electriccoin.zcash.ui.design.R.string.general_review),
         enabled = sendButtonEnabled,
         modifier =
             Modifier
@@ -458,7 +458,7 @@ fun SendFormAddressTextField(
             textStyle = ZashiTypography.textMd.copy(fontFamily = RobotoMonoFontFamily),
             placeholder = {
                 Text(
-                    text = stringResource(id = R.string.send_address_hint),
+                    text = stringResource(id = R.string.send_addressPlaceholder),
                     style = ZashiTypography.textMd,
                     color = ZashiColors.Inputs.Default.text
                 )
@@ -543,7 +543,7 @@ fun SendFormAmountTextField(
                 if (amountState.value.isEmpty()) {
                     null
                 } else {
-                    stringResource(id = R.string.send_amount_invalid)
+                    stringResource(id = R.string.send_error_invalidAmount)
                 }
             }
 
@@ -748,13 +748,13 @@ fun SendFormMemoTextField(
             placeholder = {
                 if (isMemoFieldAvailable) {
                     Text(
-                        text = stringResource(id = R.string.send_memo_hint),
+                        text = stringResource(id = R.string.send_memoPlaceholder),
                         style = ZashiTypography.textMd,
                         color = ZashiColors.Inputs.Default.text
                     )
                 } else {
                     Text(
-                        text = stringResource(R.string.send_transparent_memo),
+                        text = stringResource(R.string.send_info_memo),
                         style = ZashiTypography.textSm,
                         color = ZashiColors.Utility.Gray.utilityGray700
                     )
@@ -836,7 +836,7 @@ private fun SendFailure(
     // TODO [#1276]: https://github.com/Electric-Coin-Company/zashi-android/issues/1276
 
     AppAlertDialog(
-        title = stringResource(id = R.string.send_dialog_error_title),
+        title = stringResource(id = R.string.send_alert_failure_title),
         text = {
             Column(
                 Modifier.verticalScroll(rememberScrollState())
@@ -855,7 +855,7 @@ private fun SendFailure(
                 )
             }
         },
-        confirmButtonText = stringResource(id = R.string.send_dialog_error_btn),
+        confirmButtonText = stringResource(id = co.electriccoin.zcash.ui.design.R.string.general_ok),
         onConfirmButtonClick = onConfirm,
         modifier = modifier
     )

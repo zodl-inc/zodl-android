@@ -117,7 +117,7 @@ private fun Content(
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = stringResource(R.string.restore_message),
+            text = stringResource(R.string.restoreWallet_info),
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textPrimary
         )

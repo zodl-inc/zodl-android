@@ -41,7 +41,7 @@ fun WalletResyncingMessage(
         },
         title = {
             Text(
-                text = stringResource(R.string.home_message_resyncing_title),
+                text = stringResource(R.string.smartBannerContentResyncing),
             )
         },
         subtitle = {

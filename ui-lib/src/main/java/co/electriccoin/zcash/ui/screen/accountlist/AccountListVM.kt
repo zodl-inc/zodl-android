@@ -57,11 +57,11 @@ class AccountListVM(
                                 ListItemState(
                                     title =
                                         stringRes(
-                                            co.electriccoin.zcash.ui.R.string.account_list_keystone_promo_title,
+                                            co.electriccoin.zcash.ui.R.string.keystone_drawer_banner_title,
                                         ),
                                     subtitle =
                                         stringRes(
-                                            co.electriccoin.zcash.ui.R.string.account_list_keystone_promo_subtitle,
+                                            co.electriccoin.zcash.ui.R.string.keystone_drawer_banner_desc,
                                         ),
                                     onClick = ::onShowKeystonePromoClicked
                                 )

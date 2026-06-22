@@ -86,7 +86,7 @@ private fun ResetZashiContent(
         Spacer(8.dp)
 
         Text(
-            text = stringResource(R.string.delete_wallet_text_1),
+            text = stringResource(R.string.deleteWallet_message2),
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textTertiary,
         )
@@ -98,7 +98,7 @@ private fun ResetZashiContent(
         )
         Spacer(12.dp)
         Text(
-            text = stringResource(R.string.delete_wallet_text_3),
+            text = stringResource(R.string.deleteWallet_message4),
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textTertiary,
         )
@@ -151,7 +151,7 @@ private fun ResetZashiViewPreview() =
                     onBack = {},
                     checkboxState =
                         CheckboxState(
-                            title = stringRes(R.string.delete_wallet_checkbox_title),
+                            title = stringRes(R.string.deleteWallet_metadataWarn1),
                             subtitle = stringRes("This data cannot be recovered during Restore."),
                             isChecked = true,
                             onClick = {}

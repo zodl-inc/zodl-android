@@ -200,7 +200,7 @@ fun SlippageButton(state: ButtonState, modifier: Modifier = Modifier) {
         verticalAlignment = CenterVertically
     ) {
         Text(
-            text = stringResource(R.string.swap_slippage_tolerance),
+            text = stringResource(R.string.swapAndPay_slippageTolerance),
             style = ZashiTypography.textSm,
             fontWeight = FontWeight.Medium,
             color = ZashiColors.Text.textTertiary

@@ -52,7 +52,7 @@ fun TorSettingsView(state: TorSettingsState) {
                 modifier = Modifier.fillMaxWidth(),
                 isChecked = isOptInSelected,
                 title = stringResource(R.string.exchange_rate_opt_in_option_title),
-                subtitle = stringResource(R.string.tor_settings_item_subtitle_1),
+                subtitle = stringResource(R.string.torSetup_enableDesc),
                 onClick = { isOptInSelected = true }
             )
             Spacer(modifier = Modifier.height(12.dp))
@@ -60,7 +60,7 @@ fun TorSettingsView(state: TorSettingsState) {
                 modifier = Modifier.fillMaxWidth(),
                 isChecked = !isOptInSelected,
                 title = stringResource(R.string.exchange_rate_opt_out_option_title),
-                subtitle = stringResource(R.string.tor_settings_item_subtitle_2),
+                subtitle = stringResource(R.string.torSetup_disableDesc),
                 onClick = { isOptInSelected = false }
             )
         },

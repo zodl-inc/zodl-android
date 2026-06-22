@@ -167,7 +167,7 @@ private fun RequestMemoTextField(
                 ),
             placeholder = {
                 Text(
-                    text = stringResource(id = R.string.request_memo_text_field_hint),
+                    text = stringResource(id = R.string.requestZec_whatFor),
                     style = ZashiTypography.textMd,
                     color = ZashiColors.Inputs.Default.text
                 )

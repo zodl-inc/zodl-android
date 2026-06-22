@@ -58,28 +58,28 @@ internal fun ComposeContentTestRule.setAmount(amount: String) {
 }
 
 internal fun ComposeContentTestRule.setValidAddress() {
-    onNodeWithText(getStringResource(R.string.send_address_hint)).also {
+    onNodeWithText(getStringResource(R.string.send_addressPlaceholder)).also {
         it.performTextClearance()
         it.performTextInput(ZecSendFixture.ADDRESS)
     }
 }
 
 internal fun ComposeContentTestRule.setAddress(address: String) {
-    onNodeWithText(getStringResource(R.string.send_address_hint)).also {
+    onNodeWithText(getStringResource(R.string.send_addressPlaceholder)).also {
         it.performTextClearance()
         it.performTextInput(address)
     }
 }
 
 internal fun ComposeContentTestRule.setValidMemo() {
-    onNodeWithText(getStringResource(R.string.send_memo_hint)).also {
+    onNodeWithText(getStringResource(R.string.send_memoPlaceholder)).also {
         it.performTextClearance()
         it.performTextInput(ZecSendFixture.MEMO.value)
     }
 }
 
 internal fun ComposeContentTestRule.setMemo(memo: String) {
-    onNodeWithText(getStringResource(R.string.send_memo_hint)).also {
+    onNodeWithText(getStringResource(R.string.send_memoPlaceholder)).also {
         it.performTextClearance()
         it.performTextInput(memo)
     }
@@ -93,7 +93,7 @@ internal fun ComposeContentTestRule.clickCreateAndSend() {
 }
 
 internal fun ComposeContentTestRule.dismissFailureDialog() {
-    onNodeWithText(getStringResource(R.string.send_dialog_error_btn)).also {
+    onNodeWithText(getStringResource(co.electriccoin.zcash.ui.design.R.string.general_ok)).also {
         it.performClick()
     }
 }
@@ -105,7 +105,7 @@ internal fun ComposeContentTestRule.assertOnForm() {
 }
 
 internal fun ComposeContentTestRule.assertOnSendFailure() {
-    onNodeWithText(getStringResource(R.string.send_dialog_error_title)).also {
+    onNodeWithText(getStringResource(R.string.send_alert_failure_title)).also {
         it.assertExists()
     }
 }

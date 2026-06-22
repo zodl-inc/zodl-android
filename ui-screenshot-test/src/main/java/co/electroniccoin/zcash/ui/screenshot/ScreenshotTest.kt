@@ -525,14 +525,14 @@ private fun sendZecScreenshots(
     }
 
     composeTestRule.waitUntilAtLeastOneExists(
-        hasText(resContext.getString(R.string.send_create), ignoreCase = true),
+        hasText(resContext.getString(co.electriccoin.zcash.ui.design.R.string.general_review), ignoreCase = true),
         15.seconds.inWholeMilliseconds
     )
 
     composeTestRule
         .onNode(
             hasText(
-                resContext.getString(R.string.send_create),
+                resContext.getString(co.electriccoin.zcash.ui.design.R.string.general_review),
                 ignoreCase = true
             )
         ).also {

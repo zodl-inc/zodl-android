@@ -96,7 +96,7 @@ fun VoteTallyingView(state: VoteTallyingState) {
 
                 VerticalSpacer(24.dp)
                 Text(
-                    text = stringRes(UiR.string.vote_tallying_title).getValue(),
+                    text = stringRes(UiR.string.coinVote_tallying_titleInProgress).getValue(),
                     style = ZashiTypography.header6,
                     color = ZashiColors.Text.textPrimary,
                     fontWeight = FontWeight.SemiBold,
@@ -105,7 +105,7 @@ fun VoteTallyingView(state: VoteTallyingState) {
 
                 VerticalSpacer(12.dp)
                 Text(
-                    text = stringRes(UiR.string.vote_tallying_description).getValue(),
+                    text = stringRes(UiR.string.coinVote_tallying_bodyInProgress).getValue(),
                     style = ZashiTypography.textMd,
                     color = ZashiColors.Text.textSecondary,
                     textAlign = TextAlign.Center,
@@ -123,7 +123,7 @@ fun VoteTallyingView(state: VoteTallyingState) {
                         strokeWidth = 2.dp
                     )
                     Text(
-                        text = stringRes(UiR.string.vote_tallying_status).getValue(),
+                        text = stringRes(UiR.string.coinVote_tallying_status).getValue(),
                         style = ZashiTypography.textSm,
                         color = ZashiColors.Text.textTertiary,
                         fontWeight = FontWeight.Medium
@@ -149,7 +149,7 @@ fun VoteTallyingView(state: VoteTallyingState) {
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         DetailRow(
-                            label = stringRes(UiR.string.vote_tallying_detail_round),
+                            label = stringRes(UiR.string.coinVote_tallying_detailRound),
                             value = state.roundTitle.getValue()
                         )
                         DetailRow(
@@ -157,7 +157,7 @@ fun VoteTallyingView(state: VoteTallyingState) {
                             value = state.endedLabel.getValue()
                         )
                         DetailRow(
-                            label = stringRes(UiR.string.vote_tallying_detail_proposals),
+                            label = stringRes(UiR.string.coinVote_tallying_detailProposals),
                             value = state.proposalCount.getValue()
                         )
                     }

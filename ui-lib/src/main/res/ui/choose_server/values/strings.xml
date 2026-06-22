@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="choose_server_title">Server</string>
+    <string name="serverSetup_title">Server</string>
     <string name="choose_server_default_label">default: <xliff:g id="server" example="example.com:123">%1$s</xliff:g></string>
     <string name="choose_server_custom">custom</string>
     <string name="choose_server_custom_delimiter">:</string>
@@ -11,32 +11,30 @@
     <string name="choose_server_full_server_name_text_field">
         <xliff:g id="hostname" example="example.com">%1$s</xliff:g>:<xliff:g id="port" example="508">%2$d</xliff:g>
     </string>
-    <string name="choose_server_textfield_hint">&lt;hostname&gt;:&lt;port&gt;</string>
-    <string name="choose_server_save">Save selection</string>
+    <string name="serverSetup_placeholder">&lt;hostname&gt;:&lt;port&gt;</string>
+    <string name="serverSetup_save">Save selection</string>
     <string name="choose_server_saving">Saving selection</string>
 
     <string name="choose_server_validation_dialog_error_title">Invalid server endpoint</string>
     <string name="choose_server_validation_dialog_error_text">Error: The attempt to switch endpoints failed.
         Check that the hostname and port are correct, and are formatted as &lt;hostname&gt;:&lt;port&gt;.</string>
-    <string name="choose_server_validation_dialog_error_btn">OK</string>
 
     <string name="choose_server_save_success_dialog_title">Server saved</string>
     <string name="choose_server_save_success_dialog_text">The selected server endpoint has been
         successfully saved.</string>
-    <string name="choose_server_save_success_dialog_btn">OK</string>
     <string name="choose_server_save_default">Default</string>
 
-    <string name="choose_server_loading_title">Performing server test…</string>
-    <string name="choose_server_loading_subtitle">This may take a moment…</string>
+    <string name="serverSetup_performingTest">Performing server test…</string>
+    <string name="serverSetup_couldTakeTime">This may take a moment…</string>
 
-    <string name="choose_server_connection_mode">Connection mode</string>
-    <string name="choose_server_automatic">Automatic</string>
-    <string name="choose_server_manual">Manual</string>
-    <string name="choose_server_fastest_servers">Fastest servers</string>
-    <string name="choose_server_other_servers">Other servers</string>
-    <string name="choose_server_browse_servers">Browse all servers</string>
+    <string name="serverSetup_connectionMode">Connection mode</string>
+    <string name="serverSetup_automatic">Automatic</string>
+    <string name="serverSetup_manual">Manual</string>
+    <string name="serverSetup_fastestServers">Fastest servers</string>
+    <string name="serverSetup_otherServers">Other servers</string>
+    <string name="serverSetup_allServers">Browse all servers</string>
     <string name="choose_server_refresh">Refresh</string>
     <string name="choose_server_active">Active</string>
-    <string name="choose_server_testing">Testing</string>
+    <string name="serverSetup_testing">Testing</string>
     <string name="choose_server_default">Default</string>
 </resources>

@@ -7,12 +7,12 @@
     <string name="general_masked_seed_word">•••••</string>
     <string name="general_hidden_seed_word">Hidden recovery phrase word</string>
 
-    <string name="general_service_unavailable">The service is unavailable</string>
-    <string name="general_unexpected_error">Unexpected error</string>
-    <string name="general_please_try_again">Please try again later.</string>
-    <string name="general_check_connection">Please check your connection and try again.</string>
+    <string name="swapAndPay_failure_laterTitle">The service is unavailable</string>
+    <string name="swapAndPay_failure_retryTitle">Unexpected error</string>
+    <string name="swapAndPay_failure_laterDesc">Please try again later.</string>
+    <string name="swapAndPay_failure_retryDesc">Please check your connection and try again.</string>
     <string name="general_error_title">Something went wrong</string>
-    <string name="general_error_message">We couldn\’t load the assets. Please check your connection and try again.</string>
+    <string name="swapAndPay_failure_wrongDesc">We couldn\’t load the assets. Please check your connection and try again.</string>
     <string name="general_try_again">Try again</string>
     <string name="general_contact_support">Contact Support</string>
     <string name="general_show">Show</string>
@@ -22,7 +22,7 @@
     <string name="general_loading">Loading</string>
     <string name="general_review">Review</string>
     <string name="general_ok">OK</string>
-    <string name="general_got_it">Got it!</string>
+    <string name="restoreInfo_gotIt">Got it!</string>
     <string name="general_report">Report</string>
     <string name="general_zec">%1$s %2$s</string>
     <string name="general_dismiss">Dismiss</string>
@@ -33,9 +33,9 @@
     <string name="general_enter_address">Enter address…</string>
     <string name="general_enter_address_partial">%s address…</string>
     <string name="general_copy">Copy</string>
-    <string name="general_share_qr">Share QR</string>
+    <string name="swapToZec_shareQR">Share QR</string>
     <string name="general_cancel">Cancel</string>
-    <string name="general_on">on</string>
+    <string name="tokenOnChain">on</string>
     <string name="general_warning">Warning:&#160;</string>
 
     <string name="common_empty_screen_title">No results</string>

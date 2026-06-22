@@ -13,8 +13,8 @@ internal fun TooltipScope.StyledExchangeUnavailablePopup(
     onDismissRequest: () -> Unit,
 ) {
     ZashiTooltip(
-        title = stringRes(R.string.exchange_rate_unavailable_title),
-        message = stringRes(R.string.exchange_rate_unavailable_subtitle),
+        title = stringRes(R.string.tooltip_exchangeRate_title),
+        message = stringRes(R.string.tooltip_exchangeRate_desc),
         onDismissRequest = onDismissRequest
     )
 }

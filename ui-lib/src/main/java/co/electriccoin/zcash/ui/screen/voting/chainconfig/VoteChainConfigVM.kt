@@ -74,7 +74,7 @@ class VoteChainConfigVM(
                     id = DEFAULT_CHAIN_ID,
                     radioButtonState =
                         RadioButtonState(
-                            text = stringRes(R.string.vote_chain_config_default_name),
+                            text = stringRes(R.string.coinVote_configSettings_bundledName),
                             subtitle = stringRes(compactSource(StaticVotingConfig.BUNDLED_PINNED_SOURCE)),
                             isChecked = chainConfig.selected is VotingChainConfigSelection.Default,
                             onClick = ::onDefaultSelected
@@ -100,7 +100,7 @@ class VoteChainConfigVM(
                         isDefault = false,
                         editButton =
                             ButtonState(
-                                text = stringRes(R.string.vote_chain_config_edit),
+                                text = stringRes(R.string.coinVote_configSettings_edit),
                                 style = ButtonStyle.TERTIARY,
                                 isEnabled = !isValidating,
                                 onClick = { onEditCustom(chain) }
@@ -308,7 +308,7 @@ class VoteChainConfigVM(
                     runCatching { PinnedConfigSource.parse(chain.pinnedSource) }.getOrNull() == parsedSource
                 }
         return if (hasDuplicateCustom) {
-            stringRes(R.string.vote_chain_config_error_duplicate_custom)
+            stringRes(R.string.coinVote_configSettings_errorDuplicateUrl)
         } else {
             null
         }
@@ -336,9 +336,9 @@ class VoteChainConfigVM(
             sheetTitle =
                 stringRes(
                     if (id == null) {
-                        R.string.vote_chain_config_add_source_nav
+                        R.string.coinVote_configSettings_toolbarAdd
                     } else {
-                        R.string.vote_chain_config_edit_source_nav
+                        R.string.coinVote_configSettings_toolbarEdit
                     }
                 ),
             title =
@@ -346,22 +346,22 @@ class VoteChainConfigVM(
                     if (id == null) {
                         R.string.vote_chain_config_add_title
                     } else {
-                        R.string.vote_chain_config_edit_title
+                        R.string.coinVote_configSettings_headerEditTitle
                     }
                 ),
             description =
                 stringRes(
                     if (id == null) {
-                        R.string.vote_chain_config_add_source_description
+                        R.string.coinVote_configSettings_headerAddBody
                     } else {
-                        R.string.vote_chain_config_edit_source_description
+                        R.string.coinVote_configSettings_headerEditBody
                     }
                 ),
             name =
                 TextFieldState(
                     value = stringRes(name),
                     error =
-                        stringRes(R.string.vote_chain_config_error_name_too_long)
+                        stringRes(R.string.coinVote_configSettings_errorTitleTooLong)
                             .takeIf { name.trim().length > MAX_CUSTOM_CHAIN_NAME_LENGTH },
                     isEnabled = !isValidating,
                     onValueChange = ::onNameChanged
@@ -370,7 +370,7 @@ class VoteChainConfigVM(
                 TextFieldState(
                     value = stringRes(pinnedSource),
                     error =
-                        stringRes(R.string.vote_chain_config_error_url_invalid)
+                        stringRes(R.string.coinVote_configSettings_errorInvalidUrl)
                             .takeIf { pinnedSource.trim().isInvalidPinnedSource() },
                     isEnabled = !isValidating,
                     onValueChange = ::onUrlChanged

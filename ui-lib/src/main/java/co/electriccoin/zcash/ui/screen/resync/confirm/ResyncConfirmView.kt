@@ -133,7 +133,7 @@ private fun ResyncConfirmPreview() =
             state =
                 ResyncConfirmState(
                     title = stringRes(R.string.resync_title),
-                    subtitle = stringRes(R.string.confirm_resync_title),
+                    subtitle = stringRes(R.string.resyncWallet_confirmTitle),
                     message = stringRes(R.string.confirm_resync_subtitle),
                     onBack = {},
                     confirm = ButtonState(stringRes("Confirm")) {},

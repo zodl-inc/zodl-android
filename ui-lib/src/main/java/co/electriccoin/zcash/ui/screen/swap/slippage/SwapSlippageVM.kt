@@ -184,7 +184,7 @@ class SwapSlippageVM(
 
         return SwapSlippageInfoState(
             title = result,
-            additional = stringRes(R.string.pay_slippage_footer).takeIf { args.mode == EXACT_OUTPUT },
+            additional = stringRes(R.string.swapAndPay_slippageWarn).takeIf { args.mode == EXACT_OUTPUT },
             mode =
                 when {
                     percent <= BigDecimal("2") -> SwapSlippageInfoState.Mode.LOW

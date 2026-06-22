@@ -115,16 +115,16 @@ class TransactionProgressVM(
             subtitle =
                 when (proposal) {
                     is ShieldTransactionProposal -> {
-                        stringRes(R.string.send_confirmation_sending_subtitle_transparent).withStyle()
+                        stringRes(R.string.send_shieldingInfo).withStyle()
                     }
 
                     is SwapTransactionProposal -> {
-                        stringRes(R.string.send_confirmation_swapping_subtitle_transparent).withStyle()
+                        stringRes(R.string.swapAndPay_sendingInfo).withStyle()
                     }
 
                     else -> {
                         styledStringResource(
-                            R.string.send_confirmation_sending_subtitle,
+                            R.string.send_sendingInfo,
                             getAddressAbbreviated()
                         )
                     }
@@ -152,27 +152,27 @@ class TransactionProgressVM(
             background = SUCCESS,
             title =
                 if (proposal is ShieldTransactionProposal) {
-                    stringRes(R.string.send_confirmation_success_title_transparent)
+                    stringRes(R.string.send_successShielding)
                 } else {
-                    stringRes(R.string.send_confirmation_success_title)
+                    stringRes(R.string.send_success)
                 },
             subtitle =
                 when (proposal) {
                     is ShieldTransactionProposal -> {
-                        stringRes(R.string.send_confirmation_success_subtitle_transparent).withStyle()
+                        stringRes(R.string.send_successShieldingInfo).withStyle()
                     }
 
                     is ExactInputSwapTransactionProposal -> {
-                        stringRes(R.string.send_confirmation_success_swap_subtitle).withStyle()
+                        stringRes(R.string.swapAndPay_successSwapInfo).withStyle()
                     }
 
                     is ExactOutputSwapTransactionProposal -> {
-                        stringRes(R.string.send_confirmation_success_cross_chain_subtitle).withStyle()
+                        stringRes(R.string.swapAndPay_successPayInfo).withStyle()
                     }
 
                     else -> {
                         styledStringResource(
-                            R.string.send_confirmation_success_subtitle,
+                            R.string.send_successInfo,
                             getAddressAbbreviated()
                         )
                     }
@@ -216,7 +216,7 @@ class TransactionProgressVM(
                     is ExactOutputSwapTransactionProposal -> {
                         if (txId != null) {
                             ButtonState(
-                                text = stringRes(R.string.send_confirmation_success_btn_check_status),
+                                text = stringRes(R.string.swapAndPay_checkStatus),
                                 onClick = { onViewTransactionDetailClick(txId) },
                                 style = ButtonStyle.PRIMARY
                             )
@@ -250,7 +250,7 @@ class TransactionProgressVM(
                 when (proposal) {
                     is Zip321TransactionProposal,
                     is RegularTransactionProposal -> {
-                        stringRes(R.string.send_confirmation_pending_transaction_title)
+                        stringRes(R.string.send_pendingTitle)
                     }
 
                     is ExactInputSwapTransactionProposal -> {
@@ -258,11 +258,11 @@ class TransactionProgressVM(
                     }
 
                     is ExactOutputSwapTransactionProposal -> {
-                        stringRes(R.string.send_confirmation_pending_payment_title)
+                        stringRes(R.string.swapAndPay_pendingPayTitle)
                     }
 
                     is ShieldTransactionProposal -> {
-                        stringRes(R.string.send_confirmation_pending_shielding_title)
+                        stringRes(R.string.send_pendingShieldingTitle)
                     }
                 },
             subtitle =
@@ -270,16 +270,16 @@ class TransactionProgressVM(
                     ?: when (proposal) {
                         is Zip321TransactionProposal,
                         is RegularTransactionProposal -> {
-                            stringRes(R.string.send_confirmation_pending_transaction_subtitle)
+                            stringRes(R.string.send_pendingInfo)
                         }
 
                         is ExactInputSwapTransactionProposal,
                         is ExactOutputSwapTransactionProposal -> {
-                            stringRes(R.string.send_confirmation_pending_swap_subtitle)
+                            stringRes(R.string.swapAndPay_pendingSwapInfo)
                         }
 
                         is ShieldTransactionProposal -> {
-                            stringRes(R.string.send_confirmation_pending_shielding_subtitle)
+                            stringRes(R.string.send_pendingShieldingInfo)
                         }
                     }.withStyle(),
             middleButton =
@@ -321,7 +321,7 @@ class TransactionProgressVM(
                     is ExactOutputSwapTransactionProposal -> {
                         if (txId != null) {
                             ButtonState(
-                                text = stringRes(R.string.send_confirmation_success_btn_check_status),
+                                text = stringRes(R.string.swapAndPay_checkStatus),
                                 onClick = { onViewTransactionDetailClick(txId) },
                                 style = ButtonStyle.PRIMARY
                             )
@@ -351,32 +351,32 @@ class TransactionProgressVM(
             background = ERROR,
             title =
                 if (proposal is ShieldTransactionProposal) {
-                    stringRes(R.string.send_confirmation_failure_title_transparent)
+                    stringRes(R.string.send_failureShielding)
                 } else {
                     stringRes(R.string.send_confirmation_failure_title)
                 },
             subtitle =
                 when (proposal) {
                     is ExactInputSwapTransactionProposal -> {
-                        stringRes(R.string.send_confirmation_error_swap_subtitle)
+                        stringRes(R.string.swapAndPay_failureSwapInfo)
                     }
 
                     is ExactOutputSwapTransactionProposal -> {
-                        stringRes(R.string.send_confirmation_error_swap_subtitle)
+                        stringRes(R.string.swapAndPay_failureSwapInfo)
                     }
 
                     is ShieldTransactionProposal -> {
-                        stringRes(R.string.send_confirmation_failure_subtitle_transparent)
+                        stringRes(R.string.send_failureShieldingInfo)
                     }
 
                     else -> {
-                        stringRes(R.string.send_confirmation_failure_subtitle)
+                        stringRes(R.string.send_failureInfo)
                     }
                 }.withStyle(),
             middleButton = null,
             secondaryButton =
                 ButtonState(
-                    text = stringRes(R.string.send_confirmation_failure_report_button),
+                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_report),
                     onClick = {
                         viewModelScope.launch {
                             when (result) {
@@ -422,7 +422,7 @@ class TransactionProgressVM(
 internal fun SubmitResult.GrpcFailure.pendingDescription(): StyledStringResource? =
     when (reason) {
         SubmitResult.GrpcFailure.Reason.TIMEOUT -> {
-            stringRes(R.string.send_confirmation_pending_timeout_subtitle).withStyle()
+            stringRes(R.string.send_pendingTimeoutInfo).withStyle()
         }
 
         null -> {

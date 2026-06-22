@@ -116,7 +116,7 @@ private fun SupportMainContent(
         Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingMd))
 
         Text(
-            text = stringResource(id = R.string.support_information),
+            text = stringResource(id = R.string.sendFeedback_desc),
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.textSm
         )
@@ -124,7 +124,7 @@ private fun SupportMainContent(
         Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing4xl))
 
         Text(
-            text = stringResource(id = R.string.support_experience_title),
+            text = stringResource(id = R.string.sendFeedback_ratingQuestion),
             color = ZashiColors.Inputs.Default.label,
             style = ZashiTypography.textSm,
             fontWeight = FontWeight.Medium
@@ -137,7 +137,7 @@ private fun SupportMainContent(
         Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing3xl))
 
         Text(
-            text = stringResource(id = R.string.support_help_title),
+            text = stringResource(id = R.string.sendFeedback_howCanWeHelp),
             color = ZashiColors.Inputs.Default.label,
             style = ZashiTypography.textSm,
             fontWeight = FontWeight.Medium
@@ -154,7 +154,7 @@ private fun SupportMainContent(
                     .focusRequester(focusRequester),
             placeholder = {
                 Text(
-                    text = stringResource(id = R.string.support_hint),
+                    text = stringResource(id = R.string.sendFeedback_hcwhPlaceholder),
                     style = ZashiTypography.textMd,
                     color = ZashiColors.Inputs.Default.text
                 )

@@ -49,7 +49,7 @@ fun VoteAppBar(
                         state =
                             IconButtonState(
                                 icon = DesignR.drawable.ic_app_bar_settings,
-                                contentDescription = stringRes(R.string.vote_chain_config_settings_content_description),
+                                contentDescription = stringRes(R.string.coinVote_pollsList_chainConfigAccessibility),
                                 onClick = onConfigSettings
                             ),
                         modifier = Modifier.size(40.dp)

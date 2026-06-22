@@ -34,6 +34,6 @@
     <string name="authentication_failed_button_support">Contactar Soporte</string>
 
     <string name="authentication_failed_welcome_icon_cont_desc">Toca para desbloquear la aplicación <xliff:g id="app_name" example="Zodl">%1$s</xliff:g></string>
-    <string name="authentication_failed_welcome_title">Tu cuenta de Zodl está protegida.</string>
+    <string name="splash_authTitle">Tu cuenta de Zodl está protegida.</string>
     <string name="authentication_failed_welcome_subtitle">Toca el ícono de la llave para desbloquearla.</string>
 </resources>

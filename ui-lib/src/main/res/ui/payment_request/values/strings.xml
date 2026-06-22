@@ -3,27 +3,22 @@
     <string name="payment_request_title">Payment Request</string>
     <string name="payment_request_close_content_description">Close</string>
 
-    <string name="payment_request_requested_by">Requested By</string>
-    <string name="payment_request_btn_show_address">Show</string>
-    <string name="payment_request_btn_hide_address">Hide</string>
+    <string name="send_requestPayment_requestedBy">Requested By</string>
     <string name="payment_request_btn_save_contact">Save</string>
 
-    <string name="payment_request_memo">For:</string>
+    <string name="send_requestPayment_for">For:</string>
 
     <string name="payment_request_fee">Fee</string>
     <string name="payment_request_total">Total</string>
 
     <string name="payment_request_send_btn">Send</string>
 
-    <string name="payment_request_dialog_error_title">Transaction Failed</string>
+    <string name="partners_flexa_transactionFailedTitle">Transaction Failed</string>
     <string name="payment_request_dialog_error_text">An error occurred and the attempt to send funds failed. Try it again, please.</string>
-    <string name="payment_request_dialog_error_ok_btn">OK</string>
-    <string name="payment_request_dialog_error_report_btn">Report</string>
 
     <string name="payment_request_dialog_error_grpc_title">Connection Error</string>
     <string name="payment_request_dialog_error_grpc_text">Zodl encountered some connection issues when submitting
         the transaction to the network. It will retry during the next few minutes.</string>
-    <string name="payment_request_dialog_error_grpc_btn">OK</string>
 
     <string name="payment_request_send_failed_report_unable_open_email">Unable to launch email app.</string>
 </resources>

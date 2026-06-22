@@ -2,15 +2,15 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="about_title">Acerca de</string>
     <string name="about_subtitle">Presentando Zodl</string>
-    <string name="about_overflow_menu_content_description">M�s opciones</string>
-    <string name="about_version_format" formatted="true">Versión de Zodl <xliff:g example="1" id="version">%s</xliff:g></string>
+    <string name="about_overflow_menu_content_description">Más opciones</string>
+    <string name="about_version_format" formatted="true">VersiÃ³n de Zodl <xliff:g example="1" id="version">%s</xliff:g></string>
     <string name="about_debug_menu_app_name">Nombre de la app:<xliff:g example="Zodl" id="app_name">%1$s</xliff:g></string>
-    <string name="about_debug_menu_build">Compilación: <xliff:g example="635dac0eb9ddc2bc6da5177f0dd495d8b76af4dc" id="git_commit_hash">%1$s</xliff:g></string>
-    <string name="about_description">Zodl es una wallet móvil impulsada por Zcash, creada para pagos privados imparables.
-        Está optimizada para almacenar y usar en el mundo real $ZEC protegido: la criptomoneda verdaderamente privada.\n\nDesarrollada por el equipo que estableció el estándar de la industria en privacidad en cadena (on-chain), los desarrolladores originales del protocolo Zcash.
+    <string name="about_debug_menu_build">CompilaciÃ³n: <xliff:g example="635dac0eb9ddc2bc6da5177f0dd495d8b76af4dc" id="git_commit_hash">%1$s</xliff:g></string>
+    <string name="about_description">Zodl es una wallet mÃ³vil impulsada por Zcash, creada para pagos privados imparables.
+        EstÃ¡ optimizada para almacenar y usar en el mundo real $ZEC protegido: la criptomoneda verdaderamente privada.\n\nDesarrollada por el equipo que estableciÃ³ el estÃ¡ndar de la industria en privacidad en cadena (on-chain), los desarrolladores originales del protocolo Zcash.
     </string>
-    <string name="terms_of_use">Términos del Servicio</string>
+    <string name="about_termsOfUse">TÃ©rminos del Servicio</string>
 
-    <string name="about_unable_to_web_browser">No se pudo encontrar una aplicación de navegador web.</string>
-    <string name="about_button_privacy_policy">Política de privacidad</string>
+    <string name="about_unable_to_web_browser">No se pudo encontrar una aplicaciÃ³n de navegador web.</string>
+    <string name="about_privacyPolicy">PolÃ­tica de privacidad</string>
 </resources>

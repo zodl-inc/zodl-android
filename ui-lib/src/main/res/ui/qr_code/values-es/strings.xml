@@ -10,7 +10,7 @@
     <string name="qr_code_privacy_level_shielded">Privado</string>
     <string name="qr_code_privacy_level_transparent">Público</string>
     <string name="qr_code_share_btn">Compartir Código QR</string>
-    <string name="qr_code_copy_btn">Copiar Dirección</string>
+    <string name="addressDetails_copyAddress">Copiar Dirección</string>
     <string name="qr_code_clipboard_tag">Dirección de Wallet Zcash</string>
     <string name="qr_code_data_unable_to_share">No se pudo encontrar una aplicación para compartir el código QR.</string>
     <string name="qr_code_share_chooser_title">Mi Dirección %s en Zodl</string>

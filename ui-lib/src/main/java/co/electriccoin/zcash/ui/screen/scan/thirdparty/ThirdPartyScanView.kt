@@ -34,7 +34,7 @@ fun ThirdPartyScanView(state: ThirdPartyScanState) {
         endColor = ZashiColors.Surfaces.bgPrimary,
         topBar = {
             ZashiSmallTopAppBar(
-                title = stringResource(R.string.third_party_scan_title),
+                title = stringResource(R.string.deeplinkWarning_screenTitle),
                 colors = ZcashTheme.colors.topAppBarColors.copyColors(containerColor = Color.Transparent),
             )
         }
@@ -69,7 +69,7 @@ private fun Content(
         Text(
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center,
-            text = stringResource(R.string.third_party_scan_subtitle),
+            text = stringResource(R.string.deeplinkWarning_title),
             style = ZashiTypography.header6,
             color = ZashiColors.Text.textPrimary,
             fontWeight = FontWeight.SemiBold
@@ -78,7 +78,7 @@ private fun Content(
         Text(
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Center,
-            text = stringResource(R.string.third_party_scan_message),
+            text = stringResource(R.string.deeplinkWarning_desc),
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textPrimary,
         )
@@ -87,7 +87,7 @@ private fun Content(
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),
             onClick = state.onScanClick,
-            text = stringResource(R.string.third_party_scan_button)
+            text = stringResource(R.string.deeplinkWarning_cta)
         )
     }
 }

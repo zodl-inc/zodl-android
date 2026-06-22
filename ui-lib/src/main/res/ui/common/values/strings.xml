@@ -16,30 +16,29 @@
     <string name="unable_to_open_email">Unable to launch email app.</string>
 
     <string name="restoring_wallet_label">[Restoring Your Wallet…]</string>
-    <string name="restoring_wallet_label_new">Restoring Your Wallet…</string>
+    <string name="walletStatus_restoringWallet">Restoring Your Wallet…</string>
     <string name="disconnected_label">[Disconnected…]</string>
-    <string name="disconnected_label_new">Disconnected…</string>
+    <string name="walletStatus_disconnected">Disconnected…</string>
     <string name="unable_to_open_play_store">Unable to launch Google Play Store app…</string>
 
     <string name="general_copied_to_clipboard">Copied to clipboard</string>
     <string name="general_etc">…</string>
 
-    <string name="general_remind_me_later">Remind me later</string>
+    <string name="recoveryPhraseDisplay_button_remindMeLater">Remind me later</string>
     <string name="general_remind_me_in">Remind me in %s</string>
     <string name="general_remind_me_in_two_days">two days</string>
     <string name="general_remind_me_in_two_weeks">two weeks</string>
     <string name="general_remind_me_in_two_months">two months</string>
 
     <!-- Wallet Birthday Height — shared across restore/resync/keystone flows -->
-    <string name="wbh_text_field_title">Block Height</string>
-    <string name="wbh_text_field_hint">Enter number</string>
-    <string name="wbh_text_field_note">Wallet Birthday Height is the point in time when your wallet was created.</string>
-    <string name="wbh_copy">Copy</string>
+    <string name="restoreWallet_birthday_title">Block Height</string>
+    <string name="restoreWallet_birthday_placeholder">Enter number</string>
+    <string name="restoreWallet_birthday_fieldInfo">Wallet Birthday Height is the point in time when your wallet was created.</string>
     <string name="wbh_next">Next</string>
-    <string name="wbh_enter_block_height">Enter block height</string>
-    <string name="wbh_message">Entering your Wallet Birthday Height ensures we can display all your funds and transaction history correctly.</string>
+    <string name="keystone_addHWWallet_enterManually">Enter block height</string>
+    <string name="walletBirthdayHeightSubtitle">Entering your Wallet Birthday Height ensures we can display all your funds and transaction history correctly.</string>
     <string name="wbh_subtitle">Wallet Birthday Height</string>
-    <string name="wbh_date_subtitle">First Wallet Transaction</string>
-    <string name="wbh_estimation_subtitle">Estimated Block Height</string>
-    <string name="wbh_estimation_message">Zodl will scan and recover all transactions made after the following block number.</string>
+    <string name="restoreWallet_birthday_estimateDate_title">First Wallet Transaction</string>
+    <string name="restoreWallet_birthday_estimated_title">Estimated Block Height</string>
+    <string name="restoreWallet_birthday_estimated_info">Zodl will scan and recover all transactions made after the following block number.</string>
 </resources>

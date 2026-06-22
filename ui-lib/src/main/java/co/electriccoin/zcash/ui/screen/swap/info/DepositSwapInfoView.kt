@@ -29,32 +29,32 @@ fun DepositSwapInfoView(onBack: () -> Unit) {
             ),
     ) {
         Text(
-            text = stringResource(R.string.swap_deposit_info_title),
+            text = stringResource(R.string.depositFunds_title),
             style = ZashiTypography.textXl,
             fontWeight = FontWeight.SemiBold,
             color = ZashiColors.Text.textPrimary,
         )
         Spacer(12.dp)
         Text(
-            text = stringResource(R.string.swap_deposit_info_step_1),
+            text = stringResource(R.string.depositFunds_desc),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textSm,
         )
         Spacer(32.dp)
         ZashiBulletText(
-            bulletTexts = listOf(stringResource(R.string.swap_deposit_info_step_2)),
+            bulletTexts = listOf(stringResource(R.string.depositFunds_bulletPoint1)),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textSm,
         )
         Spacer(32.dp)
         ZashiBulletText(
-            bulletTexts = listOf(stringResource(R.string.swap_deposit_info_step_3)),
+            bulletTexts = listOf(stringResource(R.string.depositFunds_bulletPoint2)),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textSm,
         )
         Spacer(32.dp)
         ZashiBulletText(
-            bulletTexts = listOf(stringResource(R.string.swap_deposit_info_step_4)),
+            bulletTexts = listOf(stringResource(R.string.depositFunds_bulletPoint3)),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textSm,
         )

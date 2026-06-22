@@ -61,7 +61,7 @@ internal class TransactionFiltersVM(
 
                                 MEMOS -> {
                                     TransactionFilterState(
-                                        text = stringRes(R.string.transaction_filters_memos),
+                                        text = stringRes(R.string.filter_memos),
                                         isSelected = current.contains(MEMOS),
                                         onClick = { onTransactionFilterClicked(it) }
                                     )
@@ -77,7 +77,7 @@ internal class TransactionFiltersVM(
 
                                 BOOKMARKED -> {
                                     TransactionFilterState(
-                                        text = stringRes(R.string.transaction_filters_bookmarked),
+                                        text = stringRes(R.string.filter_bookmarked),
                                         isSelected = current.contains(BOOKMARKED),
                                         onClick = { onTransactionFilterClicked(it) }
                                     )
@@ -85,7 +85,7 @@ internal class TransactionFiltersVM(
 
                                 NOTES -> {
                                     TransactionFilterState(
-                                        text = stringRes(R.string.transaction_filters_notes),
+                                        text = stringRes(R.string.filter_notes),
                                         isSelected = current.contains(NOTES),
                                         onClick = { onTransactionFilterClicked(it) }
                                     )
@@ -103,7 +103,7 @@ internal class TransactionFiltersVM(
                     onBack = ::onBack,
                     primaryButton =
                         ButtonState(
-                            text = stringRes(R.string.transaction_filters_btn_apply),
+                            text = stringRes(R.string.filter_apply),
                             onClick = ::onApplyTransactionFiltersClick,
                         ),
                     secondaryButton =

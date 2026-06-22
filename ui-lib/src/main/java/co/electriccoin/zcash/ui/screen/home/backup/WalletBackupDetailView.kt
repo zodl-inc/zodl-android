@@ -84,40 +84,40 @@ private fun Content(
             .then(modifier),
     ) {
         Text(
-            text = stringResource(R.string.wallet_backup_subtitle),
+            text = stringResource(R.string.recoveryPhraseDisplay_warningTitle),
             fontWeight = FontWeight.SemiBold,
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.header6
         )
         Spacer(10.dp)
         Text(
-            text = stringResource(R.string.wallet_backup_message),
+            text = stringResource(R.string.recoveryPhraseDisplay_warningInfo),
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.textSm
         )
         Spacer(24.dp)
         ZashiInfoRow(
             icon = R.drawable.ic_wallet_backup_1,
-            title = stringResource(R.string.wallet_backup_item_1),
-            subtitle = stringResource(R.string.wallet_backup_item_subtitle_1)
+            title = stringResource(R.string.recoveryPhraseDisplay_warningControl_title),
+            subtitle = stringResource(R.string.recoveryPhraseDisplay_warningControl_info)
         )
         Spacer(20.dp)
         ZashiInfoRow(
             icon = R.drawable.ic_wallet_backup_2,
-            title = stringResource(R.string.wallet_backup_item_2),
-            subtitle = stringResource(R.string.wallet_backup_item_subtitle_2)
+            title = stringResource(R.string.recoveryPhraseDisplay_warningKeep_title),
+            subtitle = stringResource(R.string.recoveryPhraseDisplay_warningKeep_info)
         )
         Spacer(20.dp)
         ZashiInfoRow(
             icon = R.drawable.ic_wallet_backup_3,
-            title = stringResource(R.string.wallet_backup_item_3),
-            subtitle = stringResource(R.string.wallet_backup_item_subtitle_3)
+            title = stringResource(R.string.recoveryPhraseDisplay_warningStore_title),
+            subtitle = stringResource(R.string.recoveryPhraseDisplay_warningStore_info)
         )
         Spacer(20.dp)
         ZashiInfoRow(
             icon = R.drawable.ic_wallet_backup_4,
             title = stringResource(R.string.wallet_backup_item_4),
-            subtitle = stringResource(R.string.wallet_backup_item_subtitle_4)
+            subtitle = stringResource(R.string.recoveryPhraseDisplay_warningHeight_info)
         )
         Spacer(20.dp)
         Spacer(1f)
@@ -130,7 +130,7 @@ private fun Content(
             )
             Spacer(12.dp)
             Text(
-                text = stringResource(R.string.wallet_backup_info),
+                text = stringResource(R.string.recoveryPhraseDisplay_proceedWarning),
                 color = ZashiColors.Utility.WarningYellow.utilityOrange700,
                 style = ZashiTypography.textXs,
                 fontWeight = FontWeight.Medium

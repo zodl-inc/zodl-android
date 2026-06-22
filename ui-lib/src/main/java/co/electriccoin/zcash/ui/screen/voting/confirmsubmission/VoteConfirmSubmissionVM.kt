@@ -287,7 +287,7 @@ class VoteConfirmSubmissionVM(
 
         isPrepared -> {
             stringRes(
-                R.string.vote_confirm_memo_authorize,
+                R.string.coinVote_delegationSigning_memoMessage,
                 round.title,
                 requireNotNull(recovery?.eligibleWeight).toVotingWeightLabel()
             )
@@ -339,7 +339,7 @@ class VoteConfirmSubmissionVM(
                                 stringRes(R.string.vote_confirm_cta_keystone)
                             } else {
                                 stringRes(
-                                    R.string.vote_confirm_cta_sign_bundle,
+                                    R.string.coinVote_delegationSigning_bundleProgress,
                                     keystoneSignedBundles + 1,
                                     preparedBundleCount
                                 )
@@ -348,11 +348,11 @@ class VoteConfirmSubmissionVM(
 
                         status is VoteSubmissionStatus.Authorizing ||
                             status is VoteSubmissionStatus.LocalAuthorizing -> {
-                            stringRes(R.string.vote_confirm_cta_authorizing)
+                            stringRes(R.string.coinVote_confirmSubmission_progressAuthorizing)
                         }
 
                         status is VoteSubmissionStatus.Submitting -> {
-                            stringRes(R.string.vote_confirm_cta_submitting_generic)
+                            stringRes(R.string.coinVote_submission_continuedProcessingTitle)
                         }
 
                         else -> {
@@ -524,25 +524,36 @@ class VoteConfirmSubmissionVM(
 
     private fun failureTitle(status: VoteSubmissionStatus) =
         when (status) {
-            is VoteSubmissionStatus.LocalAuthFailed -> stringRes(R.string.vote_confirm_title_auth_failed)
-            is VoteSubmissionStatus.ProtocolAuthFailed -> stringRes(R.string.vote_error_authorization_failed_title)
-            is VoteSubmissionStatus.SubmissionFailed -> stringRes(R.string.vote_confirm_title_failed)
-            else -> stringRes(R.string.vote_error_something_went_wrong)
+            is VoteSubmissionStatus.LocalAuthFailed -> {
+                stringRes(R.string.vote_confirm_title_auth_failed)
+            }
+
+            is VoteSubmissionStatus.ProtocolAuthFailed -> {
+                stringRes(R.string.vote_error_authorization_failed_title)
+            }
+
+            is VoteSubmissionStatus.SubmissionFailed -> {
+                stringRes(R.string.coinVote_confirmSubmission_submissionFailedTitle)
+            }
+
+            else -> {
+                stringRes(R.string.coinVote_error_title)
+            }
         }
 
     private fun failureMessage(status: VoteSubmissionStatus) =
         when (status) {
             is VoteSubmissionStatus.LocalAuthFailed -> {
-                stringRes(R.string.vote_error_authorization_failed_message)
+                stringRes(R.string.coinVote_confirmSubmission_authorizationFailedMessage)
             }
 
             is VoteSubmissionStatus.ProtocolAuthFailed -> {
-                stringRes(R.string.vote_error_authorization_failed_message)
+                stringRes(R.string.coinVote_confirmSubmission_authorizationFailedMessage)
             }
 
             is VoteSubmissionStatus.SubmissionFailed -> {
                 status.error.toErrorMessageOrDefault(
-                    status.defaultError ?: stringRes(R.string.vote_confirm_error_submission)
+                    status.defaultError ?: stringRes(R.string.coinVote_confirmSubmission_submissionFailedMessage)
                 )
             }
 

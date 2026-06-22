@@ -377,9 +377,9 @@ class SendViewTest : UiTestPrerequisites() {
 
         // We use that the assertTextEquals searches in SemanticsProperties.EditableText too, although to be able to
         // compare its editable value to an exact match we need to pass all its texts
-        composeTestRule.onNodeWithText(getStringResource(R.string.send_address_hint)).also {
+        composeTestRule.onNodeWithText(getStringResource(R.string.send_addressPlaceholder)).also {
             it.assertTextEquals(
-                getStringResource(R.string.send_address_hint),
+                getStringResource(R.string.send_addressPlaceholder),
                 WalletFixture.Alice.getAddresses(ZcashNetwork.Testnet).unified,
                 includeEditableText = true
             )

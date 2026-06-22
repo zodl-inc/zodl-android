@@ -187,7 +187,7 @@ fun WelcomeScreenView(
                         Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
 
                         Text(
-                            stringResource(id = R.string.authentication_failed_welcome_title),
+                            stringResource(id = R.string.splash_authTitle),
                             style = ZashiTypography.textXl,
                             fontWeight = FontWeight.SemiBold,
                             color = ZashiColors.NoTheme.welcomeText,
