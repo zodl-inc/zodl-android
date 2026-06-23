@@ -1,0 +1,57 @@
+name: Linear release tracking
+
+# Records a published GitHub Release in Linear. The single job runs Linear's
+# release action, which scans commits since the previous release tag for
+# `MOB-###` references and creates a matching release under the Android Linear
+# pipeline (Settings → Releases in Linear), with those issues attached.
+#
+# Why `release: published` and not `push: tags`? For tag-push events GitHub runs
+# the workflow file *as it exists on the tagged commit*. Release tags are cut
+# from prerelease branches that can predate this file, so a tag trigger would
+# silently miss them (the same limitation documented in create-release.yml).
+# `release` events run the workflow from the default branch (main) instead, so
+# this file is always used regardless of what the tag points at — while still
+# scanning exactly the released tag's commit range.
+#
+# This consumes the same `release: published` event that create-release.yml
+# emits, so it runs automatically — BUT only when create-release.yml mints its
+# GitHub App token (RELEASE_BOT_APP_ID set): the default GITHUB_TOKEN does not
+# cascade events to other workflows. In the no-App fallback, an operator's
+# manual re-publish of the release is what drives this workflow (same caveat
+# release.yaml already lives with). create-release.yml's "Force published
+# event" step toggles draft->published, so a single release can emit
+# `published` more than once — see the `concurrency` guard below.
+#
+# Requires the LINEAR_ACCESS_KEY repo secret, generated against the Android
+# pipeline in Linear's UI.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+# Serialize runs for a given tag. create-release.yml's create-as-published +
+# "Force published event" toggle can emit `release: published` more than once
+# for the same release; this prevents overlapping Linear syncs for that tag.
+# cancel-in-progress: false so a second event waits for the first to finish
+# rather than aborting it mid-sync.
+concurrency:
+  group: linear-release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  linear-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.release.tag_name }}  # the released tag's commit
+          fetch-depth: 0  # full history so the Linear release action sees every commit since the previous tag
+
+      - name: Create Linear release
+        uses: linear/linear-release-action@3b634623620454bac33390451a1dd15ba78e3dc4 # v0.14.4
+        with:
+          access_key: ${{ secrets.LINEAR_ACCESS_KEY }}

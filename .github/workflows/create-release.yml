@@ -11,8 +11,12 @@ name: Create Release from tag
 #      and the changelog section as the body.
 #
 # Publishing the release fires the existing `release.yaml` workflow, which
-# does the actual build + APK signing + Solana / F-Droid publishing. We do
+# does the actual build + APK signing + Solana / F-Droid publishing, and the
+# `linear-release.yml` workflow, which records the release in Linear. We do
 # NOT do any of that here — this workflow's only job is "tag -> release".
+# (Linear tracking used to be a trailing step here; it now lives in
+# `linear-release.yml` on `release: published` so it runs from `main` rather
+# than depending on this file being present on the tagged commit.)
 #
 # Two trigger paths:
 #
@@ -92,7 +96,6 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ steps.tag.outputs.tag }}
-          fetch-depth: 0  # full history so the Linear release action sees every commit since the previous tag
 
       - name: Parse tag and extract changelog section
         id: meta
@@ -194,12 +197,4 @@ jobs:
           # draft -> published transition re-emits `release: published`.
           gh api -X PATCH "repos/${REPO}/releases/${RELEASE_ID}" -F draft=true  >/dev/null
           gh api -X PATCH "repos/${REPO}/releases/${RELEASE_ID}" -F draft=false >/dev/null
-          echo "Done; release.yaml should now cascade."
-
-      - name: Create Linear release
-        # Scans commits since the previous tag for MOB-### references and creates
-        # a Linear release with those issues attached. Reads LINEAR_ACCESS_KEY from
-        # the repo's Actions secrets (configured per-pipeline in Linear settings).
-        uses: linear/linear-release-action@v0
-        with:
-          access_key: ${{ secrets.LINEAR_ACCESS_KEY }}
+          echo "Done; release.yaml and linear-release.yml should now cascade."
