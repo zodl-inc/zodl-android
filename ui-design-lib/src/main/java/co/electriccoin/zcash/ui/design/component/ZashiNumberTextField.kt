@@ -216,10 +216,13 @@ object ZashiNumberTextFieldParser {
      * "1234.56".
      *
      * When every separator is the same character (e.g. "1,234,567" or "1.234.567") they are all treated
-     * as grouping and dropped, yielding "1234567" — UNLESS the last one is trailing. A separator typed at
-     * the very end is always the freshly entered decimal point (e.g. while typing "1,234." the second "."
-     * must yield "1234." so the next fraction digits land after the decimal), so it overrides the
-     * pure-grouping rule.
+     * as grouping and dropped, yielding "1234567".
+     *
+     * A separator at the very end is handled specially. If the rest already resolves to a value with a
+     * decimal point (e.g. "1.234" or "1,234", where the single separator is the decimal), the trailing
+     * separator is redundant and dropped, keeping "1.234" — typing another separator does not reset an
+     * amount that already has a decimal. If the rest is a plain integer / grouped value (e.g. "1234" or
+     * "1,234,567"), the trailing separator starts the decimal part, yielding "1234." / "1234567.".
      */
     @Suppress("ReturnCount")
     fun normalizeInput(input: String): String {
@@ -236,10 +239,19 @@ object ZashiNumberTextFieldParser {
         val lastSeparatorIndex = cleaned.indexOfLast { it in separators }
         if (lastSeparatorIndex < 0) return cleaned
 
-        val isTrailingSeparator = lastSeparatorIndex == cleaned.lastIndex
+        if (lastSeparatorIndex == cleaned.lastIndex) {
+            // Trailing separator: only the decimal point when the rest isn't already a decimal.
+            val normalizedHead = normalizeInput(cleaned.substring(0, lastSeparatorIndex))
+            return if (normalizedHead.contains(decimalSeparator)) {
+                normalizedHead
+            } else {
+                "$normalizedHead$decimalSeparator"
+            }
+        }
+
         val presentSeparators = cleaned.filter { it in separators }
-        if (!isTrailingSeparator && presentSeparators.length > 1 && presentSeparators.toSet().size == 1) {
-            // All separators are identical and none is trailing → pure grouping (e.g. "1,234,567"); drop them all.
+        if (presentSeparators.length > 1 && presentSeparators.toSet().size == 1) {
+            // All separators are identical → pure grouping (e.g. "1,234,567"); drop them all.
             return cleaned.filterNot { it in separators }
         }
 

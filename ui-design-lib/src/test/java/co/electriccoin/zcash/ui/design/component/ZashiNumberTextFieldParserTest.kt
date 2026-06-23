@@ -126,28 +126,46 @@ class ZashiNumberTextFieldParserTest {
     }
 
     @Test
-    fun normalizeInput_trailingSeparator_isDecimalEvenWhenIdenticalToGrouping() {
-        // MOB-1356 regression: a separator typed at the end is the freshly entered decimal point, even
-        // when it matches earlier separators that would otherwise look like grouping.
+    fun normalizeInput_trailingSeparator_dropsExtraWhenDecimalAlreadyPresent() {
+        // MOB-1356: a separator typed at the end is redundant when the rest already has a decimal point
+        // (the single earlier separator is the decimal), so it is dropped instead of resetting the amount.
         mapOf(
-            "1.234." to "1234.", // typing 1 , 2 3 4 . (the typed comma already became ".")
-            "1,234," to "1234.", // same shape with comma separators
-            "1.234.567." to "1234567."
+            "1.234." to "1.234", // already a decimal -> extra trailing separator dropped
+            "1,234," to "1.234", // single comma is the decimal; trailing comma dropped
+            "1.234.567." to "1234567." // earlier separators are pure grouping -> trailing starts the decimal
         ).forEach { (input, expected) ->
             assertEquals(expected, ZashiNumberTextFieldParser.normalizeInput(input), "normalizeInput(\"$input\")")
         }
     }
 
     @Test
-    fun typingDigitsAndSeparators_buildsExpectedDecimal() {
-        // Simulates typing 1,234.56 char-by-char: each keystroke re-normalizes the previous display + the new char.
-        val keystrokes = listOf("1", ",", "2", "3", "4", ".", "5", "6")
+    fun normalizeInput_trailingSeparator_startsDecimalWhenRestIsIntegerOrGrouping() {
+        mapOf(
+            "1234." to "1234.", // lone trailing separator -> decimal point
+            "1,234,567." to "1234567." // earlier separators are grouping -> trailing starts the decimal
+        ).forEach { (input, expected) ->
+            assertEquals(expected, ZashiNumberTextFieldParser.normalizeInput(input), "normalizeInput(\"$input\")")
+        }
+    }
+
+    @Test
+    fun typingPlainDecimal_buildsExpectedValue() {
+        // Realistic typing (no manual grouping): each keystroke re-normalizes the previous display + the new char.
+        val keystrokes = listOf("1", "2", "3", "4", ".", "5", "6")
         var display = ""
         keystrokes.forEach { key ->
             display = ZashiNumberTextFieldParser.normalizeInput(display + key)
         }
         assertEquals("1234.56", display)
         assertNumericEquals("1234.56", ZashiNumberTextFieldParser.toBigDecimalOrNull(display))
+    }
+
+    @Test
+    fun typingExtraSeparatorAfterDecimal_keepsExistingAmount() {
+        // Once the amount has a decimal point, typing another separator is ignored (no reset / no precision loss).
+        var display = ZashiNumberTextFieldParser.normalizeInput("1.234")
+        display = ZashiNumberTextFieldParser.normalizeInput("$display.")
+        assertEquals("1.234", display)
     }
 
     @Test
