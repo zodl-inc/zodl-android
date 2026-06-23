@@ -55,7 +55,7 @@ internal class TransactionNoteViewModel(
             onBack = ::onBack,
             title =
                 if (foundNote == null) {
-                    stringRes(R.string.transaction_note_add_note_title)
+                    stringRes(R.string.annotation_addArticle)
                 } else {
                     stringRes(R.string.annotation_edit)
                 },

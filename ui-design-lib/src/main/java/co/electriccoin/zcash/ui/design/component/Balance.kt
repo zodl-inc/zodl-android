@@ -39,7 +39,7 @@ fun StyledBalance(
     modifier: Modifier = Modifier,
     isHideBalances: Boolean = false,
     showDust: Boolean = true,
-    hiddenBalancePlaceholder: String = stringResource(id = R.string.hide_balance_placeholder),
+    hiddenBalancePlaceholder: String = stringResource(id = R.string.general_hideBalancesMost),
     textColor: Color = Color.Unspecified,
     textStyle: BalanceTextStyle = StyledBalanceDefaults.textStyles(),
 ) {

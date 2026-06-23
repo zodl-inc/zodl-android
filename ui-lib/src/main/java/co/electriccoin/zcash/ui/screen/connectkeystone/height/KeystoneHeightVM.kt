@@ -58,7 +58,7 @@ class KeystoneHeightVM(
                     ),
                 primaryButton =
                     ButtonState(
-                        text = stringRes(R.string.keystone_wbh_confirm_button),
+                        text = stringRes(R.string.keystone_addHWWallet_connect),
                         onClick = { text.amount?.toLong()?.let { onConfirmClick(it) } },
                         isEnabled = isValid && !lce.loading,
                         isLoading = lce.loading,

@@ -1,13 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="request_title">Request</string>
+    <string name="receive_request">Request</string>
     <string name="zecKeyboard_invalid">This transaction amount is invalid</string>
-    <string name="request_amount_btn">Next</string>
-    <string name="request_memo_btn">Request</string>
-    <string name="request_qr_share_btn">Share QR Code</string>
-    <string name="request_qr_close_btn">Close</string>
-    <string name="request_privacy_level_shielded">Private</string>
-    <string name="request_privacy_level_transparent">Not Private</string>
+    <string name="general_next">Next</string>
+    <string name="requestZec_summary_shareQR">Share QR Code</string>
+    <string name="general_close">Close</string>
     <string name="request_amount_empty">0</string>
     <string name="request_amount_keyboard_zero">0</string>
     <string name="request_amount_keyboard_one">1</string>
@@ -19,9 +16,9 @@
     <string name="request_amount_keyboard_seven">7</string>
     <string name="request_amount_keyboard_eight">8</string>
     <string name="request_amount_keyboard_nine">9</string>
-    <string name="request_amount_keyboard_delete">Delete</string>
+    <string name="general_delete">Delete</string>
 
-    <string name="request_memo_payment_request_subtitle">Payment Request</string>
+    <string name="send_requestPayment_title">Payment Request</string>
     <string name="requestZec_whatFor">What\'s this for?</string>
     <string name="request_memo_bytes_counter">
         <xliff:g id="typed_bytes" example="12">%1$s</xliff:g>/<xliff:g id="max_bytes" example="512">%2$s</xliff:g>

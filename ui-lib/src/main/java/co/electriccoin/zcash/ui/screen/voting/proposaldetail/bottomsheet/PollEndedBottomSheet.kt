@@ -103,7 +103,7 @@ fun PollEndedBottomSheet(
                 modifier = Modifier.fillMaxWidth(),
                 state =
                     ButtonState(
-                        text = stringRes(R.string.vote_close),
+                        text = stringRes(R.string.coinVote_common_close),
                         style = ButtonStyle.TERTIARY,
                         onClick = onClose
                     )

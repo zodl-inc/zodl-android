@@ -303,7 +303,7 @@ private fun AddContactButton(
                             if (tooltipState.isVisible) tooltipState.dismiss() else tooltipState.show()
                         }
                     },
-                    text = stringRes(R.string.address_book_add)
+                    text = stringRes(R.string.addressBook_addNewContact)
                 )
         ) { scope ->
             Image(

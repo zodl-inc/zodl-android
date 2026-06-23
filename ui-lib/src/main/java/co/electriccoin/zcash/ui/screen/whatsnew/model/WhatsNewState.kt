@@ -19,7 +19,7 @@ data class WhatsNewState(
             version: String,
             onVersionLongClick: () -> Unit
         ) = WhatsNewState(
-            titleVersion = stringRes(R.string.whats_new_version, changelog.version),
+            titleVersion = stringRes(R.string.whatsNew_version, changelog.version),
             bottomVersion = stringRes(R.string.settings_version, version),
             date = changelog.date,
             sections =

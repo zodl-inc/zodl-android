@@ -28,7 +28,7 @@ class AboutViewTest {
 
         composeTestRule
             .onNodeWithContentDescription(
-                getStringResource(R.string.back_navigation_content_description),
+                getStringResource(R.string.general_back),
                 ignoreCase = true
             ).also {
                 it.assertExists()
@@ -61,7 +61,7 @@ class AboutViewTest {
 
         composeTestRule
             .onNodeWithContentDescription(
-                getStringResource(R.string.back_navigation_content_description)
+                getStringResource(R.string.general_back)
             ).also {
                 it.performClick()
             }

@@ -30,7 +30,7 @@ fun SwapRefundAddressInfoView(state: SwapRefundAddressInfoState?) {
             ),
     ) {
         Text(
-            text = stringResource(R.string.swap_refund_address_info_title),
+            text = stringResource(R.string.swapToZec_refundAddress_title),
             style = ZashiTypography.textXl,
             fontWeight = FontWeight.SemiBold,
             color = ZashiColors.Text.textPrimary,

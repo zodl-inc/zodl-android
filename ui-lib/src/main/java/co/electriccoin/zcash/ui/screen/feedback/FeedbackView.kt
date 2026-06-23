@@ -107,7 +107,7 @@ private fun SupportMainContent(
         Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing3xl))
 
         Text(
-            text = stringResource(id = R.string.support_title),
+            text = stringResource(id = R.string.sendFeedback_title),
             style = ZashiTypography.header6,
             color = ZashiColors.Text.textPrimary,
             fontWeight = FontWeight.SemiBold

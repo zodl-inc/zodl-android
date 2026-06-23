@@ -65,7 +65,7 @@ fun AuthorizeVoteSignKeystoneView(state: AuthorizeVoteSignKeystoneState) {
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
-                title = stringResource(R.string.authorize_vote_bar_title),
+                title = stringResource(R.string.coinVote_delegationSigning_title),
                 navigationAction = {
                     ZashiTopAppBarBackNavigation(
                         onBack = state.onBack,
@@ -204,7 +204,7 @@ private fun ProgressMemoSection(state: AuthorizeVoteSignKeystoneState) {
                 Text(
                     text =
                         stringResource(
-                            R.string.authorize_vote_signature_n_of_m,
+                            R.string.coinVote_delegationSigning_currentBundleProgress,
                             state.currentBundleNumber,
                             state.totalBundles
                         ),
@@ -270,7 +270,7 @@ private fun UseSignedBundlesOnlyRow(state: UseSignedBundlesOnlyState) {
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = stringResource(R.string.authorize_vote_use_signed_bundles_only),
+                text = stringResource(R.string.coinVote_delegationSigning_useSignedBundlesOnly),
                 style = ZashiTypography.textSm,
                 fontWeight = FontWeight.Medium,
                 color = ZashiColors.Text.textPrimary
@@ -304,7 +304,7 @@ private fun MemoSection(memoText: co.electriccoin.zcash.ui.design.util.StringRes
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         Text(
-            text = stringResource(R.string.authorize_vote_memo_label),
+            text = stringResource(R.string.coinVote_delegationSigning_memo),
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textTertiary
         )

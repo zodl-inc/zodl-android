@@ -237,7 +237,7 @@ private fun DisconnectPreview() =
         DisconnectView(
             state =
                 DisconnectState(
-                    header = stringRes(R.string.disconnect_hardware_wallet_header),
+                    header = stringRes(R.string.disconnectHWWallet_title),
                     title = stringRes(R.string.deleteKeystoneTitle),
                     subtitle = stringRes(R.string.deleteKeystoneDesc),
                     warningTitle = stringRes(R.string.disconnectHWWallet_mayInclude),
@@ -252,7 +252,7 @@ private fun DisconnectPreview() =
                     infoText = stringRes(R.string.connectedHWInfo),
                     disconnectButton =
                         co.electriccoin.zcash.ui.design.component.ButtonState(
-                            stringRes(R.string.disconnect_hardware_wallet_button),
+                            stringRes(R.string.disconnectHWWallet_title),
                             style = ButtonStyle.DESTRUCTIVE1
                         ) {},
                     confirmationDialog = null,

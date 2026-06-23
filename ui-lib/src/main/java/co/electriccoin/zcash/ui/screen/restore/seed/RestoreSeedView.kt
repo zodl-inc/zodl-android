@@ -141,7 +141,7 @@ private fun Content(
 @Composable
 private fun AppBar(state: RestoreSeedState) {
     ZashiSmallTopAppBar(
-        title = stringResource(R.string.restore_title),
+        title = stringResource(R.string.root_existingWallet_restore),
         navigationAction = {
             ZashiTopAppBarBackNavigation(
                 onBack = state.onBack,

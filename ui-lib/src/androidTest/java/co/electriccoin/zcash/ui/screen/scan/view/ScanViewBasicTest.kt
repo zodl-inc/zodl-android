@@ -75,7 +75,7 @@ class ScanViewBasicTest : UiTestPrerequisites() {
 
         composeTestRule
             .onNodeWithText(
-                text = getStringResource(R.string.scan_settings_button),
+                text = getStringResource(R.string.scan_openSettings),
                 ignoreCase = true
             ).also {
                 it.assertDoesNotExist()

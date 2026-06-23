@@ -58,14 +58,14 @@ fun CrashReportOptInView(state: CrashReportOptInState) {
                 onClick = state.onOptOutClick,
             ) {
                 Text(
-                    text = stringResource(R.string.crash_report_detail_opt_out),
+                    text = stringResource(R.string.torSetup_learn_btnOut),
                     style = ZashiTypography.textMd,
                     fontWeight = FontWeight.SemiBold
                 )
             }
             ZashiButton(
                 modifier = Modifier.fillMaxWidth(),
-                text = stringResource(R.string.crash_report_detail_opt_in),
+                text = stringResource(R.string.torSetup_learn_btnIn),
                 onClick = state.onOptInClick,
                 colors = ZashiButtonDefaults.primaryColors()
             )

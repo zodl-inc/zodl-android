@@ -19,7 +19,7 @@ import co.electriccoin.zcash.ui.test.getStringResource
 import co.electriccoin.zcash.ui.test.getStringResourceWithArgs
 
 internal fun ComposeContentTestRule.clickSettingsTopAppBarMenu() {
-    onNodeWithContentDescription(getStringResource(R.string.settings_menu_content_description)).also {
+    onNodeWithContentDescription(getStringResource(R.string.scan_openSettings)).also {
         it.performClick()
     }
 }

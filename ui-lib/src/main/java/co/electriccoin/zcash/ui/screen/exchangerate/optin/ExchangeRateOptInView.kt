@@ -30,7 +30,7 @@ import co.electriccoin.zcash.ui.screen.exchangerate.settings.CurrencyFieldState
 @Composable
 fun ExchangeRateOptInView(state: ExchangeRateOptInState) {
     ZashiBaseSettingsOptIn(
-        header = stringResource(id = R.string.exchange_rate_opt_in_subtitle),
+        header = stringResource(id = R.string.currencyConversion_title),
         image = R.drawable.exchange_rate,
         onDismiss = state.onBack,
         content = {
@@ -79,7 +79,7 @@ fun ExchangeRateOptInView(state: ExchangeRateOptInState) {
             }
             ZashiButton(
                 modifier = Modifier.fillMaxWidth(),
-                text = stringResource(R.string.exchange_rate_opt_in_enable),
+                text = stringResource(R.string.currencyConversion_enable),
                 onClick = state.onEnableClick,
                 colors = ZashiButtonDefaults.primaryColors(),
                 hapticFeedbackType = HapticFeedbackType.Confirm

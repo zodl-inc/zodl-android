@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="qr_code_close_content_description">Close</string>
+    <string name="general_close">Close</string>
     <string name="qr_code_unified_content_description">Unified Address QR code</string>
     <string name="qr_code_sapling_content_description">Sapling Address QR code</string>
     <string name="qr_code_transparent_content_description">Transparent Address QR code</string>
-    <string name="qr_code_wallet_address_shielded">Zcash Shielded Address</string>
-    <string name="qr_code_wallet_address_sapling">Zcash Sapling Address</string>
-    <string name="qr_code_wallet_address_transparent">Zcash Transparent Address</string>
-    <string name="qr_code_privacy_level_shielded">Private</string>
-    <string name="qr_code_privacy_level_transparent">Not Private</string>
-    <string name="qr_code_share_btn">Share QR Code</string>
+    <string name="accounts_zashi_shieldedAddress">Zcash Shielded Address</string>
+    <string name="receive_saplingAddress">Zcash Sapling Address</string>
+    <string name="accounts_zashi_transparentAddress">Zcash Transparent Address</string>
+    <string name="component_maxPrivacy">Private</string>
+    <string name="component_lowPrivacy">Not Private</string>
+    <string name="addressDetails_shareQR">Share QR Code</string>
     <string name="addressDetails_copyAddress">Copy Address</string>
     <string name="qr_code_clipboard_tag">Zcash Wallet Address</string>
     <string name="qr_code_data_unable_to_share">Unable to find an application for sharing the QR code.</string>

@@ -86,7 +86,7 @@ class TransactionProgressVM(
         TransactionProgressState(
             onBack = ::onCloseClick,
             background = ERROR,
-            title = stringRes(R.string.send_confirmation_failure_title),
+            title = stringRes(R.string.transaction_failedSend),
             subtitle = stringRes(R.string.send_confirmation_multiple_trx_failure_text).withStyle(),
             middleButton = null,
             secondaryButton =
@@ -98,7 +98,7 @@ class TransactionProgressVM(
                 ),
             primaryButton =
                 ButtonState(
-                    text = stringRes(R.string.send_confirmation_multiple_trx_failure_report_button),
+                    text = stringRes(R.string.errorPage_action_contactSupport),
                     onClick = { viewModelScope.launch { sendEmail(result) } },
                     style = ButtonStyle.PRIMARY
                 ),
@@ -187,7 +187,7 @@ class TransactionProgressVM(
                     else -> {
                         if (txId != null) {
                             ButtonState(
-                                text = stringRes(R.string.send_confirmation_success_view_trx),
+                                text = stringRes(R.string.send_viewTransaction),
                                 onClick = { onViewTransactionDetailClick(txId) }
                             )
                         } else {
@@ -200,7 +200,7 @@ class TransactionProgressVM(
                     is ExactInputSwapTransactionProposal,
                     is ExactOutputSwapTransactionProposal -> {
                         ButtonState(
-                            text = stringRes(R.string.send_confirmation_success_btn_close),
+                            text = stringRes(R.string.general_close),
                             onClick = ::onCloseClick,
                             style = ButtonStyle.SECONDARY
                         )
@@ -227,7 +227,7 @@ class TransactionProgressVM(
 
                     else -> {
                         ButtonState(
-                            text = stringRes(R.string.send_confirmation_success_btn_close),
+                            text = stringRes(R.string.general_close),
                             onClick = ::onCloseClick,
                             style = ButtonStyle.TERTIARY
                         )
@@ -254,7 +254,7 @@ class TransactionProgressVM(
                     }
 
                     is ExactInputSwapTransactionProposal -> {
-                        stringRes(R.string.send_confirmation_pending_swap_title)
+                        stringRes(R.string.swapAndPay_pendingSwapTitle)
                     }
 
                     is ExactOutputSwapTransactionProposal -> {
@@ -292,7 +292,7 @@ class TransactionProgressVM(
                     else -> {
                         if (txId != null) {
                             ButtonState(
-                                text = stringRes(R.string.send_confirmation_success_view_trx),
+                                text = stringRes(R.string.send_viewTransaction),
                                 onClick = { onViewTransactionDetailClick(txId) }
                             )
                         } else {
@@ -305,7 +305,7 @@ class TransactionProgressVM(
                     is ExactInputSwapTransactionProposal,
                     is ExactOutputSwapTransactionProposal -> {
                         ButtonState(
-                            text = stringRes(R.string.send_confirmation_success_btn_close),
+                            text = stringRes(R.string.general_close),
                             onClick = ::onCloseClick,
                             style = ButtonStyle.SECONDARY
                         )
@@ -332,7 +332,7 @@ class TransactionProgressVM(
 
                     else -> {
                         ButtonState(
-                            text = stringRes(R.string.send_confirmation_success_btn_close),
+                            text = stringRes(R.string.general_close),
                             onClick = ::onCloseClick,
                             style = ButtonStyle.TERTIARY
                         )
@@ -353,7 +353,7 @@ class TransactionProgressVM(
                 if (proposal is ShieldTransactionProposal) {
                     stringRes(R.string.send_failureShielding)
                 } else {
-                    stringRes(R.string.send_confirmation_failure_title)
+                    stringRes(R.string.transaction_failedSend)
                 },
             subtitle =
                 when (proposal) {
@@ -376,7 +376,7 @@ class TransactionProgressVM(
             middleButton = null,
             secondaryButton =
                 ButtonState(
-                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_report),
+                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.send_report),
                     onClick = {
                         viewModelScope.launch {
                             when (result) {
@@ -389,7 +389,7 @@ class TransactionProgressVM(
                 ),
             primaryButton =
                 ButtonState(
-                    text = stringRes(R.string.send_confirmation_success_btn_close),
+                    text = stringRes(R.string.general_close),
                     onClick = ::onCloseClick,
                     style = ButtonStyle.PRIMARY
                 ),

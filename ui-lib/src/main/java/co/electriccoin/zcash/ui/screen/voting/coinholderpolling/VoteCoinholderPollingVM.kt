@@ -690,9 +690,9 @@ class VoteCoinholderPollingVM(
         ZashiConfirmationState.error(
             title = stringRes(R.string.coinVote_pollsList_emptyTitle),
             message = stringRes(R.string.coinVote_pollsList_emptyMessage),
-            primaryText = stringRes(R.string.vote_poll_list_empty_refresh),
+            primaryText = stringRes(R.string.coinVote_common_refresh),
             primaryStyle = ButtonStyle.TERTIARY,
-            secondaryText = stringRes(R.string.vote_poll_list_empty_got_it),
+            secondaryText = stringRes(R.string.coinVote_common_gotIt),
             secondaryStyle = ButtonStyle.PRIMARY,
             onPrimary = ::refreshVotingData,
             onSecondary = ::onBack,
@@ -706,13 +706,13 @@ class VoteCoinholderPollingVM(
             message = VotingErrorMapper.toConfigErrorMessage(rawMessage),
             primaryAction =
                 ButtonState(
-                    text = stringRes(R.string.vote_dismiss),
+                    text = stringRes(R.string.coinVote_common_dismiss),
                     style = ButtonStyle.PRIMARY,
                     onClick = ::dismissConfigErrorSheet
                 ),
             secondaryAction =
                 ButtonState(
-                    text = stringRes(R.string.vote_error_go_back),
+                    text = stringRes(R.string.coinVote_common_goBack),
                     style = ButtonStyle.TERTIARY,
                     onClick = ::goBackFromConfigErrorSheet
                 ),
@@ -771,11 +771,11 @@ class VoteCoinholderPollingVM(
     private fun buildUnverifiedPollWarningSheet() =
         ZashiConfirmationState(
             icon = R.drawable.ic_alert_circle,
-            title = stringRes(R.string.vote_unverified_poll_title),
+            title = stringRes(R.string.coinVote_votingView_unverifiedPollTitle),
             message = stringRes(R.string.coinVote_votingView_unverifiedPollMessage),
             primaryAction =
                 ButtonState(
-                    text = stringRes(R.string.vote_error_go_back),
+                    text = stringRes(R.string.coinVote_common_goBack),
                     style = ButtonStyle.PRIMARY,
                     onClick = ::dismissUnverifiedPollWarning
                 ),

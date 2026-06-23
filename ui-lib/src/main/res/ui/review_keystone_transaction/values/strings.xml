@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="review_keystone_transaction_title">Review</string>
-    <string name="review_keystone_transaction_positive">Confirm with Keystone</string>
+    <string name="send_review">Review</string>
+    <string name="keystone_confirm">Confirm with Keystone</string>
 </resources>

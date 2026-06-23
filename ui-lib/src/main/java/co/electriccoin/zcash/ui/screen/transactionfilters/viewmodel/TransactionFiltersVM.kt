@@ -45,7 +45,7 @@ internal class TransactionFiltersVM(
                             when (it) {
                                 SENT -> {
                                     TransactionFilterState(
-                                        text = stringRes(R.string.transaction_filters_sent),
+                                        text = stringRes(R.string.filter_sent),
                                         isSelected = current.contains(SENT),
                                         onClick = { onTransactionFilterClicked(it) }
                                     )
@@ -53,7 +53,7 @@ internal class TransactionFiltersVM(
 
                                 RECEIVED -> {
                                     TransactionFilterState(
-                                        text = stringRes(R.string.transaction_filters_received),
+                                        text = stringRes(R.string.filter_received),
                                         isSelected = current.contains(RECEIVED),
                                         onClick = { onTransactionFilterClicked(it) }
                                     )
@@ -93,7 +93,7 @@ internal class TransactionFiltersVM(
 
                                 SWAP -> {
                                     TransactionFilterState(
-                                        text = stringRes(R.string.transaction_filters_swap),
+                                        text = stringRes(R.string.swapAndPay_swap),
                                         isSelected = current.contains(SWAP),
                                         onClick = { onTransactionFilterClicked(it) }
                                     )
@@ -108,7 +108,7 @@ internal class TransactionFiltersVM(
                         ),
                     secondaryButton =
                         ButtonState(
-                            text = stringRes(R.string.transaction_filters_btn_reset),
+                            text = stringRes(R.string.filter_reset),
                             onClick = ::onResetTransactionFiltersClick,
                         ),
                 )

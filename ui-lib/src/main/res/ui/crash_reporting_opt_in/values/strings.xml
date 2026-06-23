@@ -7,9 +7,9 @@
     <string name="crash_reporting_opt_in_info">Note: The crash reports include information about app version, time
         when the crash happened, and stack trace so it\’s clear where in the app the crash happened. The data
         collected is completely anonymized.</string>
-    <string name="crash_reporting_opt_in_positive">Opt in</string>
+    <string name="torSetup_learn_btnIn">Opt in</string>
     <string name="crash_reporting_opt_in_positive_desc">Share crash reports with Zodl developers.</string>
-    <string name="crash_reporting_opt_in_negative">Opt out</string>
+    <string name="torSetup_learn_btnOut">Opt out</string>
     <string name="crash_reporting_opt_in_negative_desc">Don’t share crash reports with Zodl developers.</string>
-    <string name="crash_reporting_opt_in_save">Save changes</string>
+    <string name="general_save">Save changes</string>
 </resources>

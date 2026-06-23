@@ -142,7 +142,7 @@ class SendViewTestSetup(
                             IconButtonState(
                                 icon = R.drawable.ic_app_bar_settings,
                                 contentDescription =
-                                    stringRes(co.electriccoin.zcash.ui.R.string.settings_menu_content_description),
+                                    stringRes(co.electriccoin.zcash.ui.R.string.scan_openSettings),
                             ) {
                                 onSettingsCount.incrementAndGet()
                             }

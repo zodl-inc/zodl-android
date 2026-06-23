@@ -37,21 +37,21 @@ internal class EphemeralLockVM(
                     items =
                         listOf(
                             SwapQuoteInfoItem(
-                                description = stringRes(R.string.send_confirmation_address),
+                                description = stringRes(R.string.send_to),
                                 title = stringResByAddress(it.destination.address),
                             ),
                             SwapQuoteInfoItem(
-                                description = stringRes(R.string.send_amount_label),
+                                description = stringRes(R.string.send_amount),
                                 title = stringRes(it.amount).withStyle(),
                             ),
                             SwapQuoteInfoItem(
-                                description = stringRes(R.string.send_confirmation_fee),
+                                description = stringRes(R.string.send_feeSummary),
                                 title = stringRes(it.proposal.totalFeeRequired()).withStyle(),
                             ),
                         ),
                     amount =
                         SwapQuoteInfoItem(
-                            description = stringRes(R.string.send_confirmation_amount),
+                            description = stringRes(R.string.send_amountSummary),
                             title = stringRes(it.amount + it.proposal.totalFeeRequired()).withStyle(),
                         ),
                     secondaryButton =

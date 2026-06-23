@@ -138,7 +138,7 @@ class ChooseServerVM(
             isLoading = fastestServers.isLoading,
             retryButton =
                 ButtonState(
-                    text = stringRes(R.string.choose_server_refresh),
+                    text = stringRes(R.string.serverSetup_refresh),
                     isEnabled = !local.isSaveInProgress,
                     onClick = ::onRefreshClicked
                 )
@@ -265,7 +265,7 @@ class ChooseServerVM(
                                 persisted.endpoint.port,
                             )
                         } else {
-                            stringRes(R.string.choose_server_custom)
+                            stringRes(R.string.serverSetup_custom)
                         },
                     isChecked = isChecked,
                     onClick = ::onCustomEndpointClicked,
@@ -277,7 +277,7 @@ class ChooseServerVM(
                     isEnabled = isEnabled,
                     onValueChange = ::onCustomEndpointInnerStateChanged,
                 ),
-            badge = if (isPersistedEndpointCustom) stringRes(R.string.choose_server_active) else null,
+            badge = if (isPersistedEndpointCustom) stringRes(R.string.serverSetup_active) else null,
             isExpanded = isExpanded,
             key = "custom",
         )
@@ -301,13 +301,13 @@ class ChooseServerVM(
                     onClick = { onEndpointClicked(endpoint) },
                     subtitle =
                         if (endpoint == defaultEndpoint) {
-                            stringRes(R.string.choose_server_save_default)
+                            stringRes(R.string.serverSetup_default)
                         } else {
                             null
                         },
                     hapticFeedbackType = if (isEndpointChecked) null else HapticFeedbackType.SegmentTick,
                 ),
-            badge = if (endpoint == persistedEndpoint) stringRes(R.string.choose_server_active) else null,
+            badge = if (endpoint == persistedEndpoint) stringRes(R.string.serverSetup_active) else null,
         )
     }
 

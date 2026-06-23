@@ -84,7 +84,7 @@ class AddGenericABContactVM(
 
             when (validation) {
                 ContactAddressValidationResult.Invalid -> {
-                    stringRes(R.string.contact_address_error_invalid)
+                    stringRes(R.string.send_error_invalidAddress)
                 }
 
                 ContactAddressValidationResult.NotUnique -> {
@@ -168,7 +168,7 @@ class AddGenericABContactVM(
             isSavingContact,
         ) { address, name, isSavingContact ->
             ButtonState(
-                text = stringRes(R.string.add_new_contact_primary_btn),
+                text = stringRes(R.string.general_save),
                 isEnabled =
                     address.error == null &&
                         name.error == null &&
@@ -189,7 +189,7 @@ class AddGenericABContactVM(
         ) { address, name, saveButton, picker ->
             ABContactState(
                 info = null,
-                title = stringRes(R.string.add_new_contact_title),
+                title = stringRes(R.string.addressBook_addNewContact),
                 walletAddress = address,
                 contactName = name,
                 chain = picker,

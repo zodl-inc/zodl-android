@@ -63,8 +63,8 @@ class ExportTaxUseCase(
                     FileShareUtil.newShareContentIntent(
                         context = context,
                         file = outputFile,
-                        shareText = context.getString(R.string.export_data_share_text),
-                        sharePickerText = context.getString(R.string.export_data_share_text),
+                        shareText = context.getString(R.string.taxExport_taxFile),
+                        sharePickerText = context.getString(R.string.taxExport_taxFile),
                         versionInfo = versionInfoProvider(),
                         fileType = ZASHI_INTERNAL_DATA_MIME_TYPE
                     )

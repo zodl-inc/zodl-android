@@ -157,18 +157,18 @@ private fun HeaderSection(state: VoteConfirmSubmissionState) {
 
 private fun navTitle(status: VoteSubmissionStatus): StringResource =
     when (status) {
-        is VoteSubmissionStatus.Idle -> stringRes(R.string.vote_confirm_nav_confirmation)
+        is VoteSubmissionStatus.Idle -> stringRes(R.string.coinVote_common_confirmation)
         else -> stringRes(R.string.coinVote_common_submission)
     }
 
 private fun headerTitle(status: VoteSubmissionStatus): StringResource =
     when (status) {
         is VoteSubmissionStatus.Idle -> {
-            stringRes(R.string.vote_confirm_title_idle)
+            stringRes(R.string.coinVote_confirmSubmission_headerTitleIdle)
         }
 
         is VoteSubmissionStatus.LocalAuthorizing -> {
-            stringRes(R.string.vote_confirm_title_authorizing)
+            stringRes(R.string.coinVote_store_submissionAuthorizingVote)
         }
 
         is VoteSubmissionStatus.Authorizing, is VoteSubmissionStatus.Submitting -> {
@@ -180,11 +180,11 @@ private fun headerTitle(status: VoteSubmissionStatus): StringResource =
         }
 
         is VoteSubmissionStatus.LocalAuthFailed -> {
-            stringRes(R.string.vote_confirm_title_auth_failed)
+            stringRes(R.string.coinVote_confirmSubmission_authorizationFailedTitle)
         }
 
         is VoteSubmissionStatus.ProtocolAuthFailed -> {
-            stringRes(R.string.vote_error_authorization_failed_title)
+            stringRes(R.string.coinVote_confirmSubmission_authorizationFailedTitle)
         }
 
         is VoteSubmissionStatus.SubmissionFailed -> {

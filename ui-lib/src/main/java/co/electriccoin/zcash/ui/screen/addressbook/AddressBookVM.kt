@@ -67,7 +67,7 @@ class AddressBookVM(
                     onClick = ::onScanContactClick,
                     text = stringRes(R.string.addressBook_scanAddress)
                 ),
-            title = stringRes(R.string.address_book_title),
+            title = stringRes(R.string.addressBook_title),
             info = null
         )
 

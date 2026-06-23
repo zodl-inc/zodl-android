@@ -33,7 +33,7 @@ class SwapSupportMapper {
 
             SwapStatus.FAILED -> {
                 ZashiMessageState(
-                    title = stringRes(R.string.transaction_detail_info_failed_title),
+                    title = stringRes(R.string.swapAndPay_failedTitle),
                     text = styledStringResource(R.string.swapAndPay_failedMsg),
                     type = ZashiMessageState.Type.ERROR,
                 )
@@ -41,7 +41,7 @@ class SwapSupportMapper {
 
             SwapStatus.EXPIRED -> {
                 ZashiMessageState(
-                    title = stringRes(R.string.transaction_detail_info_expired_title),
+                    title = stringRes(R.string.swapAndPay_expiredTitle),
                     text = styledStringResource(R.string.swapAndPay_expiredMsg),
                     type = ZashiMessageState.Type.ERROR,
                 )
@@ -54,7 +54,7 @@ class SwapSupportMapper {
             SwapStatus.PROCESSING -> {
                 if (isProcessingLongEnough(quoteStatus)) {
                     ZashiMessageState(
-                        title = stringRes(R.string.swap_detail_title_swap_processing),
+                        title = stringRes(R.string.swapToZec_swapProcessing),
                         text = styledStringResource(R.string.swapAndPay_processingMsg),
                         type = ZashiMessageState.Type.INFO,
                     )
@@ -85,7 +85,7 @@ class SwapSupportMapper {
             }
         ) {
             ButtonState(
-                text = stringRes(R.string.transaction_detail_contact_support),
+                text = stringRes(R.string.errorPage_action_contactSupport),
                 style = ButtonStyle.TERTIARY,
                 onClick = {
                     quoteStatus?.quote?.depositAddress?.address?.let {
@@ -112,7 +112,7 @@ class SwapSupportMapper {
                 fontWeight = FontWeight.Bold
             )
         return ZashiMessageState(
-            stringRes(R.string.transaction_detail_info_incomplete_deposit_title),
+            stringRes(R.string.swapAndPay_status_incompleteDeposit),
             styledStringResource(
                 R.string.transaction_detail_info_incomplete_deposit_message,
                 StyledStringStyle(StringResourceColor.WARNING),

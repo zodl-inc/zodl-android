@@ -143,7 +143,7 @@ private fun LazyListScope.loadingWidget() {
                         Modifier
                             .fillParentMaxWidth()
                             .padding(horizontal = 24.dp),
-                    text = stringResource(R.string.transaction_history_widget_title),
+                    text = stringResource(R.string.general_activity),
                     color = ZashiColors.Text.textPrimary,
                     fontWeight = FontWeight.SemiBold,
                     style = ZashiTypography.textLg

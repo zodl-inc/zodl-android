@@ -50,7 +50,7 @@ class ReceiveArgsViewTest {
 
             composeTestRule
                 .onNodeWithContentDescription(
-                    getStringResource(R.string.settings_menu_content_description)
+                    getStringResource(R.string.scan_openSettings)
                 ).also {
                     it.performClick()
                 }

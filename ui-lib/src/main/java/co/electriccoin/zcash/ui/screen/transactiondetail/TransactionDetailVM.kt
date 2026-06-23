@@ -423,7 +423,7 @@ class TransactionDetailVM(
                     if (transaction.metadata.note != null) {
                         stringRes(R.string.transaction_detail_edit_note)
                     } else {
-                        stringRes(R.string.transaction_detail_add_a_note)
+                        stringRes(R.string.annotation_addArticle)
                     },
                 onClick = ::onAddOrEditNoteClick
             )
@@ -459,7 +459,7 @@ class TransactionDetailVM(
             title =
                 when (val transaction = data.transaction) {
                     is ReceiveTransaction.Success -> {
-                        stringRes(R.string.transaction_history_received)
+                        stringRes(R.string.transaction_received)
                     }
 
                     is ReceiveTransaction.Pending -> {
@@ -471,28 +471,28 @@ class TransactionDetailVM(
                     }
 
                     is ShieldTransaction.Success -> {
-                        stringRes(R.string.transaction_history_shielded)
+                        stringRes(R.string.transaction_shieldedFunds)
                     }
 
                     is ShieldTransaction.Pending -> {
-                        stringRes(R.string.transaction_detail_shielding)
+                        stringRes(R.string.transaction_shieldingFunds)
                     }
 
                     is ShieldTransaction.Failed -> {
-                        stringRes(R.string.transaction_history_shielding_failed)
+                        stringRes(R.string.transaction_failedShieldedFunds)
                     }
 
                     is SendTransaction -> {
                         if (data.metadata.swapMetadata == null) {
                             when (transaction) {
-                                is SendTransaction.Success -> stringRes(R.string.transaction_history_sent)
-                                is SendTransaction.Pending -> stringRes(R.string.transaction_detail_sending)
+                                is SendTransaction.Success -> stringRes(R.string.transaction_sent)
+                                is SendTransaction.Pending -> stringRes(R.string.transaction_sending)
                                 is SendTransaction.Failed -> stringRes(R.string.transaction_history_sending_failed)
                             }
                         } else {
                             if (transaction is SendTransaction.Failed) {
                                 when (data.metadata.swapMetadata.mode) {
-                                    EXACT_INPUT -> stringRes(R.string.transaction_history_swap_failed)
+                                    EXACT_INPUT -> stringRes(R.string.swapStatus_swapFailed)
                                     EXACT_OUTPUT -> stringRes(R.string.swapStatus_paymentFailed)
                                     FLEX_INPUT -> throw UnsupportedOperationException("FLEX_INPUT not supported")
                                 }
@@ -501,17 +501,17 @@ class TransactionDetailVM(
                                     EXACT_INPUT -> {
                                         when (data.metadata.swapMetadata.status) {
                                             PROCESSING,
-                                            PENDING -> stringRes(R.string.transaction_detail_swapping)
+                                            PENDING -> stringRes(R.string.swapStatus_swapping)
 
-                                            INCOMPLETE_DEPOSIT -> stringRes(R.string.swap_detail_incomplete)
+                                            INCOMPLETE_DEPOSIT -> stringRes(R.string.swapStatus_swapIncomplete)
 
-                                            SUCCESS -> stringRes(R.string.transaction_history_swapped)
+                                            SUCCESS -> stringRes(R.string.swapStatus_swapped)
 
-                                            REFUNDED -> stringRes(R.string.transaction_history_swap_refunded)
+                                            REFUNDED -> stringRes(R.string.swapStatus_swapRefunded)
 
-                                            FAILED -> stringRes(R.string.transaction_history_swap_failed)
+                                            FAILED -> stringRes(R.string.swapStatus_swapFailed)
 
-                                            EXPIRED -> stringRes(R.string.transaction_history_swap_expired)
+                                            EXPIRED -> stringRes(R.string.swapAndPay_expiredTitle)
                                         }
                                     }
 

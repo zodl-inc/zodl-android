@@ -122,7 +122,7 @@ class WalletBackupViewModel(
                     ),
                 birthday =
                     SeedSecretState(
-                        title = stringRes(R.string.seed_recovery_bday_title),
+                        title = stringRes(R.string.recoveryPhraseDisplay_birthdayTitle),
                         text =
                             stringRes(
                                 wallet
@@ -134,7 +134,7 @@ class WalletBackupViewModel(
                         isRevealed = isRevealed,
                         tooltip =
                             SeedSecretStateTooltip(
-                                title = stringRes(R.string.seed_recovery_bday_tooltip_title),
+                                title = stringRes(R.string.recoveryPhraseDisplay_birthdayTitle),
                                 message = stringRes(R.string.seed_recovery_bday_tooltip_message)
                             ),
                         onClick = null,

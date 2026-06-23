@@ -64,7 +64,7 @@ private fun ExportPrivateDataTopAppBar(
     onBack: () -> Unit
 ) {
     ZashiSmallTopAppBar(
-        title = stringResource(R.string.export_data_title),
+        title = stringResource(R.string.privateDataConsent_screenTitle),
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = onBack)
         },
@@ -112,7 +112,7 @@ private fun ExportPrivateDataContent(
 
         ZashiButton(
             onClick = onConfirm,
-            text = stringResource(R.string.export_data_confirm),
+            text = stringResource(R.string.settings_exportPrivateData),
             enabled = checkedState.value,
             modifier = Modifier.fillMaxWidth(),
             hapticFeedbackType = HapticFeedbackType.Confirm

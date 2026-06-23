@@ -51,7 +51,7 @@ class SignKeystoneTransactionVM(
                         onBack = ::onCloseBottomSheetClick,
                         positiveButton =
                             ButtonState(
-                                text = stringRes(R.string.sign_keystone_transaction_bottom_sheet_go_back),
+                                text = stringRes(R.string.keystoneTransactionReject_goBack),
                                 onClick = ::onCloseBottomSheetClick
                             ),
                         negativeButton =

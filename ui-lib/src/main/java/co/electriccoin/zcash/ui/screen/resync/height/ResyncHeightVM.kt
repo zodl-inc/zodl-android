@@ -49,7 +49,7 @@ class ResyncHeightVM(
         val isValid = !blockHeight.innerTextFieldState.value.isEmpty() && isHigherThanSaplingActivationHeight
 
         return BlockHeightState(
-            title = stringRes(R.string.resync_title),
+            title = stringRes(R.string.resyncWallet_title),
             logo = null,
             onBack = ::onBack,
             dialogButton =

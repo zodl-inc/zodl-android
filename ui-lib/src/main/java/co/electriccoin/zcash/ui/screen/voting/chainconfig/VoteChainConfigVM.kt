@@ -54,7 +54,7 @@ class VoteChainConfigVM(
                 isValidating = isValidating,
                 saveChangesButton =
                     ButtonState(
-                        text = stringRes(R.string.vote_chain_config_save_changes),
+                        text = stringRes(R.string.coinVote_configSettings_saveChanges),
                         style = ButtonStyle.PRIMARY,
                         isEnabled = !isValidating,
                         onClick = ::onBack
@@ -107,7 +107,7 @@ class VoteChainConfigVM(
                             ),
                         deleteButton =
                             ButtonState(
-                                text = stringRes(R.string.vote_chain_config_delete),
+                                text = stringRes(R.string.coinVote_configSettings_delete),
                                 style = ButtonStyle.DESTRUCTIVE2,
                                 isEnabled = !isValidating,
                                 onClick = { onDeleteCustom(chain.id) }
@@ -319,7 +319,7 @@ class VoteChainConfigVM(
             ZashiConfirmationState.error(
                 title = stringRes(R.string.vote_chain_config_error_title),
                 message = message,
-                primaryText = stringRes(R.string.vote_dismiss),
+                primaryText = stringRes(R.string.coinVote_common_dismiss),
                 secondaryText = null,
                 primaryStyle = ButtonStyle.PRIMARY,
                 onPrimary = ::dismissError,
@@ -344,7 +344,7 @@ class VoteChainConfigVM(
             title =
                 stringRes(
                     if (id == null) {
-                        R.string.vote_chain_config_add_title
+                        R.string.coinVote_configSettings_headerAddTitle
                     } else {
                         R.string.coinVote_configSettings_headerEditTitle
                     }
@@ -380,7 +380,7 @@ class VoteChainConfigVM(
             deleteButton =
                 id?.let { customId ->
                     ButtonState(
-                        text = stringRes(R.string.vote_chain_config_delete),
+                        text = stringRes(R.string.coinVote_configSettings_delete),
                         style = ButtonStyle.DESTRUCTIVE1,
                         isEnabled = !isValidating,
                         onClick = { onDeleteCustom(customId) }
@@ -388,7 +388,7 @@ class VoteChainConfigVM(
                 },
             saveButton =
                 ButtonState(
-                    text = stringRes(R.string.vote_chain_config_save_changes),
+                    text = stringRes(R.string.coinVote_configSettings_saveChanges),
                     style = ButtonStyle.PRIMARY,
                     isEnabled = !isValidating && canSave(),
                     isLoading = isValidating,
@@ -396,7 +396,7 @@ class VoteChainConfigVM(
                 ),
             cancelButton =
                 ButtonState(
-                    text = stringRes(R.string.vote_chain_config_cancel),
+                    text = stringRes(R.string.coinVote_common_cancel),
                     style = ButtonStyle.TERTIARY,
                     isEnabled = !isValidating,
                     onClick = ::onCancelEditor

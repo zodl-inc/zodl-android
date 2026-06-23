@@ -250,7 +250,7 @@ private fun TopAppBar(state: SwapState, appBarState: ZashiMainTopAppBarState) {
                 horizontalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = stringResource(R.string.swap_title).uppercase(),
+                    text = stringResource(R.string.swapAndPay_swap).uppercase(),
                     style = ZashiTypography.textMd,
                     fontWeight = FontWeight.SemiBold,
                     color = ZashiColors.Text.textPrimary
@@ -294,8 +294,8 @@ private fun ColumnScope.AddressTextField(state: SwapState) {
         Text(
             text =
                 when (state.addressLocation) {
-                    TOP -> stringResource(R.string.swap_refund_address)
-                    BOTTOM -> stringResource(co.electriccoin.zcash.ui.design.R.string.general_address)
+                    TOP -> stringResource(R.string.swapToZec_refundAddress)
+                    BOTTOM -> stringResource(co.electriccoin.zcash.ui.design.R.string.swapAndPay_address)
                 },
             style = ZashiTypography.textSm,
             fontWeight = FontWeight.Medium

@@ -31,7 +31,7 @@ class CommonTransactionDetailMapper {
                     zonedDateTime = it,
                     useFullFormat = true
                 )
-            } ?: stringRes(R.string.transaction_detail_pending)
+            } ?: stringRes(R.string.transactionHistory_pending)
 
     fun createTransactionDetailErrorFooter(error: Exception?): ErrorFooter? {
         if (error == null) return null
@@ -61,7 +61,7 @@ class CommonTransactionDetailMapper {
             null
         } else {
             ButtonState(
-                text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_try_again),
+                text = stringRes(co.electriccoin.zcash.ui.design.R.string.disconnectHWWallet_tryAgain),
                 onClick = { reloadHandle.requestReload() },
                 style = ButtonStyle.DESTRUCTIVE1
             )

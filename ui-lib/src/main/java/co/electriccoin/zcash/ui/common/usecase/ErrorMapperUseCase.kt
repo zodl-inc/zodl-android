@@ -20,7 +20,7 @@ class ErrorMapperUseCase(
         primaryStyle: ButtonStyle? = null,
     ) = LceError.BottomSheet(
         ZashiConfirmationState.error(
-            title = title ?: stringRes(co.electriccoin.zcash.ui.design.R.string.general_error_title),
+            title = title ?: stringRes(co.electriccoin.zcash.ui.design.R.string.coinVote_error_title),
             message = message ?: stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_laterDesc),
             primaryStyle = primaryStyle ?: ButtonStyle.TERTIARY,
             onPrimary = error.restart,

@@ -55,7 +55,7 @@ fun WalletBackupMessage(
                 state =
                     ButtonState(
                         onClick = state.onButtonClick,
-                        text = stringRes(R.string.home_message_backup_required_button)
+                        text = stringRes(R.string.smartBanner_content_backup_button)
                     )
             )
         }

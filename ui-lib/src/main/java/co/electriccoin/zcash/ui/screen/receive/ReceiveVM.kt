@@ -91,17 +91,17 @@ class ReceiveVM(
             when (account) {
                 is KeystoneAccount -> {
                     if (type == Unified) {
-                        stringRes(R.string.receive_wallet_address_shielded_keystone)
+                        stringRes(R.string.accounts_keystone_shieldedAddress)
                     } else {
-                        stringRes(R.string.receive_wallet_address_transparent_keystone)
+                        stringRes(R.string.accounts_keystone_transparentAddress)
                     }
                 }
 
                 is ZashiAccount -> {
                     if (type == Unified) {
-                        stringRes(R.string.receive_wallet_address_shielded)
+                        stringRes(R.string.accounts_zashi_shieldedAddress)
                     } else {
-                        stringRes(R.string.receive_wallet_address_transparent)
+                        stringRes(R.string.accounts_zashi_transparentAddress)
                     }
                 }
             },

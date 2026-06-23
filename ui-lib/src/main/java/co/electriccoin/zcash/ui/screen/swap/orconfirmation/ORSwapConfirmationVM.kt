@@ -73,7 +73,7 @@ class ORSwapConfirmationVM(
                     address = stringResByAddress(quote.depositAddress.address),
                     copyButton =
                         BigIconButtonState(
-                            text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_copy),
+                            text = stringRes(co.electriccoin.zcash.ui.design.R.string.receive_copy),
                             icon = R.drawable.ic_copy,
                             onClick = { onCopyAddressClick(quote.depositAddress.address) }
                         ),
@@ -135,7 +135,7 @@ class ORSwapConfirmationVM(
                         ),
                     negative =
                         ButtonState(
-                            text = stringRes(R.string.swap_quote_cancel_swap),
+                            text = stringRes(R.string.swapAndPay_cancelSwap),
                             onClick = ::onCancelSwapClick
                         ),
                     onBack = { _dialogState.value = null }

@@ -78,7 +78,7 @@ fun SendShielded(
                         modifier = Modifier.fillMaxWidth(),
                         state =
                             TransactionDetailInfoRowState(
-                                title = stringRes(R.string.transaction_detail_info_transaction_id),
+                                title = stringRes(R.string.transactionList_transactionId),
                                 message = state.transactionId.withStyle(),
                                 trailingIcon = R.drawable.ic_transaction_detail_info_copy,
                                 onClick = state.onTransactionIdClick
@@ -90,7 +90,7 @@ fun SendShielded(
                         state =
                             TransactionDetailInfoRowState(
                                 title =
-                                    stringRes(R.string.transaction_detail_info_transaction_fee),
+                                    stringRes(R.string.transactionDetail_feeSummary),
                                 message = state.fee.withStyle(),
                             )
                     )
@@ -131,7 +131,7 @@ fun SendShielded(
         TransactionDetailTitleHeader(
             state =
                 TransactionDetailInfoHeaderState(
-                    title = stringRes(R.string.transaction_detail_info_message)
+                    title = stringRes(R.string.send_message)
                 )
         )
         Spacer(Modifier.height(8.dp))

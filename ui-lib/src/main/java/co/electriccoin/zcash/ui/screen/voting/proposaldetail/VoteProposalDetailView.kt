@@ -225,7 +225,7 @@ private fun NavigationButtons(state: VoteProposalDetailState) {
             modifier = Modifier.fillMaxWidth(),
             state =
                 ButtonState(
-                    text = stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_next),
+                    text = stringRes(co.electriccoin.zcash.ui.R.string.coinVote_common_next),
                     style = ButtonStyle.PRIMARY,
                     onClick = state.onNext
                 )
@@ -242,7 +242,7 @@ private fun NavigationButtons(state: VoteProposalDetailState) {
                         if (state.isEditingFromReview) {
                             stringRes(co.electriccoin.zcash.ui.R.string.coinVote_common_save)
                         } else {
-                            stringRes(co.electriccoin.zcash.ui.R.string.vote_proposal_detail_next)
+                            stringRes(co.electriccoin.zcash.ui.R.string.coinVote_common_next)
                         },
                     style = ButtonStyle.PRIMARY,
                     onClick = state.onNext

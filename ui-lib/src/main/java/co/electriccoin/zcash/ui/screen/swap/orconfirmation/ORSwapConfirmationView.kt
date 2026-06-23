@@ -271,7 +271,7 @@ private fun TopAppBar(state: ORSwapConfirmationState) {
                 horizontalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = stringResource(co.electriccoin.zcash.ui.R.string.swap_confirmation_title).uppercase(),
+                    text = stringResource(co.electriccoin.zcash.ui.R.string.swapAndPay_swap).uppercase(),
                     style = ZashiTypography.textMd,
                     fontWeight = FontWeight.SemiBold,
                     color = ZashiColors.Text.textPrimary

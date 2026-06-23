@@ -66,7 +66,7 @@ class ResyncConfirmVM(
         isLoading: Boolean,
     ): ResyncConfirmState =
         ResyncConfirmState(
-            title = stringRes(R.string.resync_title),
+            title = stringRes(R.string.resyncWallet_title),
             subtitle = stringRes(R.string.resyncWallet_confirmTitle),
             message = stringRes(R.string.confirm_resync_subtitle),
             onBack = ::onBack,

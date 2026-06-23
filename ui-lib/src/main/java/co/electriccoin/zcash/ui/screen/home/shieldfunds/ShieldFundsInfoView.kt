@@ -76,7 +76,7 @@ fun ShieldFundsInfoView(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    stringResource(R.string.home_info_transparent_subheader),
+                    stringResource(R.string.smartBanner_help_shield_transparent),
                     color = ZashiColors.Text.textPrimary,
                     style = ZashiTypography.textMd,
                     fontWeight = FontWeight.Medium,

@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
 
-    <string name="send_stage_confirmation_title">Confirmation</string>
-    <string name="send_confirmation_amount">Total Amount</string>
-    <string name="send_confirmation_address">Send to</string>
+    <string name="send_confirmationTitle">Confirmation</string>
+    <string name="send_amountSummary">Total Amount</string>
+    <string name="send_to">Send to</string>
     <string name="accounts_sendingFrom">Send from</string>
-    <string name="send_confirmation_memo">Message</string>
-    <string name="send_confirmation_fee">Fee</string>
-    <string name="send_confirmation_amount_item">Amount</string>
-    <string name="send_confirmation_send_button">Send</string>
+    <string name="send_feeSummary">Fee</string>
+    <string name="send_amount">Amount</string>
+    <string name="tabs_send">Send</string>
 
     <string name="send_confirmation_sending_title">Sending…</string>
     <string name="send_sendingInfo">Your coins are being sent to\n
@@ -26,26 +25,22 @@
     <string name="send_successInfo">Your coins were successfully sent to\n
         <xliff:g example="zs12ghrbdjfs24383x5T…" id="index">%1$s</xliff:g>
     </string>
-    <string name="send_confirmation_success_view_trx">View Transaction</string>
-    <string name="send_confirmation_success_btn_close">Close</string>
+    <string name="send_viewTransaction">View Transaction</string>
+    <string name="general_close">Close</string>
 
-    <string name="send_confirmation_failure_title">Send Failed</string>
+    <string name="transaction_failedSend">Send Failed</string>
     <string name="send_failureInfo">There was an error attempting to send coins.\nTry it again, please.</string>
-    <string name="send_confirmation_failure_view_trx">View Transaction</string>
-    <string name="send_confirmation_failure_close_button">Close</string>
 
     <string name="send_confirmation_failure_grpc_title">Connection Issue</string>
     <string name="send_confirmation_failure_grpc_subtitle">Zodl encountered connection issues when submitting the
         transaction. It will retry in the next few minutes.</string>
-    <string name="send_confirmation_failure_grpc_close_button">Close</string>
 
-    <string name="send_confirmation_multiple_trx_failure_title">Send Failed</string>
     <string name="send_confirmation_multiple_trx_failure_text">Send to this recipient required multiple
         transactions but only some of them succeeded and the rest failed. Your funds are safe but need to be
         recovered with assistance from our side.\n\nPlease use the button below to contact us. it
         automatically prepares all the data we need in order to help you restore your funds.</string>
     <string name="send_confirmation_multiple_trx_failure_copy_button">Copy transaction IDs</string>
-    <string name="send_confirmation_multiple_trx_failure_report_button">Contact Support</string>
+    <string name="errorPage_action_contactSupport">Contact Support</string>
     <string name="send_confirmation_multiple_trx_failure_ids_title">Transaction IDs</string>
     <string name="send_confirmation_multiple_report_text">Hi, Zodl Team.\n\nWhile sending a transaction to a TEX
         address, I encountered an error state. I\'m reaching out to get guidance on how to recover my funds.\n\nThank
@@ -69,15 +64,15 @@
     <string name="swapAndPay_failureSwapInfo">There was an error initiating a swap.\nTry it again, please.</string>
     <string name="swapAndPay_sendingInfo">Your coins are being sent to the deposit address…</string>
     <string name="swapAndPay_checkStatus">Check status</string>
-    <string name="send_confirmation_total">Total</string>
+    <string name="send_requestPayment_total">Total</string>
     <string name="keystone_confirmPay">Pay with Keystone</string>
-    <string name="send_confirmation_pay">Pay</string>
+    <string name="crosspay_pay">Pay</string>
 
     <!-- Pending states -->
     <string name="send_pendingTitle">Transaction Pending</string>
     <string name="send_pendingInfo">Your transaction is being processed.</string>
     <string name="send_pendingTimeoutInfo">Timed out waiting for a server response. Your transaction may still have been broadcast.</string>
-    <string name="send_confirmation_pending_swap_title">Swap Pending</string>
+    <string name="swapAndPay_pendingSwapTitle">Swap Pending</string>
     <string name="swapAndPay_pendingSwapInfo">Your swap is being processed. Follow its status on the transaction screen.</string>
     <string name="swapAndPay_pendingPayTitle">Payment Pending</string>
     <string name="swapAndPay_pendingPayInfo">Your cross-chain payment is being processed. Follow its status on the transaction screen.</string>

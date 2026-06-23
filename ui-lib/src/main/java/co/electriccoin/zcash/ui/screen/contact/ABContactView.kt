@@ -149,7 +149,7 @@ private fun ContactViewInternal(
         if (state.chain != null) {
             Spacer(modifier = Modifier.height(20.dp))
             Text(
-                text = stringResource(R.string.contact_select_chain),
+                text = stringResource(R.string.swapAndPay_addressBookSelectChain),
                 style = ZashiTypography.textSm,
                 fontWeight = FontWeight.Medium,
                 color = ZashiColors.Inputs.Filled.label

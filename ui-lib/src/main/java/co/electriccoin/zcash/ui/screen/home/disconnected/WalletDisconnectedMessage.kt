@@ -37,7 +37,7 @@ fun WalletDisconnectedMessage(
         },
         title = {
             Text(
-                stringResource(R.string.home_message_wallet_disconnected_title),
+                stringResource(R.string.smartBanner_content_disconnected_title),
             )
         },
         subtitle = {

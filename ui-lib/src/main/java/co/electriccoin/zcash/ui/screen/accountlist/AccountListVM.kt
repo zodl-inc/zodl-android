@@ -76,7 +76,7 @@ class AccountListVM(
                     onBack = ::onBack,
                     addWalletButton =
                         ButtonState(
-                            text = stringRes(co.electriccoin.zcash.ui.R.string.account_list_keystone_primary),
+                            text = stringRes(co.electriccoin.zcash.ui.R.string.keystone_connect),
                             onClick = ::onAddWalletButtonClicked
                         ).takeIf {
                             accounts.orEmpty().none { it is KeystoneAccount }

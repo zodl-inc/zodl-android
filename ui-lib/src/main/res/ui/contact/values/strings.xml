@@ -9,6 +9,6 @@
     <string name="addressBook_error_nameLength">This contact name exceeds the 32-character limit. Please shorten the name.</string>
     <string name="contact_address_error_not_unique">This wallet address is already in your Address Book.</string>
     <string name="contact_chain_address_error_not_unique">An address with this chain already exists in your Address Book.</string>
-    <string name="contact_address_error_invalid">Invalid address</string>
-    <string name="contact_select_chain">Select Chain</string>
+    <string name="send_error_invalidAddress">Invalid address</string>
+    <string name="swapAndPay_addressBookSelectChain">Select Chain</string>
 </resources>

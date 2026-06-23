@@ -68,7 +68,7 @@ fun TransactionDetailInfoRow(
                     maxLines = 1,
                     text =
                         state.message orHiddenString
-                            stringRes(co.electriccoin.zcash.ui.design.R.string.hide_balance_placeholder),
+                            stringRes(co.electriccoin.zcash.ui.design.R.string.general_hideBalancesMost),
                     style = ZashiTypography.textSm,
                     color = ZashiColors.Text.textPrimary,
                     fontWeight = FontWeight.Medium,

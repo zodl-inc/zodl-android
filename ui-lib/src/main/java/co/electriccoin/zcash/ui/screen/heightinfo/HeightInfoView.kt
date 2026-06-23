@@ -45,7 +45,7 @@ fun HeightInfoView(
         sheetState = sheetState,
     ) {
         Text(
-            text = stringResource(R.string.keystone_wbh_info_title),
+            text = stringResource(R.string.restoreWallet_help_title),
             style = ZashiTypography.header6,
             fontWeight = FontWeight.SemiBold,
             color = ZashiColors.Text.textPrimary,

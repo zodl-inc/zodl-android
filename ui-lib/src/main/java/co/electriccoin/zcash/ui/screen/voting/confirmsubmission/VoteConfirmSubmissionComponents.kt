@@ -46,7 +46,7 @@ internal fun VoteSubmissionDetailsCard(state: VoteConfirmSubmissionState) {
             if (isIdle && !state.isKeystoneUser) {
                 HorizontalDivider(color = ZashiColors.Surfaces.bgPrimary)
                 VoteSubmissionDetailRow(
-                    label = stringRes(R.string.vote_confirm_detail_memo),
+                    label = stringRes(R.string.coinVote_confirmSubmission_detailMemo),
                     value = state.memo.getValue(),
                     valueStyle = ZashiTypography.textXs,
                 )
@@ -98,7 +98,7 @@ internal fun VoteSubmissionBottomSection(state: VoteConfirmSubmissionState) {
         val progressTitle: StringResource? =
             when (val status = state.status) {
                 is VoteSubmissionStatus.Authorizing -> {
-                    stringRes(R.string.vote_confirm_status_authorizing)
+                    stringRes(R.string.coinVote_store_submissionAuthorizingVote)
                 }
 
                 is VoteSubmissionStatus.Submitting -> {

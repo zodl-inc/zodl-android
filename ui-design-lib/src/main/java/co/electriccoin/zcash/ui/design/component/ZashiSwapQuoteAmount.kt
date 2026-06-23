@@ -97,14 +97,14 @@ private fun Layout(
             horizontalAlignment = if (isMirrored) Alignment.End else Alignment.Start
         ) {
             ShimmerableText(
-                text = state?.let { it.amount orHiddenString stringRes(R.string.hide_balance_placeholder) },
+                text = state?.let { it.amount orHiddenString stringRes(R.string.general_hideBalancesMost) },
                 shimmerText = stringResByNumber(BigDecimal(".123456")).getValue(),
                 style = ZashiTypography.textSm,
                 fontWeight = FontWeight.Medium,
                 color = ZashiColors.Text.textPrimary,
             )
             ShimmerableText(
-                text = state?.let { it.fiatAmount orHiddenString stringRes(R.string.hide_balance_placeholder) },
+                text = state?.let { it.fiatAmount orHiddenString stringRes(R.string.general_hideBalancesMost) },
                 shimmerText = stringResByNumber(BigDecimal(".123")).getValue(),
                 style = ZashiTypography.textXxs,
                 fontWeight = FontWeight.Medium,

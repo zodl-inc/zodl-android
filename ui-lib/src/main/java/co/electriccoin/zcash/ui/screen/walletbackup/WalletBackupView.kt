@@ -109,7 +109,7 @@ private fun SeedRecoveryMainContent(
             .then(modifier),
     ) {
         Text(
-            text = stringResource(R.string.seed_recovery_header),
+            text = stringResource(R.string.recoveryPhraseDisplay_title),
             fontWeight = FontWeight.SemiBold,
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.header6

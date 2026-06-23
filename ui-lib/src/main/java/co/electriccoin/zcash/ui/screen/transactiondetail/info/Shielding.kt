@@ -46,7 +46,7 @@ fun Shielding(
                 modifier = Modifier.fillMaxWidth(),
                 state =
                     TransactionDetailInfoRowState(
-                        title = stringRes(R.string.transaction_detail_info_transaction_id),
+                        title = stringRes(R.string.transactionList_transactionId),
                         message = state.transactionId.withStyle(),
                         trailingIcon = R.drawable.ic_transaction_detail_info_copy,
                         onClick = state.onTransactionIdClick
@@ -57,7 +57,7 @@ fun Shielding(
                 modifier = Modifier.fillMaxWidth(),
                 state =
                     TransactionDetailInfoRowState(
-                        title = stringRes(R.string.transaction_detail_info_transaction_fee),
+                        title = stringRes(R.string.transactionDetail_feeSummary),
                         message = state.fee.withStyle(),
                     )
             )

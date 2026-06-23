@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="integrations_title">Integrations</string>
+    <string name="torSetup_option3_title">Integrations</string>
     <string name="integrations_coinbase">Buy <xliff:g id="currency" example="ZEC">%1$s</xliff:g> with Coinbase</string>
     <string name="integrations_coinbase_subtitle">A hassle-free way to buy <xliff:g id="currency" example="ZEC">%1$s</xliff:g> and get it directly into your Zodl wallet.</string>
     <string name="integrations_info">Zodl integrations provide access to third party services. Features and information shared with them are outside of our control and subject to their privacy policies.</string>

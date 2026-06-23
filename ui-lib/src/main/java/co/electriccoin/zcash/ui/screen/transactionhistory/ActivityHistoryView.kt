@@ -333,7 +333,7 @@ private fun TransactionHistoryAppBar(
     state: ActivityHistoryState
 ) {
     ZashiSmallTopAppBar(
-        title = stringResource(R.string.transaction_history_screen_title),
+        title = stringResource(R.string.general_activity),
         showTitleLogo = true,
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = state.onBack)

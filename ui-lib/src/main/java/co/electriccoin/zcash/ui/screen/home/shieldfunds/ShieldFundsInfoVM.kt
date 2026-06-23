@@ -40,7 +40,7 @@ class ShieldFundsInfoVM(
                 primaryButton =
                     ButtonState(
                         onClick = ::onShieldClick,
-                        text = stringRes(R.string.home_info_transparent_balance_shield),
+                        text = stringRes(R.string.smartBanner_content_shield_button),
                         hapticFeedbackType = HapticFeedbackType.Confirm
                     ),
                 secondaryButton =

@@ -64,7 +64,7 @@ fun CrashReportingOptIn(state: CrashReportingOptInState) {
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_crash_reporting_opt_in_close),
-                    contentDescription = stringResource(R.string.close_navigation_content_description),
+                    contentDescription = stringResource(R.string.general_close),
                     colorFilter = ColorFilter.tint(ZashiColors.Btns.Tertiary.btnTertiaryFg)
                 )
             }
@@ -153,7 +153,7 @@ fun CrashReportingOptInFooter(
 
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),
-            text = stringResource(R.string.crash_reporting_opt_in_save),
+            text = stringResource(R.string.general_save),
             onClick = { state.onSaveClicked(isOptInSelected) },
             enabled = !isSaveDisabled,
             colors = ZashiButtonDefaults.primaryColors(),
@@ -172,7 +172,7 @@ fun CrashReportingOptInOptions(
         Option(
             modifier = Modifier.fillMaxWidth(),
             isChecked = isOptInSelected,
-            title = stringResource(R.string.crash_reporting_opt_in_positive),
+            title = stringResource(R.string.torSetup_learn_btnIn),
             subtitle = stringResource(R.string.crash_reporting_opt_in_positive_desc),
             onClick = { setOptInSelected(true) }
         )
@@ -180,7 +180,7 @@ fun CrashReportingOptInOptions(
         Option(
             modifier = Modifier.fillMaxWidth(),
             isChecked = !isOptInSelected,
-            title = stringResource(R.string.crash_reporting_opt_in_negative),
+            title = stringResource(R.string.torSetup_learn_btnOut),
             subtitle = stringResource(R.string.crash_reporting_opt_in_negative_desc),
             onClick = { setOptInSelected(false) }
         )

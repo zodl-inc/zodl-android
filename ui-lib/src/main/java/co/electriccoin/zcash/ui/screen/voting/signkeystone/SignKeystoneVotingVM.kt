@@ -90,7 +90,7 @@ class SignKeystoneVotingVM(
                         onBack = ::onCloseBottomSheetClick,
                         positiveButton =
                             ButtonState(
-                                text = stringRes(R.string.sign_keystone_transaction_bottom_sheet_go_back),
+                                text = stringRes(R.string.keystoneTransactionReject_goBack),
                                 onClick = ::onCloseBottomSheetClick
                             ),
                         negativeButton =
@@ -160,7 +160,7 @@ class SignKeystoneVotingVM(
                         },
                     scanButton =
                         ButtonState(
-                            text = stringRes(R.string.sign_keystone_voting_scan_signature),
+                            text = stringRes(R.string.coinVote_delegationSigning_scanSignature),
                             onClick = ::onSignTransactionClick
                         ),
                 )
@@ -355,7 +355,7 @@ class SignKeystoneVotingVM(
         when (type) {
             VotingKeystoneScanNoticeType.DUPLICATE_SIGNATURE -> {
                 stringRes(
-                    R.string.scan_keystone_voting_duplicate_signature,
+                    R.string.coinVote_delegationSigning_duplicateSignature,
                     bundleNumber,
                     bundleCount
                 )
@@ -363,7 +363,7 @@ class SignKeystoneVotingVM(
 
             VotingKeystoneScanNoticeType.WRONG_SIGNATURE -> {
                 stringRes(
-                    R.string.scan_keystone_voting_wrong_signature,
+                    R.string.coinVote_delegationSigning_wrongSignature,
                     bundleNumber,
                     bundleCount
                 )

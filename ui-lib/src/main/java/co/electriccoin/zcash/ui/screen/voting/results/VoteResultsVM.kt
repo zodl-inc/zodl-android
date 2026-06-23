@@ -120,7 +120,7 @@ class VoteResultsVM(
             isLoadingResults = false,
             doneButton =
                 ButtonState(
-                    text = stringRes(R.string.vote_done),
+                    text = stringRes(R.string.coinVote_common_done),
                     style = ButtonStyle.PRIMARY,
                     onClick = ::onDone,
                 ),

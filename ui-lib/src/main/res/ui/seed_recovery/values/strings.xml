@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="recoveryPhraseDisplay_screenTitle">Recovery Phrase</string>
-    <string name="seed_recovery_header">Secret Recovery Phrase</string>
+    <string name="recoveryPhraseDisplay_title">Secret Recovery Phrase</string>
     <string name="recoveryPhraseDisplay_description">These words are the only way to recover your funds! Make sure to save them in the correct order.</string>
     <string name="recoveryPhraseDisplay_reveal">Reveal security details</string>
     <string name="seed_recovery_saved_button">I\'ve saved it!</string>
     <string name="recoveryPhraseDisplay_hide">Hide security details</string>
-    <string name="seed_recovery_next_button">Next</string>
-    <string name="seed_recovery_bday_title">Wallet Birthday Height</string>
-    <string name="seed_recovery_bday_tooltip_title">Wallet Birthday Height</string>
+    <string name="general_next">Next</string>
+    <string name="recoveryPhraseDisplay_birthdayTitle">Wallet Birthday Height</string>
     <string name="seed_recovery_bday_tooltip_message">Wallet Birthday Height determines the birth (chain) height of
         your wallet and facilitates faster wallet restore process. Save this number together with your seed phrase in
         a safe place.</string>
@@ -16,11 +15,9 @@
     <string name="recoveryPhraseDisplay_warningTitle">Your Secret Recovery Phrase</string>
     <string name="recoveryPhraseDisplay_warningInfo">Your secret recovery phrase is a unique set of 24 words, appearing in a precise order. It protects access to your funds.</string>
     <string name="recoveryPhraseDisplay_proceedWarning">Keep this phrase securely hidden. Don’t take screenshots of it or store it on your phone!</string>
-    <string name="wallet_backup_btn">Next</string>
     <string name="recoveryPhraseDisplay_warningControl_title">Control your wallet</string>
     <string name="recoveryPhraseDisplay_warningKeep_title">Keep it private</string>
     <string name="recoveryPhraseDisplay_warningStore_title">Store it securely</string>
-    <string name="wallet_backup_item_4">Wallet birthday height</string>
     <string name="recoveryPhraseDisplay_warningControl_info">Use it to access your funds from other devices and Zcash wallets.</string>
     <string name="recoveryPhraseDisplay_warningKeep_info">Don\'t share it with anyone! It can be used to gain full control of your funds.</string>
     <string name="recoveryPhraseDisplay_warningStore_info">We don’t have access to it and will never ask for it. If you lose it, it cannot be recovered.</string>

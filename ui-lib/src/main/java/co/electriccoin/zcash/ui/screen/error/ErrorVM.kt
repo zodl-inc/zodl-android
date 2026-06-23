@@ -49,7 +49,7 @@ class ErrorVM(
             message = stringRes(R.string.torSetup_alert_msg),
             positive =
                 ButtonState(
-                    text = stringRes(R.string.error_tor_negative),
+                    text = stringRes(R.string.torSetup_alert_disable),
                     onClick = ::onDisableTorClick
                 ),
             negative =
@@ -71,7 +71,7 @@ class ErrorVM(
                 ),
             negative =
                 ButtonState(
-                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_report),
+                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.send_report),
                     onClick = { sendReportClick(args) }
                 ),
             onBack = ::onBack,
@@ -117,7 +117,7 @@ class ErrorVM(
                 ),
             negative =
                 ButtonState(
-                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_report),
+                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.send_report),
                     onClick = { sendReportClick(args) }
                 ),
             onBack = ::onBack,
@@ -138,7 +138,7 @@ class ErrorVM(
                 ),
             negative =
                 ButtonState(
-                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_report),
+                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.send_report),
                     onClick = { sendReportClick(args.exception) }
                 ),
             onBack = ::onBack,
@@ -159,7 +159,7 @@ class ErrorVM(
                 ),
             negative =
                 ButtonState(
-                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_report),
+                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.send_report),
                     onClick = { sendReportClick(args.exception) }
                 ),
             onBack = ::onBack,
