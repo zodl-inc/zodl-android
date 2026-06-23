@@ -216,7 +216,10 @@ object ZashiNumberTextFieldParser {
      * "1234.56".
      *
      * When every separator is the same character (e.g. "1,234,567" or "1.234.567") they are all treated
-     * as grouping and dropped, yielding "1234567".
+     * as grouping and dropped, yielding "1234567" — UNLESS the last one is trailing. A separator typed at
+     * the very end is always the freshly entered decimal point (e.g. while typing "1,234." the second "."
+     * must yield "1234." so the next fraction digits land after the decimal), so it overrides the
+     * pure-grouping rule.
      */
     @Suppress("ReturnCount")
     fun normalizeInput(input: String): String {
@@ -230,16 +233,17 @@ object ZashiNumberTextFieldParser {
                 .replace("\u202F", "") // NARROW NO-BREAK SPACE
                 .replace("\u0020", "") // REGULAR SPACE
 
+        val lastSeparatorIndex = cleaned.indexOfLast { it in separators }
+        if (lastSeparatorIndex < 0) return cleaned
+
+        val isTrailingSeparator = lastSeparatorIndex == cleaned.lastIndex
         val presentSeparators = cleaned.filter { it in separators }
-        if (presentSeparators.length > 1 && presentSeparators.toSet().size == 1) {
-            // All separators are identical → pure grouping (e.g. "1,234,567"); drop them all.
+        if (!isTrailingSeparator && presentSeparators.length > 1 && presentSeparators.toSet().size == 1) {
+            // All separators are identical and none is trailing → pure grouping (e.g. "1,234,567"); drop them all.
             return cleaned.filterNot { it in separators }
         }
 
         // Otherwise the last separator is the decimal point; earlier separators are grouping.
-        val lastSeparatorIndex = cleaned.indexOfLast { it in separators }
-        if (lastSeparatorIndex < 0) return cleaned
-
         val integerPart = cleaned.substring(0, lastSeparatorIndex).filterNot { it in separators }
         val fractionPart = cleaned.substring(lastSeparatorIndex + 1)
         return "$integerPart$decimalSeparator$fractionPart"
