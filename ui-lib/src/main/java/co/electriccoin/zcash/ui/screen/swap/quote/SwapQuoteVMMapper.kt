@@ -80,7 +80,7 @@ internal class SwapQuoteVMMapper {
                         EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.swapAndPay_swapFrom)
                         EXACT_OUTPUT -> stringRes(R.string.swapAndPay_payFrom)
                     },
-                title = stringRes(R.string.swap_quote_zashi).withStyle(),
+                title = stringRes(R.string.swapAndPay_quote_zashi).withStyle(),
                 subtitle = null
             ).takeIf { quote.destinationAsset !is ZecSwapAsset },
             SwapQuoteInfoItem(
@@ -93,7 +93,7 @@ internal class SwapQuoteVMMapper {
                 subtitle = null
             ).takeIf { quote.destinationAsset !is ZecSwapAsset },
             SwapQuoteInfoItem(
-                description = stringRes(R.string.swap_quote_total_fees),
+                description = stringRes(R.string.swapAndPay_totalFees),
                 title =
                     if (quote.destinationAsset is ZecSwapAsset) {
                         stringResByDynamicCurrencyNumber(totalFees, quote.originAsset.tokenTicker)
@@ -133,7 +133,7 @@ internal class SwapQuoteVMMapper {
 
     private fun SwapQuoteInternalState.createTotalAmountState(): SwapQuoteInfoItem =
         SwapQuoteInfoItem(
-            description = stringRes(R.string.swap_quote_total_amount),
+            description = stringRes(R.string.swapAndPay_totalAmount),
             title = stringResByDynamicCurrencyNumber(total, quote.originAsset.tokenTicker).withStyle(),
             subtitle = stringResByDynamicCurrencyNumber(totalUsd, FiatCurrency.USD.symbol).withStyle()
         )

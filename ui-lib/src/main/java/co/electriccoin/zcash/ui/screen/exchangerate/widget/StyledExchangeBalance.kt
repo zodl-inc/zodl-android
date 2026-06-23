@@ -60,7 +60,7 @@ fun StyledExchangeBalance(
     state: ExchangeRateState,
     modifier: Modifier = Modifier,
     hiddenBalancePlaceholder: StringResource =
-        stringRes(co.electriccoin.zcash.ui.design.R.string.hide_balance_placeholder),
+        stringRes(co.electriccoin.zcash.ui.design.R.string.general_hideBalancesMost),
     textColor: Color = ZashiColors.Text.textPrimary,
     style: TextStyle = ZashiTypography.textSm.copy(fontWeight = FontWeight.SemiBold)
 ) {

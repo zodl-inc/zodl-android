@@ -571,7 +571,7 @@ private fun Zip321Preview() =
         ReviewTransactionView(
             state =
                 ReviewTransactionState(
-                    title = stringRes(co.electriccoin.zcash.ui.R.string.payment_request_title),
+                    title = stringRes(co.electriccoin.zcash.ui.R.string.send_requestPayment_title),
                     items =
                         listOf(
                             AmountState(
@@ -611,7 +611,7 @@ private fun Zip321Preview() =
                                     startIcon = co.electriccoin.zcash.ui.R.drawable.ic_user_plus,
                                     text =
                                         stringRes(
-                                            co.electriccoin.zcash.ui.R.string.payment_request_btn_save_contact,
+                                            co.electriccoin.zcash.ui.R.string.general_save,
                                         ),
                                     onClick = {}
                                 )
@@ -621,13 +621,13 @@ private fun Zip321Preview() =
                                 message = stringRes("Message"),
                             ),
                             FinancialInfoState(
-                                title = stringRes(co.electriccoin.zcash.ui.R.string.payment_request_fee),
+                                title = stringRes(co.electriccoin.zcash.ui.R.string.send_feeSummary),
                                 amount = ZatoshiFixture.new()
                             )
                         ),
                     primaryButton =
                         ButtonState(
-                            stringRes(co.electriccoin.zcash.ui.R.string.review_keystone_transaction_positive)
+                            stringRes(co.electriccoin.zcash.ui.R.string.keystone_confirm)
                         ),
                     onBack = {},
                 )

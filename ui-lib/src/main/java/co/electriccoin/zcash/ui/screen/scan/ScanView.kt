@@ -253,7 +253,7 @@ fun ScanBottomItems(
                 ZashiButton(
                     modifier = Modifier.fillMaxWidth(),
                     onClick = onOpenSettings,
-                    text = stringResource(id = R.string.scan_settings_button)
+                    text = stringResource(id = R.string.scan_openSettings)
                 )
             }
         }
@@ -272,8 +272,8 @@ private fun ScanTopAppBar(
         navigationAction = {
             if (showBack) {
                 TopAppBarBackNavigation(
-                    backText = stringResource(id = R.string.back_navigation).uppercase(),
-                    backContentDescriptionText = stringResource(R.string.back_navigation_content_description),
+                    backText = stringResource(id = R.string.general_back).uppercase(),
+                    backContentDescriptionText = stringResource(R.string.general_back),
                     onBack = onBack
                 )
             }

@@ -50,7 +50,7 @@ fun VoteTallyingView(state: VoteTallyingState) {
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
-                title = stringRes(UiR.string.vote_tallying_top_bar_title).getValue(),
+                title = stringRes(UiR.string.coinVote_common_governanceTitle).getValue(),
                 navigationAction = {
                     ZashiTopAppBarBackNavigation(
                         onBack = state.onBack,
@@ -153,7 +153,7 @@ fun VoteTallyingView(state: VoteTallyingState) {
                             value = state.roundTitle.getValue()
                         )
                         DetailRow(
-                            label = stringRes(UiR.string.vote_tallying_detail_ended),
+                            label = stringRes(UiR.string.coinVote_tallying_detailEnded),
                             value = state.endedLabel.getValue()
                         )
                         DetailRow(

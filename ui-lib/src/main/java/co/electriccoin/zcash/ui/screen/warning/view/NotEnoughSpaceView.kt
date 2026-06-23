@@ -58,7 +58,7 @@ fun NotEnoughSpaceView(
                         ZashiTopAppBarNavigation(
                             backContentDescriptionText =
                                 stringResource(
-                                    co.electriccoin.zcash.ui.design.R.string.back_navigation_content_description
+                                    co.electriccoin.zcash.ui.design.R.string.general_back
                                 ),
                             drawableRes = R.drawable.ic_home_more,
                             onBack = onSettings,
@@ -97,7 +97,7 @@ fun NotEnoughSpaceView(
                         buildAnnotatedString {
                             append(
                                 stringResource(
-                                    R.string.not_enough_space_description_1,
+                                    R.string.notEnoughFreeSpace_messagePre,
                                     storageSpaceRequiredGigabytes
                                 ) + " "
                             )

@@ -92,11 +92,11 @@ internal class PayVM(
                 if (isVisible) {
                     SwapCancelState(
                         icon = imageRes(R.drawable.ic_swap_quote_cancel),
-                        title = stringRes(R.string.swap_cancel_title),
+                        title = stringRes(R.string.swapAndPay_canceltitle),
                         subtitle = stringRes(R.string.swapAndPay_cancelMsg),
                         negativeButton =
                             ButtonState(
-                                text = stringRes(R.string.swap_cancel_negative),
+                                text = stringRes(R.string.swapAndPay_cancelSwap),
                                 onClick = ::onCancelSwapClick
                             ),
                         positiveButton =

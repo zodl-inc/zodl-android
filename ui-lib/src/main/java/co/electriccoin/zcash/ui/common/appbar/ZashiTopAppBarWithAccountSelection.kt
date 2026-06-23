@@ -98,8 +98,8 @@ private fun AccountSwitch(state: AccountSwitchState) {
         Spacer(8.dp)
         Text(
             when (state.accountType) {
-                AccountType.ZASHI -> stringResource(co.electriccoin.zcash.ui.R.string.zashi_wallet_name)
-                AccountType.KEYSTONE -> stringResource(co.electriccoin.zcash.ui.R.string.keystone_wallet_name)
+                AccountType.ZASHI -> stringResource(co.electriccoin.zcash.ui.R.string.accounts_zashi)
+                AccountType.KEYSTONE -> stringResource(co.electriccoin.zcash.ui.R.string.accounts_keystone)
             },
             style =
                 TextStyle(

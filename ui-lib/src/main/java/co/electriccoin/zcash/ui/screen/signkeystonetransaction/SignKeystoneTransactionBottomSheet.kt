@@ -50,7 +50,7 @@ fun SignKeystoneTransactionBottomSheet(
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = stringResource(R.string.sign_keystone_transaction_bottom_sheet_title),
+                text = stringResource(R.string.keystoneTransactionReject_title),
                 style = ZashiTypography.header6,
                 color = ZashiColors.Text.textPrimary,
                 fontWeight = FontWeight.SemiBold

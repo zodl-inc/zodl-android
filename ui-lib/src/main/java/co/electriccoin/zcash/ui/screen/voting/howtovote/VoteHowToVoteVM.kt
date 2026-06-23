@@ -59,7 +59,7 @@ class VoteHowToVoteVM(
                             walletHeaderIcons = VoteWalletHeaderIconsState(isKeystone = isKeystone),
                             continueButton =
                                 ButtonState(
-                                    text = stringRes(R.string.vote_continue),
+                                    text = stringRes(R.string.coinVote_common_continue),
                                     style = ButtonStyle.PRIMARY,
                                     onClick = ::onContinue
                                 ),

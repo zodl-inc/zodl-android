@@ -42,7 +42,7 @@ fun AndroidWalletRestoringInfo() {
         )
         Spacer(12.dp)
         Text(
-            text = stringResource(R.string.home_info_restoring_message),
+            text = stringResource(R.string.smartBanner_help_restore_info),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textMd,
         )

@@ -55,7 +55,7 @@ fun CrashReportMessage(
                 state =
                     ButtonState(
                         onClick = state.onButtonClick,
-                        text = stringRes(stringResource(co.electriccoin.zcash.ui.design.R.string.general_review))
+                        text = stringRes(stringResource(co.electriccoin.zcash.ui.design.R.string.send_review))
                     )
             )
         }

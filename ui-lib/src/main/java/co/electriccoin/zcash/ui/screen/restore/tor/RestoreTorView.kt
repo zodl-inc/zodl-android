@@ -85,7 +85,7 @@ private fun Content(
         )
         Spacer(12.dp)
         Text(
-            stringResource(R.string.restore_tor_title),
+            stringResource(R.string.torSettingsSheet_title),
             style = ZashiTypography.header6,
             color = ZashiColors.Text.textPrimary,
             fontWeight = FontWeight.SemiBold
@@ -194,13 +194,13 @@ private fun Preview() =
                 RestoreTorState(
                     checkbox =
                         CheckboxState(
-                            title = stringRes(stringResource(R.string.restore_tor_checkbox_title)),
+                            title = stringRes(stringResource(R.string.torSettingsSheet_title)),
                             subtitle = stringRes(stringResource(R.string.torSettingsSheet_desc)),
                             isChecked = isChecked,
                             onClick = { isChecked = !isChecked }
                         ),
                     secondary = ButtonState(stringRes(co.electriccoin.zcash.ui.design.R.string.general_cancel)),
-                    primary = ButtonState(stringRes(R.string.restore_bd_restore_btn)),
+                    primary = ButtonState(stringRes(R.string.root_existingWallet_restore)),
                     onBack = { }
                 )
         )

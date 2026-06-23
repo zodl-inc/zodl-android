@@ -122,7 +122,7 @@ private fun TopAppBar(
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
 ) {
     ZashiSmallTopAppBar(
-        title = stringRes(co.electriccoin.zcash.ui.R.string.exchange_rate_currency_picker_title).getValue(),
+        title = stringRes(co.electriccoin.zcash.ui.R.string.currencyConversion_selectCurrencyTitle).getValue(),
         navigationAction = {
             ZashiTopAppBarCloseNavigation(
                 onBack = innerState.onBack,

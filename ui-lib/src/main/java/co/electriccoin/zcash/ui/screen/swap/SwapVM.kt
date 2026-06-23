@@ -84,7 +84,7 @@ internal class SwapVM(
                 if (isVisible) {
                     SwapCancelState(
                         icon = imageRes(R.drawable.ic_swap_quote_cancel),
-                        title = stringRes(R.string.swap_cancel_title),
+                        title = stringRes(R.string.swapAndPay_canceltitle),
                         subtitle = stringRes(R.string.swapAndPay_cancelMsg),
                         negativeButton =
                             ButtonState(

@@ -105,7 +105,7 @@ class UpdateGenericABContactVM(
                 }
             when (validation) {
                 ContactAddressValidationResult.Invalid -> {
-                    stringRes(R.string.contact_address_error_invalid)
+                    stringRes(R.string.send_error_invalidAddress)
                 }
 
                 ContactAddressValidationResult.NotUnique -> {
@@ -190,7 +190,7 @@ class UpdateGenericABContactVM(
                     blockchain != contact.blockchain
                 }
             ButtonState(
-                text = stringRes(R.string.update_contact_primary_btn),
+                text = stringRes(R.string.general_save),
                 isEnabled =
                     address.error == null &&
                         name.error == null &&
@@ -206,7 +206,7 @@ class UpdateGenericABContactVM(
     private val deleteButtonState =
         isDeletingContact.map { isDeletingContact ->
             ButtonState(
-                text = stringRes(R.string.update_contact_secondary_btn),
+                text = stringRes(R.string.general_delete),
                 onClick = ::onDeleteButtonClick,
                 isLoading = isDeletingContact,
                 hapticFeedbackType = HapticFeedbackType.Confirm
@@ -287,7 +287,7 @@ class UpdateGenericABContactVM(
         } else {
             _dialogState.value =
                 ErrorState(
-                    title = stringRes(R.string.delete_contact_confirmation_title),
+                    title = stringRes(R.string.deleteWallet_sheet_title),
                     message = stringRes(R.string.addressBook_alert_message),
                     positive =
                         ButtonState(

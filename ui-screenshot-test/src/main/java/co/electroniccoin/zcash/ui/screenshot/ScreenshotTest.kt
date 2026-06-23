@@ -216,13 +216,13 @@ class ScreenshotTest : UiTestPrerequisites() {
 
         // To ensure that the new screen is available, or wait until it is
         composeTestRule.waitUntilAtLeastOneExists(
-            hasText(resContext.getString(R.string.restore_title), ignoreCase = true),
+            hasText(resContext.getString(R.string.root_existingWallet_restore), ignoreCase = true),
             DEFAULT_TIMEOUT_MILLISECONDS
         )
 
         composeTestRule
             .onNodeWithText(
-                resContext.getString(R.string.restore_title),
+                resContext.getString(R.string.root_existingWallet_restore),
                 ignoreCase = true
             ).assertExists()
 
@@ -242,7 +242,7 @@ class ScreenshotTest : UiTestPrerequisites() {
 
         composeTestRule
             .onNodeWithText(
-                text = resContext.getString(R.string.restore_button),
+                text = resContext.getString(R.string.general_next),
                 ignoreCase = true
             ).also {
                 // Even with waiting for the word list in the view model,
@@ -256,7 +256,7 @@ class ScreenshotTest : UiTestPrerequisites() {
 
         composeTestRule
             .onNodeWithText(
-                resContext.getString(R.string.wbh_subtitle),
+                resContext.getString(R.string.recoveryPhraseDisplay_birthdayTitle),
                 ignoreCase = true
             ).also {
                 it.assertExists()
@@ -525,14 +525,14 @@ private fun sendZecScreenshots(
     }
 
     composeTestRule.waitUntilAtLeastOneExists(
-        hasText(resContext.getString(co.electriccoin.zcash.ui.design.R.string.general_review), ignoreCase = true),
+        hasText(resContext.getString(co.electriccoin.zcash.ui.design.R.string.send_review), ignoreCase = true),
         15.seconds.inWholeMilliseconds
     )
 
     composeTestRule
         .onNode(
             hasText(
-                resContext.getString(co.electriccoin.zcash.ui.design.R.string.general_review),
+                resContext.getString(co.electriccoin.zcash.ui.design.R.string.send_review),
                 ignoreCase = true
             )
         ).also {
@@ -616,10 +616,10 @@ private fun seedScreenshots(
 ) {
     composeTestRule
         .waitUntilAtLeastOneExists(
-            hasText(resContext.getString(R.string.seed_recovery_header), ignoreCase = true),
+            hasText(resContext.getString(R.string.recoveryPhraseDisplay_title), ignoreCase = true),
             DEFAULT_TIMEOUT_MILLISECONDS
         )
-    composeTestRule.onNode(hasText(resContext.getString(R.string.seed_recovery_header), ignoreCase = true)).also {
+    composeTestRule.onNode(hasText(resContext.getString(R.string.recoveryPhraseDisplay_title), ignoreCase = true)).also {
         it.assertExists()
     }
 

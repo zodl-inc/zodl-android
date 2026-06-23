@@ -36,7 +36,7 @@ fun TorSettingsView(state: TorSettingsState) {
     }
 
     ZashiBaseSettingsOptIn(
-        header = stringResource(R.string.tor_settings_title),
+        header = stringResource(R.string.torSetup_title),
         image = R.drawable.ic_tor_settings,
         onDismiss = state.onDismiss,
         info = null,
@@ -51,7 +51,7 @@ fun TorSettingsView(state: TorSettingsState) {
             Option(
                 modifier = Modifier.fillMaxWidth(),
                 isChecked = isOptInSelected,
-                title = stringResource(R.string.exchange_rate_opt_in_option_title),
+                title = stringResource(R.string.torSetup_ccSheet_enable),
                 subtitle = stringResource(R.string.torSetup_enableDesc),
                 onClick = { isOptInSelected = true }
             )
@@ -59,14 +59,14 @@ fun TorSettingsView(state: TorSettingsState) {
             Option(
                 modifier = Modifier.fillMaxWidth(),
                 isChecked = !isOptInSelected,
-                title = stringResource(R.string.exchange_rate_opt_out_option_title),
+                title = stringResource(R.string.currencyConversion_learnMoreOptionDisable),
                 subtitle = stringResource(R.string.torSetup_disableDesc),
                 onClick = { isOptInSelected = false }
             )
         },
         footer = {
             ZashiButton(
-                text = stringResource(R.string.exchange_rate_opt_in_save),
+                text = stringResource(R.string.currencyConversion_saveBtn),
                 modifier = Modifier.fillMaxWidth(),
                 onClick = { state.onSaveClick(isOptInSelected) },
                 enabled = !isButtonDisabled,

@@ -44,12 +44,12 @@ class RestoreDateVM(
 
     private fun createState(selection: YearMonth, isLoading: Boolean) =
         BirthdayPickerState(
-            title = stringRes(R.string.restore_title),
+            title = stringRes(R.string.root_existingWallet_restore),
             message = stringRes(R.string.firstWalletTransactionSubtitleRestore),
             logo = null,
             primaryButton =
                 ButtonState(
-                    text = stringRes(R.string.wbh_next),
+                    text = stringRes(R.string.general_next),
                     isLoading = isLoading,
                     onClick = ::onEstimateClick,
                 ),

@@ -194,7 +194,7 @@ fun SlippagePicker(
                                     Modifier
                                         .fillMaxWidth()
                                         .padding(horizontal = 2.dp),
-                                text = stringResource(R.string.swap_slippage_custom),
+                                text = stringResource(R.string.swapAndPay_custom),
                                 style = ZashiTypography.textMd,
                                 fontWeight = FontWeight.Medium,
                                 textAlign = TextAlign.Center,

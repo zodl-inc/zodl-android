@@ -2,7 +2,7 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="serverSetup_title">Server</string>
     <string name="choose_server_default_label">default: <xliff:g id="server" example="example.com:123">%1$s</xliff:g></string>
-    <string name="choose_server_custom">custom</string>
+    <string name="serverSetup_custom">custom</string>
     <string name="choose_server_custom_delimiter">:</string>
     <string name="choose_server_full_server_name">
         <xliff:g id="hostname" example="example.com">%1$s</xliff:g>:
@@ -22,7 +22,7 @@
     <string name="choose_server_save_success_dialog_title">Server saved</string>
     <string name="choose_server_save_success_dialog_text">The selected server endpoint has been
         successfully saved.</string>
-    <string name="choose_server_save_default">Default</string>
+    <string name="serverSetup_default">Default</string>
 
     <string name="serverSetup_performingTest">Performing server test…</string>
     <string name="serverSetup_couldTakeTime">This may take a moment…</string>
@@ -33,8 +33,7 @@
     <string name="serverSetup_fastestServers">Fastest servers</string>
     <string name="serverSetup_otherServers">Other servers</string>
     <string name="serverSetup_allServers">Browse all servers</string>
-    <string name="choose_server_refresh">Refresh</string>
-    <string name="choose_server_active">Active</string>
+    <string name="serverSetup_refresh">Refresh</string>
+    <string name="serverSetup_active">Active</string>
     <string name="serverSetup_testing">Testing</string>
-    <string name="choose_server_default">Default</string>
 </resources>

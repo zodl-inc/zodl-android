@@ -110,7 +110,7 @@ class SwapDetailVM(
 
     private fun createTotalFeesState(swapData: SwapData): TransactionDetailInfoRowState =
         TransactionDetailInfoRowState(
-            title = stringRes(R.string.transaction_detail_info_total_fees),
+            title = stringRes(R.string.swapAndPay_totalFees),
             message =
                 if (swapData.status != null) {
                     val text =
@@ -193,13 +193,13 @@ class SwapDetailVM(
         TransactionDetailHeaderState(
             title =
                 when (swapData.status?.status) {
-                    EXPIRED -> stringRes(R.string.swap_detail_title_swap_expired)
+                    EXPIRED -> stringRes(R.string.swapStatus_swapExpired)
                     PENDING -> stringRes(R.string.swapAndPay_status_pendingDeposit)
-                    INCOMPLETE_DEPOSIT -> stringRes(R.string.swap_detail_incomplete)
-                    PROCESSING -> stringRes(R.string.swap_detail_title_swap_processing)
-                    SUCCESS -> stringRes(R.string.swap_detail_title_swap_completed)
-                    REFUNDED -> stringRes(R.string.swap_detail_title_swap_refunded)
-                    FAILED -> stringRes(R.string.swap_detail_title_swap_failed)
+                    INCOMPLETE_DEPOSIT -> stringRes(R.string.swapStatus_swapIncomplete)
+                    PROCESSING -> stringRes(R.string.swapToZec_swapProcessing)
+                    SUCCESS -> stringRes(R.string.swapStatus_swapped)
+                    REFUNDED -> stringRes(R.string.swapStatus_swapRefunded)
+                    FAILED -> stringRes(R.string.swapStatus_swapFailed)
                     null -> null
                 },
             amount =

@@ -2,16 +2,13 @@
 <resources>
     <string name="receive_title">Receive %s</string>
     <string name="receive_warning">For privacy, always use shielded address.</string>
-    <string name="receive_wallet_address_shielded">Zcash Shielded Address</string>
-    <string name="receive_wallet_address_sapling">Zcash Sapling Address</string>
-    <string name="receive_wallet_address_transparent">Zcash Transparent Address</string>
-    <string name="receive_copy">Copy</string>
+    <string name="accounts_zashi_shieldedAddress">Zcash Shielded Address</string>
+    <string name="accounts_zashi_transparentAddress">Zcash Transparent Address</string>
     <string name="receive_qrCode">QR Code</string>
     <string name="receive_request">Request</string>
     <string name="receive_clipboard_tag">Zcash Wallet Address</string>
-    <string name="receive_wallet_address_shielded_keystone">Zcash Shielded Address</string>
-    <string name="receive_wallet_address_sapling_keystone">Zcash Sapling Address</string>
-    <string name="receive_wallet_address_transparent_keystone">Zcash Transparent Address</string>
+    <string name="accounts_keystone_shieldedAddress">Zcash Shielded Address</string>
+    <string name="accounts_keystone_transparentAddress">Zcash Transparent Address</string>
     <string name="receive_wallet_address_unified_subtitle">Rotates every time you use it</string>
 
     <string name="receive_help_shielded_title">Zcash Shielded Address (Rotating)</string>

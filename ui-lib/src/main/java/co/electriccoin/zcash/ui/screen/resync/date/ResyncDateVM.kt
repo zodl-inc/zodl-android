@@ -59,12 +59,12 @@ class ResyncDateVM(
         selection: YearMonth,
         isLoading: Boolean,
     ) = BirthdayPickerState(
-        title = stringRes(R.string.resync_title),
+        title = stringRes(R.string.resyncWallet_title),
         message = stringRes(R.string.firstWalletTransactionSubtitleResync),
         logo = null,
         primaryButton =
             ButtonState(
-                text = stringRes(R.string.wbh_next),
+                text = stringRes(R.string.general_next),
                 isLoading = isLoading,
                 onClick = { onEstimateClick(selection) },
             ),

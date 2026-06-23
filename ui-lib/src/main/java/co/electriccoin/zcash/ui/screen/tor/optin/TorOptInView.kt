@@ -24,7 +24,7 @@ import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 @Composable
 fun TorOptInView(state: TorOptInState) {
     ZashiBaseSettingsOptIn(
-        header = stringResource(id = R.string.tor_settings_title),
+        header = stringResource(id = R.string.torSetup_title),
         image = R.drawable.ic_tor_settings,
         onDismiss = state.onBack,
         content = {
@@ -37,7 +37,7 @@ fun TorOptInView(state: TorOptInState) {
             Spacer(24.dp)
             ZashiInfoRow(
                 icon = R.drawable.ic_tor_opt_in_item_1,
-                title = stringResource(R.string.tor_opt_in_item_title_1),
+                title = stringResource(R.string.torSetup_option1_title),
                 subtitle = stringResource(R.string.torSetup_option1_desc),
             )
             Spacer(20.dp)
@@ -49,7 +49,7 @@ fun TorOptInView(state: TorOptInState) {
             Spacer(20.dp)
             ZashiInfoRow(
                 icon = R.drawable.ic_tor_opt_in_item_3,
-                title = stringResource(R.string.tor_opt_in_item_title_3),
+                title = stringResource(R.string.torSetup_option3_title),
                 subtitle = stringResource(R.string.torSetup_option3_desc),
             )
         },
@@ -60,14 +60,14 @@ fun TorOptInView(state: TorOptInState) {
                 onClick = state.onSkipClick,
             ) {
                 Text(
-                    text = stringResource(R.string.tor_opt_out_btn),
+                    text = stringResource(R.string.torSetup_learn_btnOut),
                     style = ZashiTypography.textMd,
                     fontWeight = FontWeight.SemiBold
                 )
             }
             ZashiButton(
                 modifier = Modifier.fillMaxWidth(),
-                text = stringResource(R.string.tor_opt_in_btn),
+                text = stringResource(R.string.torSetup_learn_btnIn),
                 onClick = state.onEnableClick,
                 colors = ZashiButtonDefaults.primaryColors()
             )

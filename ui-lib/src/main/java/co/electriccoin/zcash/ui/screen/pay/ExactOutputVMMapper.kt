@@ -148,7 +148,7 @@ internal class ExactOutputVMMapper {
     private fun createAmountErrorState(state: ExactOutputInternalState): StringResource? {
         val zatoshi = state.getZatoshi()
         return if (zatoshi != null && state.totalSpendableBalance < zatoshi) {
-            stringRes(R.string.swap_insufficient_funds)
+            stringRes(R.string.send_error_insufficientFunds)
         } else {
             null
         }
@@ -332,11 +332,11 @@ internal class ExactOutputVMMapper {
             text =
                 when {
                     state.isEphemeralAddressLocked -> {
-                        stringRes(co.electriccoin.zcash.ui.design.R.string.general_processing)
+                        stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_status_processing)
                     }
 
                     state.swapAssets.error != null -> {
-                        stringRes(co.electriccoin.zcash.ui.design.R.string.general_try_again)
+                        stringRes(co.electriccoin.zcash.ui.design.R.string.disconnectHWWallet_tryAgain)
                     }
 
                     state.swapAssets.isLoading && state.swapAssets.data == null -> {
@@ -344,7 +344,7 @@ internal class ExactOutputVMMapper {
                     }
 
                     else -> {
-                        stringRes(co.electriccoin.zcash.ui.design.R.string.general_review)
+                        stringRes(co.electriccoin.zcash.ui.design.R.string.send_review)
                     }
                 },
             style = if (state.swapAssets.error != null) ButtonStyle.DESTRUCTIVE1 else null,

@@ -41,7 +41,7 @@ class KeepOpenVM(
         when (flow) {
             KeepOpenFlow.RESTORE -> {
                 KeepOpenState(
-                    description = stringRes(R.string.keep_open_restore_description),
+                    description = stringRes(R.string.smartBanner_help_restore_info),
                     subtitle = stringRes(R.string.keepZodlOpenSubtitleRestore),
                     disclaimer = getDisclaimer(R.string.keep_open_restore_warning),
                     checkboxLabel = stringRes(R.string.keepScreenOnRestoring),

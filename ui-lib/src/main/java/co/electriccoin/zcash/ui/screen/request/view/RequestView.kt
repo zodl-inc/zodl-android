@@ -121,7 +121,7 @@ private fun RequestTopAppBar(
     onBack: () -> Unit,
 ) {
     ZashiSmallTopAppBar(
-        title = stringResource(id = R.string.request_title),
+        title = stringResource(id = R.string.receive_request),
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = onBack)
         },
@@ -137,7 +137,7 @@ private fun RequestBottomBar(
         when (state) {
             is RequestState.Amount -> {
                 ZashiButton(
-                    text = stringResource(id = R.string.request_amount_btn),
+                    text = stringResource(id = R.string.general_next),
                     onClick = state.onDone,
                     enabled = state.request.amountState.isValid == true,
                     modifier =
@@ -151,7 +151,7 @@ private fun RequestBottomBar(
                 ZashiButton(
                     enabled = state.request.memoState.isValid(),
                     onClick = state.onDone,
-                    text = stringResource(id = R.string.request_memo_btn),
+                    text = stringResource(id = R.string.receive_request),
                     modifier =
                         Modifier
                             .fillMaxWidth()
@@ -164,7 +164,7 @@ private fun RequestBottomBar(
                 val colors = QrCodeDefaults.colors()
 
                 ZashiButton(
-                    text = stringResource(id = R.string.request_qr_share_btn),
+                    text = stringResource(id = R.string.requestZec_summary_shareQR),
                     icon = R.drawable.ic_share,
                     onClick = { state.onQrCodeShare(colors, sizePixels, state.request.qrCodeState.requestUri) },
                     modifier =
@@ -178,7 +178,7 @@ private fun RequestBottomBar(
                 ZashiButton(
                     colors = ZashiButtonDefaults.secondaryColors(),
                     onClick = state.onClose,
-                    text = stringResource(id = R.string.request_qr_close_btn),
+                    text = stringResource(id = R.string.general_close),
                     modifier =
                         Modifier
                             .fillMaxWidth()

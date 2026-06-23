@@ -1,21 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="tabs_receive">Receive</string>
-    <string name="home_button_send">Send</string>
+    <string name="tabs_send">Send</string>
     <string name="home_button_scan">Scan</string>
-    <string name="home_button_request">Request</string>
+    <string name="receive_request">Request</string>
     <string name="home_button_buy">Buy</string>
     <string name="smartBanner_content_backup_title">Wallet Backup Required</string>
     <string name="smartBanner_content_backup_info">Prevent potential loss of funds</string>
-    <string name="home_message_backup_required_button">Start</string>
-    <string name="home_message_wallet_disconnected_title">Wallet Disconnected</string>
+    <string name="smartBanner_content_backup_button">Start</string>
+    <string name="smartBanner_content_disconnected_title">Wallet Disconnected</string>
     <string name="smartBanner_content_disconnected_info">Check your connection and reload Zodl</string>
     <string name="home_message_transparent_balance_subtitle">%1$s %2$s</string>
     <string name="smartBanner_content_shield_title">Unshielded Balance</string>
-    <string name="home_message_transparent_balance_button">Shield</string>
-    <string name="home_message_currency_conversion_title">Currency Conversion</string>
+    <string name="currencyConversion_title">Currency Conversion</string>
     <string name="smartBanner_content_currencyConversion_info">Enable to display fiat values</string>
-    <string name="home_message_currency_conversion_button">Start</string>
+    <string name="smartBanner_content_currencyConversion_button">Start</string>
     <string name="home_message_wallet_updating_title">Updating Balance…</string>
     <string name="smartBanner_content_updatingBalance_info">Waiting for last transaction to process</string>
     <string name="smartBanner_content_restore_title">Restoring Wallet • %1$.1f%% Complete</string>
@@ -27,7 +26,7 @@
     <string name="smartBanner_content_sync_info">Your wallet is updating</string>
     <string name="smartBanner_content_syncingError_title">Error encountered while syncing</string>
     <string name="smartBanner_content_syncingError_info">Attempting to resolve</string>
-    <string name="home_message_tor_title">Enable Tor Protection</string>
+    <string name="torSettingsSheet_title">Enable Tor Protection</string>
     <string name="smartBanner_content_tor_info">Protect your IP address</string>
     <string name="smartBanner_help_backup_title">Backup Required</string>
     <string name="smartBanner_help_backup_info1">Prevent potential loss of funds by securely backing up your wallet.</string>
@@ -43,18 +42,15 @@
     <string name="smartBanner_help_backup_acknowledge">I read and understand the risks of not backing up my wallet.</string>
     <string name="smartBanner_help_shield_notNow">Not now</string>
     <string name="smartBanner_help_shield_doNotShowAgain">Do not show this message again.</string>
-    <string name="home_info_transparent_balance_shield">Shield</string>
     <string name="smartBanner_help_shield_title">Always Shield Transparent Funds</string>
     <string name="smartBanner_help_shield_info1">To protect user privacy, Zodl doesn\'t support spending transparent
         %s. Tap the \"Shield\" button below to make your transparent funds spendable and your total Zodl balance private. </string>
     <string name="smartBanner_help_shield_info2">This will create a shielding in-wallet transaction, consolidating your
         transparent and shielded funds. (Typical fee: &lt; %1$s %2$s)</string>
-    <string name="home_info_transparent_subheader">Transparent</string>
-    <string name="home_info_disconnected_title">Wallet Disconnected</string>
     <string name="smartBanner_help_diconnected_info">You appear to be offline. Please restore your internet connection
         to use Zodl wallet.</string>
     <string name="smartBanner_help_restore_title">Wallet Restore in Progress</string>
-    <string name="home_info_restoring_message">Zodl is scanning the blockchain to retrieve your transactions. Older
+    <string name="smartBanner_help_restore_info">Zodl is scanning the blockchain to retrieve your transactions. Older
         wallets can take hours to restore. Follow these steps to prevent interruption:</string>
     <string name="home_info_restoring_bullet_1">Keep the Zodl app open on an active phone screen.</string>
     <string name="home_info_restoring_bullet_2">To prevent your phone screen from going dark, turn off power-saving
@@ -66,7 +62,7 @@
     <string name="smartBanner_help_sync_title">Wallet Sync in Progress</string>
     <string name="smartBanner_help_sync_info">Zodl is scanning the blockchain for your latest transactions to make sure
         your balances are displayed correctly. Keep the Zodl app open on an active phone screen to avoid interruptions.</string>
-    <string name="home_info_updating_title">Updating Balance</string>
+    <string name="smartBanner_help_updatingBalance_title">Updating Balance</string>
     <string name="smartBanner_help_updatingBalance_info">Your last transaction is getting mined and confirmed.</string>
     <string name="crash_report_detail_title">Help Improve Zodl</string>
     <string name="crash_report_detail_subtitle">Crash reports are an essential developer tool used to improve the quality and reliability of apps. Their sole purpose is to fix bugs that cause crashes.</string>
@@ -74,8 +70,6 @@
     <string name="crash_report_detail_item_subtitle_1">We use Firebase Crashlytics to collect crash reports. They include information about app version, time when the crash happened, and stack trace so it’s clear where in the app the crash happened.</string>
     <string name="crash_report_detail_item_subtitle_2">Zodl does not and cannot access or collect information about individual users, their devices, transactions, or their in-app activity. The data is completely anonymized.</string>
     <string name="crash_report_detail_item_title_1">What is shared?</string>
-    <string name="crash_report_detail_opt_out">Opt out</string>
-    <string name="crash_report_detail_opt_in">Opt in</string>
     <string name="home_message_crash_reporting_title">Help improve Zodl</string>
     <string name="home_message_crash_reporting_subtitle">Allow sharing crash reports</string>
     <string name="balances_spendableBalance_title">Spendable Balance</string>
@@ -84,7 +78,7 @@
     <string name="balances_infoSyncing">Zodl is scanning the blockchain to make sure your balances are displayed correctly.</string>
     <string name="balances_infoShielding">Shield your transparent %1$s to make it spendable and private. Doing so will create a shielding in-wallet transaction, consolidating your transparent and shielded funds. (Typical fee: %2$s %3$s)</string>
     <string name="balances_spendableBalance">Shielded (Spendable)</string>
-    <string name="balance_action_info_pending">Pending</string>
-    <string name="home_button_pay">Pay</string>
-    <string name="home_button_swap">Swap</string>
+    <string name="balances_pending">Pending</string>
+    <string name="crosspay_pay">Pay</string>
+    <string name="swapAndPay_swap">Swap</string>
 </resources>

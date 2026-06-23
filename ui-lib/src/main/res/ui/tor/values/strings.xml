@@ -1,19 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="tor_settings_title">Tor Protection</string>
+    <string name="torSetup_title">Tor Protection</string>
     <string name="tor_settings_subtitle">Tor provides additional protections for your IP address. This feature uses
         Tor network to fetch exchange rates, send transactions, retrieve transaction data, and connect to third party
         APIs.\n\nIf Tor is permitted in your region, we recommend enabling it.</string>
     <string name="torSetup_enableDesc">Connect over Tor</string>
     <string name="torSetup_disableDesc">Don’t connect over Tor.</string>
-    <string name="tor_opt_in_item_title_1">Currency Conversion</string>
+    <string name="torSetup_option1_title">Currency Conversion</string>
     <string name="torSetup_option1_desc">Fetch exchange rates from third-party servers without revealing your IP address. (Only available with Tor enabled.)</string>
     <string name="torSetup_option2_title">Transactions</string>
     <string name="torSetup_option2_desc">Send and retrieve transaction data over Tor for added privacy.</string>
-    <string name="tor_opt_in_item_title_3">Integrations</string>
     <string name="torSetup_option3_desc">Access third-party APIs (e.g. NEAR) over Tor for added privacy.</string>
 
-    <string name="tor_opt_in_btn">Opt in</string>
-    <string name="tor_opt_out_btn">Opt out</string>
     <string name="tor_settings_share_feedback">Share feedback</string>
 </resources>

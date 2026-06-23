@@ -116,7 +116,7 @@ private fun Content(
         Spacer(20.dp)
         ZashiInfoRow(
             icon = R.drawable.ic_wallet_backup_4,
-            title = stringResource(R.string.wallet_backup_item_4),
+            title = stringResource(R.string.recoveryPhraseDisplay_birthdayTitle),
             subtitle = stringResource(R.string.recoveryPhraseDisplay_warningHeight_info)
         )
         Spacer(20.dp)
@@ -140,7 +140,7 @@ private fun Content(
         ZashiButton(
             state =
                 ButtonState(
-                    text = stringRes(stringResource(R.string.wallet_backup_btn)),
+                    text = stringRes(stringResource(R.string.general_next)),
                     onClick = state.onNextClick
                 ),
             modifier = Modifier.fillMaxWidth()

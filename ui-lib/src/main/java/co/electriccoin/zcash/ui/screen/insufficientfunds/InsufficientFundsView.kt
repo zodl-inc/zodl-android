@@ -39,7 +39,7 @@ fun InsufficientFundsView(
         Image(painterResource(R.drawable.ic_swap_quote_error), contentDescription = null)
         Spacer(12.dp)
         Text(
-            text = stringResource(R.string.insufficient_funds_title),
+            text = stringResource(R.string.sheet_insufficientBalance_title),
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.header6,
             fontWeight = FontWeight.SemiBold,

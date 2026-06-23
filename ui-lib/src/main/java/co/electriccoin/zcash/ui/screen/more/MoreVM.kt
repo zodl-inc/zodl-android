@@ -44,12 +44,12 @@ class MoreVM(
             items =
                 listOfNotNull(
                     ListItemState(
-                        title = stringRes(R.string.settings_address_book),
+                        title = stringRes(R.string.settings_addressBook),
                         bigIcon = imageRes(R.drawable.ic_settings_address_book),
                         onClick = ::onAddressBookClick
                     ),
                     ListItemState(
-                        title = stringRes(R.string.advanced_settings_currency_conversion),
+                        title = stringRes(R.string.currencyConversion_title),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_currency_conversion),
                         onClick = ::onCurrencyConversionClick
                     ),
@@ -59,7 +59,7 @@ class MoreVM(
                         onClick = ::onVotingClick
                     ),
                     ListItemState(
-                        title = stringRes(R.string.settings_advanced_settings),
+                        title = stringRes(R.string.settings_advanced),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings),
                         onClick = ::onAdvancedSettingsClick
                     ),
@@ -69,7 +69,7 @@ class MoreVM(
                         onClick = ::onWhatsNewClick
                     ),
                     ListItemState(
-                        title = stringRes(R.string.settings_about_us),
+                        title = stringRes(R.string.settings_about),
                         bigIcon = imageRes(R.drawable.ic_settings_info),
                         onClick = ::onAboutUsClick
                     ),

@@ -3,5 +3,5 @@
     <string name="keystone_drawer_title">Wallets &amp; Hardware</string>
     <string name="keystone_drawer_banner_title">Keystone Hardware Wallet</string>
     <string name="keystone_drawer_banner_desc">Get 5%% off airgapped hardware wallet. Promo code "Zodl".</string>
-    <string name="account_list_keystone_primary">Connect Hardware Wallet</string>
+    <string name="keystone_connect">Connect Hardware Wallet</string>
 </resources>

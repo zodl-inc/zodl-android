@@ -111,7 +111,7 @@ fun KeystoneExplainerView(
             ZashiButton(
                 state =
                     ButtonState(
-                        text = stringRes(R.string.keystone_explainer_button),
+                        text = stringRes(R.string.hardwareWalletExplainer_cta),
                         onClick = state.onBack,
                     ),
                 modifier = Modifier.fillMaxWidth(),

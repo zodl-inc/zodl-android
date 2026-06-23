@@ -15,7 +15,6 @@
     <string name="keep_open_resync_warning">Your funds cannot be spent until your wallet is resynced.</string>
     <string name="keepScreenOnResyncing">Keep screen on while resyncing</string>
 
-    <string name="keep_open_restore_description">Zodl is scanning the blockchain to retrieve your transactions. Older wallets can take hours to restore. Follow these steps to prevent interruption:</string>
     <string name="keepZodlOpenSubtitleRestore">Your wallet is being restored.</string>
     <string name="keep_open_restore_warning">Your funds cannot be spent until your wallet is restored.</string>
     <string name="keepScreenOnRestoring">Keep screen on while restoring</string>

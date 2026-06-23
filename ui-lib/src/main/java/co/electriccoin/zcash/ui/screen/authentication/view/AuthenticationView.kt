@@ -110,9 +110,9 @@ fun AuthenticationErrorDialog(
                 )
             }
         },
-        confirmButtonText = stringResource(id = R.string.authentication_error_button_retry),
+        confirmButtonText = stringResource(id = R.string.coinVote_common_retry),
         onConfirmButtonClick = onRetry,
-        dismissButtonText = stringResource(id = R.string.authentication_error_button_support),
+        dismissButtonText = stringResource(id = R.string.errorPage_action_contactSupport),
         onDismissButtonClick = onSupport,
         onDismissRequest = onDismiss,
     )
@@ -135,9 +135,9 @@ fun AuthenticationFailedDialog(
                 )
             }
         },
-        confirmButtonText = stringResource(id = R.string.authentication_failed_button_retry),
+        confirmButtonText = stringResource(id = R.string.coinVote_common_retry),
         onConfirmButtonClick = onRetry,
-        dismissButtonText = stringResource(id = R.string.authentication_failed_button_support),
+        dismissButtonText = stringResource(id = R.string.errorPage_action_contactSupport),
         onDismissButtonClick = onSupport,
         onDismissRequest = onDismiss,
     )

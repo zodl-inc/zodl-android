@@ -11,6 +11,6 @@
     
     <string name="torSetup_alert_title">Disable Tor?</string>
     <string name="torSetup_alert_msg">Tor connection issues detected. To improve performance, try disabling Tor. This will stop exchange rate updates. You can re-enable it later in Advanced Settings.</string>
-    <string name="error_tor_negative">Disable</string>
+    <string name="torSetup_alert_disable">Disable</string>
     <string name="torSetup_alert_dontDisable">Don’t disable</string>
 </resources>

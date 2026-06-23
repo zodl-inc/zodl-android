@@ -94,14 +94,14 @@ private fun StatusChip(state: TransactionDetailSwapStatusRowState) {
                 }
 
                 INCOMPLETE_DEPOSIT -> {
-                    stringResource(R.string.swap_detail_incomplete_deposit)
+                    stringResource(R.string.swapAndPay_status_incompleteDeposit)
                 }
 
                 PENDING -> {
                     if (state.mode == SWAP_INTO_ZEC) {
                         stringResource(R.string.swapAndPay_status_pendingDeposit)
                     } else {
-                        stringResource(R.string.swap_detail_pending)
+                        stringResource(R.string.swapAndPay_status_pending)
                     }
                 }
 
@@ -119,9 +119,9 @@ private fun StatusChip(state: TransactionDetailSwapStatusRowState) {
 
                 PROCESSING -> {
                     if (state.mode == SWAP_INTO_ZEC) {
-                        stringResource(co.electriccoin.zcash.ui.design.R.string.general_processing)
+                        stringResource(co.electriccoin.zcash.ui.design.R.string.swapAndPay_status_processing)
                     } else {
-                        stringResource(R.string.swap_detail_pending)
+                        stringResource(R.string.swapAndPay_status_pending)
                     }
                 }
             },

@@ -136,7 +136,7 @@ fun Activity(
                     Text(
                         text =
                             it orHiddenString
-                                stringRes(co.electriccoin.zcash.ui.design.R.string.hide_balance_placeholder),
+                                stringRes(co.electriccoin.zcash.ui.design.R.string.general_hideBalancesMost),
                         color = ZashiColors.Text.textPrimary,
                         style = ZashiTypography.textSm
                     )

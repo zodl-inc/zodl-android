@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources  xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="payment_request_title">Payment Request</string>
-    <string name="payment_request_close_content_description">Close</string>
+    <string name="send_requestPayment_title">Payment Request</string>
+    <string name="general_close">Close</string>
 
     <string name="send_requestPayment_requestedBy">Requested By</string>
-    <string name="payment_request_btn_save_contact">Save</string>
+    <string name="general_save">Save</string>
 
     <string name="send_requestPayment_for">For:</string>
 
-    <string name="payment_request_fee">Fee</string>
-    <string name="payment_request_total">Total</string>
+    <string name="send_feeSummary">Fee</string>
+    <string name="send_requestPayment_total">Total</string>
 
-    <string name="payment_request_send_btn">Send</string>
+    <string name="tabs_send">Send</string>
 
     <string name="partners_flexa_transactionFailedTitle">Transaction Failed</string>
     <string name="payment_request_dialog_error_text">An error occurred and the attempt to send funds failed. Try it again, please.</string>

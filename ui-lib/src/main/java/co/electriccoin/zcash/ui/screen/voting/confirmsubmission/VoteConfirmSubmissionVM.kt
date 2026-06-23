@@ -309,7 +309,7 @@ class VoteConfirmSubmissionVM(
     ) = when {
         status is VoteSubmissionStatus.Completed -> {
             ButtonState(
-                text = stringRes(R.string.vote_done),
+                text = stringRes(R.string.coinVote_common_done),
                 style = ButtonStyle.PRIMARY,
                 onClick = ::onDone
             )
@@ -317,7 +317,7 @@ class VoteConfirmSubmissionVM(
 
         status.isFailure() -> {
             ButtonState(
-                text = stringRes(R.string.vote_retry),
+                text = stringRes(R.string.coinVote_common_retry),
                 style = ButtonStyle.PRIMARY,
                 isEnabled = isPrepared && draftChoices.isNotEmpty(),
                 onClick = if (isKeystone && keystoneSignedBundles < preparedBundleCount) ::onStartKeystoneSigning else ::onSubmit
@@ -336,7 +336,7 @@ class VoteConfirmSubmissionVM(
                             if (hasPendingKeystoneRequest) {
                                 stringRes(R.string.vote_confirm_cta_resume_keystone_signing)
                             } else if (keystoneSignedBundles == 0) {
-                                stringRes(R.string.vote_confirm_cta_keystone)
+                                stringRes(R.string.coinVote_confirmSubmission_confirmWithKeystone)
                             } else {
                                 stringRes(
                                     R.string.coinVote_delegationSigning_bundleProgress,
@@ -504,8 +504,8 @@ class VoteConfirmSubmissionVM(
         return ZashiConfirmationState.error(
             title = failureTitle(status),
             message = failureMessage(status),
-            primaryText = stringRes(R.string.vote_dismiss),
-            secondaryText = if (canRetry) stringRes(R.string.vote_retry) else null,
+            primaryText = stringRes(R.string.coinVote_common_dismiss),
+            secondaryText = if (canRetry) stringRes(R.string.coinVote_common_retry) else null,
             primaryStyle = if (canRetry) ButtonStyle.TERTIARY else ButtonStyle.PRIMARY,
             secondaryStyle = ButtonStyle.PRIMARY,
             onPrimary = ::dismissFailureSheet,
@@ -525,11 +525,11 @@ class VoteConfirmSubmissionVM(
     private fun failureTitle(status: VoteSubmissionStatus) =
         when (status) {
             is VoteSubmissionStatus.LocalAuthFailed -> {
-                stringRes(R.string.vote_confirm_title_auth_failed)
+                stringRes(R.string.coinVote_confirmSubmission_authorizationFailedTitle)
             }
 
             is VoteSubmissionStatus.ProtocolAuthFailed -> {
-                stringRes(R.string.vote_error_authorization_failed_title)
+                stringRes(R.string.coinVote_confirmSubmission_authorizationFailedTitle)
             }
 
             is VoteSubmissionStatus.SubmissionFailed -> {

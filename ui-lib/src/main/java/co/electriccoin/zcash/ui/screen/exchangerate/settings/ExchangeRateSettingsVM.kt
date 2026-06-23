@@ -82,7 +82,7 @@ internal class ExchangeRateSettingsVM(
             },
         saveButton =
             ButtonState(
-                stringRes(R.string.exchange_rate_opt_in_save),
+                stringRes(R.string.currencyConversion_saveBtn),
                 onClick = ::onOptInExchangeRateUsdClick,
                 isEnabled = isOptedIn != isOptedInOriginal || selectedCurrency != selectedCurrencyOriginal,
                 hapticFeedbackType = HapticFeedbackType.Confirm

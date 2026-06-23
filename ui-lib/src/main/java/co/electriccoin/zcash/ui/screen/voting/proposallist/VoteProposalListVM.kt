@@ -238,7 +238,7 @@ class VoteProposalListVM(
                 ),
             secondaryAction =
                 ButtonState(
-                    text = stringRes(R.string.vote_error_go_back),
+                    text = stringRes(R.string.coinVote_common_goBack),
                     style = ButtonStyle.TERTIARY,
                     onClick = ::goBackFromPreparationErrorSheet
                 ),
@@ -267,7 +267,7 @@ class VoteProposalListVM(
         ZashiConfirmationState.error(
             title = stringRes(R.string.coinVote_ineligible_titleNoVote),
             message = buildIneligibleMessage(preparation, snapshotHeight),
-            primaryText = stringRes(R.string.vote_poll_list_empty_got_it),
+            primaryText = stringRes(R.string.coinVote_common_gotIt),
             primaryStyle = ButtonStyle.PRIMARY,
             onPrimary = ::dismissIneligibleErrorSheet,
             onBack = ::dismissIneligibleErrorSheet,
@@ -282,7 +282,7 @@ class VoteProposalListVM(
         ZashiConfirmationState.error(
             title = stringRes(R.string.coinVote_walletSyncing_title),
             message = stringRes(R.string.coinVote_walletSyncing_subtitle),
-            primaryText = stringRes(R.string.vote_poll_list_empty_got_it),
+            primaryText = stringRes(R.string.coinVote_common_gotIt),
             primaryStyle = ButtonStyle.PRIMARY,
             onPrimary = ::dismissWalletSyncingSheet,
             onBack = ::dismissWalletSyncingSheet,
@@ -419,7 +419,7 @@ class VoteProposalListVM(
                 return null
             }
             return ButtonState(
-                text = stringRes(R.string.vote_proposal_list_confirm_submit),
+                text = stringRes(R.string.coinVote_proposalList_ctaConfirmSubmit),
                 style = ButtonStyle.PRIMARY,
                 onClick = {
                     navigationRouter.forward(

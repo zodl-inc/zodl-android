@@ -213,7 +213,7 @@ private fun PollActionButton(state: VotePollCardState) {
         when (state.status) {
             VotePollCardStatus.ACTIVE -> stringRes(R.string.coinVote_pollsList_enterPoll)
             VotePollCardStatus.VOTED -> stringRes(R.string.coinVote_proposalList_ctaReviewAnswers)
-            VotePollCardStatus.CLOSED -> stringRes(R.string.vote_poll_card_view_results)
+            VotePollCardStatus.CLOSED -> stringRes(R.string.coinVote_common_viewResults)
         }
 
     ZashiButton(
@@ -239,7 +239,7 @@ private fun StatusBadge(status: VotePollCardStatus) {
         when (status) {
             VotePollCardStatus.ACTIVE -> {
                 StatusBadgeParams(
-                    labelRes = R.string.vote_poll_card_status_active,
+                    labelRes = R.string.coinVote_pollsList_statusActive,
                     iconTint = ZashiColors.Utility.SuccessGreen.utilitySuccess700,
                     textColor = ZashiColors.Utility.SuccessGreen.utilitySuccess700,
                     bgColor = ZashiColors.Utility.SuccessGreen.utilitySuccess50,
@@ -345,9 +345,9 @@ private fun CoinholderPollingPreviewEmpty() =
                         ZashiConfirmationState.error(
                             title = stringRes(R.string.coinVote_pollsList_emptyTitle),
                             message = stringRes(R.string.coinVote_pollsList_emptyMessage),
-                            primaryText = stringRes(R.string.vote_poll_list_empty_refresh),
+                            primaryText = stringRes(R.string.coinVote_common_refresh),
                             primaryStyle = ButtonStyle.SECONDARY,
-                            secondaryText = stringRes(R.string.vote_poll_list_empty_got_it),
+                            secondaryText = stringRes(R.string.coinVote_common_gotIt),
                             secondaryStyle = ButtonStyle.PRIMARY,
                             onPrimary = {},
                             onSecondary = {},

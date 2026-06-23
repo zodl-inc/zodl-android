@@ -109,7 +109,7 @@ fun SendSwap(state: SendSwapState, modifier: Modifier = Modifier) {
                         modifier = Modifier.fillMaxWidth(),
                         state =
                             TransactionDetailInfoRowState(
-                                title = stringRes(R.string.transaction_detail_info_transaction_id),
+                                title = stringRes(R.string.transactionList_transactionId),
                                 message = state.transactionId.withStyle(),
                                 trailingIcon = R.drawable.ic_transaction_detail_info_copy,
                                 onClick = state.onTransactionIdClick
@@ -120,7 +120,7 @@ fun SendSwap(state: SendSwapState, modifier: Modifier = Modifier) {
                         modifier = Modifier.fillMaxWidth(),
                         state =
                             TransactionDetailInfoRowState(
-                                title = stringRes(R.string.transaction_detail_info_total_fees),
+                                title = stringRes(R.string.swapAndPay_totalFees),
                                 message = state.totalFees?.withStyle(),
                             )
                     )

@@ -23,7 +23,7 @@ fun StyledExchangeLabel(
     modifier: Modifier = Modifier,
     isHideBalances: Boolean = false,
     hiddenBalancePlaceholder: StringResource =
-        stringRes(co.electriccoin.zcash.ui.design.R.string.hide_balance_placeholder),
+        stringRes(co.electriccoin.zcash.ui.design.R.string.general_hideBalancesMost),
     style: TextStyle = ZcashTheme.typography.secondary.headlineSmall,
     textColor: Color = ZcashTheme.colors.textFieldHint,
 ) {

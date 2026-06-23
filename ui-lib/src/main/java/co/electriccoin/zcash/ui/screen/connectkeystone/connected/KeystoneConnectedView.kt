@@ -74,7 +74,7 @@ fun KeystoneConnectedView(state: KeystoneConnectedState) {
                 Spacer(Modifier.weight(1f))
                 ZashiButton(
                     modifier = Modifier.fillMaxWidth(),
-                    text = stringResource(R.string.keystone_connected_button),
+                    text = stringResource(R.string.keystone_addHWWallet_close),
                     onClick = state.onClose,
                 )
             }

@@ -178,7 +178,7 @@ class AccountDataSourceImpl(
                 .getSynchronizer()
                 .importAccountByUfvk(
                     AccountImportSetup(
-                        accountName = context.getString(R.string.keystone_wallet_name),
+                        accountName = context.getString(R.string.accounts_keystone),
                         keySource = KEYSTONE_KEYSOURCE,
                         ufvk = UnifiedFullViewingKey(ufvk),
                         purpose =

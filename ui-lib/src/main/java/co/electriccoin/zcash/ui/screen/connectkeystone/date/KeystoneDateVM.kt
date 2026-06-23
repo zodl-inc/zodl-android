@@ -50,7 +50,7 @@ class KeystoneDateVM(
             selection = yearMonth,
             primaryButton =
                 ButtonState(
-                    text = stringRes(R.string.wbh_next),
+                    text = stringRes(R.string.general_next),
                     isLoading = isLoading,
                     isEnabled = !isLoading,
                     onClick = { onEstimateClick(yearMonth) },

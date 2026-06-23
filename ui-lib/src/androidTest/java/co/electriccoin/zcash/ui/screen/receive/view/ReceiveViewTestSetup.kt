@@ -62,7 +62,7 @@ class ReceiveViewTestSetup(
                                     IconButtonState(
                                         icon = co.electriccoin.zcash.ui.design.R.drawable.ic_app_bar_settings,
                                         contentDescription =
-                                            stringRes(R.string.settings_menu_content_description),
+                                            stringRes(R.string.scan_openSettings),
                                     ) {
                                         onSettingsCount.incrementAndGet()
                                     }

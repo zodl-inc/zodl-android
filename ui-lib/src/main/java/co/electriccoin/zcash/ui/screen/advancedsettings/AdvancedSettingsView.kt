@@ -128,7 +128,7 @@ private fun AdvancedSettingsTopAppBar(
     onBack: () -> Unit
 ) {
     ZashiSmallTopAppBar(
-        title = stringResource(id = R.string.advanced_settings_title),
+        title = stringResource(id = R.string.settings_advanced),
         modifier = Modifier.testTag(AdvancedSettingsTag.ADVANCED_SETTINGS_TOP_APP_BAR),
         showTitleLogo = true,
         navigationAction = {
@@ -153,7 +153,7 @@ private fun AdvancedSettingsPreview() =
                                 onClick = {}
                             ),
                             ListItemState(
-                                title = stringRes(R.string.advanced_settings_export),
+                                title = stringRes(R.string.settings_exportPrivateData),
                                 bigIcon = imageRes(R.drawable.ic_advanced_settings_export),
                                 onClick = {}
                             ),
@@ -163,7 +163,7 @@ private fun AdvancedSettingsPreview() =
                                 onClick = {}
                             ),
                             ListItemState(
-                                title = stringRes(R.string.advanced_settings_currency_conversion),
+                                title = stringRes(R.string.currencyConversion_title),
                                 bigIcon = imageRes(R.drawable.ic_advanced_settings_currency_conversion),
                                 onClick = {}
                             ),
@@ -175,7 +175,7 @@ private fun AdvancedSettingsPreview() =
                         ),
                     deleteButton =
                         ButtonState(
-                            text = stringRes(R.string.advanced_settings_delete_button),
+                            text = stringRes(R.string.settings_deleteZashi),
                             onClick = {}
                         )
                 ),

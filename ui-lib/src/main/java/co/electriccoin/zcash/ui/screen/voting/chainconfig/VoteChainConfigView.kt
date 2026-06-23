@@ -330,7 +330,7 @@ private fun AddCustomSourceButton(state: VoteChainConfigState) {
                 .height(48.dp),
         state =
             ButtonState(
-                text = stringRes(R.string.vote_chain_config_add_custom_source),
+                text = stringRes(R.string.coinVote_configSettings_addCustomSource),
                 style = ButtonStyle.TERTIARY,
                 isEnabled = !state.isValidating,
                 onClick = state.onAddCustom
@@ -362,7 +362,7 @@ private fun DefaultBadge(modifier: Modifier = Modifier) {
         border = BorderStroke(1.dp, ZashiColors.Utility.Gray.utilityGray200)
     ) {
         Text(
-            text = stringResource(R.string.vote_chain_config_default_badge),
+            text = stringResource(R.string.coinVote_configSettings_defaultBadge),
             style = ZashiTypography.textXs,
             fontWeight = FontWeight.Medium,
             color = ZashiColors.Utility.Gray.utilityGray700,
@@ -441,7 +441,7 @@ private fun EditorSheet(
                                 Icon(
                                     painter = painterResource(R.drawable.ic_copy),
                                     contentDescription =
-                                        stringResource(co.electriccoin.zcash.ui.design.R.string.general_copy),
+                                        stringResource(co.electriccoin.zcash.ui.design.R.string.receive_copy),
                                     tint = ZashiColors.Text.textTertiary,
                                     modifier = Modifier.size(20.dp)
                                 )

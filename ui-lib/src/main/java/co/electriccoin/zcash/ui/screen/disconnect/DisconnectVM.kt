@@ -61,7 +61,7 @@ class DisconnectVM(
         isLoading: Boolean,
     ): DisconnectState =
         DisconnectState(
-            header = stringRes(R.string.disconnect_hardware_wallet_header),
+            header = stringRes(R.string.disconnectHWWallet_title),
             title = stringRes(R.string.deleteKeystoneTitle),
             subtitle = stringRes(R.string.deleteKeystoneDesc),
             warningTitle = stringRes(R.string.disconnectHWWallet_mayInclude),
@@ -76,7 +76,7 @@ class DisconnectVM(
             infoText = stringRes(R.string.connectedHWInfo),
             disconnectButton =
                 ButtonState(
-                    text = stringRes(R.string.disconnect_hardware_wallet_button),
+                    text = stringRes(R.string.disconnectHWWallet_title),
                     style = ButtonStyle.DESTRUCTIVE1,
                     isLoading = isLoading,
                     onClick = { onDisconnectClick(keystoneAccount) }
@@ -93,9 +93,9 @@ class DisconnectVM(
 
     private fun createConfirmationState(keystoneAccount: KeystoneAccount): ZashiConfirmationState =
         ZashiConfirmationState.destructive(
-            title = stringRes(R.string.disconnect_hardware_wallet_confirmation_title),
+            title = stringRes(R.string.deleteWallet_sheet_title),
             message = stringRes(R.string.disconnectHWWallet_sheetDesc),
-            primaryText = stringRes(R.string.disconnect_hardware_wallet_confirmation_confirm),
+            primaryText = stringRes(R.string.disconnectHWWallet_title),
             secondaryText = stringRes(co.electriccoin.zcash.ui.design.R.string.general_cancel),
             onPrimary = { onConfirmDisconnect(keystoneAccount) },
             onBack = ::onCancelConfirmation,

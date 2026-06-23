@@ -100,9 +100,9 @@ private fun ExpandableMemo(state: TransactionDetailMemoState) {
                         ButtonState(
                             text =
                                 if (it) {
-                                    stringRes(R.string.transaction_detail_memo_view_less)
+                                    stringRes(R.string.transactionHistory_viewLess)
                                 } else {
-                                    stringRes(R.string.transaction_detail_memo_view_more)
+                                    stringRes(R.string.transactionHistory_viewMore)
                                 },
                             trailingIcon =
                                 if (it) {

@@ -177,7 +177,7 @@ internal class SwapVMMapper {
                         if (originAmount != null &&
                             state.totalSpendableBalance.value < originAmount.convertZecToZatoshi().value
                         ) {
-                            stringRes(R.string.swap_insufficient_funds)
+                            stringRes(R.string.send_error_insufficientFunds)
                         } else {
                             null
                         }
@@ -469,11 +469,11 @@ internal class SwapVMMapper {
             text =
                 when {
                     state.isEphemeralAddressLocked -> {
-                        stringRes(co.electriccoin.zcash.ui.design.R.string.general_processing)
+                        stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_status_processing)
                     }
 
                     state.swapAssets.error != null -> {
-                        stringRes(co.electriccoin.zcash.ui.design.R.string.general_try_again)
+                        stringRes(co.electriccoin.zcash.ui.design.R.string.disconnectHWWallet_tryAgain)
                     }
 
                     state.swapAssets.isLoading && state.swapAssets.data == null -> {

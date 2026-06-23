@@ -23,15 +23,13 @@
     <string name="authentication_error_details">
         Error code: <xliff:g id="code" example="-1">%1$d</xliff:g>\nError message: <xliff:g id="message" example="No device credential">%2$s</xliff:g>
     </string>
-    <string name="authentication_error_button_retry">Retry</string>
-    <string name="authentication_error_button_support">Contact Support</string>
+    <string name="coinVote_common_retry">Retry</string>
+    <string name="errorPage_action_contactSupport">Contact Support</string>
 
     <string name="authentication_failed_title">Authentication failed</string>
     <string name="authentication_failed_text">
         Authentication was presented but not recognized. Retry authentication, or contact the support team for help.
     </string>
-    <string name="authentication_failed_button_retry">Retry</string>
-    <string name="authentication_failed_button_support">Contact Support</string>
 
     <string name="authentication_failed_welcome_icon_cont_desc">Tap to unlock <xliff:g id="app_name" example="Zodl">%1$s</xliff:g> app</string>
     <string name="splash_authTitle">Your Zodl account is secured.</string>

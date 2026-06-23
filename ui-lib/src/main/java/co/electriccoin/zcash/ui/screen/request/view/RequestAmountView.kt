@@ -375,7 +375,7 @@ private fun RequestAmountKeyboardView(
             )
             RequestAmountKeyboardIconButton(
                 painter = painterResource(id = R.drawable.ic_delete),
-                contentDescription = stringResource(id = R.string.request_amount_keyboard_delete),
+                contentDescription = stringResource(id = R.string.general_delete),
                 onClick = { state.onAmount(OnAmount.Delete) }
             )
         }

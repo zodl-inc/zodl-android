@@ -105,7 +105,7 @@ private data class CompositeStringResource(
 
 private data class PrivacySensitiveResource(
     val value: StringResource,
-    val hiddenValue: StringResource = stringRes(R.string.hide_balance_placeholder)
+    val hiddenValue: StringResource = stringRes(R.string.general_hideBalancesMost)
 ) : StringResource
 
 @Stable
@@ -195,7 +195,7 @@ fun stringResByFiatDisplayName(fiatCurrency: FiatCurrency): StringResource =
 
 @Stable
 infix fun StringResource.asPrivacySensitive(
-    other: StringResource = stringRes(R.string.hide_balance_placeholder)
+    other: StringResource = stringRes(R.string.general_hideBalancesMost)
 ): StringResource = PrivacySensitiveResource(this, other)
 
 @Stable

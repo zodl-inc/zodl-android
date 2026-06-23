@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="connect_keystone_title">Connect Hardware Wallet</string>
     <string name="keystone_addHWWallet_scan">Scan your device’s QR code to connect.</string>
     <string name="keystone_addHWWallet_tutorial">View Keystone tutorial</string>
     <string name="keystone_addHWWallet_step1">Unlock your Keystone</string>
@@ -19,16 +18,14 @@
     <!-- Connected -->
     <string name="keystone_addHWWallet_connected">Connected!</string>
     <string name="keystone_addHWWallet_connectedDesc">Your Keystone Hardware Wallet has been successfully connected.</string>
-    <string name="keystone_connected_button">Close</string>
+    <string name="keystone_addHWWallet_close">Close</string>
 
     <!-- First Transaction -->
-    <string name="keystone_first_transaction_title">Connect Hardware Wallet</string>
     <string name="firstWalletTransactionSubtitleHWWallet">Entering the block height at which your wallet was created ensures that correct number of blocks will be scanned. If you\’re not sure, choose an earlier date.</string>
     <string name="keystone_first_transaction_note">If you\’re not sure, choose an earlier date.</string>
 
     <!-- First Transaction Estimation -->
-    <string name="keystone_first_transaction_estimation_title">Connect Hardware Wallet</string>
-    <string name="keystone_first_transaction_estimation_confirm">Connect</string>
+    <string name="keystone_addHWWallet_connect">Connect</string>
 
     <!-- Hardware Wallet Explainer -->
     <string name="hardwareWalletExplainer_title">What\'s a Hardware Wallet?</string>
@@ -41,14 +38,12 @@
     <string name="hardwareWalletExplainer_featureDescription3">You own your keys, you own your crypto</string>
     <string name="hardwareWalletExplainer_infoBoxTitle">About Keystone</string>
     <string name="hardwareWalletExplainer_infoBoxDescription">Keystone is a popular hardware wallet brand that offers air-gapped security with QR code signing. It\'s one of many trusted hardware wallet options, alongside Ledger and others.</string>
-    <string name="keystone_explainer_button">Got It</string>
+    <string name="hardwareWalletExplainer_cta">Got It</string>
 
     <!-- Wallet Birthday Height Info -->
-    <string name="keystone_wbh_info_title">Need to know more?</string>
+    <string name="restoreWallet_help_title">Need to know more?</string>
     <string name="keystone_wbh_info_message_bold">The Wallet Birthday Height</string>
     <string name="keystone_wbh_info_message">is the block height (block # in the blockchain) at which your wallet was created. It is important to provide the correct height because that determines the range of blocks we will scan to display your transaction history and wallet balance. If you have recovered a seed from a different hardware device, make sure to enter the block height of your original hardware device.</string>
 
     <!-- Wallet Birthday Height -->
-    <string name="keystone_wbh_title">Connect Hardware Wallet</string>
-    <string name="keystone_wbh_confirm_button">Connect</string>
 </resources>

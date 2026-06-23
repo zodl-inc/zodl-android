@@ -130,7 +130,7 @@ internal class SwapQuoteVM(
                 ButtonState(
                     text =
                         when (quote.mode) {
-                            EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.swap_quote_cancel_swap)
+                            EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.swapAndPay_cancelSwap)
                             EXACT_OUTPUT -> stringRes(R.string.swapAndPay_cancelPayment)
                         },
                     onClick = ::onCancelPaymentClick

@@ -162,7 +162,7 @@ private fun QrCodeTopAppBar(
                         painterResource(
                             id = co.electriccoin.zcash.ui.design.R.drawable.ic_close_full
                         ),
-                    contentDescription = stringResource(id = R.string.qr_code_close_content_description),
+                    contentDescription = stringResource(id = R.string.general_close),
                     modifier =
                         Modifier
                             .padding(all = 3.dp)
@@ -183,7 +183,7 @@ private fun QrCodeBottomBar(
 
     OldZashiBottomBar {
         ZashiButton(
-            text = stringResource(id = R.string.qr_code_share_btn),
+            text = stringResource(id = R.string.addressDetails_shareQR),
             icon = R.drawable.ic_share,
             onClick = { state.onQrCodeShare(state.walletAddress.address) },
             modifier = buttonModifier
@@ -258,20 +258,20 @@ private fun QrCodePanel(
                         when (state.walletAddress) {
                             is WalletAddress.Unified -> {
                                 when (state.qrCodeType) {
-                                    QrCodeType.ZASHI -> R.string.qr_code_wallet_address_shielded
+                                    QrCodeType.ZASHI -> R.string.accounts_zashi_shieldedAddress
                                     QrCodeType.KEYSTONE -> R.string.qr_code_wallet_address_shielded_keystone
                                 }
                             }
 
                             is WalletAddress.Sapling -> {
                                 when (state.qrCodeType) {
-                                    QrCodeType.ZASHI -> R.string.qr_code_wallet_address_sapling
+                                    QrCodeType.ZASHI -> R.string.receive_saplingAddress
                                     QrCodeType.KEYSTONE -> R.string.qr_code_wallet_address_sapling_keystone
                                 }
                             }
 
                             is WalletAddress.Transparent -> {
-                                R.string.qr_code_wallet_address_transparent
+                                R.string.accounts_zashi_transparentAddress
                             }
 
                             else -> {
@@ -341,8 +341,8 @@ private enum class AddressType {
     val badgeText: Int
         get() =
             when (this) {
-                UNIFIED, SAPLING -> R.string.qr_code_privacy_level_shielded
-                TRANSPARENT -> R.string.qr_code_privacy_level_transparent
+                UNIFIED, SAPLING -> R.string.component_maxPrivacy
+                TRANSPARENT -> R.string.component_lowPrivacy
             }
 
     val badgeIcon: Int

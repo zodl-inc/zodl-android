@@ -51,7 +51,7 @@ class RestoreHeightVM(
         val isValid = !blockHeight.innerTextFieldState.value.isEmpty() && isHigherThanSaplingActivationHeight
 
         return BlockHeightState(
-            title = stringRes(R.string.restore_title),
+            title = stringRes(R.string.root_existingWallet_restore),
             logo = null,
             onBack = ::onBack,
             dialogButton =
@@ -61,7 +61,7 @@ class RestoreHeightVM(
                 ),
             primaryButton =
                 ButtonState(
-                    stringRes(R.string.restore_bd_restore_btn),
+                    stringRes(R.string.root_existingWallet_restore),
                     onClick = ::onRestoreClick,
                     isEnabled = isValid,
                     hapticFeedbackType = HapticFeedbackType.Confirm

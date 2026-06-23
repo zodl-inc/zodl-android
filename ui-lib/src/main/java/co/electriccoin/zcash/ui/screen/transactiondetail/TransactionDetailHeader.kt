@@ -76,7 +76,7 @@ fun TransactionDetailHeader(
                             val header =
                                 state.amount.withStyle() +
                                     stringRes(" ZEC").withStyle(StyledStringStyle(color = QUARTERNARY))
-                            header orHiddenString stringRes(R.string.hide_balance_placeholder)
+                            header orHiddenString stringRes(R.string.general_hideBalancesMost)
                         },
                     shimmerWidth = 178.dp,
                     style = ZashiTypography.header3,

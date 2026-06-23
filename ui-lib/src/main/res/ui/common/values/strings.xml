@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="back_navigation">Back</string>
-    <string name="back_navigation_content_description">Back</string>
-    <string name="close_navigation_content_description">Close</string>
+    <string name="general_back">Back</string>
+    <string name="general_close">Close</string>
     <string name="tooltip_close_content_description">Close tooltip</string>
 
     <string name="fiat_currency_conversion_rate_unavailable">Unavailable</string>
     <string name="empty_char">-</string>
     <string name="zcash_logo_content_description">Zcash logo</string>
-    <string name="settings_menu_content_description">Open Settings</string>
+    <string name="scan_openSettings">Open Settings</string>
     <string name="balance_widget_available">Available Balance:</string>
 
     <string name="hide_balances_content_description">Hide balances</string>
@@ -34,10 +33,10 @@
     <string name="restoreWallet_birthday_title">Block Height</string>
     <string name="restoreWallet_birthday_placeholder">Enter number</string>
     <string name="restoreWallet_birthday_fieldInfo">Wallet Birthday Height is the point in time when your wallet was created.</string>
-    <string name="wbh_next">Next</string>
+    <string name="general_next">Next</string>
     <string name="keystone_addHWWallet_enterManually">Enter block height</string>
     <string name="walletBirthdayHeightSubtitle">Entering your Wallet Birthday Height ensures we can display all your funds and transaction history correctly.</string>
-    <string name="wbh_subtitle">Wallet Birthday Height</string>
+    <string name="recoveryPhraseDisplay_birthdayTitle">Wallet Birthday Height</string>
     <string name="restoreWallet_birthday_estimateDate_title">First Wallet Transaction</string>
     <string name="restoreWallet_birthday_estimated_title">Estimated Block Height</string>
     <string name="restoreWallet_birthday_estimated_info">Zodl will scan and recover all transactions made after the following block number.</string>

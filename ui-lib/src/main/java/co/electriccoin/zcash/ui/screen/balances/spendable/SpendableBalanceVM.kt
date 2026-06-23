@@ -104,7 +104,7 @@ class SpendableBalanceVM(
         ButtonState(
             text =
                 if (account.isShieldingAvailable) {
-                    stringRes(co.electriccoin.zcash.ui.design.R.string.general_dismiss)
+                    stringRes(co.electriccoin.zcash.ui.design.R.string.balances_dismiss)
                 } else {
                     stringRes(co.electriccoin.zcash.ui.design.R.string.general_ok)
                 },
@@ -128,7 +128,7 @@ class SpendableBalanceVM(
                     account.isShieldedPending &&
                     hasPendingTransaction -> {
                     SpendableBalanceRowState(
-                        title = stringRes(R.string.balance_action_info_pending),
+                        title = stringRes(R.string.balances_pending),
                         icon = loadingImageRes(),
                         value = stringRes(account.pendingShieldedBalance)
                     )
@@ -136,7 +136,7 @@ class SpendableBalanceVM(
 
                 account.totalShieldedBalance > account.spendableShieldedBalance && hasPendingTransaction -> {
                     SpendableBalanceRowState(
-                        title = stringRes(R.string.balance_action_info_pending),
+                        title = stringRes(R.string.balances_pending),
                         icon = loadingImageRes(),
                         value =
                             stringRes(account.totalShieldedBalance - account.spendableShieldedBalance)

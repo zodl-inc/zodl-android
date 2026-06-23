@@ -59,7 +59,7 @@ fun ResetZashiView(state: ResetZashiState) {
 @Composable
 private fun ResetZashiTopAppBar(onBack: () -> Unit) {
     ZashiSmallTopAppBar(
-        title = stringResource(R.string.delete_wallet_title),
+        title = stringResource(R.string.deleteWallet_title),
         navigationAction = {
             ZashiTopAppBarBackNavigation(
                 onBack = onBack
@@ -77,7 +77,7 @@ private fun ResetZashiContent(
         modifier = modifier
     ) {
         Text(
-            text = stringResource(R.string.delete_wallet_title),
+            text = stringResource(R.string.deleteWallet_title),
             style = ZashiTypography.header6,
             color = ZashiColors.Text.textPrimary,
             fontWeight = FontWeight.SemiBold

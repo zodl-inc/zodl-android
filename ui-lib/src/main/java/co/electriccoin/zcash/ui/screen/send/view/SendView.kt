@@ -387,7 +387,7 @@ fun SendButton(
                 }
             }
         },
-        text = stringResource(id = co.electriccoin.zcash.ui.design.R.string.general_review),
+        text = stringResource(id = co.electriccoin.zcash.ui.design.R.string.send_review),
         enabled = sendButtonEnabled,
         modifier =
             Modifier
@@ -419,7 +419,7 @@ fun SendFormAddressTextField(
                 .bringIntoViewRequester(bringIntoViewRequester)
     ) {
         Text(
-            text = stringResource(id = R.string.send_address_label),
+            text = stringResource(id = R.string.send_to),
             color = ZashiColors.Inputs.Default.label,
             style = ZashiTypography.textMd
         )
@@ -432,7 +432,7 @@ fun SendFormAddressTextField(
                 recipientAddressValue.isNotEmpty() &&
                 recipientAddressState.type is AddressType.Invalid
             ) {
-                stringResource(id = R.string.send_address_invalid)
+                stringResource(id = R.string.send_error_invalidAddress)
             } else {
                 null
             }
@@ -549,7 +549,7 @@ fun SendFormAmountTextField(
 
             is AmountState.Valid -> {
                 if (selectedAccount.spendableShieldedBalance < amountState.zatoshi) {
-                    stringResource(id = R.string.send_amount_insufficient_balance)
+                    stringResource(id = R.string.sheet_insufficientBalance_title)
                 } else {
                     null
                 }
@@ -567,7 +567,7 @@ fun SendFormAmountTextField(
                 .bringIntoViewRequester(bringIntoViewRequester)
     ) {
         Text(
-            text = stringResource(id = R.string.send_amount_label),
+            text = stringResource(id = R.string.send_amount),
             color = ZashiColors.Inputs.Default.label,
             style = ZashiTypography.textMd
         )
@@ -719,7 +719,7 @@ fun SendFormMemoTextField(
                 .bringIntoViewRequester(bringIntoViewRequester)
     ) {
         Text(
-            text = stringResource(id = R.string.send_memo_label),
+            text = stringResource(id = R.string.send_message),
             color = ZashiColors.Inputs.Default.label,
             style = ZashiTypography.textMd
         )
