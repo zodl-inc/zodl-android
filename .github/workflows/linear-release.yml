@@ -13,9 +13,14 @@ name: Linear release tracking
 # this file is always used regardless of what the tag points at — while still
 # scanning exactly the released tag's commit range.
 #
-# This fires off the same `release: published` event that create-release.yml
-# emits (via its App-token cascade / "Force published event" step), so it runs
-# automatically whenever a release is published — no manual step required.
+# This consumes the same `release: published` event that create-release.yml
+# emits, so it runs automatically — BUT only when create-release.yml mints its
+# GitHub App token (RELEASE_BOT_APP_ID set): the default GITHUB_TOKEN does not
+# cascade events to other workflows. In the no-App fallback, an operator's
+# manual re-publish of the release is what drives this workflow (same caveat
+# release.yaml already lives with). create-release.yml's "Force published
+# event" step toggles draft->published, so a single release can emit
+# `published` more than once — see the `concurrency` guard below.
 #
 # Requires the LINEAR_ACCESS_KEY repo secret, generated against the Android
 # pipeline in Linear's UI.
@@ -26,6 +31,15 @@ on:
 
 permissions:
   contents: read
+
+# Serialize runs for a given tag. create-release.yml's create-as-published +
+# "Force published event" toggle can emit `release: published` more than once
+# for the same release; this prevents overlapping Linear syncs for that tag.
+# cancel-in-progress: false so a second event waits for the first to finish
+# rather than aborting it mid-sync.
+concurrency:
+  group: linear-release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
 
 jobs:
   linear-release:
@@ -38,6 +52,6 @@ jobs:
           fetch-depth: 0  # full history so the Linear release action sees every commit since the previous tag
 
       - name: Create Linear release
-        uses: linear/linear-release-action@v0
+        uses: linear/linear-release-action@3b634623620454bac33390451a1dd15ba78e3dc4 # v0.14.4
         with:
           access_key: ${{ secrets.LINEAR_ACCESS_KEY }}
