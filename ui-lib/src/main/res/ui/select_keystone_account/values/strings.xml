@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="keystone_wallet">Keystone Wallet</string>
-    <string name="select_keystone_account_positive">Next</string>
-    <string name="keystone_addHWWallet_title">Confirm Account to Access</string>
-    <string name="keystone_addHWWallet_desc">Select the wallet you\'d like to connect to proceed. Once connected, you’ll be able to wirelessly sign transactions with your hardware wallet.</string>
-</resources>

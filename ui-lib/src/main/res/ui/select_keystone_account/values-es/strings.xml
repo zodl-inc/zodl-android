@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="keystone_wallet">Billetera Keystone</string>
-    <string name="select_keystone_account_positive">Siguiente</string>
-    <string name="keystone_addHWWallet_title">Confirmar Cuenta a Acceder</string>
-    <string name="keystone_addHWWallet_desc">Selecciona la billetera que deseas conectar para continuar. Una vez conectado, podrás firmar transacciones de forma inalámbrica con tu hardware wallet.</string>
-</resources>

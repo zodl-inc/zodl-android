@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="balance_action_shield">Proteger</string>
-    <string name="balance_action_shield_button_header">Transparente</string>
-    <string name="widget_balances_button_spendable">Disponible</string>
-</resources>

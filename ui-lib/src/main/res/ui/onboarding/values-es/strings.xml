@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="plainOnboarding_title">Billetera móvil impulsada por Zcash, diseñada para la soberanía financiera.</string>
-    <string name="plainOnboarding_button_createNewWallet">Crear Nueva Billetera</string>
-    <string name="plainOnboarding_button_restoreWallet">Restaurar Billetera Existente</string>
-</resources>

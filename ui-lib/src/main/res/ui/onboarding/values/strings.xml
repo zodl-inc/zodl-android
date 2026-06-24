@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="plainOnboarding_title">Zcash-powered mobile wallet built for financial sovereignty.</string>
-    <string name="plainOnboarding_button_createNewWallet">Create New Wallet</string>
-    <string name="plainOnboarding_button_restoreWallet">Restore Existing Wallet</string>
-</resources>
