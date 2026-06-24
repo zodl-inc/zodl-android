@@ -356,17 +356,21 @@ class TransactionProgressVM(
                     stringRes(R.string.transaction_failedSend)
                 },
             subtitle =
-                when (proposal) {
-                    is ExactInputSwapTransactionProposal -> {
-                        stringRes(R.string.swapAndPay_failureSwapInfo)
+                when {
+                    result.isAnchorError() -> {
+                        stringRes(R.string.send_confirmation_failure_anchor_subtitle)
                     }
 
-                    is ExactOutputSwapTransactionProposal -> {
-                        stringRes(R.string.swapAndPay_failureSwapInfo)
+                    proposal is ExactInputSwapTransactionProposal -> {
+                        stringRes(R.string.send_confirmation_error_swap_subtitle)
                     }
 
-                    is ShieldTransactionProposal -> {
-                        stringRes(R.string.send_failureShieldingInfo)
+                    proposal is ExactOutputSwapTransactionProposal -> {
+                        stringRes(R.string.send_confirmation_error_swap_subtitle)
+                    }
+
+                    proposal is ShieldTransactionProposal -> {
+                        stringRes(R.string.send_confirmation_failure_subtitle_transparent)
                     }
 
                     else -> {
@@ -431,3 +435,13 @@ internal fun SubmitResult.GrpcFailure.pendingDescription(): StyledStringResource
                 ?.let { stringRes(it).withStyle() }
         }
     }
+
+private fun SubmitResult.NonResubmittableError.isAnchorError(): Boolean {
+    val error = (this as? SubmitResult.Error)?.cause ?: return false
+    var throwable: Throwable? = error
+    while (throwable != null) {
+        if (throwable.message?.contains("Unable to compute anchor", ignoreCase = true) == true) return true
+        throwable = throwable.cause
+    }
+    return false
+}
