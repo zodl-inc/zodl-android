@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="authentication_system_ui_title">
+        Autenticação para <xliff:g id="app_name" example="Zodl">%1$s</xliff:g>
+    </string>
+    <string name="authentication_system_ui_subtitle">
+        Usa a biometria ou as credenciais do dispositivo para aceder a <xliff:g id="use_case" example="Recovery Phrase">%1$s</xliff:g>.
+    </string>
+
+    <string name="authentication_use_case_delete_wallet">Funcionalidade Eliminar Carteira</string>
+    <string name="authentication_use_case_export_data">Funcionalidade Exportar Dados Privados</string>
+    <string name="authentication_use_case_seed_recovery">Funcionalidade Recuperação da Frase Semente</string>
+    <string name="authentication_use_case_send_funds">Funcionalidade Enviar Fundos</string>
+    <string name="authentication_use_case_vote_submission">Envio de voto</string>
+    <string name="authentication_use_case_adress_book">Funcionalidade Livro de Endereços</string>
+    <string name="authentication_use_case_tax_export">Exportação fiscal</string>
+
+    <string name="authentication_toast_canceled">Autenticação cancelada</string>
+    <string name="authentication_toast_failed">Autenticação falhada</string>
+
+    <string name="authentication_error_title">Erro de autenticação</string>
+    <string name="authentication_error_text">A autenticação falhou pela seguinte razão. Tenta novamente ou contacta a equipa de suporte para obter ajuda.</string>
+    <string name="authentication_error_details">
+        Código de erro: <xliff:g id="code" example="-1">%1$d</xliff:g>\nMensagem de erro: <xliff:g id="message" example="No device credential">%2$s</xliff:g>
+    </string>
+    <string name="authentication_error_button_retry">Tentar novamente</string>
+    <string name="authentication_error_button_support">Contactar o Suporte</string>
+
+    <string name="authentication_failed_title">Autenticação falhada</string>
+    <string name="authentication_failed_text">
+        A autenticação foi apresentada mas não foi reconhecida. Tenta novamente ou contacta a equipa de suporte para obter ajuda.
+    </string>
+    <string name="authentication_failed_button_retry">Tentar novamente</string>
+    <string name="authentication_failed_button_support">Contactar o Suporte</string>
+
+    <string name="authentication_failed_welcome_icon_cont_desc">Toca para desbloquear a app <xliff:g id="app_name" example="Zodl">%1$s</xliff:g></string>
+    <string name="authentication_failed_welcome_title">A tua conta Zodl está protegida.</string>
+    <string name="authentication_failed_welcome_subtitle">Toca no ícone da chave para a desbloquear.</string>
+</resources>

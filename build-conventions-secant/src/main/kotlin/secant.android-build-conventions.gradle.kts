@@ -17,7 +17,7 @@ pluginManager.withPlugin("com.android.application") {
             // The rest of the locales provides an explicit list of the languages to keep in the
             // final app.  Doing this will strip out additional locales from libraries like
             // Google Play Services and Firebase, which add unnecessary bloat.
-            resourceConfigurations.addAll(listOf("en", "en-rUS", "en-rGB", "en-rAU", "es", "en_XA", "ar_XB"))
+            resourceConfigurations.addAll(listOf("en", "en-rUS", "en-rGB", "en-rAU", "es", "pt", "en_XA", "ar_XB"))
 
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -46,7 +46,7 @@ pluginManager.withPlugin("com.android.library") {
             // libraries (e.g. play services)
             // TODO [#1816]: Gradle resourceConfigurations deprecation #1816
             // TODO [#1816]: https://github.com/Electric-Coin-Company/zashi-android/issues/1816
-            resourceConfigurations.addAll(listOf("en", "en-rUS", "en-rGB", "en-rAU", "es", "en_XA", "ar_XB"))
+            resourceConfigurations.addAll(listOf("en", "en-rUS", "en-rGB", "en-rAU", "es", "pt", "en_XA", "ar_XB"))
 
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
             consumerProguardFiles("proguard-consumer.txt")
@@ -76,7 +76,7 @@ pluginManager.withPlugin("com.android.test") {
             // libraries (e.g. play services)
             // TODO [#1816]: Gradle resourceConfigurations deprecation #1816
             // TODO [#1816]: https://github.com/Electric-Coin-Company/zashi-android/issues/1816
-            resourceConfigurations.addAll(listOf("en", "en-rUS", "en-rGB", "en-rAU", "es", "en_XA", "ar_XB"))
+            resourceConfigurations.addAll(listOf("en", "en-rUS", "en-rGB", "en-rAU", "es", "pt", "en_XA", "ar_XB"))
 
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

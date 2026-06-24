@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="receive_title">Receber %s</string>
+    <string name="receive_prioritize_shielded">Para maior privacidade, usa sempre um endereço protegido.</string>
+    <string name="receive_wallet_address_shielded">Endereço Protegido de Zcash</string>
+    <string name="receive_wallet_address_sapling">Endereço Sapling de Zcash</string>
+    <string name="receive_wallet_address_transparent">Endereço Transparente de Zcash</string>
+    <string name="receive_copy">Copiar</string>
+    <string name="receive_qr_code">Código QR</string>
+    <string name="receive_request">Solicitar</string>
+    <string name="receive_clipboard_tag">Endereço da Carteira Zcash</string>
+    <string name="receive_wallet_address_shielded_keystone">Endereço Protegido de Zcash</string>
+    <string name="receive_wallet_address_sapling_keystone">Endereço Sapling de Zcash</string>
+    <string name="receive_wallet_address_transparent_keystone">Endereço Transparente de Zcash</string>
+    <string name="receive_wallet_address_unified_subtitle">Roda sempre que o usas</string>
+
+    <string name="receive_info_shielded_title">Endereço Protegido de Zcash (rotativo)</string>
+    <string name="receive_info_shielded_bullet_1">Usa este endereço para receber e guardar os teus %1$s de forma privada. Os %2$s transparentes e protegidos enviados para este endereço serão recebidos e guardados como %3$s protegidos.</string>
+    <string name="receive_info_shielded_bullet_2">É gerado um novo Endereço Protegido de Zcash sempre que abres o ecrã \"Receber\".</string>
+    <string name="receive_info_shielded_bullet_3">Todas as transações enviadas para os teus diferentes Endereços Protegidos rotativos farão parte de um único saldo de carteira sob a mesma frase semente.</string>
+    <string name="receive_info_shielded_bullet_4">Embora recomendemos usar um novo endereço de cada vez, cada endereço único pode ser reutilizado.</string>
+
+    <string name="receive_info_transparent_title">Endereço Transparente de Zcash (estático)</string>
+    <string name="receive_info_transparent_bullet_1">Este tipo de endereço funciona tal como os endereços de Bitcoin e NÃO OFERECE PRIVACIDADE. Os detalhes das transações enviadas para este endereço serão públicos e visíveis na blockchain.</string>
+    <string name="receive_info_transparent_bullet_2">Não recomendamos usar este tipo de endereço, a menos que a carteira ou casa de câmbio de onde %s está a ser enviado não suporte o envio de fundos para endereços protegidos de Zcash.</string>
+    <string name="receive_info_transparent_bullet_3">Para proteger a tua privacidade, o Zodl irá guiar-te para proteger qualquer %s transparente que recebas com apenas um clique.</string>
+    <string name="receive_info_transparent_bullet_4">Não poderás gastar os teus %s transparentes até os protegeres.</string>
+</resources>

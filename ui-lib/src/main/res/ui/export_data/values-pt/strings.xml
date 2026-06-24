@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="export_data_title">Exportação de Dados</string>
+    <string name="export_data_header">Consentimento para Exportar Dados Privados</string>
+    <string name="export_data_text">
+        Ao clicar em “Concordo” abaixo, dás o teu consentimento para exportar todos os dados privados das tuas
+        carteiras, como o histórico completo da(s) tua(s) carteira(s), incluindo quaisquer carteiras de hardware
+        conectadas. Toda a informação privada, mensagens, valores e endereços de destinatários, mesmo da tua atividade
+        protegida, será exportada.*\n\nOs dados privados também permitem ver determinadas ações futuras que realizes
+        com o Zodl.\n\nPartilhar estes dados privados é irrevogável — depois de partilhares estes dados privados com
+        alguém, não há forma de revogar o seu acesso.\n\n*Nota que estes dados privados não dão a capacidade de
+        gastar os teus fundos, apenas a capacidade de ver o que fazes com eles.
+    </string>
+    <string name="export_data_confirm">Exportar Dados Privados</string>
+    <string name="export_data_agree">Concordo com as Políticas de Exportação de Dados Privados e a Política de Privacidade do Zodl</string>
+    <string name="export_data_export_data_chooser_title">Partilhar dados internos do Zodl com:</string>
+    <string name="export_data_unable_to_share">Não foi possível encontrar uma aplicação para partilhar.</string>
+    <string name="export_data_share_text">Exportar Ficheiro Fiscal</string>
+</resources>

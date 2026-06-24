@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="support_header">Suporte</string>
+    <string name="support_title">Envia-nos Comentários</string>
+    <string name="support_experience_title">Como está a ser a tua experiência com o Zodl?</string>
+    <string name="support_help_title">Como podemos ajudar-te?</string>
+    <string name="support_hint">Gostaria de perguntar sobre…</string>
+    <string name="support_send">Enviar</string>
+    <string name="support_confirmation_dialog_ok">OK</string>
+    <string name="support_confirmation_dialog_cancel">Cancelar</string>
+    <string name="support_confirmation_dialog_title">Abrir a aplicação de e-mail</string>
+    <string name="support_confirmation_explanation">O Zodl está prestes a abrir a tua aplicação de e-mail com uma mensagem pré-preenchida.\n\nCertifica-te de que carregas em enviar dentro da tua aplicação de e-mail.</string>
+    <string name="support_information">Por favor, informa-nos sobre quaisquer problemas que tenhas tido, ou funcionalidades que gostarias de ver no futuro.</string>
+    <string name="support_email_part_1">Como está a ser a tua experiência com o Zodl?\n<xliff:g id="emoji_encoding" example="😍">%1$s</xliff:g> <xliff:g id="emoji_order" example="5">%2$s</xliff:g>/5</string>
+    <string name="support_email_part_2">Como podemos ajudar-te?\n%s</string>
+</resources>

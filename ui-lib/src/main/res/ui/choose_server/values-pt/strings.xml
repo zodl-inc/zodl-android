@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="choose_server_title">Servidor</string>
+    <string name="choose_server_default_label">predefinido: <xliff:g id="server" example="example.com:123">%1$s</xliff:g></string>
+    <string name="choose_server_custom">personalizado</string>
+    <string name="choose_server_custom_delimiter">:</string>
+    <string name="choose_server_full_server_name">
+        <xliff:g id="hostname" example="example.com">%1$s</xliff:g>:
+        <xliff:g id="port" example="508">%2$d</xliff:g>
+    </string>
+    <string name="choose_server_full_server_name_text_field">
+        <xliff:g id="hostname" example="example.com">%1$s</xliff:g>:<xliff:g id="port" example="508">%2$d</xliff:g>
+    </string>
+    <string name="choose_server_textfield_hint">&lt;hostname&gt;:&lt;porta&gt;</string>
+    <string name="choose_server_save">Guardar seleção</string>
+    <string name="choose_server_saving">A guardar seleção</string>
+
+    <string name="choose_server_validation_dialog_error_title">Endpoint de servidor inválido</string>
+    <string name="choose_server_validation_dialog_error_text">Erro: A tentativa de mudar de endpoint falhou.
+        Verifica se o hostname e a porta estão corretos e formatados como &lt;hostname&gt;:&lt;porta&gt;.</string>
+    <string name="choose_server_validation_dialog_error_btn">OK</string>
+
+    <string name="choose_server_save_success_dialog_title">Servidor guardado</string>
+    <string name="choose_server_save_success_dialog_text">O endpoint de servidor selecionado foi
+        guardado com sucesso.</string>
+    <string name="choose_server_save_success_dialog_btn">OK</string>
+    <string name="choose_server_save_default">Predefinido</string>
+
+    <string name="choose_server_loading_title">A realizar teste do servidor…</string>
+    <string name="choose_server_loading_subtitle">Isto pode demorar um momento…</string>
+
+    <string name="choose_server_connection_mode">Modo de conexão</string>
+    <string name="choose_server_automatic">Automático</string>
+    <string name="choose_server_manual">Manual</string>
+    <string name="choose_server_fastest_servers">Servidores mais rápidos</string>
+    <string name="choose_server_other_servers">Outros servidores</string>
+    <string name="choose_server_browse_servers">Explorar todos os servidores</string>
+    <string name="choose_server_refresh">Atualizar</string>
+    <string name="choose_server_active">Ativo</string>
+    <string name="choose_server_testing">A testar</string>
+    <string name="choose_server_default">Predefinido</string>
+</resources>

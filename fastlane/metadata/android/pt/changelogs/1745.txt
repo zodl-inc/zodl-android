@@ -1,0 +1,2 @@
+Alterado:
+- Removemos da lista de servidores os servidores agendados para desativação.

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_button_receive">Receber</string>
+    <string name="home_button_send">Enviar</string>
+    <string name="home_button_scan">Ler</string>
+    <string name="home_button_request">Solicitar</string>
+    <string name="home_button_buy">Comprar</string>
+    <string name="home_button_more">Mais</string>
+    <string name="home_message_backup_required_title">Cópia de Segurança da Carteira Necessária</string>
+    <string name="home_message_backup_required_subtitle">Evita a possível perda de fundos</string>
+    <string name="home_message_backup_required_button">Iniciar</string>
+    <string name="home_message_wallet_disconnected_title">Carteira Desconectada</string>
+    <string name="home_message_wallet_disconnected_subtitle">Verifica a tua conexão e recarrega o Zodl</string>
+    <string name="home_message_transparent_balance_subtitle">%1$s %2$s</string>
+    <string name="home_message_transparent_balance_title">Saldo Não Protegido</string>
+    <string name="home_message_transparent_balance_button">Proteger</string>
+    <string name="home_message_currency_conversion_title">Conversão de Moeda</string>
+    <string name="home_message_currency_conversion_subtitle">Ativa para mostrar valores fiat</string>
+    <string name="home_message_currency_conversion_button">Iniciar</string>
+    <string name="home_message_wallet_updating_title">A atualizar o saldo…</string>
+    <string name="home_message_wallet_updating_subtitle">A aguardar o processamento da última transação</string>
+    <string name="home_message_restoring_title">A restaurar a carteira • %1$.1f%% concluído</string>
+    <string name="home_message_restoring_subtitle">Mantém o Zodl aberto com o ecrã do telefone ativo</string>
+    <string name="home_message_restoring_subtitle_spendable">Os teus fundos estão prontos a ser usados agora</string>
+    <string name="home_message_syncing_title">A sincronizar • %1$.1f%% concluído</string>
+    <string name="home_message_resyncing_title">A ressincronizar</string>
+    <string name="home_message_resyncing_subtitle">Mantém o Zodl aberto com o ecrã do telefone ativo</string>
+    <string name="home_message_syncing_subtitle">A tua carteira está a atualizar</string>
+    <string name="home_message_error_title">Ocorreu um erro durante a sincronização</string>
+    <string name="home_message_error_subtitle">A tentar resolver</string>
+    <string name="home_message_tor_title">Ativar Proteção com Tor</string>
+    <string name="home_message_tor_subtitle">Protege o teu endereço IP</string>
+    <string name="home_info_backup_title">Cópia de Segurança Necessária</string>
+    <string name="home_info_backup_subtitle_1">Evita a possível perda de fundos fazendo uma cópia de segurança da tua carteira de forma segura.</string>
+    <string name="home_info_backup_subtitle_2">Faz uma cópia de segurança do acesso aos teus fundos guardando:</string>
+    <string name="home_info_backup_bullet_1">Frase de Recuperação Secreta (um conjunto único de 24 palavras numa ordem
+        exata)</string>
+    <string name="home_info_backup_bullet_2">Altura de Nascimento da Carteira (a altura de bloco em que a tua carteira
+        foi criada)</string>
+    <string name="home_info_backup_message_1">Caso percas o acesso à app ou ao teu dispositivo, conhecer a Frase de
+        Recuperação Secreta é a única forma de recuperar os teus fundos. Não a conseguimos ver nem te conseguimos ajudar a recuperá-la.</string>
+    <string name="home_info_backup_message_2">Qualquer pessoa com acesso à tua Frase de Recuperação Secreta terá controlo
+        total da tua carteira, por isso mantém-na segura e nunca a mostres a ninguém.</string>
+    <string name="home_info_backup_checkbox">Li e compreendo os riscos de não fazer uma cópia de segurança da minha carteira.</string>
+    <string name="home_info_transparent_not_now">Agora não</string>
+    <string name="home_info_transparent_checkbox">Não voltar a mostrar esta mensagem.</string>
+    <string name="home_info_transparent_balance_shield">Proteger</string>
+    <string name="home_info_transparent_title">Proteger Sempre os Fundos Transparentes</string>
+    <string name="home_info_transparent_subtitle">Para proteger a privacidade do utilizador, o Zodl não permite gastar
+        %s transparentes. Toca no botão \"Proteger\" abaixo para tornar os teus fundos transparentes utilizáveis e o teu saldo total no Zodl privado. </string>
+    <string name="home_info_transparent_message">Isto criará uma transação de proteção dentro da carteira, consolidando os
+        teus fundos transparentes e protegidos. (Taxa típica: &lt; %1$s %2$s)</string>
+    <string name="home_info_transparent_subheader">Transparente</string>
+    <string name="home_info_disconnected_title">Carteira Desconectada</string>
+    <string name="home_info_disconnected_subtitle">Parece que estás sem conexão. Por favor, restabelece a tua conexão à
+        internet para usar a carteira Zodl.</string>
+    <string name="home_info_restoring_title">Restauração da Carteira em Curso</string>
+    <string name="home_info_restoring_message">O Zodl está a analisar a blockchain para recuperar as tuas transações. As
+        carteiras mais antigas podem demorar horas a restaurar. Segue estes passos para evitar interrupções:</string>
+    <string name="home_info_restoring_bullet_1">Mantém a app do Zodl aberta com o ecrã do telefone ativo.</string>
+    <string name="home_info_restoring_bullet_2">Para evitar que o ecrã do telefone se desligue, desativa o modo de poupança
+        de energia e mantém o telefone ligado à corrente.</string>
+    <string name="home_info_restoring_note">Os fundos não podem ser gastos até a tua carteira estar restaurada.</string>
+    <string name="home_info_resyncing_title">Ressincronização da Carteira em Curso</string>
+    <string name="home_info_resyncing_message">O Zodl está a analisar a blockchain à procura das tuas transações mais recentes para garantir
+        que os teus saldos são apresentados corretamente. Mantém a app do Zodl aberta com o ecrã do telefone ativo para evitar interrupções.</string>
+    <string name="home_info_syncing_title">Sincronização da Carteira em Curso</string>
+    <string name="home_info_syncing_message">O Zodl está a analisar a blockchain à procura das tuas transações mais recentes para garantir
+        que os teus saldos são apresentados corretamente. Mantém a app do Zodl aberta com o ecrã do telefone ativo para evitar interrupções.</string>
+    <string name="home_info_updating_title">A atualizar o saldo</string>
+    <string name="home_info_updating_message">A tua última transação está a ser minerada e confirmada.</string>
+    <string name="crash_report_detail_title">Ajuda a Melhorar o Zodl</string>
+    <string name="crash_report_detail_subtitle">Os relatórios de falhas são uma ferramenta essencial para os programadores, usada para melhorar a qualidade e a fiabilidade das aplicações. O seu único propósito é corrigir erros que provocam falhas.</string>
+    <string name="crash_report_detail_item_title_2">O que não é partilhado?</string>
+    <string name="crash_report_detail_item_subtitle_1">Usamos o Firebase Crashlytics para recolher relatórios de falhas. Incluem informação sobre a versão da app, a hora em que ocorreu a falha e o rastreio da pilha (stack trace), para que fique claro em que parte da app ocorreu a falha.</string>
+    <string name="crash_report_detail_item_subtitle_2">O Zodl não acede nem pode aceder a informação sobre utilizadores individuais, os seus dispositivos, transações ou a sua atividade na app. Os dados são completamente anonimizados.</string>
+    <string name="crash_report_detail_item_title_1">O que é partilhado?</string>
+    <string name="crash_report_detail_opt_out">Não participar</string>
+    <string name="crash_report_detail_opt_in">Participar</string>
+    <string name="home_message_crash_reporting_title">Ajuda a melhorar o Zodl</string>
+    <string name="home_message_crash_reporting_subtitle">Permitir partilhar relatórios de falhas</string>
+    <string name="home_message_crash_reporting_button">Rever</string>
+    <string name="balance_action_title">Saldo Disponível</string>
+    <string name="balance_action_all_shielded">Todos os teus fundos estão protegidos e disponíveis.</string>
+    <string name="balance_action_pending">A aguardar a receção do troco de uma transação anterior.</string>
+    <string name="balance_action_syncing">O Zodl está a analisar a blockchain para garantir que os teus saldos são apresentados corretamente.</string>
+    <string name="balance_action_shield_message">Protege o teu %1$s transparente para o tornar utilizável e privado. Ao fazê-lo, será criada uma transação de proteção dentro da carteira, consolidando os teus fundos transparentes e protegidos. (Taxa típica: %2$s %3$s)</string>
+    <string name="balance_action_info_shielded">Protegido (Disponível)</string>
+    <string name="balance_action_info_pending">Pendente</string>
+    <string name="home_button_pay">Pagar</string>
+    <string name="home_button_swap">Swap</string>
+</resources>

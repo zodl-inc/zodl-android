@@ -15,9 +15,11 @@ private val gitShaKey = "gitSha"
 private val gitCommitCountKey = "gitCommitCount"
 private val releaseNotesEn = "releaseNotesEn"
 private val releaseNotesEs = "releaseNotesEs"
+private val releaseNotesPt = "releaseNotesPt"
 
 private val releaseNotesEnPath = "${project.rootDir}/docs/whatsNew/WHATS_NEW_EN.md"
 private val releaseNotesEsPath = "${project.rootDir}/docs/whatsNew/WHATS_NEW_ES.md"
+private val releaseNotesPtPath = "${project.rootDir}/docs/whatsNew/WHATS_NEW_PT.md"
 
 
 // Injects build information
@@ -59,6 +61,7 @@ const val gitSha: String = "${inputs.properties[gitShaKey]}"
 const val gitCommitCount: Int = ${inputs.properties[gitCommitCountKey]}
 const val releaseNotesEn: String = "${inputs.properties[releaseNotesEn]}"
 const val releaseNotesEs: String = "${inputs.properties[releaseNotesEs]}"
+const val releaseNotesPt: String = "${inputs.properties[releaseNotesPt]}"
 """.trimIndent()
         )
     }
@@ -118,4 +121,12 @@ fun fillInReleaseNotes(inputs: TaskInputs) {
     ).toJsonString()
 
     inputs.property(releaseNotesEs, releaseNotesEsJson)
+
+    val releaseNotesPtJson = ChangelogParser.getChangelogEntry(
+        filePath = releaseNotesPtPath,
+        versionNameFallback = gradleVersionName,
+        languageTag = LanguageTag.Portuguese()
+    ).toJsonString()
+
+    inputs.property(releaseNotesPt, releaseNotesPtJson)
 }

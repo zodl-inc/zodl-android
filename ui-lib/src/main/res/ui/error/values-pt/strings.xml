@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="error_general_title">Ocorreu um erro</string>
+    <string name="error_general_message">Causa desconhecida. Por favor, contacta a nossa equipa de suporte se o problema persistir.\n\n%s</string>
+    <string name="error_sync_title">Erro de sincronização</string>
+    <string name="error_shielding_title">Erro de proteção</string>
+    <string name="error_shielding_message">Ocorreu um erro durante a última transação de proteção. Podes tentar novamente mais tarde ou reportar este problema se persistir.\n\n%s</string>
+    <string name="error_shielding_message_grpc">Ocorreu um erro durante a última transação de proteção. Iremos tentar reenviar a transação mais tarde. Se falhar, poderás ter de repetir a tentativa de proteção noutra altura.</string>
+
+    <string name="error_tor_title">Desativar o Tor?</string>
+    <string name="error_tor_message">Foram detetados problemas de conexão com o Tor. Para melhorar o desempenho, tenta desativar o Tor. Isto irá parar as atualizações da taxa de câmbio. Podes voltar a ativá-lo mais tarde nas Definições Avançadas.</string>
+    <string name="error_tor_negative">Desativar</string>
+    <string name="error_tor_positive">Não desativar</string>
+</resources>

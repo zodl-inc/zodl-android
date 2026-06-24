@@ -1,0 +1,31 @@
+Impulsionada por Zcash, a criptomoeda mais privada alguma vez concebida, também conhecida como o Bitcoin encriptado. Com o Zodl, não precisas de saber como funcionam as blockchains para usar dinheiro privado. O Zodl esconde a complexidade sem ceder na segurança, tornando-se uma forma fácil e de baixo risco de começar.
+
+O nosso propósito
+Imaginamos um mundo sem vigilância financeira em massa, onde as pessoas que respeitam a lei possam fazer transações de forma livre e privada, sem receio de que os seus dados sejam explorados, vendidos ou usados como arma por criminosos, empresas ou governos. Um mundo onde a privacidade financeira seja a norma e o acesso aos mercados seja um direito humano. Porque a capacidade de realizar transações que sustentam a vida e a liberdade deve pertencer a todos. Não há soberania sem privacidade.
+
+Feita de forma diferente
+A nossa carteira parece simples à superfície, mas é sustentada por uma profundidade de engenharia que outras carteiras Zcash simplesmente não alcançam. Os engenheiros do Zodl são os criadores originais da Zcash, com um domínio da criptografia e do protocolo que nenhuma outra equipa consegue igualar. Em conjunto com a equipa de produto que definiu o padrão de experiência de utilizador para a Zcash, o Zodl inova com um conhecimento total dos requisitos, capacidades, potencial e riscos da blockchain.
+
+Desenvolvimento de código aberto
+O nosso trabalho é de código aberto porque uma privacidade financeira fiável exige um desenvolvimento transparente. Qualquer pessoa pode inspecionar o código do protocolo, auditar a carteira e verificar o nosso trabalho. Não pedimos confiança. Mostramos o nosso trabalho.
+
+Privacidade desde a conceção
+Ao contrário da maioria das apps que afirmam dar prioridade à privacidade, o Zodl foi criado para isso. Esforçamo-nos por nada saber sobre ti. O Zodl não vê, não recolhe nem rastreia a atividade da tua carteira, saldos, histórico de transações, cliques ou hábitos. Não criamos perfis.
+
+Autocustódia
+O Zodl coloca-te em controlo total dos teus fundos: sem intermediários, sem guardiões, apenas verdadeira soberania financeira. Só tu podes aceder e gerir o teu ZEC. As tuas chaves, a tua cripto.
+
+Os pagamentos P2P mais privados
+A Zcash é a criptomoeda mais privada alguma vez concebida, e o Zodl é criado por uma equipa de programadores singularmente preparada para honrar essa conceção. O ZEC protegido mantém os detalhes das transações ocultos na blockchain, e o Zodl estende essa proteção ao nível da carteira.
+
+Pagamentos privados entre redes
+O facto de os teus amigos exporem os seus dados financeiros em blockchains públicas não significa que tu o devas fazer. Com o Zodl CrossPay, podes usar ZEC protegido para fazer pagamentos no ativo que o teu destinatário preferir, como BTC ou uma stablecoin. Mantém-te privado.
+
+Swaps de e para ZEC protegido
+Os swaps integrados do Zodl são a forma mais simples e que melhor preserva a privacidade de carregar a tua carteira Zodl ou de passar de Zcash para outra criptomoeda.
+
+A tua opinião conta
+O Zodl é moldado pelos seus utilizadores. Cada atualização reflete o que a nossa comunidade mais quer. Quer estejas a pedir uma nova funcionalidade ou a reportar um erro, a tua voz ajuda a tornar a carteira melhor para todos.
+
+Tags / Etiquetas:
+Criptomoeda, pagamentos entre pares, ferramentas financeiras, finanças, carteira, pagamentos, privacidade, finanças pessoais, encriptação

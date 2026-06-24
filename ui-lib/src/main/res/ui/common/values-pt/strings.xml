@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="back_navigation">Voltar</string>
+    <string name="back_navigation_content_description">Voltar</string>
+    <string name="close_navigation_content_description">Fechar</string>
+    <string name="tooltip_close_content_description">Fechar dica</string>
+
+    <string name="fiat_currency_conversion_rate_unavailable">Indisponível</string>
+    <string name="empty_char">-</string>
+    <string name="zcash_logo_content_description">Logótipo da Zcash</string>
+    <string name="settings_menu_content_description">Abrir Definições</string>
+    <string name="balance_widget_available">Saldo Disponível:</string>
+
+    <string name="hide_balances_content_description">Ocultar saldos</string>
+
+    <string name="unable_to_open_email">Não foi possível abrir a aplicação de e-mail.</string>
+
+    <string name="restoring_wallet_label">[A restaurar a tua carteira…]</string>
+    <string name="restoring_wallet_label_new">A restaurar a tua carteira…</string>
+    <string name="disconnected_label">[Sem conexão…]</string>
+    <string name="disconnected_label_new">Sem conexão…</string>
+    <string name="unable_to_open_play_store">Não foi possível abrir a aplicação Google Play Store…</string>
+
+    <string name="general_copied_to_clipboard">Copiado para a área de transferência</string>
+    <string name="general_etc">…</string>
+
+    <string name="general_remind_me_later">Lembrar-me mais tarde</string>
+    <string name="general_remind_me_in">Lembrar-me daqui a %s</string>
+    <string name="general_remind_me_in_two_days">dois dias</string>
+    <string name="general_remind_me_in_two_weeks">duas semanas</string>
+    <string name="general_remind_me_in_two_months">dois meses</string>
+
+    <!-- Wallet Birthday Height — shared across restore/resync/keystone flows -->
+    <string name="wbh_text_field_title">Altura de Bloco</string>
+    <string name="wbh_text_field_hint">Introduz um número</string>
+    <string name="wbh_text_field_note">A Altura de Nascimento da Carteira é o momento em que a tua carteira foi criada.</string>
+    <string name="wbh_copy">Copiar</string>
+    <string name="wbh_next">Seguinte</string>
+    <string name="wbh_enter_block_height">Introduzir altura de bloco</string>
+    <string name="wbh_message">Introduzir a Altura de Nascimento da tua carteira permite-nos mostrar corretamente todos os teus fundos e o histórico de transações.</string>
+    <string name="wbh_subtitle">Altura de Nascimento da Carteira</string>
+    <string name="wbh_date_subtitle">Primeira Transação da Carteira</string>
+    <string name="wbh_estimation_subtitle">Altura de Bloco Estimada</string>
+</resources>

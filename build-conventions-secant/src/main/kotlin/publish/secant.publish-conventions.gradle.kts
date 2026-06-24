@@ -241,7 +241,8 @@ abstract class PublishToGooglePlay @Inject constructor(
             gradleVersionName = gradleVersionName,
             languageTags = listOf(
                 LanguageTag.English(),
-                LanguageTag.Spanish()
+                LanguageTag.Spanish(),
+                LanguageTag.Portuguese()
             )
         )
 

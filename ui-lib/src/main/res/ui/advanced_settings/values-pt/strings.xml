@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="advanced_settings_title">Definições Avançadas</string>
+    <string name="advanced_settings_recovery">Frase de Recuperação do Zodl</string>
+    <string name="advanced_settings_export">Exportar Dados Privados</string>
+    <string name="advanced_settings_choose_server">Escolher um Servidor</string>
+    <string name="advanced_settings_privacy">Proteção com Tor</string>
+    <string name="advanced_settings_currency_conversion">Conversão de Moeda</string>
+    <string name="advanced_settings_crash_reporting">Relatórios de Falhas</string>
+    <string name="advanced_settings_info">Ser-te-á pedida confirmação no ecrã seguinte</string>
+    <string name="advanced_settings_delete_button">Repor Zodl</string>
+    <string name="advanced_settings_tax">Exportar Ficheiro Fiscal</string>
+    <string name="advanced_settings_resync_wallet">Ressincronizar Carteira</string>
+
+    <!-- Disconnect Hardware Wallet Confirmation Screen -->
+    <string name="advanced_settings_disconnect_hw_wallet">Desconectar Hardware</string>
+    <string name="disconnect_hardware_wallet_biometric_message">Confirma para desconectar a tua carteira de hardware</string>
+    <string name="disconnect_hardware_wallet_header">DESCONECTAR</string>
+    <string name="disconnect_hardware_wallet_title">Desconectar Keystone</string>
+    <string name="disconnect_hardware_wallet_subtitle">Desconectar a tua carteira de hardware eliminará permanentemente alguns dados locais que não podem ser recuperados a partir da blockchain.</string>
+    <string name="disconnect_hardware_wallet_warning_title">Isto pode incluir:</string>
+    <string name="disconnect_hardware_wallet_warning_item_1">Envios falhados ou expirados</string>
+    <string name="disconnect_hardware_wallet_warning_item_2">Transações na mempool que nunca foram confirmadas</string>
+    <string name="disconnect_hardware_wallet_warning_item_3">Transações posteriormente revertidas numa reorganização da cadeia</string>
+    <string name="disconnect_hardware_wallet_connected_title">Hardware Keystone</string>
+    <string name="disconnect_hardware_wallet_connected_status">Atualmente conectado</string>
+    <string name="disconnect_hardware_wallet_info">Se desconectares agora, o teu Keystone deixará de estar emparelhado com a tua carteira Zodl.</string>
+    <string name="disconnect_hardware_wallet_button">Desconectar</string>
+
+    <!-- Disconnect Hardware Wallet Confirmation Dialog -->
+    <string name="disconnect_hardware_wallet_confirmation_title">Tens a certeza?</string>
+    <string name="disconnect_hardware_wallet_confirmation_message">Desconectar a carteira de hardware não pode ser anulado.</string>
+    <string name="disconnect_hardware_wallet_confirmation_confirm">Desconectar</string>
+    <string name="disconnect_hardware_wallet_confirmation_cancel">Cancelar</string>
+
+    <!-- Disconnect Hardware Wallet Error Dialog -->
+    <string name="disconnect_hardware_wallet_error_title">Falha ao Desconectar</string>
+    <string name="disconnect_hardware_wallet_error_message">Não foi possível finalizar a desconexão da carteira de hardware. Por favor, tenta novamente ou reporta um problema.</string>
+</resources>

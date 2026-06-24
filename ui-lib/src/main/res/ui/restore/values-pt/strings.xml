@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="restore_title">Restaurar</string>
+    <string name="restore_subtitle">Frase de Recuperação</string>
+    <string name="restore_message">Por favor, introduz a tua frase de recuperação secreta de 24 palavras na ordem correta.</string>
+    <string name="restore_button">Seguinte</string>
+
+    <string name="restore_dialog_title">Precisas de saber mais?</string>
+    <string name="restore_dialog_message_1_bold_part">A Frase de Recuperação Secreta</string>
+    <string name="restore_dialog_message_1">é um conjunto único de 24 palavras, que aparecem numa
+        ordem precisa. Pode ser usada para obter controlo total dos teus fundos a partir de qualquer dispositivo, através de qualquer app de carteira Zcash.
+        Pensa nela como a chave mestra da tua carteira. Está guardada nas Definições Avançadas do Zodl.</string>
+    <string name="restore_dialog_message_2_bold_part">A Altura de Nascimento da Carteira</string>
+    <string name="restore_dialog_message_2">é a altura de bloco (o número do bloco na
+        blockchain) em que a tua carteira foi criada. Se alguma vez perderes o acesso à tua app Zodl e precisares de recuperar
+        os teus fundos, fornecer a altura de bloco juntamente com a tua frase de recuperação pode acelerar significativamente o processo.
+    </string>
+
+    <string name="restore_bd_height_btn">Estimar a minha altura de bloco</string>
+    <string name="restore_bd_restore_btn">Restaurar</string>
+
+    <string name="restore_bd_date_message">Decide até onde o Zodl deve analisar. Introduz uma data anterior à tua primeira transação recebida. Se não tiveres a certeza, escolhe uma data anterior.</string>
+
+    <string name="restore_bd_estimation_restore">Restaurar</string>
+
+    <string name="restore_seed_warning_suggestions">Esta palavra não está no dicionário da frase de recuperação. Por favor, seleciona a correta a partir das sugestões.</string>
+
+    <string name="restore_tor_title">Ativar Proteção com Tor</string>
+    <string name="restore_tor_subtitle">Se o Tor estiver disponível na tua região, recomendamos ativá-lo para maior privacidade durante a restauração da carteira. Este passo é completamente opcional.</string>
+    <string name="restore_tor_checkbox_title">Ativar Proteção com Tor</string>
+    <string name="restore_tor_checkbox_subtitle">Encaminha a tua conexão através da rede Tor para maior anonimato e proteção de privacidade.</string>
+
+    <string name="resync_title">Ressincronizar Carteira</string>
+    <string name="resync_bd_date_message">Decide até onde o Zodl deve ressincronizar. Introduz uma data anterior à tua primeira transação recebida. Se não tiveres a certeza, escolhe uma data anterior.</string>
+
+    <string name="resync_bd_estimation_message">A tua carteira será ressincronizada a partir de %1$s (%2$s blocos). O Zodl irá analisar e recuperar todas as transações realizadas após o seguinte número de bloco.</string>
+    <string name="confirm_resync_title">Confirmar Ressincronização</string>
+    <string name="confirm_resync_subtitle">Ressincroniza a carteira atual sem repor a app. Isto pode ser usado para
+        resolver problemas que normalmente exigiriam restaurar a tua carteira, como corrigir o saldo da tua
+        Keystone.\n\nA menos que indiques o contrário abaixo, o Zodl irá ressincronizar a partir da data apresentada.</string>
+    <string name="confirm_resync_message">A menos que indiques o contrário abaixo, o Zodl irá ressincronizar a partir da data apresentada.</string>
+    <string name="confirm_resync_info">A tua carteira será ressincronizada a partir de %1$s (%2$s blocos). Usa o botão abaixo se quiseres alterá-la.</string>
+    <string name="confirm_resync_change">Alterar</string>
+    <string name="confirm_resync_confirm">Confirmar</string>
+
+    <string name="resync_wbh_confirm_button">Confirmar</string>
+
+    <string name="resync_confirm_failed_title">Falha na Ressincronização</string>
+    <string name="resync_confirm_failed_message">Não foi possível concluir a ressincronização da carteira. Por favor, tenta novamente ou reporta um problema.</string>
+
+</resources>

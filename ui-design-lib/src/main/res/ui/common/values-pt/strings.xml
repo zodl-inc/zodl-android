@@ -1,0 +1,43 @@
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="amount_with_fiat_currency_symbol" formatted="true"><xliff:g example="$" id="fiat_currency_symbol">%1$s</xliff:g><xliff:g example="123" id="amount">%2$s</xliff:g></string>
+    <string name="hide_balance_placeholder">-----</string>
+    <string name="back_navigation_content_description">Voltar</string>
+    <string name="triple_dots">…</string>
+    <string name="seed_recovery_reveal">Mostrar frase de recuperação</string>
+    <string name="general_masked_seed_word">•••••</string>
+    <string name="general_hidden_seed_word">Palavra oculta da frase de recuperação</string>
+
+    <string name="general_service_unavailable">O serviço está indisponível</string>
+    <string name="general_unexpected_error">Erro inesperado</string>
+    <string name="general_please_try_again">Por favor, tenta novamente mais tarde.</string>
+    <string name="general_check_connection">Por favor, verifica a tua conexão e tenta novamente.</string>
+    <string name="general_error_title">Algo correu mal</string>
+    <string name="general_error_message">Não foi possível carregar os ativos. Por favor, verifica a tua conexão e tenta novamente.</string>
+    <string name="general_try_again">Tentar novamente</string>
+    <string name="general_contact_support">Contactar o Suporte</string>
+    <string name="general_show">Mostrar</string>
+    <string name="general_hide">Ocultar</string>
+    <string name="general_more">Mais</string>
+    <string name="general_less">Menos</string>
+    <string name="general_loading">A carregar</string>
+    <string name="general_review">Rever</string>
+    <string name="general_ok">OK</string>
+    <string name="general_got_it">Entendido!</string>
+    <string name="general_report">Reportar</string>
+    <string name="general_zec">%1$s %2$s</string>
+    <string name="general_dismiss">Fechar</string>
+    <string name="general_select">Selecionar…</string>
+    <string name="general_confirm">Confirmar</string>
+    <string name="general_address">Endereço</string>
+    <string name="general_processing">A processar</string>
+    <string name="general_enter_address">Introduz o endereço…</string>
+    <string name="general_enter_address_partial">Endereço %s…</string>
+    <string name="general_copy">Copiar</string>
+    <string name="general_share_qr">Partilhar QR</string>
+    <string name="general_cancel">Cancelar</string>
+    <string name="general_on">em</string>
+    <string name="general_warning">Aviso:&#160;</string>
+
+    <string name="common_empty_screen_title">Sem resultados</string>
+    <string name="common_empty_screen_subtitle">Tentámos, mas não encontrámos nada.</string>
+</resources>

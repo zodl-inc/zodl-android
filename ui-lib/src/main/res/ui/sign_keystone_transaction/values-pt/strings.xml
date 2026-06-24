@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sign_keystone_transaction_title">Lê com a tua carteira Keystone</string>
+    <string name="sign_keystone_transaction_subtitle">Depois de assinares com a Keystone, toca no botão Obter Assinatura abaixo.</string>
+    <string name="sign_keystone_transaction_bar_title">Assinar Transação</string>
+    <string name="sign_keystone_transaction_badge">Hardware</string>
+    <string name="sign_keystone_transaction_positive">Obter Assinatura</string>
+    <string name="sign_keystone_transaction_negative">Rejeitar</string>
+    <string name="sign_keystone_transaction_bottom_sheet_title">Tens a certeza?</string>
+    <string name="sign_keystone_transaction_bottom_sheet_subtitle">Rejeitar a assinatura irá cancelar a transação e terás de recomeçar se quiseres continuar. Esta ação não pode ser anulada.</string>
+    <string name="sign_keystone_transaction_bottom_sheet_go_back">Voltar</string>
+    <string name="sign_keystone_transaction_bottom_sheet_reject">Rejeitar assinatura</string>
+</resources>

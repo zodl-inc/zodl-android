@@ -4,6 +4,7 @@ import org.intellij.markdown.ast.getTextInNode
 import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
 import org.intellij.markdown.parser.MarkdownParser
 import publish.ChangelogParser.ENGLISH_TAG
+import publish.ChangelogParser.PORTUGUESE_TAG
 import publish.ChangelogParser.SPANISH_TAG
 import java.io.File
 import java.text.SimpleDateFormat
@@ -19,15 +20,20 @@ object ChangelogParser {
 
     internal const val ENGLISH_TAG = "EN"
     internal const val SPANISH_TAG = "ES"
+    internal const val PORTUGUESE_TAG = "PT"
 
     private const val ADDED_PART_EN = "Added"
     private const val ADDED_PART_ES = "Añadido"
+    private const val ADDED_PART_PT = "Adicionado"
     private const val CHANGED_PART_EN = "Changed"
     private const val CHANGED_PART_ES = "Cambiado"
+    private const val CHANGED_PART_PT = "Alterado"
     private const val FIXED_PART_EN = "Fixed"
     private const val FIXED_PART_ES = "Corregido"
+    private const val FIXED_PART_PT = "Corrigido"
     private const val REMOVED_PART_EN = "Removed"
     private const val REMOVED_PART_ES = "Removido"
+    private const val REMOVED_PART_PT = "Removido"
 
     private fun log(value: Any) {
         if (DEBUG_LOGS_ENABLED) {
@@ -174,6 +180,7 @@ object ChangelogParser {
                 when (languageTag) {
                     is LanguageTag.English -> ADDED_PART_EN
                     is LanguageTag.Spanish -> ADDED_PART_ES
+                    is LanguageTag.Portuguese -> ADDED_PART_PT
                 }
             }
 
@@ -181,6 +188,7 @@ object ChangelogParser {
                 when (languageTag) {
                     is LanguageTag.English -> CHANGED_PART_EN
                     is LanguageTag.Spanish -> CHANGED_PART_ES
+                    is LanguageTag.Portuguese -> CHANGED_PART_PT
                 }
             }
 
@@ -188,6 +196,7 @@ object ChangelogParser {
                 when (languageTag) {
                     is LanguageTag.English -> FIXED_PART_EN
                     is LanguageTag.Spanish -> FIXED_PART_ES
+                    is LanguageTag.Portuguese -> FIXED_PART_PT
                 }
             }
 
@@ -195,6 +204,7 @@ object ChangelogParser {
                 when (languageTag) {
                     is LanguageTag.English -> REMOVED_PART_EN
                     is LanguageTag.Spanish -> REMOVED_PART_ES
+                    is LanguageTag.Portuguese -> REMOVED_PART_PT
                 }
             }
         }
@@ -209,6 +219,10 @@ sealed class LanguageTag(
 
     data class Spanish(
         override val tag: String = SPANISH_TAG
+    ) : LanguageTag(tag)
+
+    data class Portuguese(
+        override val tag: String = PORTUGUESE_TAG
     ) : LanguageTag(tag)
 }
 

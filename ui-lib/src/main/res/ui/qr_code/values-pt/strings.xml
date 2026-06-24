@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="qr_code_close_content_description">Fechar</string>
+    <string name="qr_code_unified_content_description">Código QR de Endereço Unificado</string>
+    <string name="qr_code_sapling_content_description">Código QR de Endereço Sapling</string>
+    <string name="qr_code_transparent_content_description">Código QR de Endereço Transparente</string>
+    <string name="qr_code_wallet_address_shielded">Endereço Protegido de Zcash</string>
+    <string name="qr_code_wallet_address_sapling">Endereço Sapling de Zcash</string>
+    <string name="qr_code_wallet_address_transparent">Endereço Transparente de Zcash</string>
+    <string name="qr_code_privacy_level_shielded">Privado</string>
+    <string name="qr_code_privacy_level_transparent">Não Privado</string>
+    <string name="qr_code_share_btn">Partilhar Código QR</string>
+    <string name="qr_code_copy_btn">Copiar Endereço</string>
+    <string name="qr_code_clipboard_tag">Endereço da Carteira Zcash</string>
+    <string name="qr_code_data_unable_to_share">Não foi possível encontrar uma aplicação para partilhar o código QR.</string>
+    <string name="qr_code_share_chooser_title">O Meu Endereço %s no Zodl</string>
+    <string name="qr_code_share_chooser_text">Olá, lê este código QR para me enviares um pagamento em %s! Link de transferência:
+        https://play.google.com/store/apps/details?id=co.electriccoin.zcash</string>
+    <string name="qr_code_wallet_address_shielded_keystone">Endereço Protegido de Keystone</string>
+    <string name="qr_code_wallet_address_sapling_keystone">Endereço Sapling de Keystone</string>
+    <string name="qr_code_wallet_address_transparent_keystone">Endereço Transparente de Keystone</string>
+</resources>

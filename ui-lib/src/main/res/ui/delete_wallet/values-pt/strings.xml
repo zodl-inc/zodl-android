@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="delete_wallet_title">Repor Zodl</string>
+    <string name="delete_wallet_text_1">Certifica-te de que guardaste tanto a tua frase de recuperação secreta como a altura de nascimento (birthday height) da carteira antes de continuares.</string>
+    <string name="delete_wallet_text_2">Repor a aplicação Zodl irá eliminar a base de dados e a cache do Zodl, e irá desconectar todas as carteiras de hardware conectadas.</string>
+    <string name="delete_wallet_text_3">Depois de repores o Zodl, a única forma de aceder aos teus fundos é através de um processo de restauração da carteira que requer a tua Frase de Recuperação do Zodl e a Altura de Nascimento da Carteira.</string>
+    <string name="delete_wallet_checkbox_title">Manter a cópia de segurança encriptada dos metadados — que inclui contactos, notas, marcadores e detalhes de trocas/pagamentos.</string>
+    <string name="delete_wallet_checkbox_warning_checked">Estes dados não podem ser recuperados durante a Restauração.</string>
+    <string name="delete_wallet_checkbox_warning_unchecked">Estes dados não podem ser recuperados durante a Restauração.</string>
+    <string name="delete_wallet_button">Confirmar</string>
+    <string name="delete_wallet_confirmation_title">Tens a certeza?</string>
+    <string name="delete_wallet_confirmation_subtitle">Repor a aplicação não pode ser anulado. Terás de restaurar a tua carteira usando a tua frase de recuperação secreta.</string>
+    <string name="delete_wallet_confirmation_button">Repor Zodl</string>
+    <string name="delete_wallet_confirmation_cancel">Cancelar</string>
+    <string name="delete_wallet_failed">Falha ao eliminar a carteira. Por favor, tenta novamente.</string>
+</resources>

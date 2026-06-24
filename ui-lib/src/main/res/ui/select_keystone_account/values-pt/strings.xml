@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="select_keystone_account_default">Carteira Keystone</string>
+    <string name="select_keystone_account_positive">Seguinte</string>
+    <string name="select_keystone_account_title">Confirmar Conta de Acesso</string>
+    <string name="select_keystone_account_subtitle">Seleciona a carteira que pretendes conectar para continuar. Depois de conectada, poderás assinar transações sem fios com a tua carteira de hardware.</string>
+</resources>

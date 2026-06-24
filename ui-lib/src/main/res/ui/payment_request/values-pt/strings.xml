@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="payment_request_title">Pedido de Pagamento</string>
+    <string name="payment_request_close_content_description">Fechar</string>
+
+    <string name="payment_request_requested_by">Solicitado Por</string>
+    <string name="payment_request_btn_show_address">Mostrar</string>
+    <string name="payment_request_btn_hide_address">Ocultar</string>
+    <string name="payment_request_btn_save_contact">Guardar</string>
+
+    <string name="payment_request_memo">Para:</string>
+
+    <string name="payment_request_fee">Taxa</string>
+    <string name="payment_request_total">Total</string>
+
+    <string name="payment_request_send_btn">Enviar</string>
+
+    <string name="payment_request_dialog_error_title">Transação Falhada</string>
+    <string name="payment_request_dialog_error_text">Ocorreu um erro e a tentativa de enviar fundos falhou. Por favor, tenta novamente.</string>
+    <string name="payment_request_dialog_error_ok_btn">OK</string>
+    <string name="payment_request_dialog_error_report_btn">Reportar</string>
+
+    <string name="payment_request_dialog_error_grpc_title">Erro de Conexão</string>
+    <string name="payment_request_dialog_error_grpc_text">O Zodl encontrou alguns problemas de conexão ao enviar
+        a transação para a rede. Irá tentar novamente durante os próximos minutos.</string>
+    <string name="payment_request_dialog_error_grpc_btn">OK</string>
+
+    <string name="payment_request_send_failed_report_unable_open_email">Não foi possível abrir a aplicação de e-mail.</string>
+</resources>

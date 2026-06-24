@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="address_book_title">Livro de Endereços</string>
+    <string name="address_book_add">Adicionar Novo Contacto</string>
+    <string name="address_book_empty">O teu livro de endereços está vazio</string>
+    <string name="address_book_version">Versão <xliff:g example="1" id="version">%s</xliff:g></string>
+    <string name="address_book_scan_btn">Ler código QR</string>
+    <string name="address_book_manual_btn">Introdução manual</string>
+    <string name="address_book_multiple_wallets_title">As Tuas Carteiras</string>
+    <string name="address_book_multiple_wallets_contacts_title">Contactos do Livro de Endereços</string>
+    <string name="address_book_select_recipient_title">Selecionar destinatário</string>
+</resources>

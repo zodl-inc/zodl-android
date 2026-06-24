@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="not_enough_space_title">Espaço livre insuficiente</string>
+    <string name="not_enough_space_description_1">O Zodl requer <xliff:g example="1" id="required_gigabytes">%1$d</xliff:g> GB de espaço para sincronizar a blockchain de Zcash, mas só há</string>
+    <string name="not_enough_space_description_2"><xliff:g example="300" id="available_megabytes">%1$d</xliff:g> MB disponíveis</string>
+    <string name="not_enough_space_description_3">. A sincronização permanecerá em pausa até haver mais espaço disponível.\n\n~<xliff:g example="300" id="required_megabytes">%1$d</xliff:g> MB de espaço adicional são necessários para continuar</string>
+    <string name="not_enough_space_system_settings_btn">Definições do sistema</string>
+    <string name="not_enough_space_settings_open_failed">Não foi possível abrir a aplicação de Definições.</string>
+</resources>

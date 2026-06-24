@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="tax_export_title">Exportação de Dados</string>
+    <string name="tax_export_subtitle">Exportar Ficheiro Fiscal</string>
+    <string name="tax_export_message">Descarrega o histórico de transações de <xliff:g example="Zodl" id="account_name">%s</xliff:g> do ano civil anterior em formato .csv.</string>
+    <string name="tax_export_export_button">Descarregar</string>
+</resources>

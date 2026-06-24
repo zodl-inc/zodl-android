@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="about_title">Acerca de</string>
+    <string name="about_subtitle">Apresentamos o Zodl</string>
+    <string name="about_overflow_menu_content_description">Mais opções</string>
+    <string name="about_version_format" formatted="true">Versão do Zodl <xliff:g example="1" id="version">%s</xliff:g></string>
+    <string name="about_debug_menu_app_name">Nome da app:<xliff:g example="Zodl" id="app_name">%1$s</xliff:g></string>
+    <string name="about_debug_menu_build">Compilação: <xliff:g example="635dac0eb9ddc2bc6da5177f0dd495d8b76af4dc" id="git_commit_hash">%1$s</xliff:g></string>
+    <string name="about_description">O Zodl é uma carteira móvel impulsionada por Zcash, criada para pagamentos privados imparáveis.
+        Está otimizada para o armazenamento e o uso no mundo real de $ZEC protegido — a criptomoeda verdadeiramente privada.\n\nDesenvolvida pela equipa que definiu o padrão da indústria em privacidade on-chain, os criadores originais do protocolo Zcash.
+    </string>
+    <string name="terms_of_use">Termos de Serviço</string>
+
+    <string name="about_unable_to_web_browser">Não foi possível encontrar uma aplicação de navegador web.</string>
+    <string name="about_button_privacy_policy">Política de Privacidade</string>
+</resources>

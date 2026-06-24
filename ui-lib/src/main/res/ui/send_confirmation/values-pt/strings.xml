@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+
+    <string name="send_stage_confirmation_title">Confirmação</string>
+    <string name="send_confirmation_amount">Valor Total</string>
+    <string name="send_confirmation_address">Enviar para</string>
+    <string name="send_confirmation_address_from">Enviar de</string>
+    <string name="send_confirmation_memo">Mensagem</string>
+    <string name="send_confirmation_fee">Taxa</string>
+    <string name="send_confirmation_amount_item">Valor</string>
+    <string name="send_confirmation_send_button">Enviar</string>
+    <string name="send_confirmation_back_button">Cancelar</string>
+
+    <string name="send_confirmation_sending_title">A enviar…</string>
+    <string name="send_confirmation_sending_subtitle">As tuas moedas estão a ser enviadas para\n
+        <xliff:g example="zs12ghrbdjfs24383x5T…" id="index">%1$s</xliff:g>
+    </string>
+    <string name="send_confirmation_sending_title_transparent">A proteger…</string>
+    <string name="send_confirmation_sending_subtitle_transparent">As tuas moedas estão a ser protegidas</string>
+    <string name="send_confirmation_success_title_transparent">Protegidas!</string>
+    <string name="send_confirmation_success_subtitle_transparent">As tuas moedas foram protegidas com sucesso</string>
+    <string name="send_confirmation_failure_title_transparent">Não foi possível proteger</string>
+    <string name="send_confirmation_failure_subtitle_transparent">Ocorreu um erro ao tentar proteger as tuas
+        moedas. Por favor, tenta novamente.</string>
+
+    <string name="send_confirmation_success_title">Enviado!</string>
+    <string name="send_confirmation_success_subtitle">As tuas moedas foram enviadas com sucesso para\n
+        <xliff:g example="zs12ghrbdjfs24383x5T…" id="index">%1$s</xliff:g>
+    </string>
+    <string name="send_confirmation_success_view_trx">Ver Transação</string>
+    <string name="send_confirmation_success_btn_close">Fechar</string>
+
+    <string name="send_confirmation_failure_title">Falha ao Enviar</string>
+    <string name="send_confirmation_failure_subtitle">Ocorreu um erro ao tentar enviar moedas.\nPor favor, tenta novamente.</string>
+    <string name="send_confirmation_failure_view_trx">Ver Transação</string>
+    <string name="send_confirmation_failure_close_button">Fechar</string>
+    <string name="send_confirmation_failure_report_button">Reportar</string>
+
+    <string name="send_confirmation_failure_grpc_title">Problema de Conexão</string>
+    <string name="send_confirmation_failure_grpc_subtitle">O Zodl encontrou problemas de conexão ao enviar a
+        transação. Irá tentar novamente nos próximos minutos.</string>
+    <string name="send_confirmation_failure_grpc_close_button">Fechar</string>
+
+    <string name="send_confirmation_multiple_trx_failure_title">Falha ao Enviar</string>
+    <string name="send_confirmation_multiple_trx_failure_text">O envio para este destinatário exigiu várias
+        transações, mas apenas algumas foram bem-sucedidas e as restantes falharam. Os teus fundos estão seguros, mas
+        precisam de ser recuperados com a nossa assistência.\n\nPor favor, usa o botão abaixo para nos contactares. Prepara automaticamente todos os dados de que precisamos para te ajudar a recuperar os teus fundos.</string>
+    <string name="send_confirmation_multiple_trx_failure_copy_button">Copiar IDs de transação</string>
+    <string name="send_confirmation_multiple_trx_failure_report_button">Contactar o Suporte</string>
+    <string name="send_confirmation_multiple_trx_failure_ids_title">IDs de Transação</string>
+    <string name="send_confirmation_multiple_report_text">Olá, equipa Zodl.\n\nAo enviar uma transação para um endereço TEX, deparei-me com um estado de erro. Estou a contactar para obter orientação sobre como recuperar os meus fundos.\n\nObrigado.</string>
+    <string name="send_confirmation_multiple_report_statuses" formatted="true">Estado das transações:</string>
+    <string name="send_confirmation_multiple_report_status_success">
+        <xliff:g example="1" id="index">%1$d</xliff:g>: Sucesso
+    </string>
+    <string name="send_confirmation_multiple_report_status_not_attempt" formatted="true">
+        <xliff:g example="2" id="index">%1$d</xliff:g>: Não tentado
+    </string>
+    <string name="send_confirmation_multiple_report_status_failure" formatted="true">
+        <xliff:g example="3" id="index">%1$d</xliff:g>: Falha:
+        gRPC: <xliff:g example="true" id="grpc">%2$s</xliff:g>,
+        código: <xliff:g example="123" id="code">%3$d</xliff:g>,
+        descrição: <xliff:g example="Network unreachable" id="desc">%4$s</xliff:g>
+    </string>
+    <string name="send_confirmation_multiple_trx_failure_report_unable_open_email">Não foi possível abrir a aplicação de e-mail.</string>
+    <string name="send_confirmation_multiple_trx_failure_copy_tag">IDs de Transação</string>
+    <string name="send_confirmation_success_swap_subtitle">Iniciaste um swap com sucesso.\nAcompanha o seu estado no ecrã de transações.</string>
+    <string name="send_confirmation_error_swap_subtitle">Ocorreu um erro ao iniciar um swap.\nPor favor, tenta novamente.</string>
+    <string name="send_confirmation_swapping_subtitle_transparent">As tuas moedas estão a ser enviadas para o endereço de depósito…</string>
+    <string name="send_confirmation_success_btn_check_status">Verificar estado</string>
+    <string name="send_confirmation_total">Total</string>
+    <string name="send_confirmation_pay_with_keystone">Pagar com a Keystone</string>
+    <string name="send_confirmation_pay">Pagar</string>
+
+    <!-- Pending states -->
+    <string name="send_confirmation_pending_transaction_title">Transação Pendente</string>
+    <string name="send_confirmation_pending_transaction_subtitle">A tua transação está a ser processada.</string>
+    <string name="send_confirmation_pending_timeout_subtitle">O tempo de espera pela resposta do servidor esgotou-se. A tua transação pode ainda assim ter sido transmitida.</string>
+    <string name="send_confirmation_pending_swap_title">Swap Pendente</string>
+    <string name="send_confirmation_pending_swap_subtitle">O teu swap está a ser processado. Acompanha o seu estado no ecrã de transações.</string>
+    <string name="send_confirmation_pending_payment_title">Pagamento Pendente</string>
+    <string name="send_confirmation_pending_payment_subtitle">O teu pagamento entre redes está a ser processado. Acompanha o seu estado no ecrã de transações.</string>
+    <string name="send_confirmation_pending_shielding_title">Proteção Pendente</string>
+    <string name="send_confirmation_pending_shielding_subtitle">A tua transação de proteção está a ser processada.</string>
+
+    <!-- Cross-chain payment success -->
+    <string name="send_confirmation_success_cross_chain_subtitle">Iniciaste um pagamento entre redes com sucesso.\nAcompanha o seu estado no ecrã de transações.</string>
+
+</resources>

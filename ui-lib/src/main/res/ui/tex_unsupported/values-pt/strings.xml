@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="tex_unsupported_title">Tipo de Endereço Não Suportado</string>
+    <string name="tex_unsupported_description_part1">Atualmente, a Keystone não suporta transferências para endereços Binance TEX.</string>
+    <string name="tex_unsupported_description_part2">Por favor, utiliza os passos abaixo para concluir a tua transação.</string>
+    <string name="tex_unsupported_workaround_title">Passos Alternativos</string>
+    <string name="tex_unsupported_step_1_badge">Passo 1</string>
+    <string name="tex_unsupported_step_1_title">Envia primeiro para o Zodl</string>
+    <string name="tex_unsupported_step_1_description">Transfere ZEC para o teu endereço protegido do Zodl</string>
+    <string name="tex_unsupported_step_2_badge">Passo 2</string>
+    <string name="tex_unsupported_step_2_title">Envia do Zodl para o endereço TEX</string>
+    <string name="tex_unsupported_step_2_description">Depois de recebido no Zodl, envia os tokens para o teu endereço TEX de destino final</string>
+</resources>

@@ -2,7 +2,7 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="about_title">Acerca de</string>
     <string name="about_subtitle">Presentando Zodl</string>
-    <string name="about_overflow_menu_content_description">M�s opciones</string>
+    <string name="about_overflow_menu_content_description">Más opciones</string>
     <string name="about_version_format" formatted="true">Versión de Zodl <xliff:g example="1" id="version">%s</xliff:g></string>
     <string name="about_debug_menu_app_name">Nombre de la app:<xliff:g example="Zodl" id="app_name">%1$s</xliff:g></string>
     <string name="about_debug_menu_build">Compilación: <xliff:g example="635dac0eb9ddc2bc6da5177f0dd495d8b76af4dc" id="git_commit_hash">%1$s</xliff:g></string>

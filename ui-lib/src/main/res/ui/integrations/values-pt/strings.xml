@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="integrations_title">Integrações</string>
+    <string name="integrations_coinbase">Compra <xliff:g id="currency" example="ZEC">%1$s</xliff:g> com a Coinbase</string>
+    <string name="integrations_coinbase_subtitle">Uma forma simples de comprar <xliff:g id="currency" example="ZEC">%1$s</xliff:g> e recebê-lo diretamente na tua carteira Zodl.</string>
+    <string name="integrations_info">As integrações do Zodl fornecem acesso a serviços de terceiros. As funcionalidades e a informação partilhada com eles estão fora do nosso controlo e sujeitas às respetivas políticas de privacidade.</string>
+    <string name="integrations_dialog_info">A informação partilhada com as integrações do Zodl está sujeita às respetivas políticas de privacidade.</string>
+    <string name="integrations_disabled_info">Durante o processo de restauração, não é possível usar integrações de pagamento.</string>
+    <string name="integrations_flexa">Pagar com a Flexa</string>
+    <string name="integrations_flexa_subtitle">Gasta ZEC em milhares de estabelecimentos comerciais.</string>
+    <string name="integrations_flexa_biometric_message">Autentica-te para pagar com a Flexa</string>
+    <string name="integrations_keystone">Conectar Keystone</string>
+    <string name="integrations_keystone_subtitle">Conecta uma carteira de hardware isolada (air-gapped) para guardar ZEC protegido.</string>
+    <string name="integrations_disabled_info_flexa">Muda de Keystone para Zodl para usar a Flexa.</string>
+    <string name="integrations_dialog_more_options">Mais Opções</string>
+    <string name="integrations_near_swap">Faz swap de %s com a NEAR Intents</string>
+    <string name="integrations_near_swap_message">Faz swap de %s por outras criptomoedas.</string>
+    <string name="integrations_coinbase_subtitle_disabled">O Coinbase Onramp está temporariamente indisponível.</string>
+</resources>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="send_stage_send_title">Enviar</string>
+    <string name="send_scan_content_description">Ler</string>
+    <string name="send_address_label">Enviar para</string>
+    <string name="send_address_hint">Endereço Zcash</string>
+    <string name="send_address_invalid">Endereço inválido</string>
+    <string name="send_amount_label">Valor</string>
+    <string name="send_amount_hint"><xliff:g id="currency" example="ZEC">%1$s</xliff:g></string>
+    <string name="send_amount_insufficient_balance">Fundos insuficientes</string>
+    <string name="send_amount_invalid">Valor inválido</string>
+    <string name="send_memo_label">Mensagem</string>
+    <string name="send_memo_hint">Escreve aqui uma mensagem encriptada…</string>
+    <string name="send_memo_bytes_counter">
+        <xliff:g id="typed_bytes" example="12">%1$s</xliff:g>/<xliff:g id="max_bytes" example="512">%2$s</xliff:g>
+    </string>
+    <string name="send_create">Rever</string>
+    <string name="send_fee">(Taxa típica &lt; <xliff:g id="fee_amount" example="0.001">%1$s</xliff:g>)</string>
+
+    <string name="send_dialog_error_title">Falha ao enviar fundos</string>
+    <string name="send_dialog_error_text">Erro: A tentativa de enviar fundos falhou. Por favor, tenta novamente.</string>
+    <string name="send_dialog_error_btn">OK</string>
+
+    <string name="send_abbreviated_address_format" formatted="true"><xliff:g id="first_five" example="zs1g7">%1$s</xliff:g>…<xliff:g id="last_five" example="mvyzg">%2$s</xliff:g></string>
+    <string name="send_transparent_memo">As transações transparentes não podem ter mensagens</string>
+
+    <string name="send_address_book_hint">Adiciona um contacto tocando no ícone do Livro de Endereços.</string>
+    <string name="send_address_book_content_description">Abrir o livro de endereços</string>
+
+</resources>

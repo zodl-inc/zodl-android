@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="account_list_title">Carteiras e Hardware</string>
+    <string name="account_list_keystone_promo_title">Carteira de Hardware Keystone</string>
+    <string name="account_list_keystone_promo_subtitle">Obtém 5%% de desconto numa carteira de hardware
+        isolada (air-gapped). Código promocional “Zodl”.</string>
+    <string name="account_list_keystone_primary">Conectar Carteira de Hardware</string>
+</resources>

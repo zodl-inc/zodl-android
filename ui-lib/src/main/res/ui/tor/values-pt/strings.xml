@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tor_settings_title">Proteção com Tor</string>
+    <string name="tor_settings_subtitle">O Tor oferece proteções adicionais para o teu endereço IP. Esta funcionalidade usa
+        a rede Tor para obter taxas de câmbio, enviar transações, recuperar dados de transações e conectar-se a APIs
+        de terceiros.\n\nSe a utilização do Tor for permitida na tua região, recomendamos ativá-lo.</string>
+
+    <string name="tor_settings_item_subtitle_1">Conectar através do Tor</string>
+    <string name="tor_settings_item_subtitle_2">Não conectar através do Tor.</string>
+
+    <string name="tor_opt_in_item_title_1">Conversão de Moeda</string>
+    <string name="tor_opt_in_item_subtitle_1">Obter taxas de câmbio de servidores de terceiros sem revelar o teu endereço IP. (Disponível apenas com o Tor ativado.)</string>
+
+    <string name="tor_opt_in_item_title_2">Transações</string>
+    <string name="tor_opt_in_item_subtitle_2">Enviar e recuperar dados de transações através do Tor para maior privacidade.</string>
+
+    <string name="tor_opt_in_item_title_3">Integrações</string>
+    <string name="tor_opt_in_item_subtitle_3">Aceder a APIs de terceiros (por exemplo, NEAR) através do Tor para maior privacidade.</string>
+
+    <string name="tor_opt_in_btn">Ativar</string>
+    <string name="tor_opt_out_btn">Desativar</string>
+    <string name="tor_settings_share_feedback">Partilhar comentários</string>
+</resources>

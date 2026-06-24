@@ -7,6 +7,7 @@ import co.electriccoin.zcash.build.gitCommitCount
 import co.electriccoin.zcash.build.gitSha
 import co.electriccoin.zcash.build.releaseNotesEn
 import co.electriccoin.zcash.build.releaseNotesEs
+import co.electriccoin.zcash.build.releaseNotesPt
 import co.electriccoin.zcash.spackle.FirebaseTestLabUtil
 import co.electriccoin.zcash.spackle.getPackageInfoCompat
 import co.electriccoin.zcash.spackle.versionCodeCompat
@@ -61,10 +62,10 @@ data class VersionInfo(
         private fun resolveBestReleaseNotes(context: Context): String {
             // Get the locale from the context configuration and ensure it's a supported locale
             val locale = context.resources.configuration.getPreferredLocale()
-            return if (locale.language.contains("es", ignoreCase = true)) {
-                releaseNotesEs
-            } else {
-                releaseNotesEn
+            return when {
+                locale.language.contains("es", ignoreCase = true) -> releaseNotesEs
+                locale.language.contains("pt", ignoreCase = true) -> releaseNotesPt
+                else -> releaseNotesEn
             }
         }
     }

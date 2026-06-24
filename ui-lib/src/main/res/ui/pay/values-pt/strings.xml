@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pay_info_title">CrossPay com</string>
+    <string name="pay_info_subtitle">Faz pagamentos entre redes em qualquer moeda ou token suportado pela NEAR.\n\nSe o slippage real e as condições da rede fizerem com que o teu destinatário receba menos do que o valor prometido, a tua transação será revertida. Receberás um reembolso total, menos as taxas de rede.</string>
+    <string name="pay_slippage_footer">Qualquer parte não utilizada da taxa de slippage será reembolsada se a troca for executada com um slippage inferior ao esperado.</string>
+</resources>

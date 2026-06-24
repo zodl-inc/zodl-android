@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="update_title_available">Zodl aqui.</string>
+    <string name="update_title_required">Não és tu, somos nós.</string>
+    <string name="update_description_required">
+        Há uma atualização obrigatória do Zodl que introduz melhorias importantes no desempenho e/ou na segurança.
+    </string>
+    <string name="update_description_available">
+        Há uma nova versão do Zodl que introduz pequenas atualizações para melhorar o desempenho e/ou a segurança.\n\nReserva um momento para atualizar para a versão mais recente.
+    </string>
+    <string name="update_link_text">Sabe mais sobre esta atualização aqui.</string>
+    <string name="update_download_button">Atualizar</string>
+</resources>

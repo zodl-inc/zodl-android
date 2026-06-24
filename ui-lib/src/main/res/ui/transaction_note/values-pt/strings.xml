@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="transaction_note_add_note_title">Adicionar uma nota</string>
+    <string name="transaction_note_edit_note_title">Editar uma nota</string>
+    <string name="transaction_note_delete_note">Eliminar nota</string>
+    <string name="transaction_note_max_length"><xliff:g example="34" id="chars">%s</xliff:g>/90 caracteres</string>
+    <string name="transaction_note_add_note">Adicionar nota</string>
+    <string name="transaction_note_save_note">Guardar nota</string>
+</resources>

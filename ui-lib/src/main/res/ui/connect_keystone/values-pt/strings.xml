@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connect_keystone_title">Conectar Carteira de Hardware</string>
+    <string name="connect_keystone_subtitle">Lê o código QR do teu dispositivo para conectar.</string>
+    <string name="connect_keystone_subtitle_clickable">Ver tutorial da Keystone</string>
+    <string name="connect_keystone_item_1">Desbloqueia a tua Keystone</string>
+    <string name="connect_keystone_item_2">Toca no ícone do menu</string>
+    <string name="connect_keystone_item_3">Toca em Conectar Carteira de Software</string>
+    <string name="connect_keystone_item_4">Seleciona a app Zodl e lê o código QR</string>
+    <string name="connect_keystone_item_title">Instruções:</string>
+    <string name="connect_keystone_positive">Pronto para Ler</string>
+
+    <!-- New or Active Device -->
+    <string name="keystone_new_or_active_subtitle">Dispositivo Novo ou Ativo?</string>
+    <string name="keystone_new_or_active_message">Conectar a uma carteira de hardware que já tenha estado conectada ao Zodl exigirá sincronização para descobrir o teu histórico de transações. Iremos guiar-te durante o processo.</string>
+    <string name="keystone_new_device_button">Conectar novo dispositivo</string>
+    <string name="keystone_active_device_button">Conectar dispositivo ativo</string>
+
+    <!-- Connected -->
+    <string name="keystone_connected_subtitle">Conectado!</string>
+    <string name="keystone_connected_message">A tua Carteira de Hardware Keystone foi conectada com sucesso.</string>
+    <string name="keystone_connected_button">Fechar</string>
+
+    <!-- First Transaction -->
+    <string name="keystone_first_transaction_title">Conectar Carteira de Hardware</string>
+    <string name="keystone_first_transaction_message">Introduzir a altura de bloco em que a tua carteira foi criada garante que será analisado o número correto de blocos. Se não tiveres a certeza, escolhe uma data anterior.</string>
+    <string name="keystone_first_transaction_note">Se não tiveres a certeza, escolhe uma data anterior.</string>
+
+    <!-- First Transaction Estimation -->
+    <string name="keystone_first_transaction_estimation_title">Conectar Carteira de Hardware</string>
+    <string name="keystone_first_transaction_estimation_confirm">Conectar</string>
+
+    <!-- Hardware Wallet Explainer -->
+    <string name="keystone_explainer_title">O que é uma Carteira de Hardware?</string>
+    <string name="keystone_explainer_description">Uma carteira de hardware (carteira HW) é um dispositivo físico que armazena as tuas chaves privadas de criptomoeda offline, mantendo-as seguras de hackers e malware online.</string>
+    <string name="keystone_explainer_security_title">Segurança Máxima</string>
+    <string name="keystone_explainer_security_message">As tuas chaves nunca saem do dispositivo, mesmo ao assinar transações</string>
+    <string name="keystone_explainer_malware_title">Proteção contra Malware</string>
+    <string name="keystone_explainer_malware_message">Imune a vírus informáticos e ataques de phishing</string>
+    <string name="keystone_explainer_control_title">Controlo Total</string>
+    <string name="keystone_explainer_control_message">As chaves são tuas, a tua cripto é tua</string>
+    <string name="keystone_explainer_about_title">Acerca da Keystone</string>
+    <string name="keystone_explainer_about_message">A Keystone é uma marca popular de carteiras de hardware que oferece segurança air-gapped com assinatura por código QR. É uma das muitas opções de confiança de carteiras de hardware, a par da Ledger e de outras.</string>
+    <string name="keystone_explainer_button">Entendido</string>
+
+    <!-- Wallet Birthday Height Info -->
+    <string name="keystone_wbh_info_title">Precisas de saber mais?</string>
+    <string name="keystone_wbh_info_message_bold">A Altura de Nascimento da Carteira</string>
+    <string name="keystone_wbh_info_message">é a altura de bloco (o número do bloco na blockchain) em que a tua carteira foi criada. É importante indicar a altura correta porque determina o intervalo de blocos que iremos analisar para mostrar o teu histórico de transações e o saldo da carteira. Se recuperaste uma frase semente de um dispositivo de hardware diferente, certifica-te de que introduzes a altura de bloco do teu dispositivo de hardware original.</string>
+
+    <!-- Wallet Birthday Height -->
+    <string name="keystone_wbh_title">Conectar Carteira de Hardware</string>
+    <string name="keystone_wbh_confirm_button">Conectar</string>
+</resources>

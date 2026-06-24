@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="keep_open_title">Mantém o Zodl aberto!</string>
+    <string name="keep_open_description">O Zodl está a analisar a blockchain para recuperar as tuas transações. As carteiras mais antigas podem demorar horas a sincronizar. Segue estes passos para evitar interrupções:</string>
+    <string name="keep_open_bullet_1">Mantém a app do Zodl aberta com o ecrã do telefone ativo.</string>
+    <string name="keep_open_bullet_2">Para evitar que o ecrã do telefone se desligue, desativa o modo de poupança de energia e mantém o telefone ligado à corrente.</string>
+
+    <string name="keep_open_keystone_description">O Zodl está a analisar a blockchain para recuperar as tuas transações. As carteiras mais antigas podem demorar horas a concluir a sincronização. Segue estes passos para evitar interrupções:</string>
+    <string name="keep_open_keystone_subtitle">A tua carteira está a ser sincronizada.</string>
+    <string name="keep_open_keystone_warning">Não podes gastar os teus fundos do Zodl até a tua carteira Keystone estar sincronizada.</string>
+    <string name="keep_open_keystone_checkbox">Manter o ecrã ligado durante a sincronização</string>
+
+    <string name="keep_open_resync_description">O Zodl está a analisar a blockchain para recuperar as tuas transações. As carteiras mais antigas podem demorar horas a ressincronizar. Segue estes passos para evitar interrupções:</string>
+    <string name="keep_open_resync_subtitle">A tua carteira está a ser ressincronizada.</string>
+    <string name="keep_open_resync_warning">Não podes gastar os teus fundos até a tua carteira estar ressincronizada.</string>
+    <string name="keep_open_resync_checkbox">Manter o ecrã ligado durante a ressincronização</string>
+
+    <string name="keep_open_restore_description">O Zodl está a analisar a blockchain para recuperar as tuas transações. As carteiras mais antigas podem demorar horas a restaurar. Segue estes passos para evitar interrupções:</string>
+    <string name="keep_open_restore_subtitle">A tua carteira está a ser restaurada.</string>
+    <string name="keep_open_restore_warning">Não podes gastar os teus fundos até a tua carteira estar restaurada.</string>
+    <string name="keep_open_restore_checkbox">Manter o ecrã ligado durante a restauração</string>
+</resources>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="settings_title">Definições</string>
+    <string name="settings_advanced_settings">Definições Avançadas</string>
+    <string name="settings_integrations">Integrações</string>
+    <string name="settings_about_us">Acerca de</string>
+    <string name="settings_feedback">Envia-nos Comentários</string>
+    <string name="settings_version">Versão <xliff:g example="1" id="version">%s</xliff:g></string>
+    <string name="settings_address_book">Livro de Endereços</string>
+    <string name="settings_whats_new">Novidades</string>
+
+    <string name="settings_troubleshooting_menu_content_description">Definições adicionais</string>
+    <string name="settings_troubleshooting_rescan">Reanalisar a blockchain</string>
+    <string name="settings_troubleshooting_enable_background_sync">Sincronização em segundo plano</string>
+    <string name="settings_troubleshooting_enable_keep_screen_on">Manter o ecrã ligado durante a sincronização</string>
+</resources>

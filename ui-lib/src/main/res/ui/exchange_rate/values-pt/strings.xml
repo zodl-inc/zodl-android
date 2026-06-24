@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="exchange_rate_info_title_1">Proteção do Endereço IP</string>
+    <string name="exchange_rate_info_subtitle_1">A funcionalidade de conversão de moeda do Zodl não compromete o teu endereço IP.</string>
+    <string name="exchange_rate_info_subtitle_1_no_cmc">As taxas de câmbio são obtidas através do Tor para proteger o teu endereço IP. Certifica-te de que a utilização do Tor é permitida na tua região.</string>
+    <string name="exchange_rate_info_title_2">Atualização da Taxa</string>
+    <string name="exchange_rate_info_subtitle_2">A taxa é atualizada automaticamente e também pode ser atualizada manualmente.</string>
+
+    <string name="exchange_rate_unavailable_title">Taxa de câmbio indisponível</string>
+    <string name="exchange_rate_unavailable_subtitle">Tentámos, mas não foi possível atualizar a taxa de câmbio.
+        Verifica a tua conexão, reinicia a app e tentaremos novamente.</string>
+
+    <!-- Conversion unavailable bottom sheet (shown when the selected currency's rate can't be fetched).
+         %1$s in the title is the currency code (e.g. JPY); %1$s in the subtitle is the currency name. -->
+    <string name="exchange_rate_unavailable_sheet_title">Conversão de %1$s indisponível</string>
+    <string name="exchange_rate_unavailable_sheet_subtitle">Não é possível obter as taxas em tempo real de %1$s neste momento. Podes usar USD como alternativa ou continuar a introduzir valores apenas em ZEC.</string>
+    <string name="exchange_rate_unavailable_sheet_switch_usd">Mudar para USD</string>
+    <string name="exchange_rate_unavailable_sheet_continue_zec">Continuar em ZEC</string>
+
+    <string name="exchange_rate_opt_in_title">Nova Funcionalidade</string>
+    <string name="exchange_rate_opt_in_subtitle">Conversão de Moeda</string>
+    <string name="exchange_rate_opt_in_primary_btn">Rever</string>
+
+    <string name="exchange_rate_opt_in_enable">Ativar</string>
+    <string name="exchange_rate_opt_in_save">Guardar alterações</string>
+    <string name="exchange_rate_opt_in_skip">Ignorar por agora</string>
+    <string name="exchange_rate_opt_in_note">Nota para quem valoriza ao máximo a privacidade: como obtemos a taxa de câmbio
+        a partir de casas de câmbio, estas poderão ver que a taxa foi consultada antes de ocorrer uma transação.</string>
+
+    <string name="exchange_rate_opt_in_option_title">Ativar</string>
+    <string name="exchange_rate_opt_in_option_subtitle">Mostrar a conversão de moeda.</string>
+    <string name="exchange_rate_opt_out_option_title">Desativar</string>
+    <string name="exchange_rate_opt_out_option_subtitle">Não mostrar a conversão de moeda.</string>
+    <string name="exchange_rate_opt_in_description">Mostra o teu saldo e os valores de pagamento na moeda selecionada. Para o Swap e o Pay, as taxas de câmbio continuarão a ser mostradas em USD. Podes gerir esta funcionalidade nas Definições Avançadas.</string>
+    <string name="exchange_rate_opt_in_description_settings">Mostra o teu saldo e os valores de pagamento na moeda selecionada. Para o Swap e o Pay, as taxas de câmbio continuarão a ser mostradas em USD.</string>
+
+    <string name="exchange_rate_tor_opt_in_title">Tor Necessário para a Conversão de Moeda</string>
+    <string name="exchange_rate_tor_opt_in_description">A Proteção com Tor é uma funcionalidade beta que oferece proteções
+        adicionais para o teu endereço IP. As taxas de câmbio em USD só estão disponíveis quando está ativada.\n\nSe a utilização do Tor for permitida na tua região, recomendamos ativá-la. Podes geri-la nas Definições Avançadas.</string>
+    <string name="exchange_rate_tor_opt_in_positive">Ativar</string>
+    <string name="exchange_rate_tor_opt_in_negative">Fazer mais tarde</string>
+
+    <string name="exchange_rate_tor_enabled_footer">Desativar a Proteção com Tor também desativará a funcionalidade de Conversão de Moeda até ser reativada.</string>
+    <string name="exchange_rate_tor_disabled_footer">Se quiseres proteger o teu endereço IP, ativa a Proteção com Tor nas Definições Avançadas.</string>
+
+    <!-- Currency conversion picker -->
+    <string name="exchange_rate_settings_select_currency">Selecionar moeda</string>
+    <string name="exchange_rate_currency_picker_title">Selecionar moeda</string>
+
+</resources>

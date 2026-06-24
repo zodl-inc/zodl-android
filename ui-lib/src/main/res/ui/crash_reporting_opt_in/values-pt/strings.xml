@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="crash_reporting_opt_in_title">Ajuda a Melhorar o Zodl</string>
+    <string name="crash_reporting_opt_in_subtitle">Os relatórios de falhas são uma ferramenta essencial para que os
+        programadores melhorem a qualidade e a fiabilidade das aplicações. São muito úteis na prática para ajudar a
+        corrigir erros que provocam falhas.</string>
+    <string name="crash_reporting_opt_in_info">Nota: Os relatórios de falhas incluem informação sobre a versão da app,
+        a hora em que ocorreu a falha e o rastreio da pilha (stack trace), para que fique claro em que parte da app
+        ocorreu a falha. Os dados recolhidos são completamente anonimizados.</string>
+    <string name="crash_reporting_opt_in_positive">Participar</string>
+    <string name="crash_reporting_opt_in_positive_desc">Partilhar relatórios de falhas com os programadores do Zodl.</string>
+    <string name="crash_reporting_opt_in_negative">Não participar</string>
+    <string name="crash_reporting_opt_in_negative_desc">Não partilhar relatórios de falhas com os programadores do Zodl.</string>
+    <string name="crash_reporting_opt_in_save">Guardar alterações</string>
+</resources>

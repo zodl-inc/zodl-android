@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="scan_preview_content_description">Câmara</string>
+
+    <string name="scan_cancel_button">Cancelar</string>
+    <string name="scan_settings_button">Abrir Definições</string>
+    <string name="scan_settings_open_failed">Não foi possível abrir a aplicação de Definições.</string>
+
+    <string name="scan_state_permission">A câmara não está autorizada. Por favor, vai às definições de sistema do Zodl e ativa-a.</string>
+    <string name="scan_state_failed">Falha na inicialização da câmara. Por favor, tenta novamente.</string>
+    <string name="scan_address_validation_failed">Este código QR não contém um endereço Zcash válido.</string>
+    <string name="scan_invalid_image">Esta imagem não contém um endereço Zcash válido.</string>
+    <string name="scan_several_codes_found">Esta imagem contém vários endereços Zcash válidos.</string>
+
+    <string name="scan_torch_content_description">Alternar a lanterna da câmara</string>
+    <string name="gallery_content_description">Galeria</string>
+
+    <string name="third_party_scan_title">Olá!</string>
+    <string name="third_party_scan_subtitle">Parece que utilizaste uma aplicação de terceiros para ler um pagamento.</string>
+    <string name="third_party_scan_message">Para maior segurança e proteção, lê novamente o código QR com o Zodl.</string>
+    <string name="third_party_scan_button">Ler novamente no Zodl</string>
+</resources>

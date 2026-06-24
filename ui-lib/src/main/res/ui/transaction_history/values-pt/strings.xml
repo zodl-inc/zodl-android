@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="transaction_history_plus" formatted="true">
+        <xliff:g example="1.2345" id="amount">%1$s</xliff:g> %2$s
+    </string>
+    <string name="transaction_history_minus" formatted="true">
+        - <xliff:g example="0.2" id="amount">%1$s</xliff:g> %2$s
+    </string>
+    <string name="transaction_history_today">Hoje</string>
+    <string name="transaction_history_yesterday">Ontem</string>
+    <string name="transaction_history_previous_7_days">Últimos 7 dias</string>
+    <string name="transaction_history_previous_30_days">Últimos 30 dias</string>
+    <string name="transaction_history_days_ago" formatted="true">Há <xliff:g example="$" id="days">%s</xliff:g> dias</string>
+    <string name="transaction_history_screen_title">Atividade</string>
+    <string name="transaction_history_send_transaction">Obtém algum %s</string>
+    <string name="transaction_history_widget_title">Atividade</string>
+    <string name="transaction_history_widget_header_button">Ver tudo</string>
+    <string name="transaction_history_widget_send_transaction">Enviar uma transação</string>
+    <string name="transaction_history_widget_empty_title">Ainda não há nada aqui.</string>
+    <string name="transaction_history_widget_empty_subtitle">Dá o primeiro passo…</string>
+    <string name="transaction_history_search">Pesquisar</string>
+    <string name="transaction_history_sent">Enviado</string>
+    <string name="transaction_history_sending">A enviar…</string>
+    <string name="transaction_history_sending_failed">Falha ao enviar</string>
+    <string name="transaction_history_received">Recebido</string>
+    <string name="transaction_history_receiving">A receber…</string>
+    <string name="transaction_history_receiving_failed">Falha ao receber</string>
+    <string name="transaction_history_shielded">Protegido</string>
+    <string name="transaction_history_shielding">A proteger…</string>
+    <string name="transaction_history_shielding_failed">Falha ao proteger</string>
+
+    <string name="transaction_history_paid">Pago</string>
+    <string name="transaction_history_paying">A pagar…</string>
+    <string name="transaction_history_payment_failed">Falha no pagamento</string>
+    <string name="transaction_history_payment_refunded">Pagamento reembolsado</string>
+    <string name="transaction_history_swapped">Swap realizado</string>
+    <string name="transaction_history_swapping">A fazer swap…</string>
+    <string name="transaction_history_swap_failed">Swap falhado</string>
+    <string name="transaction_history_swap_refunded">Swap reembolsado</string>
+    <string name="transaction_history_swap_expired">Swap expirado</string>
+    <string name="transaction_history_payment_expired">Pagamento expirado</string>
+</resources>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="onboarding_header">Carteira móvel impulsionada por Zcash, criada para a soberania financeira.</string>
+    <string name="onboarding_create_new_wallet">Criar Nova Carteira</string>
+    <string name="onboarding_import_existing_wallet">Restaurar Carteira Existente</string>
+</resources>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="request_title">Solicitar</string>
+    <string name="request_amount_invalid">Este valor de transação é inválido</string>
+    <string name="request_amount_btn">Seguinte</string>
+    <string name="request_memo_btn">Solicitar</string>
+    <string name="request_qr_share_btn">Partilhar Código QR</string>
+    <string name="request_qr_close_btn">Fechar</string>
+    <string name="request_privacy_level_shielded">Privado</string>
+    <string name="request_privacy_level_transparent">Não Privado</string>
+
+    <string name="request_amount_empty">0</string>
+    <string name="request_amount_keyboard_zero">0</string>
+    <string name="request_amount_keyboard_one">1</string>
+    <string name="request_amount_keyboard_two">2</string>
+    <string name="request_amount_keyboard_three">3</string>
+    <string name="request_amount_keyboard_four">4</string>
+    <string name="request_amount_keyboard_five">5</string>
+    <string name="request_amount_keyboard_six">6</string>
+    <string name="request_amount_keyboard_seven">7</string>
+    <string name="request_amount_keyboard_eight">8</string>
+    <string name="request_amount_keyboard_nine">9</string>
+    <string name="request_amount_keyboard_delete">Eliminar</string>
+
+    <string name="request_memo_payment_request_subtitle">Pedido de Pagamento</string>
+    <string name="request_memo_text_field_hint">Para que é isto?</string>
+    <string name="request_memo_bytes_counter">
+        <xliff:g id="typed_bytes" example="12">%1$s</xliff:g>/<xliff:g id="max_bytes" example="512">%2$s</xliff:g>
+    </string>
+
+    <string name="request_qr_code_content_description">Código QR de Pedido</string>
+    <string name="request_qr_code_data_unable_to_share">Não foi possível encontrar uma aplicação para partilhar o código QR.</string>
+    <string name="request_qr_code_share_chooser_title">Solicitar %s</string>
+    <string name="request_qr_code_share_chooser_text">Olá, lê este código QR para me enviares um pagamento em %s! Link de transferência:
+        https://play.google.com/store/apps/details?id=co.electriccoin.zcash</string>
+</resources>
