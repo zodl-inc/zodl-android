@@ -105,8 +105,10 @@ import co.electriccoin.zcash.ui.common.usecase.ParseKeystoneUrToZashiAccountsUse
 import co.electriccoin.zcash.ui.common.usecase.ParseVotingKeystonePCZTUseCase
 import co.electriccoin.zcash.ui.common.usecase.PersistServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.PrefillSendUseCase
+import co.electriccoin.zcash.ui.common.usecase.PrefillSendUseCaseImpl
 import co.electriccoin.zcash.ui.common.usecase.PrepareVotingRoundUseCase
 import co.electriccoin.zcash.ui.common.usecase.ProcessSwapTransactionUseCase
+import co.electriccoin.zcash.ui.common.usecase.ProcessSwapTransactionUseCaseImpl
 import co.electriccoin.zcash.ui.common.usecase.RefreshActiveVotingSessionUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshFastestServersUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshVotingRoundsUseCase
@@ -205,7 +207,7 @@ val useCaseModule =
         factoryOf(::GetExchangeRateUseCase)
         factoryOf(::GetSelectedWalletAccountUseCase)
         singleOf(::ObserveClearSendUseCase)
-        singleOf(::PrefillSendUseCase)
+        singleOf(::PrefillSendUseCaseImpl) bind PrefillSendUseCase::class
         factoryOf(::GetTransactionsUseCase)
         factoryOf(::GetFilteredActivitiesUseCase)
         factoryOf(::CreateProposalUseCase)
@@ -225,7 +227,7 @@ val useCaseModule =
         factoryOf(::ObserveTransactionSubmitStateUseCase)
         factoryOf(::GetProposalUseCase)
         singleOf(::SubmitProposalUseCase)
-        singleOf(::ProcessSwapTransactionUseCase)
+        singleOf(::ProcessSwapTransactionUseCaseImpl) bind ProcessSwapTransactionUseCase::class
         factoryOf(::GetWalletRestoringStateUseCase)
         factoryOf(::ApplyTransactionFiltersUseCase)
         factoryOf(::ResetTransactionFiltersUseCase)

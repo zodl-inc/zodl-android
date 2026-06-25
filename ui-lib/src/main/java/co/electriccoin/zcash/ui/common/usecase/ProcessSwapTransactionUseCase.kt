@@ -8,15 +8,16 @@ import co.electriccoin.zcash.ui.common.model.SwapStatus
 import co.electriccoin.zcash.ui.common.repository.MetadataRepository
 import kotlinx.coroutines.yield
 
-// `open` so tests can reliably mock it by subclassing: mockk's inline mock-maker intermittently
-// fails to intercept this final class's methods depending on JVM/test-load order (green locally, red
-// on CI), running the real instance against uninitialized dependencies instead.
-open class ProcessSwapTransactionUseCase(
+interface ProcessSwapTransactionUseCase {
+    suspend operator fun invoke(transactionProposal: SwapTransactionProposal, result: SubmitResult)
+}
+
+class ProcessSwapTransactionUseCaseImpl(
     private val metadataRepository: MetadataRepository,
     private val swapDataSource: SwapDataSource,
     // private val ephemeralAddressRepository: EphemeralAddressRepository,
-) {
-    open suspend operator fun invoke(transactionProposal: SwapTransactionProposal, result: SubmitResult) {
+) : ProcessSwapTransactionUseCase {
+    override suspend operator fun invoke(transactionProposal: SwapTransactionProposal, result: SubmitResult) {
         saveSwapToMetadata(transactionProposal)
         // invalidateEphemeralAddress(result)
         submitDepositTransactions(transactionProposal, result)

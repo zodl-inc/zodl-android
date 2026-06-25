@@ -4,29 +4,40 @@ import cash.z.ecc.android.sdk.ext.convertZecToZatoshi
 import cash.z.ecc.android.sdk.model.Zatoshi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import org.zecdev.zip321.model.PaymentRequest
 
-// `open` so tests can reliably mock it by subclassing: mockk's inline mock-maker intermittently
-// fails to intercept this final class's methods depending on JVM/test-load order (green locally, red
-// on CI), running the real (uninitialized) instance instead.
-open class PrefillSendUseCase {
+interface PrefillSendUseCase {
+    operator fun invoke(): Flow<PrefillSendData>
+
+    fun clear()
+
+    fun requestFromTransactionDetail(value: DetailedTransactionData): Job
+
+    fun requestFromZip321(value: PaymentRequest): Job
+
+    fun request(value: PrefillSendData): Job
+}
+
+class PrefillSendUseCaseImpl : PrefillSendUseCase {
     private val bus = Channel<PrefillSendData>()
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
-    operator fun invoke() = bus.receiveAsFlow()
+    override operator fun invoke() = bus.receiveAsFlow()
 
-    open fun clear() {
+    override fun clear() {
         while (bus.tryReceive().isSuccess) {
             // Drain the channel
         }
     }
 
-    fun requestFromTransactionDetail(value: DetailedTransactionData) =
+    override fun requestFromTransactionDetail(value: DetailedTransactionData) =
         scope.launch {
             bus.send(
                 PrefillSendData.All(
@@ -38,7 +49,7 @@ open class PrefillSendUseCase {
             )
         }
 
-    fun requestFromZip321(value: PaymentRequest) =
+    override fun requestFromZip321(value: PaymentRequest) =
         scope.launch {
             val request = value.payments.firstOrNull()
             bus.send(
@@ -62,7 +73,7 @@ open class PrefillSendUseCase {
             )
         }
 
-    fun request(value: PrefillSendData) = scope.launch { bus.send(value) }
+    override fun request(value: PrefillSendData) = scope.launch { bus.send(value) }
 }
 
 sealed interface PrefillSendData {
