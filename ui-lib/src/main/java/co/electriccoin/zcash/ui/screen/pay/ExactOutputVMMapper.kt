@@ -36,58 +36,48 @@ import java.math.MathContext
 internal class ExactOutputVMMapper {
     fun createState(
         internalState: InternalState,
-        onBack: () -> Unit,
-        onSwapInfoClick: () -> Unit,
-        onSwapAssetPickerClick: () -> Unit,
-        onSlippageClick: (BigDecimal?) -> Unit,
-        onRequestSwapQuoteClick: (BigDecimal, String) -> Unit,
-        onTryAgainClick: () -> Unit,
-        onAddressChange: (String) -> Unit,
-        onTextFieldChange: (amount: NumberTextFieldInnerState, fiat: NumberTextFieldInnerState) -> Unit,
-        onQrCodeScannerClick: () -> Unit,
-        onAddressBookClick: () -> Unit,
-        onDeleteSelectedContactClick: () -> Unit
+        callbacks: ExactOutputStateCallbacks,
     ): PayState {
         val state = ExactOutputInternalState(internalState)
-        val amountState = createAmountState(state, onTextFieldChange)
+        val amountState = createAmountState(state, callbacks.onTextFieldChange)
         return PayState(
             info =
                 IconButtonState(
                     icon = co.electriccoin.zcash.ui.design.R.drawable.ic_info,
-                    onClick = onSwapInfoClick
+                    onClick = callbacks.onSwapInfoClick
                 ),
-            address = createAddressState(state, onAddressChange),
-            asset = createAssetState(state, onSwapAssetPickerClick),
-            abContact = createAddressContactState(state, onDeleteSelectedContactClick),
+            address = createAddressState(state, callbacks.onAddressChange),
+            asset = createAssetState(state, callbacks.onSwapAssetPickerClick),
+            abContact = createAddressContactState(state, callbacks.onDeleteSelectedContactClick),
             abButton =
                 IconButtonState(
                     icon = R.drawable.send_address_book,
                     contentDescription = stringRes(R.string.send_address_book_content_description),
-                    onClick = onAddressBookClick,
+                    onClick = callbacks.onAddressBookClick,
                     isEnabled = !state.isRequestingQuote
                 ),
             qrButton =
                 IconButtonState(
                     icon = R.drawable.qr_code_icon,
                     contentDescription = stringRes(R.string.send_scan_content_description),
-                    onClick = onQrCodeScannerClick,
+                    onClick = callbacks.onQrCodeScannerClick,
                     isEnabled = !state.isRequestingQuote
                 ),
             amount = amountState,
-            amountFiat = createFiatAmountState(state, onTextFieldChange),
+            amountFiat = createFiatAmountState(state, callbacks.onTextFieldChange),
             amountError = createAmountErrorState(state),
             zecAmount = createZecAmount(state),
-            slippage = createSlippageState(state, onSlippageClick),
+            slippage = createSlippageState(state, callbacks.onSlippageClick),
             errorFooter = createErrorFooterState(state),
             primaryButton =
                 createPrimaryButtonState(
                     textField = amountState,
                     state = state,
-                    onRequestSwapQuoteClick = onRequestSwapQuoteClick,
-                    onTryAgainClick = onTryAgainClick
+                    onRequestSwapQuoteClick = callbacks.onRequestSwapQuoteClick,
+                    onTryAgainClick = callbacks.onTryAgainClick
                 ),
             isABHintVisible = state.isABHintVisible,
-            onBack = onBack,
+            onBack = callbacks.onBack,
             addressPlaceholder =
                 state.asset
                     ?.let {
@@ -463,3 +453,22 @@ private data class ExactOutputInternalState(
         }
     }
 }
+
+/**
+ * The [PayVM] callbacks wired into [PayState]. Bundled into a named type so
+ * [ExactOutputVMMapper.createState] stays a 2-arg call — adding/reordering a callback can't silently
+ * misroute the others (the VM tests capture this object and match callbacks by name, not position).
+ */
+internal data class ExactOutputStateCallbacks(
+    val onBack: () -> Unit,
+    val onSwapInfoClick: () -> Unit,
+    val onSwapAssetPickerClick: () -> Unit,
+    val onSlippageClick: (BigDecimal?) -> Unit,
+    val onRequestSwapQuoteClick: (BigDecimal, String) -> Unit,
+    val onTryAgainClick: () -> Unit,
+    val onAddressChange: (String) -> Unit,
+    val onTextFieldChange: (amount: NumberTextFieldInnerState, fiat: NumberTextFieldInnerState) -> Unit,
+    val onQrCodeScannerClick: () -> Unit,
+    val onAddressBookClick: () -> Unit,
+    val onDeleteSelectedContactClick: () -> Unit,
+)

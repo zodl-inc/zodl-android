@@ -132,9 +132,9 @@ internal class SwapVM(
         }
     }
 
-    private fun createState(internalState: InternalStateImpl): SwapState =
-        swapVMMapper.createState(
-            internalState = internalState,
+    // Stable method references — created once and reused across every state emission.
+    private val callbacks =
+        SwapStateCallbacks(
             onBack = ::onBack,
             onSwapInfoClick = ::onSwapInfoClick,
             onSwapAssetPickerClick = ::onSwapAssetPickerClick,
@@ -151,6 +151,9 @@ internal class SwapVM(
             onChangeButtonClick = ::onChangeButtonClick,
             onAddressClick = ::onAddressClick
         )
+
+    private fun createState(internalState: InternalStateImpl): SwapState =
+        swapVMMapper.createState(internalState = internalState, callbacks = callbacks)
 
     private fun onBalanceButtonClick() {
         // navigationRouter.forward(SpendableBalanceArgs)

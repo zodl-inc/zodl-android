@@ -515,40 +515,22 @@ class SwapVMTest {
                 navigationRouter = navigationRouter
             )
 
-        // The VM exposes its callbacks only through SwapVMMapper.createState; capture them by their
-        // positional argument index (matching the createState parameter order) so the tests can drive
-        // the VM the same way the View would.
-        every {
-            mapper.createState(
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any()
-            )
-        } answers {
+        // The VM exposes its callbacks only through SwapVMMapper.createState; capture the callbacks
+        // object and pull each handler out by name, so the tests can drive the VM the same way the
+        // View would — and adding/reordering a callback can't silently misroute the others.
+        every { mapper.createState(any(), any()) } answers {
+            val callbacks = arg<SwapStateCallbacks>(1)
             harness.capturedState = firstArg()
-            harness.onBack = arg(1)
-            harness.onSwapAssetPickerClick = arg(3)
-            harness.onSwapCurrencyTypeClick = arg(4)
-            harness.onSlippageClick = arg(5)
-            harness.onRequestSwapQuoteClick = arg(6)
-            harness.onAddressChange = arg(8)
-            harness.onQrCodeScannerClick = arg(10)
-            harness.onAddressBookClick = arg(11)
-            harness.onChangeButtonClick = arg(14)
-            harness.onAddressClick = arg(15)
+            harness.onBack = callbacks.onBack
+            harness.onSwapAssetPickerClick = callbacks.onSwapAssetPickerClick
+            harness.onSwapCurrencyTypeClick = callbacks.onSwapCurrencyTypeClick
+            harness.onSlippageClick = callbacks.onSlippageClick
+            harness.onRequestSwapQuoteClick = callbacks.onRequestSwapQuoteClick
+            harness.onAddressChange = callbacks.onAddressChange
+            harness.onQrCodeScannerClick = callbacks.onQrCodeScannerClick
+            harness.onAddressBookClick = callbacks.onAddressBookClick
+            harness.onChangeButtonClick = callbacks.onChangeButtonClick
+            harness.onAddressClick = callbacks.onAddressClick
             mockk()
         }
 

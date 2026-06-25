@@ -274,15 +274,12 @@ class RequestSwapQuoteUseCase(
     }
 
     /**
-     * Asserts the quote's asset matches what this request was built from. The strength differs by
-     * caller:
-     * - For the ZEC side, `expected` is an independent snapshot of `assets.value.zecAsset`, so this is
-     *   a genuine cross-check that the repository used the right ZEC asset.
-     * - For the user-selected asset, `expected` is the same value the ViewModel pinned at button-press
-     *   time and threaded into the repository request, so the check is weaker: it only guards that the
-     *   repository honored the asset it was handed. Combined with
-     *   [co.electriccoin.zcash.ui.common.model.near.NearSwapQuote]'s `init` requested-vs-returned check
-     *   (which guards the *server* substituting the asset), the two together still cover the full path.
+     * Asserts the quote's ZEC-side asset matches `expected` — an independent snapshot of
+     * `assets.value.zecAsset` — so this is a genuine cross-check that the repository used the right ZEC
+     * asset. Combined with [co.electriccoin.zcash.ui.common.model.near.NearSwapQuote]'s `init`
+     * requested-vs-returned check (which guards the *server* substituting the asset), the two cover the
+     * full path. The user-selected side is validated separately and more strictly by
+     * [requireSupportedSelectedAsset].
      */
     private fun requireExpectedAsset(name: String, expected: SwapAsset?, actual: SwapAsset) {
         if (expected == null) return

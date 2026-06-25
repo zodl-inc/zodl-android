@@ -120,6 +120,22 @@ internal class PayVM(
                 initialValue = null
             )
 
+    // Stable method references — created once and reused across every state emission.
+    private val callbacks =
+        ExactOutputStateCallbacks(
+            onBack = ::onBack,
+            onSwapInfoClick = ::onInfoClick,
+            onSwapAssetPickerClick = ::onSwapAssetPickerClick,
+            onSlippageClick = ::onSlippageClick,
+            onRequestSwapQuoteClick = ::onRequestSwapQuoteClick,
+            onTryAgainClick = ::onTryAgainClick,
+            onAddressChange = ::onAddressChange,
+            onTextFieldChange = ::onTextFieldChange,
+            onQrCodeScannerClick = ::onQrCodeScannerClick,
+            onAddressBookClick = ::onAddressBookClick,
+            onDeleteSelectedContactClick = ::onDeleteSelectedContactClick
+        )
+
     val state =
         combine(
             internalState,
@@ -134,17 +150,7 @@ internal class PayVM(
                         account = account,
                         isABHintVisible = isABHintVisible
                     ),
-                onBack = ::onBack,
-                onSwapInfoClick = ::onInfoClick,
-                onSwapAssetPickerClick = ::onSwapAssetPickerClick,
-                onSlippageClick = ::onSlippageClick,
-                onRequestSwapQuoteClick = ::onRequestSwapQuoteClick,
-                onTryAgainClick = ::onTryAgainClick,
-                onAddressChange = ::onAddressChange,
-                onTextFieldChange = ::onTextFieldChange,
-                onQrCodeScannerClick = ::onQrCodeScannerClick,
-                onAddressBookClick = ::onAddressBookClick,
-                onDeleteSelectedContactClick = ::onDeleteSelectedContactClick
+                callbacks = callbacks
             )
         }.stateIn(
             scope = viewModelScope,

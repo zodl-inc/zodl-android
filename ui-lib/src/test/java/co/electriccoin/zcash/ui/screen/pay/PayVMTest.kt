@@ -352,32 +352,19 @@ class PayVMTest {
                 navigationRouter = navigationRouter
             )
 
-        // The VM exposes its callbacks only through ExactOutputVMMapper.createState; capture them by
-        // their positional argument index (matching the createState parameter order).
-        every {
-            mapper.createState(
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any(),
-                any()
-            )
-        } answers {
+        // The VM exposes its callbacks only through ExactOutputVMMapper.createState; capture the
+        // callbacks object and pull each handler out by name, so adding/reordering a callback can't
+        // silently misroute the others.
+        every { mapper.createState(any(), any()) } answers {
+            val callbacks = arg<ExactOutputStateCallbacks>(1)
             harness.capturedState = firstArg()
-            harness.onBack = arg(1)
-            harness.onSwapAssetPickerClick = arg(3)
-            harness.onSlippageClick = arg(4)
-            harness.onRequestSwapQuoteClick = arg(5)
-            harness.onAddressChange = arg(7)
-            harness.onQrCodeScannerClick = arg(9)
-            harness.onAddressBookClick = arg(10)
+            harness.onBack = callbacks.onBack
+            harness.onSwapAssetPickerClick = callbacks.onSwapAssetPickerClick
+            harness.onSlippageClick = callbacks.onSlippageClick
+            harness.onRequestSwapQuoteClick = callbacks.onRequestSwapQuoteClick
+            harness.onAddressChange = callbacks.onAddressChange
+            harness.onQrCodeScannerClick = callbacks.onQrCodeScannerClick
+            harness.onAddressBookClick = callbacks.onAddressBookClick
             mockk()
         }
 
