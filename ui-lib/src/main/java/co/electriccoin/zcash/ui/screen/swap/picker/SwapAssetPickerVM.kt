@@ -3,7 +3,6 @@ package co.electriccoin.zcash.ui.screen.swap.picker
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
-import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.repository.MetadataRepository
@@ -11,7 +10,7 @@ import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.usecase.FilterSwapAssetsUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSwapAssetsUseCase
-import co.electriccoin.zcash.ui.common.usecase.SelectSwapAssetUseCase
+import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapAssetPickerUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.TextFieldState
 import co.electriccoin.zcash.ui.design.component.listitem.ListItemState
@@ -24,13 +23,13 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 class SwapAssetPickerVM(
     private val args: SwapAssetPickerArgs,
     getSwapAssets: GetSwapAssetsUseCase,
     metadataRepository: MetadataRepository,
-    private val selectSwapAsset: SelectSwapAssetUseCase,
-    private val navigationRouter: NavigationRouter,
+    private val navigateToSwapAssetPicker: NavigateToSwapAssetPickerUseCase,
     private val filterSwapAssets: FilterSwapAssetsUseCase,
     private val swapRepository: SwapRepository,
 ) : ViewModel() {
@@ -109,9 +108,13 @@ class SwapAssetPickerVM(
 
     private fun onSearchTextChange(new: String) = searchText.update { new }
 
-    private fun onSwapAssetClick(asset: SwapAsset) = selectSwapAsset.select(asset)
+    private fun onSwapAssetClick(asset: SwapAsset) {
+        viewModelScope.launch { navigateToSwapAssetPicker.onSelected(asset, args) }
+    }
 
-    private fun onBack() = navigationRouter.back()
+    private fun onBack() {
+        viewModelScope.launch { navigateToSwapAssetPicker.onSelectionCancelled(args) }
+    }
 
     private fun onRetryClick() = swapRepository.requestRefreshAssets()
 }

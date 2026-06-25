@@ -270,8 +270,6 @@ internal fun requireWithinSlippage(
             }
         }
 
-        null -> {
-            Unit
-        }
+        null -> {}
     }
 }

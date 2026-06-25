@@ -18,6 +18,12 @@ android {
         testInstrumentationRunner = "co.electriccoin.zcash.test.ZcashUiTestRunner"
     }
 
+    testOptions {
+        // Robolectric (used by JVM unit tests that need a real Android Context) requires access to
+        // the merged manifest and resources.
+        unitTests.isIncludeAndroidResources = true
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -217,6 +223,7 @@ dependencies {
     testImplementation(libs.kotlin.reflect)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockk)
+    testImplementation(libs.robolectric)
     testImplementation("io.ktor:ktor-client-mock")
 
     androidTestImplementation(projects.testLib)

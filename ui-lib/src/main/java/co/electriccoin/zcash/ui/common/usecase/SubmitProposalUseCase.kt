@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import androidx.annotation.VisibleForTesting
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
@@ -34,7 +35,8 @@ class SubmitProposalUseCase(
     private val processSwapTransaction: ProcessSwapTransactionUseCase,
     private val prefillSend: PrefillSendUseCase,
 ) {
-    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    @VisibleForTesting
+    internal var scope: CoroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     /**
      * Submit Zashi proposal and navigate to Transaction Progress screen or navigate to Keystone PCZT flow.

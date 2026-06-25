@@ -329,7 +329,7 @@ fun NavGraphBuilder.walletNavGraph(
         dialogComposable<PayInfoArgs> { PayInfoScreen() }
         composable<ORSwapConfirmationArgs> { ORSwapConfirmationScreen() }
         composable<SwapDetailArgs> { SwapDetailScreen(it.toRoute()) }
-        dialogComposable<SwapRefundAddressInfoArgs> { SwapRefundAddressInfoScreen() }
+        dialogComposable<SwapRefundAddressInfoArgs> { SwapRefundAddressInfoScreen(it.toRoute()) }
         dialogComposable<SwapSupportArgs> { SwapSupportScreen(it.toRoute()) }
         dialogComposable<EphemeralHotfixArgs> { EphemeralHotfixScreen(it.toRoute()) }
         dialogComposable<EnhancementHotfixArgs> { EnhancementHotfixScreen() }

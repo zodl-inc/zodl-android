@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.repository
 
+import androidx.annotation.VisibleForTesting
 import co.electriccoin.zcash.ui.common.datasource.AFFILIATE_ADDRESS
 import co.electriccoin.zcash.ui.common.datasource.SwapDataSource
 import co.electriccoin.zcash.ui.common.model.SwapAsset
@@ -24,25 +25,35 @@ import kotlin.time.Duration.Companion.seconds
 interface SwapRepository {
     val assets: StateFlow<SwapAssetsData>
 
-    val selectedAsset: StateFlow<SwapAsset?>
-
-    val slippage: StateFlow<BigDecimal>
-
     val quote: StateFlow<SwapQuoteData?>
-
-    fun select(asset: SwapAsset?)
-
-    fun setSlippage(amount: BigDecimal)
 
     fun requestRefreshAssets()
 
     suspend fun requestRefreshAssetsOnce()
 
-    fun requestExactInputQuote(amount: BigDecimal, address: String, refundAddress: String)
+    fun requestExactInputQuote(
+        amount: BigDecimal,
+        address: String,
+        refundAddress: String,
+        destinationAsset: SwapAsset,
+        slippage: BigDecimal
+    )
 
-    fun requestExactOutputQuote(amount: BigDecimal, address: String, refundAddress: String)
+    fun requestExactOutputQuote(
+        amount: BigDecimal,
+        address: String,
+        refundAddress: String,
+        destinationAsset: SwapAsset,
+        slippage: BigDecimal
+    )
 
-    fun requestFlexInputIntoZec(amount: BigDecimal, refundAddress: String, destinationAddress: String)
+    fun requestFlexInputIntoZec(
+        amount: BigDecimal,
+        refundAddress: String,
+        destinationAddress: String,
+        originAsset: SwapAsset,
+        slippage: BigDecimal
+    )
 
     fun clear()
 
@@ -73,23 +84,20 @@ data class SwapAssetsData(
 class SwapRepositoryImpl(
     private val swapDataSource: SwapDataSource
 ) : SwapRepository {
-    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    /**
+     * Scope the background refresh/quote jobs run on. A test seam: unit tests replace it with a
+     * test dispatcher before invoking any method, so the fire-and-forget jobs run deterministically.
+     */
+    @VisibleForTesting
+    internal var scope: CoroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     override val assets = MutableStateFlow(SwapAssetsData())
-
-    override val selectedAsset = MutableStateFlow<SwapAsset?>(null)
-
-    override val slippage = MutableStateFlow(DEFAULT_SLIPPAGE)
 
     override val quote = MutableStateFlow<SwapQuoteData?>(null)
 
     private var refreshJob: Job? = null
 
     private var requestQuoteJob: Job? = null
-
-    override fun select(asset: SwapAsset?) = selectedAsset.update { asset }
-
-    override fun setSlippage(amount: BigDecimal) = slippage.update { amount }
 
     override fun requestRefreshAssets() {
         refreshJob?.cancel()
@@ -143,30 +151,51 @@ class SwapRepositoryImpl(
         }
     }
 
-    override fun requestExactInputQuote(amount: BigDecimal, address: String, refundAddress: String) {
+    override fun requestExactInputQuote(
+        amount: BigDecimal,
+        address: String,
+        refundAddress: String,
+        destinationAsset: SwapAsset,
+        slippage: BigDecimal
+    ) {
         requestSwapFromZecQuote(
             amount = amount,
             address = address,
             mode = EXACT_INPUT,
-            refundAddress = refundAddress
+            refundAddress = refundAddress,
+            destinationAsset = destinationAsset,
+            slippage = slippage
         )
     }
 
-    override fun requestExactOutputQuote(amount: BigDecimal, address: String, refundAddress: String) {
+    override fun requestExactOutputQuote(
+        amount: BigDecimal,
+        address: String,
+        refundAddress: String,
+        destinationAsset: SwapAsset,
+        slippage: BigDecimal
+    ) {
         requestSwapFromZecQuote(
             amount = amount,
             address = address,
             mode = EXACT_OUTPUT,
-            refundAddress = refundAddress
+            refundAddress = refundAddress,
+            destinationAsset = destinationAsset,
+            slippage = slippage
         )
     }
 
     @Suppress("TooGenericExceptionCaught")
-    override fun requestFlexInputIntoZec(amount: BigDecimal, refundAddress: String, destinationAddress: String) {
+    override fun requestFlexInputIntoZec(
+        amount: BigDecimal,
+        refundAddress: String,
+        destinationAddress: String,
+        originAsset: SwapAsset,
+        slippage: BigDecimal
+    ) {
         requestQuoteJob =
             scope.launch {
                 quote.update { SwapQuoteData.Loading }
-                val originAsset = selectedAsset.value ?: return@launch
                 val destinationAsset = assets.value.zecAsset ?: return@launch
                 try {
                     val result =
@@ -177,7 +206,7 @@ class SwapRepositoryImpl(
                             originAsset = originAsset,
                             destinationAddress = destinationAddress,
                             destinationAsset = destinationAsset,
-                            slippage = slippage.value,
+                            slippage = slippage,
                             affiliateAddress = AFFILIATE_ADDRESS
                         )
                     quote.update { SwapQuoteData.Success(quote = result) }
@@ -188,12 +217,18 @@ class SwapRepositoryImpl(
     }
 
     @Suppress("TooGenericExceptionCaught")
-    private fun requestSwapFromZecQuote(amount: BigDecimal, address: String, mode: SwapMode, refundAddress: String) {
+    private fun requestSwapFromZecQuote(
+        amount: BigDecimal,
+        address: String,
+        mode: SwapMode,
+        refundAddress: String,
+        destinationAsset: SwapAsset,
+        slippage: BigDecimal
+    ) {
         requestQuoteJob =
             scope.launch {
                 quote.update { SwapQuoteData.Loading }
                 val originAsset = assets.value.zecAsset ?: return@launch
-                val destinationAsset = selectedAsset.value ?: return@launch
                 try {
                     val result =
                         swapDataSource.requestQuote(
@@ -203,12 +238,12 @@ class SwapRepositoryImpl(
                             originAsset = originAsset,
                             destinationAddress = address,
                             destinationAsset = destinationAsset,
-                            slippage = slippage.value,
+                            slippage = slippage,
                             affiliateAddress = AFFILIATE_ADDRESS
                         )
                     quote.update { SwapQuoteData.Success(quote = result) }
                 } catch (e: Exception) {
-                    quote.update { SwapQuoteData.Error(EXACT_OUTPUT, e) }
+                    quote.update { SwapQuoteData.Error(mode, e) }
                 }
             }
     }
@@ -219,8 +254,6 @@ class SwapRepositoryImpl(
         }
         refreshJob?.cancel()
         refreshJob = null
-        selectedAsset.update { null }
-        slippage.update { DEFAULT_SLIPPAGE }
         clearQuote()
     }
 

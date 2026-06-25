@@ -9,39 +9,36 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.repository.DEFAULT_SLIPPAGE
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.usecase.CancelSwapUseCase
-import co.electriccoin.zcash.ui.common.usecase.GetSelectedSwapAssetUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetPreselectedSwapAssetUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
-import co.electriccoin.zcash.ui.common.usecase.GetSlippageUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSwapAssetsUseCase
 import co.electriccoin.zcash.ui.common.usecase.IsABContactHintVisibleUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToScanGenericAddressUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSelectABSwapRecipientUseCase
+import co.electriccoin.zcash.ui.common.usecase.NavigateToSlippageUseCase
+import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapAssetPickerUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapQuoteIfAvailableUseCase
-import co.electriccoin.zcash.ui.common.usecase.PreselectSwapAssetUseCase
 import co.electriccoin.zcash.ui.common.usecase.RequestSwapQuoteUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.NumberTextFieldInnerState
-import co.electriccoin.zcash.ui.design.util.combine
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.pay.info.PayInfoArgs
 import co.electriccoin.zcash.ui.screen.swap.SwapCancelState
-import co.electriccoin.zcash.ui.screen.swap.picker.SwapAssetPickerArgs
-import co.electriccoin.zcash.ui.screen.swap.slippage.SwapSlippageArgs
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -49,8 +46,6 @@ import java.math.BigDecimal
 
 @Suppress("TooManyFunctions")
 internal class PayVM(
-    getSlippage: GetSlippageUseCase,
-    getSelectedSwapAsset: GetSelectedSwapAssetUseCase,
     getSwapAssetsUseCase: GetSwapAssetsUseCase,
     getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
     private val swapRepository: SwapRepository,
@@ -62,29 +57,39 @@ internal class PayVM(
     private val navigateToScanAddress: NavigateToScanGenericAddressUseCase,
     private val navigateToSelectSwapRecipient: NavigateToSelectABSwapRecipientUseCase,
     private val isABContactHintVisible: IsABContactHintVisibleUseCase,
-    preselectSwapAsset: PreselectSwapAssetUseCase,
-    // private val isEphemeralAddressLocked: IsEphemeralAddressLockedUseCase
+    private val getPreselectedSwapAsset: GetPreselectedSwapAssetUseCase,
+    private val navigateToSlippage: NavigateToSlippageUseCase,
+    private val navigateToSwapAssetPicker: NavigateToSwapAssetPickerUseCase,
 ) : ViewModel() {
-    private val address: MutableStateFlow<String> = MutableStateFlow("")
-
-    private val text = MutableStateFlow(NumberTextFieldInnerState() to NumberTextFieldInnerState())
-
-    private val isRequestingQuote = MutableStateFlow(false)
+    // VM-owned state. The externally-observed `swapAssets`/`account`/`isABHintVisible` fields are
+    // injected by the `state` combine below, so the VM only ever updates the fields it owns.
+    private val internalState =
+        MutableStateFlow(
+            InternalStateImpl(
+                address = "",
+                isABHintVisible = false,
+                selectedABContact = null,
+                asset = null,
+                amount = NumberTextFieldInnerState(),
+                fiatAmount = NumberTextFieldInnerState(),
+                slippage = DEFAULT_SLIPPAGE,
+                isRequestingQuote = false,
+                account = null,
+                swapAssets = SwapAssetsData(),
+                isEphemeralAddressLocked = false
+            )
+        )
 
     private val isCancelStateVisible = MutableStateFlow(false)
 
-    private var selectedContact: MutableStateFlow<EnhancedABContact?> = MutableStateFlow(null)
-
     @OptIn(ExperimentalCoroutinesApi::class)
     private val isABHintVisible =
-        combine(
-            address,
-            selectedContact
-        ) { address, contact ->
-            address to contact
-        }.flatMapLatest { (address, contact) ->
-            isABContactHintVisible.observe(selectedContact = contact, text = address)
-        }
+        internalState
+            .map { it.address to it.selectedABContact }
+            .distinctUntilChanged()
+            .flatMapLatest { (address, contact) ->
+                isABContactHintVisible.observe(selectedContact = contact, text = address)
+            }
 
     val cancelState =
         isCancelStateVisible
@@ -115,85 +120,52 @@ internal class PayVM(
                 initialValue = null
             )
 
-    private val innerState =
-        combine(
-            address,
-            text,
-            getSelectedSwapAsset.observe(),
-            getSlippage.observe(),
-            getSwapAssetsUseCase.observe(),
-            isRequestingQuote,
-            selectedContact,
-            getSelectedWalletAccount.observe(),
-            isABHintVisible,
-        ) {
-            address,
-            text,
-            asset,
-            slippage,
-            swapAssets,
-            isRequestingQuote,
-            selectedContact,
-            account,
-            isABHintVisible,
-            ->
-            InternalStateImpl(
-                asset = asset,
-                amount = text.first,
-                fiatAmount = text.second,
-                address = address,
-                slippage = slippage,
-                swapAssets = swapAssets,
-                isRequestingQuote = isRequestingQuote,
-                selectedABContact = selectedContact,
-                account = account,
-                isABHintVisible = isABHintVisible,
-                isEphemeralAddressLocked = false
-            )
-        }
+    // Stable method references — created once and reused across every state emission.
+    private val callbacks =
+        ExactOutputStateCallbacks(
+            onBack = ::onBack,
+            onSwapInfoClick = ::onInfoClick,
+            onSwapAssetPickerClick = ::onSwapAssetPickerClick,
+            onSlippageClick = ::onSlippageClick,
+            onRequestSwapQuoteClick = ::onRequestSwapQuoteClick,
+            onTryAgainClick = ::onTryAgainClick,
+            onAddressChange = ::onAddressChange,
+            onTextFieldChange = ::onTextFieldChange,
+            onQrCodeScannerClick = ::onQrCodeScannerClick,
+            onAddressBookClick = ::onAddressBookClick,
+            onDeleteSelectedContactClick = ::onDeleteSelectedContactClick
+        )
 
     val state =
-        innerState
-            .map { innerState ->
-                exactOutputVMMapper.createState(
-                    internalState = innerState,
-                    onBack = ::onBack,
-                    onSwapInfoClick = ::onInfoClick,
-                    onSwapAssetPickerClick = ::onSwapAssetPickerClick,
-                    onSlippageClick = ::onSlippageClick,
-                    onRequestSwapQuoteClick = ::onRequestSwapQuoteClick,
-                    onTryAgainClick = ::onTryAgainClick,
-                    onAddressChange = ::onAddressChange,
-                    onTextFieldChange = ::onTextFieldChange,
-                    onQrCodeScannerClick = ::onQrCodeScannerClick,
-                    onAddressBookClick = ::onAddressBookClick,
-                    onDeleteSelectedContactClick = ::onDeleteSelectedContactClick
-                )
-            }.stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
-                initialValue = null
+        combine(
+            internalState,
+            getSwapAssetsUseCase.observe(),
+            getSelectedWalletAccount.observe(),
+            isABHintVisible,
+        ) { state, swapAssets, account, isABHintVisible ->
+            exactOutputVMMapper.createState(
+                internalState =
+                    state.copy(
+                        swapAssets = swapAssets,
+                        account = account,
+                        isABHintVisible = isABHintVisible
+                    ),
+                callbacks = callbacks
             )
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
+            initialValue = null
+        )
 
     init {
-        swapRepository
-            .selectedAsset
-            .onEach { asset ->
-                val newFiatAmountState =
-                    exactOutputVMMapper.createFiatAmountInnerState(
-                        amountInnerState = text.value.first,
-                        fiatInnerState = text.value.second,
-                        asset = asset
-                    )
-                text.update { it.copy(second = newFiatAmountState) }
-            }.launchIn(viewModelScope)
-
-        preselectSwapAsset
-            .observe()
-            .launchIn(viewModelScope)
+        viewModelScope.launch {
+            val asset = getPreselectedSwapAsset()
+            internalState.update { if (it.asset == null) it.withAsset(asset) else it }
+        }
     }
 
-    private fun onDeleteSelectedContactClick() = selectedContact.update { null }
+    private fun onDeleteSelectedContactClick() = internalState.update { it.copy(selectedABContact = null) }
 
     private fun onTryAgainClick() = swapRepository.requestRefreshAssets()
 
@@ -202,8 +174,7 @@ internal class PayVM(
             val selected = navigateToSelectSwapRecipient()
 
             if (selected != null) {
-                selectedContact.update { selected }
-                address.update { "" }
+                internalState.update { it.copy(selectedABContact = selected, address = "") }
             }
         }
 
@@ -212,29 +183,37 @@ internal class PayVM(
             val result = navigateToScanAddress()
             if (result != null) {
                 navigationRouter.back()
-                selectedContact.update { null }
-                address.update { result.address }
-                if (result.amount != null) {
-                    text.update {
-                        it.copy(
-                            first = NumberTextFieldInnerState.fromAmount(result.amount)
-                        )
-                    }
+                internalState.update {
+                    it.copy(
+                        selectedABContact = null,
+                        address = result.address,
+                        amount =
+                            if (result.amount != null) {
+                                NumberTextFieldInnerState.fromAmount(result.amount)
+                            } else {
+                                it.amount
+                            }
+                    )
                 }
             }
         }
 
     private fun onSlippageClick(fiatAmount: BigDecimal?) =
-        navigationRouter.forward(
-            SwapSlippageArgs(
-                fiatAmount = fiatAmount?.toPlainString(),
-                mode = SwapMode.EXACT_OUTPUT
-            )
-        )
+        viewModelScope.launch {
+            val newSlippage =
+                navigateToSlippage(
+                    currentSlippage = internalState.value.slippage,
+                    fiatAmount = fiatAmount,
+                    mode = SwapMode.EXACT_OUTPUT
+                )
+            if (newSlippage != null) {
+                internalState.update { it.copy(slippage = newSlippage) }
+            }
+        }
 
     private fun onBack() =
         viewModelScope.launch {
-            if (isRequestingQuote.value) {
+            if (internalState.value.isRequestingQuote) {
                 isCancelStateVisible.update { true }
             } else if (isCancelStateVisible.value) {
                 isCancelStateVisible.update { false }
@@ -268,30 +247,58 @@ internal class PayVM(
     }
 
     private fun onTextFieldChange(amount: NumberTextFieldInnerState, fiat: NumberTextFieldInnerState) {
-        text.update { amount to fiat }
+        internalState.update { it.copy(amount = amount, fiatAmount = fiat) }
     }
 
     private fun onRequestSwapQuoteClick(amount: BigDecimal, address: String) =
         viewModelScope.launch {
-            isRequestingQuote.update { true }
+            val asset = internalState.value.asset ?: return@launch
+            val slippage = internalState.value.slippage
+            internalState.update { it.copy(isRequestingQuote = true) }
             requestSwapQuote.requestExactOutput(
                 amount = amount,
                 address = address,
+                selectedAsset = asset,
+                slippage = slippage,
                 canNavigateToSwapQuote = { !isCancelStateVisible.value }
             )
-            isRequestingQuote.update { false }
+            internalState.update { it.copy(isRequestingQuote = false) }
         }
 
     private fun onInfoClick() = navigationRouter.forward(PayInfoArgs)
 
-    private fun onAddressChange(new: String) {
-        selectedContact.update { null }
-        address.update { new }
-    }
+    private fun onAddressChange(new: String) =
+        internalState.update { it.copy(selectedABContact = null, address = new) }
 
     private fun onSwapAssetPickerClick() =
-        navigationRouter
-            .forward(SwapAssetPickerArgs(selectedContact.value?.blockchain?.chainTicker))
+        viewModelScope.launch {
+            val asset =
+                navigateToSwapAssetPicker(
+                    onlyChainTicker =
+                        internalState.value.selectedABContact
+                            ?.blockchain
+                            ?.chainTicker
+                )
+            if (asset != null) {
+                internalState.update { it.withAsset(asset) }
+            }
+        }
+
+    /**
+     * Sets the selected asset and atomically recomputes the fiat amount inner state in a single
+     * update so the displayed fiat value always reflects the current asset's USD price — without an
+     * observer feeding back into this same flow.
+     */
+    private fun InternalStateImpl.withAsset(asset: SwapAsset?): InternalStateImpl =
+        copy(
+            asset = asset,
+            fiatAmount =
+                exactOutputVMMapper.createFiatAmountInnerState(
+                    amountInnerState = amount,
+                    fiatInnerState = fiatAmount,
+                    asset = asset
+                )
+        )
 }
 
 internal interface InternalState {

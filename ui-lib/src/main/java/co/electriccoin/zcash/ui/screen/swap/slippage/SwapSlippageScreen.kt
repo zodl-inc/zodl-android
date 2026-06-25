@@ -7,6 +7,7 @@ import co.electriccoin.zcash.ui.common.model.SwapMode
 import kotlinx.serialization.Serializable
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
+import java.util.UUID
 
 @Composable
 fun SwapSlippageScreen(args: SwapSlippageArgs) {
@@ -17,6 +18,8 @@ fun SwapSlippageScreen(args: SwapSlippageArgs) {
 
 @Serializable
 data class SwapSlippageArgs(
+    val currentSlippage: String,
     val fiatAmount: String?,
-    val mode: SwapMode
+    val mode: SwapMode,
+    val requestId: String = UUID.randomUUID().toString()
 )

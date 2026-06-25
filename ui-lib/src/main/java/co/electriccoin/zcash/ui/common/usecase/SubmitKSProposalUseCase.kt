@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import androidx.annotation.VisibleForTesting
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.SwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
@@ -18,7 +19,8 @@ class SubmitKSProposalUseCase(
     private val processSwapTransaction: ProcessSwapTransactionUseCase,
     private val prefillSend: PrefillSendUseCase,
 ) {
-    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+    @VisibleForTesting
+    internal var scope: CoroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     /**
      * Submit a prepared Keystone proposal and navigate to Transaction Progress screen.
