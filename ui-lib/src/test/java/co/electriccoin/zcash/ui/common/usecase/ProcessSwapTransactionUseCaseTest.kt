@@ -150,6 +150,6 @@ class ProcessSwapTransactionUseCaseTest {
     private class Fixtures {
         val metadataRepository = mockk<MetadataRepository>(relaxed = true)
         val swapDataSource = mockk<SwapDataSource>(relaxed = true)
-        val useCase = ProcessSwapTransactionUseCaseImpl(metadataRepository, swapDataSource)
+        val useCase = ProcessSwapTransactionUseCase(metadataRepository, swapDataSource)
     }
 }

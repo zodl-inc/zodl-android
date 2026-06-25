@@ -8,16 +8,12 @@ import co.electriccoin.zcash.ui.common.model.SwapStatus
 import co.electriccoin.zcash.ui.common.repository.MetadataRepository
 import kotlinx.coroutines.yield
 
-interface ProcessSwapTransactionUseCase {
-    suspend operator fun invoke(transactionProposal: SwapTransactionProposal, result: SubmitResult)
-}
-
-class ProcessSwapTransactionUseCaseImpl(
+class ProcessSwapTransactionUseCase(
     private val metadataRepository: MetadataRepository,
     private val swapDataSource: SwapDataSource,
     // private val ephemeralAddressRepository: EphemeralAddressRepository,
-) : ProcessSwapTransactionUseCase {
-    override suspend operator fun invoke(transactionProposal: SwapTransactionProposal, result: SubmitResult) {
+) {
+    suspend operator fun invoke(transactionProposal: SwapTransactionProposal, result: SubmitResult) {
         saveSwapToMetadata(transactionProposal)
         // invalidateEphemeralAddress(result)
         submitDepositTransactions(transactionProposal, result)

@@ -4,40 +4,26 @@ import cash.z.ecc.android.sdk.ext.convertZecToZatoshi
 import cash.z.ecc.android.sdk.model.Zatoshi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import org.zecdev.zip321.model.PaymentRequest
 
-interface PrefillSendUseCase {
-    operator fun invoke(): Flow<PrefillSendData>
-
-    fun clear()
-
-    fun requestFromTransactionDetail(value: DetailedTransactionData): Job
-
-    fun requestFromZip321(value: PaymentRequest): Job
-
-    fun request(value: PrefillSendData): Job
-}
-
-class PrefillSendUseCaseImpl : PrefillSendUseCase {
+class PrefillSendUseCase {
     private val bus = Channel<PrefillSendData>()
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
-    override operator fun invoke() = bus.receiveAsFlow()
+    operator fun invoke() = bus.receiveAsFlow()
 
-    override fun clear() {
+    fun clear() {
         while (bus.tryReceive().isSuccess) {
             // Drain the channel
         }
     }
 
-    override fun requestFromTransactionDetail(value: DetailedTransactionData) =
+    fun requestFromTransactionDetail(value: DetailedTransactionData) =
         scope.launch {
             bus.send(
                 PrefillSendData.All(
@@ -49,7 +35,7 @@ class PrefillSendUseCaseImpl : PrefillSendUseCase {
             )
         }
 
-    override fun requestFromZip321(value: PaymentRequest) =
+    fun requestFromZip321(value: PaymentRequest) =
         scope.launch {
             val request = value.payments.firstOrNull()
             bus.send(
@@ -73,7 +59,7 @@ class PrefillSendUseCaseImpl : PrefillSendUseCase {
             )
         }
 
-    override fun request(value: PrefillSendData) = scope.launch { bus.send(value) }
+    fun request(value: PrefillSendData) = scope.launch { bus.send(value) }
 }
 
 sealed interface PrefillSendData {
