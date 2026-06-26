@@ -1,9 +1,28 @@
 name: Release
 
+# Normally triggered by `release: published`, which `create-release.yml` emits
+# (it flips the release draft->published with the App token so the event
+# cascades — the default GITHUB_TOKEN cannot trigger downstream workflows).
+#
+# RECOVERY LEVER (workflow_dispatch): a tag-push runs create-release.yml from
+# the TAGGED tree, so a tag cut from a branch that predates the cascade fix
+# (e.g. a long-lived `prerelease/x.y.z` branch that never merged main's
+# workflow updates) runs an OLD create-release.yml that never forces the
+# published event — and this workflow then never fires. That is exactly what
+# left 3.7.0-1986's alt-store publish un-run. When that happens, an operator
+# can publish the stores directly for an existing tag without the
+# create-release re-publish dance:
+#     gh workflow run release.yaml -f tag=3.7.0-1986
 on:
   release:
     types:
       - published  # Runs only when a release is published
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to (re)publish to the stores (e.g. 3.7.0-1986)'
+        required: true
+        type: string
 
 permissions:
   contents: write  # Grant write permissions to GITHUB_TOKEN
@@ -32,6 +51,9 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          # On `release: published`, github.ref already points at the tag. On a
+          # manual workflow_dispatch recovery run, check out the requested tag.
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
@@ -171,6 +193,9 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
+          # See the release job's checkout: target the requested tag on a manual
+          # recovery dispatch, otherwise the published tag.
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Get release tag
         id: release_info
@@ -356,15 +381,19 @@ jobs:
           # values if the vars are unset, so the step still works pre-config.
           GITLAB_FDROID_PROJECT_ID: ${{ vars.GITLAB_FDROID_PROJECT_ID || '83433564' }}
           GITLAB_FDROID_REF: ${{ vars.GITLAB_FDROID_REF || 'main' }}
+          # On `release: published` GITHUB_REF_NAME is the tag; on a manual
+          # recovery dispatch it is the workflow's branch (e.g. main), so prefer
+          # the explicit input tag when present.
+          APK_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
-          echo "Triggering GitLab F-Droid pipeline for ${GITHUB_REF_NAME}"
+          echo "Triggering GitLab F-Droid pipeline for ${APK_TAG}"
           # -m 30 bounds the wait: without it, an unreachable GitLab would block
           # until the runner's job-level timeout (~6h) fires (review: noop-sk).
           HTTP_CODE=$(curl -s -m 30 -o /tmp/trigger.json -w '%{http_code}' \
             -X POST "https://gitlab.com/api/v4/projects/${GITLAB_FDROID_PROJECT_ID}/trigger/pipeline" \
             -F token="${GITLAB_FDROID_TRIGGER_TOKEN}" \
             -F "ref=${GITLAB_FDROID_REF}" \
-            -F "variables[APK_TAG]=${GITHUB_REF_NAME}")
+            -F "variables[APK_TAG]=${APK_TAG}")
           cat /tmp/trigger.json
           echo
           if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
