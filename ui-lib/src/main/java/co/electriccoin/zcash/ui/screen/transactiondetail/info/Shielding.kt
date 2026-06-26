@@ -37,7 +37,7 @@ fun Shielding(
         TransactionDetailTitleHeader(
             state =
                 TransactionDetailInfoHeaderState(
-                    title = stringRes(R.string.transaction_detail_info_transaction_details)
+                    title = stringRes(R.string.transactionHistory_details)
                 )
         )
         Spacer(Modifier.height(8.dp))
@@ -46,7 +46,7 @@ fun Shielding(
                 modifier = Modifier.fillMaxWidth(),
                 state =
                     TransactionDetailInfoRowState(
-                        title = stringRes(R.string.transaction_detail_info_transaction_id),
+                        title = stringRes(R.string.transactionList_transactionId),
                         message = state.transactionId.withStyle(),
                         trailingIcon = R.drawable.ic_transaction_detail_info_copy,
                         onClick = state.onTransactionIdClick
@@ -57,7 +57,7 @@ fun Shielding(
                 modifier = Modifier.fillMaxWidth(),
                 state =
                     TransactionDetailInfoRowState(
-                        title = stringRes(R.string.transaction_detail_info_transaction_fee),
+                        title = stringRes(R.string.transactionDetail_feeSummary),
                         message = state.fee.withStyle(),
                     )
             )
@@ -67,7 +67,7 @@ fun Shielding(
                     modifier = Modifier.fillMaxWidth(),
                     state =
                         TransactionDetailInfoColumnState(
-                            title = stringRes(R.string.transaction_detail_info_note),
+                            title = stringRes(R.string.annotation_title),
                             message = state.note,
                             onClick = null
                         )
@@ -83,9 +83,9 @@ fun Shielding(
                         TransactionDetailInfoRowState(
                             title =
                                 if (state.isPending) {
-                                    stringRes(R.string.transaction_detail_info_transaction_status)
+                                    stringRes(R.string.swapAndPay_status)
                                 } else {
-                                    stringRes(R.string.transaction_detail_info_timestamp)
+                                    stringRes(R.string.transactionHistory_timestamp)
                                 },
                             message = state.completedTimestamp.withStyle(),
                         )

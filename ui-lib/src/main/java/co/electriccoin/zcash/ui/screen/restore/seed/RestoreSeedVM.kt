@@ -140,7 +140,7 @@ class RestoreSeedVM(
             ),
         nextButton =
             ButtonState(
-                text = stringRes(R.string.restore_button),
+                text = stringRes(R.string.general_next),
                 onClick = ::onNextClicked,
             ).takeIf { seedPhrase != null }
     )

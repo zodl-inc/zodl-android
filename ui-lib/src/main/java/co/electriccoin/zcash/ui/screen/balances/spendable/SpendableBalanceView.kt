@@ -140,7 +140,7 @@ private fun BalanceActionRow(state: SpendableBalanceRowState) {
             Text(
                 text =
                     state.value orHiddenString
-                        stringRes(co.electriccoin.zcash.ui.design.R.string.hide_balance_placeholder),
+                        stringRes(co.electriccoin.zcash.ui.design.R.string.general_hideBalancesMost),
                 color =
                     if (state.icon is ImageResource.Loading) {
                         ZashiColors.Text.textTertiary
@@ -173,7 +173,7 @@ private fun BalanceShieldButton(state: SpendableBalanceShieldButtonState) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     ZashiAutoSizeText(
-                        text = stringResource(R.string.balance_action_shield_button_header),
+                        text = stringResource(R.string.smartBanner_help_shield_transparent),
                         color = ZashiColors.Text.textPrimary,
                         style = ZashiTypography.textMd,
                         fontWeight = FontWeight.Medium,
@@ -190,7 +190,7 @@ private fun BalanceShieldButton(state: SpendableBalanceShieldButtonState) {
                     text =
                         stringRes(state.amount)
                             orHiddenString
-                            stringRes(co.electriccoin.zcash.ui.design.R.string.hide_balance_placeholder),
+                            stringRes(co.electriccoin.zcash.ui.design.R.string.general_hideBalancesMost),
                     color = ZashiColors.Text.textPrimary,
                     style = ZashiTypography.textXl,
                     fontWeight = FontWeight.SemiBold,
@@ -201,7 +201,7 @@ private fun BalanceShieldButton(state: SpendableBalanceShieldButtonState) {
             ZashiButton(
                 state =
                     ButtonState(
-                        text = stringRes(R.string.balance_action_shield),
+                        text = stringRes(R.string.smartBanner_content_shield_button),
                         onClick = state.onShieldClick,
                         hapticFeedbackType = HapticFeedbackType.Confirm
                     )

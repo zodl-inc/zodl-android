@@ -57,11 +57,11 @@ class AccountListVM(
                                 ListItemState(
                                     title =
                                         stringRes(
-                                            co.electriccoin.zcash.ui.R.string.account_list_keystone_promo_title,
+                                            co.electriccoin.zcash.ui.R.string.keystone_drawer_banner_title,
                                         ),
                                     subtitle =
                                         stringRes(
-                                            co.electriccoin.zcash.ui.R.string.account_list_keystone_promo_subtitle,
+                                            co.electriccoin.zcash.ui.R.string.keystone_drawer_banner_desc,
                                         ),
                                     onClick = ::onShowKeystonePromoClicked
                                 )
@@ -76,7 +76,7 @@ class AccountListVM(
                     onBack = ::onBack,
                     addWalletButton =
                         ButtonState(
-                            text = stringRes(co.electriccoin.zcash.ui.R.string.account_list_keystone_primary),
+                            text = stringRes(co.electriccoin.zcash.ui.R.string.keystone_connect),
                             onClick = ::onAddWalletButtonClicked
                         ).takeIf {
                             accounts.orEmpty().none { it is KeystoneAccount }

@@ -64,7 +64,7 @@ private fun ExportPrivateDataTopAppBar(
     onBack: () -> Unit
 ) {
     ZashiSmallTopAppBar(
-        title = stringResource(R.string.export_data_title),
+        title = stringResource(R.string.privateDataConsent_screenTitle),
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = onBack)
         },
@@ -79,7 +79,7 @@ private fun ExportPrivateDataContent(
 ) {
     Column(modifier = modifier) {
         Text(
-            text = stringResource(R.string.export_data_header),
+            text = stringResource(R.string.privateDataConsent_title),
             style = ZashiTypography.header6,
             fontWeight = FontWeight.SemiBold,
             color = ZashiColors.Text.textPrimary
@@ -105,14 +105,14 @@ private fun ExportPrivateDataContent(
                 checkedState.value = new
                 onAgree(new)
             },
-            text = stringRes(R.string.export_data_agree),
+            text = stringRes(R.string.privateDataConsent_confirmation),
         )
 
         Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingLarge))
 
         ZashiButton(
             onClick = onConfirm,
-            text = stringResource(R.string.export_data_confirm),
+            text = stringResource(R.string.settings_exportPrivateData),
             enabled = checkedState.value,
             modifier = Modifier.fillMaxWidth(),
             hapticFeedbackType = HapticFeedbackType.Confirm

@@ -32,9 +32,9 @@ fun VoteViewMoreChip(
         Text(
             text =
                 if (isExpanded) {
-                    stringRes(R.string.vote_proposal_list_view_less).getValue()
+                    stringRes(R.string.coinVote_common_viewLess).getValue()
                 } else {
-                    stringRes(R.string.vote_proposal_list_view_more).getValue()
+                    stringRes(R.string.coinVote_common_viewMore).getValue()
                 },
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textPrimary,

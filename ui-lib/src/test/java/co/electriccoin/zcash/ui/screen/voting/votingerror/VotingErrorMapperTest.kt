@@ -13,7 +13,7 @@ class VotingErrorMapperTest {
         val rawMessage = "Wallet does not support vote_protocol version \"2\". Please update the wallet."
 
         assertEquals(
-            R.string.vote_error_config_title,
+            R.string.coinVote_configError_title,
             VotingErrorMapper.toConfigErrorTitle(rawMessage).resourceId()
         )
         assertEquals(
@@ -27,7 +27,7 @@ class VotingErrorMapperTest {
         val rawMessage = "Static voting config fetch failed: HTTP 503"
 
         assertEquals(
-            R.string.vote_error_voting_unavailable_title,
+            R.string.coinVote_error_configUnavailableTitle,
             VotingErrorMapper.toConfigErrorTitle(rawMessage).resourceId()
         )
         assertEquals(
@@ -41,7 +41,7 @@ class VotingErrorMapperTest {
         val rawMessage = "Voting config signature is invalid for round abcdef..."
 
         assertEquals(
-            R.string.vote_error_voting_unavailable_title,
+            R.string.coinVote_error_configUnavailableTitle,
             VotingErrorMapper.toConfigErrorTitle(rawMessage).resourceId()
         )
         assertEquals(
@@ -54,21 +54,21 @@ class VotingErrorMapperTest {
     fun submissionErrorsUseVotingSpecificMessages() {
         val cases =
             mapOf(
-                "No voting server accepted share 2" to R.string.vote_error_mapper_no_reachable_vote_servers,
-                "nullifier already spent" to R.string.vote_error_mapper_nullifier_spent,
-                "vote round not found" to R.string.vote_error_mapper_round_not_found,
-                "No active voting round" to R.string.vote_error_mapper_round_closed,
-                "PIR proof root mismatch" to R.string.vote_error_mapper_pir_snapshot_mismatch,
-                "PIR proof verification failed" to R.string.vote_error_mapper_pir_invalid_proof,
-                "PIR server connect failed" to R.string.vote_error_mapper_pir_unavailable,
-                "No PIR endpoints are configured" to R.string.vote_error_mapper_pir_endpoints_missing,
-                "Commitment tree did not grow" to R.string.vote_error_mapper_commitment_tree_not_grown,
-                "invalid commitment tree anchor height" to R.string.vote_error_mapper_invalid_anchor_height,
-                "invalid zero-knowledge proof" to R.string.vote_error_mapper_invalid_proof,
-                "delegation bundle build failed" to R.string.vote_error_mapper_proof_generation_failed,
-                "NoTreeState" to R.string.vote_error_mapper_no_tree_state,
-                "HTTP 503" to R.string.vote_error_mapper_http_5,
-                "GRPCStatus unavailable" to R.string.vote_error_mapper_lightwalletd_unavailable,
+                "No voting server accepted share 2" to R.string.coinVote_store_userError_noReachableVoteServers,
+                "nullifier already spent" to R.string.coinVote_store_userError_nullifierAlreadySpent,
+                "vote round not found" to R.string.coinVote_store_userError_roundNotFound,
+                "No active voting round" to R.string.coinVote_store_userError_roundNotActive,
+                "PIR proof root mismatch" to R.string.coinVote_store_userError_pirSnapshotMismatch,
+                "PIR proof verification failed" to R.string.coinVote_store_userError_pirInvalidProofData,
+                "PIR server connect failed" to R.string.coinVote_store_userError_pirUnavailable,
+                "No PIR endpoints are configured" to R.string.coinVote_store_userError_pirEndpointsMissing,
+                "Commitment tree did not grow" to R.string.coinVote_store_userError_commitmentTreeNotGrown,
+                "invalid commitment tree anchor height" to R.string.coinVote_store_userError_invalidAnchorHeight,
+                "invalid zero-knowledge proof" to R.string.coinVote_store_userError_invalidProof,
+                "delegation bundle build failed" to R.string.coinVote_store_userError_proofGenerationFailed,
+                "NoTreeState" to R.string.coinVote_store_userError_noTreeState,
+                "HTTP 503" to R.string.coinVote_store_userError_http5,
+                "GRPCStatus unavailable" to R.string.coinVote_store_userError_lightwalletdUnavailable,
             )
 
         cases.forEach { (rawMessage, expectedString) ->
@@ -93,7 +93,7 @@ class VotingErrorMapperTest {
                 ballotDivisorZatoshi = 12_500_000L
             )
         val resource = assertIs<StringResource.ByResource>(mapped)
-        assertEquals(R.string.vote_error_mapper_insufficient_snapshot_balance, resource.resource)
+        assertEquals(R.string.coinVote_delegation_insufficientSnapshotBalance, resource.resource)
         assertContentEquals(listOf("0.080", "0.125"), resource.args)
     }
 

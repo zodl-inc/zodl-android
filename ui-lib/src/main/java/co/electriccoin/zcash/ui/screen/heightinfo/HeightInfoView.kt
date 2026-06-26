@@ -39,13 +39,13 @@ fun HeightInfoView(
         onBack = state.onBack,
         primaryButton =
             ButtonState(
-                text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_got_it),
+                text = stringRes(co.electriccoin.zcash.ui.design.R.string.restoreInfo_gotIt),
                 onClick = state.onBack,
             ),
         sheetState = sheetState,
     ) {
         Text(
-            text = stringResource(R.string.keystone_wbh_info_title),
+            text = stringResource(R.string.restoreWallet_help_title),
             style = ZashiTypography.header6,
             fontWeight = FontWeight.SemiBold,
             color = ZashiColors.Text.textPrimary,

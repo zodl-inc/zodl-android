@@ -67,7 +67,7 @@ fun TransactionDetailSwapStatusRow(
                 val textSize =
                     measureTextStyle(
                         style = ZcashTheme.extendedTypography.transactionItemStyles.contentMedium,
-                        text = stringResource(R.string.swap_detail_completed),
+                        text = stringResource(R.string.swapAndPay_status_success),
                     )
 
                 ShimmerRectangle(
@@ -90,38 +90,38 @@ private fun StatusChip(state: TransactionDetailSwapStatusRowState) {
         text =
             when (state.status) {
                 EXPIRED -> {
-                    stringResource(R.string.swap_detail_expired)
+                    stringResource(R.string.swapAndPay_status_expired)
                 }
 
                 INCOMPLETE_DEPOSIT -> {
-                    stringResource(R.string.swap_detail_incomplete_deposit)
+                    stringResource(R.string.swapAndPay_status_incompleteDeposit)
                 }
 
                 PENDING -> {
                     if (state.mode == SWAP_INTO_ZEC) {
-                        stringResource(R.string.swap_detail_pending_deposit)
+                        stringResource(R.string.swapAndPay_status_pendingDeposit)
                     } else {
-                        stringResource(R.string.swap_detail_pending)
+                        stringResource(R.string.swapAndPay_status_pending)
                     }
                 }
 
                 SUCCESS -> {
-                    stringResource(R.string.swap_detail_completed)
+                    stringResource(R.string.swapAndPay_status_success)
                 }
 
                 REFUNDED -> {
-                    stringResource(R.string.swap_detail_refunded)
+                    stringResource(R.string.swapAndPay_status_refunded)
                 }
 
                 FAILED -> {
-                    stringResource(R.string.swap_detail_failed)
+                    stringResource(R.string.swapAndPay_status_failed)
                 }
 
                 PROCESSING -> {
                     if (state.mode == SWAP_INTO_ZEC) {
-                        stringResource(R.string.swap_detail_processing)
+                        stringResource(co.electriccoin.zcash.ui.design.R.string.swapAndPay_status_processing)
                     } else {
-                        stringResource(R.string.swap_detail_pending)
+                        stringResource(R.string.swapAndPay_status_pending)
                     }
                 }
             },

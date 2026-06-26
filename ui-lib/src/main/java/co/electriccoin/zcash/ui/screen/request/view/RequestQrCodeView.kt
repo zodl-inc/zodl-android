@@ -48,7 +48,7 @@ internal fun RequestQrCodeView(
         when (state.walletAddress) {
             is WalletAddress.Transparent -> {
                 ZashiBadge(
-                    text = stringResource(id = R.string.request_privacy_level_transparent),
+                    text = stringResource(id = R.string.component_lowPrivacy),
                     leadingIconVector = painterResource(id = R.drawable.ic_alert_circle),
                     colors =
                         ZashiBadgeColors(
@@ -61,7 +61,7 @@ internal fun RequestQrCodeView(
 
             is WalletAddress.Unified, is WalletAddress.Sapling -> {
                 ZashiBadge(
-                    text = stringResource(id = R.string.request_privacy_level_shielded),
+                    text = stringResource(id = R.string.component_maxPrivacy),
                     leadingIconVector = painterResource(id = R.drawable.ic_solid_check),
                     colors =
                         ZashiBadgeColors(

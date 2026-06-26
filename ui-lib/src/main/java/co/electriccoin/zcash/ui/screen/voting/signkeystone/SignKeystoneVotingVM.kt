@@ -90,12 +90,12 @@ class SignKeystoneVotingVM(
                         onBack = ::onCloseBottomSheetClick,
                         positiveButton =
                             ButtonState(
-                                text = stringRes(R.string.sign_keystone_transaction_bottom_sheet_go_back),
+                                text = stringRes(R.string.keystoneTransactionReject_goBack),
                                 onClick = ::onCloseBottomSheetClick
                             ),
                         negativeButton =
                             ButtonState(
-                                text = stringRes(R.string.sign_keystone_transaction_bottom_sheet_reject),
+                                text = stringRes(R.string.keystoneTransactionReject_rejectSig),
                                 onClick = ::onRejectBottomSheetClick
                             ),
                     )
@@ -135,7 +135,7 @@ class SignKeystoneVotingVM(
                             title = wallet.name,
                             subtitle = stringRes("${wallet.unified.address.address.take(ADDRESS_MAX_LENGTH)}...")
                         ),
-                    badgeText = stringRes(R.string.sign_keystone_transaction_badge),
+                    badgeText = stringRes(R.string.keystone_signWith_hardware),
                     qrData = qrData,
                     generateNextQrCode = { currentQrPart.update { signingBundle?.encoder?.nextPart() } },
                     currentBundleNumber = bundle.bundleIndex + 1,
@@ -145,7 +145,7 @@ class SignKeystoneVotingVM(
                     pendingZec = stringRes(R.string.authorize_vote_zec_awaiting, awaitingWeight.toVotingWeightLabel()),
                     memoText =
                         stringRes(
-                            R.string.vote_confirm_memo_authorize,
+                            R.string.coinVote_delegationSigning_memoMessage,
                             bundle.roundTitle,
                             bundle.memoWeightZatoshi.toVotingRawZecLabel()
                         ),
@@ -160,7 +160,7 @@ class SignKeystoneVotingVM(
                         },
                     scanButton =
                         ButtonState(
-                            text = stringRes(R.string.sign_keystone_voting_scan_signature),
+                            text = stringRes(R.string.coinVote_delegationSigning_scanSignature),
                             onClick = ::onSignTransactionClick
                         ),
                 )
@@ -319,7 +319,7 @@ class SignKeystoneVotingVM(
                 ),
             cancelButton =
                 ButtonState(
-                    text = stringRes(R.string.sign_keystone_voting_cancel),
+                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_cancel),
                     onClick = ::onCloseSkipBottomSheetClick
                 )
         )
@@ -355,7 +355,7 @@ class SignKeystoneVotingVM(
         when (type) {
             VotingKeystoneScanNoticeType.DUPLICATE_SIGNATURE -> {
                 stringRes(
-                    R.string.scan_keystone_voting_duplicate_signature,
+                    R.string.coinVote_delegationSigning_duplicateSignature,
                     bundleNumber,
                     bundleCount
                 )
@@ -363,7 +363,7 @@ class SignKeystoneVotingVM(
 
             VotingKeystoneScanNoticeType.WRONG_SIGNATURE -> {
                 stringRes(
-                    R.string.scan_keystone_voting_wrong_signature,
+                    R.string.coinVote_delegationSigning_wrongSignature,
                     bundleNumber,
                     bundleCount
                 )

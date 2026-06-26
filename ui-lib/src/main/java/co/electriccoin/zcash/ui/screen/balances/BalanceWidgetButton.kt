@@ -89,7 +89,7 @@ internal fun BalanceWidgetButton(
                     Text(
                         text =
                             stringRes(state.amount, HIDDEN) orHiddenString
-                                stringRes(co.electriccoin.zcash.ui.design.R.string.hide_balance_placeholder),
+                                stringRes(co.electriccoin.zcash.ui.design.R.string.general_hideBalancesMost),
                         color = ZashiColors.Btns.Tertiary.btnTertiaryFg,
                         style = ZashiTypography.textSm,
                         fontWeight = FontWeight.SemiBold

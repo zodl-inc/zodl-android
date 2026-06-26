@@ -38,26 +38,26 @@ fun TransparentAddressInfoScreen() {
         Image(painterResource(R.drawable.ic_receive_info_transparent), contentDescription = null)
         Spacer(12.dp)
         Text(
-            text = stringResource(R.string.receive_info_transparent_title),
+            text = stringResource(R.string.receive_help_transparent_title),
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.textXl,
             fontWeight = FontWeight.SemiBold,
         )
         Spacer(12.dp)
         ZashiBulletText(
-            stringResource(R.string.receive_info_transparent_bullet_1),
+            stringResource(R.string.receive_help_transparent_desc1),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textSm,
         )
         Spacer(8.dp)
         ZashiBulletText(
-            stringResource(R.string.receive_info_transparent_bullet_2, CURRENCY_TICKER),
+            stringResource(R.string.receive_help_transparent_desc2, CURRENCY_TICKER),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textSm,
         )
         Spacer(8.dp)
         ZashiBulletText(
-            stringResource(R.string.receive_info_transparent_bullet_3, CURRENCY_TICKER),
+            stringResource(R.string.receive_help_transparent_desc3, CURRENCY_TICKER),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textSm,
         )

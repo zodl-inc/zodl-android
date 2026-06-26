@@ -74,7 +74,7 @@ class WalletBackupViewModel(
                             if (lockoutDuration != null) {
                                 stringRes(R.string.general_remind_me_in, stringRes(lockoutDuration.res))
                             } else {
-                                stringRes(R.string.general_remind_me_later)
+                                stringRes(R.string.recoveryPhraseDisplay_button_remindMeLater)
                             },
                         onClick = ::onRemindMeLaterClick
                     ).takeIf { isRemindMeLaterButtonVisible },
@@ -87,11 +87,11 @@ class WalletBackupViewModel(
                                 }
 
                                 isRevealed -> {
-                                    stringRes(R.string.seed_recovery_hide_button)
+                                    stringRes(R.string.recoveryPhraseDisplay_hide)
                                 }
 
                                 else -> {
-                                    stringRes(R.string.seed_recovery_reveal_button)
+                                    stringRes(R.string.recoveryPhraseDisplay_reveal)
                                 }
                             },
                         onClick =
@@ -122,7 +122,7 @@ class WalletBackupViewModel(
                     ),
                 birthday =
                     SeedSecretState(
-                        title = stringRes(R.string.seed_recovery_bday_title),
+                        title = stringRes(R.string.recoveryPhraseDisplay_birthdayTitle),
                         text =
                             stringRes(
                                 wallet
@@ -134,7 +134,7 @@ class WalletBackupViewModel(
                         isRevealed = isRevealed,
                         tooltip =
                             SeedSecretStateTooltip(
-                                title = stringRes(R.string.seed_recovery_bday_tooltip_title),
+                                title = stringRes(R.string.recoveryPhraseDisplay_birthdayTitle),
                                 message = stringRes(R.string.seed_recovery_bday_tooltip_message)
                             ),
                         onClick = null,

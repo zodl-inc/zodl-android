@@ -98,7 +98,7 @@ class VoteProposalDetailVM(
         val pollEnded = round.status != SessionStatus.ACTIVE
 
         return VoteProposalDetailState(
-            positionLabel = stringRes(R.string.vote_proposal_position, position, proposals.size),
+            positionLabel = stringRes(R.string.coinVote_proposalDetail_position, position, proposals.size),
             title = stringRes(proposal.title),
             description = stringRes(proposal.description),
             forumUrl = proposal.forumUrl,
@@ -283,15 +283,15 @@ class VoteProposalDetailVM(
         accountUuid: String,
         round: VotingRound,
     ) = ZashiConfirmationState.error(
-        title = stringRes(R.string.vote_proposal_detail_unanswered_title),
+        title = stringRes(R.string.coinVote_proposalDetail_unansweredTitle),
         message =
             if (unansweredCount == 1) {
-                stringRes(R.string.vote_proposal_detail_unanswered_message_singular)
+                stringRes(R.string.coinVote_proposalDetail_skippedMessageSingle)
             } else {
-                stringRes(R.string.vote_proposal_detail_unanswered_message_plural, unansweredCount)
+                stringRes(R.string.coinVote_proposalDetail_skippedMessageMultiple, unansweredCount)
             },
-        primaryText = stringRes(R.string.vote_confirm_cta),
-        secondaryText = stringRes(R.string.vote_proposal_detail_unanswered_go_back),
+        primaryText = stringRes(R.string.coinVote_common_confirm),
+        secondaryText = stringRes(R.string.coinVote_common_goBack),
         primaryStyle = ButtonStyle.PRIMARY,
         secondaryStyle = ButtonStyle.TERTIARY,
         onPrimary = { onConfirmUnanswered(accountUuid, round) },
@@ -304,9 +304,9 @@ class VoteProposalDetailVM(
 
     private fun buildNoChoicesSheet() =
         ZashiConfirmationState.error(
-            title = stringRes(R.string.vote_proposal_detail_unanswered_title),
+            title = stringRes(R.string.coinVote_proposalDetail_unansweredTitle),
             message = stringRes(R.string.vote_proposal_detail_no_choices_message),
-            primaryText = stringRes(R.string.vote_dismiss),
+            primaryText = stringRes(R.string.coinVote_common_dismiss),
             secondaryText = null,
             primaryStyle = ButtonStyle.PRIMARY,
             onPrimary = { unansweredSheet.value = null },
@@ -316,17 +316,17 @@ class VoteProposalDetailVM(
     private fun buildUnverifiedPollWarningSheet(round: VotingRound) =
         ZashiConfirmationState(
             icon = R.drawable.ic_alert_circle,
-            title = stringRes(R.string.vote_unverified_poll_title),
-            message = stringRes(R.string.vote_unverified_poll_message),
+            title = stringRes(R.string.coinVote_votingView_unverifiedPollTitle),
+            message = stringRes(R.string.coinVote_votingView_unverifiedPollMessage),
             primaryAction =
                 ButtonState(
-                    text = stringRes(R.string.vote_error_go_back),
+                    text = stringRes(R.string.coinVote_common_goBack),
                     style = ButtonStyle.PRIMARY,
                     onClick = ::dismissUnverifiedPollWarning
                 ),
             secondaryAction =
                 ButtonState(
-                    text = stringRes(R.string.vote_proceed_anyway),
+                    text = stringRes(R.string.coinVote_pollsList_unverifiedSheetProceed),
                     style = ButtonStyle.SECONDARY,
                     onClick = { proceedFromUnverifiedPollWarning(round) }
                 ),

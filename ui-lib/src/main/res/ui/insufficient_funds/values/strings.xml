@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
-    <string name="insufficient_funds_title">Insufficient Funds</string>
-    <string name="insufficient_funds_description">We couldn\'t create this transaction for you. Your wallet doesn\'t have enough balance to cover both the transaction amount and transaction fees. Please lower the transaction amount to account for the fees.</string>
-</resources>

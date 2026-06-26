@@ -116,7 +116,7 @@ private fun Info() {
         )
         Spacer(modifier = Modifier.width(12.dp))
         Text(
-            text = stringResource(id = R.string.advanced_settings_info),
+            text = stringResource(id = R.string.settings_deleteZashiWarning),
             fontSize = 12.sp,
             color = ZashiColors.Text.textTertiary,
         )
@@ -128,7 +128,7 @@ private fun AdvancedSettingsTopAppBar(
     onBack: () -> Unit
 ) {
     ZashiSmallTopAppBar(
-        title = stringResource(id = R.string.advanced_settings_title),
+        title = stringResource(id = R.string.settings_advanced),
         modifier = Modifier.testTag(AdvancedSettingsTag.ADVANCED_SETTINGS_TOP_APP_BAR),
         showTitleLogo = true,
         navigationAction = {
@@ -148,22 +148,22 @@ private fun AdvancedSettingsPreview() =
                     items =
                         persistentListOf(
                             ListItemState(
-                                title = stringRes(R.string.advanced_settings_recovery),
+                                title = stringRes(R.string.settings_recoveryPhrase),
                                 bigIcon = imageRes(R.drawable.ic_advanced_settings_recovery),
                                 onClick = {}
                             ),
                             ListItemState(
-                                title = stringRes(R.string.advanced_settings_export),
+                                title = stringRes(R.string.settings_exportPrivateData),
                                 bigIcon = imageRes(R.drawable.ic_advanced_settings_export),
                                 onClick = {}
                             ),
                             ListItemState(
-                                title = stringRes(R.string.advanced_settings_choose_server),
+                                title = stringRes(R.string.settings_chooseServer),
                                 bigIcon = imageRes(R.drawable.ic_advanced_settings_choose_server),
                                 onClick = {}
                             ),
                             ListItemState(
-                                title = stringRes(R.string.advanced_settings_currency_conversion),
+                                title = stringRes(R.string.currencyConversion_title),
                                 bigIcon = imageRes(R.drawable.ic_advanced_settings_currency_conversion),
                                 onClick = {}
                             ),
@@ -175,7 +175,7 @@ private fun AdvancedSettingsPreview() =
                         ),
                     deleteButton =
                         ButtonState(
-                            text = stringRes(R.string.advanced_settings_delete_button),
+                            text = stringRes(R.string.settings_deleteZashi),
                             onClick = {}
                         )
                 ),

@@ -42,7 +42,7 @@ fun WalletUpdatingMessage(
         },
         subtitle = {
             Text(
-                text = stringResource(R.string.home_message_wallet_updating_subtitle),
+                text = stringResource(R.string.smartBanner_content_updatingBalance_info),
             )
         },
         end = null

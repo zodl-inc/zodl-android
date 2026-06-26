@@ -170,14 +170,14 @@ fun AboutMainContent(
             state =
                 ListItemState(
                     bigIcon = imageRes(R.drawable.ic_settings_info),
-                    title = stringRes(R.string.about_button_privacy_policy),
+                    title = stringRes(R.string.about_privacyPolicy),
                     onClick = onPrivacyPolicy
                 ),
             leading = { modifier ->
                 SettingsListItemLeadingIcon(
                     modifier = modifier,
                     drawableRes = R.drawable.ic_settings_info,
-                    contentDescription = stringResource(R.string.about_button_privacy_policy)
+                    contentDescription = stringResource(R.string.about_privacyPolicy)
                 )
             }
         )
@@ -189,7 +189,7 @@ fun AboutMainContent(
             state =
                 ListItemState(
                     bigIcon = imageRes(R.drawable.ic_terms_of_use),
-                    title = stringRes(stringResource(R.string.terms_of_use)),
+                    title = stringRes(stringResource(R.string.about_termsOfUse)),
                     onClick = onTermsOfUse
                 )
         )

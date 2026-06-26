@@ -121,45 +121,45 @@ class ReviewTransactionVM(
     ) = ReviewTransactionState(
         title =
             when (selectedWallet) {
-                is KeystoneAccount -> stringRes(R.string.review_keystone_transaction_title)
-                is ZashiAccount -> stringRes(R.string.send_stage_confirmation_title)
+                is KeystoneAccount -> stringRes(R.string.send_review)
+                is ZashiAccount -> stringRes(R.string.send_confirmationTitle)
             },
         items =
             listOfNotNull(
                 AmountState(
-                    title = stringRes(R.string.send_confirmation_amount),
+                    title = stringRes(R.string.send_amountSummary),
                     amount = transactionProposal.amount + transactionProposal.proposal.totalFeeRequired(),
                     exchangeRate = exchangeRateState,
                 ),
                 ReceiverState(
-                    title = stringRes(R.string.send_confirmation_address),
+                    title = stringRes(R.string.send_to),
                     name = addressBookContact?.name?.let { stringRes(it) },
                     address = stringResByAddress(transactionProposal.destination.address, Ellipsize.NONE)
                 ),
                 SenderState(
-                    title = stringRes(R.string.send_confirmation_address_from),
+                    title = stringRes(R.string.accounts_sendingFrom),
                     icon = selectedWallet.icon,
                     name = selectedWallet.name
                 ).takeIf { (accounts?.size ?: 0) > 1 },
                 FinancialInfoState(
-                    title = stringRes(R.string.send_amount_label),
+                    title = stringRes(R.string.send_amount),
                     amount = transactionProposal.amount
                 ),
                 FinancialInfoState(
-                    title = stringRes(R.string.send_confirmation_fee),
+                    title = stringRes(R.string.send_feeSummary),
                     amount = transactionProposal.proposal.totalFeeRequired()
                 ),
                 transactionProposal.memo
                     .takeIf { it.value.isNotEmpty() }
                     ?.let {
                         MessageState(
-                            title = stringRes(R.string.send_memo_label),
+                            title = stringRes(R.string.send_message),
                             message = stringRes(it.value)
                         )
                     }?.takeIf { transactionProposal.destination !is WalletAddress.Transparent },
                 MessagePlaceholderState(
-                    title = stringRes(R.string.send_memo_label),
-                    message = stringRes(R.string.send_transparent_memo),
+                    title = stringRes(R.string.send_message),
+                    message = stringRes(R.string.send_info_memo),
                     icon = R.drawable.ic_confirmation_message_info,
                 ).takeIf { transactionProposal.destination is WalletAddress.Transparent },
             ),
@@ -167,8 +167,8 @@ class ReviewTransactionVM(
             ButtonState(
                 text =
                     when (selectedWallet) {
-                        is KeystoneAccount -> stringRes(R.string.review_keystone_transaction_positive)
-                        is ZashiAccount -> stringRes(R.string.send_confirmation_send_button)
+                        is KeystoneAccount -> stringRes(R.string.keystone_confirm)
+                        is ZashiAccount -> stringRes(R.string.tabs_send)
                     },
                 onClick = ::onConfirmClick
             ),
@@ -182,7 +182,7 @@ class ReviewTransactionVM(
         isReceiverExpanded: Boolean,
         exchangeRateState: ExchangeRateState
     ) = ReviewTransactionState(
-        title = stringRes(R.string.payment_request_title),
+        title = stringRes(R.string.send_requestPayment_title),
         items =
             listOfNotNull(
                 AmountState(
@@ -191,12 +191,12 @@ class ReviewTransactionVM(
                     exchangeRate = exchangeRateState,
                 ),
                 SenderState(
-                    title = stringRes(R.string.send_confirmation_address_from),
+                    title = stringRes(R.string.accounts_sendingFrom),
                     icon = selectedWallet.icon,
                     name = selectedWallet.name
                 ),
                 ReceiverExpandedState(
-                    title = stringRes(R.string.payment_request_requested_by),
+                    title = stringRes(R.string.send_requestPayment_requestedBy),
                     name = addressBookContact?.name?.let { stringRes(it) },
                     address =
                         stringResByAddress(
@@ -211,24 +211,24 @@ class ReviewTransactionVM(
                                 } else {
                                     co.electriccoin.zcash.ui.design.R.drawable.ic_chevron_down
                                 },
-                            text = stringRes(R.string.payment_request_btn_show_address),
+                            text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_show),
                             onClick = ::onExpandReceiverClick
                         ),
                     saveButton =
                         ChipButtonState(
                             startIcon = R.drawable.ic_user_plus,
-                            text = stringRes(R.string.payment_request_btn_save_contact),
+                            text = stringRes(R.string.general_save),
                             onClick = { onAddContactClick(transactionProposal.destination.address) }
                         ).takeIf { addressBookContact == null }
                 ),
                 transactionProposal.memo.takeIf { it.value.isNotEmpty() }?.let {
                     MessageState(
-                        title = stringRes(R.string.payment_request_memo),
+                        title = stringRes(R.string.send_requestPayment_for),
                         message = stringRes(it.value)
                     )
                 },
                 FinancialInfoState(
-                    title = stringRes(R.string.payment_request_fee),
+                    title = stringRes(R.string.send_feeSummary),
                     amount = transactionProposal.proposal.totalFeeRequired()
                 )
             ),
@@ -236,8 +236,8 @@ class ReviewTransactionVM(
             ButtonState(
                 text =
                     when (selectedWallet) {
-                        is KeystoneAccount -> stringRes(R.string.review_keystone_transaction_positive)
-                        is ZashiAccount -> stringRes(R.string.payment_request_send_btn)
+                        is KeystoneAccount -> stringRes(R.string.keystone_confirm)
+                        is ZashiAccount -> stringRes(R.string.tabs_send)
                     },
                 onClick = ::onConfirmClick
             ),

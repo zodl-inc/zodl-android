@@ -41,12 +41,12 @@ fun EnableCurrencyConversionMessage(
         },
         title = {
             Text(
-                stringResource(R.string.home_message_currency_conversion_title)
+                stringResource(R.string.currencyConversion_title)
             )
         },
         subtitle = {
             Text(
-                text = stringResource(R.string.home_message_currency_conversion_subtitle),
+                text = stringResource(R.string.smartBanner_content_currencyConversion_info),
             )
         },
         end = {
@@ -55,7 +55,7 @@ fun EnableCurrencyConversionMessage(
                 state =
                     ButtonState(
                         onClick = state.onButtonClick,
-                        text = stringRes(stringResource(R.string.home_message_currency_conversion_button))
+                        text = stringRes(stringResource(R.string.smartBanner_content_currencyConversion_button))
                     )
             )
         }

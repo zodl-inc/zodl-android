@@ -45,19 +45,19 @@ class KeystoneDateVM(
     private fun createState(yearMonth: YearMonth, isLoading: Boolean) =
         BirthdayPickerState(
             title = null,
-            message = stringRes(R.string.keystone_first_transaction_message),
+            message = stringRes(R.string.firstWalletTransactionSubtitleHWWallet),
             logo = co.electriccoin.zcash.ui.design.R.drawable.image_keystone,
             selection = yearMonth,
             primaryButton =
                 ButtonState(
-                    text = stringRes(R.string.wbh_next),
+                    text = stringRes(R.string.general_next),
                     isLoading = isLoading,
                     isEnabled = !isLoading,
                     onClick = { onEstimateClick(yearMonth) },
                 ),
             secondaryButton =
                 ButtonState(
-                    text = stringRes(R.string.wbh_enter_block_height),
+                    text = stringRes(R.string.keystone_addHWWallet_enterManually),
                     onClick = ::onEnterBlockHeightClick,
                 ),
             dialogButton =

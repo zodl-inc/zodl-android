@@ -37,38 +37,38 @@ fun WalletBackupInfoView(
         Image(painterResource(R.drawable.ic_info_backup), contentDescription = null)
         Spacer(12.dp)
         Text(
-            stringResource(R.string.home_info_backup_title),
+            stringResource(R.string.smartBanner_help_backup_title),
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.textXl,
             fontWeight = FontWeight.SemiBold,
         )
         Spacer(12.dp)
         Text(
-            stringResource(R.string.home_info_backup_subtitle_1),
+            stringResource(R.string.smartBanner_help_backup_info1),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textMd,
         )
         Spacer(12.dp)
         Text(
-            stringResource(R.string.home_info_backup_subtitle_2),
+            stringResource(R.string.smartBanner_help_backup_info2),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textMd,
         )
         Spacer(12.dp)
         ZashiBulletText(
-            stringResource(R.string.home_info_backup_bullet_1),
-            stringResource(R.string.home_info_backup_bullet_2),
+            stringResource(R.string.smartBanner_help_backup_point1),
+            stringResource(R.string.smartBanner_help_backup_point2),
             color = ZashiColors.Text.textTertiary,
         )
         Spacer(12.dp)
         Text(
-            stringResource(R.string.home_info_backup_message_1),
+            stringResource(R.string.smartBanner_help_backup_info3),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textMd,
         )
         Spacer(24.dp)
         Text(
-            stringResource(R.string.home_info_backup_message_2),
+            stringResource(R.string.smartBanner_help_backup_info4),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textMd,
         )
@@ -104,7 +104,7 @@ private fun Preview() =
                 onBack = {},
                 secondaryButton =
                     ButtonState(
-                        text = stringRes(R.string.general_remind_me_later),
+                        text = stringRes(R.string.recoveryPhraseDisplay_button_remindMeLater),
                         onClick = {},
                         isEnabled = false,
                     ),
@@ -117,7 +117,7 @@ private fun Preview() =
                     CheckboxState(
                         isChecked = false,
                         onClick = {},
-                        title = stringRes(R.string.home_info_backup_checkbox),
+                        title = stringRes(R.string.smartBanner_help_backup_acknowledge),
                     ),
             )
         )

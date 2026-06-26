@@ -49,7 +49,7 @@ fun VoteResultsView(state: VoteResultsState) {
     BlankBgScaffold(
         topBar = {
             VoteAppBar(
-                title = stringResource(R.string.vote_top_bar_title),
+                title = stringResource(R.string.coinVote_common_screenTitle),
                 onBack = state.onBack,
             )
         },
@@ -111,7 +111,7 @@ fun VoteResultsView(state: VoteResultsState) {
 
                     Spacer(24.dp)
                     Text(
-                        text = stringRes(R.string.vote_results_title).getValue(),
+                        text = stringRes(R.string.coinVote_results_title).getValue(),
                         style = ZashiTypography.textMd,
                         color = ZashiColors.Text.textPrimary,
                         fontWeight = FontWeight.SemiBold,
@@ -148,7 +148,7 @@ fun VoteResultsLoadingView(onBack: () -> Unit) {
     BlankBgScaffold(
         topBar = {
             VoteAppBar(
-                title = stringResource(R.string.vote_top_bar_title),
+                title = stringResource(R.string.coinVote_common_screenTitle),
                 onBack = onBack,
             )
         },

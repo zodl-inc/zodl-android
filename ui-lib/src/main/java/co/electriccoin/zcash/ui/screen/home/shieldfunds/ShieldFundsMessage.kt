@@ -46,7 +46,7 @@ fun ShieldFundsMessage(
         },
         title = {
             Text(
-                stringResource(R.string.home_message_transparent_balance_title),
+                stringResource(R.string.smartBanner_content_shield_title),
             )
         },
         subtitle = {
@@ -60,7 +60,7 @@ fun ShieldFundsMessage(
                 state =
                     ButtonState(
                         onClick = state.onButtonClick,
-                        text = stringRes(stringResource(R.string.home_message_transparent_balance_button))
+                        text = stringRes(stringResource(R.string.smartBanner_content_shield_button))
                     )
             )
         }

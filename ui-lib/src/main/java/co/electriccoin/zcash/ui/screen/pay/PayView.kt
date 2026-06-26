@@ -106,7 +106,7 @@ internal fun PayView(
             )
             Spacer(40.dp)
             Text(
-                stringResource(R.string.send_address_label),
+                stringResource(R.string.send_to),
                 style = ZashiTypography.textSm,
                 fontWeight = FontWeight.Medium,
                 color = ZashiColors.Text.textPrimary
@@ -125,7 +125,7 @@ internal fun PayView(
             }
             Spacer(22.dp)
             Text(
-                stringResource(R.string.send_amount_label),
+                stringResource(R.string.send_amount),
                 style = ZashiTypography.textSm,
                 fontWeight = FontWeight.Medium,
                 color = ZashiColors.Text.textPrimary

@@ -105,7 +105,7 @@ class UpdateGenericABContactVM(
                 }
             when (validation) {
                 ContactAddressValidationResult.Invalid -> {
-                    stringRes(R.string.contact_address_error_invalid)
+                    stringRes(R.string.send_error_invalidAddress)
                 }
 
                 ContactAddressValidationResult.NotUnique -> {
@@ -142,11 +142,11 @@ class UpdateGenericABContactVM(
             } else {
                 when (validateGenericABContactName(name = name, exclude = contact)) {
                     ValidateContactNameResult.TooLong -> {
-                        stringRes(R.string.contact_name_error_too_long)
+                        stringRes(R.string.addressBook_error_nameLength)
                     }
 
                     ValidateContactNameResult.NotUnique -> {
-                        stringRes(R.string.contact_name_error_not_unique)
+                        stringRes(R.string.addressBook_error_nameExists)
                     }
 
                     ValidateContactNameResult.Valid -> {
@@ -190,7 +190,7 @@ class UpdateGenericABContactVM(
                     blockchain != contact.blockchain
                 }
             ButtonState(
-                text = stringRes(R.string.update_contact_primary_btn),
+                text = stringRes(R.string.general_save),
                 isEnabled =
                     address.error == null &&
                         name.error == null &&
@@ -206,7 +206,7 @@ class UpdateGenericABContactVM(
     private val deleteButtonState =
         isDeletingContact.map { isDeletingContact ->
             ButtonState(
-                text = stringRes(R.string.update_contact_secondary_btn),
+                text = stringRes(R.string.general_delete),
                 onClick = ::onDeleteButtonClick,
                 isLoading = isDeletingContact,
                 hapticFeedbackType = HapticFeedbackType.Confirm
@@ -287,16 +287,16 @@ class UpdateGenericABContactVM(
         } else {
             _dialogState.value =
                 ErrorState(
-                    title = stringRes(R.string.delete_contact_confirmation_title),
-                    message = stringRes(R.string.delete_contact_confirmation_message),
+                    title = stringRes(R.string.deleteWallet_sheet_title),
+                    message = stringRes(R.string.addressBook_alert_message),
                     positive =
                         ButtonState(
-                            text = stringRes(R.string.delete_contact_confirmation_confirm),
+                            text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_confirm),
                             onClick = ::onDeleteConfirmed
                         ),
                     negative =
                         ButtonState(
-                            text = stringRes(R.string.delete_contact_confirmation_cancel),
+                            text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_cancel),
                             onClick = ::onDeleteCancelled
                         ),
                     onBack = { _dialogState.value = null }

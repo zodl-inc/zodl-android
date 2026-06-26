@@ -66,13 +66,13 @@ class ResyncConfirmVM(
         isLoading: Boolean,
     ): ResyncConfirmState =
         ResyncConfirmState(
-            title = stringRes(R.string.resync_title),
-            subtitle = stringRes(R.string.confirm_resync_title),
+            title = stringRes(R.string.resyncWallet_title),
+            subtitle = stringRes(R.string.resyncWallet_confirmTitle),
             message = stringRes(R.string.confirm_resync_subtitle),
             onBack = ::onBack,
             confirm =
                 ButtonState(
-                    text = stringRes(R.string.confirm_resync_confirm),
+                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_confirm),
                     isLoading = isLoading,
                     onClick = {
                         onConfirmClick(height)
@@ -80,7 +80,7 @@ class ResyncConfirmVM(
                 ),
             change =
                 ButtonState(
-                    stringRes(R.string.confirm_resync_change),
+                    stringRes(R.string.resyncWallet_change),
                     onClick = {
                         onChangeClick(height)
                     }

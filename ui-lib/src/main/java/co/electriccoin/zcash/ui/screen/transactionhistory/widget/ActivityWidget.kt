@@ -107,7 +107,7 @@ private fun LazyListScope.emptyWidget(state: ActivityWidgetState.Empty) {
                 )
                 Spacer(Modifier.height(20.dp))
                 Text(
-                    text = stringResource(R.string.transaction_history_widget_empty_title),
+                    text = stringResource(R.string.transactionHistory_nothingHere),
                     color = ZashiColors.Text.textPrimary,
                     style = ZashiTypography.textLg,
                     fontWeight = FontWeight.SemiBold
@@ -143,7 +143,7 @@ private fun LazyListScope.loadingWidget() {
                         Modifier
                             .fillParentMaxWidth()
                             .padding(horizontal = 24.dp),
-                    text = stringResource(R.string.transaction_history_widget_title),
+                    text = stringResource(R.string.general_activity),
                     color = ZashiColors.Text.textPrimary,
                     fontWeight = FontWeight.SemiBold,
                     style = ZashiTypography.textLg

@@ -69,7 +69,7 @@ fun PollEndedBottomSheet(
             VerticalSpacer(16.dp)
 
             Text(
-                text = stringRes(R.string.vote_poll_ended_title).getValue(),
+                text = stringRes(R.string.coinVote_pollClosedSheet_title).getValue(),
                 style = ZashiTypography.header6,
                 color = ZashiColors.Text.textPrimary,
                 fontWeight = FontWeight.SemiBold,
@@ -78,7 +78,7 @@ fun PollEndedBottomSheet(
             VerticalSpacer(8.dp)
 
             Text(
-                text = stringRes(R.string.vote_poll_ended_message).getValue(),
+                text = stringRes(R.string.coinVote_pollClosedSheet_message).getValue(),
                 style = ZashiTypography.textSm,
                 color = ZashiColors.Text.textSecondary,
                 textAlign = TextAlign.Center,
@@ -91,7 +91,7 @@ fun PollEndedBottomSheet(
                 modifier = Modifier.fillMaxWidth(),
                 state =
                     ButtonState(
-                        text = stringRes(R.string.vote_poll_ended_view_results),
+                        text = stringRes(R.string.coinVote_common_viewResults),
                         style = ButtonStyle.PRIMARY,
                         onClick = onViewResults
                     )
@@ -103,7 +103,7 @@ fun PollEndedBottomSheet(
                 modifier = Modifier.fillMaxWidth(),
                 state =
                     ButtonState(
-                        text = stringRes(R.string.vote_close),
+                        text = stringRes(R.string.coinVote_common_close),
                         style = ButtonStyle.TERTIARY,
                         onClick = onClose
                     )

@@ -10,8 +10,8 @@ import co.electriccoin.zcash.ui.design.util.withStyle
 
 data class EstimatedBlockHeightState(
     val title: StringResource?,
-    val subtitle: StringResource = stringRes(R.string.wbh_estimation_subtitle),
-    val message: StyledStringResource = stringRes(R.string.wbh_estimation_message).withStyle(),
+    val subtitle: StringResource = stringRes(R.string.restoreWallet_birthday_estimated_title),
+    val message: StyledStringResource = stringRes(R.string.restoreWallet_birthday_estimated_info).withStyle(),
     val logo: Int?,
     val blockHeightText: StringResource,
     val onBack: () -> Unit,

@@ -62,13 +62,13 @@ class SwapDetailVM(
                             ),
                     status =
                         TransactionDetailSwapStatusRowState(
-                            title = stringRes(R.string.transaction_detail_info_transaction_status),
+                            title = stringRes(R.string.swapAndPay_status),
                             status = swapData.status?.status,
                             mode = SWAP_INTO_ZEC
                         ),
                     depositTo =
                         TransactionDetailInfoRowState(
-                            title = stringRes(R.string.swap_detail_row_deposit_to),
+                            title = stringRes(R.string.swapToZec_depositTo),
                             message = stringResByAddress(args.depositAddress),
                             trailingIcon = R.drawable.ic_transaction_detail_info_copy,
                             onClick = ::onCopyDepositAddressClick
@@ -78,7 +78,7 @@ class SwapDetailVM(
                     maxSlippage = createSlippageState(swapData),
                     timestamp =
                         TransactionDetailInfoRowState(
-                            title = stringRes(R.string.transaction_detail_info_timestamp),
+                            title = stringRes(R.string.transactionHistory_timestamp),
                             message =
                                 swapData.status
                                     ?.timestamp
@@ -93,7 +93,7 @@ class SwapDetailVM(
                     message = getSwapMessage.getMessage(swapData.status),
                     errorFooter = mapper.createTransactionDetailErrorFooter(swapData.error),
                     infoFooter =
-                        stringRes(R.string.transaction_detail_info_pending)
+                        stringRes(R.string.deposits_info)
                             .takeIf { swapData.status?.status == PENDING },
                     primaryButton = createPrimaryButtonState(swapData, swapData.error),
                     onBack = ::onBack,
@@ -110,7 +110,7 @@ class SwapDetailVM(
 
     private fun createTotalFeesState(swapData: SwapData): TransactionDetailInfoRowState =
         TransactionDetailInfoRowState(
-            title = stringRes(R.string.transaction_detail_info_total_fees),
+            title = stringRes(R.string.swapAndPay_totalFees),
             message =
                 if (swapData.status != null) {
                     val text =
@@ -135,7 +135,7 @@ class SwapDetailVM(
                 ?.destinationAddress
                 ?.address
         return TransactionDetailInfoRowState(
-            title = stringRes(R.string.transaction_detail_info_recipient),
+            title = stringRes(R.string.swapAndPay_recipient),
             message = destinationAddress?.let { stringResByAddress(it) },
             trailingIcon = R.drawable.ic_transaction_detail_info_copy,
             onClick =
@@ -151,9 +151,9 @@ class SwapDetailVM(
         TransactionDetailInfoRowState(
             title =
                 if (swapData.status?.isSlippageRealized == true) {
-                    stringRes(R.string.transaction_detail_info_realized_slippage)
+                    stringRes(R.string.swapAndPay_executedSlippage)
                 } else {
-                    stringRes(R.string.transaction_detail_info_max_slippage)
+                    stringRes(R.string.swapAndPay_maxSlippageTitle)
                 },
             message =
                 swapData.status
@@ -193,13 +193,13 @@ class SwapDetailVM(
         TransactionDetailHeaderState(
             title =
                 when (swapData.status?.status) {
-                    EXPIRED -> stringRes(R.string.swap_detail_title_swap_expired)
-                    PENDING -> stringRes(R.string.swap_detail_pending_deposit)
-                    INCOMPLETE_DEPOSIT -> stringRes(R.string.swap_detail_incomplete)
-                    PROCESSING -> stringRes(R.string.swap_detail_title_swap_processing)
-                    SUCCESS -> stringRes(R.string.swap_detail_title_swap_completed)
-                    REFUNDED -> stringRes(R.string.swap_detail_title_swap_refunded)
-                    FAILED -> stringRes(R.string.swap_detail_title_swap_failed)
+                    EXPIRED -> stringRes(R.string.swapStatus_swapExpired)
+                    PENDING -> stringRes(R.string.swapAndPay_status_pendingDeposit)
+                    INCOMPLETE_DEPOSIT -> stringRes(R.string.swapStatus_swapIncomplete)
+                    PROCESSING -> stringRes(R.string.swapToZec_swapProcessing)
+                    SUCCESS -> stringRes(R.string.swapStatus_swapped)
+                    REFUNDED -> stringRes(R.string.swapStatus_swapRefunded)
+                    FAILED -> stringRes(R.string.swapStatus_swapFailed)
                     null -> null
                 },
             amount =

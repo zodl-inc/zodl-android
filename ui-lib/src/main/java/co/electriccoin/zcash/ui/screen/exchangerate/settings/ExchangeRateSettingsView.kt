@@ -42,14 +42,14 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 @Composable
 internal fun ExchangeRateSettingsView(state: ExchangeRateSettingsState) {
     ZashiBaseSettingsOptIn(
-        header = stringResource(id = R.string.exchange_rate_opt_in_subtitle),
+        header = stringResource(id = R.string.currencyConversion_title),
         image = R.drawable.exchange_rate,
         onDismiss = state.onBack,
         info = state.info?.getValue(),
         content = {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = stringResource(R.string.exchange_rate_opt_in_description_settings),
+                text = stringResource(R.string.currencyConversion_settingsDesc),
                 style = ZashiTypography.textSm,
                 color = ZashiColors.Text.textTertiary,
             )
@@ -57,16 +57,16 @@ internal fun ExchangeRateSettingsView(state: ExchangeRateSettingsState) {
             Option(
                 modifier = Modifier.fillMaxWidth(),
                 isChecked = state.isOptedIn.isChecked,
-                title = stringResource(R.string.exchange_rate_opt_in_option_title),
-                subtitle = stringResource(R.string.exchange_rate_opt_in_option_subtitle),
+                title = stringResource(R.string.torSetup_ccSheet_enable),
+                subtitle = stringResource(R.string.currencyConversion_learnMoreOptionEnableDesc),
                 onClick = state.isOptedIn.onClick
             )
             Spacer(modifier = Modifier.height(12.dp))
             Option(
                 modifier = Modifier.fillMaxWidth(),
                 isChecked = state.isOptedOut.isChecked,
-                title = stringResource(R.string.exchange_rate_opt_out_option_title),
-                subtitle = stringResource(R.string.exchange_rate_opt_out_option_subtitle),
+                title = stringResource(R.string.currencyConversion_learnMoreOptionDisable),
+                subtitle = stringResource(R.string.currencyConversion_learnMoreOptionDisableDesc),
                 onClick = state.isOptedOut.onClick
             )
             state.currencyField?.let { field ->
@@ -168,7 +168,7 @@ internal fun CurrencyField(
 ) {
     Column(modifier = modifier) {
         Text(
-            text = stringResource(R.string.exchange_rate_settings_select_currency),
+            text = stringResource(R.string.currencyConversion_selectCurrencyTitle),
             style = ZashiTypography.textSm,
             fontWeight = FontWeight.Medium,
             color = ZashiColors.Text.textTertiary,
@@ -235,11 +235,11 @@ private fun SettingsExchangeRateOptInPreview() =
                             ),
                         saveButton =
                             ButtonState(
-                                text = stringRes(R.string.exchange_rate_opt_in_save),
+                                text = stringRes(R.string.currencyConversion_saveBtn),
                                 onClick = {}
                             ),
                         onBack = {},
-                        info = stringRes(R.string.exchange_rate_tor_enabled_footer)
+                        info = stringRes(R.string.currencyConversion_torOnInfo)
                     )
             )
         }

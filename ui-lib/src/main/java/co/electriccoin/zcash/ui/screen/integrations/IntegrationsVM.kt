@@ -85,13 +85,13 @@ class IntegrationsVM(
                                 UNAVAILABLE -> R.drawable.ic_integrations_flexa_disabled
                             }
                         ),
-                    title = stringRes(R.string.integrations_flexa),
-                    subtitle = stringRes(R.string.integrations_flexa_subtitle),
+                    title = stringRes(R.string.settings_flexa),
+                    subtitle = stringRes(R.string.settings_flexaDesc),
                     onClick = ::onFlexaClicked
                 ).takeIf { flexaStatus != UNAVAILABLE },
                 ListItemState(
-                    title = stringRes(R.string.integrations_keystone),
-                    subtitle = stringRes(R.string.integrations_keystone_subtitle),
+                    title = stringRes(R.string.settings_keystone),
+                    subtitle = stringRes(R.string.settings_keystoneDesc),
                     bigIcon = imageRes(R.drawable.ic_integrations_keystone),
                     onClick = ::onConnectKeystoneClick
                 ).takeIf { keystoneStatus != UNAVAILABLE },

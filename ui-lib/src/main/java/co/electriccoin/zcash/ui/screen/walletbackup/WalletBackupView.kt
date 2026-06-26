@@ -83,7 +83,7 @@ private fun SeedRecoveryTopAppBar(
     modifier: Modifier = Modifier,
 ) {
     ZashiSmallTopAppBar(
-        title = stringResource(R.string.seed_recovery_title),
+        title = stringResource(R.string.recoveryPhraseDisplay_screenTitle),
         modifier = modifier,
         navigationAction = {
             if (state.onBack != null) {
@@ -109,7 +109,7 @@ private fun SeedRecoveryMainContent(
             .then(modifier),
     ) {
         Text(
-            text = stringResource(R.string.seed_recovery_header),
+            text = stringResource(R.string.recoveryPhraseDisplay_title),
             fontWeight = FontWeight.SemiBold,
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.header6
@@ -118,7 +118,7 @@ private fun SeedRecoveryMainContent(
         Spacer(8.dp)
 
         Text(
-            text = stringResource(R.string.seed_recovery_description),
+            text = stringResource(R.string.recoveryPhraseDisplay_description),
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.textSm
         )

@@ -116,22 +116,22 @@ internal class SwapQuoteVM(
 
                 else -> {
                     when (quote.mode) {
-                        EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.swap_quote_error_getting_quote_swap)
-                        EXACT_OUTPUT -> stringRes(R.string.swap_quote_error_getting_quote)
+                        EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.swap_quoteUnavailableSwap)
+                        EXACT_OUTPUT -> stringRes(R.string.swap_quoteUnavailable)
                     }
                 }
             }
 
         return SwapQuoteState.Error(
             icon = imageRes(R.drawable.ic_swap_quote_error),
-            title = stringRes(R.string.swap_quote_unavailable),
+            title = stringRes(R.string.swapAndPay_quoteUnavailable),
             subtitle = message,
             negativeButton =
                 ButtonState(
                     text =
                         when (quote.mode) {
-                            EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.swap_quote_cancel_swap)
-                            EXACT_OUTPUT -> stringRes(R.string.swap_quote_cancel_payment)
+                            EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.swapAndPay_cancelSwap)
+                            EXACT_OUTPUT -> stringRes(R.string.swapAndPay_cancelPayment)
                         },
                     onClick = ::onCancelPaymentClick
                 ),
@@ -139,8 +139,8 @@ internal class SwapQuoteVM(
                 ButtonState(
                     text =
                         when (quote.mode) {
-                            EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.swap_quote_edit_swap)
-                            EXACT_OUTPUT -> stringRes(R.string.swap_quote_edit_payment)
+                            EXACT_INPUT, FLEX_INPUT -> stringRes(R.string.swapAndPay_editSwap)
+                            EXACT_OUTPUT -> stringRes(R.string.swapAndPay_editPayment)
                         },
                     onClick = ::onEditPaymentClick
                 ),

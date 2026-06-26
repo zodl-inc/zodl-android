@@ -9,12 +9,12 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 
 data class BlockHeightState(
     val title: StringResource?,
-    val subtitle: StringResource = stringRes(R.string.wbh_subtitle),
-    val message: StringResource = stringRes(R.string.wbh_message),
+    val subtitle: StringResource = stringRes(R.string.recoveryPhraseDisplay_birthdayTitle),
+    val message: StringResource = stringRes(R.string.walletBirthdayHeightSubtitle),
     val logo: Int?,
-    val textFieldTitle: StringResource = stringRes(R.string.wbh_text_field_title),
-    val textFieldHint: StringResource = stringRes(R.string.wbh_text_field_hint),
-    val textFieldNote: StringResource = stringRes(R.string.wbh_text_field_note),
+    val textFieldTitle: StringResource = stringRes(R.string.restoreWallet_birthday_title),
+    val textFieldHint: StringResource = stringRes(R.string.restoreWallet_birthday_placeholder),
+    val textFieldNote: StringResource = stringRes(R.string.restoreWallet_birthday_fieldInfo),
     val blockHeight: NumberTextFieldState,
     val primaryButton: ButtonState,
     val secondaryButton: ButtonState?,

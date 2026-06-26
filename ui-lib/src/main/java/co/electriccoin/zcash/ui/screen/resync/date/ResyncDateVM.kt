@@ -59,18 +59,18 @@ class ResyncDateVM(
         selection: YearMonth,
         isLoading: Boolean,
     ) = BirthdayPickerState(
-        title = stringRes(R.string.resync_title),
-        message = stringRes(R.string.resync_bd_date_message),
+        title = stringRes(R.string.resyncWallet_title),
+        message = stringRes(R.string.firstWalletTransactionSubtitleResync),
         logo = null,
         primaryButton =
             ButtonState(
-                text = stringRes(R.string.wbh_next),
+                text = stringRes(R.string.general_next),
                 isLoading = isLoading,
                 onClick = { onEstimateClick(selection) },
             ),
         secondaryButton =
             ButtonState(
-                text = stringRes(R.string.wbh_enter_block_height),
+                text = stringRes(R.string.keystone_addHWWallet_enterManually),
                 onClick = ::onEnterBlockHeightClick,
             ),
         dialogButton =

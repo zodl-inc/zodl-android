@@ -38,7 +38,7 @@ fun ShieldedAddressInfoScreen() {
         Image(painterResource(R.drawable.ic_receive_info_shielded), contentDescription = null)
         Spacer(12.dp)
         Text(
-            text = stringResource(R.string.receive_info_shielded_title),
+            text = stringResource(R.string.receive_help_shielded_title),
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.textXl,
             fontWeight = FontWeight.SemiBold,
@@ -51,19 +51,19 @@ fun ShieldedAddressInfoScreen() {
         )
         Spacer(8.dp)
         ZashiBulletText(
-            stringResource(R.string.receive_info_shielded_bullet_2),
+            stringResource(R.string.receive_help_shielded_desc2),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textSm,
         )
         Spacer(8.dp)
         ZashiBulletText(
-            stringResource(R.string.receive_info_shielded_bullet_3),
+            stringResource(R.string.receive_help_shielded_desc3),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textSm,
         )
         Spacer(8.dp)
         ZashiBulletText(
-            stringResource(R.string.receive_info_shielded_bullet_4),
+            stringResource(R.string.receive_help_shielded_desc4),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textSm,
         )

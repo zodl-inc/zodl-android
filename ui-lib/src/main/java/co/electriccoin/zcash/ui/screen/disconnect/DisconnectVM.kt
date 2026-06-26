@@ -49,7 +49,7 @@ class DisconnectVM(
             .withLce(groupLce(initLce, disconnectLce)) {
                 errorStateMapper.mapToState(
                     error = it,
-                    title = stringRes(R.string.disconnect_hardware_wallet_error_title),
+                    title = stringRes(R.string.disconnectHWWallet_failureTitle),
                     message = stringRes(R.string.disconnect_hardware_wallet_error_message),
                     primaryStyle = ButtonStyle.DESTRUCTIVE2,
                 )
@@ -61,22 +61,22 @@ class DisconnectVM(
         isLoading: Boolean,
     ): DisconnectState =
         DisconnectState(
-            header = stringRes(R.string.disconnect_hardware_wallet_header),
-            title = stringRes(R.string.disconnect_hardware_wallet_title),
-            subtitle = stringRes(R.string.disconnect_hardware_wallet_subtitle),
-            warningTitle = stringRes(R.string.disconnect_hardware_wallet_warning_title),
+            header = stringRes(R.string.disconnectHWWallet_title),
+            title = stringRes(R.string.deleteKeystoneTitle),
+            subtitle = stringRes(R.string.deleteKeystoneDesc),
+            warningTitle = stringRes(R.string.disconnectHWWallet_mayInclude),
             warningItems =
                 listOf(
-                    stringRes(R.string.disconnect_hardware_wallet_warning_item_1),
-                    stringRes(R.string.disconnect_hardware_wallet_warning_item_2),
-                    stringRes(R.string.disconnect_hardware_wallet_warning_item_3),
+                    stringRes(R.string.disconnectHWWallet_bullet1),
+                    stringRes(R.string.disconnectHWWallet_bullet2),
+                    stringRes(R.string.disconnectHWWallet_bullet3),
                 ),
-            connectedTitle = stringRes(R.string.disconnect_hardware_wallet_connected_title),
-            connectedStatus = stringRes(R.string.disconnect_hardware_wallet_connected_status),
-            infoText = stringRes(R.string.disconnect_hardware_wallet_info),
+            connectedTitle = stringRes(R.string.keystoneHW),
+            connectedStatus = stringRes(R.string.currentlyConnected),
+            infoText = stringRes(R.string.connectedHWInfo),
             disconnectButton =
                 ButtonState(
-                    text = stringRes(R.string.disconnect_hardware_wallet_button),
+                    text = stringRes(R.string.disconnectHWWallet_title),
                     style = ButtonStyle.DESTRUCTIVE1,
                     isLoading = isLoading,
                     onClick = { onDisconnectClick(keystoneAccount) }
@@ -93,10 +93,10 @@ class DisconnectVM(
 
     private fun createConfirmationState(keystoneAccount: KeystoneAccount): ZashiConfirmationState =
         ZashiConfirmationState.destructive(
-            title = stringRes(R.string.disconnect_hardware_wallet_confirmation_title),
-            message = stringRes(R.string.disconnect_hardware_wallet_confirmation_message),
-            primaryText = stringRes(R.string.disconnect_hardware_wallet_confirmation_confirm),
-            secondaryText = stringRes(R.string.disconnect_hardware_wallet_confirmation_cancel),
+            title = stringRes(R.string.deleteWallet_sheet_title),
+            message = stringRes(R.string.disconnectHWWallet_sheetDesc),
+            primaryText = stringRes(R.string.disconnectHWWallet_title),
+            secondaryText = stringRes(co.electriccoin.zcash.ui.design.R.string.general_cancel),
             onPrimary = { onConfirmDisconnect(keystoneAccount) },
             onBack = ::onCancelConfirmation,
         )

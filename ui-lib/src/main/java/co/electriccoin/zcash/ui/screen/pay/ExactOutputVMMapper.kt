@@ -138,7 +138,7 @@ internal class ExactOutputVMMapper {
     private fun createAmountErrorState(state: ExactOutputInternalState): StringResource? {
         val zatoshi = state.getZatoshi()
         return if (zatoshi != null && state.totalSpendableBalance < zatoshi) {
-            stringRes(R.string.swap_insufficient_funds)
+            stringRes(R.string.send_error_insufficientFunds)
         } else {
             null
         }
@@ -290,15 +290,15 @@ internal class ExactOutputVMMapper {
         return SwapErrorFooterState(
             title =
                 if (isServiceUnavailableError) {
-                    stringRes(co.electriccoin.zcash.ui.design.R.string.general_service_unavailable)
+                    stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_laterTitle)
                 } else {
-                    stringRes(co.electriccoin.zcash.ui.design.R.string.general_unexpected_error)
+                    stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_retryTitle)
                 },
             subtitle =
                 if (isServiceUnavailableError) {
-                    stringRes(co.electriccoin.zcash.ui.design.R.string.general_please_try_again)
+                    stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_laterDesc)
                 } else {
-                    stringRes(co.electriccoin.zcash.ui.design.R.string.general_check_connection)
+                    stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_retryDesc)
                 }
         )
     }
@@ -322,11 +322,11 @@ internal class ExactOutputVMMapper {
             text =
                 when {
                     state.isEphemeralAddressLocked -> {
-                        stringRes(co.electriccoin.zcash.ui.design.R.string.general_processing)
+                        stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_status_processing)
                     }
 
                     state.swapAssets.error != null -> {
-                        stringRes(co.electriccoin.zcash.ui.design.R.string.general_try_again)
+                        stringRes(co.electriccoin.zcash.ui.design.R.string.disconnectHWWallet_tryAgain)
                     }
 
                     state.swapAssets.isLoading && state.swapAssets.data == null -> {
@@ -334,7 +334,7 @@ internal class ExactOutputVMMapper {
                     }
 
                     else -> {
-                        stringRes(co.electriccoin.zcash.ui.design.R.string.general_review)
+                        stringRes(co.electriccoin.zcash.ui.design.R.string.send_review)
                     }
                 },
             style = if (state.swapAssets.error != null) ButtonStyle.DESTRUCTIVE1 else null,

@@ -16,7 +16,7 @@ internal operator fun WalletCoordinator.Companion.invoke(
     WalletCoordinator(
         context = context,
         persistableWallet = persistableWalletProvider.persistableWallet,
-        accountName = context.getString(R.string.zashi_wallet_name),
+        accountName = context.getString(R.string.accounts_zashi),
         keySource = "zashi",
         isTorEnabled = isTorEnabledStorageProvider.observe(),
         isExchangeRateEnabled = isExchangeRateEnabledStorageProvider.observe()

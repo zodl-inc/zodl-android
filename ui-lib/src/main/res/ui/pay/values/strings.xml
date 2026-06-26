@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="pay_info_title">CrossPay with</string>
-    <string name="pay_info_subtitle">Make cross-chain payments in any NEAR-supported coin or token.\n\nIf the actual slippage and network conditions result in your recipient receiving less than the promised amount, your transaction will be reversed. You will receive a full refund minus network fees.</string>
-    <string name="pay_slippage_footer">Any unused portion of the slippage fee will be refunded if the swap executes with lower slippage than expected.</string>
-</resources>

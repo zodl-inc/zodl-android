@@ -31,7 +31,7 @@ fun ZashiTopAppBarBackNavigation(
     enabled: Boolean = true,
 ) = ZashiTopAppBarNavigation(
     modifier = modifier,
-    backContentDescriptionText = stringResource(R.string.back_navigation_content_description),
+    backContentDescriptionText = stringResource(R.string.general_back),
     drawableRes = R.drawable.ic_zashi_navigation_back,
     onBack = onBack,
     enabled = enabled,
@@ -43,7 +43,7 @@ fun ZashiTopAppBarCloseNavigation(
     modifier: Modifier = Modifier
 ) = ZashiTopAppBarNavigation(
     modifier = modifier,
-    backContentDescriptionText = stringResource(R.string.back_navigation_content_description),
+    backContentDescriptionText = stringResource(R.string.general_back),
     drawableRes = R.drawable.ic_navigation_close,
     onBack = onBack,
     tint = ZashiColors.Text.textPrimary
@@ -52,7 +52,7 @@ fun ZashiTopAppBarCloseNavigation(
 @Composable
 fun ZashiTopAppBarHamburgerNavigation(onBack: () -> Unit) =
     ZashiTopAppBarNavigation(
-        backContentDescriptionText = stringResource(R.string.back_navigation_content_description),
+        backContentDescriptionText = stringResource(R.string.general_back),
         drawableRes = R.drawable.ic_navigation_hamburger,
         onBack = onBack,
         tint = ZashiColors.Text.textPrimary

@@ -237,22 +237,22 @@ private fun DisconnectPreview() =
         DisconnectView(
             state =
                 DisconnectState(
-                    header = stringRes(R.string.disconnect_hardware_wallet_header),
-                    title = stringRes(R.string.disconnect_hardware_wallet_title),
-                    subtitle = stringRes(R.string.disconnect_hardware_wallet_subtitle),
-                    warningTitle = stringRes(R.string.disconnect_hardware_wallet_warning_title),
+                    header = stringRes(R.string.disconnectHWWallet_title),
+                    title = stringRes(R.string.deleteKeystoneTitle),
+                    subtitle = stringRes(R.string.deleteKeystoneDesc),
+                    warningTitle = stringRes(R.string.disconnectHWWallet_mayInclude),
                     warningItems =
                         listOf(
-                            stringRes(R.string.disconnect_hardware_wallet_warning_item_1),
-                            stringRes(R.string.disconnect_hardware_wallet_warning_item_2),
-                            stringRes(R.string.disconnect_hardware_wallet_warning_item_3),
+                            stringRes(R.string.disconnectHWWallet_bullet1),
+                            stringRes(R.string.disconnectHWWallet_bullet2),
+                            stringRes(R.string.disconnectHWWallet_bullet3),
                         ),
-                    connectedTitle = stringRes(R.string.disconnect_hardware_wallet_connected_title),
-                    connectedStatus = stringRes(R.string.disconnect_hardware_wallet_connected_status),
-                    infoText = stringRes(R.string.disconnect_hardware_wallet_info),
+                    connectedTitle = stringRes(R.string.keystoneHW),
+                    connectedStatus = stringRes(R.string.currentlyConnected),
+                    infoText = stringRes(R.string.connectedHWInfo),
                     disconnectButton =
                         co.electriccoin.zcash.ui.design.component.ButtonState(
-                            stringRes(R.string.disconnect_hardware_wallet_button),
+                            stringRes(R.string.disconnectHWWallet_title),
                             style = ButtonStyle.DESTRUCTIVE1
                         ) {},
                     confirmationDialog = null,

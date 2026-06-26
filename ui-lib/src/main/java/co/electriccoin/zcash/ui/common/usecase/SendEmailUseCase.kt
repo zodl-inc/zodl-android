@@ -123,7 +123,7 @@ class SendEmailUseCase(
             grpcFailureReportDescription(
                 reason = submitResult.reason,
                 description = submitResult.description,
-                timeoutCopy = { context.getString(R.string.send_confirmation_pending_timeout_subtitle) }
+                timeoutCopy = { context.getString(R.string.send_pendingTimeoutInfo) }
             )
 
         sendSupportEmail(

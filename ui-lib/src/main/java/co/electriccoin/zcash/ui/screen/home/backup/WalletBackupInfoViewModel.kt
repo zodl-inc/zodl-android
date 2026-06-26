@@ -63,7 +63,7 @@ class WalletBackupInfoViewModel(
                     CheckboxState(
                         isChecked = isConsentChecked,
                         onClick = ::onConsentClick,
-                        title = stringRes(R.string.home_info_backup_checkbox)
+                        title = stringRes(R.string.smartBanner_help_backup_acknowledge)
                     ).takeIf { !isConsentSaved },
                 primaryButton =
                     ButtonState(

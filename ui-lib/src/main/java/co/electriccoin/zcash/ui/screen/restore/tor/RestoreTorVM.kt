@@ -38,14 +38,14 @@ class RestoreTorVM(
         RestoreTorState(
             checkbox =
                 CheckboxState(
-                    title = stringRes(R.string.restore_tor_checkbox_title),
-                    subtitle = stringRes(R.string.restore_tor_checkbox_subtitle),
+                    title = stringRes(R.string.torSettingsSheet_title),
+                    subtitle = stringRes(R.string.torSettingsSheet_desc),
                     isChecked = isChecked,
                     onClick = { this.isChecked.update { !it } }
                 ),
             primary =
                 ButtonState(
-                    text = stringRes(R.string.restore_bd_restore_btn),
+                    text = stringRes(R.string.root_existingWallet_restore),
                     isLoading = isLoading,
                     onClick = { onRestoreWalletClick(isChecked) },
                 ),

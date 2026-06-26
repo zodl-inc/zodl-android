@@ -50,7 +50,7 @@ fun TaxExportView(state: TaxExportState) {
 @Composable
 private fun TaxExportAppBar(state: TaxExportState) {
     ZashiSmallTopAppBar(
-        title = stringResource(R.string.tax_export_title),
+        title = stringResource(R.string.taxExport_title),
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = state.onBack)
         },
@@ -64,7 +64,7 @@ private fun Content(
 ) {
     Column(modifier = modifier) {
         Text(
-            text = stringResource(R.string.tax_export_subtitle),
+            text = stringResource(R.string.taxExport_taxFile),
             style = ZashiTypography.header6,
             fontWeight = FontWeight.SemiBold,
             color = ZashiColors.Text.textPrimary
@@ -97,13 +97,13 @@ private fun ExportPrivateDataPreview() =
                     onBack = {},
                     exportButton =
                         ButtonState(
-                            text = stringRes(R.string.tax_export_export_button),
+                            text = stringRes(R.string.taxExport_download),
                             onClick = {}
                         ),
                     text =
                         stringRes(
-                            R.string.tax_export_message,
-                            stringResource(R.string.zashi_wallet_name)
+                            R.string.taxExport_desc,
+                            stringResource(R.string.accounts_zashi)
                         )
                 ),
         )

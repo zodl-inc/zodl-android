@@ -6,12 +6,13 @@ import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.design.R as UIR
 
 fun ZashiConfirmationState.Companion.error(
-    title: StringResource = stringRes(co.electriccoin.zcash.ui.design.R.string.general_error_title),
-    message: StringResource = stringRes(co.electriccoin.zcash.ui.design.R.string.general_please_try_again),
-    primaryText: StringResource = stringRes(co.electriccoin.zcash.ui.design.R.string.general_try_again),
-    secondaryText: StringResource? = stringRes(co.electriccoin.zcash.ui.design.R.string.general_contact_support),
+    title: StringResource = stringRes(UIR.string.coinVote_error_title),
+    message: StringResource = stringRes(UIR.string.swapAndPay_failure_laterDesc),
+    primaryText: StringResource = stringRes(UIR.string.disconnectHWWallet_tryAgain),
+    secondaryText: StringResource? = stringRes(UIR.string.disconnectHWWallet_contactSupport),
     primaryStyle: ButtonStyle = ButtonStyle.TERTIARY,
     secondaryStyle: ButtonStyle = ButtonStyle.PRIMARY,
     onPrimary: () -> Unit,
@@ -45,7 +46,7 @@ fun ZashiConfirmationState.Companion.destructive(
     title: StringResource,
     message: StringResource,
     primaryText: StringResource,
-    secondaryText: StringResource = stringRes(co.electriccoin.zcash.ui.design.R.string.general_cancel),
+    secondaryText: StringResource = stringRes(UIR.string.general_cancel),
     onPrimary: () -> Unit,
     onBack: () -> Unit,
     onSecondary: () -> Unit = onBack,

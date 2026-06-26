@@ -39,18 +39,18 @@ class TaxExportViewModel(
         TaxExportState(
             exportButton =
                 ButtonState(
-                    text = stringRes(R.string.tax_export_export_button),
+                    text = stringRes(R.string.taxExport_download),
                     hapticFeedbackType = HapticFeedbackType.Confirm,
                     onClick = ::onExportClick
                 ),
             onBack = ::onBack,
             text =
                 stringRes(
-                    R.string.tax_export_message,
+                    R.string.taxExport_desc,
                     if (selectedAccount is ZashiAccount) {
-                        stringRes(R.string.zashi_wallet_name)
+                        stringRes(R.string.accounts_zashi)
                     } else {
-                        stringRes(R.string.keystone_wallet_name)
+                        stringRes(R.string.accounts_keystone)
                     }
                 )
         )

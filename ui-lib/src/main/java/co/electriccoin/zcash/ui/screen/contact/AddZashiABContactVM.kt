@@ -44,7 +44,7 @@ class AddZashiABContactVM(
                 } else {
                     when (validateContactAddress(address)) {
                         ContactAddressValidationResult.Invalid -> {
-                            stringRes(R.string.contact_address_error_invalid)
+                            stringRes(R.string.send_error_invalidAddress)
                         }
 
                         ContactAddressValidationResult.NotUnique -> {
@@ -82,11 +82,11 @@ class AddZashiABContactVM(
                 } else {
                     when (validateContactName(name)) {
                         ValidateContactNameResult.TooLong -> {
-                            stringRes(R.string.contact_name_error_too_long)
+                            stringRes(R.string.addressBook_error_nameLength)
                         }
 
                         ValidateContactNameResult.NotUnique -> {
-                            stringRes(R.string.contact_name_error_not_unique)
+                            stringRes(R.string.addressBook_error_nameExists)
                         }
 
                         ValidateContactNameResult.Valid -> {
@@ -114,7 +114,7 @@ class AddZashiABContactVM(
     private val saveButtonState =
         combine(contactAddressState, contactNameState, isSavingContact) { address, name, isSavingContact ->
             ButtonState(
-                text = stringRes(R.string.add_new_contact_primary_btn),
+                text = stringRes(R.string.general_save),
                 isEnabled =
                     address.error == null &&
                         name.error == null &&
@@ -130,7 +130,7 @@ class AddZashiABContactVM(
         combine(contactAddressState, contactNameState, saveButtonState) { address, name, saveButton ->
             ABContactState(
                 info = null,
-                title = stringRes(R.string.add_new_contact_title),
+                title = stringRes(R.string.addressBook_addNewContact),
                 walletAddress = address,
                 contactName = name,
                 chain = null,

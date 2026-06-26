@@ -13,7 +13,7 @@ data class KeepOpenState(
     val isChecked: Boolean,
     val onCheckedChange: (Boolean) -> Unit,
     val button: ButtonState,
-    val title: StringResource = stringRes(R.string.keep_open_title),
+    val title: StringResource = stringRes(R.string.restoreInfo_title),
     val description: StringResource,
     val bullet1: StringResource = stringRes(R.string.keep_open_bullet_1),
     val bullet2: StringResource = stringRes(R.string.keep_open_bullet_2),

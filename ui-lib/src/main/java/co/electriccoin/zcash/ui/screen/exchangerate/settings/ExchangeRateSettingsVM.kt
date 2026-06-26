@@ -82,7 +82,7 @@ internal class ExchangeRateSettingsVM(
             },
         saveButton =
             ButtonState(
-                stringRes(R.string.exchange_rate_opt_in_save),
+                stringRes(R.string.currencyConversion_saveBtn),
                 onClick = ::onOptInExchangeRateUsdClick,
                 isEnabled = isOptedIn != isOptedInOriginal || selectedCurrency != selectedCurrencyOriginal,
                 hapticFeedbackType = HapticFeedbackType.Confirm
@@ -91,8 +91,8 @@ internal class ExchangeRateSettingsVM(
         info =
             when {
                 !VersionInfo.IS_CMC_AVAILABLE -> null
-                isTorEnabled == true -> stringRes(R.string.exchange_rate_tor_enabled_footer)
-                else -> stringRes(R.string.exchange_rate_tor_disabled_footer)
+                isTorEnabled == true -> stringRes(R.string.currencyConversion_torOnInfo)
+                else -> stringRes(R.string.currencyConversion_torOffInfo)
             }
     )
 

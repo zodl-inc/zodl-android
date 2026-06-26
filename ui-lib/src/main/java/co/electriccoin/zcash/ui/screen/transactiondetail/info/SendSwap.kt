@@ -49,7 +49,7 @@ fun SendSwap(state: SendSwapState, modifier: Modifier = Modifier) {
         )
         Spacer(20.dp)
         TransactionDetailRowHeader(
-            title = stringRes(R.string.transaction_detail_info_transaction_details),
+            title = stringRes(R.string.transactionHistory_details),
             isExpanded = isExpanded,
             onButtonClick = { isExpanded = !isExpanded }
         )
@@ -59,7 +59,7 @@ fun SendSwap(state: SendSwapState, modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth(),
                 state =
                     TransactionDetailSwapStatusRowState(
-                        title = stringRes(R.string.transaction_detail_info_transaction_status),
+                        title = stringRes(R.string.swapAndPay_status),
                         status = state.status
                     )
             )
@@ -68,7 +68,7 @@ fun SendSwap(state: SendSwapState, modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth(),
                 state =
                     TransactionDetailInfoRowState(
-                        title = stringRes(R.string.transaction_detail_info_sent_to),
+                        title = stringRes(R.string.transactionHistory_sentTo),
                         message = state.depositAddress,
                         trailingIcon = R.drawable.ic_transaction_detail_info_copy,
                         onClick = state.onDepositAddressClick
@@ -86,7 +86,7 @@ fun SendSwap(state: SendSwapState, modifier: Modifier = Modifier) {
                             modifier = Modifier.fillMaxWidth(),
                             state =
                                 TransactionDetailInfoRowState(
-                                    title = stringRes(R.string.transaction_detail_info_refunded),
+                                    title = stringRes(R.string.swapAndPay_refundedAmount),
                                     message = state.refundedAmount?.withStyle(),
                                 )
                         )
@@ -97,7 +97,7 @@ fun SendSwap(state: SendSwapState, modifier: Modifier = Modifier) {
                             modifier = Modifier.fillMaxWidth(),
                             state =
                                 TransactionDetailInfoRowState(
-                                    title = stringRes(R.string.transaction_detail_info_recipient),
+                                    title = stringRes(R.string.swapAndPay_recipient),
                                     message = state.recipientAddress,
                                     trailingIcon = R.drawable.ic_transaction_detail_info_copy,
                                     onClick = state.onRecipientAddressClick
@@ -109,7 +109,7 @@ fun SendSwap(state: SendSwapState, modifier: Modifier = Modifier) {
                         modifier = Modifier.fillMaxWidth(),
                         state =
                             TransactionDetailInfoRowState(
-                                title = stringRes(R.string.transaction_detail_info_transaction_id),
+                                title = stringRes(R.string.transactionList_transactionId),
                                 message = state.transactionId.withStyle(),
                                 trailingIcon = R.drawable.ic_transaction_detail_info_copy,
                                 onClick = state.onTransactionIdClick
@@ -120,7 +120,7 @@ fun SendSwap(state: SendSwapState, modifier: Modifier = Modifier) {
                         modifier = Modifier.fillMaxWidth(),
                         state =
                             TransactionDetailInfoRowState(
-                                title = stringRes(R.string.transaction_detail_info_total_fees),
+                                title = stringRes(R.string.swapAndPay_totalFees),
                                 message = state.totalFees?.withStyle(),
                             )
                     )
@@ -132,9 +132,9 @@ fun SendSwap(state: SendSwapState, modifier: Modifier = Modifier) {
                                 TransactionDetailInfoRowState(
                                     title =
                                         if (state.isSlippageRealized) {
-                                            stringRes(R.string.transaction_detail_info_realized_slippage)
+                                            stringRes(R.string.swapAndPay_executedSlippage)
                                         } else {
-                                            stringRes(R.string.transaction_detail_info_max_slippage)
+                                            stringRes(R.string.swapAndPay_maxSlippageTitle)
                                         },
                                     message = state.maxSlippage?.withStyle(),
                                 )
@@ -145,7 +145,7 @@ fun SendSwap(state: SendSwapState, modifier: Modifier = Modifier) {
                         modifier = Modifier.fillMaxWidth(),
                         state =
                             TransactionDetailInfoRowState(
-                                title = stringRes(R.string.transaction_detail_info_timestamp),
+                                title = stringRes(R.string.transactionHistory_timestamp),
                                 message = state.completedTimestamp.withStyle(),
                             )
                     )
@@ -157,7 +157,7 @@ fun SendSwap(state: SendSwapState, modifier: Modifier = Modifier) {
                     modifier = Modifier.fillMaxWidth(),
                     state =
                         TransactionDetailInfoColumnState(
-                            title = stringRes(R.string.transaction_detail_info_note),
+                            title = stringRes(R.string.annotation_title),
                             message = state.note,
                             onClick = null
                         )

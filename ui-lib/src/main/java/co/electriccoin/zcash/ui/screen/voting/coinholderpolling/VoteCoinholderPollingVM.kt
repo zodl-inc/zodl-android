@@ -276,7 +276,7 @@ class VoteCoinholderPollingVM(
         }.withLce(pollListLceSource) { error ->
             errorStateMapper.mapToState(
                 error = error,
-                title = stringRes(R.string.vote_error_unable_to_load_polls_title),
+                title = stringRes(R.string.coinVote_pollsList_loadErrorTitle),
                 message = stringRes(R.string.vote_error_unable_to_load_polls_message),
                 primaryStyle = ButtonStyle.PRIMARY
             )
@@ -305,9 +305,13 @@ class VoteCoinholderPollingVM(
         val dateLabel =
             when (status) {
                 VotePollCardStatus.ACTIVE,
-                VotePollCardStatus.VOTED -> stringRes(R.string.vote_poll_card_closes, formatter.format(round.votingEnd))
+                VotePollCardStatus.VOTED -> {
+                    stringRes(R.string.coinVote_pollsList_dateCloses, formatter.format(round.votingEnd))
+                }
 
-                VotePollCardStatus.CLOSED -> stringRes(R.string.vote_poll_card_closed, formatter.format(round.votingEnd))
+                VotePollCardStatus.CLOSED -> {
+                    stringRes(R.string.coinVote_pollsList_dateClosed, formatter.format(round.votingEnd))
+                }
             }
 
         return VotePollCardState(
@@ -327,7 +331,7 @@ class VoteCoinholderPollingVM(
             trustIndicator = trustIndicator,
             votedLabel =
                 if (hasConfirmedVote && total > 0) {
-                    stringRes(R.string.vote_poll_voted_count, count, total)
+                    stringRes(R.string.coinVote_delegationSigning_signedProgress, count, total)
                 } else {
                     null
                 },
@@ -684,11 +688,11 @@ class VoteCoinholderPollingVM(
 
     private fun buildNoRoundsSheet() =
         ZashiConfirmationState.error(
-            title = stringRes(R.string.vote_poll_list_empty_title),
-            message = stringRes(R.string.vote_poll_list_empty_subtitle),
-            primaryText = stringRes(R.string.vote_poll_list_empty_refresh),
+            title = stringRes(R.string.coinVote_pollsList_emptyTitle),
+            message = stringRes(R.string.coinVote_pollsList_emptyMessage),
+            primaryText = stringRes(R.string.coinVote_common_refresh),
             primaryStyle = ButtonStyle.TERTIARY,
-            secondaryText = stringRes(R.string.vote_poll_list_empty_got_it),
+            secondaryText = stringRes(R.string.coinVote_common_gotIt),
             secondaryStyle = ButtonStyle.PRIMARY,
             onPrimary = ::refreshVotingData,
             onSecondary = ::onBack,
@@ -702,13 +706,13 @@ class VoteCoinholderPollingVM(
             message = VotingErrorMapper.toConfigErrorMessage(rawMessage),
             primaryAction =
                 ButtonState(
-                    text = stringRes(R.string.vote_dismiss),
+                    text = stringRes(R.string.coinVote_common_dismiss),
                     style = ButtonStyle.PRIMARY,
                     onClick = ::dismissConfigErrorSheet
                 ),
             secondaryAction =
                 ButtonState(
-                    text = stringRes(R.string.vote_error_go_back),
+                    text = stringRes(R.string.coinVote_common_goBack),
                     style = ButtonStyle.TERTIARY,
                     onClick = ::goBackFromConfigErrorSheet
                 ),
@@ -767,17 +771,17 @@ class VoteCoinholderPollingVM(
     private fun buildUnverifiedPollWarningSheet() =
         ZashiConfirmationState(
             icon = R.drawable.ic_alert_circle,
-            title = stringRes(R.string.vote_unverified_poll_title),
-            message = stringRes(R.string.vote_unverified_poll_message),
+            title = stringRes(R.string.coinVote_votingView_unverifiedPollTitle),
+            message = stringRes(R.string.coinVote_votingView_unverifiedPollMessage),
             primaryAction =
                 ButtonState(
-                    text = stringRes(R.string.vote_error_go_back),
+                    text = stringRes(R.string.coinVote_common_goBack),
                     style = ButtonStyle.PRIMARY,
                     onClick = ::dismissUnverifiedPollWarning
                 ),
             secondaryAction =
                 ButtonState(
-                    text = stringRes(R.string.vote_proceed_anyway),
+                    text = stringRes(R.string.coinVote_pollsList_unverifiedSheetProceed),
                     style = ButtonStyle.SECONDARY,
                     onClick = ::proceedFromUnverifiedPollWarning
                 ),

@@ -221,7 +221,7 @@ class VoteProposalListVM(
         val rawMessage = throwable.message.orEmpty()
         return ZashiConfirmationState(
             icon = R.drawable.ic_reset_zashi_warning,
-            title = stringRes(R.string.vote_error_voting_unavailable_title),
+            title = stringRes(R.string.coinVote_error_configUnavailableTitle),
             message =
                 rawMessage
                     .takeIf { it.isNotBlank() }
@@ -229,7 +229,7 @@ class VoteProposalListVM(
                     ?: stringRes(R.string.vote_error_voting_unavailable_message),
             primaryAction =
                 ButtonState(
-                    text = stringRes(R.string.vote_try_again),
+                    text = stringRes(R.string.coinVote_common_tryAgain),
                     style = ButtonStyle.PRIMARY,
                     onClick = {
                         preparationErrorSheet.value = null
@@ -238,7 +238,7 @@ class VoteProposalListVM(
                 ),
             secondaryAction =
                 ButtonState(
-                    text = stringRes(R.string.vote_error_go_back),
+                    text = stringRes(R.string.coinVote_common_goBack),
                     style = ButtonStyle.TERTIARY,
                     onClick = ::goBackFromPreparationErrorSheet
                 ),
@@ -265,9 +265,9 @@ class VoteProposalListVM(
         snapshotHeight: Long,
     ): ZashiConfirmationState =
         ZashiConfirmationState.error(
-            title = stringRes(R.string.vote_ineligible_title),
+            title = stringRes(R.string.coinVote_ineligible_titleNoVote),
             message = buildIneligibleMessage(preparation, snapshotHeight),
-            primaryText = stringRes(R.string.vote_poll_list_empty_got_it),
+            primaryText = stringRes(R.string.coinVote_common_gotIt),
             primaryStyle = ButtonStyle.PRIMARY,
             onPrimary = ::dismissIneligibleErrorSheet,
             onBack = ::dismissIneligibleErrorSheet,
@@ -280,9 +280,9 @@ class VoteProposalListVM(
 
     private fun buildWalletSyncingSheet(): ZashiConfirmationState =
         ZashiConfirmationState.error(
-            title = stringRes(R.string.vote_wallet_syncing_sheet_title),
-            message = stringRes(R.string.vote_wallet_syncing_sheet_message),
-            primaryText = stringRes(R.string.vote_poll_list_empty_got_it),
+            title = stringRes(R.string.coinVote_walletSyncing_title),
+            message = stringRes(R.string.coinVote_walletSyncing_subtitle),
+            primaryText = stringRes(R.string.coinVote_common_gotIt),
             primaryStyle = ButtonStyle.PRIMARY,
             onPrimary = ::dismissWalletSyncingSheet,
             onBack = ::dismissWalletSyncingSheet,
@@ -299,7 +299,7 @@ class VoteProposalListVM(
         return when (preparation.reason) {
             ModelVoteIneligibilityReason.NO_NOTES -> {
                 if (snapshotLabel == null) {
-                    stringRes(R.string.vote_ineligible_no_notes)
+                    stringRes(R.string.coinVote_ineligible_noNotesMessage)
                 } else {
                     stringRes(R.string.vote_ineligible_no_notes_at_snapshot, snapshotLabel)
                 }
@@ -419,7 +419,7 @@ class VoteProposalListVM(
                 return null
             }
             return ButtonState(
-                text = stringRes(R.string.vote_proposal_list_confirm_submit),
+                text = stringRes(R.string.coinVote_proposalList_ctaConfirmSubmit),
                 style = ButtonStyle.PRIMARY,
                 onClick = {
                     navigationRouter.forward(
@@ -438,7 +438,7 @@ class VoteProposalListVM(
         return when {
             draftCount == 0 -> {
                 ButtonState(
-                    text = stringRes(R.string.vote_proposal_list_start_voting),
+                    text = stringRes(R.string.coinVote_proposalList_ctaStartVoting),
                     style = ButtonStyle.PRIMARY,
                     onClick = { onProposalTapped(roundId, proposals.first().id) }
                 )
@@ -446,7 +446,7 @@ class VoteProposalListVM(
 
             draftCount < proposals.size -> {
                 ButtonState(
-                    text = stringRes(R.string.vote_proposal_list_continue_voting),
+                    text = stringRes(R.string.coinVote_proposalList_ctaContinueVoting),
                     style = ButtonStyle.PRIMARY,
                     onClick = { firstUnanswered?.let { onProposalTapped(roundId, it.id) } }
                 )
@@ -454,7 +454,7 @@ class VoteProposalListVM(
 
             else -> {
                 ButtonState(
-                    text = stringRes(R.string.vote_proposal_list_review_submit),
+                    text = stringRes(R.string.coinVote_proposalList_reviewTitle),
                     style = ButtonStyle.PRIMARY,
                     onClick = {
                         navigationRouter.forward(
@@ -474,10 +474,10 @@ class VoteProposalListVM(
         recovery: VotingRecoverySnapshot?
     ): VoteProposalMetaLineState {
         val formatter = DateTimeFormatter.ofPattern("MMM d, yyyy").withZone(ZoneId.systemDefault())
-        val dateLabel = stringRes(R.string.vote_proposal_list_ends, formatter.format(round.votingEnd))
+        val dateLabel = stringRes(R.string.coinVote_proposalList_headerEndsAt, formatter.format(round.votingEnd))
         val votingPowerLabel =
             recovery?.eligibleWeight?.let { weight ->
-                stringRes(R.string.vote_proposal_list_voting_power, weight.toVotingWeightLabel())
+                stringRes(R.string.coinVote_proposalList_votingPower, weight.toVotingWeightLabel())
             }
 
         return VoteProposalMetaLineState(
@@ -494,13 +494,14 @@ class VoteProposalListVM(
         val votedAt = recovery?.submittedAtEpochSeconds?.let(Instant::ofEpochSecond)
         val votedLabel =
             votedAt?.let { instant ->
-                stringRes(R.string.vote_proposal_list_voted, formatter.format(instant))
+                stringRes(R.string.coinVote_common_votedDate, formatter.format(instant))
             }
         val votingPowerLabel =
             recovery?.eligibleWeight?.let { weight ->
-                stringRes(R.string.vote_proposal_list_voting_power, weight.toVotingWeightLabel())
+                stringRes(R.string.coinVote_proposalList_votingPower, weight.toVotingWeightLabel())
             }
-        val dateLabel = votedLabel ?: stringRes(R.string.vote_proposal_list_ends, formatter.format(round.votingEnd))
+        val dateLabel =
+            votedLabel ?: stringRes(R.string.coinVote_proposalList_headerEndsAt, formatter.format(round.votingEnd))
 
         return VoteProposalMetaLineState(
             leading = combineMetaLine(dateLabel, votingPowerLabel),

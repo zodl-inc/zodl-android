@@ -138,7 +138,7 @@ private fun ConnectionModeSection(state: ServerConnectionModeState) {
         Column(
             modifier = Modifier.padding(horizontal = 24.dp)
         ) {
-            ServerHeader(text = stringRes(R.string.choose_server_connection_mode))
+            ServerHeader(text = stringRes(R.string.serverSetup_connectionMode))
             Spacer(modifier = Modifier.height(8.dp))
         }
 
@@ -301,7 +301,7 @@ private fun ChooseServerTopAppBar(
     onBack: () -> Unit
 ) {
     ZashiSmallTopAppBar(
-        title = stringResource(id = R.string.choose_server_title),
+        title = stringResource(id = R.string.serverSetup_title),
         modifier = Modifier.testTag(CHOOSE_SERVER_TOP_APP_BAR),
         showTitleLogo = true,
         navigationAction = {
@@ -526,7 +526,7 @@ private fun CustomServerRadioButton(
             ZashiEndpointTextField(
                 state = state.newServerTextFieldState,
                 placeholder = {
-                    Text(text = stringResource(R.string.choose_server_textfield_hint))
+                    Text(text = stringResource(R.string.serverSetup_placeholder))
                 },
                 keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus(true) }),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),

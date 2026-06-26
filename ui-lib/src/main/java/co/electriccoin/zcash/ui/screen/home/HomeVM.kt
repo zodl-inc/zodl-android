@@ -261,25 +261,25 @@ class HomeVM(
         HomeState(
             firstButton =
                 BigIconButtonState(
-                    text = stringRes(R.string.home_button_receive),
+                    text = stringRes(R.string.tabs_receive),
                     icon = R.drawable.ic_home_receive,
                     onClick = ::onReceiveButtonClick,
                 ),
             secondButton =
                 BigIconButtonState(
-                    text = stringRes(R.string.home_button_send),
+                    text = stringRes(R.string.tabs_send),
                     icon = R.drawable.ic_home_send,
                     onClick = ::onSendButtonClick,
                 ),
             thirdButton =
                 BigIconButtonState(
-                    text = stringRes(R.string.home_button_pay),
+                    text = stringRes(R.string.crosspay_pay),
                     icon = R.drawable.ic_home_pay,
                     onClick = ::onPayButtonClick,
                 ),
             fourthButton =
                 BigIconButtonState(
-                    text = stringRes(R.string.home_button_swap),
+                    text = stringRes(R.string.swapAndPay_swap),
                     icon = R.drawable.ic_home_swap,
                     onClick = ::onSwapButtonClick,
                 ),

@@ -96,7 +96,7 @@ class VoteResultsVM(
         }.withLce(groupLce(resultsLce)) { error ->
             errorStateMapper.mapToState(
                 error = error,
-                title = stringRes(R.string.vote_error_results_unavailable_title),
+                title = stringRes(R.string.coinVote_results_loadErrorTitle),
                 message = stringRes(R.string.vote_error_results_unavailable_message),
                 primaryStyle = ButtonStyle.PRIMARY,
             )
@@ -120,7 +120,7 @@ class VoteResultsVM(
             isLoadingResults = false,
             doneButton =
                 ButtonState(
-                    text = stringRes(R.string.vote_done),
+                    text = stringRes(R.string.coinVote_common_done),
                     style = ButtonStyle.PRIMARY,
                     onClick = ::onDone,
                 ),
@@ -167,7 +167,7 @@ class VoteResultsVM(
 
                 VoteOptionResultState(
                     label = stringRes(option.label),
-                    amountZec = stringRes(R.string.vote_results_amount_zec, weight.toZec()),
+                    amountZec = stringRes(R.string.coinVote_common_zecValue, weight.toZec()),
                     fraction = if (hasVotes) weight / displayWeight else 0f,
                     isWinner = hasVotes && !hasTie && weight == maxWeight,
                     color = option.displayColor(),
@@ -179,7 +179,7 @@ class VoteResultsVM(
             title = stringRes(proposal.title),
             description = stringRes(proposal.description),
             options = options,
-            totalZec = stringRes(R.string.vote_results_total_zec, totalWeight.toZec()),
+            totalZec = stringRes(R.string.coinVote_results_total, totalWeight.toZec()),
             votedLabel = proposal.votedResultLabel(recovery),
         )
     }
@@ -193,11 +193,11 @@ class VoteResultsVM(
             }
         val votingPowerLabel =
             recovery?.eligibleWeight?.let { weight ->
-                stringRes(R.string.vote_results_voting_power, weight.toZec())
+                stringRes(R.string.coinVote_common_votingPower, weight.toZec())
             }
         return when {
             votedLabel != null && votingPowerLabel != null -> {
-                stringRes(R.string.vote_results_meta_line, votedLabel, votingPowerLabel)
+                stringRes(R.string.coinVote_results_metaLine, votedLabel, votingPowerLabel)
             }
 
             votedLabel != null -> {
@@ -220,5 +220,5 @@ private fun Long.toZec(): Double = this / 100_000_000.0
 internal fun Proposal.votedResultLabel(recovery: VotingRecoverySnapshot?): StringResource? {
     val votedOptionId = recovery?.effectiveChoices(listOf(this))?.get(id) ?: return null
     val badgeInfo = voteBadgeInfo(votedOptionId)
-    return stringRes(R.string.vote_results_voted_option, badgeInfo.label)
+    return stringRes(R.string.coinVote_results_votedLine, badgeInfo.label)
 }

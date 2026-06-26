@@ -37,16 +37,16 @@ fun WalletRestoringMessage(
         },
         title = {
             Text(
-                text = stringResource(R.string.home_message_restoring_title, state.progress),
+                text = stringResource(R.string.smartBanner_content_restore_title, state.progress),
             )
         },
         subtitle = {
             Text(
                 text =
                     if (state.isSpendable) {
-                        stringResource(R.string.home_message_restoring_subtitle_spendable)
+                        stringResource(R.string.smartBanner_content_restore_infoSpendable)
                     } else {
-                        stringResource(R.string.home_message_restoring_subtitle)
+                        stringResource(R.string.smartBanner_content_restore_info)
                     },
             )
         },

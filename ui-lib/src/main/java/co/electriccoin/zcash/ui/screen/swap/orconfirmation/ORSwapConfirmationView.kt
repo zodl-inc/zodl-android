@@ -188,7 +188,7 @@ private fun Header(state: ORSwapConfirmationState) {
             verticalAlignment = CenterVertically
         ) {
             Text(
-                text = stringResource(co.electriccoin.zcash.ui.R.string.swap_confirmation_subtitle),
+                text = stringResource(co.electriccoin.zcash.ui.R.string.swapToZec_deposit),
                 style = ZashiTypography.textMd,
                 fontWeight = FontWeight.Medium,
                 color = ZashiColors.Text.textPrimary
@@ -271,7 +271,7 @@ private fun TopAppBar(state: ORSwapConfirmationState) {
                 horizontalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = stringResource(co.electriccoin.zcash.ui.R.string.swap_confirmation_title).uppercase(),
+                    text = stringResource(co.electriccoin.zcash.ui.R.string.swapAndPay_swap).uppercase(),
                     style = ZashiTypography.textMd,
                     fontWeight = FontWeight.SemiBold,
                     color = ZashiColors.Text.textPrimary
@@ -317,7 +317,7 @@ private fun Preview() =
                         styledStringResource(
                             resource = co.electriccoin.zcash.ui.R.string.swap_to_zec_footer,
                             styledStringResource(
-                                resource = co.electriccoin.zcash.ui.R.string.swap_to_zec_footer_bold,
+                                resource = co.electriccoin.zcash.ui.R.string.swapToZec_info2,
                                 StyledStringStyle(
                                     color = StringResourceColor.PRIMARY,
                                     fontWeight = FontWeight.Bold,

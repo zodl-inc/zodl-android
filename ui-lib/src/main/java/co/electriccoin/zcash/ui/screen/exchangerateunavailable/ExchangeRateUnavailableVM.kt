@@ -29,21 +29,21 @@ class ExchangeRateUnavailableVM(
 
     private fun createState() =
         ExchangeRateUnavailableState(
-            title = stringRes(R.string.exchange_rate_unavailable_sheet_title, expectedCurrency.code),
+            title = stringRes(R.string.send_currencyUnavailable_title, expectedCurrency.code),
             subtitle =
                 stringRes(
-                    R.string.exchange_rate_unavailable_sheet_subtitle,
+                    R.string.send_currencyUnavailable_desc,
                     stringResByFiatDisplayName(expectedCurrency)
                 ),
             switchToUsdButton =
                 ButtonState(
-                    text = stringRes(R.string.exchange_rate_unavailable_sheet_switch_usd),
+                    text = stringRes(R.string.send_currencyUnavailable_switchToUSD),
                     style = ButtonStyle.PRIMARY,
                     onClick = ::onSwitchToUsd
                 ),
             continueInZecButton =
                 ButtonState(
-                    text = stringRes(R.string.exchange_rate_unavailable_sheet_continue_zec),
+                    text = stringRes(R.string.send_currencyUnavailable_continueInZEC),
                     style = ButtonStyle.SECONDARY,
                     onClick = ::onContinueInZec
                 ),

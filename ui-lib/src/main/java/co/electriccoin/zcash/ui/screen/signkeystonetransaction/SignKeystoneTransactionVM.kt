@@ -51,12 +51,12 @@ class SignKeystoneTransactionVM(
                         onBack = ::onCloseBottomSheetClick,
                         positiveButton =
                             ButtonState(
-                                text = stringRes(R.string.sign_keystone_transaction_bottom_sheet_go_back),
+                                text = stringRes(R.string.keystoneTransactionReject_goBack),
                                 onClick = ::onCloseBottomSheetClick
                             ),
                         negativeButton =
                             ButtonState(
-                                text = stringRes(R.string.sign_keystone_transaction_bottom_sheet_reject),
+                                text = stringRes(R.string.keystoneTransactionReject_rejectSig),
                                 onClick = ::onRejectBottomSheetClick
                             ),
                     )
@@ -76,9 +76,9 @@ class SignKeystoneTransactionVM(
             currentQrPart
         ) { proposal, wallet, qrData ->
             SignKeystoneTransactionState(
-                barTitle = stringRes(R.string.sign_keystone_transaction_bar_title),
-                title = stringRes(R.string.sign_keystone_transaction_title),
-                subtitle = stringRes(R.string.sign_keystone_transaction_subtitle),
+                barTitle = stringRes(R.string.keystone_signWith_signTransaction),
+                title = stringRes(R.string.keystone_signWith_title),
+                subtitle = stringRes(R.string.keystone_signWith_desc),
                 accountInfo =
                     ZashiAccountInfoListItemState(
                         icon = R.drawable.ic_settings_info,
@@ -90,17 +90,17 @@ class SignKeystoneTransactionVM(
                                 stringRes("${wallet.unified.address.address.take(ADDRESS_MAX_LENGTH)}...")
                             }
                     ),
-                badgeText = stringRes(R.string.sign_keystone_transaction_badge),
+                badgeText = stringRes(R.string.keystone_signWith_hardware),
                 generateNextQrCode = { currentQrPart.update { encoder?.nextPart() } },
                 qrData = qrData,
                 positiveButton =
                     ButtonState(
-                        text = stringRes(R.string.sign_keystone_transaction_positive),
+                        text = stringRes(R.string.keystone_signWith_getSignature),
                         onClick = ::onSignTransactionClick
                     ),
                 negativeButton =
                     ButtonState(
-                        text = stringRes(R.string.sign_keystone_transaction_negative),
+                        text = stringRes(R.string.keystone_signWith_reject),
                         onClick = ::onRejectClick
                     ),
                 secondaryButton =

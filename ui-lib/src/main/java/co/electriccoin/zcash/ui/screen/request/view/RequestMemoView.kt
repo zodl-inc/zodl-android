@@ -72,7 +72,7 @@ internal fun RequestMemoView(
         Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingLarge))
 
         ZashiBadge(
-            text = stringResource(id = R.string.request_privacy_level_shielded),
+            text = stringResource(id = R.string.component_maxPrivacy),
             leadingIconVector = painterResource(id = R.drawable.ic_solid_check),
             colors =
                 ZashiBadgeColors(
@@ -85,7 +85,7 @@ internal fun RequestMemoView(
         Spacer(modifier = Modifier.height(ZcashTheme.dimens.spacingDefault))
 
         Text(
-            text = stringResource(id = R.string.request_memo_payment_request_subtitle),
+            text = stringResource(id = R.string.send_requestPayment_title),
             style = ZashiTypography.textLg,
             fontWeight = FontWeight.Medium,
             color = ZashiColors.Text.textTertiary
@@ -167,7 +167,7 @@ private fun RequestMemoTextField(
                 ),
             placeholder = {
                 Text(
-                    text = stringResource(id = R.string.request_memo_text_field_hint),
+                    text = stringResource(id = R.string.requestZec_whatFor),
                     style = ZashiTypography.textMd,
                     color = ZashiColors.Inputs.Default.text
                 )

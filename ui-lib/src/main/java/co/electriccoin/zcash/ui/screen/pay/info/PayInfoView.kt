@@ -40,7 +40,7 @@ fun PayInfoView(state: PayInfoState) {
             horizontalArrangement = Arrangement.Start,
         ) {
             Text(
-                text = stringResource(R.string.pay_info_title),
+                text = stringResource(R.string.crosspay_help_payWith),
                 style = ZashiTypography.textXl,
                 fontWeight = FontWeight.SemiBold,
                 color = ZashiColors.Text.textPrimary,

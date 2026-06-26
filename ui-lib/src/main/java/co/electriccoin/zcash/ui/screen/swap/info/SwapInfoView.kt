@@ -42,7 +42,7 @@ fun SwapInfoView(state: SwapInfoState) {
             horizontalArrangement = Arrangement.Start,
         ) {
             Text(
-                text = stringResource(R.string.swap_info_title),
+                text = stringResource(R.string.swapAndPay_help_swapWith),
                 style = ZashiTypography.textXl,
                 fontWeight = FontWeight.SemiBold,
                 color = ZashiColors.Text.textPrimary,

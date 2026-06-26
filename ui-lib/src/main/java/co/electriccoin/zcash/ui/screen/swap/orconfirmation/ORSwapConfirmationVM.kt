@@ -73,13 +73,13 @@ class ORSwapConfirmationVM(
                     address = stringResByAddress(quote.depositAddress.address),
                     copyButton =
                         BigIconButtonState(
-                            text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_copy),
+                            text = stringRes(co.electriccoin.zcash.ui.design.R.string.receive_copy),
                             icon = R.drawable.ic_copy,
                             onClick = { onCopyAddressClick(quote.depositAddress.address) }
                         ),
                     shareButton =
                         BigIconButtonState(
-                            text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_share_qr),
+                            text = stringRes(co.electriccoin.zcash.ui.design.R.string.swapToZec_shareQR),
                             icon = R.drawable.ic_qr_code_other,
                             onClick = {
                                 onShareClick(
@@ -94,7 +94,7 @@ class ORSwapConfirmationVM(
                         styledStringResource(
                             R.string.swap_to_zec_footer,
                             styledStringResource(
-                                resource = R.string.swap_to_zec_footer_bold,
+                                resource = R.string.swapToZec_info2,
                                 fontWeight = FontWeight.Bold,
                                 quote.originAsset.tokenTicker,
                                 quote.originAsset.chainName
@@ -102,7 +102,7 @@ class ORSwapConfirmationVM(
                         ),
                     primaryButton =
                         ButtonState(
-                            text = stringRes(R.string.swap_confirmation_primary_button),
+                            text = stringRes(R.string.swapToZec_sentTheFunds),
                             hapticFeedbackType = HapticFeedbackType.Confirm,
                             onClick = ::onSentFundsClick
                         ),
@@ -126,16 +126,16 @@ class ORSwapConfirmationVM(
         } else {
             _dialogState.value =
                 ErrorState(
-                    title = stringRes(R.string.swap_confirmation_dialog_title),
-                    message = stringRes(R.string.swap_confirmation_dialog_message),
+                    title = stringRes(R.string.depositFunds_alert_title),
+                    message = stringRes(R.string.depositFunds_alert_message),
                     positive =
                         ButtonState(
-                            text = stringRes(R.string.swap_confirmation_primary_button),
+                            text = stringRes(R.string.swapToZec_sentTheFunds),
                             onClick = ::onSentFundsClick
                         ),
                     negative =
                         ButtonState(
-                            text = stringRes(R.string.swap_quote_cancel_swap),
+                            text = stringRes(R.string.swapAndPay_cancelSwap),
                             onClick = ::onCancelSwapClick
                         ),
                     onBack = { _dialogState.value = null }

@@ -34,14 +34,14 @@ fun AndroidWalletDisconnectedInfo() {
         Image(painterResource(R.drawable.ic_info_wallet_disconnected), contentDescription = null)
         Spacer(12.dp)
         Text(
-            text = stringResource(R.string.home_info_disconnected_title),
+            text = stringResource(R.string.smartBanner_content_disconnected_title),
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.textXl,
             fontWeight = FontWeight.SemiBold,
         )
         Spacer(12.dp)
         Text(
-            text = stringResource(R.string.home_info_disconnected_subtitle),
+            text = stringResource(R.string.smartBanner_help_diconnected_info),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textMd,
         )

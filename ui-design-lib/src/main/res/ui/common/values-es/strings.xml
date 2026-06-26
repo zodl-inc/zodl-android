@@ -1,43 +1,948 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
     <string name="amount_with_fiat_currency_symbol" formatted="true"><xliff:g example="$" id="fiat_currency_symbol">%1$s</xliff:g><xliff:g example="123" id="amount">%2$s</xliff:g></string>
-    <string name="hide_balance_placeholder">-----</string>
-    <string name="back_navigation_content_description">Atrás</string>
+    <string name="general_hideBalancesMost">-----</string>
     <string name="triple_dots">…</string>
     <string name="seed_recovery_reveal">Mostrar frase de recuperación</string>
     <string name="general_masked_seed_word">•••••</string>
     <string name="general_hidden_seed_word">Palabra oculta de la frase de recuperación</string>
 
-    <string name="general_service_unavailable">El servicio no está disponible</string>
-    <string name="general_unexpected_error">Error inesperado</string>
-    <string name="general_please_try_again">Por favor, inténtalo más tarde.</string>
-    <string name="general_check_connection">Verifica tu conexión e inténtalo de nuevo.</string>
-    <string name="general_error_title">Algo salió mal</string>
-    <string name="general_error_message">No pudimos cargar los activos. Verifica tu conexión e inténtalo de nuevo.</string>
-    <string name="general_try_again">Intentar de nuevo</string>
-    <string name="general_contact_support">Contactar Soporte</string>
+    <string name="swapAndPay_failure_laterTitle">El servicio no está disponible</string>
+    <string name="swapAndPay_failure_retryTitle">Error inesperado</string>
+    <string name="swapAndPay_failure_laterDesc">Por favor, inténtalo más tarde.</string>
+    <string name="swapAndPay_failure_retryDesc">Verifica tu conexión e inténtalo de nuevo.</string>
+    <string name="coinVote_error_title">Algo salió mal</string>
+    <string name="swapAndPay_failure_wrongDesc">No pudimos cargar los activos. Verifica tu conexión e inténtalo de nuevo.</string>
+    <string name="disconnectHWWallet_tryAgain">Intentar de nuevo</string>
     <string name="general_show">Mostrar</string>
     <string name="general_hide">Ocultar</string>
     <string name="general_more">Más</string>
     <string name="general_less">Menos</string>
     <string name="general_loading">Cargando</string>
-    <string name="general_review">Revisar</string>
     <string name="general_ok">OK</string>
-    <string name="general_got_it">¡Entendido!</string>
-    <string name="general_report">Reportar</string>
+    <string name="restoreInfo_gotIt">¡Entendido!</string>
+    <string name="send_report">Reportar</string>
     <string name="general_zec">%1$s %2$s</string>
-    <string name="general_dismiss">Cerrar</string>
+    <string name="balances_dismiss">Cerrar</string>
     <string name="general_select">Seleccionar…</string>
     <string name="general_confirm">Confirmar</string>
-    <string name="general_address">Dirección</string>
-    <string name="general_processing">Procesando</string>
+    <string name="swapAndPay_address">Dirección</string>
+    <string name="swapAndPay_status_processing">Procesando</string>
     <string name="general_enter_address">Ingresa la dirección…</string>
     <string name="general_enter_address_partial">Dirección %s…</string>
-    <string name="general_copy">Copiar</string>
-    <string name="general_share_qr">Compartir QR</string>
+    <string name="swapToZec_shareQR">Compartir QR</string>
     <string name="general_cancel">Cancelar</string>
-    <string name="general_on">en</string>
+    <string name="tokenOnChain">en</string>
     <string name="general_warning">Advertencia:&#160;</string>
 
     <string name="common_empty_screen_title">Sin resultados</string>
     <string name="common_empty_screen_subtitle">Lo intentamos, pero no pudimos encontrar nada.</string>
+
+
+    <!-- ===== common ===== -->
+    <string name="general_back">Atrás</string>
+    <string name="general_close">Cerrar</string>
+    <string name="tooltip_close_content_description">Cerrar tooltip</string>
+    <string name="fiat_currency_conversion_rate_unavailable">No disponible</string>
+    <string name="empty_char">-</string>
+    <string name="zcash_logo_content_description">Logo de Zcash</string>
+    <string name="balance_widget_available">Saldo disponible:</string>
+    <string name="hide_balances_content_description">Ocultar saldos</string>
+    <string name="unable_to_open_email">No se pudo abrir la app de correo.</string>
+    <string name="restoring_wallet_label">[Restaurando tu billetera…]</string>
+    <string name="walletStatus_restoringWallet">Restaurando tu billetera…</string>
+    <string name="disconnected_label">[Sin conexión…]</string>
+    <string name="walletStatus_disconnected">Sin conexión…</string>
+    <string name="unable_to_open_play_store">No se pudo abrir la app de Google Play Store…</string>
+    <string name="general_copied_to_clipboard">Copiado al portapapeles</string>
+    <string name="general_etc">…</string>
+    <string name="recoveryPhraseDisplay_button_remindMeLater">Recordármelo más tarde</string>
+    <string name="general_remind_me_in">Recordármelo en %s</string>
+    <string name="general_remind_me_in_two_days">dos días</string>
+    <string name="general_remind_me_in_two_weeks">dos semanas</string>
+    <string name="general_remind_me_in_two_months">dos meses</string>
+    <string name="restoreWallet_birthday_title">Altura de Bloque</string>
+    <string name="restoreWallet_birthday_placeholder">Ingresa un número</string>
+    <string name="restoreWallet_birthday_fieldInfo">La Altura de Cumpleaños de la Billetera es el momento en que se creó tu billetera.</string>
+    <string name="keystone_addHWWallet_enterManually">Ingresar altura de bloque</string>
+    <string name="walletBirthdayHeightSubtitle">Ingresar la Altura de Cumpleaños de tu billetera nos permite mostrar correctamente todos tus fondos e historial de transacciones.</string>
+    <string name="restoreWallet_birthday_estimateDate_title">Primera Transacción de Billetera</string>
+    <string name="restoreWallet_birthday_estimated_title">Altura de Bloque Estimada</string>
+
+    <!-- ===== about ===== -->
+    <string name="about_title">Acerca de</string>
+    <string name="about_subtitle">Presentando Zodl</string>
+    <string name="about_overflow_menu_content_description">Más opciones</string>
+    <string name="whatsNew_version" formatted="true">VersiÃ³n de Zodl <xliff:g example="1" id="version">%s</xliff:g></string>
+    <string name="about_debug_menu_app_name">Nombre de la app:<xliff:g example="Zodl" id="app_name">%1$s</xliff:g></string>
+    <string name="about_debug_menu_build">CompilaciÃ³n: <xliff:g example="635dac0eb9ddc2bc6da5177f0dd495d8b76af4dc" id="git_commit_hash">%1$s</xliff:g></string>
+    <string name="about_description">Zodl es una wallet mÃ³vil impulsada por Zcash, creada para pagos privados imparables.
+        EstÃ¡ optimizada para almacenar y usar en el mundo real $ZEC protegido: la criptomoneda verdaderamente privada.\n\nDesarrollada por el equipo que estableciÃ³ el estÃ¡ndar de la industria en privacidad en cadena (on-chain), los desarrolladores originales del protocolo Zcash.
+    </string>
+    <string name="about_termsOfUse">TÃ©rminos del Servicio</string>
+    <string name="about_unable_to_web_browser">No se pudo encontrar una aplicaciÃ³n de navegador web.</string>
+    <string name="about_privacyPolicy">PolÃ­tica de privacidad</string>
+
+    <!-- ===== account_list ===== -->
+    <string name="keystone_drawer_title">Billeteras y Dispositivos</string>
+    <string name="keystone_drawer_banner_title">Billetera de Hardware Keystone</string>
+    <string name="keystone_drawer_banner_desc">Obtén un 5%% de descuento en la billetera de hardware
+        aislada. Código promocional “Zashi”.</string>
+    <string name="keystone_connect">Conectar Billetera de Hardware</string>
+
+    <!-- ===== add_contact ===== -->
+    <string name="addressBook_addNewContact">Agregar nuevo contacto</string>
+    <string name="general_save">Guardar</string>
+
+    <!-- ===== address_book ===== -->
+    <string name="addressBook_title">Libreta de Direcciones</string>
+    <string name="addressBook_empty">Tu libreta de direcciones está vacía</string>
+    <string name="address_book_version">Versión <xliff:g example="1" id="version">%s</xliff:g></string>
+    <string name="addressBook_scanAddress">Escanear código QR</string>
+    <string name="addressBook_manualEntry">Entrada manual</string>
+    <string name="accounts_addressBook_your">Tus Wallets</string>
+    <string name="accounts_addressBook_contacts">Contactos de la Libreta de Direcciones</string>
+    <string name="addressBook_selectRecipient">Seleccionar destinatario</string>
+
+    <!-- ===== advanced_settings ===== -->
+    <string name="settings_advanced">Configuración avanzada</string>
+    <string name="settings_recoveryPhrase">Frase de recuperación de Zodl</string>
+    <string name="settings_exportPrivateData">Exportar datos privados</string>
+    <string name="settings_chooseServer">Elegir un servidor</string>
+    <string name="settings_private">Protección con Tor</string>
+    <string name="currencyConversion_title">Conversión de Moneda</string>
+    <string name="advanced_settings_crash_reporting">Reporte de fallos</string>
+    <string name="settings_deleteZashiWarning">Se te pedirá confirmación en la siguiente pantalla</string>
+    <string name="settings_deleteZashi">Restablecer Zodl</string>
+    <string name="taxExport_taxFile">Exportar archivo fiscal</string>
+    <string name="resyncWallet_title">Resincronizar Billetera</string>
+    <string name="disconnectHWWallet_cta">Desconectar Hardware</string>
+    <string name="disconnect_hardware_wallet_biometric_message">Confirma para desconectar tu hardware wallet</string>
+    <string name="deleteKeystoneTitle">Desconectar Keystone</string>
+    <string name="deleteKeystoneDesc">Desconectar tu hardware wallet eliminará permanentemente algunos datos locales que no pueden recuperarse de la blockchain.</string>
+    <string name="disconnectHWWallet_mayInclude">Esto puede incluir:</string>
+    <string name="disconnectHWWallet_bullet1">Envíos fallidos o vencidos</string>
+    <string name="disconnectHWWallet_bullet2">Transacciones en el mempool que nunca se confirmaron</string>
+    <string name="disconnectHWWallet_bullet3">Transacciones revertidas posteriormente en una reorganización de cadena</string>
+    <string name="keystoneHW">Hardware Keystone</string>
+    <string name="currentlyConnected">Conectado actualmente</string>
+    <string name="connectedHWInfo">Si desconectas ahora, tu Keystone dejará de estar vinculado con tu billetera Zodl.</string>
+    <string name="disconnectHWWallet_title">Desconectar</string>
+    <string name="disconnectHWWallet_sheetDesc">Desconectar el hardware wallet no se puede deshacer.</string>
+    <string name="disconnectHWWallet_failureTitle">Error al Desconectar</string>
+    <string name="disconnect_hardware_wallet_error_message">No se pudo finalizar la desconexión del hardware wallet. Por favor, inténtalo de nuevo o informa del problema.</string>
+
+    <!-- ===== authentication ===== -->
+    <string name="authentication_system_ui_title">
+        Autenticación para <xliff:g id="app_name" example="Zodl">%1$s</xliff:g>
+    </string>
+    <string name="authentication_system_ui_subtitle">
+        Usa biometría o credenciales del dispositivo para acceder a <xliff:g id="use_case" example="Frase de Recuperación">%1$s</xliff:g>.
+    </string>
+    <string name="authentication_use_case_delete_wallet">Función de Eliminar Billetera</string>
+    <string name="authentication_use_case_export_data">Función de Exportar Datos Privados</string>
+    <string name="authentication_use_case_seed_recovery">Función de Recuperación de Frase Semilla</string>
+    <string name="authentication_use_case_send_funds">Función de Enviar Fondos</string>
+    <string name="authentication_use_case_vote_submission">Envío de voto</string>
+    <string name="authentication_use_case_adress_book">Función de Libreta de Direcciones</string>
+    <string name="authentication_use_case_tax_export">Exportación de Impuestos</string>
+    <string name="authentication_toast_canceled">Autenticación cancelada</string>
+    <string name="authentication_toast_failed">Autenticación fallida</string>
+    <string name="authentication_error_title">Error de autenticación</string>
+    <string name="authentication_error_text">La autenticación falló por la siguiente razón. Intenta nuevamente o contacta al equipo de soporte para obtener ayuda.</string>
+    <string name="authentication_error_details">
+        Código de error: <xliff:g id="code" example="-1">%1$d</xliff:g>\nMensaje de error: <xliff:g id="message" example="Sin credenciales del dispositivo">%2$s</xliff:g>
+    </string>
+    <string name="coinVote_common_retry">Reintentar</string>
+    <string name="errorPage_action_contactSupport">Contactar Soporte</string>
+    <string name="authentication_failed_title">Autenticación fallida</string>
+    <string name="authentication_failed_text">
+        La autenticación fue presentada pero no reconocida. Intenta nuevamente o contacta al equipo de soporte para obtener ayuda.
+    </string>
+    <string name="disconnectHWWallet_contactSupport">Contactar Soporte</string>
+    <string name="authentication_failed_welcome_icon_cont_desc">Toca para desbloquear la aplicación <xliff:g id="app_name" example="Zodl">%1$s</xliff:g></string>
+    <string name="splash_authTitle">Tu cuenta de Zodl está protegida.</string>
+    <string name="authentication_failed_welcome_subtitle">Toca el ícono de la llave para desbloquearla.</string>
+
+    <!-- ===== balances ===== -->
+    <string name="smartBanner_content_shield_button">Proteger</string>
+    <string name="smartBanner_help_shield_transparent">Transparente</string>
+    <string name="widget_balances_button_spendable">Disponible</string>
+
+    <!-- ===== choose_server ===== -->
+    <string name="serverSetup_title">Servidor</string>
+    <string name="choose_server_default_label">predeterminado: <xliff:g id="server" example="example.com:123">%1$s</xliff:g></string>
+    <string name="serverSetup_custom">personalizado</string>
+    <string name="choose_server_custom_delimiter">:</string>
+    <string name="choose_server_full_server_name">
+        <xliff:g id="hostname" example="example.com">%1$s</xliff:g>:
+        <xliff:g id="port" example="508">%2$d</xliff:g>
+    </string>
+    <string name="choose_server_full_server_name_text_field">
+        <xliff:g id="hostname" example="example.com">%1$s</xliff:g>:<xliff:g id="port" example="508">%2$d</xliff:g>
+    </string>
+    <string name="serverSetup_placeholder">&lt;nombre del host&gt;:&lt;puerto&gt;</string>
+    <string name="serverSetup_save">Guardar selección</string>
+    <string name="choose_server_saving">Guardando selección</string>
+    <string name="choose_server_validation_dialog_error_title">Punto final del servidor no válido</string>
+    <string name="choose_server_validation_dialog_error_text">Error: El intento de cambiar el punto final falló.
+        Verifique que el nombre del host y el puerto sean correctos, y estén formateados como &lt;nombre del host&gt;:&lt;puerto&gt;.</string>
+    <string name="choose_server_save_success_dialog_title">Servidor guardado</string>
+    <string name="choose_server_save_success_dialog_text">El punto final del servidor seleccionado se ha
+        guardado correctamente.</string>
+    <string name="serverSetup_performingTest">Realizando prueba de servidor…</string>
+    <string name="serverSetup_couldTakeTime">Esto puede tardar un momento…</string>
+    <string name="serverSetup_connectionMode">Modo de conexión</string>
+    <string name="serverSetup_automatic">Automático</string>
+    <string name="serverSetup_manual">Manual</string>
+    <string name="serverSetup_fastestServers">Servidores más rápidos</string>
+    <string name="serverSetup_otherServers">Otros servidores</string>
+    <string name="serverSetup_allServers">Explorar todos los servidores</string>
+    <string name="serverSetup_refresh">Actualizar</string>
+    <string name="serverSetup_active">Activo</string>
+    <string name="serverSetup_testing">Probando</string>
+    <string name="serverSetup_default">Predeterminado</string>
+    <string name="choose_server_multi_server_info">Podemos usar varios servidores para optimizar el rendimiento. Para reducir la exposición de metadatos, selecciona el modo de conexión Manual para elegir un único servidor de tu preferencia y asegúrate de que Tor esté habilitado en Configuración Avanzada.</string>
+
+    <!-- ===== connect_keystone ===== --><string name="keystone_addHWWallet_scan">Escanea el código QR de tu dispositivo para conectarte.</string>
+    <string name="keystone_addHWWallet_tutorial">Ver tutorial de Keystone</string>
+    <string name="keystone_addHWWallet_step1">Desbloquea tu Keystone</string>
+    <string name="keystone_addHWWallet_step2">Toca el ícono del menú</string>
+    <string name="keystone_addHWWallet_step3">Selecciona Conectar Billetera de Software</string>
+    <string name="keystone_addHWWallet_step4">Elige la app Zodl y escanea el código QR</string>
+    <string name="keystone_addHWWallet_howTo">Instrucciones:</string>
+    <string name="keystone_addHWWallet_readyToScan">Listo para Escanear</string>
+    <string name="keystone_addHWWallet_deviceQuestion">¿Dispositivo Nuevo o Activo?</string>
+    <string name="keystone_addHWWallet_deviceDesc">Conectarte a un hardware wallet que ya estuvo vinculado a Zodl requerirá sincronización para descubrir tu historial de transacciones. Te guiaremos en el proceso.</string>
+    <string name="keystone_addHWWallet_connectNew">Conectar dispositivo nuevo</string>
+    <string name="keystone_addHWWallet_connectActive">Conectar dispositivo activo</string>
+    <string name="keystone_addHWWallet_connected">¡Conectado!</string>
+    <string name="keystone_addHWWallet_connectedDesc">Tu Keystone Hardware Wallet se ha conectado exitosamente.</string>
+    <string name="keystone_addHWWallet_close">Cerrar</string>
+    <string name="firstWalletTransactionSubtitleHWWallet">Ingresar la altura de bloque en la que se creó tu billetera garantiza que se escanee el número correcto de bloques. Si no estás seguro/a, elige una fecha anterior.</string>
+    <string name="keystone_first_transaction_note">Si no estás seguro/a, elige una fecha anterior.</string>
+    <string name="keystone_addHWWallet_connect">Conectar</string>
+    <string name="hardwareWalletExplainer_title">¿Qué es un Hardware Wallet?</string>
+    <string name="hardwareWalletExplainer_description">Un hardware wallet es un dispositivo físico que almacena tus claves privadas de criptomonedas sin conexión a internet, manteniéndolas a salvo de hackers y malware.</string>
+    <string name="hardwareWalletExplainer_featureTitle1">Seguridad Máxima</string>
+    <string name="hardwareWalletExplainer_featureDescription1">Tus claves nunca salen del dispositivo, incluso al firmar transacciones</string>
+    <string name="hardwareWalletExplainer_featureTitle2">Protección contra Malware</string>
+    <string name="hardwareWalletExplainer_featureDescription2">Inmune a virus informáticos y ataques de phishing</string>
+    <string name="hardwareWalletExplainer_featureTitle3">Control Total</string>
+    <string name="hardwareWalletExplainer_featureDescription3">Tus claves son tuyas, tu cripto es tuya</string>
+    <string name="hardwareWalletExplainer_infoBoxTitle">Sobre Keystone</string>
+    <string name="hardwareWalletExplainer_infoBoxDescription">Keystone es una marca popular de hardware wallet que ofrece seguridad air-gapped con firma mediante códigos QR. Es una de las muchas opciones confiables de hardware wallet, junto con Ledger y otros.</string>
+    <string name="hardwareWalletExplainer_cta">Entendido</string>
+    <string name="restoreWallet_help_title">¿Necesitas más información?</string>
+    <string name="keystone_wbh_info_message_bold">La Altura de Cumpleaños de la Billetera</string>
+    <string name="keystone_wbh_info_message">es la altura de bloque (número de bloque en la cadena de bloques) en la que se creó tu billetera. Es importante proporcionar la altura correcta porque determina el rango de bloques que se escanearán para mostrar tu historial de transacciones y saldo. Si recuperaste una semilla de un dispositivo de hardware diferente, asegúrate de ingresar la altura de bloque de tu dispositivo de hardware original.</string>
+    <!-- ===== contact ===== -->
+    <string name="addressBook_newContact_name">Nombre de contacto</string>
+    <string name="addressBook_newContact_namePlaceholder">Ingrese el nombre del contacto…</string>
+    <string name="addressBook_newContact_address">Dirección de billetera</string>
+    <string name="addressBook_newContact_addressPlaceholder">Ingrese la dirección de la billetera…</string>
+    <string name="addressBook_error_nameExists">Este nombre de contacto ya está en uso. Por favor, elija un nombre diferente.</string>
+    <string name="addressBook_error_nameLength">Este nombre de contacto supera el límite de 32 caracteres. Por favor, acorte el nombre.</string>
+    <string name="contact_address_error_not_unique">Esta dirección de billetera ya está en su libreta de direcciones.</string>
+    <string name="contact_chain_address_error_not_unique">Ya existe una dirección con esta cadena en tu libreta de direcciones.</string>
+    <string name="send_error_invalidAddress">Dirección inválida</string>
+    <string name="swapAndPay_addressBookSelectChain">Seleccionar cadena</string>
+
+    <!-- ===== crash_reporting_opt_in ===== -->
+    <string name="crash_reporting_opt_in_title">Ayuda a Mejorar Zodl</string>
+    <string name="crash_reporting_opt_in_subtitle">Los reportes de fallos son una herramienta esencial para que los desarrolladores mejoren la calidad y confiabilidad de las aplicaciones. Son muy útiles en la práctica para ayudar a corregir errores que provocan cierres inesperados.</string>
+    <string name="crash_reporting_opt_in_info">Nota: Los reportes de fallos incluyen información sobre la versión de la app, la hora en que ocurrió el fallo y la traza del error, lo cual permite identificar en qué parte de la app ocurrió el problema. Los datos recopilados están completamente anonimizados.</string>
+    <string name="crash_reporting_opt_in_positive_desc">Compartir reportes de fallos con los desarrolladores de Zodl.</string>
+    <string name="crash_reporting_opt_in_negative_desc">No compartir reportes de fallos con los desarrolladores de Zodl.</string>
+    <string name="currencyConversion_saveBtn">Guardar cambios</string>
+
+    <!-- ===== delete_wallet ===== -->
+    <string name="deleteWallet_title">Restablecer Zodl</string>
+    <string name="deleteWallet_message2">Asegúrate de haber guardado tanto tu frase de recuperación secreta como la altura de cumpleaños de la billetera antes de continuar.</string>
+    <string name="delete_wallet_text_2">Restablecer la aplicación Zodl eliminará la base de datos y los datos en
+        caché de la aplicación, además de desconectar todas las billeteras de hardware conectadas.</string>
+    <string name="deleteWallet_message4">Una vez que restablezcas Zodl, la única forma de acceder a tus fondos será mediante un proceso de restauración de billetera que requiere tu Frase de Recuperación de Zodl y la Altura de Cumpleaños de la Billetera.</string>
+    <string name="deleteWallet_metadataWarn1">Conserva la copia de seguridad cifrada de los metadatos, que incluye contactos, notas, marcadores y detalles de intercambios/pagos.</string>
+    <string name="deleteWallet_metadataWarn2">Estos datos no se podrán recuperar durante la restauración.</string>
+    <string name="deleteWallet_sheet_msg">Restablecer la app no se puede deshacer. Necesitarás restaurar tu billetera usando tu frase secreta de recuperación.</string>
+    <string name="deleteWallet_actionButtonTitle">Restablecer Zodl</string>
+    <string name="delete_wallet_failed">Error al eliminar la billetera. Inténtalo nuevamente, por favor.</string>
+
+    <!-- ===== error ===== -->
+    <string name="error_general_title">Ocurrió un error</string>
+    <string name="error_general_message">Causa desconocida. Por favor, contacta a nuestro equipo de soporte si el problema persiste.\n\n%s</string>
+    <string name="smartBanner_help_syncError_title">Error de sincronización</string>
+    <string name="shieldFunds_error_title">Error de protección</string>
+    <string name="shieldFunds_error_failure_message">Ocurrió un error durante la última transacción de protección. Puedes intentarlo nuevamente más tarde o reportar este problema si persiste.\n\n%s</string>
+    <string name="shieldFunds_error_gprc_message">Ocurrió un error durante la última transacción de protección. Intentaremos reenviar la transacción más tarde. Si falla, es posible que debas repetir el intento de protección en otro momento.</string>
+    <string name="torSetup_alert_title">¿Desactivar Tor?</string>
+    <string name="torSetup_alert_msg">Se detectaron problemas de conexión con Tor. Para mejorar el rendimiento, intenta desactivar Tor. Esto detendrá las actualizaciones del tipo de cambio. Puedes volver a activarlo más tarde en Configuración avanzada.</string>
+    <string name="torSetup_alert_disable">Desactivar</string>
+    <string name="torSetup_alert_dontDisable">No desactivar</string>
+
+    <!-- ===== exchange_rate ===== -->
+    <string name="currencyConversion_ipTitle">Protección de dirección IP</string>
+    <string name="currencyConversion_ipDesc">La función de conversión de moneda de Zodl no compromete tu dirección IP.</string>
+    <string name="exchange_rate_info_subtitle_1_no_cmc">Las tasas de cambio son obtenidas a travez de Tor para proteger tu dirección IP. Verifica si el uso de Tor esta permitido en tu region.</string>
+    <string name="currencyConversion_refresh">Actualización de tasa</string>
+    <string name="currencyConversion_refreshDesc">La tasa se actualiza automáticamente y también se puede actualizar manualmente.</string>
+    <string name="tooltip_exchangeRate_title">Tasa de cambio no disponible</string>
+    <string name="tooltip_exchangeRate_desc">Intentamos actualizar la tasa de cambio, pero no pudimos. Verifica tu conexión, reinicia la app e intentaremos nuevamente.</string>
+    <string name="send_currencyUnavailable_title">Conversión de %1$s no disponible</string>
+    <string name="send_currencyUnavailable_desc">No se pueden obtener las tasas en vivo de %1$s en este momento. Puedes usar USD como alternativa o seguir introduciendo importes solo en ZEC.</string>
+    <string name="send_currencyUnavailable_switchToUSD">Cambiar a USD</string>
+    <string name="send_currencyUnavailable_continueInZEC">Continuar en ZEC</string>
+    <string name="exchange_rate_opt_in_title">Nueva función</string>
+    <string name="torSetup_option1_title">Conversión de Moneda</string>
+    <string name="currencyConversion_enable">Activar</string>
+    <string name="currencyConversion_skipBtn">Omitir por ahora</string>
+    <string name="currencyConversion_note">Nota para quienes valoran al máximo la privacidad: debido a que obtenemos la tasa de cambio desde casas de cambio, estas podrían ver que se consultó la tasa antes de que ocurriera una transacción.</string>
+    <string name="torSetup_ccSheet_enable">Activar</string>
+    <string name="currencyConversion_learnMoreOptionEnableDesc">Mostrar la conversión de moneda.</string>
+    <string name="currencyConversion_learnMoreOptionDisable">Desactivar</string>
+    <string name="currencyConversion_learnMoreOptionDisableDesc">No mostrar la conversión de moneda.</string>
+    <string name="currencyConversion_learnMoreDesc">Muestra tu saldo y montos de pago en la moneda seleccionada. Para Swap y Pay, los tipos de cambio se seguirán mostrando en USD. Puedes administrar esta función en Configuración avanzada.</string>
+    <string name="currencyConversion_settingsDesc">Muestra tu saldo y montos de pago en la moneda seleccionada. Para Swap y Pay, los tipos de cambio se seguirán mostrando en USD.</string>
+    <string name="torSetup_ccSheet_title">Tor requerido para la conversión de moneda</string>
+    <string name="exchange_rate_tor_opt_in_description">La protección con Tor es una función beta que ofrece protecciones adicionales para tu dirección IP. Las tasas de cambio en USD solo están disponibles cuando esta opción está activada.\n\nSi Tor está permitido en tu región, te recomendamos activarlo. Puedes administrarlo en Configuración avanzada.</string>
+    <string name="torSetup_ccSheet_later">Hacerlo después</string>
+    <string name="currencyConversion_torOnInfo">Desactivar la Protección Tor también desactivará la función de Conversión de Moneda hasta que se vuelva a activar.</string>
+    <string name="currencyConversion_torOffInfo">Si deseas proteger tu dirección IP, activa la Protección Tor en la Configuración Avanzada.</string>
+    <string name="currencyConversion_selectCurrencyTitle">Seleccionar moneda</string>
+
+    <!-- ===== export_data ===== -->
+    <string name="privateDataConsent_screenTitle">Exportar Datos</string>
+    <string name="privateDataConsent_title">Consentimiento para Exportar Datos Privados</string>
+    <string name="export_data_text">
+        Al hacer clic en “Estoy de acuerdo” a continuación, das tu consentimiento para exportar todos los datos privados de tus billeteras, como el historial completo de tus billeteras, incluidas las billeteras de hardware conectadas. Toda la información privada, como notas, montos y direcciones de destinatarios, incluso para tu actividad protegida, será exportada.*\n\nEstos datos privados también permiten la capacidad de ver ciertas acciones futuras que realices con Zodl.\n\nCompartir estos datos privados es irrevocable: una vez que hayas compartido estos datos privados con alguien, no hay forma de revocar su acceso.\n\n*Ten en cuenta que estos datos privados no les dan la capacidad de gastar tus fondos, solo la posibilidad de ver lo que haces con ellos.
+    </string>
+    <string name="privateDataConsent_confirmation">Estoy de acuerdo con las Políticas de Exportación de Datos Privados y la Política de Privacidad de Zodl</string>
+    <string name="export_data_export_data_chooser_title">Compartir datos internos de Zodl con:</string>
+    <string name="export_data_unable_to_share">No se encontró una aplicación con la cual compartir.</string>
+    <!-- ===== feedback ===== -->
+    <string name="support_header">Soporte</string>
+    <string name="sendFeedback_title">Envíanos tus comentarios</string>
+    <string name="sendFeedback_ratingQuestion">¿Cómo ha sido tu experiencia con Zodl?</string>
+    <string name="sendFeedback_howCanWeHelp">¿En qué podemos ayudarte?</string>
+    <string name="sendFeedback_hcwhPlaceholder">Me gustaría preguntar sobre…</string>
+    <string name="support_confirmation_dialog_title">Abrir aplicación de correo</string>
+    <string name="support_confirmation_explanation">Zodl está a punto de abrir tu aplicación de correo con un mensaje prellenado.\n\nAsegúrate de presionar enviar dentro de tu aplicación de correo.</string>
+    <string name="sendFeedback_desc">Por favor, infórmanos sobre cualquier problema que hayas tenido o características que te gustaría ver en el futuro.</string>
+    <string name="support_email_part_1">¿Cómo ha sido tu experiencia con Zodl?\n<xliff:g id="emoji_encoding" example="😍">%1$s</xliff:g> <xliff:g id="emoji_order" example="5">%2$s</xliff:g>/5</string>
+    <string name="support_email_part_2">¿En qué podemos ayudarte?\n%s</string>
+
+    <!-- ===== home ===== -->
+    <string name="tabs_receive">Recibir</string>
+    <string name="tabs_send">Enviar</string>
+    <string name="home_button_scan">Escanear</string>
+    <string name="home_button_buy">Comprar</string>
+    <string name="smartBanner_content_backup_title">Respaldo de la Wallet Requerido</string>
+    <string name="smartBanner_content_backup_info">Evita la posible pérdida de fondos</string>
+    <string name="smartBanner_content_backup_button">Iniciar</string>
+    <string name="smartBanner_content_disconnected_info">Revisa tu conexión y recarga Zodl</string>
+    <string name="home_message_transparent_balance_subtitle">%1$s %2$s</string>
+    <string name="smartBanner_content_shield_title">Saldo No Protegido</string>
+    <string name="smartBanner_content_currencyConversion_info">Activa para mostrar valores fiat</string>
+    <string name="smartBanner_content_currencyConversion_button">Iniciar</string>
+    <string name="home_message_wallet_updating_title">Actualizando Balance…</string>
+    <string name="smartBanner_content_updatingBalance_info">Esperando que se procese la última transacción</string>
+    <string name="smartBanner_content_restore_title">Restaurando Wallet • %1$.1f%% Completado</string>
+    <string name="smartBanner_content_restore_info">Mantén Zodl abierto en la pantalla activa del teléfono</string>
+    <string name="smartBanner_content_restore_infoSpendable">Tus fondos están listos para ser utilizados ahora</string>
+    <string name="smartBannerContentResyncing">Resincronizando</string>
+    <string name="home_message_resyncing_subtitle">Mantén Zodl abierto en la pantalla activa del teléfono</string>
+    <string name="home_message_syncing_title">Sincronizando • %1$.1f%% Completado</string>
+    <string name="smartBanner_content_sync_info">Tu wallet se está actualizando</string>
+    <string name="smartBanner_content_syncingError_title">Error al sincronizar</string>
+    <string name="smartBanner_content_syncingError_info">Intentando resolver</string>
+    <string name="torSettingsSheet_title">Activar Protección Tor</string>
+    <string name="smartBanner_content_tor_info">Protege tu dirección IP</string>
+    <string name="smartBanner_help_backup_title">Respaldo Requerido</string>
+    <string name="smartBanner_help_backup_info1">Evita la posible pérdida de fondos respaldando tu wallet de forma segura.</string>
+    <string name="smartBanner_help_backup_info2">Respalda el acceso a tus fondos guardando:</string>
+    <string name="smartBanner_help_backup_point1">Frase Secreta de Recuperación (un conjunto único de 24 palabras en un orden exacto)</string>
+    <string name="smartBanner_help_backup_point2">Altura de Bloque de Nacimiento de la Wallet (el bloque en el que se creó tu wallet)</string>
+    <string name="smartBanner_help_backup_info3">En caso de perder acceso a la app o al dispositivo, conocer la Frase Secreta de Recuperación es la única forma de recuperar tus fondos. Nosotros no podemos verla ni ayudarte a recuperarla.</string>
+    <string name="smartBanner_help_backup_info4">Cualquiera con acceso a tu Frase Secreta de Recuperación tendrá control total de tu wallet, así que guárdala de forma segura y nunca la compartas.</string>
+    <string name="smartBanner_help_backup_acknowledge">He leído y entiendo los riesgos de no respaldar mi wallet.</string>
+    <string name="smartBanner_help_shield_notNow">Ahora no</string>
+    <string name="smartBanner_help_shield_doNotShowAgain">No volver a mostrar este mensaje.</string>
+    <string name="smartBanner_help_shield_title">Siempre Proteger Fondos Transparentes</string>
+    <string name="smartBanner_help_shield_info1">Para proteger la privacidad del usuario, Zodl no permite gastar %s transparentes. Toca el botón "Proteger" abajo para hacer que tus fondos transparentes sean utilizables y tu balance total en Zodl sea privado.</string>
+    <string name="smartBanner_help_shield_info2">Esto creará una transacción de protección dentro de la wallet, consolidando tus fondos transparentes y protegidos. (Comisión típica: %1$s %2$s)</string>
+    <string name="smartBanner_content_disconnected_title">Wallet Desconectada</string>
+    <string name="smartBanner_help_diconnected_info">Parece que estás sin conexión. Restaura tu conexión a internet para usar la wallet Zodl.</string>
+    <string name="smartBanner_help_restore_title">Restauración de Wallet en Progreso</string>
+    <string name="smartBanner_help_restore_info">Zodl está escaneando la blockchain para recuperar tus transacciones. Restaurar wallets antiguas puede tardar horas. Sigue estos pasos para evitar interrupciones:</string>
+    <string name="home_info_restoring_bullet_1">Mantén la app de Zodl abierta en la pantalla activa del teléfono.</string>
+    <string name="home_info_restoring_bullet_2">Para evitar que la pantalla se apague, desactiva el modo de ahorro de energía y mantén tu teléfono cargando.</string>
+    <string name="smartBanner_help_restore_warning">Los fondos no pueden usarse hasta que tu wallet esté restaurada.</string>
+    <string name="smartBanner_help_resync_title">Resincronización en curso</string>
+    <string name="home_info_resyncing_message">Zodl está escaneando la blockchain para mostrar tus transacciones más recientes y asegurar que tus balances estén correctos. Mantén la app de Zodl abierta en la pantalla activa del teléfono para evitar interrupciones.</string>
+    <string name="smartBanner_help_sync_title">Sincronización de Wallet en Progreso</string>
+    <string name="smartBanner_help_sync_info">Zodl está escaneando la blockchain para mostrar tus transacciones más recientes y asegurar que tus balances estén correctos. Mantén la app de Zodl abierta en la pantalla activa del teléfono para evitar interrupciones.</string>
+    <string name="smartBanner_help_updatingBalance_title">Actualizando Balance</string>
+    <string name="smartBanner_help_updatingBalance_info">Tu última transacción se está minando y confirmando.</string>
+    <string name="crash_report_detail_title">Ayuda a Mejorar Zodl</string>
+    <string name="crash_report_detail_subtitle">Los reportes de fallos son una herramienta esencial para los desarrolladores, utilizada para mejorar la calidad y confiabilidad de las apps. Su único propósito es corregir errores que causan cierres inesperados.</string>
+    <string name="crash_report_detail_item_title_2">¿Qué no se comparte?</string>
+    <string name="crash_report_detail_item_subtitle_1">Usamos Firebase Crashlytics para recopilar reportes de fallos. Incluyen información sobre la versión de la app, la hora del fallo y el stack trace para identificar dónde ocurrió dentro de la app.</string>
+    <string name="crash_report_detail_item_subtitle_2">Zodl no accede ni puede acceder a información sobre usuarios individuales, sus dispositivos, transacciones o su actividad dentro de la app. Los datos son completamente anónimos.</string>
+    <string name="crash_report_detail_item_title_1">¿Qué se comparte?</string>
+    <string name="torSetup_learn_btnOut">No aceptar</string>
+    <string name="torSetup_learn_btnIn">Aceptar</string>
+    <string name="home_message_crash_reporting_title">Ayuda a mejorar Zodl</string>
+    <string name="home_message_crash_reporting_subtitle">Permitir compartir reportes de fallos</string>
+    <string name="balances_spendableBalance_title">Balance Disponible</string>
+    <string name="balances_everythingDone">Todos tus fondos están protegidos y disponibles.</string>
+    <string name="balances_infoPending">Pendiente de recibir el cambio de una transacción previa.</string>
+    <string name="balances_infoSyncing">Zodl está escaneando la blockchain para asegurar que tus balances se muestren correctamente.</string>
+    <string name="balances_infoShielding">Protege tu %1$s transparente para hacerlo utilizable y privado. Esto creará una transacción de protección dentro de la wallet, consolidando tus fondos transparentes y protegidos. (Comisión típica: %2$s %3$s)</string>
+    <string name="balances_spendableBalance">Protegido (Disponible)</string>
+    <string name="balances_pending">Pendiente</string>
+    <string name="crosspay_pay">Pagar</string>
+    <string name="swapAndPay_swap">Swap</string>
+
+    <!-- ===== insufficient_funds ===== -->
+    <string name="sheet_insufficientBalance_title">Fondos insuficientes</string>
+    <string name="sheet_insufficientBalance_msg">No pudimos crear esta transacción. Tu billetera no tiene suficiente saldo para cubrir tanto el monto de la transacción como las comisiones. Por favor, reduce el monto para considerar las comisiones.</string>
+
+    <!-- ===== integrations ===== -->
+    <string name="torSetup_option3_title">Integraciones</string>
+    <string name="integrations_coinbase">Compra <xliff:g id="currency" example="ZEC">%1$s</xliff:g> con Coinbase</string>
+    <string name="integrations_coinbase_subtitle">Una manera fácil de comprar <xliff:g id="currency" example="ZEC">%1$s</xliff:g> y recibirlo directamente en tu wallet Zodl.</string>
+    <string name="integrations_info">Las integraciones de Zodl brindan acceso a servicios de terceros. Las funciones e información compartida con ellos están fuera de nuestro control y sujetas a sus políticas de privacidad.</string>
+    <string name="integrations_dialog_info">La información que compartas con los socios de integración de Zodl está sujeta a sus políticas de privacidad.</string>
+    <string name="integrations_disabled_info">Durante el proceso de restauración no es posible usar integraciones de pago.</string>
+    <string name="settings_flexa">Pagar con Flexa</string>
+    <string name="settings_flexaDesc">Gasta ZEC en miles de establecimientos comerciales.</string>
+    <string name="integrations_flexa_biometric_message">Autentícate para pagar con Flexa</string>
+    <string name="settings_keystone">Conectar Keystone</string>
+    <string name="settings_keystoneDesc">Conecta una billetera de hardware aislada (air-gapped) para almacenar ZEC protegidos.</string>
+    <string name="integrations_disabled_info_flexa">Cambia de Keystone a Zodl para usar Flexa.</string>
+    <string name="integrations_dialog_more_options">Más opciones</string>
+    <string name="integrations_near_swap">Haz swap de %s con NEAR Intents</string>
+    <string name="integrations_near_swap_message">Haz swap de %s con otras criptomonedas.</string>
+    <string name="integrations_coinbase_subtitle_disabled">Coinbase Onramp está temporalmente no disponible.</string>
+
+    <!-- ===== keep_open ===== -->
+    <string name="restoreInfo_title">¡Mantén Zodl abierto!</string>
+    <string name="keep_open_description">Zodl está escaneando la cadena de bloques para recuperar tus transacciones. Las billeteras más antiguas pueden tardar horas en sincronizarse. Sigue estos pasos para evitar interrupciones:</string>
+    <string name="keep_open_bullet_1">Mantén la app de Zodl abierta con la pantalla del teléfono activa.</string>
+    <string name="keep_open_bullet_2">Para evitar que la pantalla se apague, desactiva el modo de ahorro de energía y mantén el teléfono conectado a la corriente.</string>
+    <string name="keepZodlOpenInstructionsHWWallet">Zodl está escaneando la cadena de bloques para recuperar tus transacciones. Las billeteras más antiguas pueden tardar horas en completar la sincronización. Sigue estos pasos para evitar interrupciones:</string>
+    <string name="keepZodlOpenSubtitleHWWallet">Tu billetera se está sincronizando.</string>
+    <string name="keep_open_keystone_warning">No podrás usar tus fondos de Zodl hasta que tu billetera Keystone esté sincronizada.</string>
+    <string name="keepScreenOnSyncing">Mantener la pantalla encendida mientras se sincroniza</string>
+    <string name="keepZodlOpenInstructionsResyncing">Zodl está escaneando la cadena de bloques para recuperar tus transacciones. Las billeteras más antiguas pueden tardar horas en resincronizarse. Sigue estos pasos para evitar interrupciones:</string>
+    <string name="keepZodlOpenSubtitleResync">Tu billetera se está resincronizando.</string>
+    <string name="keep_open_resync_warning">No podrás usar tus fondos hasta que tu billetera se haya resincronizado.</string>
+    <string name="keepScreenOnResyncing">Mantener la pantalla encendida mientras se resincroniza</string>
+    <string name="keepZodlOpenSubtitleRestore">Tu billetera se está restaurando.</string>
+    <string name="keep_open_restore_warning">No podrás usar tus fondos hasta que tu billetera esté completamente restaurada.</string>
+    <string name="keepScreenOnRestoring">Mantener la pantalla encendida mientras se restaura</string>
+
+    <!-- ===== onboarding ===== -->
+    <string name="plainOnboarding_title">Billetera móvil impulsada por Zcash, diseñada para la soberanía financiera.</string>
+    <string name="plainOnboarding_button_createNewWallet">Crear Nueva Billetera</string>
+    <string name="plainOnboarding_button_restoreWallet">Restaurar Billetera Existente</string>
+
+    <!-- ===== pay ===== -->
+    <string name="crosspay_help_payWith">CrossPay con</string>
+    <string name="pay_info_subtitle">Haz pagos entre cadenas en cualquier moneda o token compatible con NEAR.\n\nSi el deslizamiento real y las condiciones de la red resultan en que tu destinatario reciba menos de la cantidad prometida, tu transacción será revertida. Recibirás un reembolso completo menos las comisiones de red.</string>
+    <string name="swapAndPay_slippageWarn">Cualquier parte no utilizada de la comisión por deslizamiento será reembolsada si el intercambio se ejecuta con un deslizamiento menor al esperado.</string>
+
+    <!-- ===== payment_request ===== -->
+    <string name="send_requestPayment_title">Solicitud de Pago</string>
+    <string name="send_requestPayment_requestedBy">Solicitado Por</string>
+    <string name="send_requestPayment_for">Para:</string>
+    <string name="send_feeSummary">Comisión</string>
+    <string name="send_requestPayment_total">Total</string>
+    <string name="partners_flexa_transactionFailedTitle">Transacción Fallida</string>
+    <string name="payment_request_dialog_error_text">Ocurrió un error y el intento de enviar fondos falló. Inténtelo de nuevo, por favor.</string>
+    <string name="payment_request_dialog_error_grpc_title">Error de Conexión</string>
+    <string name="payment_request_dialog_error_grpc_text">Zodl encontró algunos problemas de conexión al enviar la transacción a la red. Volverá a intentarlo durante los próximos minutos.</string>
+    <string name="payment_request_send_failed_report_unable_open_email">No se pudo iniciar la aplicación de correo.</string>
+
+    <!-- ===== qr_code ===== --><string name="qr_code_unified_content_description">Código QR de Dirección Unificada</string>
+    <string name="qr_code_sapling_content_description">Código QR de Dirección Sapling</string>
+    <string name="qr_code_transparent_content_description">Código QR de Dirección Transparente</string>
+    <string name="accounts_zashi_shieldedAddress">Dirección Protegida de Zcash</string>
+    <string name="receive_saplingAddress">Dirección Sapling de Zcash</string>
+    <string name="accounts_zashi_transparentAddress">Dirección Transparente de Zcash</string>
+    <string name="component_maxPrivacy">Privado</string>
+    <string name="component_lowPrivacy">Público</string>
+    <string name="addressDetails_shareQR">Compartir Código QR</string>
+    <string name="addressDetails_copyAddress">Copiar Dirección</string>
+    <string name="qr_code_clipboard_tag">Dirección de Wallet Zcash</string>
+    <string name="qr_code_data_unable_to_share">No se pudo encontrar una aplicación para compartir el código QR.</string>
+    <string name="qr_code_share_chooser_title">Mi Dirección %s en Zodl</string>
+    <string name="qr_code_share_chooser_text">Hola, ¡escanea este código QR para enviarme un pago en %s! Enlace de descarga:
+        https://play.google.com/store/apps/details?id=co.electriccoin.zcash</string>
+    <string name="qr_code_wallet_address_shielded_keystone">Dirección Protegida de Keystone</string>
+    <string name="qr_code_wallet_address_sapling_keystone">Dirección Sapling de Keystone</string>
+    <string name="qr_code_wallet_address_transparent_keystone">Dirección Transparente de Keystone</string>
+
+    <!-- ===== receive ===== -->
+    <string name="receive_title">Recibir %s</string>
+    <string name="receive_warning">Para mayor privacidad, usa siempre una dirección protegida.</string>
+    <string name="receive_copy">Copiar</string>
+    <string name="receive_qrCode">Código QR</string>
+    <string name="receive_request">Solicitar</string>
+    <string name="receive_clipboard_tag">Dirección de billetera Zcash</string>
+    <string name="accounts_keystone_shieldedAddress">Dirección protegida de Zcash</string>
+    <string name="accounts_keystone_transparentAddress">Dirección transparente de Zcash</string>
+    <string name="receive_wallet_address_unified_subtitle">Rota cada vez que la usas</string>
+    <string name="receive_help_shielded_title">Dirección protegida de Zcash (rotativa)</string>
+    <string name="receive_info_shielded_bullet_1">Usa esta dirección para recibir y almacenar tus %1$s de forma privada. Los %2$s transparentes y protegidos enviados a esta dirección se recibirán y almacenarán como %3$s protegidos.</string>
+    <string name="receive_help_shielded_desc2">Se genera una nueva dirección protegida de Zcash cada vez que abres la pantalla de "Recibir".</string>
+    <string name="receive_help_shielded_desc3">Todas las transacciones enviadas a tus diferentes direcciones protegidas rotativas formarán parte de un mismo saldo de billetera vinculado a tu frase semilla.</string>
+    <string name="receive_help_shielded_desc4">Aunque recomendamos usar una nueva dirección cada vez, cada dirección única se puede reutilizar.</string>
+    <string name="receive_help_transparent_title">Dirección transparente de Zcash (estática)</string>
+    <string name="receive_help_transparent_desc1">Este tipo de dirección funciona como una dirección de Bitcoin y NO OFRECE PRIVACIDAD. Los detalles de las transacciones enviadas a esta dirección serán públicos y visibles en la blockchain.</string>
+    <string name="receive_help_transparent_desc2">No recomendamos usar este tipo de dirección a menos que la billetera o casa de cambio desde donde se envían los %s no admita direcciones protegidas de Zcash.</string>
+    <string name="receive_help_transparent_desc3">Para proteger tu privacidad, Zodl te guiará para proteger cualquier %s transparente que recibas con un solo clic.</string>
+    <string name="receive_info_transparent_bullet_4">No podrás gastar tus %s transparentes hasta que los protejas.</string>
+
+    <!-- ===== request ===== --><string name="zecKeyboard_invalid">Este monto de transacción no es válido</string>
+    <string name="general_next">Siguiente</string>
+    <string name="requestZec_summary_shareQR">Compartir Código QR</string>
+    <string name="request_amount_empty">0</string>
+    <string name="request_amount_keyboard_zero">0</string>
+    <string name="request_amount_keyboard_one">1</string>
+    <string name="request_amount_keyboard_two">2</string>
+    <string name="request_amount_keyboard_three">3</string>
+    <string name="request_amount_keyboard_four">4</string>
+    <string name="request_amount_keyboard_five">5</string>
+    <string name="request_amount_keyboard_six">6</string>
+    <string name="request_amount_keyboard_seven">7</string>
+    <string name="request_amount_keyboard_eight">8</string>
+    <string name="request_amount_keyboard_nine">9</string>
+    <string name="general_delete">Eliminar</string>
+    <string name="requestZec_whatFor">¿Para qué es esto?</string>
+    <string name="request_memo_bytes_counter">
+        <xliff:g id="typed_bytes" example="12">%1$s</xliff:g>/<xliff:g id="max_bytes" example="512">%2$s</xliff:g>
+    </string>
+    <string name="request_qr_code_content_description">Solicitar Código QR</string>
+    <string name="request_qr_code_data_unable_to_share">No se pudo encontrar una aplicación para compartir el código QR.</string>
+    <string name="request_qr_code_share_chooser_title">Solicitar %s</string>
+    <string name="request_qr_code_share_chooser_text">Hola, ¡escanea este código QR para enviarme un pago en %s! Enlace de descarga:
+        https://play.google.com/store/apps/details?id=co.electriccoin.zcash</string>
+
+    <!-- ===== restore ===== --><string name="restore_subtitle">Frase de Recuperación</string>
+    <string name="restoreWallet_info">Por favor, ingresa tu frase secreta de recuperación de 24 palabras en el orden correcto.</string>
+    <string name="restore_dialog_message_1_bold_part">La Frase Secreta de Recuperación</string>
+    <string name="restore_dialog_message_1">es un conjunto único de 24 palabras que aparecen en un orden preciso. Puede usarse para obtener control total de tus fondos desde cualquier dispositivo a través de cualquier app de billetera Zcash. Piénsala como la llave maestra de tu billetera. Está guardada en la Configuración Avanzada de Zodl.</string>
+    <string name="restore_dialog_message_2_bold_part">La Altura de Cumpleaños de la Billetera</string>
+    <string name="restore_dialog_message_2">es la altura de bloque (número de bloque en la cadena de bloques) en la que se creó tu billetera. Si alguna vez pierdes acceso a tu app de Zodl y necesitas recuperar tus fondos, proporcionar esta altura junto con tu frase de recuperación puede acelerar significativamente el proceso.</string>
+    <string name="restoreWallet_birthday_estimate">Estimar mi altura de bloque</string>
+    <string name="firstWalletTransactionSubtitleRestore">Decide hasta dónde debe escanear Zodl. Ingresa una fecha anterior a tu primera transacción recibida. Si no estás seguro/a, elige una fecha anterior.</string>
+    <string name="root_existingWallet_restore">Restaurar</string>
+    <string name="restore_seed_warning_suggestions">Esta palabra no está en el diccionario de frases de recuperación. Por favor selecciona la correcta de las sugerencias.</string>
+    <string name="torSettingsSheet_msg">Si Tor está disponible en tu región, recomendamos habilitarlo para una mayor privacidad durante la restauración de la billetera. Este paso es completamente opcional.</string>
+    <string name="torSettingsSheet_desc">Redirige tu conexión a través de la red Tor para mayor anonimato y protección de privacidad.</string>
+    <string name="firstWalletTransactionSubtitleResync">Decide hasta dónde debe resincronizarse Zodl. Ingresa una fecha anterior a tu primera transacción recibida. Si no estás seguro/a, elige una fecha anterior.</string>
+    <string name="resync_bd_estimation_message">Tu billetera se resincronizará desde %1$s (%2$s bloques). Zodl escaneará y recuperará todas las transacciones realizadas después del siguiente número de bloque.</string>
+    <string name="resyncWallet_confirmTitle">Confirmar Resincronización</string>
+    <string name="confirm_resync_subtitle">Resincroniza la billetera actual sin restablecer la app. Esto puede usarse para solucionar problemas que normalmente requerirían restaurar tu billetera como corregir tu balance de Keystone.</string>
+    <string name="resyncWallet_dateInfo">A menos que especifiques lo contrario a continuación, Zodl se resincronizará desde la fecha mostrada.</string>
+    <string name="confirm_resync_info">Tu billetera se resincronizará desde %1$s (%2$s bloques). Usa el botón de abajo si deseas cambiarlo.</string>
+    <string name="resyncWallet_change">Cambiar</string>
+    <string name="resyncWallet_failedTitle">Error de resincronización</string>
+    <string name="resyncWallet_failedDescription">No se pudo completar la resincronización de la billetera. Inténtalo de nuevo o informa del problema.</string>
+
+    <!-- ===== review_keystone_transaction ===== -->
+    <string name="send_review">Revisar</string>
+    <string name="keystone_confirm">Confirmar con Keystone</string>
+
+    <!-- ===== scan ===== -->
+    <string name="scan_preview_content_description">Cámara</string>
+    <string name="scan_settings_open_failed">No se pudo iniciar la aplicación de Configuración.</string>
+    <string name="scan_cameraSettings">La cámara no está autorizada. Por favor, ve a la configuración del sistema de Zodl y actívala.</string>
+    <string name="scan_state_failed">Falló la inicialización de la cámara. Inténtalo de nuevo, por favor.</string>
+    <string name="scan_invalidQR">Este código QR no contiene una dirección Zcash válida.</string>
+    <string name="scan_invalidImage">Esta imagen no contiene una dirección Zcash válida.</string>
+    <string name="scan_severalCodesFound">Esta imagen contiene varias direcciones Zcash válidas.</string>
+    <string name="scan_torch_content_description">Alternar linterna de la cámara</string>
+    <string name="gallery_content_description">Galería</string>
+    <string name="deeplinkWarning_screenTitle">¡Hola!</string>
+    <string name="deeplinkWarning_title">Parece que utilizaste una aplicación de terceros para escanear un pago.</string>
+    <string name="deeplinkWarning_desc">Para mayor seguridad y protección, vuelve a escanear el código QR con Zodl.</string>
+    <string name="deeplinkWarning_cta">Reescanear en Zodl</string>
+
+    <!-- ===== scan_keystone ===== -->
+    <string name="scan_keystone_failure">Este código QR no es un wallet Keystone válido.</string>
+    <string name="scan_keystone_preview_content_description">Cámara</string>
+    <string name="scan_openSettings">Abrir Configuración</string>
+    <string name="scan_keystone_settings_open_failed">No se pudo abrir la aplicación de Configuración.</string>
+    <string name="scan_keystone_state_permission">La cámara no está autorizada. Por favor, ve a la configuración del sistema de
+        Zodl y actívala.</string>
+    <string name="scan_keystone_state_failed">La inicialización de la cámara falló. Por favor, inténtalo nuevamente.</string>
+    <string name="scan_keystone_address_validation_failed">Este código QR no es una dirección Zcash válida.</string>
+    <string name="scan_keystone_torch_content_description">Alternar linterna de la cámara</string>
+    <string name="scan_keystone_gallery_content_description">Galería</string>
+    <string name="scan_keystone_info">Escanea tu wallet Keystone para conectarte</string>
+    <string name="coinVote_delegationSigning_scanInstructions">Escanea tu wallet Keystone para firmar la transacción</string>
+
+    <!-- ===== seed_recovery ===== -->
+    <string name="recoveryPhraseDisplay_screenTitle">Frase de Recuperación</string>
+    <string name="recoveryPhraseDisplay_title">Frase Secreta de Recuperación</string>
+    <string name="recoveryPhraseDisplay_description">¡Estas palabras son la única forma de recuperar tus fondos! Asegúrate de guardarlas en el orden correcto.</string>
+    <string name="recoveryPhraseDisplay_reveal">Mostrar detalles de seguridad</string>
+    <string name="recoveryPhraseDisplay_hide">Ocultar detalles de seguridad</string>
+    <string name="seed_recovery_saved_button">¡La he guardado!</string>
+    <string name="recoveryPhraseDisplay_birthdayTitle">Altura de Cumpleaños de la Billetera</string>
+    <string name="seed_recovery_bday_tooltip_message">La Altura de Cumpleaños de la Billetera determina la altura (cadena) de nacimiento de tu billetera y facilita un proceso de restauración más rápido. Guarda este número junto con tu frase de recuperación en un lugar seguro.</string>
+    <string name="wallet_backup_title">Respaldo de la Billetera</string>
+    <string name="recoveryPhraseDisplay_warningTitle">Tu Frase Secreta de Recuperación</string>
+    <string name="recoveryPhraseDisplay_warningInfo">Tu frase secreta de recuperación es un conjunto único de 24 palabras, que aparecen en un orden preciso. Protege el acceso a tus fondos.</string>
+    <string name="recoveryPhraseDisplay_proceedWarning">¡Mantén esta frase de forma segura! No tomes capturas de pantalla ni la guardes en tu teléfono.</string>
+    <string name="recoveryPhraseDisplay_warningControl_title">Controla tu billetera</string>
+    <string name="recoveryPhraseDisplay_warningKeep_title">Manténla privada</string>
+    <string name="recoveryPhraseDisplay_warningStore_title">Guárdala de forma segura</string>
+    <string name="recoveryPhraseDisplay_warningControl_info">Úsala para acceder a tus fondos desde otros dispositivos y billeteras Zcash.</string>
+    <string name="recoveryPhraseDisplay_warningKeep_info">¡No la compartas con nadie! Puede usarse para obtener control total de tus fondos.</string>
+    <string name="recoveryPhraseDisplay_warningStore_info">Nosotros no tenemos acceso a ella y nunca te pediremos que la compartas. Si la pierdes, no podrá recuperarse.</string>
+    <string name="recoveryPhraseDisplay_warningHeight_info">La altura de bloque en la que tu billetera fue creada puede acelerar significativamente el proceso de recuperación de la billetera.</string>
+
+    <!-- ===== select_keystone_account ===== -->
+    <string name="keystone_wallet">Billetera Keystone</string>
+    <string name="select_keystone_account_positive">Siguiente</string>
+    <string name="keystone_addHWWallet_title">Confirmar Cuenta a Acceder</string>
+    <string name="keystone_addHWWallet_desc">Selecciona la billetera que deseas conectar para continuar. Una vez conectado, podrás firmar transacciones de forma inalámbrica con tu hardware wallet.</string>
+
+    <!-- ===== send ===== --><string name="send_scan_content_description">Escanear</string>
+    <string name="send_to">Enviar a</string>
+    <string name="send_addressPlaceholder">Dirección de Zcash</string>
+    <string name="send_amount">Monto</string>
+    <string name="send_amount_hint"><xliff:g id="currency" example="ZEC">%1$s</xliff:g></string>
+    <string name="send_error_invalidAmount">Monto no válido</string>
+    <string name="send_memoPlaceholder">Escribe un mensaje cifrado aquí…</string>
+    <string name="send_memo_bytes_counter">
+        <xliff:g id="typed_bytes" example="12">%1$s</xliff:g>/<xliff:g id="max_bytes" example="512">%2$s</xliff:g>
+    </string>
+    <string name="send_fee">(Comisión típica &lt; <xliff:g id="fee_amount" example="0.001">%1$s</xliff:g>)</string>
+    <string name="send_alert_failure_title">Error al enviar fondos</string>
+    <string name="send_dialog_error_text">Error: El intento de enviar fondos falló. Inténtelo de nuevo, por favor.</string>
+    <string name="send_abbreviated_address_format" formatted="true"><xliff:g id="first_five" example="zs1g7">%1$s</xliff:g>…<xliff:g id="last_five" example="mvyzg">%2$s</xliff:g></string>
+    <string name="send_info_memo">Las transacciones transparentes no pueden tener mensajes</string>
+    <string name="send_addressNotInBook">Agrega un contacto tocando el ícono de la libreta de direcciones.</string>
+    <string name="send_address_book_content_description">Abrir libreta de direcciones.</string>
+
+    <!-- ===== send_confirmation ===== -->
+    <string name="send_confirmationTitle">Confirmación</string>
+    <string name="send_amountSummary">Monto Total</string>
+    <string name="accounts_sendingFrom">Enviar desde</string>
+    <string name="send_message">Mensaje</string>
+    <string name="send_confirmation_sending_title">Enviando…</string>
+    <string name="send_sendingInfo">Tus monedas se están enviando a\n
+        <xliff:g example="zs12ghrbdjfs24383x5T…" id="index">%1$s</xliff:g>
+    </string>
+    <string name="send_confirmation_sending_title_transparent">Protegiendo…</string>
+    <string name="send_shieldingInfo">Tus monedas se están protegiendo</string>
+    <string name="send_successShielding">¡Protegidas!</string>
+    <string name="send_successShieldingInfo">Tus monedas han sido protegidas exitosamente</string>
+    <string name="send_failureShielding">No se pudo proteger</string>
+    <string name="send_failureShieldingInfo">Hubo un error al intentar proteger tus monedas. Por favor, inténtalo de nuevo.</string>
+    <string name="send_success">¡Enviado!</string>
+    <string name="send_successInfo">Tus monedas fueron enviadas exitosamente a\n
+        <xliff:g example="zs12ghrbdjfs24383x5T…" id="index">%1$s</xliff:g>
+    </string>
+    <string name="transaction_failedSend">Error al Enviar</string>
+    <string name="send_failureInfo">Hubo un error al intentar enviar monedas.\nPor favor, inténtalo de nuevo.</string>
+    <string name="send_viewTransaction">Ver Transacción</string>
+    <string name="send_confirmation_failure_grpc_title">Problema de Conexión</string>
+    <string name="send_confirmation_failure_grpc_subtitle">Zodl encontró problemas de conexión al enviar la transacción. Reintentará en los próximos minutos.</string>
+    <string name="send_confirmation_multiple_trx_failure_text">Enviar a este destinatario requirió múltiples
+        transacciones, pero solo algunas tuvieron éxito y las demás fallaron. Tus fondos están seguros, pero
+        necesitan ser recuperados con nuestra asistencia.\n\nPor favor, usa el botón de abajo para contactarnos. Preparará automáticamente toda la información que necesitamos para ayudarte a restaurar tus fondos.</string>
+    <string name="send_confirmation_multiple_trx_failure_copy_button">Copiar IDs de transacción</string>
+    <string name="send_confirmation_multiple_trx_failure_ids_title">IDs de Transacción</string>
+    <string name="send_confirmation_multiple_report_text">Hola, equipo de Zodl.\n\nAl enviar una transacción a una dirección TEX, encontré un error. Me comunico para recibir orientación sobre cómo recuperar mis fondos.\n\nGracias.</string>
+    <string name="send_confirmation_multiple_report_statuses" formatted="true">Estatus de transacciones:</string>
+    <string name="send_confirmation_multiple_report_status_success">
+        <xliff:g example="1" id="index">%1$d</xliff:g>: Éxito
+    </string>
+    <string name="send_confirmation_multiple_report_status_not_attempt" formatted="true">
+        <xliff:g example="2" id="index">%1$d</xliff:g>: No intentado
+    </string>
+    <string name="send_confirmation_multiple_report_status_failure" formatted="true">
+        <xliff:g example="3" id="index">%1$d</xliff:g>: Fallido:
+        gRPC: <xliff:g example="true" id="grpc">%2$s</xliff:g>,
+        código: <xliff:g example="123" id="code">%3$d</xliff:g>,
+        descripción: <xliff:g example="Network unreachable" id="desc">%4$s</xliff:g>
+    </string>
+    <string name="send_confirmation_multiple_trx_failure_report_unable_open_email">No se pudo abrir la app de correo.</string>
+    <string name="send_confirmation_multiple_trx_failure_copy_tag">IDs de Transacción</string>
+    <string name="swapAndPay_successSwapInfo">Iniciaste un intercambio exitosamente.\nSigue su estatus en la pantalla de transacciones.</string>
+    <string name="swapAndPay_failureSwapInfo">Hubo un error al iniciar un intercambio.\nPor favor, inténtalo de nuevo.</string>
+    <string name="swapAndPay_sendingInfo">Tus monedas se están enviando a la dirección de depósito…</string>
+    <string name="swapAndPay_checkStatus">Revisar estatus</string>
+    <string name="keystone_confirmPay">Pagar con Keystone</string>
+    <string name="send_pendingTitle">Transacción Pendiente</string>
+    <string name="send_pendingInfo">Tu transacción se está procesando.</string>
+    <string name="send_pendingTimeoutInfo">Se agotó el tiempo de espera de la respuesta del servidor. Es posible que tu transacción aún se haya transmitido.</string>
+    <string name="swapAndPay_pendingSwapTitle">Swap Pendiente</string>
+    <string name="swapAndPay_pendingSwapInfo">Tu swap se está procesando. Siga el estado en la pantalla de transacción.</string>
+    <string name="swapAndPay_pendingPayTitle">Pago Pendiente</string>
+    <string name="swapAndPay_pendingPayInfo">Tu cross-chain pago se está procesando. Siga el estado en la pantalla de transacción.</string>
+    <string name="send_pendingShieldingTitle">Fondos Protegidos Pendiente</string>
+    <string name="send_pendingShieldingInfo">Tus Fondos Protegidos se están procesando.</string>
+    <string name="swapAndPay_successPayInfo">Has iniciado un pago entre cadenas exitosamente. Sigue su estado en la pantalla de transacciones.</string>
+
+    <!-- ===== settings ===== -->
+    <string name="settings_title">Configuración</string>
+    <string name="settings_about">Acerca de</string>
+    <string name="settings_feedback">Envíanos tus Comentarios</string>
+    <string name="settings_version">Versión <xliff:g example="1" id="version">%s</xliff:g></string>
+    <string name="settings_addressBook">Libreta de Direcciones</string>
+    <string name="settings_whats_new">Novedades</string>
+    <string name="settings_troubleshooting_menu_content_description">Configuración adicional</string>
+    <string name="settings_troubleshooting_rescan">Volver a escanear la blockchain</string>
+    <string name="settings_troubleshooting_enable_background_sync">Sincronización en segundo plano</string>
+    <string name="settings_troubleshooting_enable_keep_screen_on">Mantener la pantalla encendida durante la sincronización</string>
+
+    <!-- ===== sign_keystone_transaction ===== -->
+    <string name="keystone_signWith_title">Escanea con tu billetera Keystone</string>
+    <string name="keystone_signWith_desc">Después de firmar con Keystone, toca el botón Obtener Firma que se encuentra abajo.</string>
+    <string name="keystone_signWith_signTransaction">Firmar Transacción</string>
+    <string name="keystone_signWith_hardware">Hardware</string>
+    <string name="keystone_signWith_getSignature">Obtener Firma</string>
+    <string name="keystone_signWith_reject">Rechazar</string>
+    <string name="keystoneTransactionReject_title">¿Estás seguro?</string>
+    <string name="sign_keystone_transaction_bottom_sheet_subtitle">Rechazar la firma cancelará la transacción y tendrás que empezar de nuevo si deseas continuar. Esta acción no se puede deshacer.</string>
+    <string name="keystoneTransactionReject_goBack">Volver</string>
+    <string name="keystoneTransactionReject_rejectSig">Rechazar firma</string>
+
+    <!-- ===== swap ===== -->
+    <string name="swap_info_message">Haz swap de %1$s con cualquier token compatible con NEAR.\n\nSi haces swap HACIA %2$s, enviarás fondos desde una wallet de terceros y deberás proporcionar una dirección donde se pueda reembolsar el cambio.\n\nSi haces swap DESDE %3$s, debes proporcionar una dirección válida para el activo al que haces swap.</string>
+    <string name="swapAndPay_help_swapWith">Swap con</string>
+    <string name="swap_select_token">Seleccionar token</string>
+    <string name="swapAndPay_search">Buscar por nombre o ticker…</string>
+    <string name="swapAndPay_slippage">Slippage</string>
+    <string name="swapAndPay_slippageDesc">Esta configuración determina la diferencia máxima permitida entre el precio esperado de un swap y el precio real que pagas, lo cual está fuera del control de Zodl.</string>
+    <string name="swap_slippage_max_threshold">Por favor, ingresa un slippage máximo de 30%%.</string>
+    <string name="swap_slippage_info">Podrías recibir hasta %s menos de lo cotizado.</string>
+    <string name="swap_slippage_low_warning">El slippage %1$s aumenta la probabilidad de que tu swap no se complete y sea reembolsado. Considera usar %2$s, especialmente para montos mayores.</string>
+    <string name="swap_slippage_low_warning_1">menor al %s%%</string>
+    <string name="swap_slippage_low_warning_2">%s%% o más</string>
+    <string name="pay_slippage_info">Podrías pagar hasta %s más, además de las comisiones de transacción.</string>
+    <string name="swapAndPay_from">De</string>
+    <string name="send_error_insufficientFunds">Fondos insuficientes</string>
+    <string name="balance_availableTitle">Disponible: </string>
+    <string name="swapAndPay_max">Disponible: %s</string>
+    <string name="swapAndPay_to">A</string>
+    <string name="swapAndPay_rate">Tasa</string>
+    <string name="swap_zec_exchange_rate">1 %1$s = %2$s</string>
+    <string name="swapAndPay_slippageTolerance">Tolerancia de slippage</string>
+    <string name="swapAndPay_canceltitle">¿Estás seguro?</string>
+    <string name="swapAndPay_cancelMsg">Si sales de esta pantalla, toda la información ingresada se perderá.</string>
+    <string name="swapAndPay_cancelSwap">Cancelar swap</string>
+    <string name="swap_cancel_positive">No cancelar</string>
+    <string name="swap_quote_error_too_low_try_at_least">El monto es muy bajo para el puente, intenta al menos %s</string>
+    <string name="swap_quote_error_too_low_try_higher">El monto es muy bajo para el puente, intenta con un monto mayor.</string>
+    <string name="swap_quoteUnavailable">Intentamos, pero no pudimos obtener una cotización para un pago con tus parámetros. Puedes ajustar el slippage o intentarlo más tarde.</string>
+    <string name="swap_quoteUnavailableSwap">Intentamos, pero no pudimos obtener una cotización para un swap con tus parámetros. Puedes ajustar el slippage o intentarlo más tarde.</string>
+    <string name="swapAndPay_quoteUnavailable">Cotización no disponible</string>
+    <string name="swapAndPay_cancelPayment">Cancelar pago</string>
+    <string name="swapAndPay_editPayment">Editar pago</string>
+    <string name="swapAndPay_editSwap">Editar swap</string>
+    <string name="swapAndPay_swapNow">Hacer swap ahora</string>
+    <string name="swapToZec_review">Revisar cotización</string>
+    <string name="swapAndPay_swapFrom">Swap de</string>
+    <string name="swapAndPay_swapTo">Swap a</string>
+    <string name="swapAndPay_totalFees">Comisiones totales</string>
+    <string name="swapAndPay_maxSlippage">Slippage máximo %s</string>
+    <string name="swapAndPay_totalAmount">Monto total</string>
+    <string name="swapAndPay_quote_zashi">Zodl</string>
+    <string name="swapAndPay_swapQuoteSlippageWarn">Podrías recibir hasta %s menos según el deslizamiento %s que configuraste.</string>
+    <string name="swapAndPay_getQuote">Obtener cotización</string>
+    <string name="swapAndPay_custom">Otro</string>
+    <string name="swapAndPay_payNow">Pagar ahora</string>
+    <string name="swapAndPay_payFrom">Pagar desde</string>
+    <string name="swapAndPay_payTo">Pagar a</string>
+    <string name="swap_to_zec_footer">Usa tu wallet %s \n para depositar fondos. Depositar otros activos puede resultar en pérdida de fondos.</string>
+    <string name="swapToZec_info2">%s en %s</string>
+    <string name="swap_to_zec_share_text">Dirección de depósito para %1$s %2$s en %3$s swap a %4$s en Zodl</string>
+    <string name="swapToZec_refundAddress">Dirección de reembolso</string>
+    <string name="swapToZec_refundAddress_title">Dirección de reembolso</string>
+    <string name="swap_refund_address_info_message_empty">Si el swap falla o cambian las condiciones del mercado, tu transacción puede ser reembolsada menos las comisiones de transacción.\n\nEl monto reembolsado será devuelto a tu wallet en la moneda de origen. Por favor, ingresa una dirección válida para evitar la pérdida de fondos.</string>
+    <string name="swap_refund_address_info_message">Si el swap falla o cambian las condiciones del mercado, tu transacción puede ser reembolsada menos las comisiones de transacción.\n\nEl monto reembolsado será devuelto a tu wallet en la moneda de origen - %s en %s. Por favor, ingresa una dirección válida para evitar la pérdida de fondos.</string>
+    <string name="swapToZec_swapDetails">Detalles del swap</string>
+    <string name="swapToZec_depositTo">Depositar en</string>
+    <string name="swapStatus_swapExpired">Swap expirado</string>
+    <string name="swapStatus_swapping">Haciendo swap</string>
+    <string name="swapStatus_swapped">Swap realizado</string>
+    <string name="swapStatus_swapRefunded">Swap reembolsado</string>
+    <string name="swapStatus_swapFailed">Swap fallido</string>
+    <string name="swapToZec_swapProcessing">Procesando swap</string>
+    <string name="swapToZec_deposit">Monto a depositar</string>
+    <string name="swapToZec_sentTheFunds">Ya envié los fondos</string>
+    <string name="depositFunds_alert_title">¿Estás seguro de que deseas salir?</string>
+    <string name="depositFunds_alert_message">Si ya enviaste los fondos o tienes intención de hacerlo, toca \’Ya envié los fondos.\’ O cancela el swap para volver a la pantalla anterior.</string>
+    <string name="depositFunds_title">Depositar fondos</string>
+    <string name="depositFunds_desc">Haz swap a ZEC con cualquier activo compatible con NEAR.</string>
+    <string name="depositFunds_bulletPoint1">Envía el monto exacto del activo que se muestra. Enviar menos resultará en un reembolso.</string>
+    <string name="depositFunds_bulletPoint2">Verifica que estás enviando el activo correcto en la red correcta (por ej., USDC en Solana).</string>
+    <string name="depositFunds_bulletPoint3">Es mejor enviar desde una wallet que sea tuya. Enviar desde un exchange puede causar demoras o reembolsos.</string>
+
+    <!-- ===== tax_export ===== -->
+    <string name="taxExport_title">Exportación de Datos</string>
+    <string name="taxExport_desc">Descarga el historial de transacciones de <xliff:g example="Zodl" id="account_name">%s</xliff:g> del año calendario anterior en formato .csv.</string>
+    <string name="taxExport_download">Descargar</string>
+
+    <!-- ===== tex_unsupported ===== -->
+    <string name="texKeystone_title">Tipo de dirección no compatible</string>
+    <string name="texKeystone_warn1">Actualmente, Keystone no es compatible con transferencias a direcciones Binance TEX.</string>
+    <string name="texKeystone_warn2">Por favor, utiliza los pasos a continuación para completar tu transacción.</string>
+    <string name="texKeystone_workaround">Pasos alternativos</string>
+    <string name="tex_unsupported_step_1_badge">Paso 1</string>
+    <string name="texKeystone_step1_title">Envía primero a Zodl</string>
+    <string name="texKeystone_step1_desc">Transfiere ZEC a tu dirección protegida de Zodl</string>
+    <string name="tex_unsupported_step_2_badge">Paso 2</string>
+    <string name="texKeystone_step2_title">Envía desde Zodl a la dirección TEX</string>
+    <string name="texKeystone_step2_desc">Una vez recibido en Zodl, envía los tokens a tu dirección TEX de destino final</string>
+
+    <!-- ===== tor ===== -->
+    <string name="torSetup_title">Protección con Tor</string>
+    <string name="tor_settings_subtitle">Brinda protección adicional para tu dirección IP. Utiliza
+        Tor para obtener tasas de cambio, enviar transacciones, recuperar datos de transacciones y conectarse a APIs
+        de terceros.\n\nSi el uso de Tor está permitido en tu región, te recomendamos habilitarlo.</string>
+    <string name="torSetup_enableDesc">Conectarse a través de Tor</string>
+    <string name="torSetup_disableDesc">No conectarse a través de Tor</string>
+    <string name="torSetup_option1_desc">Obtener tasas de cambio desde servidores de terceros sin revelar tu dirección IP. (Solo disponible con Tor activado).</string>
+    <string name="torSetup_option2_title">Transacciones</string>
+    <string name="torSetup_option2_desc">Enviar y recuperar datos de transacciones a través de Tor para mayor privacidad.</string>
+    <string name="torSetup_option3_desc">Acceder a APIs de terceros (por ejemplo, NEAR) mediante Tor para mayor privacidad.</string>
+    <string name="tor_settings_share_feedback">Compartir comentarios</string>
+
+    <!-- ===== transaction_detail ===== -->
+    <string name="transaction_detail_fee_minimal">&lt; 0.001 %s</string>
+    <string name="transactionHistory_viewLess">Ver menos</string>
+    <string name="transactionHistory_viewMore">Ver más</string>
+    <string name="transactionHistory_noMessage">Sin mensaje</string>
+    <string name="transactionHistory_details">Detalles de la transacción</string>
+    <string name="transactionList_transactionId">ID de transacción</string>
+    <string name="swapAndPay_status">Estado</string>
+    <string name="transactionDetail_feeSummary">Comisión</string>
+    <string name="transactionHistory_sentTo">Enviado a</string>
+    <string name="transactionHistory_pending">Pendiente</string>
+    <string name="transactionHistory_saveAddress">Guardar dirección</string>
+    <string name="transactionHistory_sendAgain">Enviar de nuevo</string>
+    <string name="transaction_sent">Enviado</string>
+    <string name="transaction_sending">Enviando</string>
+    <string name="transaction_received">Recibido</string>
+    <string name="transaction_receiving">Recibiendo</string>
+    <string name="transaction_failedReceive">Error al recibir</string>
+    <string name="transaction_shieldedFunds">Protegido</string>
+    <string name="transaction_shieldingFunds">Protegiendo</string>
+    <string name="transaction_failedShieldedFunds">Error al proteger</string>
+    <string name="transaction_detail_edit_note">Editar nota</string>
+    <string name="annotation_addArticle">Agregar nota</string>
+    <string name="annotation_title">Nota</string>
+    <string name="swapAndPay_refundedAmount">Monto reembolsado</string>
+    <string name="swapAndPay_recipient">Destinatario</string>
+    <string name="swapAndPay_executedSlippage">Slippage realizado</string>
+    <string name="swapAndPay_maxSlippageTitle">Slippage máximo</string>
+    <string name="transactionHistory_timestamp">Marca de tiempo</string>
+    <string name="swapAndPay_refundInfo">Tu depósito fue detectado pero el swap no pudo completarse. Tus fondos han sido devueltos, descontando las comisiones de transacción. Si aún no los recibiste, contacta al equipo de soporte de Zodl.</string>
+    <string name="swapAndPay_refundTitle">Fondos devueltos</string>
+    <string name="swapAndPay_processingMsg">Tu swap se ha demorado. Los swaps generalmente se completan en minutos, pero pueden tardar más según las condiciones del mercado.</string>
+    <string name="swapAndPay_failedMsg">Este swap no pudo completarse. Si depositaste fondos y no recibiste tu swap, contacta a soporte para que podamos resolverlo.</string>
+    <string name="swapAndPay_failedTitle">Swap fallido</string>
+    <string name="swapAndPay_expiredMsg">Este swap venció tras su ventana de validez de 24 horas. Si no enviaste fondos, no es necesario hacer nada. Si enviaste fondos, contacta a soporte para que podamos ayudarte.</string>
+    <string name="swapAndPay_expiredTitle">Swap expirado</string>
+    <string name="reportSwap_report">Reportar problema</string>
+    <string name="reportSwap_title">Reportar problema con swap</string>
+    <string name="reportSwap_msg">Al tocar el botón de abajo, se enviarán detalles de este swap (como la dirección de depósito y el activo destino) al equipo de soporte de Zodl para que puedan ayudarte a resolver tu problema. La información de la transacción se incluye automáticamente.</string>
+    <string name="transaction_detail_support_email_subject">Problema con transacción de swap</string>
+    <string name="transaction_detail_support_email_body">Por favor describe tu problema aquí:\n\n\n\nDetalles del swap:\nDirección de depósito: %1$s\nActivo de origen: %2$s\nActivo destino: %3$s</string>
+    <string name="deposits_info">Los depósitos pueden tardar varios minutos en confirmarse.</string>
+    <string name="swapAndPay_status_incompleteDeposit">Depósito incompleto</string>
+    <string name="swapAndPay_status_pending">Pendiente</string>
+    <string name="swapAndPay_status_success">Completado</string>
+    <string name="swapAndPay_status_refunded">Reembolsado</string>
+    <string name="swapAndPay_status_failed">Fallido</string>
+    <string name="swapAndPay_status_expired">Expirado</string>
+    <string name="swapAndPay_status_pendingDeposit">Depósito pendiente</string>
+    <string name="swapStatus_paying">Pagando</string>
+    <string name="swapStatus_swapIncomplete">Swap incompleto</string>
+    <string name="swapStatus_paymentIncomplete">Pago incompleto</string>
+    <string name="transaction_detail_info_incomplete_deposit_message">Deposita %1$s adicionales para completar este swap antes del %2$s, o tu depósito será reembolsado.</string>
+
+    <!-- ===== transaction_filters ===== -->
+    <string name="filter_title">Filtrar</string>
+    <string name="filter_sent">Enviado</string>
+    <string name="filter_received">Recibido</string>
+    <string name="filter_memos">Mensajes</string>
+    <string name="transaction_filters_unread">No leídos</string>
+    <string name="filter_bookmarked">Marcados</string>
+    <string name="filter_notes">Notas</string>
+    <string name="filter_reset">Restablecer</string>
+    <string name="filter_apply">Aplicar</string>
+
+    <!-- ===== transaction_history ===== -->
+    <string name="transaction_history_plus" formatted="true">
+        <xliff:g example="1.2345" id="amount">%1$s</xliff:g> %2$s
+    </string>
+    <string name="transaction_history_minus" formatted="true">
+        - <xliff:g example="0.2" id="amount">%1$s</xliff:g> %2$s
+    </string>
+    <string name="filter_today">Hoy</string>
+    <string name="filter_yesterday">Ayer</string>
+    <string name="filter_previous7days">Últimos 7 días</string>
+    <string name="filter_previous30days">Últimos 30 días</string>
+    <string name="filter_daysAgo" formatted="true">Hace <xliff:g example="$" id="days">%s</xliff:g> días</string>
+    <string name="general_activity">Actividad</string>
+    <string name="transaction_history_send_transaction">Obtén algo de %s</string>
+    <string name="transactionHistory_seeAll">Ver todo</string>
+    <string name="transaction_history_widget_send_transaction">Enviar una transacción</string>
+    <string name="transactionHistory_nothingHere">Aún no hay nada aquí.</string>
+    <string name="transaction_history_widget_empty_subtitle">Da el primer paso…</string>
+    <string name="filter_search">Buscar</string>
+    <string name="transaction_history_sending">Enviando…</string>
+    <string name="transaction_history_sending_failed">Error al enviar</string>
+    <string name="transaction_history_receiving">Recibiendo…</string>
+    <string name="transaction_history_receiving_failed">Error al recibir</string>
+    <string name="transaction_history_shielding">Protegiendo…</string>
+    <string name="swapStatus_paid">Pagado</string>
+    <string name="transaction_history_paying">Pagando…</string>
+    <string name="swapStatus_paymentFailed">Error en el pago</string>
+    <string name="swapStatus_paymentRefunded">Pago reembolsado</string>
+    <string name="transaction_history_swapping">Haciendo swap…</string>
+    <string name="swapStatus_paymentExpired">Pago expirado</string>
+
+    <!-- ===== transaction_note ===== --><string name="annotation_edit">Editar una nota</string>
+    <string name="annotation_delete">Eliminar nota</string>
+    <string name="transaction_note_max_length"><xliff:g example="34" id="chars">%s</xliff:g>/90 caracteres</string>
+    <string name="annotation_add">Agregar nota</string>
+    <string name="annotation_save">Guardar nota</string>
+
+    <!-- ===== update ===== -->
+    <string name="update_title_available">Zodl aquí.</string>
+    <string name="osStatusError_title">No eres tú, soy yo.</string>
+    <string name="update_description_required">
+        Hay una actualización requerida para Zodl que realiza importantes mejoras en el rendimiento y/o la seguridad.
+    </string>
+    <string name="update_description_available">
+        Hay una nueva versión de Zodl que realiza actualizaciones menores para mejorar el rendimiento y/o la seguridad.\n\nPor favor, toma un momento para actualizar a la última versión.
+    </string>
+    <string name="update_link_text">Obtén más información sobre esta actualización aquí.</string>
+    <string name="update_download_button">Actualizar</string>
+
+    <!-- ===== update_contact ===== -->
+    <string name="update_contact_title">Contacto</string>
+    <string name="deleteWallet_sheet_title">Are you sure?</string>
+    <string name="addressBook_alert_message">You are about to delete this contact. This cannot be undone.</string>
+
+    <!-- ===== warning ===== -->
+    <string name="notEnoughFreeSpace_title">No hay suficiente espacio disponible</string>
+    <string name="notEnoughFreeSpace_messagePre">Zodl requiere <xliff:g example="1" id="required_gigabytes">%1$d</xliff:g> GB de espacio para sincronizar la blockchain de Zcash, pero solo hay</string>
+    <string name="not_enough_space_description_2"><xliff:g example="300" id="available_megabytes">%1$d</xliff:g> MB disponibles</string>
+    <string name="not_enough_space_description_3">. La sincronización permanecerá en pausa hasta que haya más espacio disponible.\n\n~<xliff:g example="300" id="required_megabytes">%1$d</xliff:g> MB adicionales son necesarios para continuar</string>
+    <string name="not_enough_space_system_settings_btn">Configuración del sistema</string>
+    <string name="not_enough_space_settings_open_failed">No se pudo abrir la aplicación de Configuración.</string>
+
+    <!-- ===== whats_new ===== -->
+    <string name="whats_new_title">Novedades</string>
+    
 </resources>

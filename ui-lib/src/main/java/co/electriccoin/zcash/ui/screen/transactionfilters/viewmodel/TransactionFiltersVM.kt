@@ -45,7 +45,7 @@ internal class TransactionFiltersVM(
                             when (it) {
                                 SENT -> {
                                     TransactionFilterState(
-                                        text = stringRes(R.string.transaction_filters_sent),
+                                        text = stringRes(R.string.filter_sent),
                                         isSelected = current.contains(SENT),
                                         onClick = { onTransactionFilterClicked(it) }
                                     )
@@ -53,7 +53,7 @@ internal class TransactionFiltersVM(
 
                                 RECEIVED -> {
                                     TransactionFilterState(
-                                        text = stringRes(R.string.transaction_filters_received),
+                                        text = stringRes(R.string.filter_received),
                                         isSelected = current.contains(RECEIVED),
                                         onClick = { onTransactionFilterClicked(it) }
                                     )
@@ -61,7 +61,7 @@ internal class TransactionFiltersVM(
 
                                 MEMOS -> {
                                     TransactionFilterState(
-                                        text = stringRes(R.string.transaction_filters_memos),
+                                        text = stringRes(R.string.filter_memos),
                                         isSelected = current.contains(MEMOS),
                                         onClick = { onTransactionFilterClicked(it) }
                                     )
@@ -77,7 +77,7 @@ internal class TransactionFiltersVM(
 
                                 BOOKMARKED -> {
                                     TransactionFilterState(
-                                        text = stringRes(R.string.transaction_filters_bookmarked),
+                                        text = stringRes(R.string.filter_bookmarked),
                                         isSelected = current.contains(BOOKMARKED),
                                         onClick = { onTransactionFilterClicked(it) }
                                     )
@@ -85,7 +85,7 @@ internal class TransactionFiltersVM(
 
                                 NOTES -> {
                                     TransactionFilterState(
-                                        text = stringRes(R.string.transaction_filters_notes),
+                                        text = stringRes(R.string.filter_notes),
                                         isSelected = current.contains(NOTES),
                                         onClick = { onTransactionFilterClicked(it) }
                                     )
@@ -93,7 +93,7 @@ internal class TransactionFiltersVM(
 
                                 SWAP -> {
                                     TransactionFilterState(
-                                        text = stringRes(R.string.transaction_filters_swap),
+                                        text = stringRes(R.string.swapAndPay_swap),
                                         isSelected = current.contains(SWAP),
                                         onClick = { onTransactionFilterClicked(it) }
                                     )
@@ -103,12 +103,12 @@ internal class TransactionFiltersVM(
                     onBack = ::onBack,
                     primaryButton =
                         ButtonState(
-                            text = stringRes(R.string.transaction_filters_btn_apply),
+                            text = stringRes(R.string.filter_apply),
                             onClick = ::onApplyTransactionFiltersClick,
                         ),
                     secondaryButton =
                         ButtonState(
-                            text = stringRes(R.string.transaction_filters_btn_reset),
+                            text = stringRes(R.string.filter_reset),
                             onClick = ::onResetTransactionFiltersClick,
                         ),
                 )

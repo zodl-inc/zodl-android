@@ -4,6 +4,6 @@
 
     <!-- These are replaced by resource overlaying via app/build.gradle.kts -->
     <string translatable="false" name="app_name">zashi-ui</string>
-    <string translatable="false" name="zashi_wallet_name">Zodl</string>
-    <string translatable="false" name="keystone_wallet_name">Keystone</string>
+    <string translatable="false" name="accounts_zashi">Zodl</string>
+    <string translatable="false" name="accounts_keystone">Keystone</string>
 </resources>

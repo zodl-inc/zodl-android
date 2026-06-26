@@ -117,7 +117,7 @@ private fun Content(
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = stringResource(R.string.restore_message),
+            text = stringResource(R.string.restoreWallet_info),
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textPrimary
         )
@@ -141,7 +141,7 @@ private fun Content(
 @Composable
 private fun AppBar(state: RestoreSeedState) {
     ZashiSmallTopAppBar(
-        title = stringResource(R.string.restore_title),
+        title = stringResource(R.string.root_existingWallet_restore),
         navigationAction = {
             ZashiTopAppBarBackNavigation(
                 onBack = state.onBack,

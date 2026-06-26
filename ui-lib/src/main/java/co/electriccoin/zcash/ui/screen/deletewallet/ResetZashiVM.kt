@@ -49,14 +49,14 @@ class ResetZashiVM(
         onBack = { navigationRouter.back() },
         checkboxState =
             CheckboxState(
-                title = stringRes(R.string.delete_wallet_checkbox_title),
-                subtitle = stringRes(R.string.delete_wallet_checkbox_warning_checked),
+                title = stringRes(R.string.deleteWallet_metadataWarn1),
+                subtitle = stringRes(R.string.deleteWallet_metadataWarn2),
                 isChecked = isKeepFilesChecked,
                 onClick = ::onCheckboxToggled
             ),
         buttonState =
             ButtonState(
-                text = stringRes(R.string.delete_wallet_button),
+                text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_confirm),
                 isLoading = isLoading,
                 onClick = ::onConfirmClicked
             ),
@@ -71,10 +71,10 @@ class ResetZashiVM(
 
     private fun createConfirmationState(): ZashiConfirmationState =
         ZashiConfirmationState.destructive(
-            title = stringRes(R.string.delete_wallet_confirmation_title),
-            message = stringRes(R.string.delete_wallet_confirmation_subtitle),
-            primaryText = stringRes(R.string.delete_wallet_confirmation_button),
-            secondaryText = stringRes(R.string.delete_wallet_confirmation_cancel),
+            title = stringRes(R.string.deleteWallet_sheet_title),
+            message = stringRes(R.string.deleteWallet_sheet_msg),
+            primaryText = stringRes(R.string.deleteWallet_actionButtonTitle),
+            secondaryText = stringRes(co.electriccoin.zcash.ui.design.R.string.general_cancel),
             onPrimary = ::onConfirmReset,
             onBack = ::onDismissConfirmation,
         )

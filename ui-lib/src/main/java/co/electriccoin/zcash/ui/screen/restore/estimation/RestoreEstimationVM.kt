@@ -25,7 +25,7 @@ class RestoreEstimationVM(
 
     private fun createState() =
         EstimatedBlockHeightState(
-            title = stringRes(R.string.restore_title),
+            title = stringRes(R.string.root_existingWallet_restore),
             logo = null,
             dialogButton =
                 IconButtonState(
@@ -36,13 +36,13 @@ class RestoreEstimationVM(
             blockHeightText = stringResByNumber(args.blockHeight, 0),
             copyButton =
                 ButtonState(
-                    text = stringRes(R.string.wbh_copy),
+                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.receive_copy),
                     icon = R.drawable.ic_copy,
                     onClick = ::onCopyClick
                 ),
             primaryButton =
                 ButtonState(
-                    text = stringRes(R.string.restore_bd_estimation_restore),
+                    text = stringRes(R.string.root_existingWallet_restore),
                     onClick = ::onRestoreClick,
                     hapticFeedbackType = HapticFeedbackType.Confirm
                 ),

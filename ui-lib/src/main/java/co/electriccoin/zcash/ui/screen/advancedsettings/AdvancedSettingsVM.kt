@@ -72,17 +72,17 @@ class AdvancedSettingsVM(
             items =
                 listOfNotNull(
                     ListItemState(
-                        title = stringRes(R.string.advanced_settings_recovery),
+                        title = stringRes(R.string.settings_recoveryPhrase),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_recovery),
                         onClick = ::onSeedRecoveryClick
                     ),
                     ListItemState(
-                        title = stringRes(R.string.advanced_settings_export),
+                        title = stringRes(R.string.settings_exportPrivateData),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_export),
                         onClick = ::onExportPrivateDataClick
                     ),
                     ListItemState(
-                        title = stringRes(R.string.advanced_settings_tax),
+                        title = stringRes(R.string.taxExport_taxFile),
                         bigIcon =
                             imageRes(
                                 if (walletRestoringState == WalletRestoringState.RESTORING) {
@@ -95,18 +95,18 @@ class AdvancedSettingsVM(
                         onClick = ::onTaxExportClick
                     ),
                     ListItemState(
-                        title = stringRes(R.string.advanced_settings_choose_server),
+                        title = stringRes(R.string.settings_chooseServer),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_choose_server),
                         onClick = ::onChooseServerClick
                     ),
                     // ListItemState(
-                    //     title = stringRes(R.string.advanced_settings_resync_wallet),
+                    //     title = stringRes(R.string.resyncWallet_title),
                     //     bigIcon = imageRes(R.drawable.ic_advanced_settings_resync),
                     //     isEnabled = !restoring,
                     //     onClick = ::onResyncWalletClick,
                     // ),
                     ListItemState(
-                        title = stringRes(R.string.advanced_settings_privacy),
+                        title = stringRes(R.string.settings_private),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_privacy),
                         onClick = ::onPrivacyClick
                     ),
@@ -116,7 +116,7 @@ class AdvancedSettingsVM(
                         onClick = ::onCrashReportingClick
                     ).takeIf { versionInfo.distribution == DistributionDimension.STORE },
                     ListItemState(
-                        title = stringRes(R.string.advanced_settings_disconnect_hw_wallet),
+                        title = stringRes(R.string.disconnectHWWallet_cta),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_disconnect_hw),
                         onClick = ::onDisconnectHwWalletClick
                     ).takeIf { hasKeystoneAccount },
@@ -127,7 +127,7 @@ class AdvancedSettingsVM(
                 ),
             deleteButton =
                 ButtonState(
-                    text = stringRes(R.string.advanced_settings_delete_button),
+                    text = stringRes(R.string.settings_deleteZashi),
                     onClick = ::onResetWalletClick,
                 ),
         )

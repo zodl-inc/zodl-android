@@ -56,7 +56,7 @@ class ResyncEstimationVM(
 
     private fun createState(yearMonth: YearMonth, isLoading: Boolean): EstimatedBlockHeightState =
         EstimatedBlockHeightState(
-            title = stringRes(R.string.resync_title),
+            title = stringRes(R.string.resyncWallet_title),
             message =
                 styledStringResource(
                     resource = R.string.resync_bd_estimation_message,
@@ -88,13 +88,13 @@ class ResyncEstimationVM(
             blockHeightText = stringResByNumber(args.blockHeight, 0),
             copyButton =
                 ButtonState(
-                    text = stringRes(R.string.wbh_copy),
+                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.receive_copy),
                     icon = R.drawable.ic_copy,
                     onClick = ::onCopyClick
                 ),
             primaryButton =
                 ButtonState(
-                    text = stringRes(R.string.confirm_resync_confirm),
+                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_confirm),
                     isLoading = isLoading,
                     onClick = ::onConfirmClick,
                 ),

@@ -41,12 +41,12 @@ fun EnableTorMessage(
         },
         title = {
             Text(
-                stringResource(R.string.home_message_tor_title)
+                stringResource(R.string.torSettingsSheet_title)
             )
         },
         subtitle = {
             Text(
-                text = stringResource(R.string.home_message_tor_subtitle),
+                text = stringResource(R.string.smartBanner_content_tor_info),
             )
         },
         end = {
@@ -55,7 +55,7 @@ fun EnableTorMessage(
                 state =
                     ButtonState(
                         onClick = state.onButtonClick,
-                        text = stringRes(stringResource(co.electriccoin.zcash.ui.design.R.string.general_review))
+                        text = stringRes(stringResource(co.electriccoin.zcash.ui.design.R.string.send_review))
                     )
             )
         }

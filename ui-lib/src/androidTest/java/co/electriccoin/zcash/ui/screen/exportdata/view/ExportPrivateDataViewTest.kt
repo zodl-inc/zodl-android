@@ -40,7 +40,7 @@ class ExportPrivateDataViewTest : UiTestPrerequisites() {
             it.assertIsEnabled()
         }
 
-        composeTestRule.onNodeWithText(getStringResource(R.string.export_data_confirm), ignoreCase = true).also {
+        composeTestRule.onNodeWithText(getStringResource(R.string.settings_exportPrivateData), ignoreCase = true).also {
             it.performScrollTo()
             it.assertExists()
             it.assertIsDisplayed()
@@ -107,20 +107,20 @@ class ExportPrivateDataViewTest : UiTestPrerequisites() {
 }
 
 private fun ComposeContentTestRule.clickBack() {
-    onNodeWithContentDescription(getStringResource(R.string.back_navigation_content_description)).also {
+    onNodeWithContentDescription(getStringResource(R.string.general_back)).also {
         it.performClick()
     }
 }
 
 private fun ComposeContentTestRule.clickConfirm() {
-    onNodeWithText(getStringResource(R.string.export_data_confirm), ignoreCase = true).also {
+    onNodeWithText(getStringResource(R.string.settings_exportPrivateData), ignoreCase = true).also {
         it.performScrollTo()
         it.performClick()
     }
 }
 
 private fun ComposeContentTestRule.clickAgree() {
-    onNodeWithText(getStringResource(R.string.export_data_agree)).also {
+    onNodeWithText(getStringResource(R.string.privateDataConsent_confirmation)).also {
         it.performScrollTo()
         it.performClick()
     }

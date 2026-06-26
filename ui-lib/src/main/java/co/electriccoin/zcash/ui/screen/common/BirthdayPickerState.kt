@@ -9,7 +9,7 @@ import java.time.YearMonth
 
 data class BirthdayPickerState(
     val title: StringResource?,
-    val subtitle: StringResource = stringRes(R.string.wbh_date_subtitle),
+    val subtitle: StringResource = stringRes(R.string.restoreWallet_birthday_estimateDate_title),
     val message: StringResource,
     val logo: Int?,
     val selection: YearMonth,

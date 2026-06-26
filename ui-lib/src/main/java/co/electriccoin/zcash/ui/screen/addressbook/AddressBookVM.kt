@@ -60,14 +60,14 @@ class AddressBookVM(
             manualButton =
                 ButtonState(
                     onClick = ::onAddContactManuallyClick,
-                    text = stringRes(R.string.address_book_manual_btn)
+                    text = stringRes(R.string.addressBook_manualEntry)
                 ),
             scanButton =
                 ButtonState(
                     onClick = ::onScanContactClick,
-                    text = stringRes(R.string.address_book_scan_btn)
+                    text = stringRes(R.string.addressBook_scanAddress)
                 ),
-            title = stringRes(R.string.address_book_title),
+            title = stringRes(R.string.addressBook_title),
             info = null
         )
 

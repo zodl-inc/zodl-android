@@ -60,7 +60,7 @@ fun StyledExchangeBalance(
     state: ExchangeRateState,
     modifier: Modifier = Modifier,
     hiddenBalancePlaceholder: StringResource =
-        stringRes(co.electriccoin.zcash.ui.design.R.string.hide_balance_placeholder),
+        stringRes(co.electriccoin.zcash.ui.design.R.string.general_hideBalancesMost),
     textColor: Color = ZashiColors.Text.textPrimary,
     style: TextStyle = ZashiTypography.textSm.copy(fontWeight = FontWeight.SemiBold)
 ) {
@@ -207,7 +207,7 @@ private fun ExchangeRateUnavailableButton(
             textColor = textColor,
         ) {
             Text(
-                text = stringResource(id = R.string.exchange_rate_unavailable_title),
+                text = stringResource(id = R.string.tooltip_exchangeRate_title),
                 style = style,
                 maxLines = 1,
                 color = textColor

@@ -49,7 +49,7 @@ class ResyncHeightVM(
         val isValid = !blockHeight.innerTextFieldState.value.isEmpty() && isHigherThanSaplingActivationHeight
 
         return BlockHeightState(
-            title = stringRes(R.string.resync_title),
+            title = stringRes(R.string.resyncWallet_title),
             logo = null,
             onBack = ::onBack,
             dialogButton =
@@ -59,7 +59,7 @@ class ResyncHeightVM(
                 ),
             primaryButton =
                 ButtonState(
-                    text = stringRes(R.string.resync_wbh_confirm_button),
+                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_confirm),
                     onClick = ::onConfirmClick,
                     isEnabled = isValid && !isConfirming,
                     isLoading = isConfirming,

@@ -80,7 +80,7 @@ data class ZashiAccount(
     override val isSelected: Boolean,
 ) : WalletAccount {
     override val name: StringResource
-        get() = stringRes(co.electriccoin.zcash.ui.R.string.zashi_wallet_name)
+        get() = stringRes(co.electriccoin.zcash.ui.R.string.accounts_zashi)
 
     override val icon: Int
         get() = R.drawable.ic_item_zashi
@@ -121,7 +121,7 @@ data class KeystoneAccount(
         get() = R.drawable.ic_item_keystone
 
     override val name: StringResource
-        get() = stringRes(co.electriccoin.zcash.ui.R.string.keystone_wallet_name)
+        get() = stringRes(co.electriccoin.zcash.ui.R.string.accounts_keystone)
 
     override val sapling: SaplingInfo? = null
 

@@ -37,7 +37,7 @@ internal class ScanKeystoneVotingPCZTViewModel(
         MutableStateFlow(
             ScanKeystoneState(
                 progress = null,
-                message = stringRes(R.string.scan_keystone_info_transaction),
+                message = stringRes(R.string.coinVote_delegationSigning_scanInstructions),
             )
         )
 
@@ -57,7 +57,7 @@ internal class ScanKeystoneVotingPCZTViewModel(
                     validationState.update { ScanValidationState.NONE }
                     state.update {
                         it.copy(
-                            message = stringRes(R.string.scan_keystone_info_transaction),
+                            message = stringRes(R.string.coinVote_delegationSigning_scanInstructions),
                             progress = scanResult.progress
                         )
                     }

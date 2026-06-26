@@ -156,14 +156,14 @@ internal class SwapVMMapper {
         val amountFiat = state.getOriginFiatAmount()
         val originAmount = state.getOriginTokenAmount()
         return SwapAmountTextFieldState(
-            title = stringRes(R.string.swap_from),
+            title = stringRes(R.string.swapAndPay_from),
             error =
                 when (state.mode) {
                     SWAP_FROM_ZEC -> {
                         if (originAmount != null &&
                             state.totalSpendableBalance.value < originAmount.convertZecToZatoshi().value
                         ) {
-                            stringRes(R.string.swap_insufficient_funds)
+                            stringRes(R.string.send_error_insufficientFunds)
                         } else {
                             null
                         }
@@ -278,7 +278,7 @@ internal class SwapVMMapper {
     ): ButtonState {
         val account =
             state.account ?: return ButtonState(
-                text = stringRes(R.string.swap_max_standalone),
+                text = stringRes(R.string.balance_availableTitle),
                 isLoading = true,
                 onClick = onBalanceButtonClick
             )
@@ -289,7 +289,7 @@ internal class SwapVMMapper {
                 account.totalShieldedBalance > Zatoshi(0) &&
                 account.spendableShieldedBalance == Zatoshi(0) -> {
                 ButtonState(
-                    text = stringRes(R.string.swap_max_standalone),
+                    text = stringRes(R.string.balance_availableTitle),
                     isLoading = true,
                     onClick = onBalanceButtonClick
                 )
@@ -301,7 +301,7 @@ internal class SwapVMMapper {
                 account.spendableShieldedBalance == Zatoshi(0) &&
                 account.totalTransparentBalance == Zatoshi(0) -> {
                 ButtonState(
-                    text = stringRes(R.string.swap_max_standalone),
+                    text = stringRes(R.string.balance_availableTitle),
                     isLoading = true,
                     onClick = onBalanceButtonClick
                 )
@@ -323,7 +323,7 @@ internal class SwapVMMapper {
                     }
 
                 ButtonState(
-                    text = stringRes(R.string.swap_max, amount.asPrivacySensitive()),
+                    text = stringRes(R.string.swapAndPay_max, amount.asPrivacySensitive()),
                     // amount = account.spendableShieldedBalance,
                     isLoading = false,
                     onClick = onBalanceButtonClick
@@ -372,7 +372,7 @@ internal class SwapVMMapper {
                         )
                     }
                 },
-            title = stringRes(R.string.swap_to),
+            title = stringRes(R.string.swapAndPay_to),
             subtitle = null,
             text =
                 when (state.currencyType) {
@@ -423,15 +423,15 @@ internal class SwapVMMapper {
         return SwapErrorFooterState(
             title =
                 if (isServiceUnavailableError) {
-                    stringRes(co.electriccoin.zcash.ui.design.R.string.general_service_unavailable)
+                    stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_laterTitle)
                 } else {
-                    stringRes(co.electriccoin.zcash.ui.design.R.string.general_unexpected_error)
+                    stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_retryTitle)
                 },
             subtitle =
                 if (isServiceUnavailableError) {
-                    stringRes(co.electriccoin.zcash.ui.design.R.string.general_please_try_again)
+                    stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_laterDesc)
                 } else {
-                    stringRes(co.electriccoin.zcash.ui.design.R.string.general_check_connection)
+                    stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_retryDesc)
                 }
         )
     }
@@ -455,11 +455,11 @@ internal class SwapVMMapper {
             text =
                 when {
                     state.isEphemeralAddressLocked -> {
-                        stringRes(co.electriccoin.zcash.ui.design.R.string.general_processing)
+                        stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_status_processing)
                     }
 
                     state.swapAssets.error != null -> {
-                        stringRes(co.electriccoin.zcash.ui.design.R.string.general_try_again)
+                        stringRes(co.electriccoin.zcash.ui.design.R.string.disconnectHWWallet_tryAgain)
                     }
 
                     state.swapAssets.isLoading && state.swapAssets.data == null -> {
@@ -467,7 +467,7 @@ internal class SwapVMMapper {
                     }
 
                     else -> {
-                        stringRes(R.string.swap_confirm)
+                        stringRes(R.string.swapAndPay_getQuote)
                     }
                 },
             style = if (state.swapAssets.error != null) ButtonStyle.DESTRUCTIVE1 else null,
@@ -528,14 +528,14 @@ internal class SwapVMMapper {
         return if (zecToAssetExchangeRate == null || assetTokenTicker == null) {
             listOf(
                 SimpleListItemState(
-                    title = stringRes(R.string.swap_rate),
+                    title = stringRes(R.string.swapAndPay_rate),
                     text = null
                 )
             )
         } else {
             listOf(
                 SimpleListItemState(
-                    title = stringRes(R.string.swap_rate),
+                    title = stringRes(R.string.swapAndPay_rate),
                     text =
                         stringRes(
                             R.string.swap_zec_exchange_rate,

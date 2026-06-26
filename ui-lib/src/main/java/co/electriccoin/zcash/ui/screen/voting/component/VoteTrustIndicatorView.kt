@@ -28,7 +28,7 @@ fun VoteTrustIndicatorView(
         when (indicator) {
             VoteTrustIndicator.ZODL -> {
                 TrustIndicatorParams(
-                    labelRes = R.string.vote_poll_card_trust_zodl,
+                    labelRes = R.string.coinVote_pollsList_approvedByZodl,
                     iconRes = DesignR.drawable.ic_item_zashi,
                     iconTint = Color.Unspecified,
                     iconSize = 24,
@@ -38,7 +38,7 @@ fun VoteTrustIndicatorView(
 
             VoteTrustIndicator.UNVERIFIED -> {
                 TrustIndicatorParams(
-                    labelRes = R.string.vote_poll_card_trust_unverified,
+                    labelRes = R.string.coinVote_pollsList_unverifiedSheetTitle,
                     iconRes = DesignR.drawable.ic_info,
                     iconTint = ZashiColors.Text.textTertiary,
                     iconSize = 20,

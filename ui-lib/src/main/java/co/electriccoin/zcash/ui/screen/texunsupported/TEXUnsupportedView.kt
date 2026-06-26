@@ -44,7 +44,7 @@ fun TEXUnsupportedView(
         onBack = state.onBack,
         primaryButton =
             ButtonState(
-                text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_got_it),
+                text = stringRes(co.electriccoin.zcash.ui.design.R.string.restoreInfo_gotIt),
                 onClick = state.onBack,
             ),
         sheetState = sheetState,
@@ -52,21 +52,21 @@ fun TEXUnsupportedView(
         Image(painterResource(R.drawable.ic_swap_quote_error), contentDescription = null)
         Spacer(12.dp)
         Text(
-            text = stringResource(R.string.tex_unsupported_title),
+            text = stringResource(R.string.texKeystone_title),
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.header6,
             fontWeight = FontWeight.SemiBold,
         )
         Spacer(8.dp)
         val description =
-            (stringRes(R.string.tex_unsupported_description_part1) + stringRes(" ")).withStyle(
+            (stringRes(R.string.texKeystone_warn1) + stringRes(" ")).withStyle(
                 StyledStringStyle(
                     color = StringResourceColor.PRIMARY,
                     fontWeight = FontWeight.SemiBold,
                 ),
             ) +
                 styledStringResource(
-                    R.string.tex_unsupported_description_part2,
+                    R.string.texKeystone_warn2,
                     StringResourceColor.TERTIARY,
                 )
         Text(
@@ -75,7 +75,7 @@ fun TEXUnsupportedView(
         )
         Spacer(24.dp)
         Text(
-            text = stringResource(R.string.tex_unsupported_workaround_title),
+            text = stringResource(R.string.texKeystone_workaround),
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.textMd,
             fontWeight = FontWeight.SemiBold,
@@ -83,15 +83,15 @@ fun TEXUnsupportedView(
         Spacer(16.dp)
         StepItem(
             badge = stringResource(R.string.tex_unsupported_step_1_badge),
-            title = stringResource(R.string.tex_unsupported_step_1_title),
-            description = stringResource(R.string.tex_unsupported_step_1_description),
+            title = stringResource(R.string.texKeystone_step1_title),
+            description = stringResource(R.string.texKeystone_step1_desc),
             icon = R.drawable.ic_tex_unsupported_1,
         )
         Spacer(28.dp)
         StepItem(
             badge = stringResource(R.string.tex_unsupported_step_2_badge),
-            title = stringResource(R.string.tex_unsupported_step_2_title),
-            description = stringResource(R.string.tex_unsupported_step_2_description),
+            title = stringResource(R.string.texKeystone_step2_title),
+            description = stringResource(R.string.texKeystone_step2_desc),
             icon = R.drawable.ic_tex_unsupported_2,
         )
     }

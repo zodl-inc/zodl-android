@@ -43,7 +43,7 @@ class FeedbackVM(
                     ),
                 sendButton =
                     ButtonState(
-                        text = stringRes(R.string.support_send),
+                        text = stringRes(R.string.tabs_send),
                         isEnabled = feedbackText.isNotEmpty(),
                         onClick = ::onSendClicked
                     )
@@ -58,12 +58,12 @@ class FeedbackVM(
                     text = stringRes(R.string.support_confirmation_explanation),
                     confirmButtonState =
                         ButtonState(
-                            text = stringRes(R.string.support_confirmation_dialog_ok),
+                            text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_ok),
                             onClick = ::onConfirmSendFeedback
                         ),
                     dismissButtonState =
                         ButtonState(
-                            text = stringRes(R.string.support_confirmation_dialog_cancel),
+                            text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_cancel),
                             onClick = { isDialogShown.update { false } }
                         ),
                     onDismissRequest = { isDialogShown.update { false } }

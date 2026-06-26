@@ -41,12 +41,12 @@ fun WalletBackupMessage(
         },
         title = {
             Text(
-                stringResource(R.string.home_message_backup_required_title),
+                stringResource(R.string.smartBanner_content_backup_title),
             )
         },
         subtitle = {
             Text(
-                text = stringResource(R.string.home_message_backup_required_subtitle),
+                text = stringResource(R.string.smartBanner_content_backup_info),
             )
         },
         end = {
@@ -55,7 +55,7 @@ fun WalletBackupMessage(
                 state =
                     ButtonState(
                         onClick = state.onButtonClick,
-                        text = stringRes(R.string.home_message_backup_required_button)
+                        text = stringRes(R.string.smartBanner_content_backup_button)
                     )
             )
         }

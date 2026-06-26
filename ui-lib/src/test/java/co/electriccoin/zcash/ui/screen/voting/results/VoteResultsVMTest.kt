@@ -69,7 +69,7 @@ class VoteResultsVMTest {
         actual: StringResource?
     ) {
         val resource = assertIs<StringResource.ByResource>(actual)
-        assertEquals(R.string.vote_results_voted_option, resource.resource)
+        assertEquals(R.string.coinVote_results_votedLine, resource.resource)
         assertContentEquals(listOf(expectedAnswer), resource.args)
     }
 

@@ -110,7 +110,7 @@ fun ActivityHistoryView(
                     },
                     placeholder = {
                         Text(
-                            text = stringRes(stringResource(R.string.transaction_history_search)).getValue(),
+                            text = stringRes(stringResource(R.string.filter_search)).getValue(),
                             style = ZashiTypography.textMd,
                             color = ZashiColors.Inputs.Default.text,
                             fontWeight = FontWeight.Medium
@@ -333,7 +333,7 @@ private fun TransactionHistoryAppBar(
     state: ActivityHistoryState
 ) {
     ZashiSmallTopAppBar(
-        title = stringResource(R.string.transaction_history_screen_title),
+        title = stringResource(R.string.general_activity),
         showTitleLogo = true,
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = state.onBack)

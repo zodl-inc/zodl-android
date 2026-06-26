@@ -366,7 +366,7 @@ private fun RequestAmountKeyboardView(
             )
             RequestAmountKeyboardIconButton(
                 painter = painterResource(id = R.drawable.ic_delete),
-                contentDescription = stringResource(id = R.string.request_amount_keyboard_delete),
+                contentDescription = stringResource(id = R.string.general_delete),
                 onClick = { state.onAmount(OnAmount.Delete) }
             )
         }
@@ -433,7 +433,7 @@ private fun InvalidAmountView(
             Spacer(modifier = Modifier.width(8.dp))
 
             Text(
-                text = stringResource(id = R.string.request_amount_invalid),
+                text = stringResource(id = R.string.zecKeyboard_invalid),
                 color = ZashiColors.Utility.WarningYellow.utilityOrange700,
                 style = ZashiTypography.textSm,
                 fontWeight = FontWeight.Medium,

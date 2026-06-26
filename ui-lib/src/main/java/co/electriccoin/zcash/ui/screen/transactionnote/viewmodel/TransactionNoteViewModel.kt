@@ -55,9 +55,9 @@ internal class TransactionNoteViewModel(
             onBack = ::onBack,
             title =
                 if (foundNote == null) {
-                    stringRes(R.string.transaction_note_add_note_title)
+                    stringRes(R.string.annotation_addArticle)
                 } else {
-                    stringRes(R.string.transaction_note_edit_note_title)
+                    stringRes(R.string.annotation_edit)
                 },
             note =
                 TextFieldState(
@@ -74,21 +74,21 @@ internal class TransactionNoteViewModel(
                     ),
             primaryButton =
                 ButtonState(
-                    text = stringRes(R.string.transaction_note_add_note),
+                    text = stringRes(R.string.annotation_add),
                     onClick = ::onAddOrUpdateNoteClick,
                     isEnabled = !isNoteTextTooLong && noteTextNormalized.isNotEmpty(),
                     hapticFeedbackType = HapticFeedbackType.Confirm
                 ).takeIf { foundNote == null },
             secondaryButton =
                 ButtonState(
-                    text = stringRes(R.string.transaction_note_save_note),
+                    text = stringRes(R.string.annotation_save),
                     onClick = ::onAddOrUpdateNoteClick,
                     isEnabled = !isNoteTextTooLong && noteTextNormalized.isNotEmpty(),
                     hapticFeedbackType = HapticFeedbackType.Confirm
                 ).takeIf { foundNote != null },
             negative =
                 ButtonState(
-                    text = stringRes(R.string.transaction_note_delete_note),
+                    text = stringRes(R.string.annotation_delete),
                     onClick = ::onDeleteNoteClick,
                     hapticFeedbackType = HapticFeedbackType.Confirm
                 ).takeIf { foundNote != null },

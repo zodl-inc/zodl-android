@@ -70,9 +70,12 @@ class ScanViewTest : UiTestPrerequisites() {
 
         testSetup.grantPermission()
 
-        composeTestRule.onNodeWithText(getStringResource(R.string.scan_cancel_button)).also {
-            it.assertIsDisplayed()
-        }
+        composeTestRule
+            .onNodeWithText(
+                getStringResource(co.electriccoin.zcash.ui.design.R.string.general_cancel)
+            ).also {
+                it.assertIsDisplayed()
+            }
 
         composeTestRule.onNodeWithTag(ScanTag.QR_FRAME).also {
             it.assertIsDisplayed()
@@ -104,14 +107,14 @@ class ScanViewTest : UiTestPrerequisites() {
         composeTestRule
             .onNodeWithText(
                 getStringResourceWithArgs(
-                    resId = R.string.scan_state_permission,
+                    resId = R.string.scan_cameraSettings,
                     getStringResource(R.string.app_name)
                 )
             ).also {
                 it.assertIsDisplayed()
             }
 
-        composeTestRule.onNodeWithText(getStringResource(R.string.scan_settings_button), ignoreCase = true).also {
+        composeTestRule.onNodeWithText(getStringResource(R.string.scan_openSettings), ignoreCase = true).also {
             it.assertIsDisplayed()
             it.assertHasClickAction()
         }
@@ -124,7 +127,7 @@ class ScanViewTest : UiTestPrerequisites() {
 
         assertEquals(0, testSetup.getOnOpenSettingsCount())
 
-        composeTestRule.onNodeWithText(getStringResource(R.string.scan_settings_button), ignoreCase = true).also {
+        composeTestRule.onNodeWithText(getStringResource(R.string.scan_openSettings), ignoreCase = true).also {
             it.performClick()
         }
 

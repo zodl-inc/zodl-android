@@ -199,7 +199,7 @@ private fun EmptyItem(modifier: Modifier = Modifier) {
             Spacer(modifier = Modifier.height(14.dp))
             Text(
                 modifier = Modifier.fillMaxWidth(),
-                text = stringResource(id = R.string.address_book_empty),
+                text = stringResource(id = R.string.addressBook_empty),
                 color = ZashiColors.Text.textPrimary,
                 style = ZashiTypography.header6,
                 textAlign = TextAlign.Center,
@@ -224,7 +224,7 @@ private fun EmptyFullscreen(
             Image(painter = painterResource(id = R.drawable.ic_address_book_empty), contentDescription = null)
             Spacer(modifier = Modifier.height(14.dp))
             Text(
-                text = stringResource(id = R.string.address_book_empty),
+                text = stringResource(id = R.string.addressBook_empty),
                 fontWeight = FontWeight.SemiBold,
                 color = ZashiColors.Text.textPrimary,
                 style = ZashiTypography.header6,
@@ -303,7 +303,7 @@ private fun AddContactButton(
                             if (tooltipState.isVisible) tooltipState.dismiss() else tooltipState.show()
                         }
                     },
-                    text = stringRes(R.string.address_book_add)
+                    text = stringRes(R.string.addressBook_addNewContact)
                 )
         ) { scope ->
             Image(

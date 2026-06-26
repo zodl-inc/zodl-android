@@ -67,7 +67,7 @@ private fun Content(
                 .padding(start = 24.dp, end = 24.dp, bottom = contentPadding.calculateBottomPadding())
     ) {
         Text(
-            text = stringResource(R.string.restore_dialog_title),
+            text = stringResource(R.string.restoreWallet_help_title),
             style = ZashiTypography.header6,
             fontWeight = FontWeight.SemiBold,
             color = ZashiColors.Text.textPrimary
@@ -100,7 +100,7 @@ private fun Content(
 
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),
-            text = stringResource(co.electriccoin.zcash.ui.design.R.string.general_got_it),
+            text = stringResource(co.electriccoin.zcash.ui.design.R.string.restoreInfo_gotIt),
             onClick = state.onBack
         )
     }

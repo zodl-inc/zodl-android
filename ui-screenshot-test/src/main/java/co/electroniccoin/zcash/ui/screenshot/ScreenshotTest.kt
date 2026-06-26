@@ -205,7 +205,7 @@ class ScreenshotTest : UiTestPrerequisites() {
             .onNodeWithText(
                 text =
                     resContext.getString(
-                        R.string.onboarding_import_existing_wallet
+                        R.string.plainOnboarding_button_restoreWallet
                     ),
                 ignoreCase = true
             ).also {
@@ -216,13 +216,13 @@ class ScreenshotTest : UiTestPrerequisites() {
 
         // To ensure that the new screen is available, or wait until it is
         composeTestRule.waitUntilAtLeastOneExists(
-            hasText(resContext.getString(R.string.restore_title), ignoreCase = true),
+            hasText(resContext.getString(R.string.root_existingWallet_restore), ignoreCase = true),
             DEFAULT_TIMEOUT_MILLISECONDS
         )
 
         composeTestRule
             .onNodeWithText(
-                resContext.getString(R.string.restore_title),
+                resContext.getString(R.string.root_existingWallet_restore),
                 ignoreCase = true
             ).assertExists()
 
@@ -242,7 +242,7 @@ class ScreenshotTest : UiTestPrerequisites() {
 
         composeTestRule
             .onNodeWithText(
-                text = resContext.getString(R.string.restore_button),
+                text = resContext.getString(R.string.general_next),
                 ignoreCase = true
             ).also {
                 // Even with waiting for the word list in the view model,
@@ -256,7 +256,7 @@ class ScreenshotTest : UiTestPrerequisites() {
 
         composeTestRule
             .onNodeWithText(
-                resContext.getString(R.string.wbh_subtitle),
+                resContext.getString(R.string.recoveryPhraseDisplay_birthdayTitle),
                 ignoreCase = true
             ).also {
                 it.assertExists()
@@ -298,14 +298,14 @@ class ScreenshotTest : UiTestPrerequisites() {
         composeTestRule.waitUntil(DEFAULT_TIMEOUT_MILLISECONDS) {
             composeTestRule
                 .onNodeWithText(
-                    text = resContext.getString(co.electriccoin.zcash.ui.design.R.string.general_got_it),
+                    text = resContext.getString(co.electriccoin.zcash.ui.design.R.string.restoreInfo_gotIt),
                     ignoreCase = true
                 ).exists()
         }
 
         composeTestRule
             .onNodeWithText(
-                text = resContext.getString(co.electriccoin.zcash.ui.design.R.string.general_got_it),
+                text = resContext.getString(co.electriccoin.zcash.ui.design.R.string.restoreInfo_gotIt),
                 ignoreCase = true
             ).also {
                 it.performScrollTo()
@@ -440,7 +440,7 @@ private fun onboardingScreenshots(
     // Welcome screen
     composeTestRule
         .onNodeWithText(
-            resContext.getString(R.string.onboarding_header, ZcashCurrency.getLocalizedName(resContext)),
+            resContext.getString(R.string.plainOnboarding_title, ZcashCurrency.getLocalizedName(resContext)),
             useUnmergedTree = true
         ).also {
             it.assertExists()
@@ -451,7 +451,7 @@ private fun onboardingScreenshots(
 
     composeTestRule
         .onNodeWithText(
-            text = resContext.getString(R.string.onboarding_create_new_wallet),
+            text = resContext.getString(R.string.plainOnboarding_button_createNewWallet),
             ignoreCase = true,
             useUnmergedTree = true
         ).also {
@@ -525,14 +525,14 @@ private fun sendZecScreenshots(
     }
 
     composeTestRule.waitUntilAtLeastOneExists(
-        hasText(resContext.getString(R.string.send_create), ignoreCase = true),
+        hasText(resContext.getString(co.electriccoin.zcash.ui.design.R.string.send_review), ignoreCase = true),
         15.seconds.inWholeMilliseconds
     )
 
     composeTestRule
         .onNode(
             hasText(
-                resContext.getString(R.string.send_create),
+                resContext.getString(co.electriccoin.zcash.ui.design.R.string.send_review),
                 ignoreCase = true
             )
         ).also {
@@ -551,11 +551,11 @@ private fun sendZecScreenshots(
             it.performTextInput("0${separators.decimal}123")
         }
 
-    composeTestRule.onNodeWithText(resContext.getString(R.string.send_address_hint)).also {
+    composeTestRule.onNodeWithText(resContext.getString(R.string.send_addressPlaceholder)).also {
         it.performTextInput(WalletAddressFixture.UNIFIED_ADDRESS_STRING)
     }
 
-    composeTestRule.onNodeWithText(resContext.getString(R.string.send_memo_hint)).also {
+    composeTestRule.onNodeWithText(resContext.getString(R.string.send_memoPlaceholder)).also {
         it.performTextInput(MemoFixture.MEMO_STRING)
     }
 
@@ -586,7 +586,7 @@ private fun exportPrivateDataScreenshots(
     tag: String,
     composeTestRule: ComposeTestRule
 ) {
-    composeTestRule.onNode(hasText(resContext.getString(R.string.export_data_header))).also {
+    composeTestRule.onNode(hasText(resContext.getString(R.string.privateDataConsent_title))).also {
         it.assertExists()
     }
 
@@ -616,12 +616,15 @@ private fun seedScreenshots(
 ) {
     composeTestRule
         .waitUntilAtLeastOneExists(
-            hasText(resContext.getString(R.string.seed_recovery_header), ignoreCase = true),
+            hasText(resContext.getString(R.string.recoveryPhraseDisplay_title), ignoreCase = true),
             DEFAULT_TIMEOUT_MILLISECONDS
         )
-    composeTestRule.onNode(hasText(resContext.getString(R.string.seed_recovery_header), ignoreCase = true)).also {
-        it.assertExists()
-    }
+    composeTestRule
+        .onNode(
+            hasText(resContext.getString(R.string.recoveryPhraseDisplay_title), ignoreCase = true)
+        ).also {
+            it.assertExists()
+        }
 
     ScreenshotTest.takeScreenshot(tag, "Seed 1")
 }

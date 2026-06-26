@@ -133,7 +133,7 @@ private fun SignKeystoneVotingLoadingView(onBack: () -> Unit) {
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
-                title = stringResource(R.string.sign_keystone_voting_bar_title),
+                title = stringResource(R.string.coinVote_common_confirmation),
                 navigationAction = {
                     ZashiTopAppBarBackNavigation(
                         onBack = onBack,

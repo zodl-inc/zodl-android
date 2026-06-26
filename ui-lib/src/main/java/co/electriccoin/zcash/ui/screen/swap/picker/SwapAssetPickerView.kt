@@ -234,7 +234,7 @@ private fun SearchTextField(innerState: SwapAssetPickerState, modifier: Modifier
             )
         },
         placeholder = {
-            Text(stringResource(R.string.swap_search_hint))
+            Text(stringResource(R.string.swapAndPay_search))
         },
         singleLine = true,
         maxLines = 1

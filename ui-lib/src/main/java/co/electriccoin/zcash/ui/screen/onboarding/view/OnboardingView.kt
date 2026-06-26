@@ -124,7 +124,7 @@ private fun OnboardingMainContent(
         Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing5xl))
 
         Text(
-            text = stringResource(R.string.onboarding_header),
+            text = stringResource(R.string.plainOnboarding_title),
             style = ZashiTypography.textXl,
             textAlign = TextAlign.Center,
             color = ZashiColors.Text.textSecondary
@@ -144,7 +144,7 @@ private fun OnboardingMainContent(
 
         ZashiButton(
             modifier = Modifier.fillMaxWidth().testTag(OnboardingTags.RESTORE_EXISTING_WALLET),
-            text = stringResource(R.string.onboarding_import_existing_wallet),
+            text = stringResource(R.string.plainOnboarding_button_restoreWallet),
             onClick = onImportWallet,
             colors = ZashiButtonDefaults.tertiaryColors()
         )
@@ -153,7 +153,7 @@ private fun OnboardingMainContent(
 
         ZashiButton(
             onClick = onCreateWallet,
-            text = stringResource(R.string.onboarding_create_new_wallet),
+            text = stringResource(R.string.plainOnboarding_button_createNewWallet),
             modifier = Modifier.fillMaxWidth().testTag(OnboardingTags.CREATE_NEW_WALLET),
             hapticFeedbackType = HapticFeedbackType.Confirm
         )

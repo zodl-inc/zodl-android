@@ -86,7 +86,7 @@ private fun ContactViewInternal(
         modifier = modifier,
     ) {
         Text(
-            text = stringResource(id = R.string.contact_address_label),
+            text = stringResource(id = R.string.addressBook_newContact_address),
             style = ZashiTypography.textSm,
             fontWeight = FontWeight.Medium,
             color = ZashiColors.Inputs.Filled.label
@@ -104,7 +104,7 @@ private fun ContactViewInternal(
             state = state.walletAddress,
             placeholder = {
                 Text(
-                    text = stringResource(id = R.string.contact_address_hint),
+                    text = stringResource(id = R.string.addressBook_newContact_addressPlaceholder),
                     style = ZashiTypography.textMd,
                     color = ZashiColors.Inputs.Default.text
                 )
@@ -116,7 +116,7 @@ private fun ContactViewInternal(
         )
         Spacer(modifier = Modifier.height(20.dp))
         Text(
-            text = stringResource(id = R.string.contact_name_label),
+            text = stringResource(id = R.string.addressBook_newContact_name),
             style = ZashiTypography.textSm,
             fontWeight = FontWeight.Medium,
             color = ZashiColors.Inputs.Filled.label
@@ -139,7 +139,7 @@ private fun ContactViewInternal(
                 ),
             placeholder = {
                 Text(
-                    text = stringResource(id = R.string.contact_name_hint),
+                    text = stringResource(id = R.string.addressBook_newContact_namePlaceholder),
                     style = ZashiTypography.textMd,
                     color = ZashiColors.Inputs.Default.text
                 )
@@ -149,7 +149,7 @@ private fun ContactViewInternal(
         if (state.chain != null) {
             Spacer(modifier = Modifier.height(20.dp))
             Text(
-                text = stringResource(R.string.contact_select_chain),
+                text = stringResource(R.string.swapAndPay_addressBookSelectChain),
                 style = ZashiTypography.textSm,
                 fontWeight = FontWeight.Medium,
                 color = ZashiColors.Inputs.Filled.label

@@ -33,18 +33,18 @@ class KeystoneNewOrActiveVM(
         createAccountLce.state
             .map { lce ->
                 KeystoneNewOrActiveState(
-                    subtitle = stringRes(R.string.keystone_new_or_active_subtitle),
-                    message = stringRes(R.string.keystone_new_or_active_message),
+                    subtitle = stringRes(R.string.keystone_addHWWallet_deviceQuestion),
+                    message = stringRes(R.string.keystone_addHWWallet_deviceDesc),
                     newDevice =
                         ButtonState(
-                            text = stringRes(R.string.keystone_new_device_button),
+                            text = stringRes(R.string.keystone_addHWWallet_connectNew),
                             isLoading = lce.loading,
                             onClick = ::onNewDeviceClick,
                             hapticFeedbackType = HapticFeedbackType.Confirm,
                         ),
                     activeDevice =
                         ButtonState(
-                            text = stringRes(R.string.keystone_active_device_button),
+                            text = stringRes(R.string.keystone_addHWWallet_connectActive),
                             isEnabled = !lce.loading,
                             onClick = ::onActiveDeviceClick,
                         ),

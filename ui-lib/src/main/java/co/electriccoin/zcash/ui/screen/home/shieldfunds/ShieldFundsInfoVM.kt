@@ -40,13 +40,13 @@ class ShieldFundsInfoVM(
                 primaryButton =
                     ButtonState(
                         onClick = ::onShieldClick,
-                        text = stringRes(R.string.home_info_transparent_balance_shield),
+                        text = stringRes(R.string.smartBanner_content_shield_button),
                         hapticFeedbackType = HapticFeedbackType.Confirm
                     ),
                 secondaryButton =
                     ButtonState(
                         onClick = ::onNotNowClick,
-                        text = stringRes(R.string.home_info_transparent_not_now),
+                        text = stringRes(R.string.smartBanner_help_shield_notNow),
                     ),
                 subtitle =
                     stringRes(
@@ -56,7 +56,7 @@ class ShieldFundsInfoVM(
                     ),
                 checkbox =
                     CheckboxState(
-                        title = stringRes(R.string.home_info_transparent_checkbox),
+                        title = stringRes(R.string.smartBanner_help_shield_doNotShowAgain),
                         onClick = ::onCheckboxClick,
                         isChecked = !infoEnabled
                     )

@@ -43,7 +43,7 @@ fun TransactionDetailInfoEmptyMemo(modifier: Modifier = Modifier) {
             Spacer(Modifier.width(8.dp))
             Text(
                 modifier = Modifier,
-                text = stringResource(R.string.transaction_detail_memo_empty),
+                text = stringResource(R.string.transactionHistory_noMessage),
                 style = ZashiTypography.textSm,
                 color = ZashiColors.Text.textSupport,
                 fontWeight = FontWeight.Medium

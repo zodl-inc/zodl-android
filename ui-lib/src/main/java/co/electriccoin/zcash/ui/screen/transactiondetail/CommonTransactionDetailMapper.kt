@@ -31,7 +31,7 @@ class CommonTransactionDetailMapper {
                     zonedDateTime = it,
                     useFullFormat = true
                 )
-            } ?: stringRes(R.string.transaction_detail_pending)
+            } ?: stringRes(R.string.transactionHistory_pending)
 
     fun createTransactionDetailErrorFooter(error: Exception?): ErrorFooter? {
         if (error == null) return null
@@ -41,15 +41,15 @@ class CommonTransactionDetailMapper {
         return ErrorFooter(
             title =
                 if (isServiceUnavailableError) {
-                    stringRes(co.electriccoin.zcash.ui.design.R.string.general_service_unavailable)
+                    stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_laterTitle)
                 } else {
-                    stringRes(co.electriccoin.zcash.ui.design.R.string.general_unexpected_error)
+                    stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_retryTitle)
                 },
             subtitle =
                 if (isServiceUnavailableError) {
-                    stringRes(co.electriccoin.zcash.ui.design.R.string.general_please_try_again)
+                    stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_laterDesc)
                 } else {
-                    stringRes(co.electriccoin.zcash.ui.design.R.string.general_check_connection)
+                    stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_retryDesc)
                 }
         )
     }
@@ -61,7 +61,7 @@ class CommonTransactionDetailMapper {
             null
         } else {
             ButtonState(
-                text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_try_again),
+                text = stringRes(co.electriccoin.zcash.ui.design.R.string.disconnectHWWallet_tryAgain),
                 onClick = { reloadHandle.requestReload() },
                 style = ButtonStyle.DESTRUCTIVE1
             )

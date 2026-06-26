@@ -21,7 +21,7 @@ object ZashiMainTopAppBarStateFixture {
         settingsButton: IconButtonState =
             IconButtonState(
                 icon = R.drawable.ic_app_bar_settings,
-                contentDescription = stringRes(co.electriccoin.zcash.ui.R.string.settings_menu_content_description)
+                contentDescription = stringRes(co.electriccoin.zcash.ui.R.string.scan_openSettings)
             ) {},
     ) = ZashiMainTopAppBarState(
         accountSwitchState = accountSwitchState,
