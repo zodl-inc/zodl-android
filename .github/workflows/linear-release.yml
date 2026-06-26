@@ -70,7 +70,17 @@ jobs:
           ref: ${{ steps.tag.outputs.tag }}
           fetch-depth: 0  # full history so the Linear release action sees every commit since the previous tag
 
+      - name: Find previous tag
+        id: prev
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          prev=$(git tag --sort=-version:refname | grep -E '^[0-9]+\.[0-9]+\.[0-9]+' | grep -v "^${TAG}$" | head -1)
+          echo "tag=${prev}" >> "$GITHUB_OUTPUT"
+
       - name: Create Linear release
         uses: linear/linear-release-action@3b634623620454bac33390451a1dd15ba78e3dc4 # v0.14.4
         with:
           access_key: ${{ secrets.LINEAR_ACCESS_KEY }}
+          version: ${{ steps.tag.outputs.tag }}
+          base_ref: ${{ steps.prev.outputs.tag }}
