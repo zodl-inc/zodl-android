@@ -588,6 +588,13 @@ private data class SwapInternalState(
         }
 
     fun getTotalSpendableFiatBalance(): BigDecimal {
+        fun Long.convertZatoshiToZecBigDecimal(scale: Int = ZEC_FORMATTER.maximumFractionDigits): BigDecimal =
+            BigDecimal(this, MathContext.DECIMAL128)
+                .divide(
+                    Conversions.ONE_ZEC_IN_ZATOSHI,
+                    MathContext.DECIMAL128
+                ).setScale(scale, ZEC_FORMATTER.roundingMode)
+
         if (swapAssets.zecAsset?.usdPrice == null) return BigDecimal(0)
         return totalSpendableBalance.value
             .convertZatoshiToZecBigDecimal()
@@ -674,13 +681,6 @@ internal fun BigDecimal.convertZecToZatoshi(): Zatoshi =
             .toLong()
             .absoluteValue
     )
-
-internal fun Long.convertZatoshiToZecBigDecimal(scale: Int = ZEC_FORMATTER.maximumFractionDigits): BigDecimal =
-    BigDecimal(this, MathContext.DECIMAL128)
-        .divide(
-            Conversions.ONE_ZEC_IN_ZATOSHI,
-            MathContext.DECIMAL128
-        ).setScale(scale, ZEC_FORMATTER.roundingMode)
 
 /**
  * The [SwapVM] callbacks wired into [SwapState]. Bundled into a named type so [SwapVMMapper.createState]

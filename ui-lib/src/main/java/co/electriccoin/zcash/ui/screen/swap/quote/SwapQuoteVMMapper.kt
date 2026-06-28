@@ -3,7 +3,7 @@ package co.electriccoin.zcash.ui.screen.swap.quote
 import cash.z.ecc.android.sdk.ext.convertZecToZatoshi
 import cash.z.ecc.android.sdk.model.FiatCurrency
 import co.electriccoin.zcash.ui.R
-import co.electriccoin.zcash.ui.common.model.DynamicSwapAsset
+import co.electriccoin.zcash.ui.common.model.GenericSwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT
@@ -143,7 +143,7 @@ internal class SwapQuoteVMMapper {
             bigIcon = quote.originAsset.getQuoteTokenIcon(),
             smallIcon =
                 when (val asset = quote.originAsset) {
-                    is DynamicSwapAsset -> asset.chainIcon
+                    is GenericSwapAsset -> asset.chainIcon
                     is ZecSwapAsset -> asset.getQuoteChainIcon(isShielded = true)
                 },
             amount = stringResByDynamicNumber(quote.amountInFormatted),
@@ -157,7 +157,7 @@ internal class SwapQuoteVMMapper {
             bigIcon = quote.destinationAsset.getQuoteTokenIcon(),
             smallIcon =
                 when (val asset = quote.destinationAsset) {
-                    is DynamicSwapAsset -> asset.chainIcon
+                    is GenericSwapAsset -> asset.chainIcon
                     is ZecSwapAsset -> asset.getQuoteChainIcon(isShielded = true)
                 },
             amount =

@@ -9,17 +9,18 @@ import co.electriccoin.zcash.ui.common.model.near.QuoteResponseDto
 import co.electriccoin.zcash.ui.common.model.near.SubmitDepositTransactionRequest
 import co.electriccoin.zcash.ui.common.model.near.SwapStatusResponseDto
 import co.electriccoin.zcash.ui.common.model.near.SwapType
+import co.electriccoin.zcash.ui.common.provider.BlockchainProvider
 import co.electriccoin.zcash.ui.common.provider.NearApiProvider
 import co.electriccoin.zcash.ui.common.provider.ResponseWithNearErrorException
-import co.electriccoin.zcash.ui.common.provider.SwapAssetProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
+import co.electriccoin.zcash.ui.common.provider.TokenIconProvider
+import co.electriccoin.zcash.ui.common.provider.TokenNameProvider
 import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
 import io.mockk.slot
-import io.mockk.verify
 import kotlinx.coroutines.runBlocking
 import java.math.BigDecimal
 import kotlin.test.Test
@@ -29,24 +30,30 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 
 /**
- * [NearSwapDataSourceImpl] maps the 1Click API: de-duplicating supported tokens and delegating to
- * the asset provider, building the quote request (slippage in bps, amount normalized to the asset's
+ * [NearSwapDataSourceImpl] maps the 1Click API: de-duplicating supported tokens and mapping them to
+ * `SwapAsset` models, building the quote request (slippage in bps, amount normalized to the asset's
  * decimals, asset ids/addresses), and translating NEAR error responses into typed exceptions.
  */
 class NearSwapDataSourceImplTest {
     private val nearApiProvider = mockk<NearApiProvider>()
-    private val swapAssetProvider =
-        mockk<SwapAssetProvider> {
-            every { get(any(), any(), any(), any(), any()) } returns SwapAssetTestFixture.asset()
-        }
+    private val tokenIconProvider = mockk<TokenIconProvider>(relaxed = true)
+    private val tokenNameProvider = mockk<TokenNameProvider>(relaxed = true)
+    private val blockchainProvider = mockk<BlockchainProvider>(relaxed = true)
     private val synchronizerProvider = mockk<SynchronizerProvider>(relaxed = true)
-    private val dataSource = NearSwapDataSourceImpl(nearApiProvider, swapAssetProvider, synchronizerProvider)
+    private val dataSource =
+        NearSwapDataSourceImpl(
+            nearApiProvider,
+            tokenIconProvider,
+            tokenNameProvider,
+            blockchainProvider,
+            synchronizerProvider
+        )
 
     private val origin = SwapAssetTestFixture.asset(tokenTicker = "btc", chainTicker = "btc")
     private val zec = SwapAssetTestFixture.zecAsset()
 
     @Test
-    fun getSupportedTokensDeduplicatesAndDelegatesToProvider() =
+    fun getSupportedTokensDeduplicatesAndMapsTokens() =
         runBlocking {
             coEvery { nearApiProvider.getSupportedTokens() } returns
                 listOf(
@@ -59,25 +66,15 @@ class NearSwapDataSourceImplTest {
             val result = dataSource.getSupportedTokens()
 
             assertEquals(2, result.size)
-            // The first of the duplicate pair (assetId "a1") is kept.
-            verify(exactly = 1) {
-                swapAssetProvider.get(
-                    tokenTicker = "btc",
-                    chainTicker = "btc",
-                    usdPrice = BigDecimal("100000"),
-                    assetId = "a1",
-                    decimals = 8
-                )
-            }
-            verify(exactly = 1) {
-                swapAssetProvider.get(
-                    tokenTicker = "eth",
-                    chainTicker = "eth",
-                    usdPrice = BigDecimal("3000"),
-                    assetId = "e1",
-                    decimals = 18
-                )
-            }
+            // The first of the duplicate pair (assetId "a1") is kept, with the token's fields mapped through.
+            val btc = result.single { it.tokenTicker == "btc" }
+            assertEquals("a1", btc.assetId)
+            assertEquals(8, btc.decimals)
+            assertEquals(0, BigDecimal("100000").compareTo(btc.usdPrice))
+            val eth = result.single { it.tokenTicker == "eth" }
+            assertEquals("e1", eth.assetId)
+            assertEquals(18, eth.decimals)
+            assertEquals(0, BigDecimal("3000").compareTo(eth.usdPrice))
         }
 
     @Test

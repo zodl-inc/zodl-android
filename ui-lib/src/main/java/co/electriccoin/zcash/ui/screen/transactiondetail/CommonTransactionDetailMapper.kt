@@ -2,7 +2,7 @@ package co.electriccoin.zcash.ui.screen.transactiondetail
 
 import cash.z.ecc.android.sdk.model.FiatCurrency
 import co.electriccoin.zcash.ui.R
-import co.electriccoin.zcash.ui.common.model.DynamicSwapAsset
+import co.electriccoin.zcash.ui.common.model.GenericSwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapQuoteStatus
 import co.electriccoin.zcash.ui.common.model.ZcashShieldedSwapAddress
@@ -82,7 +82,7 @@ class CommonTransactionDetailMapper {
                     bigIcon = originAsset.getQuoteTokenIcon(),
                     smallIcon =
                         when (originAsset) {
-                            is DynamicSwapAsset -> originAsset.chainIcon
+                            is GenericSwapAsset -> originAsset.chainIcon
                             is ZecSwapAsset -> originAsset.getQuoteChainIcon(isShielded = true)
                         },
                     amount = stringResByNumber(swap.amountInFormatted),
@@ -95,7 +95,7 @@ class CommonTransactionDetailMapper {
                     bigIcon = destinationAsset.getQuoteTokenIcon(),
                     smallIcon =
                         when (destinationAsset) {
-                            is DynamicSwapAsset -> {
+                            is GenericSwapAsset -> {
                                 destinationAsset.chainIcon
                             }
 

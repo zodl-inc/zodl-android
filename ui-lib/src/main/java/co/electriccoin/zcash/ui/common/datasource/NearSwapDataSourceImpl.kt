@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.common.datasource
 import cash.z.ecc.android.sdk.type.AddressType
 import co.electriccoin.zcash.crash.android.GlobalCrashReporter
 import co.electriccoin.zcash.ui.common.model.DynamicSwapAddress
+import co.electriccoin.zcash.ui.common.model.GenericSwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapAddress
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapMode
@@ -22,10 +23,12 @@ import co.electriccoin.zcash.ui.common.model.near.RefundType
 import co.electriccoin.zcash.ui.common.model.near.SubmitDepositTransactionRequest
 import co.electriccoin.zcash.ui.common.model.near.SwapAmountInconsistencyException
 import co.electriccoin.zcash.ui.common.model.near.SwapType
+import co.electriccoin.zcash.ui.common.provider.BlockchainProvider
 import co.electriccoin.zcash.ui.common.provider.NearApiProvider
 import co.electriccoin.zcash.ui.common.provider.ResponseWithNearErrorException
-import co.electriccoin.zcash.ui.common.provider.SwapAssetProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
+import co.electriccoin.zcash.ui.common.provider.TokenIconProvider
+import co.electriccoin.zcash.ui.common.provider.TokenNameProvider
 import co.electriccoin.zcash.ui.util.loggableNot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -37,7 +40,9 @@ import kotlin.time.Duration.Companion.hours
 
 class NearSwapDataSourceImpl(
     private val nearApiProvider: NearApiProvider,
-    private val swapAssetProvider: SwapAssetProvider,
+    private val tokenIconProvider: TokenIconProvider,
+    private val tokenNameProvider: TokenNameProvider,
+    private val blockchainProvider: BlockchainProvider,
     private val synchronizerProvider: SynchronizerProvider,
 ) : SwapDataSource {
     private val log = loggableNot("NearSwapDataSourceImpl")
@@ -48,7 +53,7 @@ class NearSwapDataSourceImpl(
                 .getSupportedTokens()
                 .distinctBy { Triple(it.symbol, it.blockchain, it.decimals) }
                 .map {
-                    swapAssetProvider.get(
+                    buildSwapAsset(
                         tokenTicker = it.symbol,
                         chainTicker = it.blockchain,
                         usdPrice = it.price,
@@ -56,6 +61,35 @@ class NearSwapDataSourceImpl(
                         decimals = it.decimals
                     )
                 }
+        }
+
+    private fun buildSwapAsset(
+        tokenTicker: String,
+        chainTicker: String,
+        usdPrice: BigDecimal?,
+        assetId: String,
+        decimals: Int,
+    ): SwapAsset =
+        if (tokenTicker.lowercase() == "zec" && chainTicker.lowercase() == "zec") {
+            ZecSwapAsset(
+                tokenName = tokenNameProvider.getName(tokenTicker),
+                tokenIcon = tokenIconProvider.getIcon(tokenTicker),
+                blockchain = blockchainProvider.getBlockchain(chainTicker),
+                tokenTicker = tokenTicker,
+                usdPrice = usdPrice,
+                assetId = assetId,
+                decimals = decimals,
+            )
+        } else {
+            GenericSwapAsset(
+                tokenName = tokenNameProvider.getName(tokenTicker),
+                tokenIcon = tokenIconProvider.getIcon(tokenTicker),
+                blockchain = blockchainProvider.getBlockchain(chainTicker),
+                tokenTicker = tokenTicker,
+                usdPrice = usdPrice,
+                assetId = assetId,
+                decimals = decimals,
+            )
         }
 
     @Suppress("MagicNumber", "CyclomaticComplexMethod")

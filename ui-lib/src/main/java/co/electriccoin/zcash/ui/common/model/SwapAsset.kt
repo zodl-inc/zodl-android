@@ -30,7 +30,7 @@ fun SwapAsset.isSame(
     chain: String
 ): Boolean = tokenTicker.equals(token, true) && chainTicker.equals(chain, true)
 
-data class DynamicSwapAsset(
+data class GenericSwapAsset(
     override val tokenTicker: String,
     override val tokenName: StringResource,
     override val tokenIcon: ImageResource,
@@ -61,6 +61,6 @@ data class ZecSwapAsset(
 
 fun SwapAsset.getQuoteTokenIcon(): ImageResource =
     when (this) {
-        is DynamicSwapAsset -> this.tokenIcon
+        is GenericSwapAsset -> this.tokenIcon
         is ZecSwapAsset -> this.alternativeTokenIcon
     }

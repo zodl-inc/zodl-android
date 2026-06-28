@@ -23,7 +23,7 @@ object SwapAssetTestFixture {
         usdPrice: BigDecimal? = BigDecimal("100000"),
         decimals: Int = 8
     ): SwapAsset =
-        DynamicSwapAsset(
+        GenericSwapAsset(
             tokenTicker = tokenTicker,
             tokenName = stringRes(tokenTicker.uppercase()),
             tokenIcon = imageRes(0),
