@@ -80,22 +80,16 @@ class GetTransactionDetailByIdUseCase(
                     .onStart { emit(Unit) }
                     .flatMapLatest {
                         metadataFlow
-                            .map { it.swapMetadata != null }
-                            .distinctUntilChanged()
-                            .flatMapLatest { hasMetadata ->
-                                if (!hasMetadata) {
+                            .map { it.swapMetadata }
+                            // Key on the deposit address (the stable swap identity), not the whole metadata:
+                            // getSwapStatus.updateSwap mutates status/lastUpdated, which would otherwise re-emit
+                            // here and restart the status poll in a loop.
+                            .distinctUntilChangedBy { it?.depositAddress }
+                            .flatMapLatest { swapMetadata ->
+                                if (swapMetadata == null) {
                                     flowOf(null)
                                 } else {
-                                    transactionFlow
-                                        .map { it.recipient?.address }
-                                        .distinctUntilChanged()
-                                        .flatMapLatest { depositAddress ->
-                                            if (depositAddress == null) {
-                                                flowOf(null)
-                                            } else {
-                                                getSwapStatus.observe(depositAddress)
-                                            }
-                                        }
+                                    getSwapStatus.observe(swapMetadata)
                                 }
                             }.distinctUntilChanged()
                     }

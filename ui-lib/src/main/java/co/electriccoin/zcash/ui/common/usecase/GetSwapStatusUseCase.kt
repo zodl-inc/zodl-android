@@ -4,6 +4,7 @@ import co.electriccoin.zcash.ui.common.model.SwapQuoteStatus
 import co.electriccoin.zcash.ui.common.model.near.requireMatchingAsset
 import co.electriccoin.zcash.ui.common.repository.MetadataRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
+import co.electriccoin.zcash.ui.common.repository.TransactionSwapMetadata
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -18,10 +19,11 @@ class GetSwapStatusUseCase(
     private val metadataRepository: MetadataRepository,
     private val swapRepository: SwapRepository,
 ) {
-    suspend operator fun invoke(depositAddress: String) = observe(depositAddress).first { !it.isLoading }
+    suspend operator fun invoke(swapMetadata: TransactionSwapMetadata) =
+        observe(swapMetadata).first { !it.isLoading }
 
     @Suppress("TooGenericExceptionCaught", "LoopWithTooManyJumpStatements")
-    fun observe(depositAddress: String): Flow<SwapQuoteStatusData> =
+    fun observe(swapMetadata: TransactionSwapMetadata): Flow<SwapQuoteStatusData> =
         channelFlow {
             val data = MutableStateFlow(SwapQuoteStatusData())
 
@@ -30,29 +32,23 @@ class GetSwapStatusUseCase(
             }
 
             launch {
-                val expectedMetadata = metadataRepository.getSwapMetadata(depositAddress)
-
                 while (true) {
                     try {
-                        val result = swapRepository.checkSwapStatus(depositAddress)
-                        expectedMetadata?.origin?.let {
-                            requireMatchingAsset(
-                                name = "origin",
-                                expectedTokenTicker = it.tokenTicker,
-                                expectedChainTicker = it.chainTicker,
-                                actual = result.quote.originAsset
-                            )
-                        }
-                        expectedMetadata?.destination?.let {
-                            requireMatchingAsset(
-                                name = "destination",
-                                expectedTokenTicker = it.tokenTicker,
-                                expectedChainTicker = it.chainTicker,
-                                actual = result.quote.destinationAsset
-                            )
-                        }
+                        val result = swapRepository.checkSwapStatus(swapMetadata)
+                        requireMatchingAsset(
+                            name = "origin",
+                            expectedTokenTicker = swapMetadata.origin.tokenTicker,
+                            expectedChainTicker = swapMetadata.origin.chainTicker,
+                            actual = result.quote.originAsset
+                        )
+                        requireMatchingAsset(
+                            name = "destination",
+                            expectedTokenTicker = swapMetadata.destination.tokenTicker,
+                            expectedChainTicker = swapMetadata.destination.chainTicker,
+                            actual = result.quote.destinationAsset
+                        )
                         metadataRepository.updateSwap(
-                            depositAddress = depositAddress,
+                            depositAddress = swapMetadata.depositAddress,
                             amountOutFormatted = result.amountOutFormatted,
                             status = result.status,
                             mode = result.mode,

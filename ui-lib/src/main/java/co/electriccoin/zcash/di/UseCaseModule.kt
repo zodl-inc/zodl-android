@@ -40,7 +40,7 @@ import co.electriccoin.zcash.ui.common.usecase.GetFilteredActivitiesUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetFlexaStatusUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetHomeMessageUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetKeystoneStatusUseCase
-import co.electriccoin.zcash.ui.common.usecase.GetORSwapQuoteUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetReloadableSwapQuoteUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetPersistableWalletUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetPreselectedSwapAssetUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetProposalUseCase
@@ -288,7 +288,7 @@ val useCaseModule =
         factoryOf(::ValidateSwapABContactAddressUseCase)
         factoryOf(::NavigateToNearPayUseCase)
         factoryOf(::SaveORSwapUseCase)
-        factoryOf(::GetORSwapQuoteUseCase)
+        factoryOf(::GetReloadableSwapQuoteUseCase)
         factoryOf(::ShareQRUseCase)
         factoryOf(::GetActivitiesUseCase)
         factoryOf(::GetResyncDataFromHeightUseCase)

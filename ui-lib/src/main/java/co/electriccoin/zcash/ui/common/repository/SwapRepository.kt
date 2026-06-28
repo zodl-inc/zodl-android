@@ -64,7 +64,7 @@ interface SwapRepository {
     suspend fun submitDepositTransaction(txId: String, transactionProposal: SwapTransactionProposal)
 
     @Throws(ResponseException::class, AssetNotFoundException::class, SwapAssetsUnavailableException::class)
-    suspend fun checkSwapStatus(depositAddress: String): SwapQuoteStatus
+    suspend fun checkSwapStatus(swapMetadata: TransactionSwapMetadata): SwapQuoteStatus
 
     fun clear()
 
@@ -269,9 +269,9 @@ class SwapRepositoryImpl(
         )
     }
 
-    override suspend fun checkSwapStatus(depositAddress: String): SwapQuoteStatus =
+    override suspend fun checkSwapStatus(swapMetadata: TransactionSwapMetadata): SwapQuoteStatus =
         swapDataSource.checkSwapStatus(
-            depositAddress = depositAddress,
+            depositAddress = swapMetadata.depositAddress,
             supportedTokens = getSupportedTokensForStatus()
         )
 

@@ -343,7 +343,7 @@ class SwapRepositoryImplTest {
                 }
             val repository = loadedRepository(dataSource)
 
-            val result = repository.checkSwapStatus("deposit-address")
+            val result = repository.checkSwapStatus(swapMetadata())
 
             assertEquals(status, result)
             // The repo supplies the tokens itself: the priced list plus the separately-kept ZEC asset.
@@ -363,7 +363,7 @@ class SwapRepositoryImplTest {
                 }
             val repository = repository(dataSource) // assets not loaded yet
 
-            val result = repository.checkSwapStatus("deposit-address")
+            val result = repository.checkSwapStatus(swapMetadata())
 
             assertEquals(status, result)
             coVerify(exactly = 1) { dataSource.getSupportedTokens() } // refreshed once on demand
@@ -380,7 +380,7 @@ class SwapRepositoryImplTest {
             val repository = repository(dataSource)
 
             assertFailsWith<SwapAssetsUnavailableException> {
-                repository.checkSwapStatus("deposit-address")
+                repository.checkSwapStatus(swapMetadata())
             }
         }
 
@@ -392,9 +392,12 @@ class SwapRepositoryImplTest {
             val dataSource = mockk<SwapDataSource> { coEvery { getSupportedTokens() } throws failure }
             val repository = repository(dataSource)
 
-            val thrown = assertFailsWith<RuntimeException> { repository.checkSwapStatus("deposit-address") }
+            val thrown = assertFailsWith<RuntimeException> { repository.checkSwapStatus(swapMetadata()) }
             assertEquals("boom", thrown.message)
         }
+
+    private fun swapMetadata(address: String = "deposit-address"): TransactionSwapMetadata =
+        mockk { every { depositAddress } returns address }
 
     private fun dataSourceReturning(quote: SwapQuote) =
         mockk<SwapDataSource> {
