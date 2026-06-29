@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Applied at runtime to the Material ModalBottomSheet's own dialog window (see
+      ZashiScreenModalBottomSheet). Slide-down exit only; opening uses Material's in-Compose
+      slide-up so we must not double-animate the enter.
+    -->
+    <style name="ZashiBottomSheetDialogAnimation">
+        <item name="android:windowExitAnimation">@anim/sheet_slide_out_bottom</item>
+    </style>
+
+    <!--
+      Applied at runtime to the host (Nav dialog) window that carries the bottom-sheet dim. Fades
+      the dim out in place when the dialog is dismissed, so the dim never slides with the sheet.
+    -->
+    <style name="ZashiBottomSheetScrimAnimation">
+        <item name="android:windowExitAnimation">@anim/scrim_fade_out</item>
+    </style>
+</resources>

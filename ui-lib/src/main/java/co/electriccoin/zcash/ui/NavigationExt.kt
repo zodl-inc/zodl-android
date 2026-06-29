@@ -1,12 +1,10 @@
 package co.electriccoin.zcash.ui
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.dialog
-import co.electriccoin.zcash.ui.design.util.LocalNavRoute
 
 inline fun <reified T : Any> NavGraphBuilder.dialogComposable(
     noinline content: @Composable (NavBackStackEntry) -> Unit
@@ -15,13 +13,7 @@ inline fun <reified T : Any> NavGraphBuilder.dialogComposable(
         typeMap = emptyMap(),
         deepLinks = emptyList(),
         dialogProperties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
-        content = {
-            CompositionLocalProvider(
-                LocalNavRoute provides it.destination.route
-            ) {
-                content(it)
-            }
-        }
+        content = content
     )
 }
 

@@ -11,6 +11,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - When opening Send or Request while the selected currency's exchange rate can't be fetched, a bottom sheet now explains the issue and offers to switch to USD or continue entering amounts in ZEC.
 
 ### Fixed:
+- Modal bottom sheets again slide down when they close, including when navigating onward from them. The dismiss animation had stopped playing after a UI-toolkit update and sheets disappeared abruptly.
 - Amount fields now always use a period as the decimal separator and a comma for grouping, regardless of the device region, so amounts render and parse consistently everywhere. Typing an extra separator on an amount that already has a decimal point no longer resets the amount or drops its fraction digits.
 - Network request/response bodies and voting diagnostics are no longer written to logs in release builds, preventing sensitive data (recipient/refund addresses, amounts, transaction hashes) from leaking to logcat, bug reports, and crash dumps. Credential headers are also redacted from logs.
 - Crash reporting (Firebase Crashlytics) collection is now off by default and is only enabled after the user opts in, so no crash data can be sent before consent.

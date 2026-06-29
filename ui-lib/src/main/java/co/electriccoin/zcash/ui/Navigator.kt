@@ -7,7 +7,6 @@ import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.serialization.generateHashCode
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.design.KeyboardManager
-import co.electriccoin.zcash.ui.design.SheetStateManager
 import co.electriccoin.zcash.ui.screen.ExternalUrl
 import co.electriccoin.zcash.ui.screen.about.util.WebBrowserUtil
 import co.electriccoin.zcash.ui.screen.flexa.FlexaViewModel
@@ -27,29 +26,10 @@ class NavigatorImpl(
     private val navController: NavHostController,
     private val flexaViewModel: FlexaViewModel,
     private val keyboardManager: KeyboardManager,
-    private val sheetStateManager: SheetStateManager,
     private val applicationStateProvider: ApplicationStateProvider,
 ) : Navigator {
     override suspend fun executeCommand(command: NavigationCommand) {
         keyboardManager.close()
-
-        when (command) {
-            NavigationCommand.Back,
-            NavigationCommand.BackToRoot,
-            is NavigationCommand.BackTo -> {
-                val currentRoute =
-                    navController
-                        .currentBackStackEntry
-                        ?.destination
-                        ?.route
-
-                currentRoute?.let { sheetStateManager.hide(it) }
-            }
-
-            else -> {
-                // do nothing
-            }
-        }
 
         when (command) {
             is NavigationCommand.Forward -> forward(command)

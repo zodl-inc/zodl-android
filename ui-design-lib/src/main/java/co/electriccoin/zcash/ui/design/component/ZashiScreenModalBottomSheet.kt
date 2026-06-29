@@ -1,7 +1,10 @@
 package co.electriccoin.zcash.ui.design.component
 
+import android.view.View
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -30,8 +33,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
 import co.electriccoin.zcash.ui.design.LocalKeyboardManager
-import co.electriccoin.zcash.ui.design.LocalSheetStateManager
-import co.electriccoin.zcash.ui.design.util.LocalNavRoute
+import co.electriccoin.zcash.ui.design.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,16 +47,31 @@ fun <T : ModalBottomSheetState> ZashiScreenModalBottomSheet(
     dragHandle: @Composable (() -> Unit)? = { ZashiModalBottomSheetDragHandle() },
     content: @Composable ColumnScope.(state: T, contentPadding: PaddingValues) -> Unit = { _, _ -> },
 ) {
-    val parent = LocalView.current.parent
+    // The dim is carried by this host (Nav dialog) window via FLAG_DIM_BEHIND rather than Material's
+    // own scrim, so it does not translate when the sheet window slides out. Its window exit
+    // animation fades the dim in place on dismissals that tear the composition down (forward/back).
+    val hostWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
     SideEffect {
-        (parent as? DialogWindowProvider)?.window?.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-        (parent as? DialogWindowProvider)?.window?.setDimAmount(0f)
+        hostWindow?.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        hostWindow?.setWindowAnimations(R.style.ZashiBottomSheetScrimAnimation)
+    }
+
+    // Mirror Material's internal scrim: alpha tracks sheetState so the dim fades out together with
+    // the sheet as it animates to Hidden (drag / scrim-tap), never lagging behind it.
+    val dimAmount by animateFloatAsState(
+        targetValue = if (state != null && sheetState.targetValue != Hidden) SCRIM_DIM_AMOUNT else 0f,
+        animationSpec = spring(dampingRatio = 1f, stiffness = 1600f),
+        label = "ScrimDim",
+    )
+    LaunchedEffect(hostWindow, dimAmount) {
+        hostWindow?.setDimAmount(dimAmount)
     }
 
     state?.let {
         ZashiModalBottomSheet(
             sheetState = sheetState,
             sheetGesturesEnabled = sheetGesturesEnabled,
+            scrimColor = Color.Transparent,
             shape = shape,
             containerColor = containerColor,
             dragHandle = dragHandle,
@@ -62,6 +79,7 @@ fun <T : ModalBottomSheetState> ZashiScreenModalBottomSheet(
                 BackHandler {
                     it.onBack()
                 }
+                BottomSheetWindowAnimationEffect()
                 content(
                     it,
                     PaddingValues(
@@ -117,6 +135,31 @@ fun ZashiScreenModalBottomSheet(
     )
 }
 
+/**
+ * Re-applies a slide-down window exit animation to the Material [ModalBottomSheet]'s own dialog
+ * window. Material3 1.4.0 sets that window theme's `windowAnimationStyle` to `@null`, so the OS no
+ * longer animates the window away on dismissals that don't drive `sheetState.hide()` (e.g.
+ * forward/replace navigation, where the composition is torn down in the same frame). Setting the
+ * animation at runtime overrides the `@null` and makes every dismissal path animate uniformly.
+ *
+ * Only the exit animation is applied: opening uses Material's in-Compose slide-up, and on the
+ * drag/scrim/back paths the sheet is already off-screen by the time the window is dismissed, so the
+ * exit animation is a no-op there. The dim is handled separately on the host window, so this slide
+ * is translate-only (the sheet moves, the dim stays put and fades).
+ */
+@Composable
+private fun BottomSheetWindowAnimationEffect() {
+    val view = LocalView.current
+    SideEffect {
+        val window =
+            generateSequence(view.parent) { (it as? View)?.parent }
+                .filterIsInstance<DialogWindowProvider>()
+                .firstOrNull()
+                ?.window
+        window?.setWindowAnimations(R.style.ZashiBottomSheetDialogAnimation)
+    }
+}
+
 @Composable
 private fun HookupKeyboardController() {
     val softwareKeyboardController = LocalSoftwareKeyboardController.current
@@ -141,21 +184,14 @@ fun rememberScreenModalBottomSheetState(
     skipHiddenState: Boolean = LocalInspectionMode.current,
     skipPartiallyExpanded: Boolean = true,
     confirmValueChange: (SheetValue) -> Boolean = { true },
-): SheetState {
-    val sheetManager = LocalSheetStateManager.current
-    val sheetState =
-        rememberSheetState(
-            skipPartiallyExpanded = skipPartiallyExpanded,
-            confirmValueChange = confirmValueChange,
-            initialValue = initialValue,
-            skipHiddenState = skipHiddenState,
-        )
-    val route = LocalNavRoute.current
-    DisposableEffect(sheetState) {
-        sheetManager.onSheetOpened(sheetState, route)
-        onDispose {
-            sheetManager.onSheetDisposed(sheetState)
-        }
-    }
-    return sheetState
-}
+): SheetState =
+    rememberSheetState(
+        skipPartiallyExpanded = skipPartiallyExpanded,
+        confirmValueChange = confirmValueChange,
+        initialValue = initialValue,
+        skipHiddenState = skipHiddenState,
+    )
+
+// Matches Material3's BottomSheetDefaults.ScrimColor (scrim @ 0.32 opacity); FLAG_DIM_BEHIND draws
+// black, so the dim amount alone reproduces the default scrim.
+private const val SCRIM_DIM_AMOUNT = 0.32f

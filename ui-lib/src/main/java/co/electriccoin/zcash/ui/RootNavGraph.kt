@@ -11,7 +11,6 @@ import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.viewmodel.SecretState
 import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
 import co.electriccoin.zcash.ui.design.LocalKeyboardManager
-import co.electriccoin.zcash.ui.design.LocalSheetStateManager
 import co.electriccoin.zcash.ui.design.animation.ScreenAnimation.enterTransition
 import co.electriccoin.zcash.ui.design.animation.ScreenAnimation.exitTransition
 import co.electriccoin.zcash.ui.design.animation.ScreenAnimation.popEnterTransition
@@ -32,7 +31,6 @@ fun RootNavGraph(
     val keyboardManager = LocalKeyboardManager.current
     val flexaViewModel = koinViewModel<FlexaViewModel>()
     val navigationRouter = koinInject<NavigationRouter>()
-    val sheetStateManager = LocalSheetStateManager.current
     val applicationStateProvider = koinInject<ApplicationStateProvider>()
     val navController = LocalNavController.current
     val activity = LocalActivity.current
@@ -42,7 +40,6 @@ fun RootNavGraph(
             navController,
             flexaViewModel,
             keyboardManager,
-            sheetStateManager,
             applicationStateProvider
         ) {
             NavigatorImpl(
@@ -50,7 +47,6 @@ fun RootNavGraph(
                 navController = navController,
                 flexaViewModel = flexaViewModel,
                 keyboardManager = keyboardManager,
-                sheetStateManager = sheetStateManager,
                 applicationStateProvider = applicationStateProvider
             )
         }

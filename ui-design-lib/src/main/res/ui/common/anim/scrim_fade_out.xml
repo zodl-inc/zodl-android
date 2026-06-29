@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Window exit animation for the host (Nav dialog) window, which carries the bottom-sheet dim via
+  FLAG_DIM_BEHIND. On dismissals that tear the composition down before sheetState can animate
+  (forward/replace/back), this fades the dim out in place, in sync with the sheet sliding down in
+  its own window. On drag/scrim-tap the dim is already driven to 0 from the sheet state before the
+  window is dismissed, so this is a no-op there.
+-->
+<alpha xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:interpolator/fast_out_linear_in"
+    android:duration="250"
+    android:fromAlpha="1.0"
+    android:toAlpha="0.0" />

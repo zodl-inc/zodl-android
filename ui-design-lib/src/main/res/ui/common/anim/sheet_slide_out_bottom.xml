@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Window exit animation for the Material ModalBottomSheet's own dialog window. Material3 1.4.0 set
+  that window theme's android:windowAnimationStyle to @null (it relies on in-Compose motion), which
+  removed the slide the OS used to play whenever the window was dismissed without a driven
+  sheetState.hide() (notably forward/replace navigation). We re-apply it at runtime via
+  Window.setWindowAnimations so every dismissal path animates.
+
+  Translate only (no alpha): the sheet slides down opaque. The dim is rendered by the host (Nav
+  dialog) window, not this one, so it does not slide with the sheet.
+-->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:interpolator/fast_out_linear_in"
+    android:duration="250">
+    <translate
+        android:fromYDelta="0%p"
+        android:toYDelta="100%p" />
+</set>
