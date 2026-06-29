@@ -1,12 +1,17 @@
 package co.electriccoin.zcash.ui.common.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.SeedPhrase
 import cash.z.ecc.android.sdk.model.ZcashNetwork
+import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.WalletRepository
+import co.electriccoin.zcash.ui.common.usecase.RecoverFromSeedMismatchUseCase
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.launch
 
 // To make this more multiplatform compatible, we need to remove the dependency on Context
 // for loading the preferences.
@@ -15,10 +20,24 @@ import kotlinx.coroutines.flow.StateFlow
 class WalletViewModel(
     synchronizerProvider: SynchronizerProvider,
     private val walletRepository: WalletRepository,
+    private val recoverFromSeedMismatch: RecoverFromSeedMismatchUseCase,
 ) : ViewModel() {
     val synchronizer = synchronizerProvider.synchronizer
 
+    val isSeedMismatch: StateFlow<Boolean> = synchronizerProvider.isSeedMismatch
+
     val secretState: StateFlow<SecretState> = walletRepository.secretState
+
+    init {
+        viewModelScope.launch {
+            isSeedMismatch
+                .filter { it }
+                .collect {
+                    runCatching { recoverFromSeedMismatch() }
+                        .onFailure { Twig.error(it) { "Auto-recovery from seed mismatch failed" } }
+                }
+        }
+    }
 
     fun createNewWallet() {
         walletRepository.createNewWallet()

@@ -27,6 +27,8 @@ interface SynchronizerProvider {
 
     val synchronizer: StateFlow<Synchronizer?>
 
+    val isSeedMismatch: StateFlow<Boolean>
+
     /**
      * Get synchronizer and wait for it to be ready.
      */
@@ -49,6 +51,8 @@ class SynchronizerProviderImpl(
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     override val error = MutableStateFlow<SynchronizerError?>(null)
+
+    override val isSeedMismatch: StateFlow<Boolean> = walletCoordinator.isSeedMismatch
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override val synchronizer: StateFlow<Synchronizer?> =
