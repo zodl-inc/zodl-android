@@ -1,0 +1,2 @@
+Corregido:
+- Solucionamos un problema que afectaba a los swaps y pagos de BTC.

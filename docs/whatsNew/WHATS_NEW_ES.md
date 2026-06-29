@@ -12,6 +12,11 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.7.1 (1992)] - 2026-06-29
+
+### Corregido:
+- Solucionamos un problema que afectaba a los swaps y pagos de BTC.
+
 ## [3.7.0 (1986)] - 2026-06-23
 
 ### Añadido:

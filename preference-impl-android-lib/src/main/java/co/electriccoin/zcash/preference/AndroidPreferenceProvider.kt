@@ -21,6 +21,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.security.KeyStore
 import java.util.concurrent.Executors
 
 /**
@@ -195,6 +197,7 @@ private class AndroidPreferenceFactoryImpl : AndroidPreferenceFactory {
             return AndroidPreferenceProvider(sharedPreferences, singleThreadedDispatcher)
         }
 
+    @Suppress("TooGenericExceptionCaught", "SwallowedException")
     override suspend fun newEncrypted(context: Context, filename: String): PreferenceProvider =
         getOrCreate(encryptedCache, filename) {
         /*
@@ -205,24 +208,60 @@ private class AndroidPreferenceFactoryImpl : AndroidPreferenceFactory {
 
             val sharedPreferences =
                 withContext(singleThreadedDispatcher) {
-                    val mainKey =
-                        MasterKey
-                            .Builder(context)
-                            .apply {
-                                setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                            }.build()
-
-                    EncryptedSharedPreferences.create(
-                        context,
-                        filename,
-                        mainKey,
-                        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-                    )
+                    try {
+                        createEncryptedSharedPreferences(context, filename)
+                    } catch (e: Exception) {
+                        // Android Keystore keys are hardware-bound and not transferred during device-to-device
+                        // migration, so the encrypted prefs file arrives on the new device but cannot be
+                        // decrypted. Wipe the orphaned file and recreate fresh.
+                        deleteCorruptedEncryptedPreferences(context, filename)
+                        createEncryptedSharedPreferences(context, filename)
+                    }
                 }
 
             return AndroidPreferenceProvider(sharedPreferences, singleThreadedDispatcher)
         }
+
+    private fun createEncryptedSharedPreferences(
+        context: Context,
+        filename: String
+    ): SharedPreferences {
+        val mainKey =
+            MasterKey
+                .Builder(context)
+                .apply { setKeyScheme(MasterKey.KeyScheme.AES256_GCM) }
+                .build()
+        return EncryptedSharedPreferences.create(
+            context,
+            filename,
+            mainKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
+
+    private fun deleteCorruptedEncryptedPreferences(
+        context: Context,
+        filename: String
+    ) {
+        runCatching {
+            val keyStore = KeyStore.getInstance("AndroidKeyStore")
+            keyStore.load(null)
+            keyStore.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
+        }
+        // Clear in-memory SharedPreferences cache so the retry gets a clean instance.
+        // Without this, Android returns the cached (corrupted) instance even after file deletion.
+        runCatching {
+            context
+                .getSharedPreferences(filename, Context.MODE_PRIVATE)
+                .edit()
+                .clear()
+                .commit()
+        }
+        runCatching {
+            File(context.filesDir.parent, "shared_prefs/$filename.xml").delete()
+        }
+    }
 
     private suspend inline fun getOrCreate(
         map: MutableMap<String, PreferenceProvider>,
