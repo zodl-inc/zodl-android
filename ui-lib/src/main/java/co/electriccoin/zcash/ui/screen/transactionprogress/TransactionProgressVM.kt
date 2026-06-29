@@ -365,15 +365,15 @@ class TransactionProgressVM(
                     }
 
                     proposal is ExactInputSwapTransactionProposal -> {
-                        stringRes(R.string.send_confirmation_error_swap_subtitle)
+                        stringRes(R.string.swapAndPay_failureSwapInfo)
                     }
 
                     proposal is ExactOutputSwapTransactionProposal -> {
-                        stringRes(R.string.send_confirmation_error_swap_subtitle)
+                        stringRes(R.string.swapAndPay_failureSwapInfo)
                     }
 
                     proposal is ShieldTransactionProposal -> {
-                        stringRes(R.string.send_confirmation_failure_subtitle_transparent)
+                        stringRes(R.string.send_failureShieldingInfo)
                     }
 
                     else -> {
@@ -443,8 +443,7 @@ internal fun SubmitResult.GrpcFailure.pendingDescription(): StyledStringResource
 // The anchor string comes from Rust (zcash_client_sqlite) — no typed sub-code exists yet.
 // If the SDK ever adds one, replace the string check with it and drop the comment.
 private fun SubmitResult.NonResubmittableError.isAnchorError(): Boolean {
-    val error = (this as? SubmitResult.Error)?.cause ?: return false
-    var throwable: Throwable? = error
+    var throwable: Throwable? = (this as? SubmitResult.Error)?.cause
     while (throwable != null) {
         if (throwable is TransactionEncoderException.TransactionNotCreatedException &&
             throwable.rootCause.message?.contains("Unable to compute anchor", ignoreCase = true) == true

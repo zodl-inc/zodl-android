@@ -67,6 +67,7 @@
     <string name="walletBirthdayHeightSubtitle">Ingresar la Altura de Cumpleaños de tu billetera nos permite mostrar correctamente todos tus fondos e historial de transacciones.</string>
     <string name="restoreWallet_birthday_estimateDate_title">Primera Transacción de Billetera</string>
     <string name="restoreWallet_birthday_estimated_title">Altura de Bloque Estimada</string>
+    <string name="restoreWallet_birthday_estimated_info">ZODL escaneará y recuperará todas las transacciones realizadas después del siguiente número de bloque.</string>
 
     <!-- ===== about ===== -->
     <string name="about_title">Acerca de</string>
