@@ -223,6 +223,7 @@ private class FakeSynchronizerProvider(
     override val error: StateFlow<SynchronizerError?> = MutableStateFlow(null)
     override val synchronizer: StateFlow<Synchronizer?> = MutableStateFlow(fakeSynchronizer)
     override val walletBalances: Flow<Map<AccountUuid, AccountBalance>?> = flowOf(null)
+    override val isSeedMismatch: StateFlow<Boolean> = MutableStateFlow(false)
 
     override suspend fun getSynchronizer(): Synchronizer = fakeSynchronizer
 
