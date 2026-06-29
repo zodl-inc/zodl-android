@@ -39,10 +39,9 @@ data class NearSwapQuote(
             "Swap quote asset mismatch: requested originAsset=${originAsset.assetId} " +
                 "but server returned ${response.quoteRequest.originAsset}"
         }
-        require(response.quoteRequest.destinationAsset == destinationAsset.assetId) {
-            "Swap quote asset mismatch: requested destinationAsset=${destinationAsset.assetId} " +
-                "but server returned ${response.quoteRequest.destinationAsset}"
-        }
+        // The 1Click API normalises the destination asset ID for optimal routing (e.g. it may
+        // rewrite "nep141:btc.omft.near" → "1cs_v1:btc:native:coin"). The echoed ID may therefore
+        // differ from the one the app requested; do not reject on this difference.
         // Guards zecExchangeRate (= amountInUsd / amountInFormatted) and the fee math below it against a
         // divide-by-zero. A quote with a non-positive input amount is invalid anyway; fail closed with a
         // clear message rather than letting an ArithmeticException surface from the property initializers.
