@@ -31,7 +31,6 @@
 
     <string name="send_confirmation_failure_title">Error al Enviar</string>
     <string name="send_confirmation_failure_subtitle">Hubo un error al intentar enviar monedas.\nPor favor, inténtalo de nuevo.</string>
-    <string name="send_confirmation_failure_anchor_subtitle">El estado de la cadena cambió mientras se preparaba la transacción. Por favor, espera a que la sincronización termine e intenta de nuevo.</string>
     <string name="send_confirmation_failure_view_trx">Ver Transacción</string>
     <string name="send_confirmation_failure_close_button">Cerrar</string>
     <string name="send_confirmation_failure_report_button">Reportar</string>

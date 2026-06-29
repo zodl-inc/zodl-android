@@ -649,6 +649,7 @@
     </string>
     <string name="transaction_failedSend">Error al Enviar</string>
     <string name="send_failureInfo">Hubo un error al intentar enviar monedas.\nPor favor, inténtalo de nuevo.</string>
+    <string name="send_confirmation_failure_anchor_subtitle">El estado de la cadena cambió mientras se preparaba la transacción. Por favor, espera a que la sincronización termine e intenta de nuevo.</string>
     <string name="send_viewTransaction">Ver Transacción</string>
     <string name="send_confirmation_failure_grpc_title">Problema de Conexión</string>
     <string name="send_confirmation_failure_grpc_subtitle">Zodl encontró problemas de conexión al enviar la transacción. Reintentará en los próximos minutos.</string>

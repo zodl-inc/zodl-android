@@ -32,7 +32,6 @@
 
     <string name="send_confirmation_failure_title">Send Failed</string>
     <string name="send_confirmation_failure_subtitle">There was an error attempting to send coins.\nTry it again, please.</string>
-    <string name="send_confirmation_failure_anchor_subtitle">Your wallet\'s chain state changed while preparing this transaction. Please wait for sync to complete and try again.</string>
     <string name="send_confirmation_failure_view_trx">View Transaction</string>
     <string name="send_confirmation_failure_close_button">Close</string>
     <string name="send_confirmation_failure_report_button">Report</string>
