@@ -337,6 +337,7 @@ private class FakeSynchronizerProvider : SynchronizerProvider {
     override val error = MutableStateFlow<SynchronizerError?>(null)
     override val synchronizer = MutableStateFlow<Synchronizer?>(MockSynchronizer(ServerValidation.Valid))
     override val walletBalances: Flow<Map<AccountUuid, AccountBalance>?> = flowOf(null)
+    override val isSeedMismatch = MutableStateFlow(false)
 
     override suspend fun getSynchronizer(): Synchronizer = checkNotNull(synchronizer.value)
 

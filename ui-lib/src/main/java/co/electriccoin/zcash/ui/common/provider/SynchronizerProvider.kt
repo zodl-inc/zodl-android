@@ -35,6 +35,8 @@ interface SynchronizerProvider {
 
     val synchronizer: StateFlow<Synchronizer?>
 
+    val isSeedMismatch: StateFlow<Boolean>
+
     /**
      * MOB-1664: [Synchronizer.walletBalances] is per-synchronizer-instance state that resets to
      * `null` every time the synchronizer is rebuilt (e.g. an automatic server switch tears down
@@ -76,6 +78,8 @@ class SynchronizerProviderImpl(
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     override val error = MutableStateFlow<SynchronizerError?>(null)
+
+    override val isSeedMismatch: StateFlow<Boolean> = walletCoordinator.isSeedMismatch
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override val synchronizer: StateFlow<Synchronizer?> =

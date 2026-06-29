@@ -32,6 +32,7 @@ class DebugVM(
     private val migrationAppHooks: MigrationAppHooks,
     private val context: Context,
     private val navigationRouter: NavigationRouter,
+    private val simulateSeedNotRelevant: SimulateSeedNotRelevantUseCase,
 ) : ViewModel() {
     val state: StateFlow<DebugState> =
         MutableStateFlow(
@@ -82,6 +83,10 @@ class DebugVM(
                         ListItemState(
                             title = stringRes("Migration: toggle 'no background execution' (Transfer Ready to Send)"),
                             onClick = ::onToggleBackgroundExecutionUnavailableClick
+                        ),
+                        ListItemState(
+                            title = stringRes("Simulate SeedNotRelevant"),
+                            onClick = ::onSimulateSeedNotRelevantClick
                         )
                     )
             )
@@ -198,5 +203,10 @@ class DebugVM(
                         }
                 )
             )
+        }
+
+    private fun onSimulateSeedNotRelevantClick() =
+        viewModelScope.launch {
+            simulateSeedNotRelevant()
         }
 }
