@@ -18,5 +18,7 @@ fun SwapAssetPickerScreen(args: SwapAssetPickerArgs) {
 @Serializable
 data class SwapAssetPickerArgs(
     val onlyChainTicker: String?,
+    // MOB-1396: when true the picker offers only NEAR-quotable assets (used by the NEAR-only Pay flow).
+    val nearOnly: Boolean = false,
     val requestId: String = UUID.randomUUID().toString()
 )

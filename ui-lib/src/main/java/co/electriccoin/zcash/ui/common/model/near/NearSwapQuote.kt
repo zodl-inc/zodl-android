@@ -9,6 +9,7 @@ import co.electriccoin.zcash.ui.common.datasource.AFFILIATE_FEE_BPS
 import co.electriccoin.zcash.ui.common.model.SwapAddress
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapMode
+import co.electriccoin.zcash.ui.common.model.SwapProvider
 import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.model.isSame
 import co.electriccoin.zcash.ui.common.model.isZCashAsset
@@ -76,7 +77,7 @@ data class NearSwapQuote(
         BigDecimal(response.quoteRequest.slippageTolerance)
             .divide(BigDecimal("100", MathContext.DECIMAL128))
 
-    override val provider = "near"
+    override val provider = SwapProvider.NEAR
 
     override val mode: SwapMode =
         when (response.quoteRequest.swapType) {

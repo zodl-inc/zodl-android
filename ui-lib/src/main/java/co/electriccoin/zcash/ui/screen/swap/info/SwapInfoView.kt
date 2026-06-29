@@ -48,7 +48,10 @@ fun SwapInfoView(state: SwapInfoState) {
                 color = ZashiColors.Text.textPrimary,
             )
             Spacer(10.dp)
-            Image(painterResource(R.drawable.ic_near_logo), contentDescription = null)
+            // MOB-1396: swaps now aggregate multiple providers — show every active provider's logo.
+            Image(painterResource(R.drawable.ic_provider_near), contentDescription = null)
+            Spacer(6.dp)
+            Image(painterResource(R.drawable.ic_provider_maya), contentDescription = null)
         }
         Spacer(12.dp)
         Text(

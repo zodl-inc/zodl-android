@@ -278,7 +278,8 @@ internal class PayVM(
                     onlyChainTicker =
                         internalState.value.selectedABContact
                             ?.blockchain
-                            ?.chainTicker
+                            ?.chainTicker,
+                    nearOnly = true
                 )
             if (asset != null) {
                 internalState.update { it.withAsset(asset) }

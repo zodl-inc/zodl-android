@@ -735,7 +735,7 @@
     <string name="swapAndPay_to">A</string>
     <string name="swapAndPay_rate">Tasa</string>
     <string name="swap_zec_exchange_rate">1 %1$s = %2$s</string>
-    <string name="swapAndPay_slippageTolerance">Tolerancia de slippage</string>
+    <string name="swapAndPay_slippageTolerance">Flexibilidad de precio</string>
     <string name="swapAndPay_canceltitle">¿Estás seguro?</string>
     <string name="swapAndPay_cancelMsg">Si sales de esta pantalla, toda la información ingresada se perderá.</string>
     <string name="swapAndPay_cancelSwap">Cancelar swap</string>
@@ -749,6 +749,12 @@
     <string name="swapAndPay_editPayment">Editar pago</string>
     <string name="swapAndPay_editSwap">Editar swap</string>
     <string name="swapAndPay_swapNow">Hacer swap ahora</string>
+    <string name="swapAndPay_breakdown">Desglose</string>
+    <string name="swapAndPay_comparison">Comparación</string>
+    <string name="swapAndPay_provider">Proveedor</string>
+    <string name="swapAndPay_youGet">Recibes</string>
+    <string name="swapAndPay_providerNear">Near Intents</string>
+    <string name="swapAndPay_providerMaya">Maya DEX</string>
     <string name="swapToZec_review">Revisar cotización</string>
     <string name="swapAndPay_swapFrom">Swap de</string>
     <string name="swapAndPay_swapTo">Swap a</string>

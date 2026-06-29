@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.di
 
 import co.electriccoin.zcash.ui.common.mapper.SwapSupportMapper
+import co.electriccoin.zcash.ui.common.model.SwapProvider
 import co.electriccoin.zcash.ui.common.usecase.ApplyTransactionFiltersUseCase
 import co.electriccoin.zcash.ui.common.usecase.ApplyTransactionFulltextFiltersUseCase
 import co.electriccoin.zcash.ui.common.usecase.AuthorizeVotingSubmissionUseCase
@@ -154,6 +155,7 @@ import co.electriccoin.zcash.ui.screen.deletewallet.ResetZashiUseCase
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
+import org.koin.core.qualifier.named
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
@@ -286,7 +288,41 @@ val useCaseModule =
         singleOf(::NavigateToSelectFiatCurrencyUseCase)
         factoryOf(::ConfirmResyncUseCase)
         factoryOf(::ValidateSwapABContactAddressUseCase)
-        factoryOf(::NavigateToNearPayUseCase)
+        // MOB-1396: Pay (Crosspay, EXACT_OUTPUT) is NEAR-only. Its entry refresh and the repository-touching
+        // use cases it injects resolve the NEAR-named SwapRepository, so Pay never touches Maya.
+        factory {
+            NavigateToNearPayUseCase(swapRepository = get(named(SwapProvider.NEAR)), navigationRouter = get())
+        }
+        factory(named(SwapProvider.NEAR)) {
+            GetSwapAssetsUseCase(swapRepository = get(named(SwapProvider.NEAR)))
+        }
+        factory(named(SwapProvider.NEAR)) {
+            CancelSwapUseCase(swapRepository = get(named(SwapProvider.NEAR)), navigationRouter = get())
+        }
+        factory(named(SwapProvider.NEAR)) {
+            NavigateToSwapQuoteIfAvailableUseCase(
+                swapRepository = get(named(SwapProvider.NEAR)),
+                navigationRouter = get()
+            )
+        }
+        factory(named(SwapProvider.NEAR)) {
+            GetPreselectedSwapAssetUseCase(
+                swapRepository = get(named(SwapProvider.NEAR)),
+                metadataRepository = get(),
+                simpleSwapAssetProvider = get()
+            )
+        }
+        factory(named(SwapProvider.NEAR)) {
+            RequestSwapQuoteUseCase(
+                navigationRouter = get(),
+                navigateToErrorUseCase = get(),
+                swapRepository = get(named(SwapProvider.NEAR)),
+                zashiProposalRepository = get(),
+                keystoneProposalRepository = get(),
+                accountDataSource = get(),
+                synchronizerProvider = get()
+            )
+        }
         factoryOf(::SaveORSwapUseCase)
         factoryOf(::GetReloadableSwapQuoteUseCase)
         factoryOf(::ShareQRUseCase)

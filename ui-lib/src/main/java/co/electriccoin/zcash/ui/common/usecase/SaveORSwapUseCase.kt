@@ -19,7 +19,7 @@ class SaveORSwapUseCase(
         if (quote != null) {
             metadataRepository.markTxAsSwap(
                 depositAddress = quote.depositAddress.address,
-                provider = quote.provider,
+                provider = quote.provider.value,
                 totalFees = Zatoshi(0),
                 totalFeesUsd = BigDecimal(0),
                 amountOutFormatted = quote.amountOutFormatted,

@@ -806,7 +806,7 @@
     <string name="swapAndPay_to">To</string>
     <string name="swapAndPay_rate">Rate</string>
     <string name="swap_zec_exchange_rate">1 %1$s = %2$s</string>
-    <string name="swapAndPay_slippageTolerance">Slippage tolerance</string>
+    <string name="swapAndPay_slippageTolerance">Price flexibility</string>
     <string name="swapAndPay_canceltitle">Are you sure?</string>
     <string name="swapAndPay_cancelMsg">If you leave this screen, all the information you entered will be lost.</string>
     <string name="swapAndPay_cancelSwap">Cancel swap</string>
@@ -820,6 +820,12 @@
     <string name="swapAndPay_editPayment">Edit payment</string>
     <string name="swapAndPay_editSwap">Edit swap</string>
     <string name="swapAndPay_swapNow">Swap Now</string>
+    <string name="swapAndPay_breakdown">Breakdown</string>
+    <string name="swapAndPay_comparison">Comparison</string>
+    <string name="swapAndPay_provider">Provider</string>
+    <string name="swapAndPay_youGet">You get</string>
+    <string name="swapAndPay_providerNear">Near Intents</string>
+    <string name="swapAndPay_providerMaya">Maya DEX</string>
     <string name="swapToZec_review">Review Quote</string>
     <string name="swapAndPay_swapFrom">Swap from</string>
     <string name="swapAndPay_swapTo">Swap to</string>

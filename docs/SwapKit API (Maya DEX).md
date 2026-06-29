@@ -38,6 +38,31 @@
 > - **ZEC side must be transparent `t1…`** — shielded `zs1`/`u1` are rejected by `/v3/swap`, and a UA
 >   can't fit the ~80-byte payout memo (§7).
 
+> **🚧 Implementation decisions (2026-06-29 — MOB-1396 build kickoff).** Folded in from the build plan;
+> the full internal spec lives in [SwapKit Spec (Maya DEX).md](SwapKit%20Spec%20%28Maya%20DEX%29.md).
+> - **ZEC deposit OP_RETURN is a _verified hard blocker_ for from-ZEC execution.** The Zcash Android SDK
+>   (`zcash-android-sdk` 2.6.4-SNAPSHOT) exposes **no OP_RETURN API**: `Synchronizer.proposeTransfer(account,
+>   recipient, amount, memo)` takes only a *shielded* `memo` string, and there is no `opReturn` symbol anywhere
+>   in the SDK or its rust backend (both AARs decompiled). Today's swap send already passes `Memo("")`
+>   (`RequestSwapQuoteUseCase.kt`) because NEAR's deposit address needs no memo. A Maya from-ZEC deposit sent
+>   **without** the transparent OP_RETURN memo lands at the vault with **no swap instruction → funds
+>   unrecoverable**. This gates the from-ZEC direction; confirm with the SDK team / a newer `librustzcash`.
+> - **Spike scope — do NOT build the tx proposal yet.** To test `/quote` and `/swap` end-to-end without
+>   touching the blocked send path, `MayaSwapDataSource` builds the full `SwapQuote` (incl. `/v3/swap`
+>   `targetAddress` + `memo`), but the use-case layer **skips proposal/PCZT creation** for Maya quotes — no
+>   `ZecSend`, no broadcast. NEAR keeps its existing proposal path.
+> - **`refundAddress`/`sourceAddress`:** pass a wallet transparent `t1…` for now (testing only — §7 caveat:
+>   a shielded-funded send has no transparent sender, so Maya refunds may not honor it).
+> - **`/track`:** key off the persisted `depositAddress` for now (keeps `checkSwapStatus(depositAddress, …)`
+>   unchanged). Live finding: `depositAddress` lookup is NEAR-specific, so it may return empty for Maya —
+>   `hash`+`chainId` is the real key (§8) and is the follow-up once execution is unblocked.
+> - **Keystone:** transparent/TEX sends to Keystone accounts throw `TexUnsupportedOnKSException` today, so
+>   Maya from-ZEC is likely Zashi-account-only even after OP_RETURN lands.
+> - **API key:** the production key is **hardcoded** in `KtorSwapkitApiProvider` as a `private const val
+>   API_KEY` (sent via the `x-api-key` header) — matching NEAR's hardcoded `AUTH_TOKEN` in
+>   `NearApiProvider.kt`. Decision (2026-06-29): follow the existing NEAR convention rather than a
+>   `BuildConfig`/Gradle property. The key therefore lives in source — rotate via the SwapKit dashboard if needed.
+
 ---
 
 ## 1. What SwapKit is and why we want it
@@ -88,11 +113,12 @@ Content-Type: application/json
   `sellAssetAmountTooSmall` (an unrelated-looking, uninterpolated error). Once the key was flipped to
   production, builds returned `targetAddress` + `memo` normally.
 
-> **Secret handling:** the key must be treated like the NEAR 1Click bearer token — supplied at
-> build/config time, never logged in release builds. Note that the current NEAR token is embedded
-> directly in `NearApiProvider.kt`; prefer sourcing the SwapKit key from a Gradle property /
-> `BuildConfig` field (e.g. `ZCASH_SWAPKIT_KEY`) instead of hardcoding. See repo CLAUDE.md on
-> keeping secrets out of source.
+> **Secret handling:** the key follows the same convention as the NEAR 1Click bearer token, which is
+> embedded directly in `NearApiProvider.kt` — the SwapKit key is **hardcoded** in `KtorSwapkitApiProvider`
+> as a `private const val API_KEY` and sent via the `x-api-key` header. It is not logged in release builds
+> (the shared `HttpClientProvider` redacts credential headers — `x-api-key` should be added to
+> `SANITIZED_HEADERS` alongside `Authorization`). The key lives in source; rotate via the SwapKit dashboard
+> if it leaks.
 
 ## 4. Asset nomenclature
 
@@ -138,8 +164,15 @@ Typical lifecycle: `/providers` + `/tokens` + `/price` (cache) → `/v3/quote` (
 | `sellAmount` | string | ✅ | Amount in **decimal units**, dot-separated (e.g. `"0.1"`) — note: decimal, not base units |
 | `slippage` | number | ❌ | Max slippage in **percent** (`5` = 5%). This is the "Price flexibility" value |
 | `providers` | string[] | ❌ | Restrict routing to specific providers (e.g. `["MAYACHAIN_STREAMING"]`). Omit to search all routes |
-| `sourceAddress` | string | ❌ | Sender address (not required for a quote) |
-| `destinationAddress` | string | ❌ | Recipient address (not required for a quote) |
+| `sourceAddress` | string | ⚠️ | Sender address. Optional for **price-only** discovery, but **required if you intend to `/v3/swap` the route** — see the ⚠️ note below |
+| `destinationAddress` | string | ⚠️ | Recipient address. Same as above — must be set at quote time for the route to be buildable |
+
+> **⚠️ Verified (2026-06-29, live): addresses bind to the route at _quote_ time.** A quote requested without
+> `sourceAddress`/`destinationAddress` produces a route whose addresses are placeholders (`"{sourceAddress}"`),
+> and `/v3/swap` then rejects it with **`500 invalidRoute`** ("Must have source and destination addresses, and
+> they cannot be dummy addresses or like `{destinationAddress}`, `{sourceAddress}`") — *even when the real
+> addresses are passed to `/v3/swap`*. So `MayaSwapDataSource.requestQuote` must send `sourceAddress`
+> (the ZEC `t1…` refund/origin) and `destinationAddress` on the **`/v3/quote`** call, not only on `/v3/swap`.
 | `affiliateFee` | number | ❌ | Per-request override in **bps** (0–1000). **Zodl does not send this** — the rate is set in the dashboard (console) and read back from the response `meta.affiliateFee` |
 | `cfBoost` | boolean | ❌ | Enable Chainflip "boost" for better rates (Chainflip routes only) |
 | `maxExecutionTime` | number | ❌ | Cap on acceptable execution time, seconds |
@@ -268,12 +301,16 @@ ZEC deposit through the Zcash SDK.
 Common errors: `insufficientBalance`, `insufficientAllowance`, `unableToBuildTransaction`,
 plus quote expiry (re-quote after 60s).
 
-> **Zcash deposit signing (verified + open item):** with `disableBuildTx:true`, `/v3/swap` returns
-> `tx:null` — the app builds and signs the ZEC deposit via the **Zcash Android SDK**, sending to
+> **Zcash deposit signing (verified — BLOCKED on the SDK):** with `disableBuildTx:true`, `/v3/swap` returns
+> `tx:null` — the app must build and sign the ZEC deposit via the **Zcash Android SDK**, sending to
 > `targetAddress` with the **mandatory** `memo` attached as an **OP_RETURN** on the transparent vault
-> output. ❗ **Two things to confirm before relying on shielded funds:**
-> 1. Can the Zcash Android SDK attach an arbitrary **OP_RETURN** output to a transparent send? (The NEAR
->    path never needed this.)
+> output.
+> 1. **⛔ Verified blocker (2026-06-29):** the Zcash Android SDK (2.6.4-SNAPSHOT) **cannot attach an
+>    OP_RETURN** to a transparent send. `Synchronizer.proposeTransfer(account, recipient, amount, memo)` takes
+>    only a *shielded* memo string, and there is no `opReturn` symbol in the SDK or backend AARs. The NEAR path
+>    never needed this (`Memo("")`). Until the SDK exposes OP_RETURN (or we sign SwapKit's built `tx`/PCZT
+>    instead), from-ZEC Maya deposits **cannot be executed**; the MOB-1396 spike therefore skips proposal
+>    building for Maya entirely (test `/quote`+`/swap` only — see the 🚧 callout above).
 > 2. **Funding vs refund.** Maya/THORChain refund to the *on-chain sender*, and the standard swap memo
 >    carries **no refund-address field** — but a shielded-funded send exposes **no transparent sender**.
 >    So either the deposit must be **funded from a transparent `t1…`** the user controls (de-shield
@@ -679,8 +716,11 @@ stateless only because 1Click returns prices inline). Guardrails:
 - **Shielded vs transparent — resolved: transparent `t1…` required** on the ZEC side. Shielded `zs1`/`u1`
   are rejected by `/v3/swap`, and a UA can't fit the ~80-byte payout memo (§7). Needs a controlled `t1…`
   refund address (ZEC→BTC) and a `t1…` receive address + auto-shield (BTC→ZEC).
-- **ZEC deposit OP_RETURN — ❗ biggest open risk.** Confirm the **Zcash Android SDK can attach an
-  OP_RETURN** memo to the (shielded-funded) transparent deposit send. NEAR never needed this.
+- **ZEC deposit OP_RETURN — ⛔ verified BLOCKED (2026-06-29).** The Zcash Android SDK (2.6.4-SNAPSHOT) has
+  **no OP_RETURN API** (`proposeTransfer` memo is shielded-only; no `opReturn` symbol in SDK/backend), so a
+  from-ZEC Maya deposit can't carry the required transparent memo → funds unrecoverable. Gating item for
+  from-ZEC execution. **Bypass for the spike:** skip Maya proposal building, test `/quote`+`/swap` only. Real
+  fix needs SDK OP_RETURN support or signing SwapKit's built `tx`/PCZT.
 - **Deposit funding vs refund — ❗ open.** Maya refunds to the on-chain sender and the swap memo has no
   refund-address field; a shielded-funded send has no transparent sender. Decide: fund the deposit from a
   user-controlled `t1…` (de-shield first), or confirm Maya honors the `/v3/swap` `sourceAddress` for

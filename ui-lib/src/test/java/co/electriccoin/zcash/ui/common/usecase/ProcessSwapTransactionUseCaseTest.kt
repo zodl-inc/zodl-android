@@ -7,6 +7,7 @@ import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapAssetTestFixture
 import co.electriccoin.zcash.ui.common.model.SwapMode
+import co.electriccoin.zcash.ui.common.model.SwapProvider
 import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.model.SwapStatus
 import co.electriccoin.zcash.ui.common.repository.MetadataRepository
@@ -135,7 +136,7 @@ class ProcessSwapTransactionUseCaseTest {
         val walletAddress = WalletAddress.Unified.new("deposit-address")
         val quote =
             mockk<SwapQuote> {
-                every { provider } returns "near"
+                every { provider } returns SwapProvider.NEAR
                 every { originAsset } returns origin
                 every { destinationAsset } returns this@ProcessSwapTransactionUseCaseTest.destinationAsset
                 every { amountOutFormatted } returns BigDecimal("1.23")

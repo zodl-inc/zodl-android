@@ -14,6 +14,7 @@ import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT
+import co.electriccoin.zcash.ui.common.model.SwapProvider
 import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -47,7 +48,7 @@ class RequestSwapQuoteUseCase(
         slippage: BigDecimal,
         canNavigateToSwapQuote: () -> Boolean
     ) {
-        val newAddress = accountDataSource.requestNextShieldedAddress()
+        val newAddress = accountDataSource.getSelectedAccount().transparent.address
         requestQuote(
             requestQuote = {
                 swapRepository.requestExactInputQuote(
@@ -70,7 +71,7 @@ class RequestSwapQuoteUseCase(
         slippage: BigDecimal,
         canNavigateToSwapQuote: () -> Boolean
     ) {
-        val newAddress = accountDataSource.requestNextShieldedAddress()
+        val newAddress = accountDataSource.getSelectedAccount().transparent.address
         requestQuote(
             requestQuote = {
                 swapRepository.requestExactOutputQuote(
@@ -93,7 +94,7 @@ class RequestSwapQuoteUseCase(
         slippage: BigDecimal,
         canNavigateToSwapQuote: () -> Boolean
     ) {
-        val newAddress = accountDataSource.requestNextShieldedAddress()
+        val newAddress = accountDataSource.getSelectedAccount().transparent.address
         requestQuote(
             requestQuote = {
                 swapRepository
@@ -149,6 +150,10 @@ class RequestSwapQuoteUseCase(
 
     @Suppress("TooGenericExceptionCaught")
     private suspend fun createProposal(quote: SwapQuote) {
+        // Phase 1 (MOB-1396): Maya execution is gated on SDK OP_RETURN support, so don't build a ZEC deposit
+        // proposal for a Maya-selected quote. The quote is still shown; confirm stays disabled for Maya until
+        // Phase 2. See docs/SwapKit Spec (Maya DEX).md.
+        if (quote.provider == SwapProvider.MAYA) return
         val send =
             ZecSend(
                 destination = getWalletAddress(quote.depositAddress.address),

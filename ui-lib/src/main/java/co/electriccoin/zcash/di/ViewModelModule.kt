@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.di
 
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarVM
+import co.electriccoin.zcash.ui.common.model.SwapProvider
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.OldHomeViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
@@ -103,7 +104,9 @@ import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingVM
 import co.electriccoin.zcash.ui.screen.walletbackup.WalletBackupViewModel
 import co.electriccoin.zcash.ui.screen.warning.viewmodel.StorageCheckViewModel
 import co.electriccoin.zcash.ui.screen.whatsnew.viewmodel.WhatsNewViewModel
+import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 val viewModelModule =
@@ -170,7 +173,24 @@ val viewModelModule =
         viewModelOf(::SwapAssetPickerVM)
         viewModelOf(::SwapSlippageVM)
         viewModelOf(::SwapVM)
-        viewModelOf(::PayVM)
+        viewModel {
+            PayVM(
+                getSwapAssetsUseCase = get(named(SwapProvider.NEAR)),
+                getSelectedWalletAccount = get(),
+                swapRepository = get(named(SwapProvider.NEAR)),
+                cancelSwap = get(named(SwapProvider.NEAR)),
+                navigationRouter = get(),
+                requestSwapQuote = get(named(SwapProvider.NEAR)),
+                navigateToSwapQuoteIfAvailable = get(named(SwapProvider.NEAR)),
+                exactOutputVMMapper = get(),
+                navigateToScanAddress = get(),
+                navigateToSelectSwapRecipient = get(),
+                isABContactHintVisible = get(),
+                getPreselectedSwapAsset = get(named(SwapProvider.NEAR)),
+                navigateToSlippage = get(),
+                navigateToSwapAssetPicker = get(),
+            )
+        }
         viewModelOf(::SwapQuoteVM)
         viewModelOf(::ScanGenericAddressVM)
         viewModelOf(::SelectSwapABRecipientVM)

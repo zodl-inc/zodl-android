@@ -27,7 +27,7 @@ class FakeSwapQuote(
     override val depositAddress: SwapAddress = DynamicSwapAddress(depositAddress)
     override val destinationAddress: SwapAddress = DynamicSwapAddress(destinationAddress)
     override val refundAddress: SwapAddress = DynamicSwapAddress(refundAddress)
-    override val provider: String = "test"
+    override val provider: SwapProvider = SwapProvider.NEAR
     override val zecExchangeRate: BigDecimal = BigDecimal.ONE
     override val amountInUsd: BigDecimal = BigDecimal.ONE
     override val amountOut: BigDecimal = BigDecimal.ONE
