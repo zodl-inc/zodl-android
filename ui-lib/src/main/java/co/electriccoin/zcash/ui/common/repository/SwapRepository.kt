@@ -208,7 +208,7 @@ class SwapRepositoryImpl(
                         )
                     quote.update { SwapQuoteData.Success(quote = result) }
                 } catch (e: Exception) {
-                    quote.update { SwapQuoteData.Error(EXACT_OUTPUT, e) }
+                    quote.update { SwapQuoteData.Error(mode, e) }
                 }
             }
     }
