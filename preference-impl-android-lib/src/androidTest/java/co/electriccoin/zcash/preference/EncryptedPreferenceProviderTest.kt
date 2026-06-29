@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package co.electriccoin.zcash.preference
 
 import android.content.Context
@@ -92,8 +94,39 @@ class EncryptedPreferenceProviderTest {
             assertFalse(text.contains(StringDefaultPreferenceFixture.KEY.key))
         }
 
+    @Test
+    @SmallTest
+    fun graceful_recovery_when_encrypted_prefs_are_corrupted() =
+        runBlocking {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+
+            // Simulate D2D transfer state: prefs file contains a keyset that was encrypted
+            // with a Keystore key from the source device (which doesn't exist on this device).
+            // We reproduce this by writing garbage to the known keyset keys in raw SharedPreferences.
+            // Note: emulator Keystore is software-backed and doesn't faithfully reproduce
+            // hardware key invalidation, so we corrupt the raw data directly instead.
+            context
+                .getSharedPreferences(RECOVERY_FILENAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY_KEYSET, "corrupted_keyset_data")
+                .putString(VALUE_KEYSET, "corrupted_keyset_data")
+                .commit()
+
+            // Should NOT throw — fix catches the parse/decryption exception and recreates fresh prefs
+            val restoredProvider =
+                AndroidPreferenceProvider.newEncrypted(context, RECOVERY_FILENAME)
+
+            // Prefs are empty: user will re-enter seed phrase to recover wallet
+            assertFalse(restoredProvider.hasKey(StringDefaultPreferenceFixture.KEY))
+        }
+
     companion object {
-        private val FILENAME = "encrypted_preference_test"
+        private const val FILENAME = "encrypted_preference_test"
+        private const val RECOVERY_FILENAME = "encrypted_preference_recovery_test"
+
+        // Internal keyset key names used by EncryptedSharedPreferences to store Tink keysets
+        private const val KEY_KEYSET = "__androidx_security_crypto_encrypted_prefs_key_keyset__"
+        private const val VALUE_KEYSET = "__androidx_security_crypto_encrypted_prefs_value_keyset__"
 
         private suspend fun new() =
             AndroidPreferenceProvider.newEncrypted(
