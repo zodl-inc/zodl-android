@@ -6,6 +6,9 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Fixed:
+- When a send fails because the wallet's chain state changed between tapping review and confirm (due to syncing catching up, a reorg, or the app resuming from background), a clear actionable message is now shown instead of the generic error copy.
+
 ### Added:
 - Currency Conversion now supports multiple fiat currencies. You can pick which currency your balances and payment amounts are shown in from the Currency Conversion settings and opt-in screens.
 - When opening Send or Request while the selected currency's exchange rate can't be fetched, a bottom sheet now explains the issue and offers to switch to USD or continue entering amounts in ZEC.
