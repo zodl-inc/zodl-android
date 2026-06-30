@@ -18,8 +18,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class SwapSupportVM(
+    args: SwapSupportArgs,
     getReloadableSwapQuote: GetReloadableSwapQuoteUseCase,
-    private val args: SwapSupportArgs,
     private val navigationRouter: NavigationRouter,
     private val sendEmailUseCase: SendEmailUseCase,
 ) : ViewModel() {

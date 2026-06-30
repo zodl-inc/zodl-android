@@ -253,16 +253,12 @@ class NearSwapQuoteValidationTest {
 
     private fun asset(token: String, chain: String) =
         NearSwapAsset(
-            dto =
-                NearTokenDto(
-                    assetId = "$token.$chain",
-                    decimals = 8,
-                    blockchain = chain,
-                    symbol = token,
-                    price = null
-                ),
+            tokenTicker = token,
             tokenName = StringResource.ByString(token),
             tokenIcon = imageRes(token),
+            usdPrice = null,
+            assetId = "$token.$chain",
+            decimals = 8,
             blockchain = blockchain(chain)
         )
 

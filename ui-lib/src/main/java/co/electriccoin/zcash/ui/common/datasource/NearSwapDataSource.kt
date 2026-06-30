@@ -58,9 +58,12 @@ class NearSwapDataSource(
 
     private fun buildSwapAsset(dto: NearTokenDto): SwapAsset =
         NearSwapAsset(
-            dto = dto,
+            tokenTicker = dto.symbol,
             tokenName = tokenNameProvider.getName(dto.symbol),
             tokenIcon = tokenIconProvider.getIcon(dto.symbol),
+            usdPrice = dto.price,
+            assetId = dto.assetId,
+            decimals = dto.decimals,
             blockchain = blockchainProvider.getBlockchain(dto.blockchain),
         )
 

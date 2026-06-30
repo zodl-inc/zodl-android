@@ -133,16 +133,12 @@ class NearSwapQuoteStatusTest {
 
     private fun asset(assetId: String, token: String, chain: String, decimals: Int): SwapAsset =
         NearSwapAsset(
-            dto =
-                NearTokenDto(
-                    assetId = assetId,
-                    decimals = decimals,
-                    blockchain = chain,
-                    symbol = token,
-                    price = null
-                ),
+            tokenTicker = token,
             tokenName = StringResource.ByString(token),
             tokenIcon = imageRes(token),
+            usdPrice = null,
+            assetId = assetId,
+            decimals = decimals,
             blockchain =
                 SwapBlockchain(
                     chainTicker = chain,

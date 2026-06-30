@@ -1,7 +1,6 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import co.electriccoin.zcash.ui.common.model.SwapQuoteStatus
-import co.electriccoin.zcash.ui.common.model.near.requireMatchingAsset
 import co.electriccoin.zcash.ui.common.repository.MetadataRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import kotlinx.coroutines.channels.awaitClose
@@ -32,25 +31,19 @@ class GetSwapStatusUseCase(
             launch {
                 val expectedMetadata = metadataRepository.getSwapMetadata(depositAddress)
 
+                if (expectedMetadata == null) {
+                    data.update {
+                        it.copy(
+                            isLoading = false,
+                            error = IllegalStateException("No metadata for deposit addr")
+                        )
+                    }
+                    return@launch
+                }
+
                 while (true) {
                     try {
-                        val result = swapRepository.checkSwapStatus(depositAddress)
-                        expectedMetadata?.origin?.let {
-                            requireMatchingAsset(
-                                name = "origin",
-                                expectedTokenTicker = it.tokenTicker,
-                                expectedChainTicker = it.chainTicker,
-                                actual = result.originAsset
-                            )
-                        }
-                        expectedMetadata?.destination?.let {
-                            requireMatchingAsset(
-                                name = "destination",
-                                expectedTokenTicker = it.tokenTicker,
-                                expectedChainTicker = it.chainTicker,
-                                actual = result.destinationAsset
-                            )
-                        }
+                        val result = swapRepository.checkSwapStatus(expectedMetadata)
                         metadataRepository.updateSwap(
                             depositAddress = depositAddress,
                             amountOutFormatted = result.amountOutFormatted,
