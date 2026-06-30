@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import android.util.Log
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.security.KeyStore
@@ -214,6 +215,7 @@ private class AndroidPreferenceFactoryImpl : AndroidPreferenceFactory {
                         // Android Keystore keys are hardware-bound and not transferred during device-to-device
                         // migration, so the encrypted prefs file arrives on the new device but cannot be
                         // decrypted. Wipe the orphaned file and recreate fresh.
+                        Log.w(TAG, "Encrypted prefs failed to open — wiping and recreating (D2D transfer recovery)", e)
                         deleteCorruptedEncryptedPreferences(context, filename)
                         createEncryptedSharedPreferences(context, filename)
                     }
@@ -248,7 +250,7 @@ private class AndroidPreferenceFactoryImpl : AndroidPreferenceFactory {
             val keyStore = KeyStore.getInstance("AndroidKeyStore")
             keyStore.load(null)
             keyStore.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
-        }
+        }.onFailure { Log.w(TAG, "Failed to delete Keystore entry during encrypted prefs cleanup", it) }
         // Clear in-memory SharedPreferences cache so the retry gets a clean instance.
         // Without this, Android returns the cached (corrupted) instance even after file deletion.
         runCatching {
@@ -257,10 +259,14 @@ private class AndroidPreferenceFactoryImpl : AndroidPreferenceFactory {
                 .edit()
                 .clear()
                 .commit()
-        }
+        }.onFailure { Log.w(TAG, "Failed to clear in-memory prefs cache during encrypted prefs cleanup", it) }
         runCatching {
             File(context.filesDir.parent, "shared_prefs/$filename.xml").delete()
-        }
+        }.onFailure { Log.w(TAG, "Failed to delete encrypted prefs file during cleanup", it) }
+    }
+
+    companion object {
+        private const val TAG = "AndroidPreferenceFactory"
     }
 
     private suspend inline fun getOrCreate(

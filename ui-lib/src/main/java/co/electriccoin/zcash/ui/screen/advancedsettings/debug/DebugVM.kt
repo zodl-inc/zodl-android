@@ -23,6 +23,7 @@ class DebugVM(
     private val ephemeralAddressRepository: EphemeralAddressRepository,
     private val accountDataSource: AccountDataSource,
     private val navigationRouter: NavigationRouter,
+    private val simulateSeedNotRelevant: SimulateSeedNotRelevantUseCase,
 ) : ViewModel() {
     val state: StateFlow<DebugState> =
         MutableStateFlow(
@@ -57,6 +58,10 @@ class DebugVM(
                         ListItemState(
                             title = stringRes("Current Shield Addresses"),
                             onClick = ::onCurrentShieldAddressesClick
+                        ),
+                        ListItemState(
+                            title = stringRes("Simulate SeedNotRelevant"),
+                            onClick = ::onSimulateSeedNotRelevantClick
                         )
                     )
             )
@@ -112,4 +117,9 @@ class DebugVM(
     private fun onDiscoverFundsClick() = navigationRouter.forward(EphemeralHotfixArgs(null))
 
     private fun onQueryDatabaseClick() = navigationRouter.forward(DebugDBArgs)
+
+    private fun onSimulateSeedNotRelevantClick() =
+        viewModelScope.launch {
+            simulateSeedNotRelevant()
+        }
 }
