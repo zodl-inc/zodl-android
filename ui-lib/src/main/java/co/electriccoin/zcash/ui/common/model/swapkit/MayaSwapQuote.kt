@@ -13,17 +13,19 @@ import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.model.isZCashAsset
 import java.math.BigDecimal
 import java.math.MathContext
-import kotlin.time.Duration.Companion.hours
 import kotlin.time.Instant
 
 /**
  * A [SwapQuote] built in `MayaSwapDataSource.requestQuote` from `/v3/quote` + `/v3/swap` + request inputs +
  * loaded assets. Maya is exact-input only ([SwapMode.EXACT_INPUT]). Several values NEAR returns directly are
  * derived here: USD amounts from the supplied quote-time prices, base-unit amounts by shifting the formatted
- * decimals, and the affiliate split from the dashboard-configured bps. [deadline] is synthesized
- * (`timestamp + 2h`) — Maya's only TTL is the ~60s route expiry, too short to reuse.
+ * decimals, and the affiliate split from the dashboard-configured bps. [deadline] comes from the `/v3/swap`
+ * `expiration` epoch (Maya's real "do not broadcast after" time), falling back to `timestamp + 1h15m` if absent.
  */
 class MayaSwapQuote(
+    originUsdPrice: BigDecimal,
+    destinationUsdPrice: BigDecimal,
+    affiliateFeeBps: Int,
     override val originAsset: SwapAsset,
     override val destinationAsset: SwapAsset,
     override val depositAddress: SwapAddress,
@@ -33,9 +35,7 @@ class MayaSwapQuote(
     override val amountOutFormatted: BigDecimal,
     override val slippage: BigDecimal,
     override val timestamp: Instant,
-    private val originUsdPrice: BigDecimal,
-    private val destinationUsdPrice: BigDecimal,
-    private val affiliateFeeBps: Int,
+    override val deadline: Instant,
     /** The Maya swap-instruction memo from `/v3/swap`. Phase 2 attaches it as the deposit OP_RETURN. */
     val memo: String?,
 ) : SwapQuote {
@@ -86,8 +86,6 @@ class MayaSwapQuote(
 
     override val affiliateFeeUsd: BigDecimal =
         amountInUsd.coerceAtLeast(BigDecimal.ZERO).multiply(affiliateRate, MathContext.DECIMAL128)
-
-    override val deadline: Instant = timestamp + 2.hours
 
     override fun getTotal(proposal: Proposal?) = amountInFormatted + (getZecFee(proposal) ?: BigDecimal.ZERO)
 

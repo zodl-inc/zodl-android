@@ -128,8 +128,10 @@ Constructed in `MayaSwapDataSource.requestQuote()` from `/v3/quote` + `/v3/swap`
 - 🟡 derived: `amountIn`/`amountOut` (decimal × 10^decimals), `amountInUsd`/`amountOutUsd`
   (× `meta.assets[].price`), `affiliateFee*` (bps from `meta.affiliateFee`, **not** a hardcoded const),
   `timestamp` = local `now()`, `mode` = constant `EXACT_INPUT`.
-- 🔴 `deadline`: **no Maya source** — `expiration` is only the ~60s route TTL. Fabricate `timestamp + 2h`
-  (product decision pending — §15).
+- ✅ `deadline` = `/v3/swap` `expiration` (unix-epoch **seconds**; present on both the quote route and the
+  `/v3/swap` response, identical value). **Live-verified 2026-06-30: ~75 min after creation** (≈4501 s, *not*
+  the ~60 s previously assumed). Fall back to `timestamp + 1h15m` (matching that ~75 min TTL) only if the field
+  is ever absent.
 - The Maya `memo` (`=:z:…` / `=:b:…`) returned by `/v3/swap` must be carried on the quote — it's what Phase 2
   needs as the OP_RETURN. (Phase 1 stores/logs it but does not send it.)
 
@@ -151,7 +153,7 @@ Full matrix in **API doc §8**. Key facts:
   `amountInFormatted`/`depositedAmountFormatted` (`fromAmount`), `amountOutFormatted` (`toAmount`, realized),
   `status` (map `/track` `status` → `SwapStatus`), `refundedFormatted` (`toAmount` when `refunded`).
 - 🟡 `isSlippageRealized` = **always `false`** (Maya gives no realized-slippage figure); `mode` = `EXACT_INPUT`.
-- 🔴 `deadline` = `createdAt + 2h`; `EXPIRED` = `non-terminal && now > createdAt + 2h` (client convention).
+- 🔴 `deadline` = `createdAt + 1h15m`; `EXPIRED` = `non-terminal && now > createdAt + 1h15m` (client convention).
 - **Phase-1 status key:** use the persisted `depositAddress` (existing interface). It may return empty for
   Maya (lookup is NEAR-specific); the real key `hash`+`chainId` is Phase 2 (§14).
 
@@ -172,7 +174,9 @@ class MayaSwapDataSource(/* … */) : SwapDataSource
   `outputAmountDeviationTooHigh`, `swapRouteNotFound`/expiry, …).
 - `getSupportedTokens()` = `/tokens?provider=MAYACHAIN` + `POST /price`, combined into `MayaSwapAsset`s.
 - `requestQuote()` = `/v3/quote` then `/v3/swap` (`disableBuildTx:true` + `disableBalanceCheck:true`) to lock
-  the route and obtain `targetAddress` + `memo`. ⚠️ `routeId` TTL ~60s — re-quote on expiry (§15).
+  the route and obtain `targetAddress` + `memo`. ⚠️ route/`expiration` TTL ~75 min (live-verified 2026-06-30,
+  *not* the ~60s previously assumed) — re-quote on expiry (§15). `/v3/swap` rejects **dummy** destination
+  addresses (e.g. the bitcoinjs `bc1qar0srrr…` example) with `500 invalidRoute`; any real address succeeds.
 - `submitDepositTransaction()` = **no-op** (Maya is vault-watching; no submit endpoint). It must still let the
   status path learn the deposit `hash`+`chainId` for Phase 2 — but Phase 1 keys on `depositAddress`, so the
   no-op is sufficient for now.
@@ -414,9 +418,9 @@ with the backend. Figma section: `191-17420` (Swaps: Maya Integration).
 
 | # | Blocker | Status / bypass |
 |---|---|---|
-| 1 | **ZEC deposit OP_RETURN** — Maya needs the swap memo as a transparent OP_RETURN; sending without it loses funds. | **⛔ Verified blocked.** SDK 2.6.4-SNAPSHOT has no OP_RETURN API (`Synchronizer.proposeTransfer` memo is shielded-only; no `opReturn` symbol in SDK/backend AARs; today's send uses `Memo("")`). **Bypass:** Phase 1 skips Maya proposal building — test `/quote`+`/swap` only. Real fix: SDK OP_RETURN support, or sign SwapKit's built `tx`/PCZT. |
-| 2 | **Transparent address + refund/auto-shield** — ZEC side must be `t1…`; a shielded-funded send has no transparent sender for refunds; into-ZEC payout must be `t1…` then auto-shielded. | **Bypass:** pass a wallet `t1…` as `refundAddress`/`sourceAddress` for now (testing only — refunds may not be honored). `proposeShielding(...)` exists, so the auto-shield side is feasible in Phase 2. |
-| 3 | **Status key** — Maya `/track` uses `hash`+`chainId`, not `depositAddress`. | **Bypass:** Phase 1 keys `/track` off the persisted `depositAddress` (interface unchanged); may return empty for Maya. Thread `hash`+`chainId` in Phase 2. |
+| 1 | **ZEC deposit OP_RETURN** — Maya needs the swap memo on the deposit; the SDK can't attach a transparent OP_RETURN. | **⛔ Blocked, possible reprieve (2026-06-30).** SDK 2.6.4 has no OP_RETURN API (`proposeTransfer` memo is shielded-only). **Maya says it can likely read a _shielded_ memo** — which the SDK *can* produce — **pending confirmation of the mechanism** (a shielded memo needs a shielded output; the vault is transparent). **Bypass:** Phase 1 still skips Maya proposal building. Real fix: shielded-memo deposit (if confirmed), SDK OP_RETURN, or signing SwapKit's built `tx`/PCZT. |
+| 2 | **Transparent refund + destination** — both must be `t1…`. | **Confirmed (2026-06-30):** Maya can swap *from* a **shielded source**, but signs refunds/payouts only to **transparent** addresses → `refundAddress` (from-ZEC) and `destinationAddress` (into-ZEC) must be `t1…`. Full shielded support is on Maya's roadmap (timeline TBC). Into-ZEC: pay out to a controlled `t1…`, then auto-shield (`proposeShielding(...)`). |
+| 3 | **Status key** — Maya `/track` uses `hash`+`chainId`, not `depositAddress`. | **Confirmed worse (2026-06-30):** Maya has **no per-swap deposit address** (shared vault), so `depositAddress` can't disambiguate a swap — the Phase-1 "track by depositAddress" shortcut is **invalid** for Maya. The deposit **`hash`+`chainId`** must be persisted at submit and threaded into the status path. A per-swap-address flow is "planned" on Maya's side. |
 | 4 | **Production API key.** | **Resolved.** Hardcoded in `KtorSwapkitApiProvider` as `private const val API_KEY` (sent via `x-api-key`), matching NEAR's hardcoded `AUTH_TOKEN` in `NearApiProvider.kt`. The key lives in source; rotate via the dashboard if needed. |
 | 5 | **Keystone** — `TexUnsupportedOnKSException`: transparent/TEX sends to Keystone unsupported. | Maya from-ZEC likely **Zashi-account-only** even after #1. Decide product stance. |
 
@@ -429,8 +433,16 @@ with the backend. Figma section: `191-17420` (Swaps: Maya Integration).
 - **Manual override persistence** across swaps (ticket Q2): remembered or reset each time?
 - **Inbound-fee fairness:** does the auto-select comparison subtract Maya's sell-side inbound fee, or compare
   raw `expectedBuyAmount` vs `amountOutFormatted`?
-- **`deadline` / `EXPIRED` convention** for Maya (`createdAt + 2h`) — product sign-off.
-- **`routeId` 60s TTL** vs the user lingering on the Comparison sheet — define re-quote/re-build on expiry.
+- **`deadline` — resolved & implemented (2026-06-30):** `SwapkitSwapResponseDto.expiration` parsed to
+  `MayaSwapQuote.deadline` (`+1h15m` fallback only). **Live-measured TTL ≈ 75 min** (unix-epoch seconds, ~4501 s
+  after creation) — *not* the ~60 s first assumed. Comfortably longer than a user's confirm + build window, but
+  still surface a re-quote if it lapses.
+- **Pending Maya confirmations (2026-06-30):** (a) shielded-memo deposit — would unblock the OP_RETURN gate;
+  (b) full shielded-address support timeline; (c) per-swap unique deposit address.
+- **Owed back to Oleg:** slippage = we want the **quote tolerance** (realized is nice-to-have for history);
+  please **add USD amounts** to the response; please **add a creation timestamp** (body preferred).
+- **route ~75 min TTL** (live-verified, not 60s) vs the user lingering on the Comparison sheet — define
+  re-quote/re-build on expiry.
 - **ZEC identifier** `ZEC.ZEC` (live-verified) vs `ZCash.ZEC` (generic docs) — resolve dynamically from
   `/tokens`, don't hardcode.
 - **`sellAmount` units** — decimal (live-verified) vs "basic units" (docs); confirm against the OpenAPI.

@@ -29,7 +29,8 @@ import kotlinx.coroutines.withContext
 import java.math.BigDecimal
 import java.math.MathContext
 import kotlin.time.Clock
-import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 
 /**
  * SwapKit / Maya Protocol implementation of [SwapDataSource]. Bound under the `SWAP_PROVIDER_MAYA` qualifier.
@@ -132,6 +133,7 @@ class MayaSwapDataSource(
                 ?.toMap()
                 .orEmpty()
 
+        val now = Clock.System.now()
         return MayaSwapQuote(
             originAsset = originAsset,
             destinationAsset = destinationAsset,
@@ -141,7 +143,10 @@ class MayaSwapDataSource(
             amountInFormatted = route.sellAmount,
             amountOutFormatted = route.expectedBuyAmount,
             slippage = slippage,
-            timestamp = Clock.System.now(),
+            timestamp = now,
+            // Maya's real "do not broadcast after" deadline from /v3/swap; fall back to now+1h15m (the
+            // live-measured ~75 min route TTL) if absent.
+            deadline = deadlineFrom(swapResponse.expiration) ?: (now + 75.minutes),
             originUsdPrice = metaPrices[originAsset.assetId] ?: originAsset.usdPrice ?: BigDecimal.ZERO,
             destinationUsdPrice = metaPrices[destinationAsset.assetId] ?: destinationAsset.usdPrice ?: BigDecimal.ZERO,
             affiliateFeeBps = route.meta?.affiliateFee?.toInt() ?: 0,
@@ -185,7 +190,7 @@ class MayaSwapDataSource(
             depositedAmountFormatted = response.fromAmount,
             refundedFormatted = if (status == SwapStatus.REFUNDED) response.toAmount else null,
             timestamp = java.time.Instant.now(),
-            deadline = Clock.System.now() + 2.hours,
+            deadline = Clock.System.now() + 75.minutes,
         )
     }
 
@@ -197,6 +202,13 @@ class MayaSwapDataSource(
             "swapping" -> SwapStatus.PROCESSING
             else -> SwapStatus.PENDING
         }
+
+    @Suppress("MagicNumber")
+    private fun deadlineFrom(expiration: BigDecimal?): Instant? {
+        val epoch = expiration?.toLong() ?: return null
+        // Heuristic: unix seconds (~1.7e9) vs milliseconds (~1.7e12).
+        return if (epoch > 1_000_000_000_000L) Instant.fromEpochMilliseconds(epoch) else Instant.fromEpochSeconds(epoch)
+    }
 
     private suspend fun getDepositAddress(target: String, originAsset: SwapAsset): SwapAddress =
         if (originAsset.isZCashAsset) getZcashSwapAddress(target) else DynamicSwapAddress(target)

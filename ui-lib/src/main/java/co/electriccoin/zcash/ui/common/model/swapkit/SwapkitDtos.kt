@@ -162,6 +162,10 @@ data class SwapkitSwapResponseDto(
     @SerialName("targetAddress") val targetAddress: String,
     @SerialName("inboundAddress") val inboundAddress: String? = null,
     @SerialName("memo") val memo: String? = null,
+    // Epoch "valid until" — Maya: do not broadcast after this (~60s + leeway). Used as the swap deadline.
+    @SerialName("expiration")
+    @Serializable(LenientBigDecimalSerializer::class)
+    val expiration: BigDecimal? = null,
     @SerialName("expectedBuyAmount")
     @Serializable(LenientBigDecimalSerializer::class)
     val expectedBuyAmount: BigDecimal? = null,

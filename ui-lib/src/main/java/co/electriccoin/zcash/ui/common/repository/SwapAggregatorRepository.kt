@@ -53,9 +53,10 @@ class SwapAggregatorRepositoryImpl(
                 initialValue = mergeAssets(swapRepositories.values.map { it.assets.value })
             )
 
-    override val quotes = combine(swapRepositories.values.map { it.quote }) { quotes ->
-        quotes.filterNotNull().ifEmpty { null }
-    }.stateIn(scope, SharingStarted.Eagerly, null)
+    override val quotes =
+        combine(swapRepositories.values.map { it.quote }) { quotes ->
+            quotes.filterNotNull().ifEmpty { null }
+        }.stateIn(scope, SharingStarted.Eagerly, null)
 
     override val quote: StateFlow<SwapQuoteData?> =
         combine(quotes, selectedProvider) { quotes, selected ->

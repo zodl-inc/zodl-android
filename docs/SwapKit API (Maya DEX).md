@@ -63,6 +63,27 @@
 >   `NearApiProvider.kt`. Decision (2026-06-29): follow the existing NEAR convention rather than a
 >   `BuildConfig`/Gradle property. The key therefore lives in source — rotate via the SwapKit dashboard if needed.
 
+> **📩 Maya team answers (2026-06-30, Oleg).** Confirmations/changes from the SwapKit/Maya side:
+> - **Deadline/expiry — confirmed + live-measured.** The **`/v3/swap` response carries an `expiration` epoch**
+>   (unix seconds) = valid-until; don't broadcast after it. → **Implemented:** parsed into `MayaSwapQuote.deadline`
+>   (`SwapkitSwapResponseDto.expiration`, `+1h15m` fallback only). **Live 2026-06-30 the real TTL is ~75 min**
+>   (~4501 s after creation), present identically on the quote route and `/v3/swap` — *not* the ~60 s Oleg estimated.
+> - **Creation timestamp — not returned;** they'll add it (body or header) on request.
+> - **USD amounts — they'll add them** to the response on request (today we derive from `meta.assets[].price`).
+> - **Slippage — they asked us back:** do we want the *quote's tolerance* or the *realized* slippage after
+>   settlement? (We want the **tolerance** for the limit display; realized is a nice-to-have for history.)
+> - **`finalisedAt` — WIP**, they'll prioritize ZEC.
+> - **Shielded source OK; refund + destination MUST be transparent `t1…`.** Maya can swap *from* a shielded
+>   source, but currently signs payouts/refunds only to transparent addresses (full shielded support is on
+>   their roadmap, timeline TBC). For token→ZEC the payout is transparent → still auto-shield afterwards.
+> - **No per-swap unique deposit address** (shared Maya vault; a per-swap flow is "planned"). → **Status
+>   cannot be keyed by `depositAddress`** (shared ⇒ ambiguous); `hash`+`chainId` is mandatory. This kills the
+>   Phase-1 "track by depositAddress" shortcut for Maya.
+> - **OP_RETURN — possible reprieve (pending confirm):** Oleg is "99% sure Maya can read **shielded memos**,"
+>   which our SDK *can* produce (`proposeTransfer` memo) unlike a transparent OP_RETURN. ❗Needs the exact
+>   mechanism: a shielded memo rides a *shielded* output, but the deposit funds a *transparent* vault —
+>   clarify whether Maya offers a shielded deposit target or reads a shielded memo carried in the same tx.
+
 ---
 
 ## 1. What SwapKit is and why we want it
@@ -170,9 +191,16 @@ Typical lifecycle: `/providers` + `/tokens` + `/price` (cache) → `/v3/quote` (
 > **⚠️ Verified (2026-06-29, live): addresses bind to the route at _quote_ time.** A quote requested without
 > `sourceAddress`/`destinationAddress` produces a route whose addresses are placeholders (`"{sourceAddress}"`),
 > and `/v3/swap` then rejects it with **`500 invalidRoute`** ("Must have source and destination addresses, and
-> they cannot be dummy addresses or like `{destinationAddress}`, `{sourceAddress}`") — *even when the real
-> addresses are passed to `/v3/swap`*. So `MayaSwapDataSource.requestQuote` must send `sourceAddress`
-> (the ZEC `t1…` refund/origin) and `destinationAddress` on the **`/v3/quote`** call, not only on `/v3/swap`.
+> they cannot be dummy addresses or like `{destinationAddress}`, `{sourceAddress}`"). So
+> `MayaSwapDataSource.requestQuote` must send `sourceAddress` (the ZEC `t1…` refund/origin) and
+> `destinationAddress` on the **`/v3/quote`** call, not only on `/v3/swap`.
+>
+> **⚠️ Update (2026-06-30, live):** `invalidRoute` *also* fires for **dummy** destination addresses — the
+> bitcoinjs example `bc1qar0srrr…` is rejected and the error echoes `{sourceAddress}`/`{destinationAddress}`
+> regardless of what was bound. With **any real** BTC address (verified: genesis `1A1zP1eP5…`, a real bech32),
+> `/v3/swap` returns `200` with a vault `targetAddress` and the OP_RETURN `memo`. So the earlier `invalidRoute`
+> failures were the test address, not the flow — the app's quote+swap address wiring is correct. Use real
+> addresses in live tests.
 | `affiliateFee` | number | ❌ | Per-request override in **bps** (0–1000). **Zodl does not send this** — the rate is set in the dashboard (console) and read back from the response `meta.affiliateFee` |
 | `cfBoost` | boolean | ❌ | Enable Chainflip "boost" for better rates (Chainflip routes only) |
 | `maxExecutionTime` | number | ❌ | Cap on acceptable execution time, seconds |
@@ -199,7 +227,7 @@ Typical lifecycle: `/providers` + `/tokens` + `/price` (cache) → `/v3/quote` (
 
 | Field | Type | Description |
 |---|---|---|
-| `routeId` | string | UUID of this specific route — pass to `/v3/swap`. **Valid ~60s**, then re-quote |
+| `routeId` | string | UUID of this specific route — pass to `/v3/swap`. **Valid ~75 min** (live-verified; see `expiration`), then re-quote |
 | `providers` | string[] | Providers used by this route (e.g. `["MAYACHAIN_STREAMING"]`, `["THORCHAIN"]`, `["NEAR"]`) |
 | `sellAsset` / `buyAsset` | string | Echo of the pair |
 | `sellAmount` | string | Sell amount |
@@ -207,7 +235,7 @@ Typical lifecycle: `/providers` + `/tokens` + `/price` (cache) → `/v3/quote` (
 | `expectedBuyAmountMaxSlippage` | string | Worst-case received amount at max slippage (the guaranteed minimum) |
 | `fees` | Fee[] | Fee breakdown — see §9 |
 | `estimatedTime` | object | `{ inbound, swap, outbound, total }` in seconds |
-| `expiration` | string | Absolute **unix-seconds** TTL of this route/`routeId` (re-quote once past it) |
+| `expiration` | string | Absolute **unix-seconds** TTL of this route/`routeId` — **~75 min out** (live-verified 2026-06-30); re-quote once past it |
 | `totalSlippageBps` | number | Expected total slippage / price impact (bps; **negative = cost**, e.g. `-70.38`) |
 | `legs` | Leg[] | Individual hops of a multi-step route — see §10 (single leg for Maya ZEC↔token) |
 | `warnings` | array | Provider warnings to surface to the user (empty `[]` on the clean Maya quotes observed) |
@@ -278,7 +306,7 @@ ZEC deposit through the Zcash SDK.
 
 | Field | Type | Req | Description |
 |---|---|---|---|
-| `routeId` | string | ✅ | The chosen route's id (valid ~60s after quoting) |
+| `routeId` | string | ✅ | The chosen route's id (valid ~75 min after quoting — live-verified) |
 | `sourceAddress` | string | ✅ | Sender wallet address (real, non-dummy; the ZEC side must be a transparent `t1…` — see below) |
 | `destinationAddress` | string | ✅ | Recipient address (the ZEC side must be a transparent `t1…`) |
 | `disableBuildTx` | boolean | — | **`true` for Zodl** — skip building the chain tx/PSBT (we can't build from shielded UTXOs; `tx` then comes back `null`) |
@@ -299,7 +327,7 @@ ZEC deposit through the Zcash SDK.
 | `expectedBuyAmount`, `expectedBuyAmountMaxSlippage`, `totalSlippageBps`, `legs`, `warnings`, `meta`, `nextActions` | | Carried over from the quote for final user confirmation |
 
 Common errors: `insufficientBalance`, `insufficientAllowance`, `unableToBuildTransaction`,
-plus quote expiry (re-quote after 60s).
+`invalidRoute` (dummy/placeholder addresses — use real ones), plus quote expiry (re-quote after ~75 min).
 
 > **Zcash deposit signing (verified — BLOCKED on the SDK):** with `disableBuildTx:true`, `/v3/swap` returns
 > `tx:null` — the app must build and sign the ZEC deposit via the **Zcash Android SDK**, sending to
@@ -390,7 +418,7 @@ Built in `MayaSwapDataSource.requestQuote` from `/v3/quote` + `/v3/swap` + reque
 | `affiliateFeeZatoshi` / `affiliateFeeUsd` | 🟡 same formulas as `NearSwapQuote` (ZEC-origin branch for the Zatoshi variant; `amountInUsd × bps` for USD), with `bps = meta.affiliateFee` |
 | `timestamp` | 🟡 local `now()` at quote time (Maya quote has no timestamp field) |
 | `getTotal*` / `getTotalFees*` (proposal) | 🟡 amounts + proposal ZEC network fee + `affiliateFee*` (same as NEAR) |
-| `deadline` | 🔴 **no Maya source** — `expiration` is only the ~60s route TTL; fabricated `timestamp + 2h` (or drop) |
+| `deadline` | ✅ `/v3/swap` `expiration` (unix seconds, ~75 min out — live-verified); `+1h15m` fallback only if absent |
 
 Legend: **✅ direct** from the response/request · **🟡 derived** (computed from data we have) · **🔴 no
 Maya source** (fabricated by convention). No `💾 persist` here — `SwapQuote` is built fresh from the live
@@ -502,8 +530,8 @@ fromAddress, toAsset, toAmount, toAddress, finalisedAt, meta, payload, legs[]`.
 | `amountInFee` | 💾 `amountInFormatted × (bps/10000)`, where **`bps` = the persisted `meta.affiliateFee`** from `/v3/swap` — the **console-configured** rate, **not** a hardcoded const (`/track` carries no fee) |
 | `mode` | 🟡 constant `EXACT_INPUT` (Maya is exact-input only — §6) |
 | `isSlippageRealized` | 🟡 **always `false`** — NEAR sets it from `swapDetails.slippage` (a realized-slippage *figure*); Maya's `/track` returns none. (Amounts *are* realized via `toAmount`, but this flag specifically means "a realized-slippage number is available", which Maya never provides.) |
-| `deadline` | 🔴 **no Maya source** — synthesized `createdAt + 2h`. NEAR uses the (echoed) quote's `deadline`; Maya's quote has only `expiration` (~60s route TTL), too short to reuse |
-| `status == EXPIRED` | 🔴 **no Maya source** — `non-terminal && now > createdAt + 2h`; a client convention (product decision pending; Maya has no expiry for an in-flight swap) |
+| `deadline` | 🟡 status path synthesizes `createdAt + 1h15m` (`/track` returns no expiration). The *quote* path now uses the real `/v3/swap` `expiration` (~75 min, live-verified); persisting it for status is a Phase-2 nicety |
+| `status == EXPIRED` | 🔴 **no Maya source** — `non-terminal && now > createdAt + 1h15m`; a client convention (product decision pending; Maya has no expiry for an in-flight swap) |
 
 Legend: **✅ direct** from `/track`/`supportedTokens` · **💾 persisted** to metadata at submit · **🟡
 derived** (computed from data we have) · **🔴 no Maya source** (fabricated by convention — needs a product
