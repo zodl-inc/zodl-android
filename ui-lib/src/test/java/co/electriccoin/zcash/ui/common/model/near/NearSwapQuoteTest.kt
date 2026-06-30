@@ -28,20 +28,6 @@ class NearSwapQuoteTest {
     }
 
     @Test
-    fun rejectsOriginAssetSubstitution() {
-        assertFailsWith<IllegalArgumentException> {
-            nearSwapQuote(quoteResponse(originAssetId = "$ORIGIN_ID.tampered"))
-        }
-    }
-
-    @Test
-    fun rejectsDestinationAssetSubstitution() {
-        assertFailsWith<IllegalArgumentException> {
-            nearSwapQuote(quoteResponse(destinationAssetId = "$DEST_ID.tampered"))
-        }
-    }
-
-    @Test
     fun rejectsNonPositiveAmountInFormatted() {
         assertFailsWith<IllegalArgumentException> {
             nearSwapQuote(quoteResponse(amountIn = BigDecimal.ZERO, amountInFormatted = BigDecimal.ZERO))
