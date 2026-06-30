@@ -8,6 +8,7 @@ import cash.z.ecc.android.sdk.NetworkPrivacyOptions
 import cash.z.ecc.android.sdk.NoteSplitProposal
 import cash.z.ecc.android.sdk.OrchardMigrationSdk
 import cash.z.ecc.android.sdk.TransferResult
+import cash.z.ecc.android.sdk.internal.model.DenominationPlan
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -22,6 +23,13 @@ typealias SdkAttentionReason = AttentionReason
 typealias SdkNetworkPrivacyOptions = NetworkPrivacyOptions
 
 interface MigrationDataSource {
+    suspend fun planOrchardDenominationSplit(
+        totalInputZatoshi: Long,
+        prepFeeZatoshi: Long,
+        migrationFeeZatoshi: Long,
+        minimumOutputZatoshi: Long
+    ): DenominationPlan
+
     suspend fun getMigrationState(): MigrationState
 
     suspend fun getMigrationProgress(): MigrationProgress?
@@ -56,6 +64,21 @@ class MigrationDataSourceImpl(
         // TODO [MOB-IRONWOOD]: expose orchardMigration accessor on Synchronizer once the SDK
         // property is wired in SdkSynchronizer. Replace with: synchronizerProvider.synchronizer.orchardMigration
         error("OrchardMigrationSdk not yet accessible from Synchronizer — wire after SDK integration")
+
+    override suspend fun planOrchardDenominationSplit(
+        totalInputZatoshi: Long,
+        prepFeeZatoshi: Long,
+        migrationFeeZatoshi: Long,
+        minimumOutputZatoshi: Long
+    ): DenominationPlan =
+        withContext(Dispatchers.IO) {
+            synchronizerProvider.getSynchronizer().planOrchardDenominationSplit(
+                totalInputZatoshi = totalInputZatoshi,
+                prepFeeZatoshi = prepFeeZatoshi,
+                migrationFeeZatoshi = migrationFeeZatoshi,
+                minimumOutputZatoshi = minimumOutputZatoshi
+            )
+        }
 
     override suspend fun getMigrationState(): MigrationState =
         withContext(Dispatchers.IO) { sdk().getMigrationState() }

@@ -3,11 +3,11 @@ package co.electriccoin.zcash.ui.common.repository
 import cash.z.ecc.android.sdk.AttentionReason
 import cash.z.ecc.android.sdk.MigrationProgress
 import cash.z.ecc.android.sdk.MigrationSchedule
-import cash.z.ecc.android.sdk.MigrationState
 import cash.z.ecc.android.sdk.NetworkPrivacyOptions
 import cash.z.ecc.android.sdk.NoteSplitProposal
 import cash.z.ecc.android.sdk.TransferResult
 import co.electriccoin.zcash.spackle.Twig
+import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.MigrationDataSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -64,8 +64,15 @@ interface MigrationRepository {
     suspend fun restart()
 }
 
+private object DenominationPlanDefaults {
+    const val PREP_FEE_ZATOSHI = 10_000L
+    const val MIGRATION_FEE_ZATOSHI = 10_000L
+    const val MINIMUM_OUTPUT_ZATOSHI = 50_000L
+}
+
 class MigrationRepositoryImpl(
     private val migrationDataSource: MigrationDataSource,
+    private val accountDataSource: AccountDataSource,
 ) : MigrationRepository {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -75,41 +82,40 @@ class MigrationRepositoryImpl(
     private val _migrationState = MutableStateFlow<MigrationUiState>(MigrationUiState.Loading)
     override val migrationState: StateFlow<MigrationUiState> = _migrationState.asStateFlow()
 
+    // Real SDK call (cash.z.ecc.android.sdk.Synchronizer.planOrchardDenominationSplit, PR #2008).
+    // Everything beyond this — proposal building/broadcast/status derivation — is still blocked
+    // on the unstable nu6.3 Ironwood crate surface; see ironwood-migration-execution.md.
     override fun refresh() {
         scope.launch {
             runCatching {
-                val sdkState = migrationDataSource.getMigrationState()
+                val orchardAvailable =
+                    accountDataSource
+                        .getSelectedAccount()
+                        .unified.balance.available.value
+
+                if (orchardAvailable <= 0L) {
+                    _migrationState.value = MigrationUiState.NotStarted
+                    return@runCatching
+                }
+
+                val plan =
+                    migrationDataSource.planOrchardDenominationSplit(
+                        totalInputZatoshi = orchardAvailable,
+                        prepFeeZatoshi = DenominationPlanDefaults.PREP_FEE_ZATOSHI,
+                        migrationFeeZatoshi = DenominationPlanDefaults.MIGRATION_FEE_ZATOSHI,
+                        minimumOutputZatoshi = DenominationPlanDefaults.MINIMUM_OUTPUT_ZATOSHI
+                    )
+
                 _migrationState.value =
-                    when (sdkState) {
-                        is MigrationState.NotStarted -> {
-                            if (migrationDataSource.isNoteSplitNeeded()) {
-                                val proposal = migrationDataSource.prepareNoteSplit()
-                                MigrationUiState.AwaitingNoteSplitConfirm(proposal)
-                            } else {
-                                MigrationUiState.NotStarted
-                            }
-                        }
-
-                        is MigrationState.SplitPendingConfirmation -> {
-                            MigrationUiState.AwaitingSplitConfirmation
-                        }
-
-                        is MigrationState.ReadyToPropose -> {
-                            val schedule = migrationDataSource.proposeMigrationTransfers()
-                            MigrationUiState.ProposalReview(schedule)
-                        }
-
-                        is MigrationState.InProgress -> {
-                            MigrationUiState.InProgress(sdkState.progress)
-                        }
-
-                        is MigrationState.RequiresAttention -> {
-                            MigrationUiState.RequiresAttention(sdkState.reason)
-                        }
-
-                        is MigrationState.Complete -> {
-                            MigrationUiState.Complete
-                        }
+                    if (plan.migrationOutputs.isEmpty()) {
+                        MigrationUiState.NotStarted
+                    } else {
+                        MigrationUiState.AwaitingNoteSplitConfirm(
+                            NoteSplitProposal(
+                                outputNotes = plan.migrationOutputs,
+                                fee = plan.prepFeeZatoshi
+                            )
+                        )
                     }
             }.onFailure { e ->
                 Twig.error(e) { "MigrationRepository.refresh failed" }
