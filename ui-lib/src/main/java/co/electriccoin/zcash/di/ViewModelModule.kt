@@ -44,6 +44,7 @@ import co.electriccoin.zcash.ui.screen.hotfix.ephemeral.EphemeralHotfixVM
 import co.electriccoin.zcash.ui.screen.insufficientfunds.InsufficientFundsVM
 import co.electriccoin.zcash.ui.screen.integrations.IntegrationsVM
 import co.electriccoin.zcash.ui.screen.keepopen.KeepOpenVM
+import co.electriccoin.zcash.ui.screen.migration.MigrationViewModel
 import co.electriccoin.zcash.ui.screen.more.MoreVM
 import co.electriccoin.zcash.ui.screen.pay.PayVM
 import co.electriccoin.zcash.ui.screen.qrcode.QrCodeVM
@@ -211,4 +212,5 @@ val viewModelModule =
         viewModelOf(::KeystoneEstimationVM)
         viewModelOf(::KeystoneHeightVM)
         viewModelOf(::KeepOpenVM)
+        viewModelOf(::MigrationViewModel)
     }
