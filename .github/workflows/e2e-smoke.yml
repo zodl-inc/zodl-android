@@ -86,7 +86,7 @@ jobs:
           token: ${{ secrets.ZODL_QA }}
 
       - name: Download APK
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: zodl-android-debug-apk
           path: apk
