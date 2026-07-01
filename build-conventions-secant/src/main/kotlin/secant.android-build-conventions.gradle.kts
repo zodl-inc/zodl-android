@@ -13,12 +13,6 @@ pluginManager.withPlugin("com.android.application") {
             minSdk = project.property("ANDROID_MIN_SDK_VERSION").toString().toInt()
             targetSdk = project.property("ANDROID_TARGET_SDK_VERSION").toString().toInt()
 
-            // en_XA and ar_XB are pseudolocales for debugging.
-            // The rest of the locales provides an explicit list of the languages to keep in the
-            // final app.  Doing this will strip out additional locales from libraries like
-            // Google Play Services and Firebase, which add unnecessary bloat.
-            resourceConfigurations.addAll(listOf("en", "en-rUS", "en-rGB", "en-rAU", "es", "en_XA", "ar_XB"))
-
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
             testInstrumentationRunnerArguments["useTestStorageService"] = "true"
@@ -27,26 +21,31 @@ pluginManager.withPlugin("com.android.application") {
             }
         }
     }
+    project.the<com.android.build.api.dsl.ApplicationExtension>().apply {
+        // en_XA and ar_XB are pseudolocales for debugging.
+        // The rest of the locales provides an explicit list of the languages to keep in the
+        // final app.  Doing this will strip out additional locales from libraries like
+        // Google Play Services and Firebase, which add unnecessary bloat.
+        @Suppress("UnstableApiUsage")
+        androidResources {
+            localeFilters += listOf("en", "en-rUS", "en-rGB", "en-rAU", "es", "en_XA", "ar_XB")
+        }
+    }
 }
 
 pluginManager.withPlugin("com.android.library") {
     project.the<com.android.build.gradle.LibraryExtension>().apply {
         configureBaseExtension()
 
+        // Locale stripping is configured on the application module via androidResources.localeFilters.
+        // The replacement API is only available on ApplicationAndroidResources, so libraries inherit
+        // the final filter at packaging time and don't need to declare their own.
         defaultConfig {
             minSdk = project.property("ANDROID_MIN_SDK_VERSION").toString().toInt()
             // This is deprecated but we don't have a replacement for the instrumentation APKs yet
             // TODO [#1815]: Gradle targetSdk deprecated #1815
             // TODO [#1815]: https://github.com/Electric-Coin-Company/zashi-android/issues/1815
             targetSdk = project.property("ANDROID_TARGET_SDK_VERSION").toString().toInt()
-
-            // The last two are for support of pseudolocales in debug builds.
-            // If we add other localizations, they should be included in this list.
-            // By explicitly setting supported locales, we strip out unused localizations from third party
-            // libraries (e.g. play services)
-            // TODO [#1816]: Gradle resourceConfigurations deprecation #1816
-            // TODO [#1816]: https://github.com/Electric-Coin-Company/zashi-android/issues/1816
-            resourceConfigurations.addAll(listOf("en", "en-rUS", "en-rGB", "en-rAU", "es", "en_XA", "ar_XB"))
 
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
             consumerProguardFiles("proguard-consumer.txt")
@@ -66,17 +65,11 @@ pluginManager.withPlugin("com.android.test") {
     project.the<com.android.build.gradle.TestExtension>().apply {
         configureBaseExtension()
 
+        // No locale stripping here either. The test APKs target :app and don't ship locale
+        // resources of their own, and localeFilters isn't available on TestAndroidResources.
         defaultConfig {
             minSdk = project.property("ANDROID_MIN_SDK_VERSION").toString().toInt()
             targetSdk = project.property("ANDROID_TARGET_SDK_VERSION").toString().toInt()
-
-            // The last two are for support of pseudolocales in debug builds.
-            // If we add other localizations, they should be included in this list.
-            // By explicitly setting supported locales, we strip out unused localizations from third party
-            // libraries (e.g. play services)
-            // TODO [#1816]: Gradle resourceConfigurations deprecation #1816
-            // TODO [#1816]: https://github.com/Electric-Coin-Company/zashi-android/issues/1816
-            resourceConfigurations.addAll(listOf("en", "en-rUS", "en-rGB", "en-rAU", "es", "en_XA", "ar_XB"))
 
             testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
