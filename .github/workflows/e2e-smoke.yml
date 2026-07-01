@@ -25,7 +25,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout app
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -79,7 +79,7 @@ jobs:
     name: e2e-android (phase ${{ matrix.phase }})
     steps:
       - name: Checkout smoke tests
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: zodl-inc/zodl-qa
           path: zodl-qa
