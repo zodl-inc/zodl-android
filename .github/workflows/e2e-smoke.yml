@@ -53,7 +53,7 @@ jobs:
         run: ./gradlew assembleZcashmainnetInternalDebug
 
       - name: Upload APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: zodl-android-debug-apk
           path: app/build/outputs/apk/zcashmainnetInternal/debug/*.apk
@@ -186,7 +186,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: maestro-android-results-phase-${{ matrix.phase }}
           path: |
