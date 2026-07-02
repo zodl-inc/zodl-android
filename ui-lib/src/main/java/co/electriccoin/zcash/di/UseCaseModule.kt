@@ -1,6 +1,8 @@
 package co.electriccoin.zcash.di
 
 import co.electriccoin.zcash.ui.common.mapper.SwapSupportMapper
+import co.electriccoin.zcash.ui.common.model.SwapProvider
+import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.usecase.ApplyTransactionFiltersUseCase
 import co.electriccoin.zcash.ui.common.usecase.ApplyTransactionFulltextFiltersUseCase
 import co.electriccoin.zcash.ui.common.usecase.AuthorizeVotingSubmissionUseCase
@@ -154,6 +156,7 @@ import co.electriccoin.zcash.ui.screen.deletewallet.ResetZashiUseCase
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
+import org.koin.core.qualifier.named
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
@@ -267,17 +270,13 @@ val useCaseModule =
         factoryOf(::OptInExchangeRateUseCase)
         factoryOf(::OptInExchangeRateAndTorUseCase)
         factoryOf(::NavigateToSwapUseCase)
-        factoryOf(::CancelSwapUseCase)
-        factoryOf(::GetSwapAssetsUseCase)
         factoryOf(::EnsureSwapAssetsLoadedUseCase)
         factoryOf(::FilterSwapAssetsUseCase)
         factoryOf(::FilterSwapBlockchainsUseCase)
         factoryOf(::NavigateToSwapInfoUseCase)
         factoryOf(::GetTotalSpendableBalanceUseCase)
         factoryOf(::IsABContactHintVisibleUseCase)
-        factoryOf(::RequestSwapQuoteUseCase)
         factoryOf(::CancelSwapQuoteUseCase)
-        factoryOf(::NavigateToSwapQuoteIfAvailableUseCase)
         singleOf(::NavigateToScanGenericAddressUseCase)
         singleOf(::NavigateToSelectABSwapRecipientUseCase)
         singleOf(::NavigateToSelectSwapBlockchainUseCase)
@@ -286,7 +285,44 @@ val useCaseModule =
         singleOf(::NavigateToSelectFiatCurrencyUseCase)
         factoryOf(::ConfirmResyncUseCase)
         factoryOf(::ValidateSwapABContactAddressUseCase)
-        factoryOf(::NavigateToNearPayUseCase)
+        // MOB-1396: Pay (Crosspay, EXACT_OUTPUT) is NEAR-only. Its entry refresh resolves the
+        // NEAR-named SwapRepository, so Pay never touches Maya.
+        factory {
+            NavigateToNearPayUseCase(swapRepository = get(named(SwapProvider.NEAR)), navigationRouter = get())
+        }
+        // These swap use cases are provider-agnostic — the caller supplies the SwapRepository via
+        // parametersOf. PayVM passes the NEAR-named repository; other swap VMs pass the default
+        // (aggregator) repository.
+        factory { (swapRepository: SwapRepository) ->
+            GetSwapAssetsUseCase(swapRepository = swapRepository)
+        }
+        factory { (swapRepository: SwapRepository) ->
+            CancelSwapUseCase(swapRepository = swapRepository, navigationRouter = get())
+        }
+        factory { (swapRepository: SwapRepository) ->
+            NavigateToSwapQuoteIfAvailableUseCase(
+                swapRepository = swapRepository,
+                navigationRouter = get()
+            )
+        }
+        factory { (swapRepository: SwapRepository) ->
+            GetPreselectedSwapAssetUseCase(
+                swapRepository = swapRepository,
+                metadataRepository = get(),
+                simpleSwapAssetProvider = get()
+            )
+        }
+        factory { (swapRepository: SwapRepository) ->
+            RequestSwapQuoteUseCase(
+                navigationRouter = get(),
+                navigateToErrorUseCase = get(),
+                swapRepository = swapRepository,
+                zashiProposalRepository = get(),
+                keystoneProposalRepository = get(),
+                accountDataSource = get(),
+                synchronizerProvider = get()
+            )
+        }
         factoryOf(::SaveORSwapUseCase)
         factoryOf(::GetReloadableSwapQuoteUseCase)
         factoryOf(::ShareQRUseCase)
@@ -304,7 +340,6 @@ val useCaseModule =
         singleOf(::SubmitIncreaseEphemeralGapLimitUseCase)
         factoryOf(::CreateIncreaseEphemeralGapLimitProposalUseCase)
         factoryOf(::ResetZashiUseCase)
-        factoryOf(::GetPreselectedSwapAssetUseCase)
         factoryOf(::GetSwapStatusUseCase)
         factoryOf(::ExecuteDebugDBQueryUseCase)
         factoryOf(::SwapSupportMapper)

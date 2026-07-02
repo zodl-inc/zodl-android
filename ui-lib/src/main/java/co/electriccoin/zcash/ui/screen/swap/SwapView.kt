@@ -292,10 +292,13 @@ private fun ColumnScope.AddressTextField(state: SwapState) {
         verticalAlignment = CenterVertically
     ) {
         Text(
+            // MOB-1396: the from-ZEC (BOTTOM) "Address" label is removed, but its line height is reserved (an
+            // empty line) so the address block stays the same height as the to-ZEC "Refund Address" block and
+            // the Price flexibility / Rate rows below don't shift when the swap direction is switched.
             text =
                 when (state.addressLocation) {
                     TOP -> stringResource(R.string.swapToZec_refundAddress)
-                    BOTTOM -> stringResource(co.electriccoin.zcash.ui.design.R.string.swapAndPay_address)
+                    BOTTOM -> ""
                 },
             style = ZashiTypography.textSm,
             fontWeight = FontWeight.Medium

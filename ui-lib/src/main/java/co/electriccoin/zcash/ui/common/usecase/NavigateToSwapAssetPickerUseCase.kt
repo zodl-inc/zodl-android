@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.common.usecase
 
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.model.SwapAsset
+import co.electriccoin.zcash.ui.common.model.SwapProvider
 import co.electriccoin.zcash.ui.screen.swap.picker.SwapAssetPickerArgs
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
@@ -12,8 +13,8 @@ class NavigateToSwapAssetPickerUseCase(
 ) {
     private val pipeline = MutableSharedFlow<SelectSwapAssetPipelineResult>()
 
-    suspend operator fun invoke(onlyChainTicker: String?): SwapAsset? {
-        val args = SwapAssetPickerArgs(onlyChainTicker = onlyChainTicker)
+    suspend operator fun invoke(onlyChainTicker: String?, provider: SwapProvider? = null): SwapAsset? {
+        val args = SwapAssetPickerArgs(onlyChainTicker = onlyChainTicker, provider = provider)
         // Subscribe before forwarding so a result emitted as soon as the screen appears can never be
         // dropped (a bare SharedFlow emit with no collector is lost and would hang the caller).
         val result =

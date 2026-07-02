@@ -8,6 +8,7 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapMode
+import co.electriccoin.zcash.ui.common.model.SwapProvider
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.repository.DEFAULT_SLIPPAGE
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
@@ -278,7 +279,8 @@ internal class PayVM(
                     onlyChainTicker =
                         internalState.value.selectedABContact
                             ?.blockchain
-                            ?.chainTicker
+                            ?.chainTicker,
+                    provider = SwapProvider.NEAR
                 )
             if (asset != null) {
                 internalState.update { it.withAsset(asset) }

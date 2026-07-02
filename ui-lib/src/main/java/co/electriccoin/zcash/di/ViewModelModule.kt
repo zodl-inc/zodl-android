@@ -1,6 +1,8 @@
 package co.electriccoin.zcash.di
 
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarVM
+import co.electriccoin.zcash.ui.common.model.SwapProvider
+import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.OldHomeViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
@@ -76,7 +78,9 @@ import co.electriccoin.zcash.ui.screen.swap.detail.support.SwapSupportVM
 import co.electriccoin.zcash.ui.screen.swap.info.SwapRefundAddressInfoVM
 import co.electriccoin.zcash.ui.screen.swap.lock.EphemeralLockVM
 import co.electriccoin.zcash.ui.screen.swap.orconfirmation.ORSwapConfirmationVM
+import co.electriccoin.zcash.ui.screen.swap.picker.SwapAssetPickerArgs
 import co.electriccoin.zcash.ui.screen.swap.picker.SwapAssetPickerVM
+import co.electriccoin.zcash.ui.screen.swap.picker.SwapBlockchainPickerArgs
 import co.electriccoin.zcash.ui.screen.swap.picker.SwapBlockchainPickerVM
 import co.electriccoin.zcash.ui.screen.swap.quote.SwapQuoteVM
 import co.electriccoin.zcash.ui.screen.swap.slippage.SwapSlippageVM
@@ -103,7 +107,10 @@ import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingVM
 import co.electriccoin.zcash.ui.screen.walletbackup.WalletBackupViewModel
 import co.electriccoin.zcash.ui.screen.warning.viewmodel.StorageCheckViewModel
 import co.electriccoin.zcash.ui.screen.whatsnew.viewmodel.WhatsNewViewModel
+import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
+import org.koin.core.parameter.parametersOf
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 val viewModelModule =
@@ -167,14 +174,85 @@ val viewModelModule =
         viewModelOf(::TorSettingsVM)
         viewModelOf(::TorOptInVM)
         viewModelOf(::ExchangeRateOptInVM)
-        viewModelOf(::SwapAssetPickerVM)
+        viewModel { (args: SwapAssetPickerArgs) ->
+            val swapRepository =
+                if (args.provider != null) {
+                    get<SwapRepository>(named(args.provider))
+                } else {
+                    get<SwapRepository>()
+                }
+            SwapAssetPickerVM(
+                args = args,
+                getSwapAssets = get { parametersOf(swapRepository) },
+                metadataRepository = get(),
+                navigateToSwapAssetPicker = get(),
+                filterSwapAssets = get(),
+                swapRepository = swapRepository,
+            )
+        }
         viewModelOf(::SwapSlippageVM)
-        viewModelOf(::SwapVM)
-        viewModelOf(::PayVM)
-        viewModelOf(::SwapQuoteVM)
+        viewModel {
+            val swapRepository = get<SwapRepository>()
+            SwapVM(
+                getSwapAssetsUseCase = get { parametersOf(swapRepository) },
+                getSelectedWalletAccount = get(),
+                getPreselectedSwapAsset = get { parametersOf(swapRepository) },
+                swapRepository = swapRepository,
+                navigateToSwapInfo = get(),
+                cancelSwap = get { parametersOf(swapRepository) },
+                navigationRouter = get(),
+                requestSwapQuote = get { parametersOf(swapRepository) },
+                navigateToSwapQuoteIfAvailable = get { parametersOf(swapRepository) },
+                swapVMMapper = get(),
+                navigateToScanAddress = get(),
+                navigateToSelectSwapRecipient = get(),
+                navigateToSlippage = get(),
+                navigateToSwapAssetPicker = get(),
+            )
+        }
+        viewModel {
+            val nearRepository = get<SwapRepository>(named(SwapProvider.NEAR))
+            PayVM(
+                getSwapAssetsUseCase = get { parametersOf(nearRepository) },
+                getSelectedWalletAccount = get(),
+                swapRepository = nearRepository,
+                cancelSwap = get { parametersOf(nearRepository) },
+                navigationRouter = get(),
+                requestSwapQuote = get { parametersOf(nearRepository) },
+                navigateToSwapQuoteIfAvailable = get { parametersOf(nearRepository) },
+                exactOutputVMMapper = get(),
+                navigateToScanAddress = get(),
+                navigateToSelectSwapRecipient = get(),
+                isABContactHintVisible = get(),
+                getPreselectedSwapAsset = get { parametersOf(nearRepository) },
+                navigateToSlippage = get(),
+                navigateToSwapAssetPicker = get(),
+            )
+        }
+        viewModel {
+            SwapQuoteVM(
+                observeProposal = get(),
+                applicationStateProvider = get(),
+                swapRepository = get(),
+                cancelSwapQuote = get(),
+                cancelSwap = get { parametersOf(get<SwapRepository>()) },
+                swapQuoteSuccessMapper = get(),
+                submitProposal = get(),
+                navigationRouter = get(),
+            )
+        }
         viewModelOf(::ScanGenericAddressVM)
         viewModelOf(::SelectSwapABRecipientVM)
-        viewModelOf(::SwapBlockchainPickerVM)
+        viewModel { (args: SwapBlockchainPickerArgs) ->
+            SwapBlockchainPickerVM(
+                getSwapAssets = get { parametersOf(get<SwapRepository>()) },
+                args = args,
+                navigateToSelectSwapBlockchain = get(),
+                filterSwapBlockchains = get(),
+                swapRepository = get(),
+                ensureSwapAssetsLoaded = get(),
+            )
+        }
         viewModelOf(::CurrencyConversionPickerVM)
         viewModelOf(::AddZashiABContactVM)
         viewModelOf(::AddSwapABContactVM)

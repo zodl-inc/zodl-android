@@ -11,7 +11,7 @@ interface SwapQuote {
     val depositAddress: SwapAddress
     val destinationAddress: SwapAddress
     val refundAddress: SwapAddress
-    val provider: String
+    val provider: SwapProvider
     val mode: SwapMode
     val zecExchangeRate: BigDecimal
 

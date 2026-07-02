@@ -30,6 +30,7 @@ import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProvider
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProviderImpl
 import co.electriccoin.zcash.ui.common.provider.KtorNearApiProvider
+import co.electriccoin.zcash.ui.common.provider.KtorSwapkitApiProvider
 import co.electriccoin.zcash.ui.common.provider.KtorVotingApiProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.NearApiProvider
@@ -46,6 +47,7 @@ import co.electriccoin.zcash.ui.common.provider.ShieldFundsInfoProvider
 import co.electriccoin.zcash.ui.common.provider.ShieldFundsInfoProviderImpl
 import co.electriccoin.zcash.ui.common.provider.SimpleSwapAssetProvider
 import co.electriccoin.zcash.ui.common.provider.SimpleSwapAssetProviderImpl
+import co.electriccoin.zcash.ui.common.provider.SwapkitApiProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProviderImpl
 import co.electriccoin.zcash.ui.common.provider.TokenIconProvider
@@ -103,6 +105,7 @@ val providerModule =
         singleOf(::TokenIconProviderImpl) bind TokenIconProvider::class
         singleOf(::TokenNameProviderImpl) bind TokenNameProvider::class
         singleOf(::KtorNearApiProvider) bind NearApiProvider::class
+        singleOf(::KtorSwapkitApiProvider) bind SwapkitApiProvider::class
         factoryOf(::HttpClientProviderImpl) bind HttpClientProvider::class
         singleOf(::HttpPirSnapshotResolver) bind PirSnapshotResolver::class
         factoryOf(::SimpleSwapAssetProviderImpl) bind SimpleSwapAssetProvider::class

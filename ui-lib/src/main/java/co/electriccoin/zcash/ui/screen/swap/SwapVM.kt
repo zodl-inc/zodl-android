@@ -203,7 +203,8 @@ internal class SwapVM(
         // Only proceed if the chain ticker changed.
         if (selectedChainTicker != null && !selectedChainTicker.equals(currentChainTicker, ignoreCase = true)) {
             val matchingAssets =
-                swapRepository.assets.value.data
+                swapRepository.assets.value
+                    ?.data
                     ?.filter { asset -> asset.chainTicker.equals(selectedChainTicker, ignoreCase = true) }
                     .orEmpty()
             internalState.update { it.copy(swapAsset = matchingAssets.singleOrNull()) }

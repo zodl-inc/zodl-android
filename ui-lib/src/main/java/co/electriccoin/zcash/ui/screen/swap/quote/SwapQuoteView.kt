@@ -1,25 +1,54 @@
+@file:Suppress("TooManyFunctions")
+
 package co.electriccoin.zcash.ui.screen.swap.quote
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.R
@@ -133,7 +162,9 @@ private fun Error(
     }
 }
 
-@Suppress("MagicNumber")
+private enum class SwapQuoteTab { BREAKDOWN, COMPARISON }
+
+@Suppress("MagicNumber", "LongMethod")
 @Composable
 private fun Success(
     state: SwapQuoteState.Success,
@@ -150,14 +181,28 @@ private fun Success(
                     bottom = contentPadding.calculateBottomPadding()
                 )
     ) {
-        Text(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            text = state.title.getValue(),
-            style = ZashiTypography.header6,
-            fontWeight = FontWeight.SemiBold,
-            color = ZashiColors.Text.textPrimary,
-            textAlign = TextAlign.Center
-        )
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = state.title.getValue(),
+                style = ZashiTypography.header6,
+                fontWeight = FontWeight.SemiBold,
+                color = ZashiColors.Text.textPrimary,
+                textAlign = TextAlign.Center
+            )
+            // Selected provider's icon (NEAR green / Maya), per MOB-1396.
+            (state.providerIcon as? ImageResource.ByDrawable)?.let {
+                Spacer(8.dp)
+                Image(
+                    modifier = Modifier.size(28.dp),
+                    painter = painterResource(it.resource),
+                    contentDescription = null
+                )
+            }
+        }
         Spacer(24.dp)
         CompositionLocalProvider(LocalBalancesAvailable provides true) {
             ZashiSwapQuoteHeader(
@@ -168,24 +213,36 @@ private fun Success(
                     )
             )
         }
-        Spacer(32.dp)
-        state.items.forEachIndexed { index, item ->
-            if (index != 0) {
-                Spacer(12.dp)
+
+        val comparison = state.comparison
+        if (comparison != null) {
+            Spacer(24.dp)
+            var tab by rememberSaveable { mutableStateOf(SwapQuoteTab.BREAKDOWN) }
+            SwapQuoteTabRow(selected = tab, onSelect = { tab = it })
+            Spacer(20.dp)
+            AnimatedContent(
+                targetState = tab,
+                modifier = Modifier.fillMaxWidth()
+            ) { targetTab ->
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    when (targetTab) {
+                        SwapQuoteTab.COMPARISON -> ComparisonContent(comparison)
+                        SwapQuoteTab.BREAKDOWN -> BreakdownContent(state)
+                    }
+                    Spacer(24.dp)
+                }
             }
-            SwapQuoteInfo(item)
+        } else {
+            Spacer(32.dp)
+            BreakdownContent(state)
         }
-        Spacer(12.dp)
-        ZashiHorizontalDivider()
-        Spacer(12.dp)
-        SwapQuoteInfo(
-            item = state.amount,
-            descriptionStyle = ZashiTypography.textSm,
-            descriptionFontWeight = FontWeight.Medium,
-            descriptionColor = ZashiColors.Text.textPrimary
-        )
+
         if (state.infoText != null) {
-            Spacer(48.dp)
+            if (comparison != null) {
+                Spacer(24.dp)
+            } else {
+                Spacer(48.dp)
+            }
             ZashiInfoText(
                 modifier = Modifier.align(Alignment.CenterHorizontally),
                 textModifier = Modifier.padding(top = 4.dp),
@@ -196,6 +253,207 @@ private fun Success(
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),
             state = state.primaryButton
+        )
+    }
+}
+
+@Suppress("MagicNumber")
+@Composable
+private fun ColumnScope.BreakdownContent(state: SwapQuoteState.Success) {
+    state.items.forEachIndexed { index, item ->
+        if (index != 0) {
+            Spacer(12.dp)
+        }
+        SwapQuoteInfo(item)
+    }
+    Spacer(12.dp)
+    ZashiHorizontalDivider()
+    Spacer(12.dp)
+    SwapQuoteInfo(
+        item = state.amount,
+        descriptionStyle = ZashiTypography.textSm,
+        descriptionFontWeight = FontWeight.Medium,
+        descriptionColor = ZashiColors.Text.textPrimary
+    )
+}
+
+@Suppress("MagicNumber")
+@Composable
+private fun ComparisonContent(rows: List<SwapProviderQuoteState>) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.swapAndPay_provider),
+                style = ZashiTypography.textSm,
+                color = ZashiColors.Text.textTertiary
+            )
+            Spacer(1f)
+            Text(
+                text = stringResource(R.string.swapAndPay_youGet),
+                style = ZashiTypography.textSm,
+                color = ZashiColors.Text.textTertiary
+            )
+        }
+        Spacer(12.dp)
+        rows.forEachIndexed { index, row ->
+            if (index != 0) {
+                Spacer(8.dp)
+            }
+            ProviderQuoteRow(row)
+        }
+    }
+}
+
+@Suppress("MagicNumber")
+@Composable
+private fun ProviderQuoteRow(state: SwapProviderQuoteState) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .border(
+                    width = if (state.isSelected) 2.dp else 1.dp,
+                    color =
+                        if (state.isSelected) {
+                            ZashiColors.Text.textPrimary
+                        } else {
+                            ZashiColors.Utility.Gray.utilityGray100
+                        },
+                    shape = RoundedCornerShape(12.dp)
+                ).clickable(onClick = state.onClick)
+                .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        (state.icon as? ImageResource.ByDrawable)?.let {
+            Image(
+                modifier = Modifier.size(24.dp),
+                painter = painterResource(it.resource),
+                contentDescription = null
+            )
+            Spacer(8.dp)
+        }
+        Text(
+            text = state.name.getValue(),
+            style = ZashiTypography.textMd,
+            fontWeight = FontWeight.SemiBold,
+            color = ZashiColors.Text.textPrimary
+        )
+        Spacer(1f)
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = state.amount.getValue(),
+                style = ZashiTypography.textSm,
+                fontWeight = FontWeight.SemiBold,
+                color = ZashiColors.Text.textPrimary
+            )
+            Text(
+                text = state.fiatAmount.getValue(),
+                style = ZashiTypography.textXs,
+                color = ZashiColors.Text.textTertiary
+            )
+        }
+    }
+}
+
+@Suppress("MagicNumber")
+@Composable
+private fun SwapQuoteTabRow(selected: SwapQuoteTab, onSelect: (SwapQuoteTab) -> Unit) {
+    val spacing = 4.dp
+    BoxWithConstraints(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(ZashiColors.Utility.Gray.utilityGray50)
+                .padding(4.dp)
+    ) {
+        val itemWidth = (maxWidth - spacing) / 2
+
+        SwapQuoteTabIndicator(
+            selectedIndex = if (selected == SwapQuoteTab.BREAKDOWN) 0 else 1,
+            itemWidth = itemWidth,
+            spacing = spacing
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(spacing)
+        ) {
+            SwapQuoteTabSegment(
+                text = stringResource(R.string.swapAndPay_breakdown),
+                selected = selected == SwapQuoteTab.BREAKDOWN,
+                modifier = Modifier.weight(1f),
+                onClick = { onSelect(SwapQuoteTab.BREAKDOWN) }
+            )
+            SwapQuoteTabSegment(
+                text = stringResource(R.string.swapAndPay_comparison),
+                selected = selected == SwapQuoteTab.COMPARISON,
+                modifier = Modifier.weight(1f),
+                onClick = { onSelect(SwapQuoteTab.COMPARISON) }
+            )
+        }
+    }
+}
+
+@Suppress("MagicNumber")
+@Composable
+private fun BoxScope.SwapQuoteTabIndicator(
+    selectedIndex: Int,
+    itemWidth: Dp,
+    spacing: Dp
+) {
+    val offset by animateDpAsState(
+        targetValue = (itemWidth + spacing) * selectedIndex,
+        animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing)
+    )
+
+    Box(modifier = Modifier.matchParentSize()) {
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxHeight()
+                    .width(itemWidth)
+                    .offset(x = offset)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(ZashiColors.Surfaces.bgPrimary)
+        )
+    }
+}
+
+@Suppress("MagicNumber")
+@Composable
+private fun SwapQuoteTabSegment(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val textColor by animateColorAsState(
+        if (selected) ZashiColors.Text.textPrimary else ZashiColors.Text.textTertiary
+    )
+
+    Box(
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(10.dp))
+                .clickable(
+                    onClick = onClick,
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ).padding(vertical = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            style = ZashiTypography.textSm,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            color = textColor
         )
     }
 }
@@ -302,6 +560,7 @@ private fun SuccessPreview() =
                         ),
                     onBack = {},
                     rotateIcon = false,
+                    providerIcon = imageRes(R.drawable.ic_provider_near),
                     infoText = stringRes("Total amount includes max slippage of 0.5%."),
                     title = stringRes("Pay now")
                 )

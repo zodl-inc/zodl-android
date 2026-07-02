@@ -22,6 +22,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.firstOrNull
@@ -31,9 +32,16 @@ import java.math.BigDecimal
 import kotlin.time.Duration.Companion.seconds
 
 interface SwapRepository {
-    val assets: StateFlow<SwapAssetsData>
+    val assets: StateFlow<SwapAssetsData?>
 
-    val quote: StateFlow<SwapQuoteData?>
+    /**
+     * Per-provider quote result. `null` means no request is in flight for this provider; a non-null
+     * value ([SwapQuoteData.Loading], [SwapQuoteData.Success] or [SwapQuoteData.Error]) means a
+     * request is in progress or has settled. Declared as [Flow] (not [StateFlow]) so implementations
+     * that aggregate several providers ([SwapAggregatorRepository]) cannot be read synchronously via
+     * `.value` before their combined result has settled — always collect via [Flow] operators.
+     */
+    val quote: Flow<SwapQuoteData?>
 
     fun requestRefreshAssets()
 
@@ -216,9 +224,10 @@ class SwapRepositoryImpl(
         originAsset: SwapAsset,
         slippage: BigDecimal
     ) {
+        requestQuoteJob?.cancel()
+        quote.update { SwapQuoteData.Loading }
         requestQuoteJob =
             scope.launch {
-                quote.update { SwapQuoteData.Loading }
                 val destinationAsset = assets.value.zecAsset ?: return@launch
                 try {
                     val result =
@@ -274,9 +283,10 @@ class SwapRepositoryImpl(
         destinationAsset: SwapAsset,
         slippage: BigDecimal
     ) {
+        requestQuoteJob?.cancel()
+        quote.update { SwapQuoteData.Loading }
         requestQuoteJob =
             scope.launch {
-                quote.update { SwapQuoteData.Loading }
                 val originAsset = assets.value.zecAsset ?: return@launch
                 try {
                     val result =

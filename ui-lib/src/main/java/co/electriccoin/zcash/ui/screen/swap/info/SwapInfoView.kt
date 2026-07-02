@@ -1,13 +1,20 @@
 package co.electriccoin.zcash.ui.screen.swap.info
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -48,13 +55,33 @@ fun SwapInfoView(state: SwapInfoState) {
                 color = ZashiColors.Text.textPrimary,
             )
             Spacer(10.dp)
-            Image(painterResource(R.drawable.ic_near_logo), contentDescription = null)
+            // MOB-1396: swaps now aggregate multiple providers — show every active provider's logo.
+            OverlappingProviderIcons()
         }
         Spacer(12.dp)
         Text(
             text = stringResource(R.string.swap_info_message, CURRENCY_TICKER, CURRENCY_TICKER, CURRENCY_TICKER),
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textTertiary,
+        )
+    }
+}
+
+@Composable
+private fun OverlappingProviderIcons() {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Image(painterResource(R.drawable.ic_provider_maya), contentDescription = null)
+        Image(
+            modifier =
+                Modifier
+                    .size(28.dp)
+                    .offset(x = (-4).dp)
+                    .clip(CircleShape)
+                    .border(2.dp, ZashiColors.Surfaces.bgPrimary, CircleShape),
+            painter = painterResource(R.drawable.ic_provider_near),
+            contentDescription = null,
+            contentScale = ContentScale.None,
+            alignment = Alignment.Center
         )
     }
 }

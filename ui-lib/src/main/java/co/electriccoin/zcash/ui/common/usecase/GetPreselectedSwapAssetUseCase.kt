@@ -24,6 +24,7 @@ class GetPreselectedSwapAssetUseCase(
     suspend operator fun invoke(): SwapAsset {
         val assetToSelect = getAssetFromHistory() ?: getHardCodedAsset()
         return swapRepository.assets
+            .filterNotNull()
             .mapNotNull { assets ->
                 assets.data?.firstOrNull {
                     it.tokenTicker.equals(assetToSelect.tokenTicker, ignoreCase = true) &&

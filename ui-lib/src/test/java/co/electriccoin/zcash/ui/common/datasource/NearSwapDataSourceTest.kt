@@ -40,13 +40,14 @@ class NearSwapDataSourceTest {
     private val tokenNameProvider = mockk<TokenNameProvider>(relaxed = true)
     private val blockchainProvider = mockk<BlockchainProvider>(relaxed = true)
     private val synchronizerProvider = mockk<SynchronizerProvider>(relaxed = true)
+    private val addressResolver = SwapAddressResolver(synchronizerProvider)
     private val dataSource =
         NearSwapDataSource(
             nearApiProvider,
             tokenIconProvider,
             tokenNameProvider,
             blockchainProvider,
-            synchronizerProvider
+            addressResolver
         )
 
     private val origin = SwapAssetTestFixture.asset(tokenTicker = "btc", chainTicker = "btc")
