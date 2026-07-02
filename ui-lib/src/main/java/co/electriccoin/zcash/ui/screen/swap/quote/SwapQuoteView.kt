@@ -326,8 +326,7 @@ private fun ProviderQuoteRow(state: SwapProviderQuoteState) {
                             ZashiColors.Utility.Gray.utilityGray100
                         },
                     shape = RoundedCornerShape(12.dp)
-                )
-                .clickable(onClick = state.onClick)
+                ).clickable(onClick = state.onClick)
                 .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -447,8 +446,7 @@ private fun SwapQuoteTabSegment(
                     onClick = onClick,
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
-                )
-                .padding(vertical = 10.dp),
+                ).padding(vertical = 10.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(

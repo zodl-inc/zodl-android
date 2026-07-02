@@ -63,7 +63,7 @@ class SwapBlockchainPickerVM(
                 started = SharingStarted.WhileSubscribed(),
                 initialValue =
                     filterSwapBlockchains(
-                        assets = getSwapAssets.observe().value,
+                        assets = getSwapAssets.get(),
                         text = searchText.value
                     )
             )

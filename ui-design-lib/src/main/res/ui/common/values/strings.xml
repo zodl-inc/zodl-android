@@ -787,7 +787,7 @@
     <string name="coinVote_delegationSigning_memo" translatable="false">Memo</string>
 
     <!-- ===== swap ===== -->
-    <string name="swap_info_message">Swap %1$s with any NEAR-supported token.\n\nIf swapping TO %2$s, you will send funds from a 3rd party wallet and provide an address where change can be refunded.\n\nIf swapping FROM %3$s, you must provide a valid address for the asset you are swapping to.</string>
+    <string name="swap_info_message">Swap %1$s with any supported coin or token.\n\nZodl is a %2$s-only wallet, so you\'ll need a valid wallet address for the asset you\'re swapping to.\n\nSwapping to %3$s requires a valid refund address from your source wallet.</string>
     <string name="swapAndPay_help_swapWith">Swap with</string>
     <string name="swap_select_token">Select Token</string>
     <string name="swapAndPay_search">Search by name or ticker…</string>

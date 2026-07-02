@@ -716,7 +716,7 @@
     <string name="keystoneTransactionReject_rejectSig">Rechazar firma</string>
 
     <!-- ===== swap ===== -->
-    <string name="swap_info_message">Haz swap de %1$s con cualquier token compatible con NEAR.\n\nSi haces swap HACIA %2$s, enviarás fondos desde una wallet de terceros y deberás proporcionar una dirección donde se pueda reembolsar el cambio.\n\nSi haces swap DESDE %3$s, debes proporcionar una dirección válida para el activo al que haces swap.</string>
+    <string name="swap_info_message">Haz swap de %1$s con cualquier moneda o token compatible.\n\nZodl es una wallet exclusiva de %2$s, por lo que necesitarás una dirección de wallet válida para el activo al que haces swap.\n\nHacer swap hacia %3$s requiere una dirección de reembolso válida desde tu wallet de origen.</string>
     <string name="swapAndPay_help_swapWith">Swap con</string>
     <string name="swap_select_token">Seleccionar token</string>
     <string name="swapAndPay_search">Buscar por nombre o ticker…</string>

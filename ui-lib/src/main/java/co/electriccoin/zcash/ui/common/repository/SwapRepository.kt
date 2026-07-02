@@ -32,7 +32,7 @@ import java.math.BigDecimal
 import kotlin.time.Duration.Companion.seconds
 
 interface SwapRepository {
-    val assets: StateFlow<SwapAssetsData>
+    val assets: StateFlow<SwapAssetsData?>
 
     /**
      * Per-provider quote result. `null` means no request is in flight for this provider; a non-null

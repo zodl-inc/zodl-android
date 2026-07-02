@@ -175,11 +175,12 @@ val viewModelModule =
         viewModelOf(::TorOptInVM)
         viewModelOf(::ExchangeRateOptInVM)
         viewModel { (args: SwapAssetPickerArgs) ->
-            val swapRepository = if (args.provider != null) {
-                get<SwapRepository>(named(args.provider))
-            } else {
-                get<SwapRepository>()
-            }
+            val swapRepository =
+                if (args.provider != null) {
+                    get<SwapRepository>(named(args.provider))
+                } else {
+                    get<SwapRepository>()
+                }
             SwapAssetPickerVM(
                 args = args,
                 getSwapAssets = get { parametersOf(swapRepository) },

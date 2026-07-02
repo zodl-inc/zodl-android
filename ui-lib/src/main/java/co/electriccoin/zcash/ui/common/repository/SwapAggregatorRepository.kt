@@ -175,12 +175,13 @@ class SwapAggregatorRepositoryImpl(
      */
     private suspend fun forEachProvider(asset: SwapAsset, request: (SwapRepository, SwapAsset) -> Unit) {
         coroutineScope {
-            swapRepositories.map { (provider, repository) ->
-                async {
-                    val subAsset = subAssetFor(provider, asset)
-                    if (subAsset != null) request(repository, subAsset) else repository.clearQuote()
-                }
-            }.awaitAll()
+            swapRepositories
+                .map { (provider, repository) ->
+                    async {
+                        val subAsset = subAssetFor(provider, asset)
+                        if (subAsset != null) request(repository, subAsset) else repository.clearQuote()
+                    }
+                }.awaitAll()
         }
     }
 
@@ -205,19 +206,28 @@ class SwapAggregatorRepositoryImpl(
         }
     }
 
-    private fun mergeAssets(snapshots: List<SwapAssetsData>): SwapAssetsData {
+    /**
+     * Settles only once every participating provider is terminal — a `null` snapshot means that
+     * provider will not load assets and is skipped (not waited on); a non-null snapshot still
+     * loading (no `data` yet) blocks the merge until it settles, mirroring [selectQuote].
+     */
+    private fun mergeAssets(snapshots: List<SwapAssetsData?>): SwapAssetsData {
+        val active = snapshots.filterNotNull()
+        if (active.any { it.data == null && it.isLoading }) {
+            return SwapAssetsData(isLoading = true)
+        }
         val merged =
-            snapshots
+            active
                 .flatMap { it.data.orEmpty() }
                 .groupBy { mergeKey(it) }
                 .map { (_, group) -> CompositeSwapAsset(group) }
-        val zecAssets = snapshots.mapNotNull { it.zecAsset }
-        val anyData = snapshots.any { it.data != null }
+        val zecAssets = active.mapNotNull { it.zecAsset }
+        val anyData = active.any { it.data != null }
         return SwapAssetsData(
             data = merged,
             zecAsset = if (zecAssets.isEmpty()) null else CompositeSwapAsset(zecAssets),
-            isLoading = snapshots.any { it.isLoading },
-            error = if (anyData) null else snapshots.firstNotNullOfOrNull { it.error }
+            isLoading = false,
+            error = if (anyData) null else active.firstNotNullOfOrNull { it.error }
         )
     }
 
