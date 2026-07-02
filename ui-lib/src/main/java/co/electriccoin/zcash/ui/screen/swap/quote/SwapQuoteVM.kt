@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
@@ -71,7 +72,7 @@ internal class SwapQuoteVM(
         applicationStateProvider
             .observeOnForeground()
             .onEach {
-                val quote = (swapRepository.quote.value as? SwapQuoteData.Success)?.quote ?: return@onEach
+                val quote = (swapRepository.quote.first() as? SwapQuoteData.Success)?.quote ?: return@onEach
 
                 if ((Clock.System.now() - quote.timestamp) >= 3.minutes) {
                     cancelSwapQuote()

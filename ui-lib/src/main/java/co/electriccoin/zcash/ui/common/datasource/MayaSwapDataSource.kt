@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.common.datasource
 
-import cash.z.ecc.android.sdk.type.AddressType
 import co.electriccoin.zcash.ui.common.model.DynamicSwapAddress
 import co.electriccoin.zcash.ui.common.model.SwapAddress
 import co.electriccoin.zcash.ui.common.model.SwapAsset
@@ -8,10 +7,6 @@ import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.model.SwapQuoteStatus
 import co.electriccoin.zcash.ui.common.model.SwapStatus
-import co.electriccoin.zcash.ui.common.model.ZcashShieldedSwapAddress
-import co.electriccoin.zcash.ui.common.model.ZcashSwapAddress
-import co.electriccoin.zcash.ui.common.model.ZcashTransparentSwapAddress
-import co.electriccoin.zcash.ui.common.model.isZCashAsset
 import co.electriccoin.zcash.ui.common.model.swapkit.MayaSwapAsset
 import co.electriccoin.zcash.ui.common.model.swapkit.MayaSwapQuote
 import co.electriccoin.zcash.ui.common.model.swapkit.MayaSwapQuoteStatus
@@ -21,7 +16,6 @@ import co.electriccoin.zcash.ui.common.model.swapkit.SwapkitTokenDto
 import co.electriccoin.zcash.ui.common.model.swapkit.SwapkitTrackRequestDto
 import co.electriccoin.zcash.ui.common.provider.BlockchainProvider
 import co.electriccoin.zcash.ui.common.provider.SwapkitApiProvider
-import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.TokenIconProvider
 import co.electriccoin.zcash.ui.common.provider.TokenNameProvider
 import kotlinx.coroutines.Dispatchers
@@ -36,7 +30,8 @@ import kotlin.time.Instant
  * SwapKit / Maya Protocol implementation of [SwapDataSource]. Bound under the `SWAP_PROVIDER_MAYA` qualifier.
  *
  * Phase-1 (MOB-1396 spike) scope — see `docs/SwapKit Spec (Maya DEX).md`:
- * - [getSupportedTokens] = `/tokens?provider=MAYACHAIN` (cached) + `POST /price`.
+ * - [getSupportedTokens] = `/tokens?provider=MAYACHAIN` + `POST /price`, fetched fresh on every call
+ *   (no local caching).
  * - [requestQuote] = `/v3/quote` then `/v3/swap` (no PSBT/balance work) to obtain `targetAddress` + `memo`.
  * - [submitDepositTransaction] = no-op (Maya is vault-watching; there is no submit endpoint).
  * - [checkSwapStatus] = `POST /track` keyed by `depositAddress` (NEAR-shaped key; `hash`+`chainId` is Phase 2).
@@ -47,7 +42,7 @@ class MayaSwapDataSource(
     private val tokenIconProvider: TokenIconProvider,
     private val tokenNameProvider: TokenNameProvider,
     private val blockchainProvider: BlockchainProvider,
-    private val synchronizerProvider: SynchronizerProvider,
+    private val addressResolver: SwapAddressResolver,
 ) : SwapDataSource {
     override suspend fun getSupportedTokens(): List<SwapAsset> =
         withContext(Dispatchers.Default) {
@@ -144,9 +139,9 @@ class MayaSwapDataSource(
             amountOutFormatted = route.expectedBuyAmount,
             slippage = slippage,
             timestamp = now,
-            // Maya's real "do not broadcast after" deadline from /v3/swap; fall back to now+1h15m (the
-            // live-measured ~75 min route TTL) if absent.
-            deadline = deadlineFrom(swapResponse.expiration) ?: (now + 75.minutes),
+            // Maya's real "do not broadcast after" deadline from /v3/swap; fall back to the
+            // live-measured route TTL if absent.
+            deadline = deadlineFrom(swapResponse.expiration) ?: (now + DEFAULT_QUOTE_TTL),
             originUsdPrice = metaPrices[originAsset.assetId] ?: originAsset.usdPrice ?: BigDecimal.ZERO,
             destinationUsdPrice = metaPrices[destinationAsset.assetId] ?: destinationAsset.usdPrice ?: BigDecimal.ZERO,
             affiliateFeeBps = route.meta?.affiliateFee?.toInt() ?: 0,
@@ -190,7 +185,7 @@ class MayaSwapDataSource(
             depositedAmountFormatted = response.fromAmount,
             refundedFormatted = if (status == SwapStatus.REFUNDED) response.toAmount else null,
             timestamp = java.time.Instant.now(),
-            deadline = Clock.System.now() + 75.minutes,
+            deadline = Clock.System.now() + DEFAULT_QUOTE_TTL,
         )
     }
 
@@ -211,24 +206,13 @@ class MayaSwapDataSource(
     }
 
     private suspend fun getDepositAddress(target: String, originAsset: SwapAsset): SwapAddress =
-        if (originAsset.isZCashAsset) getZcashSwapAddress(target) else DynamicSwapAddress(target)
+        addressResolver.depositAddress(target, originAsset)
 
     private suspend fun getDestinationAddress(recipient: String, originAsset: SwapAsset): SwapAddress =
-        if (originAsset.isZCashAsset) DynamicSwapAddress(recipient) else getZcashSwapAddress(recipient)
+        addressResolver.destinationAddress(recipient, originAsset)
 
     private suspend fun getRefundAddress(refund: String, originAsset: SwapAsset): SwapAddress =
-        if (originAsset.isZCashAsset) getZcashSwapAddress(refund) else DynamicSwapAddress(refund)
-
-    private suspend fun getZcashSwapAddress(address: String): ZcashSwapAddress =
-        when (synchronizerProvider.getSynchronizer().validateAddress(address)) {
-            AddressType.Unified,
-            AddressType.Shielded -> ZcashShieldedSwapAddress(address)
-
-            AddressType.Tex,
-            AddressType.Transparent -> ZcashTransparentSwapAddress(address)
-
-            is AddressType.Invalid -> throw IllegalArgumentException("Zcash address is invalid")
-        }
+        addressResolver.refundAddress(refund, originAsset)
 }
 
 /** `/tokens?provider=` namespace for Maya assets. NOT a valid quote provider id — see [MAYACHAIN_PROVIDER]. */
@@ -236,3 +220,6 @@ private const val MAYACHAIN_NAMESPACE = "MAYACHAIN"
 
 /** Quote/route provider id. `MAYACHAIN` returns `noRoutesFound`; the streaming variant is the routable one. */
 private const val MAYACHAIN_PROVIDER = "MAYACHAIN_STREAMING"
+
+/** Fallback quote deadline when `/v3/swap` doesn't echo an expiration — the live-measured route TTL. */
+private val DEFAULT_QUOTE_TTL = 75.minutes

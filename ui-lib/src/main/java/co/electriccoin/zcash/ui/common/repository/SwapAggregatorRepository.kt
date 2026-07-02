@@ -39,10 +39,15 @@ interface SwapAggregatorRepository : SwapRepository {
 
 @Suppress("TooManyFunctions")
 class SwapAggregatorRepositoryImpl(
-    private val swapRepositories: Map<SwapProvider, SwapRepository>
+    private val swapRepositories: Map<SwapProvider, SwapRepository>,
+    /**
+     * Backs [assets]/[quotes]/[quote]'s `stateIn` sharing. Overridable only so unit tests can inject
+     * an eager test dispatcher at *construction* time — the `stateIn` calls below run during property
+     * initialization, so mutating this after construction (the [SwapRepositoryImpl] pattern) would be
+     * too late to affect them.
+     */
+    internal val scope: CoroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 ) : SwapAggregatorRepository {
-    private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-
     private val selectedProvider = MutableStateFlow<SwapProvider?>(null)
 
     override val assets: StateFlow<SwapAssetsData> =
@@ -53,14 +58,23 @@ class SwapAggregatorRepositoryImpl(
                 initialValue = mergeAssets(swapRepositories.values.map { it.assets.value })
             )
 
-    override val quotes =
+    /** Per-provider results for providers participating in the current round; `null` if none are. */
+    override val quotes: Flow<List<SwapQuoteData>?> =
         combine(swapRepositories.values.map { it.quote }) { quotes ->
             quotes.filterNotNull().ifEmpty { null }
         }.stateIn(scope, SharingStarted.Eagerly, null)
 
-    override val quote: StateFlow<SwapQuoteData?> =
-        combine(quotes, selectedProvider) { quotes, selected ->
-            selectQuote(quotes.orEmpty(), selected)
+    /**
+     * Settles only once every participating provider is terminal (Success or Error) — never picks a
+     * winner while a sibling provider is still [SwapQuoteData.Loading]. See [selectQuote].
+     */
+    override val quote: Flow<SwapQuoteData?> =
+        combine(quotes, selectedProvider) { active, selected ->
+            when {
+                active == null -> null
+                active.any { it is SwapQuoteData.Loading } -> SwapQuoteData.Loading
+                else -> selectQuote(active, selected)
+            }
         }.stateIn(scope, SharingStarted.Eagerly, null)
 
     override fun selectProvider(provider: SwapProvider) = selectedProvider.update { provider }
@@ -79,7 +93,7 @@ class SwapAggregatorRepositoryImpl(
         refundAddress: String,
         destinationAsset: SwapAsset,
         slippage: BigDecimal
-    ) = forEachSupportingProvider(destinationAsset) { repository, subAsset ->
+    ) = forEachProvider(destinationAsset) { repository, subAsset ->
         repository.requestExactInputQuote(amount, address, refundAddress, subAsset, slippage)
     }
 
@@ -90,7 +104,11 @@ class SwapAggregatorRepositoryImpl(
         destinationAsset: SwapAsset,
         slippage: BigDecimal
     ) {
-        // Maya is exact-input only — EXACT_OUTPUT routes to NEAR exclusively.
+        // Maya is exact-input only — EXACT_OUTPUT routes to NEAR exclusively; clear every other
+        // provider so a stale sub-quote from a prior round can't leak into this round's aggregate.
+        swapRepositories.forEach { (provider, repository) ->
+            if (provider != SwapProvider.NEAR) repository.clearQuote()
+        }
         val repository = swapRepositories[SwapProvider.NEAR] ?: return
         val subAsset = subAssetFor(SwapProvider.NEAR, destinationAsset) ?: return
         repository.requestExactOutputQuote(amount, address, refundAddress, subAsset, slippage)
@@ -102,7 +120,7 @@ class SwapAggregatorRepositoryImpl(
         destinationAddress: String,
         originAsset: SwapAsset,
         slippage: BigDecimal
-    ) = forEachSupportingProvider(originAsset) { repository, subAsset ->
+    ) = forEachProvider(originAsset) { repository, subAsset ->
         repository.requestFlexInputIntoZec(amount, refundAddress, destinationAddress, subAsset, slippage)
     }
 
@@ -131,9 +149,17 @@ class SwapAggregatorRepositoryImpl(
         swapRepositories.values.forEach { it.clearQuote() }
     }
 
-    private inline fun forEachSupportingProvider(asset: SwapAsset, request: (SwapRepository, SwapAsset) -> Unit) {
+    /**
+     * Fans a quote request out to every provider that supports [asset] — in parallel, since each
+     * `request` call is a non-suspending fire-and-forget dispatch that returns as soon as its own
+     * background coroutine is launched. Providers that don't support [asset] are cleared rather
+     * than left alone, so a stale sub-quote from a previous round can't be mistaken for part of
+     * this round once it settles (see [quote]).
+     */
+    private inline fun forEachProvider(asset: SwapAsset, request: (SwapRepository, SwapAsset) -> Unit) {
         swapRepositories.forEach { (provider, repository) ->
-            subAssetFor(provider, asset)?.let { request(repository, it) }
+            val subAsset = subAssetFor(provider, asset)
+            if (subAsset != null) request(repository, subAsset) else repository.clearQuote()
         }
     }
 
@@ -146,6 +172,7 @@ class SwapAggregatorRepositoryImpl(
             else -> null
         }
 
+    /** Picks a winner among fully-settled (non-[SwapQuoteData.Loading]) per-provider results. */
     private fun selectQuote(quotes: List<SwapQuoteData>, selected: SwapProvider?): SwapQuoteData? {
         val successes = quotes.filterIsInstance<SwapQuoteData.Success>()
         return if (successes.isNotEmpty()) {
@@ -153,8 +180,7 @@ class SwapAggregatorRepositoryImpl(
             selected?.let { provider -> successes.firstOrNull { it.quote.provider == provider } }
                 ?: successes.maxByOrNull { it.quote.amountOutFormatted }
         } else {
-            quotes.firstOrNull { it is SwapQuoteData.Loading }
-                ?: quotes.firstOrNull { it is SwapQuoteData.Error }
+            quotes.firstOrNull { it is SwapQuoteData.Error }
         }
     }
 

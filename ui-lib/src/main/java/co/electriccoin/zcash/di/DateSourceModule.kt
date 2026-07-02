@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.common.datasource.ProposalDataSource
 import co.electriccoin.zcash.ui.common.datasource.ProposalDataSourceImpl
 import co.electriccoin.zcash.ui.common.datasource.RestoreTimestampDataSource
 import co.electriccoin.zcash.ui.common.datasource.RestoreTimestampDataSourceImpl
+import co.electriccoin.zcash.ui.common.datasource.SwapAddressResolver
 import co.electriccoin.zcash.ui.common.datasource.SwapDataSource
 import co.electriccoin.zcash.ui.common.datasource.WalletSnapshotDataSource
 import co.electriccoin.zcash.ui.common.datasource.WalletSnapshotDataSourceImpl
@@ -31,13 +32,14 @@ val dataSourceModule =
         singleOf(::RestoreTimestampDataSourceImpl) bind RestoreTimestampDataSource::class
         singleOf(::MessageAvailabilityDataSourceImpl) bind MessageAvailabilityDataSource::class
         singleOf(::WalletSnapshotDataSourceImpl) bind WalletSnapshotDataSource::class
+        singleOf(::SwapAddressResolver)
         single<SwapDataSource>(named(SwapProvider.NEAR)) {
             NearSwapDataSource(
                 nearApiProvider = get(),
                 tokenIconProvider = get(),
                 tokenNameProvider = get(),
                 blockchainProvider = get(),
-                synchronizerProvider = get(),
+                addressResolver = get(),
             )
         }
         single<SwapDataSource>(named(SwapProvider.MAYA)) {
@@ -46,7 +48,7 @@ val dataSourceModule =
                 tokenIconProvider = get(),
                 tokenNameProvider = get(),
                 blockchainProvider = get(),
-                synchronizerProvider = get(),
+                addressResolver = get(),
             )
         }
         singleOf(::ExchangeRateDataSourceImpl) bind ExchangeRateDataSource::class

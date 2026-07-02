@@ -6,6 +6,7 @@ import co.electriccoin.zcash.ui.common.model.SwapStatus
 import co.electriccoin.zcash.ui.common.repository.MetadataRepository
 import co.electriccoin.zcash.ui.common.repository.SwapQuoteData
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
+import kotlinx.coroutines.flow.first
 import java.math.BigDecimal
 
 class SaveORSwapUseCase(
@@ -14,8 +15,8 @@ class SaveORSwapUseCase(
     private val navigationRouter: NavigationRouter,
     // private val ephemeralAddressRepository: EphemeralAddressRepository,
 ) {
-    operator fun invoke() {
-        val quote = (swapRepository.quote.value as? SwapQuoteData.Success)?.quote
+    suspend operator fun invoke() {
+        val quote = (swapRepository.quote.first() as? SwapQuoteData.Success)?.quote
         if (quote != null) {
             metadataRepository.markTxAsSwap(
                 depositAddress = quote.depositAddress.address,
