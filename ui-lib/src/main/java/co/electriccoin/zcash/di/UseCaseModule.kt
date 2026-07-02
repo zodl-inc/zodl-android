@@ -2,6 +2,7 @@ package co.electriccoin.zcash.di
 
 import co.electriccoin.zcash.ui.common.mapper.SwapSupportMapper
 import co.electriccoin.zcash.ui.common.model.SwapProvider
+import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.usecase.ApplyTransactionFiltersUseCase
 import co.electriccoin.zcash.ui.common.usecase.ApplyTransactionFulltextFiltersUseCase
 import co.electriccoin.zcash.ui.common.usecase.AuthorizeVotingSubmissionUseCase
@@ -269,17 +270,13 @@ val useCaseModule =
         factoryOf(::OptInExchangeRateUseCase)
         factoryOf(::OptInExchangeRateAndTorUseCase)
         factoryOf(::NavigateToSwapUseCase)
-        factoryOf(::CancelSwapUseCase)
-        factoryOf(::GetSwapAssetsUseCase)
         factoryOf(::EnsureSwapAssetsLoadedUseCase)
         factoryOf(::FilterSwapAssetsUseCase)
         factoryOf(::FilterSwapBlockchainsUseCase)
         factoryOf(::NavigateToSwapInfoUseCase)
         factoryOf(::GetTotalSpendableBalanceUseCase)
         factoryOf(::IsABContactHintVisibleUseCase)
-        factoryOf(::RequestSwapQuoteUseCase)
         factoryOf(::CancelSwapQuoteUseCase)
-        factoryOf(::NavigateToSwapQuoteIfAvailableUseCase)
         singleOf(::NavigateToScanGenericAddressUseCase)
         singleOf(::NavigateToSelectABSwapRecipientUseCase)
         singleOf(::NavigateToSelectSwapBlockchainUseCase)
@@ -288,35 +285,38 @@ val useCaseModule =
         singleOf(::NavigateToSelectFiatCurrencyUseCase)
         factoryOf(::ConfirmResyncUseCase)
         factoryOf(::ValidateSwapABContactAddressUseCase)
-        // MOB-1396: Pay (Crosspay, EXACT_OUTPUT) is NEAR-only. Its entry refresh and the repository-touching
-        // use cases it injects resolve the NEAR-named SwapRepository, so Pay never touches Maya.
+        // MOB-1396: Pay (Crosspay, EXACT_OUTPUT) is NEAR-only. Its entry refresh resolves the
+        // NEAR-named SwapRepository, so Pay never touches Maya.
         factory {
             NavigateToNearPayUseCase(swapRepository = get(named(SwapProvider.NEAR)), navigationRouter = get())
         }
-        factory(named(SwapProvider.NEAR)) {
-            GetSwapAssetsUseCase(swapRepository = get(named(SwapProvider.NEAR)))
+        // These swap use cases are provider-agnostic — the caller supplies the SwapRepository via
+        // parametersOf. PayVM passes the NEAR-named repository; other swap VMs pass the default
+        // (aggregator) repository.
+        factory { (swapRepository: SwapRepository) ->
+            GetSwapAssetsUseCase(swapRepository = swapRepository)
         }
-        factory(named(SwapProvider.NEAR)) {
-            CancelSwapUseCase(swapRepository = get(named(SwapProvider.NEAR)), navigationRouter = get())
+        factory { (swapRepository: SwapRepository) ->
+            CancelSwapUseCase(swapRepository = swapRepository, navigationRouter = get())
         }
-        factory(named(SwapProvider.NEAR)) {
+        factory { (swapRepository: SwapRepository) ->
             NavigateToSwapQuoteIfAvailableUseCase(
-                swapRepository = get(named(SwapProvider.NEAR)),
+                swapRepository = swapRepository,
                 navigationRouter = get()
             )
         }
-        factory(named(SwapProvider.NEAR)) {
+        factory { (swapRepository: SwapRepository) ->
             GetPreselectedSwapAssetUseCase(
-                swapRepository = get(named(SwapProvider.NEAR)),
+                swapRepository = swapRepository,
                 metadataRepository = get(),
                 simpleSwapAssetProvider = get()
             )
         }
-        factory(named(SwapProvider.NEAR)) {
+        factory { (swapRepository: SwapRepository) ->
             RequestSwapQuoteUseCase(
                 navigationRouter = get(),
                 navigateToErrorUseCase = get(),
-                swapRepository = get(named(SwapProvider.NEAR)),
+                swapRepository = swapRepository,
                 zashiProposalRepository = get(),
                 keystoneProposalRepository = get(),
                 accountDataSource = get(),
@@ -340,7 +340,6 @@ val useCaseModule =
         singleOf(::SubmitIncreaseEphemeralGapLimitUseCase)
         factoryOf(::CreateIncreaseEphemeralGapLimitProposalUseCase)
         factoryOf(::ResetZashiUseCase)
-        factoryOf(::GetPreselectedSwapAssetUseCase)
         factoryOf(::GetSwapStatusUseCase)
         factoryOf(::ExecuteDebugDBQueryUseCase)
         factoryOf(::SwapSupportMapper)

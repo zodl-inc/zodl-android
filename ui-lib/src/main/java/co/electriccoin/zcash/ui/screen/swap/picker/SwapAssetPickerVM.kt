@@ -4,11 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.R
-import co.electriccoin.zcash.ui.common.model.CompositeSwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapAsset
-import co.electriccoin.zcash.ui.common.model.SwapProvider
-import co.electriccoin.zcash.ui.common.model.assetFor
-import co.electriccoin.zcash.ui.common.model.near.NearSwapAsset
 import co.electriccoin.zcash.ui.common.repository.MetadataRepository
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
@@ -41,9 +37,7 @@ class SwapAssetPickerVM(
 
     private val searchTextFieldState = searchText.map { createTextFieldState(it) }
 
-    // MOB-1396: the Pay flow opens the picker with nearOnly=true → expose only NEAR sub-assets.
-    private val swapAssets =
-        getSwapAssets.observe().map { if (args.nearOnly) it.toNearOnly() else it }
+    private val swapAssets = getSwapAssets.observe()
 
     private val filteredSwapAssets =
         combine(
@@ -125,17 +119,4 @@ class SwapAssetPickerVM(
     }
 
     private fun onRetryClick() = swapRepository.requestRefreshAssets()
-
-    private fun SwapAssetsData.toNearOnly(): SwapAssetsData =
-        copy(
-            data = data?.mapNotNull { it.nearSubAsset() },
-            zecAsset = zecAsset?.nearSubAsset()
-        )
-
-    private fun SwapAsset.nearSubAsset(): SwapAsset? =
-        when (this) {
-            is CompositeSwapAsset -> assetFor(SwapProvider.NEAR)
-            is NearSwapAsset -> this
-            else -> null
-        }
 }

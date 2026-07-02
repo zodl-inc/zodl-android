@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.math.BigDecimal
 
 /**
@@ -62,7 +63,11 @@ class SwapAggregatorRepositoryImpl(
     override val quotes: Flow<List<SwapQuoteData>?> =
         combine(swapRepositories.values.map { it.quote }) { quotes ->
             quotes.filterNotNull().ifEmpty { null }
-        }.stateIn(scope, SharingStarted.Eagerly, null)
+        }.stateIn(
+            scope = scope,
+            started = SharingStarted.Eagerly,
+            initialValue = null
+        )
 
     /**
      * Settles only once every participating provider is terminal (Success or Error) — never picks a
@@ -75,7 +80,11 @@ class SwapAggregatorRepositoryImpl(
                 active.any { it is SwapQuoteData.Loading } -> SwapQuoteData.Loading
                 else -> selectQuote(active, selected)
             }
-        }.stateIn(scope, SharingStarted.Eagerly, null)
+        }.stateIn(
+            scope = scope,
+            started = SharingStarted.WhileSubscribed(),
+            initialValue = null
+        )
 
     override fun selectProvider(provider: SwapProvider) = selectedProvider.update { provider }
 
@@ -93,8 +102,12 @@ class SwapAggregatorRepositoryImpl(
         refundAddress: String,
         destinationAsset: SwapAsset,
         slippage: BigDecimal
-    ) = forEachProvider(destinationAsset) { repository, subAsset ->
-        repository.requestExactInputQuote(amount, address, refundAddress, subAsset, slippage)
+    ) {
+        scope.launch {
+            forEachProvider(destinationAsset) { repository, subAsset ->
+                repository.requestExactInputQuote(amount, address, refundAddress, subAsset, slippage)
+            }
+        }
     }
 
     override fun requestExactOutputQuote(
@@ -120,8 +133,12 @@ class SwapAggregatorRepositoryImpl(
         destinationAddress: String,
         originAsset: SwapAsset,
         slippage: BigDecimal
-    ) = forEachProvider(originAsset) { repository, subAsset ->
-        repository.requestFlexInputIntoZec(amount, refundAddress, destinationAddress, subAsset, slippage)
+    ) {
+        scope.launch {
+            forEachProvider(originAsset) { repository, subAsset ->
+                repository.requestFlexInputIntoZec(amount, refundAddress, destinationAddress, subAsset, slippage)
+            }
+        }
     }
 
     override suspend fun submitDepositTransaction(txId: String, transactionProposal: SwapTransactionProposal) {
@@ -156,10 +173,14 @@ class SwapAggregatorRepositoryImpl(
      * than left alone, so a stale sub-quote from a previous round can't be mistaken for part of
      * this round once it settles (see [quote]).
      */
-    private inline fun forEachProvider(asset: SwapAsset, request: (SwapRepository, SwapAsset) -> Unit) {
-        swapRepositories.forEach { (provider, repository) ->
-            val subAsset = subAssetFor(provider, asset)
-            if (subAsset != null) request(repository, subAsset) else repository.clearQuote()
+    private suspend fun forEachProvider(asset: SwapAsset, request: (SwapRepository, SwapAsset) -> Unit) {
+        coroutineScope {
+            swapRepositories.map { (provider, repository) ->
+                async {
+                    val subAsset = subAssetFor(provider, asset)
+                    if (subAsset != null) request(repository, subAsset) else repository.clearQuote()
+                }
+            }.awaitAll()
         }
     }
 
