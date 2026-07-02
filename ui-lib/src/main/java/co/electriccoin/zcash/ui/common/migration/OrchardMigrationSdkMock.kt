@@ -18,6 +18,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlin.random.Random
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Mock implementation of [OrchardMigrationSdk] for the PoC branch.
@@ -74,7 +75,10 @@ class OrchardMigrationSdkMock(
 
     override suspend fun submitNoteSplit(proposal: NoteSplitProposal): TransferResult {
         Twig.debug { "OrchardMigrationSdkMock: mock note split submitted" }
-        delay(400)
+        // Broadcast itself is fast — the txId is known right away, matching the real SDK (state
+        // transitions to SplitPendingConfirmation once broadcast, not once confirmed). The app-level
+        // "wait for confirmation" delay that keeps IN_PROGRESS visible lives in the VM, not here.
+        delay(NOTE_SPLIT_BROADCAST_DELAY)
         mockBalanceRepository.decrease(proposal.fee)
         return TransferResult.Success("mock_split_${System.currentTimeMillis()}")
     }
@@ -93,14 +97,33 @@ class OrchardMigrationSdkMock(
                 amountZatoshi = amount,
                 // Nearest interval boundary (mock proxy for 288-block anchor bucket)
                 anchorHeight = (nowSeconds / intervalSeconds) * intervalSeconds,
-                // Each transfer is one interval after the previous
-                nextExecutableAfterHeight = nowSeconds + (i * intervalSeconds),
+                // Even the first transfer can't execute right now — broadcasting takes a real
+                // anchor/proposal round trip. Each transfer is one interval after the previous,
+                // starting one interval from now (e.g. t1=2min, t2=4min, t3=6min in debug).
+                nextExecutableAfterHeight = nowSeconds + ((i + 1) * intervalSeconds),
                 expiryHeight = nowSeconds + ((i + 2) * intervalSeconds),
             )
         }
         return MigrationSchedule(
             transfers = transfers,
             estimatedDurationHours = ((TRANSFER_COUNT - 1) * intervalSeconds / 3600L).toInt(),
+        )
+    }
+
+    override suspend fun proposeImmediateMigration(): MigrationSchedule {
+        val total = orchardBalance()
+        val nowSeconds = Clock.System.now().epochSeconds
+        return MigrationSchedule(
+            transfers = listOf(
+                TransferProposal(
+                    id = "transfer_immediate",
+                    amountZatoshi = total,
+                    anchorHeight = nowSeconds,
+                    nextExecutableAfterHeight = nowSeconds,
+                    expiryHeight = nowSeconds + IMMEDIATE_EXPIRY_WINDOW_SECONDS,
+                )
+            ),
+            estimatedDurationHours = 0,
         )
     }
 
@@ -168,7 +191,14 @@ class OrchardMigrationSdkMock(
 
     companion object {
         private const val TRANSFER_COUNT = 3
-        private const val DEBUG_INTERVAL_SECONDS = 30L
+
+        // Compressed stand-in for the real ~6h anchor-bucket cadence — long enough to actually
+        // observe WorkManager executing transfers one at a time in the background (rather than
+        // the whole plan finishing before you can navigate to check on it), short enough to not
+        // require sitting around for hours during manual testing.
+        private const val DEBUG_INTERVAL_SECONDS = 120L
         private const val PROD_INTERVAL_SECONDS = 6 * 3600L
+        private const val IMMEDIATE_EXPIRY_WINDOW_SECONDS = 3600L
+        private val NOTE_SPLIT_BROADCAST_DELAY = 500.milliseconds
     }
 }

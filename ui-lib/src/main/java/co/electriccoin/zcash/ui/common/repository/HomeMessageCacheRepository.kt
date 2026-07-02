@@ -80,7 +80,8 @@ sealed interface HomeMessageData {
     ) : RuntimeMessage()
 
     data class Migration(
-        val plan: co.electriccoin.zcash.ui.common.model.migration.MigrationPlan?
+        val plan: co.electriccoin.zcash.ui.common.model.migration.MigrationPlan?,
+        val isComplete: Boolean = false,
     ) : RuntimeMessage()
 
     data object EnableTor : Prioritized {

@@ -527,7 +527,8 @@ data class UtilityGray(
     val utilityGray400: Color,
     val utilityGray300: Color,
     val utilityGray900: Color,
-    val utilityGray800: Color
+    val utilityGray800: Color,
+    val utilityGray950: Color
 )
 
 data class UtilitySuccessGreen(

@@ -35,7 +35,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
-import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
+import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -94,7 +94,7 @@ fun MigrationBatteryView(state: MigrationBatteryState) {
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
-                navigationAction = { ZashiTopAppBarCloseNavigation(onBack = state.onBack) },
+                navigationAction = { ZashiTopAppBarBackNavigation(onBack = state.onBack) },
                 regularActions = {},
             )
         }

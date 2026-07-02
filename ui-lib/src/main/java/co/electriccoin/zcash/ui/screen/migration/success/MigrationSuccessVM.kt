@@ -7,11 +7,14 @@ import co.electriccoin.zcash.ui.common.model.mutableLce
 import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.withLce
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
+import co.electriccoin.zcash.ui.common.usecase.ViewTransactionDetailAfterSuccessfulProposalUseCase
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
 
 class MigrationSuccessVM(
+    private val args: MigrationSuccessArgs,
     private val navigationRouter: NavigationRouter,
+    private val viewTransactionDetail: ViewTransactionDetailAfterSuccessfulProposalUseCase,
     private val errorStateMapper: ErrorMapperUseCase,
 ) : ViewModel() {
 
@@ -20,7 +23,7 @@ class MigrationSuccessVM(
     val state: StateFlow<LceState<MigrationSuccessState>> =
         flowOf(
             MigrationSuccessState(
-                onViewTransaction = null,
+                onViewTransaction = args.txId?.let { txId -> { viewTransactionDetail(txId) } },
                 onClose = ::onClose,
             )
         ).withLce(closeLce, errorStateMapper::mapToState)

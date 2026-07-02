@@ -18,10 +18,12 @@ import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.migration.battery.MigrationBatteryArgs
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlin.time.Duration.Companion.seconds
 
 class MigrationNoteSplitVM(
     private val sdk: OrchardMigrationSdk,
@@ -35,10 +37,16 @@ class MigrationNoteSplitVM(
     // means no split is needed and the user has already been routed away.
     private val checkLce = mutableLce<NoteSplitProposal?>()
 
-    // Holds the resulting transaction id once the split has been submitted.
-    private val splitLce = mutableLce<String?>()
+    // Wraps the submit+wait-for-confirmation flow for the LceRenderer's loading/error UI — its
+    // result value isn't used, the txId is tracked separately in [transactionId] below so it can
+    // show up as soon as it's known, not just once the whole flow finishes.
+    private val splitLce = mutableLce<Unit>()
 
     private val phase = MutableStateFlow(NoteSplitPhase.EXPLAINER)
+
+    // Known as soon as submitNoteSplit() broadcasts — matches the real SDK, where the txId exists
+    // once the transaction is broadcast (state SplitPendingConfirmation), before it's confirmed.
+    private val transactionId = MutableStateFlow<String?>(null)
     private val isKeystoneAccount = getSelectedWalletAccount.observe().map { it is KeystoneAccount }
 
     init {
@@ -54,23 +62,23 @@ class MigrationNoteSplitVM(
     }
 
     val state: StateFlow<LceState<MigrationNoteSplitState>> =
-        combine(phase, checkLce.state, splitLce.state, isKeystoneAccount) { p, checkState, splitState, isKeystone ->
-            checkState.success?.let { proposal -> createState(p, proposal, splitState.success, isKeystone) }
+        combine(phase, checkLce.state, transactionId, isKeystoneAccount) { p, checkState, txId, isKeystone ->
+            checkState.success?.let { proposal -> createState(p, proposal, txId, isKeystone) }
         }.withLce(groupLce(checkLce, splitLce), errorStateMapper::mapToState)
             .stateIn(this)
 
     private fun createState(
         currentPhase: NoteSplitPhase,
         proposal: NoteSplitProposal,
-        transactionId: String?,
+        txId: String?,
         isKeystone: Boolean,
     ) = MigrationNoteSplitState(
         phase = currentPhase,
         isKeystone = isKeystone,
         splitAmount = stringRes(Zatoshi(proposal.outputNotes.sum())),
         fee = stringRes(Zatoshi(proposal.fee)),
-        transactionId = transactionId?.let { stringRes(truncateId(it)) },
-        onCopyTransactionId = { transactionId?.let(copyToClipboard::invoke) },
+        transactionId = txId?.let { stringRes(truncateId(it)) },
+        onCopyTransactionId = { txId?.let(copyToClipboard::invoke) },
         onContinue = { onContinue(currentPhase, proposal) },
         onBack = ::onBack,
     )
@@ -84,12 +92,19 @@ class MigrationNoteSplitVM(
     private fun startSplit(proposal: NoteSplitProposal) = splitLce.execute {
         phase.value = NoteSplitPhase.IN_PROGRESS
         val result = sdk.submitNoteSplit(proposal)
+        transactionId.value = (result as? TransferResult.Success)?.txId
+        // Simulated wait for on-chain confirmation (~1 block) — long enough for the IN_PROGRESS
+        // screen, now showing the real txId, to actually be visible/testable.
+        delay(CONFIRMATION_WAIT)
         phase.value = NoteSplitPhase.COMPLETE
-        (result as? TransferResult.Success)?.txId
     }
 
     private fun onBack() = checkLce.guardLoading { navigationRouter.back() }
 
     private fun truncateId(id: String): String =
         if (id.length <= 12) id else "${id.take(5)}…${id.takeLast(5)}"
+
+    companion object {
+        private val CONFIRMATION_WAIT = 10.seconds
+    }
 }

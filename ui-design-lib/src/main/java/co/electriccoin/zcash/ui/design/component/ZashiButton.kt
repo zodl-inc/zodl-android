@@ -43,6 +43,7 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColorsInternal
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.steppedRotation
 import co.electriccoin.zcash.ui.design.util.stringRes
 
 @Composable
@@ -108,7 +109,10 @@ fun ZashiButton(
                     Image(
                         painter = painterResource(state.icon),
                         contentDescription = null,
-                        modifier = Modifier.size(20.dp),
+                        modifier =
+                            Modifier
+                                .size(20.dp)
+                                .let { if (state.isIconRotating) it.steppedRotation() else it },
                         colorFilter = ColorFilter.tint(LocalContentColor.current)
                     )
                 }
@@ -320,6 +324,9 @@ data class ButtonState(
     @param:DrawableRes val trailingIcon: Int? = null,
     val isEnabled: Boolean = true,
     val isLoading: Boolean = false,
+    // Spins [icon] in discrete 45°/100ms steps — for a static loading-style icon (e.g. a clock/
+    // spinner glyph) rather than the built-in Lottie [isLoading] spinner.
+    val isIconRotating: Boolean = false,
     val hapticFeedbackType: HapticFeedbackType? = null,
     val onClick: () -> Unit = {},
 ) {

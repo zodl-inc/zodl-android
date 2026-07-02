@@ -33,6 +33,7 @@ import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.screen.exchangerate.optin.ExchangeRateOptInArgs
 import co.electriccoin.zcash.ui.screen.home.backup.SeedBackupInfo
+import co.electriccoin.zcash.ui.screen.home.migration.MigrationBannerPhase
 import co.electriccoin.zcash.ui.screen.home.migration.MigrationMessageState
 import co.electriccoin.zcash.ui.screen.migration.progress.MigrationProgressArgs
 import co.electriccoin.zcash.ui.screen.migration.setup.MigrationSetupArgs
@@ -384,15 +385,23 @@ class HomeVM(
 
             is HomeMessageData.Migration -> {
                 val plan = data.plan
-                val (title, subtitle) = when {
-                    plan == null -> false to null
-                    plan.isComplete -> true to "All transfers complete"
-                    plan.completedCount == 0 -> false to "First transfer sending…"
-                    else -> true to "${plan.completedCount} of ${plan.totalCount} transfers complete"
+                val percent = if (plan != null && plan.totalCount > 0) {
+                    (plan.completedCount * 100) / plan.totalCount
+                } else {
+                    0
+                }
+                val (phase, subtitle) = when {
+                    data.isComplete -> MigrationBannerPhase.COMPLETE to "Tap to review the details"
+                    plan == null -> MigrationBannerPhase.REQUIRED to null
+                    plan.completedCount == 0 -> MigrationBannerPhase.IN_PROGRESS to "First transfer sending…"
+                    else ->
+                        MigrationBannerPhase.IN_PROGRESS to
+                            "${plan.completedCount} of ${plan.totalCount} transfers done ~ $percent% complete"
                 }
                 MigrationMessageState(
-                    isInProgress = title,
+                    phase = phase,
                     progressLabel = subtitle,
+                    progressPercent = percent.toFloat(),
                     onClick = { onMigrationMessageClick(hasActivePlan = plan != null) },
                     onButtonClick = { onMigrationMessageClick(hasActivePlan = plan != null) },
                 )

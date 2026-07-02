@@ -22,6 +22,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
+import co.electriccoin.zcash.ui.design.util.steppedRotation
 
 sealed interface WalletHeaderBadgeChrome {
     data object Neutral : WalletHeaderBadgeChrome
@@ -33,6 +34,8 @@ data class WalletHeaderIconsState(
     val isKeystone: Boolean,
     val badgeIcon: Int,
     val badgeChrome: WalletHeaderBadgeChrome = WalletHeaderBadgeChrome.Neutral,
+    // Spins the badge icon in discrete 45°/100ms steps — for loading-style badge icons.
+    val isBadgeAnimated: Boolean = false,
 )
 
 @Composable
@@ -81,7 +84,10 @@ fun WalletHeaderIcons(
                 painter = painterResource(state.badgeIcon),
                 contentDescription = null,
                 tint = tint,
-                modifier = Modifier.padding(iconPadding)
+                modifier =
+                    Modifier
+                        .padding(iconPadding)
+                        .let { if (state.isBadgeAnimated) it.steppedRotation() else it }
             )
         }
     }

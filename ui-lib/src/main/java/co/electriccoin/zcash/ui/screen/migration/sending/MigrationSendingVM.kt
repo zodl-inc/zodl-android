@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.screen.migration.sending
 import androidx.lifecycle.ViewModel
 import cash.z.ecc.android.sdk.NetworkPrivacyOptions
 import cash.z.ecc.android.sdk.OrchardMigrationSdk
+import cash.z.ecc.android.sdk.TransferResult
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.mutableLce
@@ -27,7 +28,8 @@ class MigrationSendingVM(
             .stateIn(this)
 
     fun send() = sendLce.execute {
-        sdk.executeNextPendingTransfer(NetworkPrivacyOptions(useTor = false))
-        navigationRouter.forward(MigrationSuccessArgs)
+        val result = sdk.executeNextPendingTransfer(NetworkPrivacyOptions(useTor = false))
+        val txId = (result as? TransferResult.Success)?.txId
+        navigationRouter.forward(MigrationSuccessArgs(txId))
     }
 }

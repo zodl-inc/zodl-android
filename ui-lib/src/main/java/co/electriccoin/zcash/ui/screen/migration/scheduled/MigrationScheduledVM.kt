@@ -7,6 +7,7 @@ import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.mutableLce
 import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.withLce
+import co.electriccoin.zcash.ui.common.model.migration.formatMigrationDuration
 import co.electriccoin.zcash.ui.common.repository.MigrationPlanRepository
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -25,10 +26,12 @@ class MigrationScheduledVM(
         migrationPlanRepository.observe().map { plan ->
             val total = plan?.transfers?.sumOf { it.amountZatoshi } ?: 0L
             val count = plan?.totalCount ?: 0
+            val lastScheduledAt = plan?.transfers?.maxOfOrNull { it.scheduledAtEpochSeconds } ?: 0L
+            val span = lastScheduledAt - (plan?.createdAtEpochSeconds ?: lastScheduledAt)
             MigrationScheduledState(
                 totalAmount = stringRes(Zatoshi(total)),
                 transfersProgress = stringRes("0 of $count"),
-                duration = stringRes("~24 hours"),
+                duration = stringRes(formatMigrationDuration(span)),
                 onDone = ::onDone,
             )
         }.withLce(loadLce, errorStateMapper::mapToState)

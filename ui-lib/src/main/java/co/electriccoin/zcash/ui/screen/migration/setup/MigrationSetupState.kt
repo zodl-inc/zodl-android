@@ -9,6 +9,7 @@ data class MigrationSetupState(
     val isKeystone: Boolean,
     val mode: MigrationMode,
     val onModeChange: (MigrationMode) -> Unit,
+    val onFindOutMore: () -> Unit,
     val onConfirm: () -> Unit,
     val onBack: () -> Unit,
 )

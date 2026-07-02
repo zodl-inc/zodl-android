@@ -20,7 +20,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -83,23 +82,6 @@ fun MigrationProgressView(state: MigrationProgressState) {
             )
             Spacer(Modifier.height(24.dp))
 
-            if (state.totalCount > 0) {
-                LinearProgressIndicator(
-                    progress = { state.completedCount.toFloat() / state.totalCount },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = ZashiColors.Btns.Brand.btnBrandFg,
-                )
-                Spacer(Modifier.height(8.dp))
-                state.progressSummary?.let { summary ->
-                    Text(
-                        text = summary.getValue(),
-                        style = ZashiTypography.textXs,
-                        color = ZashiColors.Text.textTertiary,
-                    )
-                }
-                Spacer(Modifier.height(16.dp))
-            }
-
             val activeIndex = state.transfers.indexOfFirst { !it.isSent }
             state.transfers.forEachIndexed { i, transfer ->
                 TransferProgressTimelineRow(
@@ -154,17 +136,6 @@ fun MigrationProgressView(state: MigrationProgressState) {
                     ),
                     modifier = Modifier.fillMaxWidth(),
                     defaultPrimaryColors = ZashiButtonDefaults.secondaryColors(),
-                )
-            }
-            state.onResetMigration?.let { reset ->
-                Spacer(Modifier.height(8.dp))
-                ZashiButton(
-                    state = ButtonState(
-                        text = stringRes("[DEBUG] Reset Migration"),
-                        onClick = reset,
-                    ),
-                    modifier = Modifier.fillMaxWidth(),
-                    defaultPrimaryColors = ZashiButtonDefaults.destructive2Colors(),
                 )
             }
         }
@@ -274,17 +245,14 @@ private fun PreviewResume() = ZcashTheme {
             title = stringRes("Resume Migration"),
             subtitle = stringRes("Transfer 3 of 5 was scheduled 6 hours ago but wasn't sent. Send now or reschedule."),
             transfers = listOf(
-                MigrationProgressTransferState(1, 5, stringRes("1.348 ZEC"), stringRes("Sent 6h ago"), false, true, stringRes("$521.30")),
-                MigrationProgressTransferState(2, 5, stringRes("1.052 ZEC"), stringRes("Sent 18 min ago"), false, true, stringRes("$406.86")),
-                MigrationProgressTransferState(3, 5, stringRes("2.105 ZEC"), stringRes("Overdue · 6h ago"), true, false, stringRes("$813.74")),
-                MigrationProgressTransferState(4, 5, stringRes("1.897 ZEC"), stringRes("~10 hours"), false, false, stringRes("$733.51")),
-                MigrationProgressTransferState(5, 5, stringRes("4.056 ZEC"), stringRes("~16 hours"), false, false, stringRes("$1,568.05")),
+                MigrationProgressTransferState(1, stringRes("1.348 ZEC"), stringRes("Sent 6h ago"), false, true, stringRes("$521.30")),
+                MigrationProgressTransferState(2, stringRes("1.052 ZEC"), stringRes("Sent 18 min ago"), false, true, stringRes("$406.86")),
+                MigrationProgressTransferState(3, stringRes("2.105 ZEC"), stringRes("Overdue · 6h ago"), true, false, stringRes("$813.74")),
+                MigrationProgressTransferState(4, stringRes("1.897 ZEC"), stringRes("~10 hours"), false, false, stringRes("$733.51")),
+                MigrationProgressTransferState(5, stringRes("4.056 ZEC"), stringRes("~16 hours"), false, false, stringRes("$1,568.05")),
             ),
-            completedCount = 2,
-            totalCount = 5,
             isComplete = false,
             hasOverdue = true,
-            progressSummary = stringRes("2 of 5 transfers complete  ~40% complete"),
             onBack = {},
             onSendNow = {},
             onReschedule = {},
@@ -300,17 +268,14 @@ private fun PreviewComplete() = ZcashTheme {
             title = stringRes("Migration Progress"),
             subtitle = stringRes("Your balance splits into 5 transfers over 24 hours. All transfers complete."),
             transfers = listOf(
-                MigrationProgressTransferState(1, 5, stringRes("1.348 ZEC"), stringRes("Sent 24h ago"), false, true, stringRes("$521.30")),
-                MigrationProgressTransferState(2, 5, stringRes("1.052 ZEC"), stringRes("Sent 18h ago"), false, true, stringRes("$406.86")),
-                MigrationProgressTransferState(3, 5, stringRes("2.105 ZEC"), stringRes("Sent 12h ago"), false, true, stringRes("$813.74")),
-                MigrationProgressTransferState(4, 5, stringRes("1.897 ZEC"), stringRes("Sent 6h ago"), false, true, stringRes("$733.51")),
-                MigrationProgressTransferState(5, 5, stringRes("4.056 ZEC"), stringRes("Sent 18 min ago"), false, true, stringRes("$1,568.05")),
+                MigrationProgressTransferState(1, stringRes("1.348 ZEC"), stringRes("Sent 24h ago"), false, true, stringRes("$521.30")),
+                MigrationProgressTransferState(2, stringRes("1.052 ZEC"), stringRes("Sent 18h ago"), false, true, stringRes("$406.86")),
+                MigrationProgressTransferState(3, stringRes("2.105 ZEC"), stringRes("Sent 12h ago"), false, true, stringRes("$813.74")),
+                MigrationProgressTransferState(4, stringRes("1.897 ZEC"), stringRes("Sent 6h ago"), false, true, stringRes("$733.51")),
+                MigrationProgressTransferState(5, stringRes("4.056 ZEC"), stringRes("Sent 18 min ago"), false, true, stringRes("$1,568.05")),
             ),
-            completedCount = 5,
-            totalCount = 5,
             isComplete = true,
             hasOverdue = false,
-            progressSummary = stringRes("5 of 5 transfers complete  ~100% complete"),
             onBack = {},
             onDone = {},
         )

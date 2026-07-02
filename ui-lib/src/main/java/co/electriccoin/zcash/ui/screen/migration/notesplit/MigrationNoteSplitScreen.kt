@@ -35,7 +35,6 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
-import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -129,7 +128,7 @@ private fun InProgressView(state: MigrationNoteSplitState) {
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
-                navigationAction = { ZashiTopAppBarCloseNavigation(onBack = state.onBack) },
+                navigationAction = { ZashiTopAppBarBackNavigation(onBack = state.onBack) },
             )
         }
     ) { padding ->
@@ -143,6 +142,7 @@ private fun InProgressView(state: MigrationNoteSplitState) {
                 state = WalletHeaderIconsState(
                     isKeystone = state.isKeystone,
                     badgeIcon = R.drawable.ic_migration_loading,
+                    isBadgeAnimated = true,
                 )
             )
             Spacer(Modifier.height(16.dp))
@@ -176,6 +176,7 @@ private fun InProgressView(state: MigrationNoteSplitState) {
                 state = ButtonState(
                     text = stringRes("Splitting Funds..."),
                     icon = R.drawable.ic_migration_loading,
+                    isIconRotating = true,
                     isEnabled = false,
                 ),
                 modifier = Modifier.fillMaxWidth(),
@@ -189,7 +190,7 @@ private fun SuccessView(state: MigrationNoteSplitState) {
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
-                navigationAction = { ZashiTopAppBarCloseNavigation(onBack = state.onBack) },
+                navigationAction = { ZashiTopAppBarBackNavigation(onBack = state.onBack) },
             )
         }
     ) { padding ->
@@ -249,14 +250,14 @@ private fun DetailsCard(
             .clip(RoundedCornerShape(16.dp))
             .background(ZashiColors.Surfaces.bgSecondary),
     ) {
-        DetailsRow(label = "Transaction ID") {
-            Text(
-                text = transactionId?.getValue() ?: "Pending",
-                style = ZashiTypography.textSm,
-                fontWeight = FontWeight.Medium,
-                color = ZashiColors.Text.textPrimary,
-            )
-            if (transactionId != null) {
+        if (transactionId != null) {
+            DetailsRow(label = "Transaction ID") {
+                Text(
+                    text = transactionId.getValue(),
+                    style = ZashiTypography.textSm,
+                    fontWeight = FontWeight.Medium,
+                    color = ZashiColors.Text.textPrimary,
+                )
                 Spacer(Modifier.width(8.dp))
                 Icon(
                     painter = painterResource(R.drawable.ic_copy),
@@ -267,8 +268,8 @@ private fun DetailsCard(
                         .clickable(onClick = onCopyTransactionId),
                 )
             }
+            DetailsDivider()
         }
-        DetailsDivider()
         DetailsRow(label = "Amount") {
             Text(
                 text = amount.getValue(),
