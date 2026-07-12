@@ -483,6 +483,7 @@
 
     <!-- ===== pay ===== -->
     <string name="crosspay_help_payWith">CrossPay with</string>
+    <string name="pay_info_content_description">Payment information</string>
     <string name="pay_info_subtitle">Make cross-chain payments in any NEAR-supported coin or token.\n\nIf the actual slippage and network conditions result in your recipient receiving less than the promised amount, your transaction will be reversed. You will receive a full refund minus network fees.</string>
     <string name="swapAndPay_slippageWarn">Any unused portion of the slippage fee will be refunded if the swap executes with lower slippage than expected.</string>
 
@@ -787,6 +788,8 @@
     <string name="coinVote_delegationSigning_memo" translatable="false">Memo</string>
 
     <!-- ===== swap ===== -->
+    <string name="swap_change_direction_content_description">Change swap direction</string>
+    <string name="swap_info_content_description">Swap information</string>
     <string name="swap_info_message">Swap %1$s with any NEAR-supported token.\n\nIf swapping TO %2$s, you will send funds from a 3rd party wallet and provide an address where change can be refunded.\n\nIf swapping FROM %3$s, you must provide a valid address for the asset you are swapping to.</string>
     <string name="swapAndPay_help_swapWith">Swap with</string>
     <string name="swap_select_token">Select Token</string>
