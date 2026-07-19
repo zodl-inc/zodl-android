@@ -99,7 +99,11 @@ data class SwapAssetsData(
     val error: Exception? = null,
 )
 
-/** Thrown by [SwapRepository.checkSwapStatus] when the supported-asset list could not be loaded. */
+/**
+ * Raised when the supported-asset list could not be loaded, so the ZEC side of a swap cannot be
+ * resolved. Thrown by [SwapRepository.checkSwapStatus]; reported as [SwapQuoteData.Error] by the
+ * quote requests.
+ */
 class SwapAssetsUnavailableException : Exception("Swap assets are unavailable")
 
 @Suppress("TooManyFunctions")
@@ -219,7 +223,11 @@ class SwapRepositoryImpl(
         requestQuoteJob =
             scope.launch {
                 quote.update { SwapQuoteData.Loading }
-                val destinationAsset = assets.value.zecAsset ?: return@launch
+                val destinationAsset =
+                    assets.value.zecAsset ?: run {
+                        quote.update { SwapQuoteData.Error(FLEX_INPUT, SwapAssetsUnavailableException()) }
+                        return@launch
+                    }
                 try {
                     val result =
                         swapDataSource.requestQuote(
@@ -277,7 +285,11 @@ class SwapRepositoryImpl(
         requestQuoteJob =
             scope.launch {
                 quote.update { SwapQuoteData.Loading }
-                val originAsset = assets.value.zecAsset ?: return@launch
+                val originAsset =
+                    assets.value.zecAsset ?: run {
+                        quote.update { SwapQuoteData.Error(mode, SwapAssetsUnavailableException()) }
+                        return@launch
+                    }
                 try {
                     val result =
                         swapDataSource.requestQuote(

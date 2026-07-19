@@ -253,10 +253,10 @@ class SwapRepositoryImplTest {
         }
 
     @Test
-    fun quoteIsNoOpWhenAssetsNotLoaded() =
+    fun exactInputQuoteFailsWithSwapAssetsUnavailableWhenNoZecAssetIsLoaded() =
         runTest {
-            // Without a prior refresh there is no ZEC asset, so the request short-circuits: the quote is
-            // left in Loading and the data source is never queried.
+            // Without a prior refresh there is no ZEC asset, so the request cannot be built. It must still
+            // reach a terminal state: consumers await the first non-Loading value and would hang otherwise.
             val dataSource = mockk<SwapDataSource>(relaxed = true)
             val repository = repository(dataSource)
 
@@ -268,7 +268,53 @@ class SwapRepositoryImplTest {
                 slippage = BigDecimal("2")
             )
 
-            assertEquals(SwapQuoteData.Loading, repository.quote.value)
+            val result = repository.quote.value
+            assertIs<SwapQuoteData.Error>(result)
+            assertEquals(SwapMode.EXACT_INPUT, result.mode)
+            assertIs<SwapAssetsUnavailableException>(result.exception)
+            coVerify(exactly = 0) { dataSource.requestQuote(any(), any(), any(), any(), any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun exactOutputQuoteFailsWithSwapAssetsUnavailableWhenNoZecAssetIsLoaded() =
+        runTest {
+            // The error must carry the request's own mode so the quote screen shows the payment copy.
+            val dataSource = mockk<SwapDataSource>(relaxed = true)
+            val repository = repository(dataSource)
+
+            repository.requestExactOutputQuote(
+                amount = BigDecimal("1"),
+                address = "destination",
+                refundAddress = "refund",
+                destinationAsset = btc,
+                slippage = BigDecimal("2")
+            )
+
+            val result = repository.quote.value
+            assertIs<SwapQuoteData.Error>(result)
+            assertEquals(SwapMode.EXACT_OUTPUT, result.mode)
+            assertIs<SwapAssetsUnavailableException>(result.exception)
+            coVerify(exactly = 0) { dataSource.requestQuote(any(), any(), any(), any(), any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun flexInputQuoteFailsWithSwapAssetsUnavailableWhenNoZecAssetIsLoaded() =
+        runTest {
+            val dataSource = mockk<SwapDataSource>(relaxed = true)
+            val repository = repository(dataSource)
+
+            repository.requestFlexInputIntoZec(
+                amount = BigDecimal("2"),
+                refundAddress = "refund",
+                destinationAddress = "destination",
+                originAsset = btc,
+                slippage = BigDecimal("2")
+            )
+
+            val result = repository.quote.value
+            assertIs<SwapQuoteData.Error>(result)
+            assertEquals(SwapMode.FLEX_INPUT, result.mode)
+            assertIs<SwapAssetsUnavailableException>(result.exception)
             coVerify(exactly = 0) { dataSource.requestQuote(any(), any(), any(), any(), any(), any(), any(), any()) }
         }
 
