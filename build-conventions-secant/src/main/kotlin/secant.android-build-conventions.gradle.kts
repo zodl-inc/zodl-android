@@ -22,13 +22,15 @@ pluginManager.withPlugin("com.android.application") {
         }
     }
     project.the<com.android.build.api.dsl.ApplicationExtension>().apply {
-        // en_XA and ar_XB are pseudolocales for debugging.
+        // en-rXA and ar-rXB are pseudolocales for debugging.
         // The rest of the locales provides an explicit list of the languages to keep in the
         // final app.  Doing this will strip out additional locales from libraries like
         // Google Play Services and Firebase, which add unnecessary bloat.
+        // localeFilters validates every entry and rejects the "en_XA" form that
+        // resourceConfigurations accepted, so the pseudolocales use the "-r" region qualifier.
         @Suppress("UnstableApiUsage")
         androidResources {
-            localeFilters += listOf("en", "en-rUS", "en-rGB", "en-rAU", "es", "en_XA", "ar_XB")
+            localeFilters += listOf("en", "en-rUS", "en-rGB", "en-rAU", "es", "en-rXA", "ar-rXB")
         }
     }
 }
@@ -37,9 +39,9 @@ pluginManager.withPlugin("com.android.library") {
     project.the<com.android.build.gradle.LibraryExtension>().apply {
         configureBaseExtension()
 
-        // Locale stripping is configured on the application module via androidResources.localeFilters.
-        // The replacement API is only available on ApplicationAndroidResources, so libraries inherit
-        // the final filter at packaging time and don't need to declare their own.
+        // No locale stripping here. localeFilters is only available on ApplicationAndroidResources,
+        // and the application module's filter already applies to the resources merged in from
+        // libraries at packaging time.
         defaultConfig {
             minSdk = project.property("ANDROID_MIN_SDK_VERSION").toString().toInt()
             // This is deprecated but we don't have a replacement for the instrumentation APKs yet
