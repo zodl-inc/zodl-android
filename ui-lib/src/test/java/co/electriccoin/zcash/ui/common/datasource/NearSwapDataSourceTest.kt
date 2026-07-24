@@ -369,6 +369,55 @@ class NearSwapDataSourceTest {
         }
     }
 
+    @Test
+    fun checkSwapStatusDoesNotResolveSameSymbolAssetOnWrongChain() {
+        runBlocking {
+            // The second segment of a 1cs_v1 id is the chain, not a ticker: this one is USDC on Solana. An
+            // id with no mapping back to a requested id is reported missing rather than matched against a
+            // token that happens to share that segment.
+            val sol = SwapAssetTestFixture.asset(tokenTicker = "sol", chainTicker = "sol")
+            coEvery { nearApiProvider.checkSwapStatus(any()) } returns
+                statusResponse(
+                    originAssetId = "1cs_v1:sol:spl:EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                    destinationAssetId = zec.assetId
+                )
+
+            assertFailsWith<AssetNotFoundException> {
+                dataSource.checkSwapStatus(depositAddress = "deposit", supportedTokens = listOf(sol, zec))
+            }
+        }
+    }
+
+    @Test
+    fun checkSwapStatusDoesNotResolveUnmappedColonDelimitedId() {
+        runBlocking {
+            coEvery { nearApiProvider.checkSwapStatus(any()) } returns
+                statusResponse(originAssetId = "other:btc:native:coin", destinationAssetId = zec.assetId)
+
+            assertFailsWith<AssetNotFoundException> {
+                dataSource.checkSwapStatus(depositAddress = "deposit", supportedTokens = listOf(origin, zec))
+            }
+        }
+    }
+
+    @Test
+    fun checkSwapStatusDoesNotResolveARoutedIdToTheCatalogEntryCarryingIt() {
+        runBlocking {
+            // /v0/tokens lists "1cs_v1:btc:native:coin" as its own asset, BTC(OMNI), alongside the
+            // "nep141:btc.omft.near" the app requests. Only the echoed id is mapped, so with just the
+            // BTC(OMNI) entry loaded nothing resolves. Mapping catalog ids too would match it here, and
+            // with both entries loaded would resolve by list position.
+            val btcOmni =
+                SwapAssetTestFixture.asset(tokenTicker = "btc(omni)", assetId = "1cs_v1:btc:native:coin")
+            coEvery { nearApiProvider.checkSwapStatus(any()) } returns
+                statusResponse(originAssetId = "1cs_v1:btc:native:coin", destinationAssetId = zec.assetId)
+
+            assertFailsWith<AssetNotFoundException> {
+                dataSource.checkSwapStatus(depositAddress = "deposit", supportedTokens = listOf(btcOmni, zec))
+            }
+        }
+    }
+
     private fun statusResponse(
         originAssetId: String,
         destinationAssetId: String
