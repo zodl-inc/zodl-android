@@ -1,10 +1,13 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import android.content.Context
+import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.ServerCompatibilityError
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SynchronizerError
+import co.electriccoin.zcash.ui.common.model.toServerCompatibilityError
 import co.electriccoin.zcash.ui.common.provider.BlockchainProvider
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getString
@@ -15,6 +18,7 @@ class SendEmailUseCase(
     private val context: Context,
     private val getSupport: GetSupportUseCase,
     private val blockchainProvider: BlockchainProvider,
+    private val getSelectedEndpoint: GetSelectedEndpointUseCase,
 ) {
     /**
      * Sends a generic email with custom recipient, subject and message.
@@ -56,10 +60,12 @@ class SendEmailUseCase(
      * Sends a support email for a synchronizer error.
      */
     suspend operator fun invoke(synchronizerError: SynchronizerError) {
+        val incompatibility = synchronizerError.toServerCompatibilityError()
         sendSupportEmail(
             subject = context.getString(R.string.app_name),
             messageBody =
                 EmailUtil.formatMessage(
+                    prefix = incompatibility?.let { serverCompatibilityReport(it, getSelectedEndpoint()) },
                     body = synchronizerError.getStackTrace(null),
                     supportInfo = getSupport().toSupportString(SupportInfoType.entries.toSet())
                 )
@@ -252,4 +258,40 @@ internal fun buildGrpcFailureEmailBody(reportDescription: String?): String =
                 appendLine()
                 appendLine(it)
             }
+    }
+
+/**
+ * A readable summary of a server-compatibility failure, placed above the stack trace so that a
+ * support report can be triaged without reading one.
+ *
+ * Deliberately unlocalized, matching the rest of the support report (see
+ * [co.electriccoin.zcash.ui.screen.support.model.AppInfo.toSupportString]): these lines are read by
+ * support staff, not by the user.
+ */
+private fun serverCompatibilityReport(
+    error: ServerCompatibilityError,
+    endpoint: LightWalletEndpoint?
+): String =
+    buildString {
+        appendLine("Incompatible server")
+        appendLine("Error type: ${error.type}")
+        if (endpoint != null) {
+            appendLine("Server: ${endpoint.host}:${endpoint.port}")
+        }
+        when (error) {
+            is ServerCompatibilityError.ConsensusBranch -> {
+                appendLine("Expected consensus branch ID: 0x${error.clientBranchId}")
+                appendLine("Server consensus branch ID: 0x${error.serverBranchId}")
+            }
+
+            is ServerCompatibilityError.Network -> {
+                appendLine("Expected network: ${error.clientNetwork}")
+                appendLine("Server network: ${error.serverNetwork}")
+            }
+
+            is ServerCompatibilityError.SaplingActivationHeight -> {
+                appendLine("Expected Sapling activation height: ${error.clientHeight}")
+                appendLine("Server Sapling activation height: ${error.serverHeight}")
+            }
+        }
     }

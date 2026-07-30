@@ -5,4 +5,17 @@
     <string name="sync_error_switch_server">Cambiar servidor</string>
     <string name="sync_error_disable_tor">Deshabilitar protección Tor</string>
     <string name="sync_error_contact_support">Contactar Soporte</string>
+
+    <string name="sync_error_incompatible_consensus_message">ZODL y este servidor siguen versiones distintas de las reglas de consenso de Zcash, así que la sincronización no puede continuar. Uno de los dos está en una versión anterior: actualiza ZODL o cambia de servidor para volver a sincronizar.</string>
+    <string name="sync_error_incompatible_network_message">Este servidor está en una red de Zcash distinta de la que ZODL tiene configurada, así que la sincronización no puede continuar. Cambia a un servidor de la misma red.</string>
+    <string name="sync_error_incompatible_sapling_message">ZODL y este servidor no coinciden en la altura de activación de Sapling, así que la sincronización no puede continuar. Actualiza ZODL o cambia de servidor para volver a sincronizar.</string>
+
+    <string name="sync_error_detail_server">Servidor</string>
+    <string name="sync_error_detail_error_type">Tipo de error</string>
+    <string name="sync_error_detail_expected_branch">ID de rama esperado</string>
+    <string name="sync_error_detail_server_branch">ID de rama del servidor</string>
+    <string name="sync_error_detail_expected_network">Red esperada</string>
+    <string name="sync_error_detail_server_network">Red del servidor</string>
+    <string name="sync_error_detail_expected_sapling">Altura Sapling esperada</string>
+    <string name="sync_error_detail_server_sapling">Altura Sapling del servidor</string>
 </resources>

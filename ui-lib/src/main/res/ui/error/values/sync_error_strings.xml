@@ -5,4 +5,22 @@
     <string name="sync_error_switch_server">Switch server</string>
     <string name="sync_error_disable_tor">Disable Tor protection</string>
     <string name="sync_error_contact_support">Contact Support</string>
+
+    <!-- Shown instead of sync_error_message when the app and the server are incompatible. Retrying
+         cannot help in these cases, so the copy points at the two remedies that can. Neither side
+         can be identified as the stale one, so the copy must not blame the server. -->
+    <string name="sync_error_incompatible_consensus_message">ZODL and this server are following different versions of the Zcash consensus rules, so syncing can\'t continue. One of them is on an older release — updating ZODL or switching to a different server will get you syncing again.</string>
+    <string name="sync_error_incompatible_network_message">This server is on a different Zcash network than ZODL is set up for, so syncing can\'t continue. Switch to a server on the same network.</string>
+    <string name="sync_error_incompatible_sapling_message">ZODL and this server disagree about when the Sapling upgrade activated, so syncing can\'t continue. Updating ZODL or switching to a different server will get you syncing again.</string>
+
+    <!-- Labels for the diagnostic facts listed under the explanation above. Kept short so the value
+         beside them stays readable. -->
+    <string name="sync_error_detail_server">Server</string>
+    <string name="sync_error_detail_error_type">Error type</string>
+    <string name="sync_error_detail_expected_branch">Expected branch ID</string>
+    <string name="sync_error_detail_server_branch">Server branch ID</string>
+    <string name="sync_error_detail_expected_network">Expected network</string>
+    <string name="sync_error_detail_server_network">Server network</string>
+    <string name="sync_error_detail_expected_sapling">Expected Sapling height</string>
+    <string name="sync_error_detail_server_sapling">Server Sapling height</string>
 </resources>

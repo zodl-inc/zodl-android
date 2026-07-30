@@ -22,11 +22,14 @@ import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiCardButton
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
+import co.electriccoin.zcash.ui.design.component.listitem.SimpleListItemState
+import co.electriccoin.zcash.ui.design.component.listitem.ZashiSimpleListItem
 import co.electriccoin.zcash.ui.design.component.rememberScreenModalBottomSheetState
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.stringRes
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -77,10 +80,17 @@ fun SyncErrorContent(
         )
         Spacer(12.dp)
         Text(
-            text = stringResource(R.string.sync_error_message),
+            text = state.diagnostics?.explanation?.getValue() ?: stringResource(R.string.sync_error_message),
             color = ZashiColors.Text.textTertiary,
             style = ZashiTypography.textSm
         )
+        state.diagnostics?.facts?.forEach { fact ->
+            Spacer(12.dp)
+            ZashiSimpleListItem(
+                modifier = Modifier.fillMaxWidth(),
+                state = fact
+            )
+        }
         Spacer(24.dp)
         ZashiCardButton(
             modifier = Modifier.fillMaxWidth(),
@@ -141,6 +151,59 @@ private fun Preview() =
                             onClick = {}
                         ),
                     onBack = {}
+                )
+        )
+    }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@PreviewScreens
+@Composable
+private fun IncompatibleServerPreview() =
+    ZcashTheme {
+        SyncErrorView(
+            state =
+                SyncErrorState(
+                    tryAgain =
+                        ButtonState(
+                            text = stringRes("Try again"),
+                            icon = R.drawable.ic_sync_error_try_again,
+                            onClick = {},
+                            trailingIcon = co.electriccoin.zcash.ui.design.R.drawable.ic_chevron_right,
+                        ),
+                    switchServer =
+                        ButtonState(
+                            text = stringRes("Switch server"),
+                            icon = R.drawable.ic_sync_error_switch_server,
+                            trailingIcon = co.electriccoin.zcash.ui.design.R.drawable.ic_chevron_right,
+                            onClick = {}
+                        ),
+                    disableTor = null,
+                    support =
+                        ButtonState(
+                            text = stringRes("Contact Support"),
+                            onClick = {}
+                        ),
+                    onBack = {},
+                    diagnostics =
+                        SyncErrorDiagnosticsState(
+                            explanation =
+                                stringRes(
+                                    "ZODL and this server are following different versions of the Zcash " +
+                                        "consensus rules, so syncing can't continue. One of them is on an older " +
+                                        "release — updating ZODL or switching to a different server will get you " +
+                                        "syncing again."
+                                ),
+                            facts =
+                                listOf(
+                                    SimpleListItemState(stringRes("Server"), stringRes("zec.rocks:443")),
+                                    SimpleListItemState(stringRes("Expected branch ID"), stringRes("0x5437f330")),
+                                    SimpleListItemState(stringRes("Server branch ID"), stringRes("0x37a5165b")),
+                                    SimpleListItemState(
+                                        stringRes("Error type"),
+                                        stringRes("MismatchedConsensusBranch")
+                                    )
+                                )
+                        )
                 )
         )
     }

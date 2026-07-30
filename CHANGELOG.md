@@ -8,6 +8,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Fixed:
 - When a send fails because the wallet's chain state changed between tapping review and confirm (due to syncing catching up, a reorg, or the app resuming from background), a clear actionable message is now shown instead of the generic error copy.
+- When syncing stops because ZODL and the server it is connected to are incompatible, the Sync Error sheet now explains what happened and shows which server is in use and exactly what the two sides disagree about, instead of generic "check your connection" copy. These failures previously opened a different error sheet that showed a raw stack trace and offered no way to change server; they now open the Sync Error sheet, where Switch server is available. Support reports for these failures lead with the same readable summary rather than only a stack trace.
 
 ### Added:
 - Currency Conversion now supports multiple fiat currencies. You can pick which currency your balances and payment amounts are shown in from the Currency Conversion settings and opt-in screens.
