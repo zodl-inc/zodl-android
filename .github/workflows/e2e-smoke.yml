@@ -91,6 +91,32 @@ jobs:
           name: zodl-android-debug-apk
           path: apk
 
+      # Fail before starting the emulator when the shared E2E wallet
+      # configuration is incomplete. Do not print any secret values.
+      - name: Validate smoke wallet configuration
+        env:
+          ZODL_TEST_SEED_ANDROID: ${{ secrets.ZODL_TEST_SEED_ANDROID }}
+          ZODL_TEST_BIRTHDAY_ANDROID: ${{ secrets.ZODL_TEST_BIRTHDAY_ANDROID }}
+          ZODL_TEST_ADDRESS_ANDROID: ${{ secrets.ZODL_TEST_ADDRESS_ANDROID }}
+          ZODL_TEST_SEED_IOS: ${{ secrets.ZODL_TEST_SEED_IOS }}
+          ZODL_TEST_BIRTHDAY_IOS: ${{ secrets.ZODL_TEST_BIRTHDAY_IOS }}
+          ZODL_TEST_ADDRESS_IOS: ${{ secrets.ZODL_TEST_ADDRESS_IOS }}
+        run: |
+          required=(
+            ZODL_TEST_SEED_ANDROID
+            ZODL_TEST_BIRTHDAY_ANDROID
+            ZODL_TEST_ADDRESS_ANDROID
+            ZODL_TEST_SEED_IOS
+            ZODL_TEST_BIRTHDAY_IOS
+            ZODL_TEST_ADDRESS_IOS
+          )
+          for name in "${required[@]}"; do
+            if [[ -z "${!name}" ]]; then
+              echo "::error::$name is not configured"
+              exit 1
+            fi
+          done
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
