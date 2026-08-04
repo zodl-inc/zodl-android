@@ -173,6 +173,14 @@
     <string name="smartBanner_content_shield_button">Shield</string>
     <string name="smartBanner_help_shield_transparent">Transparent</string>
     <string name="widget_balances_button_spendable">Spendable</string>
+    <string name="balance_breakdown_title">Total Balance Across Pools</string>
+    <string name="balance_breakdown_subtitle">Your ZEC balance is now broken down by Zcash pool, so you can see exactly where your funds sit.</string>
+    <string name="balance_breakdown_total">Total Balance</string>
+    <string name="balance_breakdown_pool_orchard">Orchard</string>
+    <string name="balance_breakdown_pool_sapling">Sapling</string>
+    <string name="balance_breakdown_pool_transparent">Transparent</string>
+    <string name="balance_breakdown_pool_ironwood">Ironwood</string>
+    <string name="balance_breakdown_got_it">Got it</string>
 
     <!-- ===== choose_server ===== -->
     <string name="serverSetup_title">Server</string>
@@ -288,6 +296,12 @@
     <string name="shieldFunds_error_failure_message">An error happened during the last shielding transaction. You can try again
         later or report this issue if the problem persists.\n\n%s</string>
     <string name="shieldFunds_error_gprc_message">An error happened during the last shielding transaction. We will try to resubmit the transaction later. If it fails, you may need to repeat the shielding attempt at a later time.</string>
+    <string name="error_keystone_firmware_title">Keystone Firmware Update Required</string>
+    <string name="error_keystone_firmware_message">Your Keystone’s firmware (%1$s) is below the minimum supported version (%2$s). Update your device’s firmware, then try again.</string>
+    <string name="error_keystone_firmware_message_legacy">Your Keystone’s firmware is too old to report its version and is below the minimum supported version (%1$s). Update your device’s firmware, then try again.</string>
+    <string name="error_keystone_firmware_close">Close</string>
+    <string name="error_keystone_account_title">Unable to Add Keystone Account</string>
+    <string name="error_keystone_account_message">The scanned Keystone account can’t be used with this app. Make sure your Keystone device is set to the same network as this app, then scan the QR code again.</string>
     <string name="torSetup_alert_title">Disable Tor?</string>
     <string name="torSetup_alert_msg">Tor connection issues detected. To improve performance, try disabling Tor. This will stop exchange rate updates. You can re-enable it later in Advanced Settings.</string>
     <string name="torSetup_alert_disable">Disable</string>

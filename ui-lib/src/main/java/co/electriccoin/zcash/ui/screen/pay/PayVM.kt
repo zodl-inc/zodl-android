@@ -13,10 +13,10 @@ import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.usecase.CancelSwapUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetCuratedSwapAssetsUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedSwapAssetUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSlippageUseCase
-import co.electriccoin.zcash.ui.common.usecase.GetSwapAssetsUseCase
 import co.electriccoin.zcash.ui.common.usecase.IsABContactHintVisibleUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToScanGenericAddressUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSelectABSwapRecipientUseCase
@@ -51,7 +51,7 @@ import java.math.BigDecimal
 internal class PayVM(
     getSlippage: GetSlippageUseCase,
     getSelectedSwapAsset: GetSelectedSwapAssetUseCase,
-    getSwapAssetsUseCase: GetSwapAssetsUseCase,
+    getCuratedSwapAssetsUseCase: GetCuratedSwapAssetsUseCase,
     getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
     private val swapRepository: SwapRepository,
     private val cancelSwap: CancelSwapUseCase,
@@ -121,7 +121,7 @@ internal class PayVM(
             text,
             getSelectedSwapAsset.observe(),
             getSlippage.observe(),
-            getSwapAssetsUseCase.observe(),
+            getCuratedSwapAssetsUseCase.observe(),
             isRequestingQuote,
             selectedContact,
             getSelectedWalletAccount.observe(),

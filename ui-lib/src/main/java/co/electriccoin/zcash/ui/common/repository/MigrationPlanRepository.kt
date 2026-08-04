@@ -21,6 +21,15 @@ interface MigrationPlanRepository {
 
     suspend fun save(plan: MigrationPlan)
 
+    /**
+     * Saves [plan] keyed by the passed [accountKeyId], independent of whichever account is
+     * currently selected. Mirrors the [load] accountKeyId overload — see its kdoc.
+     */
+    suspend fun save(
+        accountKeyId: String,
+        plan: MigrationPlan
+    )
+
     suspend fun load(): MigrationPlan?
 
     /**
@@ -31,13 +40,6 @@ interface MigrationPlanRepository {
      * enqueued for rather than the currently-selected account.
      */
     suspend fun load(accountKeyId: String): MigrationPlan?
-
-    /**
-     * Saves the migration plan keyed by the passed [accountKeyId] (see [load]), independent of
-     * whichever account is currently selected. Used by [co.electriccoin.zcash.work.MigrationWorker]
-     * to write back the account it was enqueued for (e.g. the post-broadcast status write-through).
-     */
-    suspend fun save(accountKeyId: String, plan: MigrationPlan)
 
     suspend fun updateTransfer(
         index: Int,
@@ -83,17 +85,20 @@ class MigrationPlanRepositoryImpl(
         )
     }
 
-    override suspend fun load(): MigrationPlan? = loadByKey(currentKey())
-
-    override suspend fun load(accountKeyId: String): MigrationPlan? =
-        loadByKey(PreferenceKey("migration_plan_$accountKeyId"))
-
-    override suspend fun save(accountKeyId: String, plan: MigrationPlan) {
+    override suspend fun save(
+        accountKeyId: String,
+        plan: MigrationPlan
+    ) {
         encryptedPreferenceProvider().putString(
             key = PreferenceKey("migration_plan_$accountKeyId"),
             value = json.encodeToString(MigrationPlan.serializer(), plan)
         )
     }
+
+    override suspend fun load(): MigrationPlan? = loadByKey(currentKey())
+
+    override suspend fun load(accountKeyId: String): MigrationPlan? =
+        loadByKey(PreferenceKey("migration_plan_$accountKeyId"))
 
     override suspend fun updateTransfer(
         index: Int,

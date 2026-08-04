@@ -26,6 +26,8 @@ import co.electriccoin.zcash.ui.common.provider.HttpPirSnapshotResolver
 import co.electriccoin.zcash.ui.common.provider.IsBackgroundExecutionAvailableProvider
 import co.electriccoin.zcash.ui.common.provider.IsExchangeRateEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.IsExchangeRateEnabledStorageProviderImpl
+import co.electriccoin.zcash.ui.common.provider.IsIronwoodAnnouncementShownStorageProvider
+import co.electriccoin.zcash.ui.common.provider.IsIronwoodAnnouncementShownStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsKeepScreenOnDuringRestoreProvider
 import co.electriccoin.zcash.ui.common.provider.IsKeepScreenOnDuringRestoreProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsMigrationTorEnabledStorageProvider
@@ -117,6 +119,8 @@ val providerModule =
         singleOf(::WalletBackupRemindMeTimestampStorageProviderImpl) bind
             WalletBackupRemindMeTimestampStorageProvider::class
         singleOf(::WalletBackupFlagStorageProviderImpl) bind WalletBackupFlagStorageProvider::class
+        singleOf(::IsIronwoodAnnouncementShownStorageProviderImpl) bind
+            IsIronwoodAnnouncementShownStorageProvider::class
         singleOf(::WalletBackupConsentStorageProviderImpl) bind WalletBackupConsentStorageProvider::class
         singleOf(::WalletRestoringStateProviderImpl) bind WalletRestoringStateProvider::class
         singleOf(::CrashReportingStorageProviderImpl) bind CrashReportingStorageProvider::class
@@ -139,7 +143,7 @@ val providerModule =
         singleOf(::KtorNearApiProvider) bind NearApiProvider::class
         factoryOf(::HttpClientProviderImpl) bind HttpClientProvider::class
         singleOf(::HttpPirSnapshotResolver) bind PirSnapshotResolver::class
-        factoryOf(::SimpleSwapAssetProviderImpl) bind SimpleSwapAssetProvider::class
+        singleOf(::SimpleSwapAssetProviderImpl) bind SimpleSwapAssetProvider::class
         factoryOf(::SwapAssetProviderImpl) bind SwapAssetProvider::class
         factoryOf(::IsKeepScreenOnDuringRestoreProviderImpl) bind IsKeepScreenOnDuringRestoreProvider::class
         singleOf(::EphemeralAddressStorageProviderImpl) bind EphemeralAddressStorageProvider::class

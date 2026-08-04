@@ -395,12 +395,12 @@ internal fun migrationMessageFor(
     dustThresholdZatoshi: Long = MIGRATION_DUST_THRESHOLD_ZATOSHI,
     isBackgroundExecutionAvailable: Boolean = true,
     hasOverdueTransfers: Boolean = false,
-    now: Instant = Clock.System.now(),
     // Additive — see HomeMessageData.Migration's doc. Both null unless sdkState is
     // RequiresAttention; callers precompute these (GetHomeMessageUseCase.attentionInfoFor()) so this
     // function stays a pure, synchronous decision with no SDK access of its own.
     attentionKind: MigrationAttentionKind? = null,
     attentionRangeText: String? = null,
+    now: Instant = Clock.System.now(),
 ): HomeMessageData.Migration? {
     val next = plan?.nextPending
     return when {

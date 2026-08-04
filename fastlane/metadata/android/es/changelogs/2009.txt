@@ -1,0 +1,2 @@
+Cambiado:
+- Refinamos nuestra lista de criptoactivos compatibles con Swap/Pago, centrándonos en los que los usuarios realmente utilizan.

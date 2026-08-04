@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ironwood_announcement_title">Zcash Se Actualizó a Ironwood</string>
+    <string name="ironwood_announcement_body_1">Ironwood es un nuevo pool protegido: el mismo protocolo que Orchard, ahora verificado formalmente y auditado de forma independiente. Tus fondos están seguros y tus direcciones siguen funcionando.</string>
+    <string name="ironwood_announcement_body_2">Tus fondos en Orchard permanecen ahí hasta que los muevas. Puedes seguir gastándolos, pero el valor que sale de Orchard es público: al gastar se publica un monto en la cadena de bloques, y puede ser mayor que el que envías.</string>
+    <string name="ironwood_announcement_body_3">Una migración más privada llegará en una actualización posterior. Mueve tus fondos en partes de tamaño estándar que no te identifican, por eso recomendamos esperar.</string>
+    <string name="ironwood_announcement_body_guide">Si prefieres no esperar, nuestra guía explica cómo mover los fondos manualmente.</string>
+    <string name="ironwood_announcement_body_guide_link">nuestra guía</string>
+    <string name="ironwood_announcement_primary_button">Ir a Zodl</string>
+</resources>

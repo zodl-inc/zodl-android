@@ -12,6 +12,49 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.8.1 (2027)] - 2026-07-30
+
+### Corregido:
+- Corregimos varios problemas que afectaban a la visualización del saldo y los detalles de las transacciones. Tus fondos están seguros: esto solo corrige cómo la billetera muestra los valores.
+
+## [3.8.1 (2025)] - 2026-07-29
+
+### Corregido:
+- Corregimos varios problemas que afectaban a la visualización del saldo y los detalles de las transacciones. Tus fondos están seguros: esto solo corrige cómo la billetera muestra los valores.
+
+## [3.8.0 (2023)] - 2026-07-27
+
+### Añadido:
+- Agregamos compatibilidad con la actualización de red Ironwood (NU6.3) de Zcash, para mantener tu billetera totalmente compatible con los últimos cambios de la red. La función para mover fondos al nuevo pool de Ironwood llegará en una próxima actualización.
+- Toca tu saldo en la pantalla de inicio para ver cómo se divide tu ZEC entre los pools de Zcash, incluido el nuevo pool de Ironwood.
+
+## [3.8.0 (2018)] - 2026-07-25
+
+### Añadido:
+- Agregamos compatibilidad con la actualización de red Ironwood (NU6.3) de Zcash, para mantener tu billetera totalmente compatible con los últimos cambios de la red. La función para mover fondos al nuevo pool de Ironwood llegará en una próxima actualización.
+
+## [3.7.2 (2009)] - 2026-07-11
+
+### Cambiado:
+- Refinamos nuestra lista de criptoactivos compatibles con Swap/Pago, centrándonos en los que los usuarios realmente utilizan.
+
+## [3.7.1 (1992)] - 2026-06-29
+
+### Corregido:
+- Solucionamos un problema que afectaba a los swaps y pagos de BTC.
+
+## [3.7.0 (1986)] - 2026-06-23
+
+### Añadido:
+- Cuando la selección de servidor está en Automático, ahora transmitimos tus transacciones a través de varios servidores para un envío más confiable. Puedes cambiarlo en Configuración avanzada.
+
+### Cambiado:
+- Realizamos varias mejoras de seguridad y privacidad.
+
+### Corregido:
+- Corregimos un problema con la desconexión de una billetera de hardware Keystone.
+- Corregimos varios problemas con la visualización del estado de las transacciones.
+
 ## [3.6.0 (1914)] - 2026-06-16
 
 ### Añadido:

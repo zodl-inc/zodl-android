@@ -5,11 +5,11 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.toStorageKeyId
 import co.electriccoin.zcash.ui.common.model.migration.MigrationKeystoneRound
 import co.electriccoin.zcash.ui.common.model.migration.MigrationMode
 import co.electriccoin.zcash.ui.common.model.migration.estimatedSecondsBetweenHeights
 import co.electriccoin.zcash.ui.common.model.migration.toMigrationPlan
-import co.electriccoin.zcash.ui.common.model.toStorageKeyId
 import co.electriccoin.zcash.ui.common.repository.MigrationPlanRepository
 import co.electriccoin.zcash.ui.screen.migration.scheduled.MigrationScheduledArgs
 import co.electriccoin.zcash.work.MigrationScheduler
@@ -85,7 +85,8 @@ class FinalizeMigrationScheduleUseCase(
         // Stateless preview, computed fresh here rather than threaded through from Review — see
         // MigrationKeystoneRound's kdoc. Never persisted as a running campaign counter: "current" is
         // always 1 ("this round, from here"), "total" is whatever the estimate says right now.
-        val keystoneRound = if (getSelectedWalletAccount() is KeystoneAccount) {
+        val account = getSelectedWalletAccount()
+        val keystoneRound = if (account is KeystoneAccount) {
             getOrchardMigrationSdk()?.estimateMigrationRunCount()?.takeIf { it > 1 }?.let { MigrationKeystoneRound(current = 1, total = it) }
         } else {
             null

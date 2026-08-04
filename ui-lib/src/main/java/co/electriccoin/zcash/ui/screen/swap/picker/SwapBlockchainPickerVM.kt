@@ -8,7 +8,7 @@ import co.electriccoin.zcash.ui.common.model.SwapBlockchain
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.usecase.EnsureSwapAssetsLoadedUseCase
 import co.electriccoin.zcash.ui.common.usecase.FilterSwapBlockchainsUseCase
-import co.electriccoin.zcash.ui.common.usecase.GetSwapAssetsUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetCuratedSwapAssetsUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSelectSwapBlockchainUseCase
 import co.electriccoin.zcash.ui.common.usecase.SwapBlockchainData
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -28,7 +28,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class SwapBlockchainPickerVM(
-    getSwapAssets: GetSwapAssetsUseCase,
+    getCuratedSwapAssets: GetCuratedSwapAssetsUseCase,
     private val args: SwapBlockchainPickerArgs,
     private val navigateToSelectSwapBlockchain: NavigateToSelectSwapBlockchainUseCase,
     private val filterSwapBlockchains: FilterSwapBlockchainsUseCase,
@@ -55,7 +55,7 @@ class SwapBlockchainPickerVM(
             )
 
     private val filteredSwapBlockchains =
-        combine(getSwapAssets.observe(), searchText) { assets, text ->
+        combine(getCuratedSwapAssets.observe(), searchText) { assets, text ->
             filterSwapBlockchains(assets, text)
         }.flowOn(Dispatchers.Default)
             .stateIn(
@@ -63,7 +63,7 @@ class SwapBlockchainPickerVM(
                 started = SharingStarted.WhileSubscribed(),
                 initialValue =
                     filterSwapBlockchains(
-                        assets = getSwapAssets.observe().value,
+                        assets = getCuratedSwapAssets(),
                         text = searchText.value
                     )
             )

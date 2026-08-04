@@ -1,0 +1,2 @@
+Corregido:
+- Corregimos varios problemas que afectaban a la visualización del saldo y los detalles de las transacciones. Tus fondos están seguros: esto solo corrige cómo la billetera muestra los valores.

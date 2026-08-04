@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ironwood_announcement_title">Zcash Upgraded to Ironwood</string>
+    <string name="ironwood_announcement_body_1">Ironwood is a new shielded pool: the same protocol as Orchard, now formally verified and independently audited. Your funds are safe and your addresses still work.</string>
+    <string name="ironwood_announcement_body_2">Your Orchard funds stay until you move them. You can still spend them, but value leaving Orchard is public, so spending publishes an amount on-chain, and it can be larger than you send.</string>
+    <string name="ironwood_announcement_body_3">A more private migration is coming in a later update. It moves your funds in standard-sized pieces that don\'t identify you, so we recommend waiting.</string>
+    <string name="ironwood_announcement_body_guide">If you\'d rather not wait, our guide explains how to move funds manually.</string>
+    <string name="ironwood_announcement_body_guide_link">our guide</string>
+    <string name="ironwood_announcement_primary_button">Go to Zodl</string>
+</resources>

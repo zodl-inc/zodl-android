@@ -15,6 +15,7 @@ import co.electriccoin.zcash.ui.common.datasource.RestoreTimestampDataSource
 import co.electriccoin.zcash.ui.common.model.FastestServersState
 import co.electriccoin.zcash.ui.common.model.OnboardingState
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
+import co.electriccoin.zcash.ui.common.provider.IsIronwoodAnnouncementShownStorageProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -46,11 +47,15 @@ import kotlinx.coroutines.launch
 interface WalletRepository {
     val secretState: StateFlow<SecretState>
 
+    val isIronwoodAnnouncementShown: StateFlow<Boolean?>
+
     val fastestEndpoints: StateFlow<FastestServersState>
 
     val walletRestoringState: StateFlow<WalletRestoringState>
 
     fun createNewWallet()
+
+    suspend fun markIronwoodAnnouncementShown()
 
     fun restoreWallet(
         network: ZcashNetwork,
@@ -75,6 +80,7 @@ class WalletRepositoryImpl(
     private val restoreTimestampDataSource: RestoreTimestampDataSource,
     private val walletRestoringStateProvider: WalletRestoringStateProvider,
     private val walletBackupFlagStorageProvider: WalletBackupFlagStorageProvider,
+    private val isIronwoodAnnouncementShownStorageProvider: IsIronwoodAnnouncementShownStorageProvider,
 ) : WalletRepository {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -107,6 +113,15 @@ class WalletRepositoryImpl(
             started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
             initialValue = SecretState.LOADING
         )
+
+    override val isIronwoodAnnouncementShown: StateFlow<Boolean?> =
+        isIronwoodAnnouncementShownStorageProvider
+            .observe()
+            .stateIn(
+                scope = scope,
+                started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
+                initialValue = null
+            )
 
     private var previousFastestEndpoints: FastestServersState? = null
 
@@ -217,6 +232,10 @@ class WalletRepositoryImpl(
             persistWalletInternal(newWallet)
             walletRestoringStateProvider.store(WalletRestoringState.INITIATING)
         }
+    }
+
+    override suspend fun markIronwoodAnnouncementShown() {
+        isIronwoodAnnouncementShownStorageProvider.store(true)
     }
 
     private suspend fun persistOnboardingStateInternal(onboardingState: OnboardingState) {

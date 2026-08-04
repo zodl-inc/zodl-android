@@ -27,6 +27,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
+/**
+ * Master kill switch for coinholder (shielded) voting.
+ *
+ * While `false`, the voting entry point in [MoreVM] is suppressed and the pending-session
+ * recovery in `HomeVM` bails out, leaving the voting UI unreachable even though its screens and
+ * routes remain registered. Re-enabling requires flipping this to `true`, enabling the SDK
+ * `chp-voting` Cargo feature, and supplying real voting config URLs via remote configuration.
+ */
+internal const val VOTING_ENABLED = false
+
 class MoreVM(
     private val getVersionInfo: GetVersionInfoProvider,
     private val navigationRouter: NavigationRouter,
@@ -119,5 +129,3 @@ class MoreVM(
 
     private fun onWhatsNewClick() = navigationRouter.forward(WHATS_NEW)
 }
-
-internal const val VOTING_ENABLED = false

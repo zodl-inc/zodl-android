@@ -16,8 +16,11 @@ import co.electriccoin.zcash.ui.common.datasource.TexUnsupportedOnKSException
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposalNotCreatedException
 import co.electriccoin.zcash.ui.common.datasource.Zip321TransactionProposal
+import co.electriccoin.zcash.ui.common.model.KeystoneFirmwarePolicy
+import co.electriccoin.zcash.ui.common.model.KeystoneFirmwareVersion
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.SwapQuote
+import co.electriccoin.zcash.ui.common.model.readKeystoneFwStamp
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKException
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProvider
 import com.sparrowwallet.hummingbird.UR
@@ -86,6 +89,13 @@ interface KeystoneProposalRepository {
     @Throws(IllegalStateException::class)
     suspend fun createPCZTEncoder(): UREncoder
 
+    /**
+     * Parses a Keystone-signed PCZT and enforces the firmware minimum-version gate (MOB-1510).
+     * Firmware >= 2.4.6 stamps its raw internal version into the signed PCZT's proprietary
+     * fields; this normalizes that stamp to display numbering and refuses signatures from
+     * firmware below [KeystoneFirmwareVersion.MINIMUM_SUPPORTED] (or too old to stamp a version
+     * at all) before they can reach submission.
+     */
     @Throws(ParsePCZTException::class)
     suspend fun parsePCZT(ur: UR)
 
@@ -99,6 +109,18 @@ interface KeystoneProposalRepository {
 }
 
 class ParsePCZTException : Exception()
+
+/**
+ * The scanned signed PCZT came from Keystone firmware below
+ * [KeystoneFirmwareVersion.MINIMUM_SUPPORTED]. [detected] is `null` when the firmware is too old
+ * to stamp its version at all.
+ */
+class KeystoneFirmwareBelowMinimumException(
+    val detected: KeystoneFirmwareVersion?
+) : Exception(
+        "Keystone firmware ${detected ?: "unstamped"} is below minimum supported " +
+            "${KeystoneFirmwareVersion.MINIMUM_SUPPORTED}"
+    )
 
 sealed interface SubmitProposalState {
     data object Submitting : SubmitProposalState
@@ -217,11 +239,28 @@ class KeystoneProposalRepositoryImpl(
 
     override suspend fun parsePCZT(ur: UR) =
         withContext(Dispatchers.IO) {
-            try {
-                pcztWithSignatures = Pczt(keystoneSDKProvider.parsePczt(ur))
-            } catch (_: Exception) {
-                throw ParsePCZTException()
+            val parsed =
+                try {
+                    keystoneSDKProvider.parsePczt(ur)
+                } catch (_: Exception) {
+                    throw ParsePCZTException()
+                }
+
+            val stamp = parsed.readKeystoneFwStamp()
+            val detected = stamp?.let(KeystoneFirmwareVersion::fromStamp)
+            val outcome = KeystoneFirmwarePolicy.evaluate(detected, KeystoneFirmwareVersion.MINIMUM_SUPPORTED)
+            val logMessage = {
+                "Keystone firmware on signed PCZT: raw stamp ${stamp ?: "absent"}, normalized " +
+                    "${detected ?: "unknown"} (required ${KeystoneFirmwareVersion.MINIMUM_SUPPORTED}) -> $outcome"
             }
+            if (outcome != KeystoneFirmwarePolicy.Outcome.OK) {
+                Twig.warn(logMessage)
+                throw KeystoneFirmwareBelowMinimumException(detected)
+            } else {
+                Twig.info(logMessage)
+            }
+
+            pcztWithSignatures = Pczt(parsed)
         }
 
     @Suppress("UseCheckOrError", "ThrowingExceptionsWithoutMessageOrCause", "TooGenericExceptionCaught")

@@ -10,7 +10,7 @@ import co.electriccoin.zcash.ui.common.repository.MetadataRepository
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.usecase.FilterSwapAssetsUseCase
-import co.electriccoin.zcash.ui.common.usecase.GetSwapAssetsUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetCuratedSwapAssetsUseCase
 import co.electriccoin.zcash.ui.common.usecase.SelectSwapAssetUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.TextFieldState
@@ -27,7 +27,7 @@ import kotlinx.coroutines.flow.update
 
 class SwapAssetPickerVM(
     private val args: SwapAssetPickerArgs,
-    getSwapAssets: GetSwapAssetsUseCase,
+    getSwapAssets: GetCuratedSwapAssetsUseCase,
     metadataRepository: MetadataRepository,
     private val selectSwapAsset: SelectSwapAssetUseCase,
     private val navigationRouter: NavigationRouter,

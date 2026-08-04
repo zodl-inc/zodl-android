@@ -13,10 +13,10 @@ import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.usecase.CancelSwapUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetCuratedSwapAssetsUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedSwapAssetUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSlippageUseCase
-import co.electriccoin.zcash.ui.common.usecase.GetSwapAssetsUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToScanGenericAddressUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSelectABSwapRecipientUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapInfoUseCase
@@ -51,7 +51,7 @@ import java.math.BigDecimal
 internal class SwapVM(
     getSlippage: GetSlippageUseCase,
     getSelectedSwapAsset: GetSelectedSwapAssetUseCase,
-    getSwapAssetsUseCase: GetSwapAssetsUseCase,
+    private val getCuratedSwapAssetsUseCase: GetCuratedSwapAssetsUseCase,
     getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
     preselectSwapAsset: PreselectSwapAssetUseCase,
     private val swapRepository: SwapRepository,
@@ -114,7 +114,7 @@ internal class SwapVM(
             getSelectedSwapAsset.observe(),
             getSlippage.observe(),
             currencyType,
-            getSwapAssetsUseCase.observe(),
+            getCuratedSwapAssetsUseCase.observe(),
             isRequestingQuote,
             selectedContact,
             getSelectedWalletAccount.observe(),
@@ -224,7 +224,7 @@ internal class SwapVM(
             if (selectedChainTicker != null &&
                 !selectedChainTicker.equals(currentChainTicker, ignoreCase = true)
             ) {
-                val swapAssets = swapRepository.assets.value.data
+                val swapAssets = getCuratedSwapAssetsUseCase().data
                 val matchingAssets =
                     swapAssets
                         ?.filter { asset ->

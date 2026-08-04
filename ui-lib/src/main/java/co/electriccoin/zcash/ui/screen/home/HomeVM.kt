@@ -264,6 +264,7 @@ class HomeVM(
      * `recoverPendingVotingRouteIfNeeded` above.
      */
     private suspend fun resumePendingShareTracking() {
+        if (!VOTING_ENABLED) return
         val accountUuid =
             runCatching {
                 getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId()

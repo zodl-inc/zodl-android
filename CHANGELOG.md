@@ -23,6 +23,51 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - Swap quotes rejected by the amount-consistency safety check are now reported to monitoring (without any amounts), so a future swap-provider format change surfaces as an observable signal instead of silently blocking swaps.
 - Exchange rates are no longer requested over a direct (non-Tor) connection. When Tor Protection is disabled the request to the rate provider is now blocked instead of falling back to clearnet, preventing the user's IP address and request timing from being exposed.
 
+## [3.8.1 (2027)] - 2026-07-30
+
+### Fixed:
+- Corrected several issues affecting how balances and transaction details were displayed. Your funds are safe, this only fixes how the wallet shows the values.
+
+## [3.8.1 (2025)] - 2026-07-29
+
+### Fixed:
+- Corrected several issues affecting how balances and transaction details were displayed. Your funds are safe, this only fixes how the wallet shows the values.
+
+## [3.8.0 (2023)] - 2026-07-27
+
+### Changed:
+- We lowered the minimum supported Keystone firmware for signing from 3.0.3 to 3.0.1.
+
+## [3.8.0 (2018)] - 2026-07-25
+
+### Added:
+- We added support for Zcash's Ironwood network upgrade (NU6.3), keeping your wallet fully compatible with the latest network changes. Support for moving funds to the new Ironwood pool will arrive in a future update.
+
+### Fixed:
+- We fixed an issue where a Keystone hardware wallet signature could be accepted even though its firmware couldn't produce a transaction the app can broadcast. Keystone signing now requires firmware 3.0.3 or later; older or version-less firmware is blocked before broadcast, and the prompt reports the firmware version exactly as your device displays it.
+
+## [3.7.2 (2009)] - 2026-07-11
+
+### Changed:
+- We refined our list of supported Swap/Pay assets, focusing on the ones users actually use.
+
+## [3.7.1 (1992)] - 2026-06-29
+
+### Fixed:
+- We fixed an issue impacting BTC swaps and payments.
+
+## [3.7.0 (1986)] - 2026-06-23
+
+### Added:
+- When your server selection is set to Automatic, we now broadcast your transactions across several servers at once, so they're more likely to send reliably. You can change this in Advanced Settings.
+
+### Changed:
+- We made a range of security and privacy improvements.
+
+### Fixed:
+- We fixed an issue with disconnecting a Keystone hardware wallet.
+- We fixed a couple of transaction status display issues.
+
 ## [3.6.0 (1914)] - 2026-06-16
 
 ### Added:

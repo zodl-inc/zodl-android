@@ -1,0 +1,2 @@
+Fixed:
+- We fixed an issue impacting BTC swaps and payments.

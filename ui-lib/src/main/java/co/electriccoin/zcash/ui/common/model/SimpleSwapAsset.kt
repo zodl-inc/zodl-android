@@ -19,6 +19,11 @@ sealed interface SimpleSwapAsset {
         get() = blockchain.chainIcon
 }
 
+fun SimpleSwapAsset.isSame(
+    token: String,
+    chain: String
+): Boolean = tokenTicker.equals(token, ignoreCase = true) && chainTicker.equals(chain, ignoreCase = true)
+
 data class DynamicSimpleSwapAsset(
     override val tokenTicker: String,
     override val tokenName: StringResource,

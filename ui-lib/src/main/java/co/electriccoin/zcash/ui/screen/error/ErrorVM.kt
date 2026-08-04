@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.KeystoneFirmwareVersion
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.usecase.OptInExchangeRateAndTorUseCase
 import co.electriccoin.zcash.ui.common.usecase.SendEmailUseCase
@@ -41,6 +42,8 @@ class ErrorVM(
             is ErrorArgs.General -> createGeneralErrorState(args)
             is ErrorArgs.ShieldingGeneralError -> createGeneralShieldingErrorState(args)
             is ErrorArgs.SynchronizerTorInitError -> createSdkSynchronizerError()
+            is ErrorArgs.KeystoneFirmwareUpdateRequired -> createKeystoneFirmwareUpdateRequiredState(args)
+            is ErrorArgs.KeystoneAccountUnsupported -> createKeystoneAccountUnsupportedState(args)
         }
 
     private fun createSdkSynchronizerError(): ErrorState =
@@ -73,6 +76,50 @@ class ErrorVM(
                 ButtonState(
                     text = stringRes(co.electriccoin.zcash.ui.design.R.string.send_report),
                     onClick = { sendReportClick(args) }
+                ),
+            onBack = ::onBack,
+        )
+
+    private fun createKeystoneAccountUnsupportedState(args: ErrorArgs.KeystoneAccountUnsupported) =
+        ErrorState(
+            title = stringRes(R.string.error_keystone_account_title),
+            message = stringRes(R.string.error_keystone_account_message),
+            positive =
+                ButtonState(
+                    text = stringRes(R.string.error_keystone_firmware_close),
+                    onClick = { navigationRouter.back() }
+                ),
+            negative =
+                ButtonState(
+                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.send_report),
+                    onClick = { sendReportClick(args.exception) }
+                ),
+            onBack = ::onBack,
+        )
+
+    private fun createKeystoneFirmwareUpdateRequiredState(args: ErrorArgs.KeystoneFirmwareUpdateRequired) =
+        ErrorState(
+            title = stringRes(R.string.error_keystone_firmware_title),
+            message =
+                args.exception.detected?.let { detected ->
+                    stringRes(
+                        R.string.error_keystone_firmware_message,
+                        detected.toString(),
+                        KeystoneFirmwareVersion.MINIMUM_SUPPORTED.toString()
+                    )
+                } ?: stringRes(
+                    R.string.error_keystone_firmware_message_legacy,
+                    KeystoneFirmwareVersion.MINIMUM_SUPPORTED.toString()
+                ),
+            positive =
+                ButtonState(
+                    text = stringRes(R.string.error_keystone_firmware_close),
+                    onClick = { navigationRouter.back() }
+                ),
+            negative =
+                ButtonState(
+                    text = stringRes(co.electriccoin.zcash.ui.design.R.string.send_report),
+                    onClick = { sendReportClick(args.exception) }
                 ),
             onBack = ::onBack,
         )

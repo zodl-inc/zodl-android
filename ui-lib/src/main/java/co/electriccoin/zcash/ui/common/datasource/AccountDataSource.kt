@@ -297,7 +297,10 @@ class AccountDataSourceImpl(
         val balanceFlow =
             synchronizer.walletBalances
                 .map {
-                    it?.get(sdkAccount.accountUuid)?.orchard ?: createEmptyWalletBalance()
+                    it
+                        ?.get(sdkAccount.accountUuid)
+                        ?.let { balance -> balance.orchard + balance.ironwood }
+                        ?: createEmptyWalletBalance()
                 }
 
         return combine(addressFlow, balanceFlow) { address, balance ->
@@ -344,6 +347,13 @@ class AccountDataSourceImpl(
         }
 
     private fun createEmptyWalletBalance() = WalletBalance(Zatoshi.ZERO, Zatoshi.ZERO, Zatoshi.ZERO)
+
+    private operator fun WalletBalance.plus(other: WalletBalance) =
+        WalletBalance(
+            available = available + other.available,
+            changePending = changePending + other.changePending,
+            valuePending = valuePending + other.valuePending
+        )
 }
 
 private data class AddressRequest(

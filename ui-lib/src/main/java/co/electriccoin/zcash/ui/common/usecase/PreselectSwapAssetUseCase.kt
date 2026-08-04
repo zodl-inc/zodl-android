@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.common.usecase
 
 import co.electriccoin.zcash.ui.common.model.SimpleSwapAsset
 import co.electriccoin.zcash.ui.common.model.ZecSimpleSwapAsset
+import co.electriccoin.zcash.ui.common.model.isSame
 import co.electriccoin.zcash.ui.common.provider.SimpleSwapAssetProvider
 import co.electriccoin.zcash.ui.common.repository.MetadataRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
@@ -16,15 +17,16 @@ import kotlinx.coroutines.launch
 class PreselectSwapAssetUseCase(
     private val swapRepository: SwapRepository,
     private val metadataRepository: MetadataRepository,
-    private val simpleSwapAssetProvider: SimpleSwapAssetProvider
+    private val simpleSwapAssetProvider: SimpleSwapAssetProvider,
+    private val getCuratedSwapAssets: GetCuratedSwapAssetsUseCase,
 ) {
     private var initialPreselectionDone = false
 
     fun observe() =
         channelFlow<Unit> {
             launch {
-                swapRepository
-                    .assets
+                getCuratedSwapAssets
+                    .observe()
                     .onEach { data ->
                         if (data.data == null) {
                             initialPreselectionDone = false
@@ -62,4 +64,9 @@ class PreselectSwapAssetUseCase(
             .first()
             .firstOrNull()
             ?.takeIf { it !is ZecSimpleSwapAsset }
+            ?.takeIf { asset ->
+                // Single curation path: getAssetFromHistory() only runs once curated assets are loaded
+                // (observe() guards on data.data != null), so this synchronous snapshot is populated.
+                getCuratedSwapAssets().data?.any { it.isSame(asset.tokenTicker, asset.chainTicker) } == true
+            }
 }

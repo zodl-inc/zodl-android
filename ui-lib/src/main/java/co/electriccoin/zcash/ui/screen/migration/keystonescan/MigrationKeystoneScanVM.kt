@@ -68,7 +68,7 @@ class MigrationKeystoneScanVM(
     // "cypherpunk" 3.0.2 is the first Keystone firmware that supports migration batch signing at
     // all — older firmware either can't sign the batch correctly or won't report a version, and
     // both cases must block broadcast, not silently proceed.
-    private val requiredFirmware = KeystoneFirmwareVersion(major = 3, minor = 0, build = 2)
+    private val requiredFirmware = KeystoneFirmwareVersion(displayMajor = 3, minor = 0, build = 2)
 
     fun onScanned(result: String) {
         if (isProcessing || finalizingLce.state.value.loading) return

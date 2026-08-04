@@ -10,8 +10,6 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 interface BlockchainProvider {
     fun getBlockchain(ticker: String): SwapBlockchain
 
-    fun getHardcodedBlockchains(): List<SwapBlockchain>
-
     fun getZcashBlockchain(): SwapBlockchain
 }
 
@@ -67,30 +65,6 @@ class BlockchainProviderImpl(
 
         return if (id == 0) imageRes(R.drawable.ic_chain_placeholder) else imageRes(id)
     }
-
-    override fun getHardcodedBlockchains(): List<SwapBlockchain> =
-        listOf(
-            "aptos",
-            "arb",
-            "avax",
-            "base",
-            "bera",
-            "bsc",
-            "btc",
-            "cardano",
-            "doge",
-            "eth",
-            "gnosis",
-            "near",
-            "op",
-            "pol",
-            "sol",
-            "stellar",
-            "sui",
-            "ton",
-            "tron",
-            "xrp",
-        ).map { getBlockchain(it) }
 
     override fun getZcashBlockchain(): SwapBlockchain = getBlockchain("zec")
 }

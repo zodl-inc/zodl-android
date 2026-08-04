@@ -4,6 +4,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
+import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.usecase.DeriveKeystoneAccountUnifiedAddressUseCase
 import co.electriccoin.zcash.ui.common.usecase.ParseKeystoneUrToZashiAccountsUseCase
@@ -49,9 +50,8 @@ class SelectKeystoneAccountViewModel(
             try {
                 derivedAddress.value = deriveKeystoneAccountUnifiedAddress(account)
             } catch (e: Exception) {
-                // e.g. account exported for the wrong network (Keystone device set to Mainnet/Testnet
-                // while the app is built for the other one) - the SDK throws instead of returning a result.
-                navigateToErrorUseCase(ErrorArgs.General(e)) { replace(it) }
+                Twig.warn(e) { "Scanned Keystone account can't be used by this app" }
+                navigateToErrorUseCase(ErrorArgs.KeystoneAccountUnsupported(e)) { replace(it) }
             }
         }
 

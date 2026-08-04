@@ -11,6 +11,7 @@ import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.repository.ExchangeRateRepository
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.balances.breakdown.BalanceBreakdownArgs
 import co.electriccoin.zcash.ui.screen.balances.spendable.SpendableBalanceArgs
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -98,14 +99,19 @@ class BalanceWidgetVM(
                         null
                     }
                 },
-            showDust = args.showDust
+            showDust = args.showDust,
+            onBalanceClick =
+                if (args.isBalanceBreakdownEnabled && account != null) ::onBalanceClick else null
         )
 
     private fun onBalanceButtonClick() = navigationRouter.forward(SpendableBalanceArgs)
+
+    private fun onBalanceClick() = navigationRouter.forward(BalanceBreakdownArgs)
 }
 
 data class BalanceWidgetArgs(
     val showDust: Boolean,
     val isBalanceButtonEnabled: Boolean,
     val isExchangeRateButtonEnabled: Boolean,
+    val isBalanceBreakdownEnabled: Boolean = false,
 )

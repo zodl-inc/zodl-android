@@ -5,10 +5,7 @@ import cash.z.ecc.android.sdk.AttentionReason
 import cash.z.ecc.android.sdk.MigrationState
 import cash.z.ecc.android.sdk.OrchardMigrationSdk
 import co.electriccoin.zcash.ui.NavigationRouter
-import co.electriccoin.zcash.ui.common.model.migration.MigrationMode
 import co.electriccoin.zcash.ui.common.model.migration.MigrationPlan
-import co.electriccoin.zcash.ui.common.model.migration.MigrationTransfer
-import co.electriccoin.zcash.ui.common.model.migration.MigrationTransferStatus
 import co.electriccoin.zcash.ui.common.provider.PendingMigrationTorFailureStorageProvider
 import co.electriccoin.zcash.ui.common.repository.MigrationPlanRepository
 import co.electriccoin.zcash.ui.screen.home.HomeArgs
@@ -32,21 +29,6 @@ class CheckMigrationRecoveryUseCaseTest {
     fun resetThrottle() {
         CheckMigrationRecoveryUseCase.resetRunThrottleForTests()
     }
-
-    private fun planWithPendingTransfer(scheduledAtEpochSeconds: Long) =
-        MigrationPlan(
-            id = "p1",
-            createdAtEpochSeconds = 0L,
-            transfers = listOf(
-                MigrationTransfer(
-                    index = 2,
-                    amountZatoshi = 100_000L,
-                    scheduledAtEpochSeconds = scheduledAtEpochSeconds,
-                    status = MigrationTransferStatus.PENDING,
-                )
-            ),
-            mode = MigrationMode.AUTOMATIC,
-        )
 
     private fun useCase(
         sdk: OrchardMigrationSdk?,
