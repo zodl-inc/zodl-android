@@ -13,6 +13,9 @@ class LightWalletEndpointProvider(
     fun getEndpoints(): List<LightWalletEndpoint> =
         if (ZcashNetwork.fromResources(application) == ZcashNetwork.Mainnet) {
             listOf(
+                // OHTTP relay — routes gRPC through Cloudflare relay → EKS gateway → LWD
+                // Client IP is never visible to the LWD node (privacy-preserving transport)
+                LightWalletEndpoint(host = "ohttp-lwd.zodl.com", port = 443, isSecure = true),
                 LightWalletEndpoint(host = "zec.rocks", port = 443, isSecure = true),
                 LightWalletEndpoint(host = "na.zec.rocks", port = 443, isSecure = true),
                 LightWalletEndpoint(host = "sa.zec.rocks", port = 443, isSecure = true),
