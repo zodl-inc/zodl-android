@@ -71,7 +71,6 @@ dependencies {
     implementation(libs.kotlinx.datetime)
     implementation(libs.kotlinx.immutable)
     implementation(libs.kotlinx.serializable.json)
-    implementation(libs.zcash.sdk.backend)
     implementation(libs.zcash.sdk.incubator)
 
     implementation(projects.buildInfoLib)
