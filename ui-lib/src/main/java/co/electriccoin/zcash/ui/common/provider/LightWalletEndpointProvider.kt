@@ -29,8 +29,8 @@ class LightWalletEndpointProvider(
         } else {
             listOf(
                 // OHTTP relay for testnet — IP never visible to LWD
-                // Proxy gateway: plain gRPC → gateway → LWD (LWD never sees app IP)
-                LightWalletEndpoint(host = "ohttp-lwd-testnet-proxy.zodl.com", port = 443, isSecure = true),
+                // OHTTP relay — Cloudflare sees IP not content, gateway sees content not IP, LWD sees neither
+                LightWalletEndpoint(host = "ohttp-lwd-testnet.zodl.com", port = 443, isSecure = true),
                 LightWalletEndpoint(host = "testnet.zec.rocks", port = 443, isSecure = true)
             )
         }
