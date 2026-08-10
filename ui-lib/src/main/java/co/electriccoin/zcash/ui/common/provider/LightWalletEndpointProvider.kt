@@ -13,13 +13,18 @@ class LightWalletEndpointProvider(
     fun getEndpoints(): List<LightWalletEndpoint> =
         if (ZcashNetwork.fromResources(application) == ZcashNetwork.Mainnet) {
             listOf(
+                // OHTTP relay — routes gRPC through Cloudflare relay → EKS gateway → LWD
+                // Client IP is never visible to the LWD node (privacy-preserving transport)
+                LightWalletEndpoint(host = "ohttp-lwd.zodl.com", port = 443, isSecure = true),
                 LightWalletEndpoint(host = "zec.rocks", port = 443, isSecure = true),
                 LightWalletEndpoint(host = "na.zec.rocks", port = 443, isSecure = true),
                 LightWalletEndpoint(host = "sa.zec.rocks", port = 443, isSecure = true),
                 LightWalletEndpoint(host = "eu.zec.rocks", port = 443, isSecure = true),
                 LightWalletEndpoint(host = "ap.zec.rocks", port = 443, isSecure = true),
-                LightWalletEndpoint(host = "us.zec.stardust.rest", port = 443, isSecure = true),
                 LightWalletEndpoint(host = "eu.zec.stardust.rest", port = 443, isSecure = true),
+                LightWalletEndpoint(host = "eu2.zec.stardust.rest", port = 443, isSecure = true),
+                LightWalletEndpoint(host = "jp.zec.stardust.rest", port = 443, isSecure = true),
+                LightWalletEndpoint(host = "us.zec.stardust.rest", port = 443, isSecure = true),
             )
         } else {
             listOf(
@@ -28,10 +33,4 @@ class LightWalletEndpointProvider(
         }
 
     fun getDefaultEndpoint() = getEndpoints().first()
-
-    fun getDecommissionedHosts(): Set<String> =
-        setOf(
-            "jp.zec.stardust.rest",
-            "eu2.zec.stardust.rest",
-        )
 }
