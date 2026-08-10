@@ -67,7 +67,7 @@ class TrackVotingSharesUseCase(
             check(dbHandle != 0L) { "Failed to open voting DB at $votingDbPath" }
 
             try {
-                votingCryptoClient.setWalletId(dbHandle, selectedAccount.sdkAccount.accountUuid.toString(), networkId)
+                votingCryptoClient.setWalletId(dbHandle, accountUuidString, networkId)
                 val shareDelegations = votingCryptoClient.getShareDelegations(dbHandle, roundId)
                 if (shareDelegations.isEmpty()) {
                     return@withContext VotingShareTrackingResult.Completed

@@ -185,7 +185,7 @@ class VotingKeystoneRepositoryImpl(
                 try {
                     votingCryptoClient.setWalletId(
                         dbHandle,
-                        selectedAccount.sdkAccount.accountUuid.toString(),
+                        accountUuid,
                         networkId
                     )
                     // Keystone signing starts by building a governance PCZT. Once Rust
@@ -231,11 +231,12 @@ class VotingKeystoneRepositoryImpl(
                     val precomputeRequest =
                         VotingDelegationPirPrecomputeRequest(
                             accountUuid = accountUuid,
-                            walletId = selectedAccount.sdkAccount.accountUuid.toString(),
+                            walletId = accountUuid,
                             votingDbPath = votingDbPath,
                             roundId = roundId,
                             bundleIndex = bundleIndex,
                             pirEndpoints = sessionContext.serviceConfig.pirEndpoints.map { endpoint -> endpoint.url },
+                            pirLayout = sessionContext.serviceConfig.pirLayout,
                             expectedSnapshotHeight = session.snapshotHeight,
                             networkId = networkId,
                             notesJson = allNotesJson

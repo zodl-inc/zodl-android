@@ -14,6 +14,10 @@ data class VotingServiceConfig(
     val voteServers: List<ServiceEndpoint> = emptyList(),
     @SerialName("pir_endpoints")
     val pirEndpoints: List<ServiceEndpoint> = emptyList(),
+    // Default (all-zero) matches zcash_voting::config::PirLayout::UNKNOWN — the sentinel for
+    // configs published before the pir_layout handshake (zcash_voting 2.0.0-rc.4) existed.
+    @SerialName("pir_layout")
+    val pirLayout: VotingPirLayout = VotingPirLayout(),
     @SerialName("supported_versions")
     val supportedVersions: SupportedVersions = SupportedVersions(),
     val rounds: Map<String, RoundEntry> = emptyMap(),
@@ -114,6 +118,16 @@ data class VotingServiceConfig(
         private const val ROUND_ID_HEX_LENGTH = 64
     }
 }
+
+@Serializable
+data class VotingPirLayout(
+    @SerialName("pir_depth")
+    val pirDepth: Int = 0,
+    @SerialName("tier0_layers")
+    val tier0Layers: Int = 0,
+    @SerialName("tier1_layers")
+    val tier1Layers: Int = 0,
+)
 
 open class VotingConfigException(
     message: String

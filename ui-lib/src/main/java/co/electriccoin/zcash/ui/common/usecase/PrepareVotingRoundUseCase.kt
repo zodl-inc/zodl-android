@@ -9,6 +9,7 @@ import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.voting.RoundPhase
 import co.electriccoin.zcash.ui.common.model.voting.VoteIneligibilityReason
 import co.electriccoin.zcash.ui.common.model.voting.VotingBundleSetupResult
+import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
 import co.electriccoin.zcash.ui.common.model.voting.canBuildGovernancePczt
 import co.electriccoin.zcash.ui.common.model.voting.canGenerateHotkey
@@ -59,6 +60,11 @@ class PrepareVotingRoundUseCase(
             val synchronizer = synchronizerProvider.getSynchronizer()
             val scannedHeight = awaitFullyScannedHeight(synchronizer)
             if (scannedHeight == null || scannedHeight < session.snapshotHeight) {
+                Log.i(
+                    TAG,
+                    "WalletSyncing gate tripped for round $roundId: scannedHeight=$scannedHeight " +
+                        "snapshotHeight=${session.snapshotHeight} network=${synchronizer.network.networkName}"
+                )
                 votingSessionStore.setEligibility(VotingEligibility.WALLET_SYNCING)
                 return@withContext VotingRoundPreparationResult.WalletSyncing(
                     scannedHeight = scannedHeight,
@@ -86,7 +92,7 @@ class PrepareVotingRoundUseCase(
 
             val preparationResult =
                 try {
-                    votingCryptoClient.setWalletId(dbHandle, accountUuid.toString(), networkId)
+                    votingCryptoClient.setWalletId(dbHandle, accountUuidString, networkId)
                     var existingRoundState = votingCryptoClient.getRoundState(dbHandle, roundId)
                     var effectiveRecoverySnapshot = recoverySnapshot
                     // iOS `verifyWitnesses` (VotingStore+Delegation.swift:96-99) clears stale Rust
@@ -269,7 +275,7 @@ class PrepareVotingRoundUseCase(
                             pendingPrecomputeRequests +=
                                 buildSoftwareDelegationPirPrecomputeRequests(
                                     accountUuid = accountUuidString,
-                                    walletId = accountUuid.toString(),
+                                    walletId = accountUuidString,
                                     votingDbPath = votingDbPath,
                                     roundId = roundId,
                                     networkId = networkId,
@@ -291,6 +297,7 @@ class PrepareVotingRoundUseCase(
                                     roundName = session.title,
                                     pirEndpoints =
                                         sessionContext.serviceConfig.pirEndpoints.map { endpoint -> endpoint.url },
+                                    pirLayout = sessionContext.serviceConfig.pirLayout,
                                     expectedSnapshotHeight = session.snapshotHeight
                                 )
                         }.onFailure { throwable ->
@@ -439,6 +446,7 @@ class PrepareVotingRoundUseCase(
         seedFingerprint: ByteArray,
         roundName: String,
         pirEndpoints: List<String>,
+        pirLayout: VotingPirLayout,
         expectedSnapshotHeight: Long
     ): List<VotingDelegationPirPrecomputeRequest> {
         val requests = mutableListOf<VotingDelegationPirPrecomputeRequest>()
@@ -467,6 +475,7 @@ class PrepareVotingRoundUseCase(
                         roundId = roundId,
                         bundleIndex = bundleIndex,
                         pirEndpoints = pirEndpoints,
+                        pirLayout = pirLayout,
                         expectedSnapshotHeight = expectedSnapshotHeight,
                         networkId = networkId,
                         notesJson = notesJson
@@ -484,6 +493,16 @@ class PrepareVotingRoundUseCase(
             ?.takeIf { it > 0 }
             ?.let { return it }
 
+        // Wait for the engine to leave its boot phase before racing fullyScannedHeight against a
+        // short timeout below: under Slipstream, fullyScannedHeight is set inside the same engine
+        // tick that first flips status away from INITIALIZING (and is set first within that tick),
+        // so gating on status here means the timeout below only has to cover the gap within one
+        // tick, not the whole engine boot. Bounded because status stays INITIALIZING forever if the
+        // engine's prepare/start job fails outright.
+        withTimeoutOrNull(ENGINE_BOOT_TIMEOUT_MS) {
+            synchronizer.status.first { it != Synchronizer.Status.INITIALIZING }
+        }
+
         return withTimeoutOrNull(FULLY_SCANNED_HEIGHT_TIMEOUT_MS) {
             synchronizer.fullyScannedHeight
                 .filterNotNull()
@@ -497,6 +516,18 @@ class PrepareVotingRoundUseCase(
 
     private companion object {
         const val TAG = "PrepareVotingRound"
+
+        // Under Slipstream, fullyScannedHeight (SlipstreamEngine.kt) stays null until the engine's
+        // poll loop lands a tick, which only starts once the whole engine boot sequence completes
+        // (handle creation, anchor restore, and Tor bootstrap when enabled) - on a bad network that
+        // can run well past what fullyScannedHeight's own timeout below should have to cover. This
+        // bounds ONLY the boot wait (see awaitFullyScannedHeight), so it can be generous without
+        // penalizing a wallet that is genuinely still syncing.
+        const val ENGINE_BOOT_TIMEOUT_MS = 30_000L
+
+        // The legacy CompactBlockProcessor's fullyScannedHeight is a reactive DB read that's
+        // already correct once the engine has left its boot phase, so this only needs to cover the
+        // gap within a single engine tick after the boot-gate above releases.
         const val FULLY_SCANNED_HEIGHT_TIMEOUT_MS = 5_000L
         const val HOTKEY_SEED_BYTES = 64
     }

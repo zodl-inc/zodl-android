@@ -58,7 +58,7 @@ class SkipRemainingKeystoneBundlesUseCase(
             check(dbHandle != 0L) { "Failed to open voting DB at $votingDbPath" }
 
             try {
-                votingCryptoClient.setWalletId(dbHandle, selectedAccount.sdkAccount.accountUuid.toString(), networkId)
+                votingCryptoClient.setWalletId(dbHandle, accountUuid, networkId)
                 // If the snapshot write below fails, retrying this DB delete is safe: deleting rows at or after
                 // keepCount is idempotent once those rows are already gone. The reverse order would hide the retry.
                 votingCryptoClient.deleteSkippedBundles(

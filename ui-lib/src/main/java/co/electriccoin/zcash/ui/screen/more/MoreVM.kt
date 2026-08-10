@@ -32,10 +32,12 @@ import kotlinx.coroutines.launch
  *
  * While `false`, the voting entry point in [MoreVM] is suppressed and the pending-session
  * recovery in `HomeVM` bails out, leaving the voting UI unreachable even though its screens and
- * routes remain registered. Re-enabling requires flipping this to `true`, enabling the SDK
- * `chp-voting` Cargo feature, and supplying real voting config URLs via remote configuration.
+ * routes remain registered. Re-enabled on the chp worktree: the SDK now builds with
+ * `cfg(zcash_voting)` (see backend-lib/build.gradle.kts and Cargo.toml on that worktree). Voting
+ * config falls back to a bundled pinned production URL (`StaticVotingConfig.BUNDLED_PINNED_SOURCE`)
+ * when remote config's `voting_config_url` is unset, so no remote config is required to try this.
  */
-internal const val VOTING_ENABLED = false
+internal const val VOTING_ENABLED = true
 
 class MoreVM(
     private val getVersionInfo: GetVersionInfoProvider,

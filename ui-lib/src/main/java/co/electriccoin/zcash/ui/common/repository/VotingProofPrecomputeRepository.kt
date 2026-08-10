@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.repository
 
 import co.electriccoin.zcash.ui.common.model.voting.VotingDelegationPirPrecomputeResult
+import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.model.voting.isRoundPhaseRegression
 import co.electriccoin.zcash.ui.common.provider.PirSnapshotResolver
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
@@ -25,6 +26,7 @@ data class VotingDelegationPirPrecomputeRequest(
     val roundId: String,
     val bundleIndex: Int,
     val pirEndpoints: List<String>,
+    val pirLayout: VotingPirLayout,
     val expectedSnapshotHeight: Long,
     val networkId: Int,
     val notesJson: String
@@ -104,6 +106,7 @@ class VotingProofPrecomputeRepositoryImpl(
                     roundId = request.roundId,
                     bundleIndex = request.bundleIndex,
                     pirServerUrl = pirServerUrl,
+                    pirLayout = request.pirLayout,
                     notesJson = request.notesJson
                 )
             } finally {

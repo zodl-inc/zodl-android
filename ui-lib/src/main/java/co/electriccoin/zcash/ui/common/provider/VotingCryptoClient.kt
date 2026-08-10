@@ -33,6 +33,7 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingDelegationProof
 import co.electriccoin.zcash.ui.common.model.voting.VotingDelegationSubmission
 import co.electriccoin.zcash.ui.common.model.voting.VotingGovernancePczt
 import co.electriccoin.zcash.ui.common.model.voting.VotingHotkey
+import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.model.voting.VotingShareDelegationRecord
 import co.electriccoin.zcash.ui.common.model.voting.VotingTxHashLookup
 import co.electriccoin.zcash.ui.common.model.voting.VotingVoteCommitment
@@ -233,6 +234,7 @@ interface VotingCryptoClient {
         roundId: String,
         bundleIndex: Int,
         pirServerUrl: String,
+        pirLayout: VotingPirLayout,
         notesJson: String
     ): VotingDelegationPirPrecomputeResult
 
@@ -243,6 +245,7 @@ interface VotingCryptoClient {
         roundId: String,
         bundleIndex: Int,
         pirServerUrl: String,
+        pirLayout: VotingPirLayout,
         notesJson: String,
         fvkBytes: ByteArray,
         hotkeySeed: ByteArray,
@@ -769,11 +772,20 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         roundId: String,
         bundleIndex: Int,
         pirServerUrl: String,
+        pirLayout: VotingPirLayout,
         notesJson: String
     ): VotingDelegationPirPrecomputeResult =
         withContext(Dispatchers.IO) {
             db(dbHandle)
-                .precomputeDelegationPir(roundId, bundleIndex, pirServerUrl, notesJson.toJniNoteInfos())
+                .precomputeDelegationPir(
+                    roundId,
+                    bundleIndex,
+                    pirServerUrl,
+                    pirLayout.pirDepth,
+                    pirLayout.tier0Layers,
+                    pirLayout.tier1Layers,
+                    notesJson.toJniNoteInfos()
+                )
                 .toAppModel()
         }
 
@@ -782,6 +794,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         roundId: String,
         bundleIndex: Int,
         pirServerUrl: String,
+        pirLayout: VotingPirLayout,
         notesJson: String,
         fvkBytes: ByteArray,
         hotkeySeed: ByteArray,
@@ -796,6 +809,9 @@ class VotingCryptoClientImpl : VotingCryptoClient {
                     roundId,
                     bundleIndex,
                     pirServerUrl,
+                    pirLayout.pirDepth,
+                    pirLayout.tier0Layers,
+                    pirLayout.tier1Layers,
                     notesJson.toJniNoteInfos(),
                     fvkBytes,
                     hotkeySeed,

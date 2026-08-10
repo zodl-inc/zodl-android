@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.common.model.voting.TxConfirmation
 import co.electriccoin.zcash.ui.common.model.voting.TxConfirmationProbeResult
 import co.electriccoin.zcash.ui.common.model.voting.TxResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
+import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionProgress
@@ -88,6 +89,7 @@ class SubmitVotesUseCase(
         val hotkeySeed: ByteArray,
         val isKeystone: Boolean,
         val pirServerUrl: String,
+        val pirLayout: VotingPirLayout,
         val singleShare: Boolean,
         val sortedChoices: Map<Int, Int>,
         val totalChoices: Int
@@ -208,6 +210,7 @@ class SubmitVotesUseCase(
                     hotkeySeed = hotkeySeed,
                     isKeystone = isKeystone,
                     pirServerUrl = pirServerUrl,
+                    pirLayout = serviceConfig.pirLayout,
                     singleShare = singleShare,
                     sortedChoices = sortedChoices,
                     totalChoices = totalChoices
@@ -219,7 +222,7 @@ class SubmitVotesUseCase(
             try {
                 votingCryptoClient.setWalletId(
                     dbHandle,
-                    selectedAccount.sdkAccount.accountUuid.toString(),
+                    context.accountUuidString,
                     context.networkId
                 )
                 val bundleCount =
@@ -448,6 +451,7 @@ class SubmitVotesUseCase(
                     roundId = roundId,
                     bundleIndex = bundleIndex,
                     pirServerUrl = context.pirServerUrl,
+                    pirLayout = context.pirLayout,
                     notesJson = context.allNotesJson,
                     fvkBytes = fvkBytes,
                     hotkeySeed = context.hotkeySeed,
