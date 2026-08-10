@@ -33,4 +33,10 @@ class LightWalletEndpointProvider(
         }
 
     fun getDefaultEndpoint() = getEndpoints().first()
+
+    fun getDecommissionedHosts(): Set<String> =
+        setOf(
+            "jp.zec.stardust.rest",
+            "eu2.zec.stardust.rest",
+        )
 }
