@@ -23,6 +23,8 @@ import cash.z.ecc.android.sdk.internal.model.voting.JniVoteRecord
 import cash.z.ecc.android.sdk.internal.model.voting.JniVotingHotkey
 import cash.z.ecc.android.sdk.internal.model.voting.JniWireEncryptedShare
 import cash.z.ecc.android.sdk.internal.model.voting.JniWitnessData
+import co.electriccoin.zcash.ui.common.model.voting.BundleDelegationPhase
+import co.electriccoin.zcash.ui.common.model.voting.DelegationPhase
 import co.electriccoin.zcash.ui.common.model.voting.RoundPhase
 import co.electriccoin.zcash.ui.common.model.voting.RoundStateInfo
 import co.electriccoin.zcash.ui.common.model.voting.VotingBundleSetupResult
@@ -88,6 +90,31 @@ interface VotingCryptoClient {
         dbHandle: Long,
         roundId: String
     ): RoundStateInfo?
+
+    /**
+     * The canonical, per-bundle delegation phase for every bundle in the round. Callers deciding
+     * whether to (re)construct/prove/submit a specific bundle must use this, not [getRoundState]'s
+     * round-level phase — see [BundleDelegationPhase].
+     * @throws RuntimeException if the native layer reports a failure.
+     */
+    @Throws(RuntimeException::class)
+    suspend fun delegationPhases(
+        dbHandle: Long,
+        roundId: String
+    ): List<BundleDelegationPhase>
+
+    /**
+     * Clears unsigned/unproved delegation setup for this round (preserving submitted bundles and
+     * bundles with a persisted Keystone signature) so an interrupted or corrupted per-bundle setup
+     * can be rebuilt from scratch. Only call in response to a delegation-setup-overwrite error
+     * (see [isDelegationSetupOverwrite]), not routinely.
+     * @throws RuntimeException if the native layer reports a failure.
+     */
+    @Throws(RuntimeException::class)
+    suspend fun resetVotingSessionState(
+        dbHandle: Long,
+        roundId: String
+    )
 
     /** @throws RuntimeException if the native layer reports a failure. */
     @Throws(RuntimeException::class)
@@ -567,6 +594,26 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         withContext(Dispatchers.IO) {
             db(dbHandle).getRoundState(roundId)?.toAppModel()
         }
+
+    override suspend fun delegationPhases(
+        dbHandle: Long,
+        roundId: String
+    ): List<BundleDelegationPhase> =
+        withContext(Dispatchers.IO) {
+            db(dbHandle).delegationPhases(roundId).map { jni ->
+                BundleDelegationPhase(
+                    bundleIndex = jni.bundleIndex,
+                    phase = DelegationPhase.fromWireValue(jni.phase)
+                )
+            }
+        }
+
+    override suspend fun resetVotingSessionState(
+        dbHandle: Long,
+        roundId: String
+    ) = withContext(Dispatchers.IO) {
+        db(dbHandle).resetVotingSessionState(roundId)
+    }
 
     override suspend fun listRoundsJson(dbHandle: Long): String =
         withContext(Dispatchers.IO) {
@@ -1189,6 +1236,7 @@ private fun JniDelegationSubmissionResult.toAppModel() =
         rk = rk.copyOf(),
         spendAuthSig = spendAuthSig.copyOf(),
         sighash = sighash.copyOf(),
+        tx1Effects = tx1Effects.copyOf(),
         nfSigned = nfSigned.copyOf(),
         cmxNew = cmxNew.copyOf(),
         govComm = govComm.copyOf(),

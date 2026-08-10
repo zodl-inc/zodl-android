@@ -756,7 +756,7 @@ private fun DelegationRegistration.toApiBody(): String =
     JSONObject()
         .put("rk", rk.toBase64String())
         .put("spend_auth_sig", spendAuthSig.toBase64String())
-        .put("sighash", sighash.toBase64String())
+        .put("tx1_effects", tx1Effects.toBase64String())
         .put("signed_note_nullifier", signedNoteNullifier.toBase64String())
         .put("cmx_new", cmxNew.toBase64String())
         .put("van_cmx", vanCmx.toBase64String())

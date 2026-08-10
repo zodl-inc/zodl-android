@@ -6,7 +6,7 @@ import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.voting.CastVoteSignature
 import co.electriccoin.zcash.ui.common.model.voting.DelegatedShareInfo
-import co.electriccoin.zcash.ui.common.model.voting.RoundStateInfo
+import co.electriccoin.zcash.ui.common.model.voting.DelegationPhase
 import co.electriccoin.zcash.ui.common.model.voting.SharePayload
 import co.electriccoin.zcash.ui.common.model.voting.TxConfirmation
 import co.electriccoin.zcash.ui.common.model.voting.TxConfirmationProbeResult
@@ -19,9 +19,8 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionProgress
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingTxHashLookup
-import co.electriccoin.zcash.ui.common.model.voting.hasVoteReady
+import co.electriccoin.zcash.ui.common.model.voting.isDelegationSetupOverwrite
 import co.electriccoin.zcash.ui.common.model.voting.isLastMoment
-import co.electriccoin.zcash.ui.common.model.voting.isRoundPhaseRegression
 import co.electriccoin.zcash.ui.common.model.voting.toDelegationRegistration
 import co.electriccoin.zcash.ui.common.model.voting.toSharePayloads
 import co.electriccoin.zcash.ui.common.model.voting.toVoteCommitmentBundle
@@ -355,17 +354,31 @@ class SubmitVotesUseCase(
         )
     }
 
+    private suspend fun currentDelegationPhase(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int
+    ): DelegationPhase? =
+        votingCryptoClient
+            .delegationPhases(dbHandle, roundId)
+            .firstOrNull { bundle -> bundle.bundleIndex == bundleIndex }
+            ?.phase
+
     @Suppress("LongMethod")
     private suspend fun buildDelegationProofIfNeeded(
         context: VotingSubmitContext,
         dbHandle: Long,
         bundleIndex: Int,
         bundleCount: Int,
-        initialRoundState: RoundStateInfo?,
         onProgress: (VotingSubmissionProgress) -> Unit
     ) {
-        if (initialRoundState?.proofGenerated == true) return
         val roundId = context.roundId
+        if (currentDelegationPhase(dbHandle, roundId, bundleIndex).let {
+                it == DelegationPhase.SUBMITTED || it == DelegationPhase.CONFIRMED
+            }
+        ) {
+            return
+        }
         val witnessesJson =
             votingCryptoClient.generateNoteWitnessesJson(
                 dbHandle = dbHandle,
@@ -394,49 +407,55 @@ class SubmitVotesUseCase(
         precomputeResult?.onFailure { throwable ->
             Log.w(TAG, "Voting PIR precompute failed for round $roundId bundle $bundleIndex", throwable)
         }
-        if (!context.isKeystone && precomputeResult?.isSuccess != true) {
-            val governancePcztResult =
-                runCatching {
-                    votingCryptoClient.buildGovernancePcztFromSeed(
-                        dbHandle = dbHandle,
-                        roundId = roundId,
-                        bundleIndex = bundleIndex,
-                        ufvk =
-                            requireNotNull(context.accountUfvk) {
-                                "Software wallet account is missing UFVK for voting bundle $bundleIndex"
-                            },
-                        networkId = context.networkId,
-                        accountIndex = context.accountIndex,
-                        notesJson = context.allNotesJson,
-                        walletSeed =
-                            requireNotNull(context.senderSeed) {
-                                "Software wallet seed is missing for voting bundle $bundleIndex"
-                            },
-                        hotkeySeed = context.hotkeySeed,
-                        seedFingerprint =
-                            requireNotNull(context.seedFingerprint) {
-                                "Software wallet account is missing seed fingerprint for voting bundle $bundleIndex"
-                            },
-                        roundName = context.session.title
-                    )
-                }
-            // Foreground or resumed submit may find that Rust already
-            // advanced past PCZT building; ignore only that stale phase race.
-            governancePcztResult
-                .exceptionOrNull()
-                ?.takeUnless { throwable -> throwable.isRoundPhaseRegression() }
-                ?.let { throw it }
-            if (governancePcztResult.exceptionOrNull()?.isRoundPhaseRegression() == true) {
-                Log.i(
-                    TAG,
-                    "Skipping governance PCZT rebuild for round $roundId bundle $bundleIndex; " +
-                        "Rust round phase already advanced"
+        // Whether THIS call just wrote fresh PCZT/alpha for this bundle (a construct that
+        // succeeds, as opposed to the crate refusing to overwrite already-intact data). This
+        // matters because a stale `proofs` row can survive a setup reset (resetVotingSessionState
+        // clears `bundles` columns but not the `proofs` table) — if construct just wrote fresh
+        // alpha, any existing proof is for the OLD alpha and must be disregarded regardless of
+        // what the phase read below says. Precompute's outcome is intentionally never consulted
+        // here: it's a best-effort cache warm, not a signal for whether setup is done (a prior
+        // version treated a swallowed background-race "success" as "setup already built", which
+        // is exactly what left bundle 1's alpha NULL and crashed build_and_prove_delegation).
+        var setupJustBuilt = false
+        if (!context.isKeystone) {
+            runCatching {
+                votingCryptoClient.buildGovernancePcztFromSeed(
+                    dbHandle = dbHandle,
+                    roundId = roundId,
+                    bundleIndex = bundleIndex,
+                    ufvk =
+                        requireNotNull(context.accountUfvk) {
+                            "Software wallet account is missing UFVK for voting bundle $bundleIndex"
+                        },
+                    networkId = context.networkId,
+                    accountIndex = context.accountIndex,
+                    notesJson = context.allNotesJson,
+                    walletSeed =
+                        requireNotNull(context.senderSeed) {
+                            "Software wallet seed is missing for voting bundle $bundleIndex"
+                        },
+                    hotkeySeed = context.hotkeySeed,
+                    seedFingerprint =
+                        requireNotNull(context.seedFingerprint) {
+                            "Software wallet account is missing seed fingerprint for voting bundle $bundleIndex"
+                        },
+                    roundName = context.session.title
                 )
-            }
+            }.onSuccess {
+                setupJustBuilt = true
+            }.recoverCatching { throwable ->
+                // The crate refuses to silently overwrite already-persisted PCZT fields with
+                // different data — this bundle's setup is present and intact, nothing to do.
+                if (!throwable.isDelegationSetupOverwrite()) throw throwable
+            }.getOrThrow()
         }
 
-        val updatedRoundState = votingCryptoClient.getRoundState(dbHandle, roundId)
-        if (updatedRoundState?.proofGenerated != true) {
+        val alreadyProved =
+            !setupJustBuilt &&
+                currentDelegationPhase(dbHandle, roundId, bundleIndex).let {
+                    it == DelegationPhase.PROVED || it == DelegationPhase.SUBMITTED || it == DelegationPhase.CONFIRMED
+                }
+        if (!alreadyProved) {
             val fvkBytes =
                 votingCryptoClient.extractOrchardFvkFromUfvk(
                     ufvk =
@@ -528,14 +547,17 @@ class SubmitVotesUseCase(
             // scratch for this bundle.
         }
 
-        // A resumed round may already be past delegation/proving in Rust.
-        // Skip stale rebuild work instead of trying to regress the phase.
-        val rustRoundState = votingCryptoClient.getRoundState(dbHandle, roundId)
-        if (rustRoundState?.phase.hasVoteReady()) {
+        // A resumed round may already have this specific bundle submitted/confirmed. Per-bundle
+        // phase, not round-level: a multi-bundle round can have bundle 0 confirmed while bundle 1
+        // is still pending, and the round-level phase alone can't tell those apart.
+        if (currentDelegationPhase(dbHandle, roundId, bundleIndex).let {
+                it == DelegationPhase.SUBMITTED || it == DelegationPhase.CONFIRMED
+            }
+        ) {
             return
         }
 
-        buildDelegationProofIfNeeded(context, dbHandle, bundleIndex, bundleCount, rustRoundState, onProgress)
+        buildDelegationProofIfNeeded(context, dbHandle, bundleIndex, bundleCount, onProgress)
         votingRecoveryRepository.setPhase(
             accountUuid = context.accountUuidString,
             roundId = roundId,

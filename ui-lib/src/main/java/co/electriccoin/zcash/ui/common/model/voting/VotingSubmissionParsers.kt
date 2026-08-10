@@ -14,7 +14,7 @@ fun VotingDelegationSubmission.toDelegationRegistration() =
         govNullifiers = govNullifiers,
         proof = proof,
         voteRoundId = voteRoundId.hexStringToBytes(),
-        sighash = sighash
+        tx1Effects = tx1Effects
     )
 
 fun VotingVoteCommitment.toVoteCommitmentBundle(): VoteCommitmentBundle =

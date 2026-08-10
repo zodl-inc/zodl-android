@@ -2,7 +2,6 @@ package co.electriccoin.zcash.ui.common.repository
 
 import co.electriccoin.zcash.ui.common.model.voting.VotingDelegationPirPrecomputeResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
-import co.electriccoin.zcash.ui.common.model.voting.isRoundPhaseRegression
 import co.electriccoin.zcash.ui.common.provider.PirSnapshotResolver
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import kotlinx.coroutines.CoroutineScope
@@ -112,12 +111,13 @@ class VotingProofPrecomputeRepositoryImpl(
             } finally {
                 votingCryptoClient.closeVotingDb(dbHandle)
             }
-        }.recoverCatching { exception ->
-            // Foreground submit can advance the Rust round while this background
-            // precompute is still running. Treat that stale phase race as a cache miss.
-            if (!exception.isRoundPhaseRegression()) {
-                throw exception
-            }
-            VotingDelegationPirPrecomputeResult(cachedCount = 0, fetchedCount = 0)
+            // No round-phase-regression recovery here (2026-08-10): precompute never touches
+            // round/delegation phase (see PrepareVotingRoundUseCase/SubmitVotesUseCase's
+            // construct-step handling), so that race can no longer occur, and reporting a
+            // fake `Result.success(cachedCount=0, fetchedCount=0)` for a real failure is exactly
+            // what let a genuine construct failure hide behind "precompute succeeded" and leave
+            // a bundle's alpha NULL. A real precompute failure should surface as a plain
+            // Result.failure cache miss (callers already treat any failed/absent precompute
+            // result as "PIR data wasn't warmed", nothing more).
         }
 }

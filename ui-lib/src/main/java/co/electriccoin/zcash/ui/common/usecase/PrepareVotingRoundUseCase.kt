@@ -6,13 +6,12 @@ import cash.z.ecc.android.sdk.ext.toHex
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
-import co.electriccoin.zcash.ui.common.model.voting.RoundPhase
+import co.electriccoin.zcash.ui.common.model.voting.DelegationPhase
 import co.electriccoin.zcash.ui.common.model.voting.VoteIneligibilityReason
 import co.electriccoin.zcash.ui.common.model.voting.VotingBundleSetupResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
-import co.electriccoin.zcash.ui.common.model.voting.canBuildGovernancePczt
-import co.electriccoin.zcash.ui.common.model.voting.canGenerateHotkey
+import co.electriccoin.zcash.ui.common.model.voting.isDelegationSetupOverwrite
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
@@ -229,16 +228,26 @@ class PrepareVotingRoundUseCase(
                         }
                     }
 
+                    // Round-level phase can't tell "this round's bundles are all still
+                    // Prepared" apart from "bundle 0 raced ahead to Proved while bundle 1
+                    // hasn't been touched yet" (2026-08-10) — per-bundle delegation phase is
+                    // the only safe signal for "has ANY signer material already been baked
+                    // into a persisted PCZT for this round" (i.e. is the hotkey load-bearing).
+                    val hotkeyBound =
+                        existingRoundState != null &&
+                            votingCryptoClient
+                                .delegationPhases(dbHandle, roundId)
+                                .any { bundle -> bundle.phase != DelegationPhase.PREPARED }
                     val hotkeySeed =
                         getOrCreateHotkeySeed(
                             accountUuid = accountUuidString,
                             roundId = roundId,
                             recoverySnapshot = effectiveRecoverySnapshot,
-                            existingRoundStatePhase = existingRoundState?.phase
+                            hotkeyBound = hotkeyBound
                         )
-                    val shouldGenerateHotkey =
-                        existingRoundState?.phase.canGenerateHotkey() ||
-                            (existingRoundState?.phase == RoundPhase.HOTKEY && existingRoundState.hotkeyAddress == null)
+                    val recoveredHotkeyAddress =
+                        effectiveRecoverySnapshot?.hotkeyAddress ?: existingRoundState?.hotkeyAddress
+                    val shouldGenerateHotkey = !hotkeyBound || recoveredHotkeyAddress == null
                     val hotkeyAddress =
                         if (shouldGenerateHotkey) {
                             val hotkey =
@@ -253,16 +262,19 @@ class PrepareVotingRoundUseCase(
                             )
                             hotkey.address
                         } else {
-                            val recoveredHotkeyAddress =
-                                effectiveRecoverySnapshot?.hotkeyAddress
-                                    ?: existingRoundState?.hotkeyAddress
-                                    ?: error("Missing hotkey address for resumed voting round $roundId")
+                            // shouldGenerateHotkey's `recoveredHotkeyAddress == null` disjunct
+                            // guarantees non-null here (this is its else branch); check kept as
+                            // a defensive invariant, not a real fallback.
+                            val address =
+                                checkNotNull(recoveredHotkeyAddress) {
+                                    "Missing hotkey address for resumed voting round $roundId"
+                                }
                             storeRecoveredHotkeyAddress(
                                 accountUuid = accountUuidString,
                                 roundId = roundId,
-                                hotkeyAddress = recoveredHotkeyAddress
+                                hotkeyAddress = address
                             )
-                            recoveredHotkeyAddress
+                            address
                         }
                     votingSessionStore.setEligibility(VotingEligibility.ELIGIBLE)
                     if (existingRoundState == null && selectedAccount !is KeystoneAccount) {
@@ -410,7 +422,7 @@ class PrepareVotingRoundUseCase(
         accountUuid: String,
         roundId: String,
         recoverySnapshot: VotingRecoverySnapshot?,
-        existingRoundStatePhase: RoundPhase?
+        hotkeyBound: Boolean
     ): ByteArray {
         recoverySnapshot?.decodeHotkeySeed()?.let { legacySeed ->
             if (votingHotkeySeedProvider.get(accountUuid) == null) {
@@ -421,7 +433,13 @@ class PrepareVotingRoundUseCase(
 
         votingHotkeySeedProvider.get(accountUuid)?.let { return it }
 
-        if (existingRoundStatePhase != null && existingRoundStatePhase != RoundPhase.INITIALIZED) {
+        // A round is "hotkey-bound" once any bundle has a persisted PCZT (past DelegationPhase
+        // .PREPARED, per-bundle — see the call site) built with a specific hotkey; minting a
+        // fresh, different seed here would silently desync from that already-signed material.
+        // Never gate this on the round-level RoundPhase: it can't distinguish "this round's
+        // bundles are all still Prepared" from "some OTHER bundle in this round already raced
+        // ahead to Proved" (2026-08-10 multi-bundle delegation fix).
+        if (hotkeyBound) {
             error("Missing stored hotkey seed for resumed round $roundId")
         }
 
@@ -450,9 +468,22 @@ class PrepareVotingRoundUseCase(
         expectedSnapshotHeight: Long
     ): List<VotingDelegationPirPrecomputeRequest> {
         val requests = mutableListOf<VotingDelegationPirPrecomputeRequest>()
+        val phaseByBundle =
+            votingCryptoClient
+                .delegationPhases(dbHandle, roundId)
+                .associate { bundle -> bundle.bundleIndex to bundle.phase }
         repeat(bundleCount) { bundleIndex ->
+            // Already-submitted/confirmed bundles have nothing left to construct or precompute.
+            if (phaseByBundle[bundleIndex]?.let { it == DelegationPhase.SUBMITTED || it == DelegationPhase.CONFIRMED } == true) {
+                return@repeat
+            }
             runCatching {
-                if (votingCryptoClient.getRoundState(dbHandle, roundId)?.phase.canBuildGovernancePczt()) {
+                // Always attempt construct for a pending bundle rather than gating on a
+                // pre-read phase: construct is cheap (no ZKP), and the crate's own
+                // overwrite-refusal is the only reliable signal that this bundle's setup is
+                // already present and intact (round-level phase can lie — see
+                // getOrCreateHotkeySeed's doc comment above).
+                runCatching {
                     votingCryptoClient.buildGovernancePcztFromSeed(
                         dbHandle = dbHandle,
                         roundId = roundId,
@@ -466,7 +497,10 @@ class PrepareVotingRoundUseCase(
                         seedFingerprint = seedFingerprint,
                         roundName = roundName
                     )
-                }
+                }.recoverCatching { throwable ->
+                    if (!throwable.isDelegationSetupOverwrite()) throw throwable
+                }.getOrThrow()
+
                 requests +=
                     VotingDelegationPirPrecomputeRequest(
                         accountUuid = accountUuid,
@@ -481,7 +515,11 @@ class PrepareVotingRoundUseCase(
                         notesJson = notesJson
                     )
             }.onFailure { throwable ->
-                Log.w(TAG, "Skipping voting PIR precompute for round $roundId bundle $bundleIndex", throwable)
+                // Deliberately error-level, not warn: a swallowed construct failure here is
+                // exactly what hid the original "no alpha for round=..., bundle=1" crash — the
+                // bundle silently never got precompute-registered and crashed much later at
+                // submit time instead.
+                Log.e(TAG, "Voting PIR precompute setup failed for round $roundId bundle $bundleIndex", throwable)
             }
         }
         return requests

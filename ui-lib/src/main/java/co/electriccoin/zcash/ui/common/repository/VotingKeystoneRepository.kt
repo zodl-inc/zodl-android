@@ -5,7 +5,7 @@ import cash.z.ecc.android.sdk.model.Pczt
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
-import co.electriccoin.zcash.ui.common.model.voting.canBuildGovernancePczt
+import co.electriccoin.zcash.ui.common.model.voting.isDelegationSetupOverwrite
 import co.electriccoin.zcash.ui.common.model.voting.votingBundleRawWeights
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -36,13 +36,6 @@ class VotingKeystoneBundlesAlreadySignedException(
     roundId: String
 ) : VotingKeystoneResumeSubmissionException(
         "All Keystone voting bundles are already signed for round $roundId"
-    )
-
-class VotingKeystoneRoundPhaseAdvancedException(
-    roundId: String,
-    phase: Any?
-) : VotingKeystoneResumeSubmissionException(
-        "Keystone signing request cannot rebuild PCZT for round $roundId at phase $phase"
     )
 
 sealed class VotingKeystoneSignatureRejectedException(
@@ -188,12 +181,6 @@ class VotingKeystoneRepositoryImpl(
                         accountUuid,
                         networkId
                     )
-                    // Keystone signing starts by building a governance PCZT. Once Rust
-                    // advances past delegation, rebuilding it would regress the round phase.
-                    val roundState = votingCryptoClient.getRoundState(dbHandle, roundId)
-                    if (!roundState?.phase.canBuildGovernancePczt()) {
-                        throw VotingKeystoneRoundPhaseAdvancedException(roundId, roundState?.phase)
-                    }
                     votingCryptoClient.generateNoteWitnessesJson(
                         dbHandle = dbHandle,
                         roundId = roundId,
@@ -203,18 +190,49 @@ class VotingKeystoneRepositoryImpl(
                         notesJson = allNotesJson
                     )
                     val fvkBytes = votingCryptoClient.extractOrchardFvkFromUfvk(ufvk, networkId)
+                    // Keystone signing starts by building a governance PCZT. Multi-bundle rounds
+                    // legitimately have other bundles already past this point (round-level phase
+                    // can't tell them apart from this one — 2026-08-10), so this always attempts
+                    // construct rather than pre-checking phase. By this point the caller has
+                    // already returned early via `pendingRequest` above for any bundle whose
+                    // redacted PCZT is still cached app-side, so a setup-overwrite refusal here
+                    // means the Rust-side PCZT survived while the app's own cache of it didn't
+                    // (e.g. reinstall) — there's no redacted PCZT left to hand back to the user,
+                    // so the only way forward is to reset this round's unsigned setup and mint a
+                    // fresh one.
                     val governancePczt =
-                        votingCryptoClient.buildGovernancePczt(
-                            dbHandle = dbHandle,
-                            roundId = roundId,
-                            bundleIndex = bundleIndex,
-                            fvkBytes = fvkBytes,
-                            hotkeySeed = hotkeySeed,
-                            accountIndex = accountIndex,
-                            notesJson = allNotesJson,
-                            seedFingerprint = seedFingerprint,
-                            roundName = session.title
-                        )
+                        runCatching {
+                            votingCryptoClient.buildGovernancePczt(
+                                dbHandle = dbHandle,
+                                roundId = roundId,
+                                bundleIndex = bundleIndex,
+                                fvkBytes = fvkBytes,
+                                hotkeySeed = hotkeySeed,
+                                accountIndex = accountIndex,
+                                notesJson = allNotesJson,
+                                seedFingerprint = seedFingerprint,
+                                roundName = session.title
+                            )
+                        }.recoverCatching { throwable ->
+                            if (!throwable.isDelegationSetupOverwrite()) throw throwable
+                            Log.i(
+                                TAG,
+                                "Keystone governance PCZT setup for round $roundId bundle $bundleIndex " +
+                                    "looks corrupted; resetting and rebuilding once"
+                            )
+                            votingCryptoClient.resetVotingSessionState(dbHandle, roundId)
+                            votingCryptoClient.buildGovernancePczt(
+                                dbHandle = dbHandle,
+                                roundId = roundId,
+                                bundleIndex = bundleIndex,
+                                fvkBytes = fvkBytes,
+                                hotkeySeed = hotkeySeed,
+                                accountIndex = accountIndex,
+                                notesJson = allNotesJson,
+                                seedFingerprint = seedFingerprint,
+                                roundName = session.title
+                            )
+                        }.getOrThrow()
                     val redactedPcztBytes =
                         synchronizer
                             .redactPcztForSigner(Pczt(governancePczt.pcztBytes))

@@ -25,7 +25,7 @@ data class DelegationRegistration(
     val govNullifiers: List<ByteArray>,
     val proof: ByteArray,
     val voteRoundId: ByteArray,
-    val sighash: ByteArray
+    val tx1Effects: ByteArray
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -39,7 +39,7 @@ data class DelegationRegistration(
             govNullifiers.contentListEquals(other.govNullifiers) &&
             proof.contentEquals(other.proof) &&
             voteRoundId.contentEquals(other.voteRoundId) &&
-            sighash.contentEquals(other.sighash)
+            tx1Effects.contentEquals(other.tx1Effects)
     }
 
     override fun hashCode(): Int {
@@ -51,7 +51,7 @@ data class DelegationRegistration(
         result = 31 * result + govNullifiers.contentListHashCode()
         result = 31 * result + proof.contentHashCode()
         result = 31 * result + voteRoundId.contentHashCode()
-        result = 31 * result + sighash.contentHashCode()
+        result = 31 * result + tx1Effects.contentHashCode()
         return result
     }
 }

@@ -90,6 +90,7 @@ data class VotingDelegationSubmission(
     val rk: ByteArray,
     val spendAuthSig: ByteArray,
     val sighash: ByteArray,
+    val tx1Effects: ByteArray,
     val nfSigned: ByteArray,
     val cmxNew: ByteArray,
     val govComm: ByteArray,
