@@ -23,4 +23,8 @@ fun RoundPhase?.hasVoteReady(): Boolean =
  * healthy case) is [co.electriccoin.zcash.ui.common.provider.VotingCryptoClient.resetVotingSessionState].
  */
 fun Throwable.isDelegationSetupOverwrite(): Boolean =
-    message.orEmpty().contains("refusing to overwrite", ignoreCase = true)
+    generateSequence(this) { throwable -> throwable.cause }
+        .any { throwable ->
+            throwable.message
+                ?.contains("refusing to overwrite", ignoreCase = true) == true
+        }
