@@ -19,15 +19,6 @@ import cash.z.ecc.android.sdk.model.voting.VotingRoundState
 import cash.z.ecc.android.sdk.model.voting.VotingSharePayload
 import cash.z.ecc.android.sdk.model.voting.VotingVanWitness
 import cash.z.ecc.android.sdk.model.voting.VotingWitness
-import cash.z.ecc.android.sdk.model.voting.VotingBundleSetupResult as SdkVotingBundleSetupResult
-import cash.z.ecc.android.sdk.model.voting.VotingCommitmentBundleRecord as SdkVotingCommitmentBundleRecord
-import cash.z.ecc.android.sdk.model.voting.VotingCommittedVoteRecord as SdkVotingCommittedVoteRecord
-import cash.z.ecc.android.sdk.model.voting.VotingDelegationPirPrecomputeResult as SdkVotingDelegationPirPrecomputeResult
-import cash.z.ecc.android.sdk.model.voting.VotingGovernancePczt as SdkVotingGovernancePczt
-import cash.z.ecc.android.sdk.model.voting.VotingHotkey as SdkVotingHotkey
-import cash.z.ecc.android.sdk.model.voting.VotingShareDelegationRecord as SdkVotingShareDelegationRecord
-import cash.z.ecc.android.sdk.model.voting.VotingTxHashLookup as SdkVotingTxHashLookup
-import cash.z.ecc.android.sdk.model.voting.VotingVoteRecord as SdkVotingVoteRecord
 import co.electriccoin.zcash.ui.common.model.voting.BundleDelegationPhase
 import co.electriccoin.zcash.ui.common.model.voting.DelegationPhase
 import co.electriccoin.zcash.ui.common.model.voting.RoundPhase
@@ -53,6 +44,15 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicLong
+import cash.z.ecc.android.sdk.model.voting.VotingBundleSetupResult as SdkVotingBundleSetupResult
+import cash.z.ecc.android.sdk.model.voting.VotingCommitmentBundleRecord as SdkVotingCommitmentBundleRecord
+import cash.z.ecc.android.sdk.model.voting.VotingCommittedVoteRecord as SdkVotingCommittedVoteRecord
+import cash.z.ecc.android.sdk.model.voting.VotingDelegationPirPrecomputeResult as SdkVotingDelegationPirPrecomputeResult
+import cash.z.ecc.android.sdk.model.voting.VotingGovernancePczt as SdkVotingGovernancePczt
+import cash.z.ecc.android.sdk.model.voting.VotingHotkey as SdkVotingHotkey
+import cash.z.ecc.android.sdk.model.voting.VotingShareDelegationRecord as SdkVotingShareDelegationRecord
+import cash.z.ecc.android.sdk.model.voting.VotingTxHashLookup as SdkVotingTxHashLookup
+import cash.z.ecc.android.sdk.model.voting.VotingVoteRecord as SdkVotingVoteRecord
 
 /**
  * Kotlin surface over the voting-crypto backend, delegating to the public [VotingSdk] and its
@@ -708,8 +708,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
                     BlockHeight.new(snapshotHeight),
                     networkId,
                     AccountUuid.new(accountUuidBytes)
-                )
-                .toNotesJson()
+                ).toNotesJson()
         }
 
     override suspend fun deriveHotkeyRawAddress(
@@ -835,8 +834,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
                     pirLayout.tier0Layers,
                     pirLayout.tier1Layers,
                     notesJson.toVotingNoteInfos()
-                )
-                .toAppModel()
+                ).toAppModel()
         }
 
     override suspend fun buildAndProveDelegation(

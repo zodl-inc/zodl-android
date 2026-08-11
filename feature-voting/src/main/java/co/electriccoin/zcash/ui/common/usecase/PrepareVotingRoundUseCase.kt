@@ -424,28 +424,28 @@ class PrepareVotingRoundUseCase(
         recoverySnapshot: VotingRecoverySnapshot?,
         hotkeyBound: Boolean
     ): ByteArray {
-        recoverySnapshot?.decodeHotkeySeed()?.let { legacySeed ->
-            if (votingHotkeySeedProvider.get(accountUuid) == null) {
-                votingHotkeySeedProvider.store(accountUuid, legacySeed)
+        val legacySeed = recoverySnapshot?.decodeHotkeySeed()
+        val storedSeed = votingHotkeySeedProvider.get(accountUuid)
+
+        if (legacySeed != null && storedSeed == null) {
+            votingHotkeySeedProvider.store(accountUuid, legacySeed)
+        }
+
+        return legacySeed ?: storedSeed ?: run {
+            // A round is "hotkey-bound" once any bundle has a persisted PCZT (past DelegationPhase
+            // .PREPARED, per-bundle — see the call site) built with a specific hotkey; minting a
+            // fresh, different seed here would silently desync from that already-signed material.
+            // Never gate this on the round-level RoundPhase: it can't distinguish "this round's
+            // bundles are all still Prepared" from "some OTHER bundle in this round already raced
+            // ahead to Proved" (2026-08-10 multi-bundle delegation fix).
+            if (hotkeyBound) {
+                error("Missing stored hotkey seed for resumed round $roundId")
             }
-            return legacySeed
+
+            ByteArray(HOTKEY_SEED_BYTES)
+                .also(secureRandom::nextBytes)
+                .also { seed -> votingHotkeySeedProvider.store(accountUuid, seed) }
         }
-
-        votingHotkeySeedProvider.get(accountUuid)?.let { return it }
-
-        // A round is "hotkey-bound" once any bundle has a persisted PCZT (past DelegationPhase
-        // .PREPARED, per-bundle — see the call site) built with a specific hotkey; minting a
-        // fresh, different seed here would silently desync from that already-signed material.
-        // Never gate this on the round-level RoundPhase: it can't distinguish "this round's
-        // bundles are all still Prepared" from "some OTHER bundle in this round already raced
-        // ahead to Proved" (2026-08-10 multi-bundle delegation fix).
-        if (hotkeyBound) {
-            error("Missing stored hotkey seed for resumed round $roundId")
-        }
-
-        return ByteArray(HOTKEY_SEED_BYTES)
-            .also(secureRandom::nextBytes)
-            .also { seed -> votingHotkeySeedProvider.store(accountUuid, seed) }
     }
 
     private suspend fun buildSoftwareDelegationPirPrecomputeRequests(
@@ -474,7 +474,11 @@ class PrepareVotingRoundUseCase(
                 .associate { bundle -> bundle.bundleIndex to bundle.phase }
         repeat(bundleCount) { bundleIndex ->
             // Already-submitted/confirmed bundles have nothing left to construct or precompute.
-            if (phaseByBundle[bundleIndex]?.let { it == DelegationPhase.SUBMITTED || it == DelegationPhase.CONFIRMED } == true) {
+            val isAlreadyFinalized =
+                phaseByBundle[bundleIndex]?.let {
+                    it == DelegationPhase.SUBMITTED || it == DelegationPhase.CONFIRMED
+                } == true
+            if (isAlreadyFinalized) {
                 return@repeat
             }
             runCatching {
