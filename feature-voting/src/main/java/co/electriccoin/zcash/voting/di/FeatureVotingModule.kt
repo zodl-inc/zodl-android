@@ -1,6 +1,8 @@
 package co.electriccoin.zcash.voting.di
 
+import co.electriccoin.zcash.ui.common.provider.HttpPirSnapshotResolver
 import co.electriccoin.zcash.ui.common.provider.KtorVotingApiProvider
+import co.electriccoin.zcash.ui.common.provider.PirSnapshotResolver
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClientImpl
@@ -72,6 +74,7 @@ val featureVotingModule =
         singleOf(::VotingCryptoClientImpl) bind VotingCryptoClient::class
         singleOf(::VotingHotkeySeedProviderImpl) bind VotingHotkeySeedProvider::class
         singleOf(::KtorVotingApiProvider) bind VotingApiProvider::class
+        singleOf(::HttpPirSnapshotResolver) bind PirSnapshotResolver::class
         singleOf(::VotingShareTrackingScheduler)
 
         // Repositories

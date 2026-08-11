@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.repository
 
 import co.electriccoin.zcash.ui.common.model.voting.VotingDelegationPirPrecomputeResult
+import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.provider.PirSnapshotResolver
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import kotlinx.coroutines.CoroutineScope
@@ -54,6 +55,7 @@ class VotingProofPrecomputeRepositoryTest {
                         roundId = "round-id",
                         bundleIndex = 1,
                         pirServerUrl = "https://pir.example",
+                        pirLayout = VotingPirLayout(),
                         notesJson = "[notes]"
                     ),
                     CryptoCall.CloseVotingDb(DB_HANDLE)
@@ -93,13 +95,10 @@ class VotingProofPrecomputeRepositoryTest {
         }
 
     @Test
-    fun phaseRegressionPrecomputeFailureReturnsEmptyResultAndClosesVotingDb() =
+    fun phaseRegressionPrecomputeFailureIsReturnedAsResultAndClosesVotingDb() =
         runBlocking {
-            val cryptoClient =
-                FakeVotingCryptoClient(
-                    precomputeFailure =
-                        IllegalStateException("refusing to regress round phase from PROVED to DELEGATION")
-                )
+            val failure = IllegalStateException("refusing to regress round phase from PROVED to DELEGATION")
+            val cryptoClient = FakeVotingCryptoClient(precomputeFailure = failure)
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
@@ -111,11 +110,17 @@ class VotingProofPrecomputeRepositoryTest {
 
             repository.startDelegationPirPrecompute(request)
 
-            val result =
-                requireNotNull(repository.awaitDelegationPirPrecompute(request.key))
-                    .getOrThrow()
+            val result = requireNotNull(repository.awaitDelegationPirPrecompute(request.key))
+            val thrown =
+                assertFailsWith<IllegalStateException> {
+                    result.getOrThrow()
+                }
 
-            assertEquals(VotingDelegationPirPrecomputeResult(cachedCount = 0, fetchedCount = 0), result)
+            // A phase-regression-flavored failure during precompute is no longer swallowed into
+            // a fake success (see VotingProofPrecomputeRepositoryImpl.runPrecompute) - it now
+            // surfaces as a plain Result.failure, same as any other precompute failure, while
+            // still closing the voting DB.
+            assertEquals(failure, thrown)
             assertEquals(CryptoCall.CloseVotingDb(DB_HANDLE), cryptoClient.calls.last())
 
             scope.cancel()
@@ -150,6 +155,7 @@ class VotingProofPrecomputeRepositoryTest {
             roundId = "round-id",
             bundleIndex = 1,
             pirEndpoints = listOf("https://pir-a", "https://pir-b"),
+            pirLayout = VotingPirLayout(),
             expectedSnapshotHeight = 123L,
             networkId = 0,
             notesJson = "[notes]"
@@ -210,7 +216,8 @@ private class FakeVotingCryptoClient(
                             roundId = args.valueAt(1),
                             bundleIndex = args.valueAt(2),
                             pirServerUrl = args.valueAt(3),
-                            notesJson = args.valueAt(4)
+                            pirLayout = args.valueAt(4),
+                            notesJson = args.valueAt(5)
                         )
                     precomputeFailure?.let { throw it }
                     VotingDelegationPirPrecomputeResult(cachedCount = 2, fetchedCount = 3)
@@ -254,6 +261,7 @@ private sealed interface CryptoCall {
         val roundId: String,
         val bundleIndex: Int,
         val pirServerUrl: String,
+        val pirLayout: VotingPirLayout,
         val notesJson: String
     ) : CryptoCall
 

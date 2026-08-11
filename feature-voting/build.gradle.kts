@@ -85,4 +85,5 @@ dependencies {
     testImplementation(libs.kotlin.reflect)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockk)
+    testImplementation("io.ktor:ktor-client-mock")
 }

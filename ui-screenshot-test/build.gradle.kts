@@ -72,6 +72,7 @@ dependencies {
     implementation(projects.configurationApiLib)
     implementation(projects.configurationImplAndroidLib)
     implementation(projects.featureMigration)
+    implementation(projects.featureVoting)
     implementation(projects.sdkExtLib)
     implementation(projects.spackleAndroidLib)
     implementation(projects.testLib)

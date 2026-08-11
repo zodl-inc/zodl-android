@@ -74,7 +74,7 @@ class SkipRemainingKeystoneBundlesUseCaseTest {
                     CryptoCall.OpenVotingDb("/tmp/wallet/voting.sqlite3"),
                     CryptoCall.SetWalletId(
                         dbHandle = DB_HANDLE,
-                        walletId = selectedAccount.sdkAccount.accountUuid.toString(),
+                        walletId = accountUuid,
                         networkId = 0
                     ),
                     CryptoCall.DeleteSkippedBundles(
@@ -119,7 +119,7 @@ class SkipRemainingKeystoneBundlesUseCaseTest {
                     CryptoCall.OpenVotingDb("/tmp/wallet/voting.sqlite3"),
                     CryptoCall.SetWalletId(
                         dbHandle = DB_HANDLE,
-                        walletId = selectedAccount.sdkAccount.accountUuid.toString(),
+                        walletId = accountUuid,
                         networkId = 0
                     ),
                     CryptoCall.DeleteSkippedBundles(
