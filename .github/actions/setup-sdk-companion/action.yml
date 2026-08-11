@@ -1,0 +1,75 @@
+name: 'Companion SDK Build (commit-pinned)'
+description: >-
+  If SDK_COMMIT_PIN is set in gradle.properties, checks out that exact commit of
+  zcash/zcash-android-wallet-sdk, installs its Rust/NDK toolchain, and points Gradle's
+  composite build at it via ORG_GRADLE_PROJECT_SDK_INCLUDED_BUILD_PATH — so a co-developed
+  app PR can build/lint/test against unreleased SDK changes without waiting on a Maven
+  publish. No-ops (does nothing) whenever the pin is blank, which is the default, normal
+  case for every branch that isn't actively co-developing against an SDK PR.
+outputs:
+  active:
+    description: "'true' if the companion SDK build was activated this run, else empty."
+    value: ${{ steps.pin.outputs.commit != '' && 'true' || '' }}
+runs:
+  using: "composite"
+  steps:
+    - name: Read SDK_COMMIT_PIN and enforce the branch gate
+      id: pin
+      shell: bash
+      run: |
+        PIN="$(grep -m1 '^SDK_COMMIT_PIN=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')"
+        TARGET="${{ github.base_ref || github.ref_name }}"
+        if [ -n "${PIN}" ] && [ "${TARGET}" != "main" ]; then
+          echo "::error::SDK_COMMIT_PIN is set to '${PIN}' but this workflow's target branch is '${TARGET}', not main. SDK_COMMIT_PIN is only supported on main and branches targeting main — clear it before merging into maint/release/review branches, which must always build against a real published SDK version." >&2
+          exit 1
+        fi
+        echo "commit=${PIN}" >> "$GITHUB_OUTPUT"
+    - name: Checkout companion SDK commit
+      if: steps.pin.outputs.commit != ''
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      with:
+        repository: zcash/zcash-android-wallet-sdk
+        ref: ${{ steps.pin.outputs.commit }}
+        path: .sdk-companion
+        fetch-depth: 1
+        persist-credentials: false
+    - name: Set up Android NDK for the companion SDK build
+      if: steps.pin.outputs.commit != ''
+      shell: bash
+      run: |
+        ANDROID_ROOT=/usr/local/lib/android
+        ANDROID_SDK_ROOT=${ANDROID_ROOT}/sdk
+        SDKMANAGER=${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager
+        echo "y" | "${SDKMANAGER}" "ndk;27.0.12077973"
+    - name: Set up Rust toolchain for the companion SDK build
+      if: steps.pin.outputs.commit != ''
+      shell: bash
+      working-directory: .sdk-companion
+      run: |
+        # rust-toolchain.toml in the SDK checkout is the single source of truth for the
+        # channel and target list — read it rather than hardcoding a version here, so this
+        # step never silently drifts from what the SDK itself actually builds with.
+        CHANNEL="$(sed -n 's/^channel *= *"\([^"]*\)".*/\1/p' rust-toolchain.toml)"
+        rustup toolchain install "${CHANNEL}"
+        rustup default "${CHANNEL}"
+        rustup target add --toolchain "${CHANNEL}" \
+          armv7-linux-androideabi aarch64-linux-android i686-linux-android x86_64-linux-android
+    - name: Rust cache for the companion SDK build
+      if: steps.pin.outputs.commit != ''
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae
+      with:
+        path: |
+          .sdk-companion/backend-lib/target
+          ~/.cargo/bin
+          ~/.cargo/registry/index
+          ~/.cargo/registry/cache
+          ~/.cargo/registry/src
+        key: ${{ runner.os }}-sdk-companion-rust-${{ steps.pin.outputs.commit }}
+        restore-keys: |
+          ${{ runner.os }}-sdk-companion-rust-
+    - name: Export SDK composite build override
+      if: steps.pin.outputs.commit != ''
+      shell: bash
+      run: |
+        echo "ORG_GRADLE_PROJECT_SDK_INCLUDED_BUILD_PATH=${{ github.workspace }}/.sdk-companion" >> "$GITHUB_ENV"
+        echo "::notice::Building against zcash-android-wallet-sdk@${{ steps.pin.outputs.commit }} (SDK_COMMIT_PIN), not the published Maven artifact."

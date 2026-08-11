@@ -161,6 +161,9 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0 # to fetch all commits
+      - name: Set up companion SDK build (if SDK_COMMIT_PIN is set)
+        timeout-minutes: 30
+        uses: ./.github/actions/setup-sdk-companion
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1
@@ -269,6 +272,9 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0 # to fetch all commits
+      - name: Set up companion SDK build (if SDK_COMMIT_PIN is set)
+        timeout-minutes: 30
+        uses: ./.github/actions/setup-sdk-companion
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1
@@ -405,6 +411,9 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0 # to fetch all commits
+      - name: Set up companion SDK build (if SDK_COMMIT_PIN is set)
+        timeout-minutes: 30
+        uses: ./.github/actions/setup-sdk-companion
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1
