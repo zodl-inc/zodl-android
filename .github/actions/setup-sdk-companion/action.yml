@@ -72,4 +72,16 @@ runs:
       shell: bash
       run: |
         echo "ORG_GRADLE_PROJECT_SDK_INCLUDED_BUILD_PATH=${{ github.workspace }}/.sdk-companion" >> "$GITHUB_ENV"
+        # The SDK's build-conventions module locks its own (build-tooling-only, not
+        # shipped-library) dependency graph via Gradle's dependencyLocking. Consumed as a
+        # composite build, that graph resolves inside this app's unified build session
+        # instead of standalone, which can shift a version just enough to violate the
+        # lock even though nothing about the actual voting/migration library code changed.
+        # ZCASH_IS_DEPENDENCY_LOCKING_ENABLED is build-conventions/build.gradle.kts's own,
+        # purpose-built escape hatch for exactly this (deliberately read only from a
+        # system property/CLI arg/env var, never from gradle.properties, so an included
+        # build's own gradle.properties can't silently flip it) — safe to disable here
+        # since this env var reaches only the companion build's tooling classpath
+        # resolution, not the app's own dependency locking (if any).
+        echo "ORG_GRADLE_PROJECT_ZCASH_IS_DEPENDENCY_LOCKING_ENABLED=false" >> "$GITHUB_ENV"
         echo "::notice::Building against zcash-android-wallet-sdk@${{ steps.pin.outputs.commit }} (SDK_COMMIT_PIN), not the published Maven artifact."
