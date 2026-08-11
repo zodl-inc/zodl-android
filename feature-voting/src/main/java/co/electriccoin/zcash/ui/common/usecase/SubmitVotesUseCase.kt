@@ -547,13 +547,22 @@ class SubmitVotesUseCase(
             // scratch for this bundle.
         }
 
-        // A resumed round may already have this specific bundle submitted/confirmed. Per-bundle
-        // phase, not round-level: a multi-bundle round can have bundle 0 confirmed while bundle 1
-        // is still pending, and the round-level phase alone can't tell those apart.
-        if (currentDelegationPhase(dbHandle, roundId, bundleIndex).let {
-                it == DelegationPhase.SUBMITTED || it == DelegationPhase.CONFIRMED
-            }
-        ) {
+        // A resumed round may already have this specific bundle CONFIRMED — nothing left to do.
+        // Per-bundle phase, not round-level: a multi-bundle round can have bundle 0 confirmed
+        // while bundle 1 is still pending, and the round-level phase alone can't tell those apart.
+        //
+        // SUBMITTED is deliberately NOT short-circuited here (unlike the check above, which mirrors
+        // this one for a different purpose): SUBMITTED means delegation_tx_hash is set but
+        // van_leaf_position isn't yet — the normal in-flight state while awaiting confirmation, not
+        // an edge case. Falling through is safe: buildDelegationProofIfNeeded no-ops for an
+        // already-SUBMITTED bundle (see its own phase check), and getDelegationSubmission(...)
+        // deterministically re-derives the same submission bytes from the already-persisted PCZT/
+        // proof state (the Keystone sig/sighash/rk equality asserts below rely on exactly this), so
+        // re-running the submit step below is an idempotent re-broadcast. It then proceeds to the
+        // full awaitTxConfirmation retry budget and storeVanPosition, instead of returning early and
+        // leaving van_leaf_position unset (which previously wedged the round downstream in
+        // submitFreshVoteBundle → syncVoteTree → generateVanWitnessJson).
+        if (currentDelegationPhase(dbHandle, roundId, bundleIndex) == DelegationPhase.CONFIRMED) {
             return
         }
 
