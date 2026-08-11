@@ -171,7 +171,11 @@ jobs:
         uses: ./.github/actions/setup-gradle
         timeout-minutes: 5
       - name: Android Lint
-        timeout-minutes: 15
+        # 45 rather than the usual 15: when SDK_COMMIT_PIN is set (see
+        # setup-sdk-companion), this compiles the full companion SDK's Rust dependency
+        # graph (Tor, orchard, etc.) for the first time with a cold cargo/target cache —
+        # observed at ~20-25 min alone before this step even reaches lint analysis.
+        timeout-minutes: 45
         env:
           # Disable minify, since it makes lint run faster
           ORG_GRADLE_PROJECT_IS_MINIFY_ENABLED: false
@@ -245,7 +249,11 @@ jobs:
     name: test_android_modules_emulator (${{ matrix.shard }})
     needs: [validate_gradle_wrapper]
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # 90 rather than the usual 45: the `app` shard needs the SDK compiled, and when
+    # SDK_COMMIT_PIN is set (see setup-sdk-companion) a cold cargo/target cache eats
+    # 20-25 min before the emulator/test steps even start — the emulator was previously
+    # observed dying mid-run ("device not found") once the job ran past 45 min total.
+    timeout-minutes: 90
     permissions:
       contents: read
     strategy:
@@ -443,7 +451,11 @@ jobs:
         run: |
           keytool -genkey -v -keystore $SIGNING_KEY_PATH -keypass android -storepass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 100000 -dname "CN=, OU=, O=Test, L=, S=, C=" -noprompt
       - name: Build Store APK
-        timeout-minutes: 25
+        # 60 rather than the usual 25: when SDK_COMMIT_PIN is set (see
+        # setup-sdk-companion), this compiles the full companion SDK's Rust dependency
+        # graph for release, across both mainnet/testnet variants, with a cold
+        # cargo/target cache on the first run.
+        timeout-minutes: 60
         env:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PATH: ${{ format('{0}/release.jks', env.home) }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: android
