@@ -5,14 +5,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.sdk.model.FiatCurrency
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
-import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT
 import co.electriccoin.zcash.ui.common.repository.DEFAULT_SLIPPAGE
-import co.electriccoin.zcash.ui.common.usecase.GetSlippageUseCase
-import co.electriccoin.zcash.ui.common.usecase.SetSlippageUseCase
+import co.electriccoin.zcash.ui.common.usecase.NavigateToSlippageUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiDisclaimerState
 import co.electriccoin.zcash.ui.design.util.StringResourceColor
@@ -29,19 +27,19 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.MathContext
 
 @Suppress("TooManyFunctions")
 class SwapSlippageVM(
-    getSlippage: GetSlippageUseCase,
     private val args: SwapSlippageArgs,
-    private val setSlippage: SetSlippageUseCase,
-    private val navigationRouter: NavigationRouter,
+    private val navigateToSlippage: NavigateToSlippageUseCase,
 ) : ViewModel() {
     private val fiatAmount = args.fiatAmount?.toBigDecimal()
 
-    private val slippageSelection: MutableStateFlow<BigDecimal?> = MutableStateFlow(getSlippage())
+    private val slippageSelection: MutableStateFlow<BigDecimal?> =
+        MutableStateFlow(args.currentSlippage.toBigDecimal())
 
     private val slippagePickerState =
         slippageSelection
@@ -202,7 +200,12 @@ class SwapSlippageVM(
 
     private fun onSlippageChanged(new: BigDecimal?) = slippageSelection.update { new }
 
-    private fun onConfirmClick() = slippageSelection.value?.let { setSlippage(it) }
+    private fun onConfirmClick() {
+        val selected = slippageSelection.value ?: return
+        viewModelScope.launch { navigateToSlippage.onSelected(selected, args) }
+    }
 
-    private fun onBack() = navigationRouter.back()
+    private fun onBack() {
+        viewModelScope.launch { navigateToSlippage.onSelectionCancelled(args) }
+    }
 }

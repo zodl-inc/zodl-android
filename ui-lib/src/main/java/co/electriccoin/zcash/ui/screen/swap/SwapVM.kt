@@ -7,53 +7,51 @@ import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.SwapAsset
+import co.electriccoin.zcash.ui.common.model.SwapDirection
+import co.electriccoin.zcash.ui.common.model.SwapDirection.SWAP_FROM_ZEC
+import co.electriccoin.zcash.ui.common.model.SwapDirection.SWAP_INTO_ZEC
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.repository.DEFAULT_SLIPPAGE
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.usecase.CancelSwapUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetCuratedSwapAssetsUseCase
-import co.electriccoin.zcash.ui.common.usecase.GetSelectedSwapAssetUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetPreselectedSwapAssetUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
-import co.electriccoin.zcash.ui.common.usecase.GetSlippageUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToScanGenericAddressUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSelectABSwapRecipientUseCase
+import co.electriccoin.zcash.ui.common.usecase.NavigateToSlippageUseCase
+import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapAssetPickerUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapInfoUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapQuoteIfAvailableUseCase
-import co.electriccoin.zcash.ui.common.usecase.PreselectSwapAssetUseCase
 import co.electriccoin.zcash.ui.common.usecase.RequestSwapQuoteUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.InnerTextFieldState
 import co.electriccoin.zcash.ui.design.component.NumberTextFieldInnerState
 import co.electriccoin.zcash.ui.design.component.TextSelection
-import co.electriccoin.zcash.ui.design.util.combine
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByDynamicNumber
-import co.electriccoin.zcash.ui.screen.swap.Mode.SWAP_FROM_ZEC
-import co.electriccoin.zcash.ui.screen.swap.Mode.SWAP_INTO_ZEC
 import co.electriccoin.zcash.ui.screen.swap.info.SwapRefundAddressInfoArgs
-import co.electriccoin.zcash.ui.screen.swap.picker.SwapAssetPickerArgs
-import co.electriccoin.zcash.ui.screen.swap.slippage.SwapSlippageArgs
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
-import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
+import kotlin.time.Duration.Companion.milliseconds
 
 @Suppress("TooManyFunctions")
 internal class SwapVM(
-    getSlippage: GetSlippageUseCase,
-    getSelectedSwapAsset: GetSelectedSwapAssetUseCase,
     private val getCuratedSwapAssetsUseCase: GetCuratedSwapAssetsUseCase,
     getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
-    preselectSwapAsset: PreselectSwapAssetUseCase,
+    private val getPreselectedSwapAsset: GetPreselectedSwapAssetUseCase,
     private val swapRepository: SwapRepository,
     private val navigateToSwapInfo: NavigateToSwapInfoUseCase,
     private val cancelSwap: CancelSwapUseCase,
@@ -63,20 +61,29 @@ internal class SwapVM(
     private val swapVMMapper: SwapVMMapper,
     private val navigateToScanAddress: NavigateToScanGenericAddressUseCase,
     private val navigateToSelectSwapRecipient: NavigateToSelectABSwapRecipientUseCase,
+    private val navigateToSlippage: NavigateToSlippageUseCase,
+    private val navigateToSwapAssetPicker: NavigateToSwapAssetPickerUseCase,
 ) : ViewModel() {
-    private val mode = MutableStateFlow(SWAP_INTO_ZEC)
-
-    private val currencyType: MutableStateFlow<CurrencyType> = MutableStateFlow(CurrencyType.TOKEN)
-
-    private val addressText: MutableStateFlow<String> = MutableStateFlow("")
-
-    private val amountText: MutableStateFlow<NumberTextFieldInnerState> = MutableStateFlow(NumberTextFieldInnerState())
-
-    private val isRequestingQuote = MutableStateFlow(false)
+    // VM-owned state. The externally-observed `swapAssets`/`account` fields are injected by the
+    // `state` combine below, so the VM only ever updates the fields it owns.
+    private val internalState =
+        MutableStateFlow(
+            InternalStateImpl(
+                account = null,
+                swapAsset = null,
+                currencyType = CurrencyType.TOKEN,
+                amountTextState = NumberTextFieldInnerState(),
+                addressText = "",
+                slippage = DEFAULT_SLIPPAGE,
+                swapAssets = SwapAssetsData(),
+                isRequestingQuote = false,
+                selectedContact = null,
+                swapDirection = SWAP_INTO_ZEC,
+                isEphemeralAddressLocked = false
+            )
+        )
 
     private val isCancelStateVisible = MutableStateFlow(false)
-
-    private var selectedContact: MutableStateFlow<EnhancedABContact?> = MutableStateFlow(null)
 
     val cancelState =
         isCancelStateVisible
@@ -107,66 +114,29 @@ internal class SwapVM(
                 initialValue = null
             )
 
-    private val innerState =
-        combine(
-            addressText,
-            amountText,
-            getSelectedSwapAsset.observe(),
-            getSlippage.observe(),
-            currencyType,
-            getCuratedSwapAssetsUseCase.observe(),
-            isRequestingQuote,
-            selectedContact,
-            getSelectedWalletAccount.observe(),
-            mode,
-            // isEphemeralAddressLocked.observe()
-        ) {
-            address,
-            amount,
-            asset,
-            slippage,
-            currencyType,
-            swapAssets,
-            isRequestingQuote,
-            selectedContact,
-            account,
-            mode,
-            // isEphemeralAddressLocked
-            ->
-            InternalStateImpl(
-                swapAsset = asset,
-                currencyType = currencyType,
-                amountTextState = amount,
-                addressText = address,
-                slippage = slippage,
-                swapAssets = swapAssets,
-                isRequestingQuote = isRequestingQuote,
-                selectedContact = selectedContact,
-                account = account,
-                mode = mode,
-                isEphemeralAddressLocked = false
-            )
-        }
-
     val state =
-        innerState
-            .map { innerState ->
-                createState(innerState)
-            }.stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
-                initialValue = null
-            )
+        combine(
+            internalState,
+            getCuratedSwapAssetsUseCase.observe(),
+            getSelectedWalletAccount.observe(),
+        ) { state, swapAssets, account ->
+            createState(state.copy(swapAssets = swapAssets, account = account))
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
+            initialValue = null
+        )
 
     init {
-        preselectSwapAsset
-            .observe()
-            .launchIn(viewModelScope)
+        viewModelScope.launch {
+            val asset = getPreselectedSwapAsset()
+            internalState.update { if (it.swapAsset == null) it.copy(swapAsset = asset) else it }
+        }
     }
 
-    private fun createState(innerState: InternalStateImpl): SwapState =
-        swapVMMapper.createState(
-            internalState = innerState,
+    // Stable method references — created once and reused across every state emission.
+    private val callbacks =
+        SwapStateCallbacks(
             onBack = ::onBack,
             onSwapInfoClick = ::onSwapInfoClick,
             onSwapAssetPickerClick = ::onSwapAssetPickerClick,
@@ -184,22 +154,33 @@ internal class SwapVM(
             onAddressClick = ::onAddressClick
         )
 
+    private fun createState(internalState: InternalStateImpl): SwapState =
+        swapVMMapper.createState(internalState = internalState, callbacks = callbacks)
+
     private fun onBalanceButtonClick() {
         // navigationRouter.forward(SpendableBalanceArgs)
     }
 
     private fun onChangeButtonClick() {
-        mode.update {
-            when (it) {
-                SWAP_FROM_ZEC -> SWAP_INTO_ZEC
-                SWAP_INTO_ZEC -> SWAP_FROM_ZEC
-            }
+        internalState.update {
+            it.copy(
+                swapDirection =
+                    when (it.swapDirection) {
+                        SWAP_FROM_ZEC -> SWAP_INTO_ZEC
+                        SWAP_INTO_ZEC -> SWAP_FROM_ZEC
+                    }
+            )
         }
     }
 
-    private fun onAddressClick() = navigationRouter.forward(SwapRefundAddressInfoArgs)
+    private fun onAddressClick() {
+        val asset = internalState.value.swapAsset
+        navigationRouter.forward(
+            SwapRefundAddressInfoArgs(tokenTicker = asset?.tokenTicker, chainTicker = asset?.chainTicker)
+        )
+    }
 
-    private fun onDeleteSelectedContactClick() = selectedContact.update { null }
+    private fun onDeleteSelectedContactClick() = internalState.update { it.copy(selectedContact = null) }
 
     private fun onTryAgainClick() = swapRepository.requestRefreshAssets()
 
@@ -208,35 +189,25 @@ internal class SwapVM(
             val selected = navigateToSelectSwapRecipient()
 
             if (selected != null) {
-                selectedContact.update { selected }
-                addressText.update { "" }
+                internalState.update { it.copy(selectedContact = selected, addressText = "") }
                 preselectChain(selected)
             }
         }
 
     private fun preselectChain(selected: EnhancedABContact) {
-        if (mode.value == SWAP_INTO_ZEC) {
-            val selectedChainTicker = selected.blockchain?.chainTicker
-            val currentAsset = swapRepository.selectedAsset.value
-            val currentChainTicker = currentAsset?.chainTicker
+        if (internalState.value.swapDirection != SWAP_INTO_ZEC) return
 
-            // Only proceed if chain ticker changed
-            if (selectedChainTicker != null &&
-                !selectedChainTicker.equals(currentChainTicker, ignoreCase = true)
-            ) {
-                val swapAssets = getCuratedSwapAssetsUseCase().data
-                val matchingAssets =
-                    swapAssets
-                        ?.filter { asset ->
-                            asset.chainTicker.equals(selectedChainTicker, ignoreCase = true)
-                        }.orEmpty()
+        val selectedChainTicker = selected.blockchain?.chainTicker
+        val currentChainTicker = internalState.value.swapAsset?.chainTicker
 
-                if (matchingAssets.size == 1) {
-                    swapRepository.select(matchingAssets.first())
-                } else {
-                    swapRepository.select(null)
-                }
-            }
+        // Only proceed if the chain ticker changed.
+        if (selectedChainTicker != null && !selectedChainTicker.equals(currentChainTicker, ignoreCase = true)) {
+            val matchingAssets =
+                getCuratedSwapAssetsUseCase()
+                    .data
+                    ?.filter { asset -> asset.chainTicker.equals(selectedChainTicker, ignoreCase = true) }
+                    .orEmpty()
+            internalState.update { it.copy(swapAsset = matchingAssets.singleOrNull()) }
         }
     }
 
@@ -245,29 +216,41 @@ internal class SwapVM(
             val result = navigateToScanAddress()
             if (result != null) {
                 navigationRouter.back()
-                selectedContact.update { null }
-                addressText.update { result.address }
-                if (result.amount != null) {
-                    amountText.update { NumberTextFieldInnerState.fromAmount(result.amount) }
+                internalState.update {
+                    it.copy(
+                        selectedContact = null,
+                        addressText = result.address,
+                        amountTextState =
+                            if (result.amount != null) {
+                                NumberTextFieldInnerState.fromAmount(result.amount)
+                            } else {
+                                it.amountTextState
+                            }
+                    )
                 }
             }
         }
 
     private fun onSlippageClick(fiatAmount: BigDecimal?) =
-        navigationRouter.forward(
-            SwapSlippageArgs(
-                fiatAmount = fiatAmount?.toPlainString(),
-                mode =
-                    when (mode.value) {
-                        SWAP_FROM_ZEC -> SwapMode.EXACT_INPUT
-                        SWAP_INTO_ZEC -> SwapMode.FLEX_INPUT
-                    }
-            )
-        )
+        viewModelScope.launch {
+            val newSlippage =
+                navigateToSlippage(
+                    currentSlippage = internalState.value.slippage,
+                    fiatAmount = fiatAmount,
+                    mode =
+                        when (internalState.value.swapDirection) {
+                            SWAP_FROM_ZEC -> SwapMode.EXACT_INPUT
+                            SWAP_INTO_ZEC -> SwapMode.FLEX_INPUT
+                        }
+                )
+            if (newSlippage != null) {
+                internalState.update { it.copy(slippage = newSlippage) }
+            }
+        }
 
     private fun onBack() =
         viewModelScope.launch {
-            if (isRequestingQuote.value) {
+            if (internalState.value.isRequestingQuote) {
                 isCancelStateVisible.update { true }
             } else if (isCancelStateVisible.value) {
                 isCancelStateVisible.update { false }
@@ -297,42 +280,46 @@ internal class SwapVM(
     @Suppress("MagicNumber")
     private suspend fun hideCancelBottomSheet() {
         isCancelStateVisible.update { false }
-        delay(350)
+        delay(350.milliseconds)
     }
 
     private fun onSwapCurrencyTypeClick(newTextFieldAmount: BigDecimal?) {
-        amountText.update {
-            NumberTextFieldInnerState(
-                innerTextFieldState =
-                    InnerTextFieldState(
-                        value =
-                            newTextFieldAmount
-                                ?.let { stringResByDynamicNumber(it, includeGroupingSeparator = false) }
-                                ?: stringRes(""),
-                        selection = TextSelection.End
+        val value =
+            newTextFieldAmount
+                ?.let { stringResByDynamicNumber(it, includeGroupingSeparator = false) }
+                ?: stringRes("")
+        internalState.update {
+            it.copy(
+                amountTextState =
+                    NumberTextFieldInnerState(
+                        innerTextFieldState = InnerTextFieldState(value = value, selection = TextSelection.End),
+                        amount = newTextFieldAmount,
+                        lastValidAmount = newTextFieldAmount
                     ),
-                amount = newTextFieldAmount,
-                lastValidAmount = newTextFieldAmount
+                currencyType =
+                    when (it.currencyType) {
+                        CurrencyType.TOKEN -> CurrencyType.FIAT
+                        CurrencyType.FIAT -> CurrencyType.TOKEN
+                    }
             )
-        }
-        currencyType.update {
-            when (it) {
-                CurrencyType.TOKEN -> CurrencyType.FIAT
-                CurrencyType.FIAT -> CurrencyType.TOKEN
-            }
         }
     }
 
-    private fun onTextFieldChange(new: NumberTextFieldInnerState) = amountText.update { new }
+    private fun onTextFieldChange(new: NumberTextFieldInnerState) =
+        internalState.update { it.copy(amountTextState = new) }
 
     private fun onRequestSwapQuoteClick(amount: BigDecimal, address: String) =
         viewModelScope.launch {
-            isRequestingQuote.update { true }
-            when (mode.value) {
+            val asset = internalState.value.swapAsset ?: return@launch
+            val slippage = internalState.value.slippage
+            internalState.update { it.copy(isRequestingQuote = true) }
+            when (internalState.value.swapDirection) {
                 SWAP_FROM_ZEC -> {
                     requestSwapQuote.requestExactInput(
                         amount = amount,
                         address = address,
+                        selectedAsset = asset,
+                        slippage = slippage,
                         canNavigateToSwapQuote = { !isCancelStateVisible.value }
                     )
                 }
@@ -341,29 +328,36 @@ internal class SwapVM(
                     requestSwapQuote.requestFlexInputIntoZec(
                         amount = amount,
                         refundAddress = address,
+                        selectedAsset = asset,
+                        slippage = slippage,
                         canNavigateToSwapQuote = { !isCancelStateVisible.value }
                     )
                 }
             }
-            isRequestingQuote.update { false }
+            internalState.update { it.copy(isRequestingQuote = false) }
         }
 
     private fun onSwapInfoClick() = navigateToSwapInfo()
 
-    private fun onAddressChange(new: String) {
-        selectedContact.update { null }
-        addressText.update { new }
-    }
+    private fun onAddressChange(new: String) =
+        internalState.update { it.copy(selectedContact = null, addressText = new) }
 
     private fun onSwapAssetPickerClick() =
-        navigationRouter.forward(
-            SwapAssetPickerArgs(onlyChainTicker = selectedContact.value?.blockchain?.chainTicker)
-        )
+        viewModelScope.launch {
+            val asset =
+                navigateToSwapAssetPicker(
+                    onlyChainTicker =
+                        internalState.value.selectedContact
+                            ?.blockchain
+                            ?.chainTicker
+                )
+            if (asset != null) {
+                internalState.update { it.copy(swapAsset = asset) }
+            }
+        }
 }
 
 internal enum class CurrencyType { TOKEN, FIAT }
-
-internal enum class Mode { SWAP_FROM_ZEC, SWAP_INTO_ZEC }
 
 internal interface InternalState {
     val account: WalletAccount?
@@ -375,7 +369,7 @@ internal interface InternalState {
     val swapAssets: SwapAssetsData
     val isRequestingQuote: Boolean
     val selectedContact: EnhancedABContact?
-    val mode: Mode
+    val swapDirection: SwapDirection
     val isEphemeralAddressLocked: Boolean
 
     val totalSpendableBalance: Zatoshi
@@ -392,6 +386,6 @@ internal data class InternalStateImpl(
     override val swapAssets: SwapAssetsData,
     override val isRequestingQuote: Boolean,
     override val selectedContact: EnhancedABContact?,
-    override val mode: Mode,
+    override val swapDirection: SwapDirection,
     override val isEphemeralAddressLocked: Boolean,
 ) : InternalState

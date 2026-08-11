@@ -11,10 +11,12 @@ import co.electriccoin.zcash.ui.common.model.SwapQuoteStatus
 import co.electriccoin.zcash.ui.common.model.ZcashShieldedSwapAddress
 import co.electriccoin.zcash.ui.common.model.ZcashSwapAddress
 import co.electriccoin.zcash.ui.common.model.ZcashTransparentSwapAddress
-import co.electriccoin.zcash.ui.common.model.ZecSwapAsset
+import co.electriccoin.zcash.ui.common.model.isZCashAsset
 import co.electriccoin.zcash.ui.common.model.near.AppFee
+import co.electriccoin.zcash.ui.common.model.near.NearSwapAsset
 import co.electriccoin.zcash.ui.common.model.near.NearSwapQuote
 import co.electriccoin.zcash.ui.common.model.near.NearSwapQuoteStatus
+import co.electriccoin.zcash.ui.common.model.near.NearTokenDto
 import co.electriccoin.zcash.ui.common.model.near.QuoteRequest
 import co.electriccoin.zcash.ui.common.model.near.QuoteResponseDto
 import co.electriccoin.zcash.ui.common.model.near.RecipientType
@@ -22,10 +24,12 @@ import co.electriccoin.zcash.ui.common.model.near.RefundType
 import co.electriccoin.zcash.ui.common.model.near.SubmitDepositTransactionRequest
 import co.electriccoin.zcash.ui.common.model.near.SwapAmountInconsistencyException
 import co.electriccoin.zcash.ui.common.model.near.SwapType
+import co.electriccoin.zcash.ui.common.provider.BlockchainProvider
 import co.electriccoin.zcash.ui.common.provider.NearApiProvider
 import co.electriccoin.zcash.ui.common.provider.ResponseWithNearErrorException
-import co.electriccoin.zcash.ui.common.provider.SwapAssetProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
+import co.electriccoin.zcash.ui.common.provider.TokenIconProvider
+import co.electriccoin.zcash.ui.common.provider.TokenNameProvider
 import co.electriccoin.zcash.ui.util.loggableNot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -35,9 +39,11 @@ import java.math.RoundingMode
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
 
-class NearSwapDataSourceImpl(
+class NearSwapDataSource(
     private val nearApiProvider: NearApiProvider,
-    private val swapAssetProvider: SwapAssetProvider,
+    private val tokenIconProvider: TokenIconProvider,
+    private val tokenNameProvider: TokenNameProvider,
+    private val blockchainProvider: BlockchainProvider,
     private val synchronizerProvider: SynchronizerProvider,
 ) : SwapDataSource {
     private val log = loggableNot("NearSwapDataSourceImpl")
@@ -47,16 +53,19 @@ class NearSwapDataSourceImpl(
             nearApiProvider
                 .getSupportedTokens()
                 .distinctBy { Triple(it.symbol, it.blockchain, it.decimals) }
-                .map {
-                    swapAssetProvider.get(
-                        tokenTicker = it.symbol,
-                        chainTicker = it.blockchain,
-                        usdPrice = it.price,
-                        assetId = it.assetId,
-                        decimals = it.decimals
-                    )
-                }
+                .map { buildSwapAsset(it) }
         }
+
+    private fun buildSwapAsset(dto: NearTokenDto): SwapAsset =
+        NearSwapAsset(
+            tokenTicker = dto.symbol,
+            tokenName = tokenNameProvider.getName(dto.symbol),
+            tokenIcon = tokenIconProvider.getIcon(dto.symbol),
+            usdPrice = dto.price,
+            assetId = dto.assetId,
+            decimals = dto.decimals,
+            blockchain = blockchainProvider.getBlockchain(dto.blockchain),
+        )
 
     @Suppress("MagicNumber", "CyclomaticComplexMethod")
     override suspend fun requestQuote(
@@ -185,10 +194,10 @@ class NearSwapDataSourceImpl(
         val response = this.nearApiProvider.checkSwapStatus(depositAddress)
         val originAsset =
             findAssetByEchoedId(supportedTokens, response.quoteResponse.quoteRequest.originAsset)
-                ?: throw TokenNotFoundException(response.quoteResponse.quoteRequest.originAsset)
+                ?: throw AssetNotFoundException(response.quoteResponse.quoteRequest.originAsset)
         val destinationAsset =
             findAssetByEchoedId(supportedTokens, response.quoteResponse.quoteRequest.destinationAsset)
-                ?: throw TokenNotFoundException(response.quoteResponse.quoteRequest.destinationAsset)
+                ?: throw AssetNotFoundException(response.quoteResponse.quoteRequest.destinationAsset)
         log("checkSwapStatus $depositAddress")
         return NearSwapQuoteStatus(
             response = response,
@@ -211,17 +220,17 @@ class NearSwapDataSourceImpl(
 
     private suspend fun getDepositAddress(response: QuoteResponseDto, originAsset: SwapAsset): SwapAddress {
         val address = response.quote.depositAddress
-        return if (originAsset is ZecSwapAsset) getZcashSwapAddress(address) else DynamicSwapAddress(address)
+        return if (originAsset.isZCashAsset) getZcashSwapAddress(address) else DynamicSwapAddress(address)
     }
 
     private suspend fun getDestinationAddress(response: QuoteResponseDto, originAsset: SwapAsset): SwapAddress {
         val address = response.quoteRequest.recipient
-        return if (originAsset is ZecSwapAsset) DynamicSwapAddress(address) else getZcashSwapAddress(address)
+        return if (originAsset.isZCashAsset) DynamicSwapAddress(address) else getZcashSwapAddress(address)
     }
 
     private suspend fun getRefundAddress(response: QuoteResponseDto, originAsset: SwapAsset): SwapAddress {
         val address = response.quoteRequest.refundTo
-        return if (originAsset is ZecSwapAsset) getZcashSwapAddress(address) else DynamicSwapAddress(address)
+        return if (originAsset.isZCashAsset) getZcashSwapAddress(address) else DynamicSwapAddress(address)
     }
 
     private suspend fun getZcashSwapAddress(address: String): ZcashSwapAddress =
@@ -230,8 +239,9 @@ class NearSwapDataSourceImpl(
             AddressType.Shielded -> ZcashShieldedSwapAddress(address)
 
             AddressType.Tex,
-            AddressType.Transparent,
-            is AddressType.Invalid -> ZcashTransparentSwapAddress(address)
+            AddressType.Transparent -> ZcashTransparentSwapAddress(address)
+
+            is AddressType.Invalid -> throw IllegalArgumentException("Zcash address is invalid")
         }
 }
 

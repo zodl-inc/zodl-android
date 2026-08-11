@@ -793,7 +793,7 @@
     <string name="swapToZec_refundAddress">Dirección de reembolso</string>
     <string name="swapToZec_refundAddress_title">Dirección de reembolso</string>
     <string name="swap_refund_address_info_message_empty">Si el swap falla o cambian las condiciones del mercado, tu transacción puede ser reembolsada menos las comisiones de transacción.\n\nEl monto reembolsado será devuelto a tu wallet en la moneda de origen. Por favor, ingresa una dirección válida para evitar la pérdida de fondos.</string>
-    <string name="swap_refund_address_info_message">Si el swap falla o cambian las condiciones del mercado, tu transacción puede ser reembolsada menos las comisiones de transacción.\n\nEl monto reembolsado será devuelto a tu wallet en la moneda de origen - %s en %s. Por favor, ingresa una dirección válida para evitar la pérdida de fondos.</string>
+    <string name="swap_refund_address_info_message">Si el swap falla o cambian las condiciones del mercado, tu transacción puede ser reembolsada menos las comisiones de transacción.\n\nEl monto reembolsado será devuelto a tu wallet en la moneda de origen en la misma red. Por favor, ingresa una dirección válida para evitar la pérdida de fondos.</string>
     <string name="swapToZec_swapDetails">Detalles del swap</string>
     <string name="swapToZec_depositTo">Depositar en</string>
     <string name="swapStatus_swapExpired">Swap expirado</string>

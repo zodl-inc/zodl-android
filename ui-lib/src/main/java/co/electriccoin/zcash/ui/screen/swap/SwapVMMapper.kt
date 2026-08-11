@@ -6,6 +6,9 @@ import cash.z.ecc.android.sdk.model.FiatCurrency
 import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.SwapAsset
+import co.electriccoin.zcash.ui.common.model.SwapDirection
+import co.electriccoin.zcash.ui.common.model.SwapDirection.SWAP_FROM_ZEC
+import co.electriccoin.zcash.ui.common.model.SwapDirection.SWAP_INTO_ZEC
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
@@ -27,8 +30,6 @@ import co.electriccoin.zcash.ui.design.util.stringResByDynamicNumber
 import co.electriccoin.zcash.ui.design.util.stringResByNumber
 import co.electriccoin.zcash.ui.screen.swap.CurrencyType.FIAT
 import co.electriccoin.zcash.ui.screen.swap.CurrencyType.TOKEN
-import co.electriccoin.zcash.ui.screen.swap.Mode.SWAP_FROM_ZEC
-import co.electriccoin.zcash.ui.screen.swap.Mode.SWAP_INTO_ZEC
 import co.electriccoin.zcash.ui.screen.swap.ui.SwapAmountTextFieldState
 import co.electriccoin.zcash.ui.screen.swap.ui.SwapAmountTextState
 import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
@@ -42,72 +43,58 @@ import kotlin.math.absoluteValue
 internal class SwapVMMapper {
     fun createState(
         internalState: InternalState,
-        onBack: () -> Unit,
-        onSwapInfoClick: () -> Unit,
-        onSwapAssetPickerClick: () -> Unit,
-        onSwapCurrencyTypeClick: (BigDecimal?) -> Unit,
-        onSlippageClick: (BigDecimal?) -> Unit,
-        onRequestSwapQuoteClick: (BigDecimal, String) -> Unit,
-        onTryAgainClick: () -> Unit,
-        onAddressChange: (String) -> Unit,
-        onTextFieldChange: (NumberTextFieldInnerState) -> Unit,
-        onQrCodeScannerClick: () -> Unit,
-        onAddressBookClick: () -> Unit,
-        onDeleteSelectedContactClick: () -> Unit,
-        onBalanceButtonClick: () -> Unit,
-        onChangeButtonClick: () -> Unit,
-        onAddressClick: () -> Unit,
+        callbacks: SwapStateCallbacks,
     ): SwapState {
         val state = SwapInternalState(internalState)
         val textFieldState =
             createAmountTextFieldState(
                 state = state,
-                onSwapCurrencyTypeClick = onSwapCurrencyTypeClick,
-                onTextFieldChange = onTextFieldChange,
-                onBalanceButtonClick = onBalanceButtonClick,
-                onSwapAssetPickerClick = onSwapAssetPickerClick
+                onSwapCurrencyTypeClick = callbacks.onSwapCurrencyTypeClick,
+                onTextFieldChange = callbacks.onTextFieldChange,
+                onBalanceButtonClick = callbacks.onBalanceButtonClick,
+                onSwapAssetPickerClick = callbacks.onSwapAssetPickerClick
             )
         return SwapState(
             amountTextField = textFieldState,
             slippage =
                 createSlippageState(
                     state = state,
-                    onSlippageClick = onSlippageClick
+                    onSlippageClick = callbacks.onSlippageClick
                 ),
             amountText =
                 createAmountTextState(
                     state = state,
-                    onSwapAssetPickerClick = onSwapAssetPickerClick
+                    onSwapAssetPickerClick = callbacks.onSwapAssetPickerClick
                 ),
             addressContact =
                 createAddressContactState(
                     state = state,
-                    onDeleteSelectedContactClick = onDeleteSelectedContactClick
+                    onDeleteSelectedContactClick = callbacks.onDeleteSelectedContactClick
                 ),
             address =
                 createAddressState(
                     state = state,
-                    onAddressChange = onAddressChange
+                    onAddressChange = callbacks.onAddressChange
                 ),
-            onBack = onBack,
+            onBack = callbacks.onBack,
             swapInfoButton =
                 IconButtonState(
                     co.electriccoin.zcash.ui.design.R.drawable.ic_info,
-                    onClick = onSwapInfoClick
+                    onClick = callbacks.onSwapInfoClick
                 ),
             infoItems = createListItems(state),
             qrScannerButton =
                 IconButtonState(
                     icon = R.drawable.qr_code_icon,
                     contentDescription = stringRes(R.string.send_scan_content_description),
-                    onClick = onQrCodeScannerClick,
+                    onClick = callbacks.onQrCodeScannerClick,
                     isEnabled = !state.isRequestingQuote
                 ),
             addressBookButton =
                 IconButtonState(
                     icon = R.drawable.send_address_book,
                     contentDescription = stringRes(R.string.send_address_book_content_description),
-                    onClick = onAddressBookClick,
+                    onClick = callbacks.onAddressBookClick,
                     isEnabled = !state.isRequestingQuote
                 ),
             errorFooter = createErrorFooterState(state),
@@ -115,11 +102,11 @@ internal class SwapVMMapper {
                 createPrimaryButtonState(
                     textField = textFieldState,
                     state = state,
-                    onRequestSwapQuoteClick = onRequestSwapQuoteClick,
-                    onTryAgainClick = onTryAgainClick
+                    onRequestSwapQuoteClick = callbacks.onRequestSwapQuoteClick,
+                    onTryAgainClick = callbacks.onTryAgainClick
                 ),
             addressLocation =
-                when (state.mode) {
+                when (state.swapDirection) {
                     SWAP_FROM_ZEC -> SwapState.AddressLocation.BOTTOM
                     SWAP_INTO_ZEC -> SwapState.AddressLocation.TOP
                 },
@@ -127,12 +114,12 @@ internal class SwapVMMapper {
             changeModeButton =
                 IconButtonState(
                     icon = R.drawable.ic_swap_change_mode,
-                    onClick = onChangeButtonClick
+                    onClick = callbacks.onChangeButtonClick
                 ),
             onAddressClick =
-                when (state.mode) {
+                when (state.swapDirection) {
                     SWAP_FROM_ZEC -> null
-                    SWAP_INTO_ZEC -> onAddressClick
+                    SWAP_INTO_ZEC -> callbacks.onAddressClick
                 },
             addressPlaceholder =
                 state.swapAsset
@@ -172,7 +159,7 @@ internal class SwapVMMapper {
         return SwapAmountTextFieldState(
             title = stringRes(R.string.swapAndPay_from),
             error =
-                when (state.mode) {
+                when (state.swapDirection) {
                     SWAP_FROM_ZEC -> {
                         if (originAmount != null &&
                             state.totalSpendableBalance.value < originAmount.convertZecToZatoshi().value
@@ -188,7 +175,7 @@ internal class SwapVMMapper {
                     }
                 },
             token =
-                when (state.mode) {
+                when (state.swapDirection) {
                     SWAP_FROM_ZEC -> {
                         AssetCardState.Data(
                             token = stringRes(cash.z.ecc.sdk.ext.R.string.zcash_token_zec),
@@ -217,7 +204,7 @@ internal class SwapVMMapper {
                     }
                 },
             textFieldPrefix =
-                when (state.mode) {
+                when (state.swapDirection) {
                     SWAP_FROM_ZEC -> {
                         when (state.currencyType) {
                             TOKEN -> imageRes(R.drawable.ic_send_zashi)
@@ -255,7 +242,7 @@ internal class SwapVMMapper {
                     }
                 },
             max =
-                when (state.mode) {
+                when (state.swapDirection) {
                     SWAP_FROM_ZEC -> createMaxState(state, onBalanceButtonClick)
                     SWAP_INTO_ZEC -> null
                 },
@@ -269,7 +256,7 @@ internal class SwapVMMapper {
                         if (originAmount == null) {
                             onSwapCurrencyTypeClick(null)
                         } else {
-                            when (state.mode) {
+                            when (state.swapDirection) {
                                 SWAP_FROM_ZEC -> {
                                     onSwapCurrencyTypeClick(originAmount)
                                 }
@@ -358,7 +345,7 @@ internal class SwapVMMapper {
 
         return SwapAmountTextState(
             token =
-                when (state.mode) {
+                when (state.swapDirection) {
                     SWAP_FROM_ZEC -> {
                         if (state.swapAsset == null) {
                             AssetCardState.Loading(
@@ -572,7 +559,7 @@ private data class SwapInternalState(
     override val swapAssets: SwapAssetsData,
     override val isRequestingQuote: Boolean,
     override val selectedContact: EnhancedABContact?,
-    override val mode: Mode,
+    override val swapDirection: SwapDirection,
     override val isEphemeralAddressLocked: Boolean
 ) : InternalState {
     constructor(original: InternalState) : this(
@@ -585,23 +572,30 @@ private data class SwapInternalState(
         swapAssets = original.swapAssets,
         isRequestingQuote = original.isRequestingQuote,
         selectedContact = original.selectedContact,
-        mode = original.mode,
+        swapDirection = original.swapDirection,
         isEphemeralAddressLocked = original.isEphemeralAddressLocked
     )
 
     val originAsset: SwapAsset? =
-        when (mode) {
+        when (swapDirection) {
             SWAP_FROM_ZEC -> swapAssets.zecAsset
             SWAP_INTO_ZEC -> swapAsset
         }
 
     val destinationAsset: SwapAsset? =
-        when (mode) {
+        when (swapDirection) {
             SWAP_FROM_ZEC -> swapAsset
             SWAP_INTO_ZEC -> swapAssets.zecAsset
         }
 
     fun getTotalSpendableFiatBalance(): BigDecimal {
+        fun Long.convertZatoshiToZecBigDecimal(scale: Int = ZEC_FORMATTER.maximumFractionDigits): BigDecimal =
+            BigDecimal(this, MathContext.DECIMAL128)
+                .divide(
+                    Conversions.ONE_ZEC_IN_ZATOSHI,
+                    MathContext.DECIMAL128
+                ).setScale(scale, ZEC_FORMATTER.roundingMode)
+
         if (swapAssets.zecAsset?.usdPrice == null) return BigDecimal(0)
         return totalSpendableBalance.value
             .convertZatoshiToZecBigDecimal()
@@ -655,7 +649,7 @@ private data class SwapInternalState(
     fun getZecToDestinationAssetExchangeRate(): BigDecimal? {
         if (originAsset == null || destinationAsset == null) return null
 
-        return when (mode) {
+        return when (swapDirection) {
             SWAP_FROM_ZEC -> {
                 val zecUsdPrice = originAsset.usdPrice
                 val assetUsdPrice = destinationAsset.usdPrice
@@ -689,9 +683,25 @@ internal fun BigDecimal.convertZecToZatoshi(): Zatoshi =
             .absoluteValue
     )
 
-internal fun Long.convertZatoshiToZecBigDecimal(scale: Int = ZEC_FORMATTER.maximumFractionDigits): BigDecimal =
-    BigDecimal(this, MathContext.DECIMAL128)
-        .divide(
-            Conversions.ONE_ZEC_IN_ZATOSHI,
-            MathContext.DECIMAL128
-        ).setScale(scale, ZEC_FORMATTER.roundingMode)
+/**
+ * The [SwapVM] callbacks wired into [SwapState]. Bundled into a named type so [SwapVMMapper.createState]
+ * stays a 2-arg call — adding/reordering a callback can't silently misroute the others (the VM tests
+ * capture this object and match callbacks by name, not positional index).
+ */
+internal data class SwapStateCallbacks(
+    val onBack: () -> Unit,
+    val onSwapInfoClick: () -> Unit,
+    val onSwapAssetPickerClick: () -> Unit,
+    val onSwapCurrencyTypeClick: (BigDecimal?) -> Unit,
+    val onSlippageClick: (BigDecimal?) -> Unit,
+    val onRequestSwapQuoteClick: (BigDecimal, String) -> Unit,
+    val onTryAgainClick: () -> Unit,
+    val onAddressChange: (String) -> Unit,
+    val onTextFieldChange: (NumberTextFieldInnerState) -> Unit,
+    val onQrCodeScannerClick: () -> Unit,
+    val onAddressBookClick: () -> Unit,
+    val onDeleteSelectedContactClick: () -> Unit,
+    val onBalanceButtonClick: () -> Unit,
+    val onChangeButtonClick: () -> Unit,
+    val onAddressClick: () -> Unit,
+)

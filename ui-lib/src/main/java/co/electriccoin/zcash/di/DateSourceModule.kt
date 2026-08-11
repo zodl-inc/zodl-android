@@ -6,7 +6,7 @@ import co.electriccoin.zcash.ui.common.datasource.ExchangeRateDataSource
 import co.electriccoin.zcash.ui.common.datasource.ExchangeRateDataSourceImpl
 import co.electriccoin.zcash.ui.common.datasource.MessageAvailabilityDataSource
 import co.electriccoin.zcash.ui.common.datasource.MessageAvailabilityDataSourceImpl
-import co.electriccoin.zcash.ui.common.datasource.NearSwapDataSourceImpl
+import co.electriccoin.zcash.ui.common.datasource.NearSwapDataSource
 import co.electriccoin.zcash.ui.common.datasource.ProposalDataSource
 import co.electriccoin.zcash.ui.common.datasource.ProposalDataSourceImpl
 import co.electriccoin.zcash.ui.common.datasource.RestoreTimestampDataSource
@@ -28,6 +28,6 @@ val dataSourceModule =
         singleOf(::RestoreTimestampDataSourceImpl) bind RestoreTimestampDataSource::class
         singleOf(::MessageAvailabilityDataSourceImpl) bind MessageAvailabilityDataSource::class
         singleOf(::WalletSnapshotDataSourceImpl) bind WalletSnapshotDataSource::class
-        singleOf(::NearSwapDataSourceImpl) bind SwapDataSource::class
+        singleOf(::NearSwapDataSource) bind SwapDataSource::class
         singleOf(::ExchangeRateDataSourceImpl) bind ExchangeRateDataSource::class
     }

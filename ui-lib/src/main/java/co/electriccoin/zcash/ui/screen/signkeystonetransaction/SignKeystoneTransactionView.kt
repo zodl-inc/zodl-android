@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.signkeystonetransaction
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,9 +14,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.CenterHorizontally
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -34,6 +37,7 @@ import co.electriccoin.zcash.ui.design.component.ZashiBadgeDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiQr
+import co.electriccoin.zcash.ui.design.component.ZashiQrDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.listitem.BaseListItem
@@ -155,7 +159,7 @@ private fun ZashiAccountInfoListItem(
 
 @Composable
 private fun ColumnScope.QrContent(ksState: SignKeystoneTransactionState) {
-    ksState.qrData?.let {
+    if (ksState.qrData != null) {
         ZashiQr(
             state = ksState.toQrState(),
             modifier = Modifier.align(CenterHorizontally),
@@ -165,6 +169,18 @@ private fun ColumnScope.QrContent(ksState: SignKeystoneTransactionState) {
                     foreground = Color.Black
                 )
         )
+    } else {
+        // Encoding the transaction/batch into its first animated-QR part (createKeystoneProposalPCZTEncoder,
+        // called from init{}) can take a while for a large proposal, with no progress feedback across
+        // that boundary — previously this left the screen looking broken (title/buttons rendered,
+        // QR area silently blank) until it suddenly appeared. Same size as the QR itself so nothing
+        // shifts once qrData arrives.
+        Box(
+            modifier = Modifier.align(CenterHorizontally).size(ZashiQrDefaults.width),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator(color = ZashiColors.Text.textPrimary)
+        }
     }
     LaunchedEffect(ksState.qrData) {
         if (ksState.qrData != null) {

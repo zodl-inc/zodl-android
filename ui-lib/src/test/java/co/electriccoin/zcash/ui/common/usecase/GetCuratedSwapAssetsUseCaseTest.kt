@@ -1,15 +1,11 @@
 package co.electriccoin.zcash.ui.common.usecase
 
-import co.electriccoin.zcash.ui.common.model.DynamicSimpleSwapAsset
-import co.electriccoin.zcash.ui.common.model.DynamicSwapAsset
 import co.electriccoin.zcash.ui.common.model.SimpleSwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapAsset
-import co.electriccoin.zcash.ui.common.model.SwapBlockchain
+import co.electriccoin.zcash.ui.common.model.SwapAssetTestFixture
 import co.electriccoin.zcash.ui.common.provider.SimpleSwapAssetProvider
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
-import co.electriccoin.zcash.ui.design.util.imageRes
-import co.electriccoin.zcash.ui.design.util.stringRes
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,20 +47,7 @@ class GetCuratedSwapAssetsUseCaseTest {
 }
 
 private fun swapAsset(token: String, chain: String): SwapAsset =
-    DynamicSwapAsset(
-        tokenTicker = token,
-        tokenName = stringRes(token),
-        tokenIcon = imageRes(token),
-        usdPrice = null,
-        assetId = "$token.$chain",
-        decimals = 8,
-        blockchain = SwapBlockchain(chainTicker = chain, chainName = stringRes(chain), chainIcon = imageRes(chain)),
-    )
+    SwapAssetTestFixture.asset(tokenTicker = token, chainTicker = chain)
 
 private fun curatedAsset(token: String, chain: String): SimpleSwapAsset =
-    DynamicSimpleSwapAsset(
-        tokenTicker = token,
-        tokenName = stringRes(token),
-        tokenIcon = imageRes(token),
-        blockchain = SwapBlockchain(chainTicker = chain, chainName = stringRes(chain), chainIcon = imageRes(chain)),
-    )
+    SwapAssetTestFixture.simpleAsset(tokenTicker = token, chainTicker = chain)

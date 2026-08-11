@@ -4,12 +4,13 @@ import java.math.BigDecimal
 import java.time.Instant
 
 interface SwapQuoteStatus {
-    val quote: SwapQuote
+    val originAsset: SwapAsset
+    val destinationAsset: SwapAsset
+    val depositAddress: SwapAddress
+    val destinationAddress: SwapAddress
 
     val timestamp: Instant
-
-    val originAssetId: String
-    val destinationAssetId: String
+    val deadline: kotlin.time.Instant
 
     val status: SwapStatus
 
@@ -18,20 +19,10 @@ interface SwapQuoteStatus {
     val mode: SwapMode
 
     val amountInFee: BigDecimal
-    val amountIn: BigDecimal
     val amountInFormatted: BigDecimal
     val amountInUsd: BigDecimal
-
-    val amountOut: BigDecimal
     val amountOutFormatted: BigDecimal
     val amountOutUsd: BigDecimal
-
-    val depositedAmount: BigDecimal?
     val depositedAmountFormatted: BigDecimal?
-    val depositedAmountUsd: BigDecimal?
-
-    val refunded: BigDecimal?
     val refundedFormatted: BigDecimal?
-
-    val zecExchangeRate: BigDecimal
 }

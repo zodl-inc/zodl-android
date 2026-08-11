@@ -1,7 +1,6 @@
 package co.electriccoin.zcash.ui.common.model.near
 
 import co.electriccoin.zcash.ui.common.model.DynamicSwapAddress
-import co.electriccoin.zcash.ui.common.model.DynamicSwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapBlockchain
 import co.electriccoin.zcash.ui.design.util.StringResource
@@ -133,7 +132,7 @@ class NearSwapQuoteStatusTest {
         )
 
     private fun asset(assetId: String, token: String, chain: String, decimals: Int): SwapAsset =
-        DynamicSwapAsset(
+        NearSwapAsset(
             tokenTicker = token,
             tokenName = StringResource.ByString(token),
             tokenIcon = imageRes(token),

@@ -7,6 +7,11 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Fixed:
+
+- The refund address explainer no longer reads like "USDC on NEAR" is a fixed destination for every refund — it now says the refund returns in the source currency on the same network, since that's true for any swap, not just NEAR-based ones.
+- Closing the error sheet during Keystone migration signing no longer discards already-signed rounds.
+
 ## [3.9.1 (2361)] - 2026-08-08
 
 ### Fixed:

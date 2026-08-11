@@ -1,0 +1,26 @@
+name: sync-fdroid-metadata
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'fastlane/metadata/android/**'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger GitLab F-Droid rebuild
+        env:
+          GITLAB_FDROID_TRIGGER_TOKEN: ${{ secrets.GITLAB_FDROID_TRIGGER_TOKEN }}
+          GITLAB_FDROID_PROJECT_ID: ${{ vars.GITLAB_FDROID_PROJECT_ID || '83433564' }}
+          GITLAB_FDROID_REF: ${{ vars.GITLAB_FDROID_REF || 'main' }}
+        run: |
+          HTTP_CODE=$(curl -s -m 30 -o /tmp/trigger.json -w '%{http_code}' \
+            -X POST "https://gitlab.com/api/v4/projects/${GITLAB_FDROID_PROJECT_ID}/trigger/pipeline" \
+            -F token="${GITLAB_FDROID_TRIGGER_TOKEN}" \
+            -F "ref=${GITLAB_FDROID_REF}" \
+            -F "variables[REASON]=fastlane-metadata-update")
+          echo "GitLab trigger HTTP $HTTP_CODE"
+          cat /tmp/trigger.json
+          [ "$HTTP_CODE" = "201" ] || exit 1

@@ -172,7 +172,6 @@ class TransactionDetailVM(
                     transaction.swap != null -> {
                         val recipient =
                             transaction.swap.status
-                                ?.quote
                                 ?.destinationAddress
                                 ?.address
                         SendSwapState(

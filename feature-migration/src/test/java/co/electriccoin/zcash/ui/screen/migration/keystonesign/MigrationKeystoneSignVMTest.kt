@@ -321,7 +321,7 @@ class MigrationKeystoneSignVMTest {
         }
 
     @Test
-    fun failureSheetDismissNavigatesBack() =
+    fun failureSheetDismissOnlyHidesSheet() =
         runTest {
             val sdk =
                 mockk<OrchardMigrationSdk>(relaxed = true) {
@@ -341,13 +341,15 @@ class MigrationKeystoneSignVMTest {
             advanceUntilIdle()
 
             assertNotNull(vm.failureSheet.value)
-            // onDismiss must call onReject → back() + clear repos.
+            // onDismiss only hides the sheet — it must not discard already-signed rounds by
+            // rejecting the whole batch (that's a separate, explicit user action).
             vm.failureSheet.value!!
                 .onDismiss
                 .invoke()
 
-            assertEquals(1, router.backCount)
+            assertEquals(0, router.backCount)
             assertNull(vm.failureSheet.value)
+            assertNotNull(pendingSchedule.peek(testAccountKeyId))
         }
 
     @Test

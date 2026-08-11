@@ -1,0 +1,17 @@
+name: auto-merge
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  enable-auto-merge:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+    steps:
+      - name: Enable auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge --auto --squash "${{ github.event.pull_request.html_url }}"

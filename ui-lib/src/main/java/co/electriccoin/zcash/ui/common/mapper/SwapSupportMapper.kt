@@ -88,7 +88,7 @@ class SwapSupportMapper {
                 text = stringRes(R.string.errorPage_action_contactSupport),
                 style = ButtonStyle.TERTIARY,
                 onClick = {
-                    quoteStatus?.quote?.depositAddress?.address?.let {
+                    quoteStatus?.depositAddress?.address?.let {
                         onSupportClicked(it)
                     }
                 }
@@ -103,7 +103,7 @@ class SwapSupportMapper {
                 .coerceAtLeast(BigDecimal.ZERO)
 
         val deadline =
-            quoteStatus.quote.deadline
+            quoteStatus.deadline
                 .toJavaInstant()
                 .atZone(ZoneId.systemDefault())
         val style =
@@ -116,7 +116,7 @@ class SwapSupportMapper {
             styledStringResource(
                 R.string.transaction_detail_info_incomplete_deposit_message,
                 StyledStringStyle(StringResourceColor.WARNING),
-                stringResByDynamicCurrencyNumber(missingAmount, quoteStatus.quote.originAsset.tokenTicker)
+                stringResByDynamicCurrencyNumber(missingAmount, quoteStatus.originAsset.tokenTicker)
                     .withStyle(style),
                 stringResByDateTime(deadline, true).withStyle(style),
             ),

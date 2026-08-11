@@ -13,9 +13,9 @@ import co.electriccoin.zcash.ui.common.model.SwapStatus.PENDING
 import co.electriccoin.zcash.ui.common.model.SwapStatus.PROCESSING
 import co.electriccoin.zcash.ui.common.model.SwapStatus.REFUNDED
 import co.electriccoin.zcash.ui.common.model.SwapStatus.SUCCESS
-import co.electriccoin.zcash.ui.common.model.ZecSwapAsset
+import co.electriccoin.zcash.ui.common.model.isZCashAsset
 import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
-import co.electriccoin.zcash.ui.common.usecase.GetORSwapQuoteUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetReloadableSwapQuoteUseCase
 import co.electriccoin.zcash.ui.common.usecase.SwapData
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.imageRes
@@ -40,7 +40,7 @@ import kotlinx.coroutines.flow.stateIn
 import java.time.ZoneId
 
 class SwapDetailVM(
-    getORSwapQuote: GetORSwapQuoteUseCase,
+    getReloadableSwapQuote: GetReloadableSwapQuoteUseCase,
     private val args: SwapDetailArgs,
     private val navigationRouter: NavigationRouter,
     private val copyToClipboard: CopyToClipboardUseCase,
@@ -48,7 +48,7 @@ class SwapDetailVM(
     private val getSwapMessage: SwapSupportMapper,
 ) : ViewModel() {
     val state: StateFlow<SwapDetailState?> =
-        getORSwapQuote
+        getReloadableSwapQuote
             .observe(args.depositAddress)
             .map { swapData ->
                 SwapDetailState(
@@ -57,8 +57,8 @@ class SwapDetailVM(
                         mapper
                             .createTransactionDetailQuoteHeaderState(
                                 swap = swapData.status,
-                                originAsset = swapData.status?.quote?.originAsset,
-                                destinationAsset = swapData.status?.quote?.destinationAsset
+                                originAsset = swapData.status?.originAsset,
+                                destinationAsset = swapData.status?.destinationAsset
                             ),
                     status =
                         TransactionDetailSwapStatusRowState(
@@ -116,9 +116,9 @@ class SwapDetailVM(
                     val text =
                         stringResByCurrencyNumber(
                             amount = swapData.status.amountInFee,
-                            ticker = swapData.status.quote.originAsset.tokenTicker
+                            ticker = swapData.status.originAsset.tokenTicker
                         )
-                    if (swapData.status.quote.destinationAsset is ZecSwapAsset) {
+                    if (swapData.status.destinationAsset.isZCashAsset) {
                         stringRes("~") + text
                     } else {
                         text
@@ -131,7 +131,6 @@ class SwapDetailVM(
     private fun createRecipientState(swapData: SwapData): TransactionDetailInfoRowState {
         val destinationAddress =
             swapData.status
-                ?.quote
                 ?.destinationAddress
                 ?.address
         return TransactionDetailInfoRowState(
@@ -209,7 +208,6 @@ class SwapDetailVM(
             icons =
                 listOf(
                     swapData.status
-                        ?.quote
                         ?.originAsset
                         ?.tokenIcon ?: loadingImageRes(),
                     imageRes(R.drawable.ic_transaction_received),

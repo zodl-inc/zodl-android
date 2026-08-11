@@ -3,12 +3,10 @@ package co.electriccoin.zcash.ui.screen.swap.quote
 import cash.z.ecc.android.sdk.ext.convertZecToZatoshi
 import cash.z.ecc.android.sdk.model.FiatCurrency
 import co.electriccoin.zcash.ui.R
-import co.electriccoin.zcash.ui.common.model.DynamicSwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT
-import co.electriccoin.zcash.ui.common.model.ZecSwapAsset
-import co.electriccoin.zcash.ui.common.model.getQuoteTokenIcon
+import co.electriccoin.zcash.ui.common.model.isZCashAsset
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.SwapTokenAmountState
 import co.electriccoin.zcash.ui.design.util.StringResource
@@ -18,6 +16,8 @@ import co.electriccoin.zcash.ui.design.util.stringResByDynamicCurrencyNumber
 import co.electriccoin.zcash.ui.design.util.stringResByDynamicNumber
 import co.electriccoin.zcash.ui.design.util.stringResByNumber
 import co.electriccoin.zcash.ui.design.util.withStyle
+import co.electriccoin.zcash.ui.screen.transactiondetail.swapQuoteChainIcon
+import co.electriccoin.zcash.ui.screen.transactiondetail.swapQuoteTokenIcon
 import java.math.BigDecimal
 import java.math.MathContext
 import java.math.RoundingMode
@@ -34,7 +34,7 @@ internal class SwapQuoteVMMapper {
             return SwapQuoteState.Success(
                 title =
                     when {
-                        quote.destinationAsset is ZecSwapAsset -> stringRes(R.string.swapToZec_review)
+                        quote.destinationAsset.isZCashAsset -> stringRes(R.string.swapToZec_review)
                         quote.mode in listOf(EXACT_INPUT, FLEX_INPUT) -> stringRes(R.string.swapAndPay_swapNow)
                         quote.mode == EXACT_OUTPUT -> stringRes(R.string.swapAndPay_payNow)
                         else -> throw IllegalStateException("Unknown swap mode")
@@ -50,7 +50,7 @@ internal class SwapQuoteVMMapper {
                     ButtonState(
                         text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_confirm),
                         onClick = {
-                            if (quote.destinationAsset is ZecSwapAsset) {
+                            if (quote.destinationAsset.isZCashAsset) {
                                 onNavigateToOnRampSwap()
                             } else {
                                 onSubmitQuoteClick()
@@ -82,7 +82,7 @@ internal class SwapQuoteVMMapper {
                     },
                 title = stringRes(R.string.swapAndPay_quote_zashi).withStyle(),
                 subtitle = null
-            ).takeIf { quote.destinationAsset !is ZecSwapAsset },
+            ).takeIf { !quote.destinationAsset.isZCashAsset },
             SwapQuoteInfoItem(
                 description =
                     when (quote.mode) {
@@ -91,11 +91,11 @@ internal class SwapQuoteVMMapper {
                     },
                 title = stringResByAddress(quote.destinationAddress.address),
                 subtitle = null
-            ).takeIf { quote.destinationAsset !is ZecSwapAsset },
+            ).takeIf { !quote.destinationAsset.isZCashAsset },
             SwapQuoteInfoItem(
                 description = stringRes(R.string.swapAndPay_totalFees),
                 title =
-                    if (quote.destinationAsset is ZecSwapAsset) {
+                    if (quote.destinationAsset.isZCashAsset) {
                         stringResByDynamicCurrencyNumber(totalFees, quote.originAsset.tokenTicker)
                     } else {
                         stringRes(totalFeesZatoshi)
@@ -140,12 +140,8 @@ internal class SwapQuoteVMMapper {
 
     private fun SwapQuoteInternalState.createFromState(): SwapTokenAmountState =
         SwapTokenAmountState(
-            bigIcon = quote.originAsset.getQuoteTokenIcon(),
-            smallIcon =
-                when (val asset = quote.originAsset) {
-                    is DynamicSwapAsset -> asset.chainIcon
-                    is ZecSwapAsset -> asset.getQuoteChainIcon(isShielded = true)
-                },
+            bigIcon = quote.originAsset.swapQuoteTokenIcon(),
+            smallIcon = quote.originAsset.swapQuoteChainIcon(isShielded = true),
             amount = stringResByDynamicNumber(quote.amountInFormatted),
             fiatAmount = stringResByDynamicCurrencyNumber(quote.amountInUsd, FiatCurrency.USD.symbol),
             token = stringRes(quote.originAsset.tokenTicker),
@@ -154,12 +150,8 @@ internal class SwapQuoteVMMapper {
 
     private fun SwapQuoteInternalState.createToState(): SwapTokenAmountState =
         SwapTokenAmountState(
-            bigIcon = quote.destinationAsset.getQuoteTokenIcon(),
-            smallIcon =
-                when (val asset = quote.destinationAsset) {
-                    is DynamicSwapAsset -> asset.chainIcon
-                    is ZecSwapAsset -> asset.getQuoteChainIcon(isShielded = true)
-                },
+            bigIcon = quote.destinationAsset.swapQuoteTokenIcon(),
+            smallIcon = quote.destinationAsset.swapQuoteChainIcon(isShielded = true),
             amount =
                 stringResByDynamicNumber(
                     quote.amountOutFormatted.setScale(quote.destinationAsset.decimals, RoundingMode.DOWN),

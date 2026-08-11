@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 
-class GetORSwapQuoteUseCase(
+class GetReloadableSwapQuoteUseCase(
     private val getSwapStatus: GetSwapStatusUseCase,
 ) {
     @OptIn(ExperimentalCoroutinesApi::class)

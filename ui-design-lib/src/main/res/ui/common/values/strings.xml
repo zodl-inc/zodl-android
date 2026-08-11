@@ -859,7 +859,7 @@
     <string name="swapToZec_refundAddress">Refund Address</string>
     <string name="swapToZec_refundAddress_title">Refund Address</string>
     <string name="swap_refund_address_info_message_empty">If the swap fails or market conditions change, your transaction may be refunded minus the transaction fees.\n\nThe refunded amount will be returned to your wallet in the source currency. Please enter a valid address to avoid loss of funds.</string>
-    <string name="swap_refund_address_info_message">If the swap fails or market conditions change, your transaction may be refunded minus the transaction fees.\n\nThe refunded amount will be returned to your wallet in the source currency - %s on %s. Please enter a valid address to avoid loss of funds.</string>
+    <string name="swap_refund_address_info_message">If the swap fails or market conditions change, your transaction may be refunded minus the transaction fees.\n\nThe refunded amount will be returned to your wallet in the source currency on the same network. Please enter a valid address to avoid loss of funds.</string>
     <string name="swapToZec_swapDetails">Swap Details</string>
     <string name="swapToZec_depositTo">Deposit to</string>
     <string name="swapStatus_swapExpired">Swap Expired</string>

@@ -92,9 +92,8 @@ internal class SwapQuoteVM(
 
     private fun createErrorState(quote: SwapQuoteData.Error): SwapQuoteState.Error {
         val message =
-            when {
-                quote.exception is QuoteLowAmountException &&
-                    quote.exception.amountFormatted != null -> {
+            when (quote.exception) {
+                is QuoteLowAmountException if quote.exception.amountFormatted != null -> {
                     stringRes(
                         R.string.swap_quote_error_too_low_try_at_least,
                         stringResByDynamicCurrencyNumber(
@@ -104,13 +103,12 @@ internal class SwapQuoteVM(
                     )
                 }
 
-                quote.exception is QuoteLowAmountException -> {
+                is QuoteLowAmountException -> {
                     stringRes(R.string.swap_quote_error_too_low_try_higher)
                 }
 
-                quote.exception is ResponseWithNearErrorException &&
-                    !quote.exception.error.message
-                        .contains("failed to get quote", ignoreCase = true) -> {
+                is ResponseWithNearErrorException if !quote.exception.error.message
+                    .contains("failed to get quote", ignoreCase = true) -> {
                     stringRes(quote.exception.error.message)
                 }
 

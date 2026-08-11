@@ -183,10 +183,7 @@ class MigrationKeystoneSignVM(
                             failureSheet.value = null
                             buildBatch()
                         },
-                        onDismiss = {
-                            failureSheet.value = null
-                            onReject()
-                        },
+                        onDismiss = { failureSheet.value = null },
                     )
                 }
             }
