@@ -463,8 +463,25 @@ jobs:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: android
           ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
           ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
+        shell: bash
         run: |
-          ./gradlew :app:assembleZcashmainnetStoreDebug :app:assembleZcashtestnetStoreDebug :app:bundleZcashmainnetStoreRelease :app:bundleZcashtestnetStoreRelease :app:packageZcashmainnetStoreReleaseUniversalApk
+          # This step's worker processes (bundletool's standalone-APK packaging,
+          # in particular) can OOM on the standard runner's RAM when SDK_COMMIT_PIN
+          # is set and the companion SDK's Rust compilation is sharing the box with
+          # this already-heavy multi-variant release build. A fresh Gradle daemon
+          # (and freshly-spawned workers) reliably clears it -- retry once, matching
+          # zodl-helpers/scripts/deploy.sh's established OOM-retry-once handling for
+          # this same build.
+          TASKS=":app:assembleZcashmainnetStoreDebug :app:assembleZcashtestnetStoreDebug :app:bundleZcashmainnetStoreRelease :app:bundleZcashtestnetStoreRelease :app:packageZcashmainnetStoreReleaseUniversalApk"
+          if ! ./gradlew ${TASKS} 2>&1 | tee build-store-apk.log; then
+            if grep -qi "OutOfMemoryError\|Java heap space" build-store-apk.log; then
+              echo "::warning::Build Store APK failed with OOM -- stopping the daemon and retrying once with a fresh heap."
+              ./gradlew --stop
+              ./gradlew ${TASKS}
+            else
+              exit 1
+            fi
+          fi
 
       - name: Collect Artifacts
         timeout-minutes: 1
