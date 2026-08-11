@@ -53,14 +53,17 @@ data class StaticVotingConfig(
 
         private const val ED25519_PUBLIC_KEY_BYTES = 32
 
-        // The old pin (commit 2785311d, checksum bed0116f) is now frozen for backwards
-        // compatibility with wallets that predate the v2 config schema (John's SDK gap analysis,
-        // #core-wallet 6.8., forwarded to #wallet-team 7.8.) — it still parses, but points at a
-        // stale trusted_keys set. This is the same config valargroup shared as the live "prod"
-        // custom-config URL for testing an unlisted round (verified live).
+        // Content-addressed pin (commit 2785311d, checksum bed0116f) — deliberately points at an
+        // immutable raw.githubusercontent.com blob, NOT the mutable
+        // https://voting.valargroup.org/prod/static-voting-config.json URL: that URL gets
+        // republished on every new round/key rotation, which would break this bundled checksum for
+        // every default-configured user on the very next republish and brick voting until an app
+        // update. Bump BOTH the commit hash and checksum together, in the same change, whenever this
+        // bundled fallback needs to move forward to a newer trusted_keys set.
         const val BUNDLED_PINNED_SOURCE =
-            "https://voting.valargroup.org/prod/static-voting-config.json" +
-                "?checksum=sha256:c06f1dfa2f0a30b3614aefcf00ac7e31d61ebc3cf551b3031d1b194232d1056d"
+            "https://raw.githubusercontent.com/valargroup/token-holder-voting-config/" +
+                "2785311d45758e85567d70a1f13709fa01b62c6b/prod/static-voting-config.json" +
+                "?checksum=sha256:bed0116f961226b256a574b52461ce81d9f5294a57e190987dc155f07eb1e431"
 
         fun decodeAndVerify(data: ByteArray, expectedSHA256: ByteArray?): StaticVotingConfig {
             if (expectedSHA256 != null) {
