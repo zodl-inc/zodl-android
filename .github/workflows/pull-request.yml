@@ -289,6 +289,21 @@ jobs:
       - name: Set up Gradle
         uses: ./.github/actions/setup-gradle
         timeout-minutes: 5
+      - name: Pre-build companion SDK native libs (app shard only)
+        # When SDK_COMMIT_PIN is set, the app shard's instrumentation-test Gradle
+        # invocation would otherwise compile the companion SDK's Rust natives for the
+        # first time while the emulator is already up and running screenshot tests --
+        # observed causing rendering contention (ComposeTimeoutException, "Failed to
+        # find ColorBuffer") from CPU/memory pressure, not real UI regressions.
+        # Assembling (not running) the instrumentation APKs here forces that
+        # compilation to finish before Enable KVM/emulator boot, so the later
+        # `connectedAndroidTest` step only installs and runs against
+        # already-built artifacts. The libs shard doesn't depend on feature-voting
+        # (confirmed: it passes unaffected), so it skips this entirely.
+        if: matrix.shard == 'app'
+        timeout-minutes: 60
+        run: |
+          ./gradlew :app:assembleZcashmainnetStoreDebugAndroidTest :ui-screenshot-test:assembleAndroidTest
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
