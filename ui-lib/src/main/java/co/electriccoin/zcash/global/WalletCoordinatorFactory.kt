@@ -25,7 +25,6 @@ internal operator fun WalletCoordinator.Companion.invoke(
         isTorEnabled = isTorEnabledStorageProvider.observe(),
         isExchangeRateEnabled = isExchangeRateEnabledStorageProvider.observe(),
         isSyncBlocked = isSyncBlocked(context, persistableWalletProvider),
-        isSlipstreamEnabled = true,
     )
 
 /**
