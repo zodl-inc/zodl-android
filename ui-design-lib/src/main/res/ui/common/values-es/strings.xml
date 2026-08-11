@@ -1099,9 +1099,9 @@
     <string name="migrationTorFailure_riskBody">Sin Tor, tu dirección IP queda expuesta al servidor y podría vincularse con los montos de la migración.</string>
 
     <string name="migrationSetup_title">Mover a Ironwood</string>
-    <string name="migrationSetup_bodyPrefix">La última actualización de la red Zcash requiere mover tu </string>
-    <string name="migrationSetup_bodyFiatSuffix"> (%1$s)</string>
-    <string name="migrationSetup_bodySuffix"> del pool de Orchard al nuevo pool de Ironwood. Tus fondos están seguros.</string>
+    <string name="migrationSetup_bodyPrefix">"La última actualización de la red Zcash requiere mover tu "</string>
+    <string name="migrationSetup_bodyFiatSuffix">" (%1$s)"</string>
+    <string name="migrationSetup_bodySuffix">" del pool de Orchard al nuevo pool de Ironwood. Tus fondos están seguros."</string>
     <string name="migrationSetup_findOutMore">Más información</string>
     <string name="migrationSetup_immediateWarning">Todos los fondos transferidos en esta transacción se revelarán en la cadena de bloques.</string>
     <string name="migrationSetup_automaticWarning">El monto de cada transferencia individual entre pools se revela en la cadena de bloques.</string>

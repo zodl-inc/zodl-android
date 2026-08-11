@@ -1380,9 +1380,9 @@ Your vote can no longer be submitted.</string>
     <string name="migrationTorFailure_riskBody">Without Tor, your IP address is exposed to the server and could be linked to the migration amounts.</string>
 
     <string name="migrationSetup_title">Move to Ironwood</string>
-    <string name="migrationSetup_bodyPrefix">Latest Zcash network upgrade requires moving your </string>
-    <string name="migrationSetup_bodyFiatSuffix"> (%1$s)</string>
-    <string name="migrationSetup_bodySuffix"> from the Orchard pool to the new Ironwood pool. Your funds are safe.</string>
+    <string name="migrationSetup_bodyPrefix">"Latest Zcash network upgrade requires moving your "</string>
+    <string name="migrationSetup_bodyFiatSuffix">" (%1$s)"</string>
+    <string name="migrationSetup_bodySuffix">" from the Orchard pool to the new Ironwood pool. Your funds are safe."</string>
     <string name="migrationSetup_findOutMore">Find out more</string>
     <string name="migrationSetup_immediateWarning">All funds transferred in this transaction will be revealed on-chain.</string>
     <string name="migrationSetup_automaticWarning">The amount of an individual transfer across pools is revealed on-chain.</string>
