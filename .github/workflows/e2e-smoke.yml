@@ -20,12 +20,19 @@ jobs:
   # APK in each phase job, paying ~7 min twice.
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 60 rather than the usual 20: when SDK_COMMIT_PIN is set (see setup-sdk-companion),
+    # this compiles the companion SDK's Rust dependency graph with a cold cargo/target
+    # cache on the first run — observed at 20-25 min alone in pull-request.yml's build job.
+    timeout-minutes: 60
     permissions:
       contents: read
     steps:
       - name: Checkout app
         uses: actions/checkout@v4
+
+      - name: Set up companion SDK build (if SDK_COMMIT_PIN is set)
+        timeout-minutes: 30
+        uses: ./.github/actions/setup-sdk-companion
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
