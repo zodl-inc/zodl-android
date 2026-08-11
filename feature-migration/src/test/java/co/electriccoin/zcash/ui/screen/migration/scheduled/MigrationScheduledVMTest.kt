@@ -152,7 +152,9 @@ class MigrationScheduledVMTest {
 
             assertFalse(vm.isFinalizing.value)
             coVerify(exactly = 1) { sdk.storeSignedSchedulePczts(any()) }
-            coVerify(exactly = 1) { finalize(any(), any()) }
+            // MOB-1669: the post-Keystone-scan path opts out of eagerly starting the live driver
+            // here — see FinalizeMigrationScheduleUseCase's doc for why.
+            coVerify(exactly = 1) { finalize(any(), any(), startLiveDriverImmediately = false) }
             assertNull(pendingSchedule.get(testAccountKeyId))
             assertNull(pendingPczts.get(testAccountKeyId))
         }

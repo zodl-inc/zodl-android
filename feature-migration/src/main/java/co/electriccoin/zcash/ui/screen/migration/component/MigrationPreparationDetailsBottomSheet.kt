@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.common.model.migration.MigrationPreparationDetails
 import co.electriccoin.zcash.ui.common.model.migration.MigrationPreparationStepDetail
@@ -202,7 +203,7 @@ private fun PreparationStepRow(
             }
         }
         Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.weight(TITLE_COLUMN_WEIGHT)) {
             Text(
                 text = step.title.getValue(),
                 style = ZashiTypography.textSm,
@@ -215,11 +216,24 @@ private fun PreparationStepRow(
                 color = ZashiColors.Text.textTertiary,
             )
         }
+        Spacer(Modifier.width(8.dp))
+        // Weighted like the title/time column above (not a bare Modifier.align) — a long
+        // dependency list ("Waits on steps 1, 2, ..., 14" for a big Keystone batch) previously had
+        // no width bound of its own, so Row gave it first claim on the available width and
+        // squeezed the weighted title column down to near-zero, wrapping "Transaction 15 of 16"
+        // one character per line. Bounding both columns by weight lets this text wrap within its
+        // own share instead of stealing the title's.
         Text(
             text = step.statusLabel.getValue(),
             style = ZashiTypography.textXs,
             color = ZashiColors.Text.textTertiary,
-            modifier = Modifier.align(Alignment.CenterVertically),
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f).align(Alignment.CenterVertically),
         )
     }
 }
+
+// Title column gets a larger share than the status column (weight 1f, above) — it's the primary
+// text, and the status column's worst case ("Waits on steps 1, 2, ..., 14") still wraps to a few
+// short lines at this ratio instead of squeezing the title down to near-zero width.
+private const val TITLE_COLUMN_WEIGHT = 1.3f

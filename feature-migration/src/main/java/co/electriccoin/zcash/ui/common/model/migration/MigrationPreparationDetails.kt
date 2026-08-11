@@ -47,9 +47,17 @@ fun preparationStepTitle(number: Int, stepCount: Int): StringResource = stringRe
  * on EVERY row inside this sheet, including the one that's already due. [formatMigrationDuration]'s
  * own `coerceAtLeast` floor already turns a zero/negative [secondsUntil] into its network floor, so
  * no separate clamping is needed here.
+ *
+ * [fineGrained] forwards to [formatMigrationDuration] — exposed here (default unchanged: ambient
+ * [isTestnetBuildFlavor]) purely so a caller (a test) can pin it explicitly instead of depending on
+ * which Gradle flavor variant happened to compile the caller (MOB-1669 test-flakiness follow-up,
+ * 2026-08-09: this default silently resolved differently under `testZcashmainnetStoreDebugUnitTest`
+ * vs `testZcashtestnetStoreDebugUnitTest`, since both compile and run this same JVM test).
  */
-fun preparationStepTimeLabel(secondsUntil: Long): StringResource =
-    stringRes("in ${formatMigrationDuration(secondsUntil)}")
+fun preparationStepTimeLabel(
+    secondsUntil: Long,
+    fineGrained: Boolean = isTestnetBuildFlavor(),
+): StringResource = stringRes("in ${formatMigrationDuration(secondsUntil, fineGrained = fineGrained)}")
 
 /**
  * The Figma-matched status word for one preparation step, derived purely from its own

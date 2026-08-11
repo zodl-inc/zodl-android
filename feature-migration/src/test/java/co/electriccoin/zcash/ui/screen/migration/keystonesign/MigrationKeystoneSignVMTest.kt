@@ -323,18 +323,35 @@ class MigrationKeystoneSignVMTest {
     @Test
     fun failureSheetDismissOnlyHidesSheet() =
         runTest {
+            // Simulate a resumed mid-batch round: pendingKeystonePczts already has an earlier
+            // round's accumulated signed PCZTs. When the retry build for the CURRENT round fails
+            // (buildKeystoneSignBatchQrParts throws — the only SDK call the "existing" branch of
+            // buildBatch makes), dismissing the resulting failure sheet must only hide the sheet,
+            // never discard the already-signed rounds by clearing pendingKeystonePczts.
+            val existingPczts =
+                PendingKeystoneMigrationPczts(
+                    requestId = byteArrayOf(0x01),
+                    splitUnsignedPczt = null,
+                    transferUnsignedPczts = listOf(1L to byteArrayOf(0x02)),
+                    roundIndex = 0,
+                    accumulatedSplitSigned = null,
+                    accumulatedPrepSigned = emptyList(),
+                    accumulatedTransferSigned = listOf(1L to byteArrayOf(0x03)),
+                )
             val sdk =
                 mockk<OrchardMigrationSdk>(relaxed = true) {
                     coEvery { keystoneSigningRoundBudget() } returns
                         cash.z.ecc.android.sdk
                             .KeystoneSigningRoundBudget(96, 16, 3)
-                    coEvery { isNoteSplitNeeded() } returns false
-                    coEvery { createUnsignedTransferPczts(any()) } throws RuntimeException("SDK error")
+                    coEvery { buildKeystoneSignBatchQrParts(any(), any(), any(), any()) } throws
+                        RuntimeException("SDK error")
                 }
             val pendingSchedule =
                 PendingMigrationScheduleRepositoryImpl()
                     .apply { set(testAccountKeyId, schedule()) }
-            val pendingPczts = PendingKeystoneMigrationPcztsRepositoryImpl()
+            val pendingPczts =
+                PendingKeystoneMigrationPcztsRepositoryImpl()
+                    .apply { set(testAccountKeyId, existingPczts) }
             val router = FakeNavigationRouter()
             val vm = vm(sdk, pendingSchedule, pendingPczts, router)
 
@@ -350,6 +367,7 @@ class MigrationKeystoneSignVMTest {
             assertEquals(0, router.backCount)
             assertNull(vm.failureSheet.value)
             assertNotNull(pendingSchedule.peek(testAccountKeyId))
+            assertNotNull(pendingPczts.get(testAccountKeyId))
         }
 
     @Test

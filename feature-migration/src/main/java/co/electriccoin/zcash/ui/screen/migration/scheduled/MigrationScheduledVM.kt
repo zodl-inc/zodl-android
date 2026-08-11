@@ -123,7 +123,12 @@ class MigrationScheduledVM(
             )
             // Mode doesn't affect this use case's behavior (only routes IMMEDIATE vs AUTOMATIC
             // before it), and MigrationScheduledArgs is only ever reached on the AUTOMATIC path.
-            finalizeMigrationSchedule(sched, MigrationMode.AUTOMATIC)
+            // startLiveDriverImmediately=false (MOB-1669): a large Keystone batch's whole
+            // prove-ready note-split set would otherwise run through one blocking
+            // finalizeReadyTransfers call in the live driver's very first iteration, right as
+            // this Keystone ceremony finishes. The already-armed migrationScheduler job still
+            // drives this plan forward — just not synchronously forced open here.
+            finalizeMigrationSchedule(sched, MigrationMode.AUTOMATIC, startLiveDriverImmediately = false)
             pendingSchedule.clear()
             pendingKeystonePczts.clear()
             isFinalizing.value = false

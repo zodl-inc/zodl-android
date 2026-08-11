@@ -173,15 +173,23 @@ class MigrationProgressVMTest {
     fun transferRowDisplay_future_not_last_row_has_no_in_prefix() {
         // A span comfortably above either network's privacy floor (10 min testnet / 1 hour
         // mainnet) so this test isn't coupled to formatMigrationDuration's own floor behavior —
-        // that's covered separately in MigrationDurationFormatTest.
+        // that's covered separately in MigrationDurationFormatTest. fineGrained pinned explicitly
+        // (MOB-1669 test-flakiness follow-up, 2026-08-09) — this "~X h" (not "~X hours") shape is
+        // testnet-specific and must not depend on which Gradle flavor variant compiled this test.
         val t = transfer(scheduledAt = now + 2.hours)
-        assertEquals("~2 h", transferRowDisplay(t, now, isLastRowOverall = false).label.asString())
+        assertEquals(
+            "~2 h",
+            transferRowDisplay(t, now, isLastRowOverall = false, fineGrained = true).label.asString()
+        )
     }
 
     @Test
     fun transferRowDisplay_future_last_row_overall_gets_in_prefix() {
         val t = transfer(scheduledAt = now + 2.hours)
-        assertEquals("in ~2 h", transferRowDisplay(t, now, isLastRowOverall = true).label.asString())
+        assertEquals(
+            "in ~2 h",
+            transferRowDisplay(t, now, isLastRowOverall = true, fineGrained = true).label.asString()
+        )
     }
 
     // ── preparationRowDisplay: same priority shape, "Done" not "Sent"/"Confirmed" ─────────────
@@ -214,13 +222,28 @@ class MigrationProgressVMTest {
 
     @Test
     fun preparationRowDisplay_future_last_row_overall_gets_in_prefix() {
-        val display = preparationRowDisplay(prep(scheduledAt = now + 10.minutes), now, isLastRowOverall = true)
+        // fineGrained pinned explicitly (MOB-1669 test-flakiness follow-up, 2026-08-09) — the
+        // 10-minute testnet privacy floor is below the 1-hour mainnet floor, so this "~10 min"
+        // expectation must not depend on which Gradle flavor variant compiled this test.
+        val display =
+            preparationRowDisplay(
+                prep(scheduledAt = now + 10.minutes),
+                now,
+                isLastRowOverall = true,
+                fineGrained = true,
+            )
         assertEquals("in ~10 min", display.label.asString())
     }
 
     @Test
     fun preparationRowDisplay_future_not_last_row_has_no_in_prefix() {
-        val display = preparationRowDisplay(prep(scheduledAt = now + 10.minutes), now, isLastRowOverall = false)
+        val display =
+            preparationRowDisplay(
+                prep(scheduledAt = now + 10.minutes),
+                now,
+                isLastRowOverall = false,
+                fineGrained = true,
+            )
         assertEquals("~10 min", display.label.asString())
     }
 
@@ -317,7 +340,10 @@ class MigrationProgressVMTest {
                 transfer(index = 1, id = 2).copy(scheduledAt = now + 10.minutes),
             )
         val snapshot = LiveMigrationSnapshot(transfers = transfers, preparations = emptyList(), tipHeight = 1_000L)
-        val subtitle = migrationProgressSubtitle(snapshot, now)
+        // fineGrained pinned explicitly (MOB-1669 test-flakiness follow-up, 2026-08-09) — the
+        // 10-minute span here sits below the 1-hour mainnet floor, so this must not depend on
+        // which Gradle flavor variant compiled this test.
+        val subtitle = migrationProgressSubtitle(snapshot, now, fineGrained = true)
         assertTrue(subtitle.contains("over ~10 min"), subtitle)
         assertTrue(subtitle.contains("2 remaining transfers"), subtitle)
     }
@@ -332,7 +358,9 @@ class MigrationProgressVMTest {
                 transfer(index = 1, id = 2).copy(scheduledAt = now + 25.minutes),
             )
         val snapshot = LiveMigrationSnapshot(transfers = transfers, preparations = emptyList(), tipHeight = 1_000L)
-        val subtitle = migrationProgressSubtitle(snapshot, now)
+        // fineGrained pinned explicitly (MOB-1669 test-flakiness follow-up, 2026-08-09) — see the
+        // "not started" test above for why.
+        val subtitle = migrationProgressSubtitle(snapshot, now, fineGrained = true)
         assertTrue(subtitle.contains("~25 min remaining"), subtitle)
         assertFalse(subtitle.contains("over ~"), subtitle)
     }

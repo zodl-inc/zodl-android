@@ -413,7 +413,10 @@ class MigrationReviewVM(
             }
         try {
             sdk.signAndStoreMigrationSchedule(scheduleToSign, zashiSpendingKeyDataSource.getZashiSpendingKey())
-            finalizeMigrationSchedule(scheduleToSign, args.mode)
+            // startLiveDriverImmediately=false (MOB-1669): matches iOS's commitSoftware, which
+            // also never eagerly starts a drive loop right after signAndStoreMigrationSchedule —
+            // see FinalizeMigrationScheduleUseCase's doc.
+            finalizeMigrationSchedule(scheduleToSign, args.mode, startLiveDriverImmediately = false)
             navigationRouter.forward(MigrationScheduledArgs)
         } catch (e: RuntimeException) {
             val retryable =
@@ -431,7 +434,7 @@ class MigrationReviewVM(
             migrationLog("MigrationReview: StalePlan on commit — re-proposing once and retrying")
             val fresh = sdk.proposeMigrationTransfers()
             sdk.signAndStoreMigrationSchedule(fresh, zashiSpendingKeyDataSource.getZashiSpendingKey())
-            finalizeMigrationSchedule(fresh, args.mode)
+            finalizeMigrationSchedule(fresh, args.mode, startLiveDriverImmediately = false)
             navigationRouter.forward(MigrationScheduledArgs)
         }
     }

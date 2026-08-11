@@ -13,6 +13,7 @@ import co.electriccoin.zcash.ui.common.model.migration.MigrationPreparationDetai
 import co.electriccoin.zcash.ui.common.model.migration.MigrationPreparationStepDetail
 import co.electriccoin.zcash.ui.common.model.migration.MigrationTransferBlocker
 import co.electriccoin.zcash.ui.common.model.migration.formatMigrationDuration
+import co.electriccoin.zcash.ui.common.model.migration.isTestnetBuildFlavor
 import co.electriccoin.zcash.ui.common.model.migration.preparationStepStatus
 import co.electriccoin.zcash.ui.common.model.migration.preparationStepTimeLabel
 import co.electriccoin.zcash.ui.common.model.migration.preparationStepTitle
@@ -325,6 +326,7 @@ internal fun orchardRemainingZatoshi(
 internal fun migrationProgressSubtitle(
     snapshot: LiveMigrationSnapshot,
     now: Instant,
+    fineGrained: Boolean = isTestnetBuildFlavor(),
 ): String {
     // Scheduled moments across preparations AND transfers, used for both the pre-start static
     // total-span estimate and the in-progress remaining-time countdown below.
@@ -342,7 +344,8 @@ internal fun migrationProgressSubtitle(
         snapshot.completedCount <= 0 -> {
             val span = (lastScheduled - firstScheduled).inWholeSeconds
             "Your balance splits into ${snapshot.totalCount} transfers over " +
-                "${formatMigrationDuration(span)}. There are $remainingCount remaining transfers."
+                "${formatMigrationDuration(span, fineGrained = fineGrained)}. There are " +
+                "$remainingCount remaining transfers."
         }
 
         // In progress: the header now counts down remaining time instead of showing a static total.
@@ -350,7 +353,7 @@ internal fun migrationProgressSubtitle(
             val remaining = (lastScheduled - now).inWholeSeconds
             if (remaining > 0) {
                 "Your balance splits into ${snapshot.totalCount} transfers. About " +
-                    "${formatMigrationDuration(remaining)} remaining. There are " +
+                    "${formatMigrationDuration(remaining, fineGrained = fineGrained)} remaining. There are " +
                     "$remainingCount remaining transfers."
             } else {
                 // Running late but healthy — never claim a duration here (see doc above).
@@ -402,6 +405,7 @@ internal fun transferRowDisplay(
     t: LiveMigrationTransfer,
     now: Instant,
     isLastRowOverall: Boolean,
+    fineGrained: Boolean = isTestnetBuildFlavor(),
 ): MigrationRowDisplay =
     when {
         t.blocker == MigrationTransferBlocker.EXPIRED -> {
@@ -421,7 +425,7 @@ internal fun transferRowDisplay(
         }
 
         t.isSent -> {
-            sentRowDisplay(t.minedAt, now)
+            sentRowDisplay(t.minedAt, now, fineGrained)
         }
 
         t.scheduledAt <= now -> {
@@ -429,7 +433,7 @@ internal fun transferRowDisplay(
         }
 
         else -> {
-            futureRowDisplay(t.scheduledAt, now, isLastRowOverall)
+            futureRowDisplay(t.scheduledAt, now, isLastRowOverall, fineGrained)
         }
     }
 
@@ -444,6 +448,7 @@ internal fun preparationRowDisplay(
     p: LiveMigrationPreparation,
     now: Instant,
     isLastRowOverall: Boolean,
+    fineGrained: Boolean = isTestnetBuildFlavor(),
 ): MigrationRowDisplay =
     when {
         p.isSent -> {
@@ -463,7 +468,7 @@ internal fun preparationRowDisplay(
         }
 
         else -> {
-            futureRowDisplay(p.scheduledAt, now, isLastRowOverall)
+            futureRowDisplay(p.scheduledAt, now, isLastRowOverall, fineGrained)
         }
     }
 
@@ -473,14 +478,22 @@ internal fun preparationRowDisplay(
  * height/time, so "Sent {relative} ago" is only shown once [minedAt] is known; until then this
  * reads plain "Sent" rather than inventing a broadcast time the model doesn't have.
  */
-internal fun sentRowDisplay(minedAt: Instant?, now: Instant): MigrationRowDisplay =
+internal fun sentRowDisplay(
+    minedAt: Instant?,
+    now: Instant,
+    fineGrained: Boolean = isTestnetBuildFlavor(),
+): MigrationRowDisplay =
     if (minedAt != null) {
         val secondsAgo = (now - minedAt).inWholeSeconds.coerceAtLeast(0L)
         // No privacy floor here (2026-08-06 revised decision) — see formatMigrationDuration's own
         // kdoc: an already-mined transfer's exact timing is already public on-chain, so flooring
         // this specific label has no privacy benefit left, only less-informative copy.
         MigrationRowDisplay(
-            stringRes("Sent ${formatMigrationDuration(secondsAgo, applyPrivacyFloor = false)} ago"),
+            stringRes(
+                "Sent ${
+                    formatMigrationDuration(secondsAgo, fineGrained = fineGrained, applyPrivacyFloor = false)
+                } ago"
+            ),
             isReadyNow = false
         )
     } else {
@@ -496,9 +509,10 @@ private fun futureRowDisplay(
     scheduledAt: Instant,
     now: Instant,
     isLastRowOverall: Boolean,
+    fineGrained: Boolean = isTestnetBuildFlavor(),
 ): MigrationRowDisplay {
     val secondsLeft = (scheduledAt - now).inWholeSeconds
-    val relative = formatMigrationDuration(secondsLeft)
+    val relative = formatMigrationDuration(secondsLeft, fineGrained = fineGrained)
     val label = if (isLastRowOverall) "in $relative" else relative
     return MigrationRowDisplay(stringRes(label), isReadyNow = false)
 }

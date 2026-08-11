@@ -26,6 +26,26 @@ import kotlin.time.Duration.Companion.seconds
  * behavior and by on-launch reconciliation
  * ([CheckMigrationRecoveryUseCase][co.electriccoin.zcash.ui.common.usecase.CheckMigrationRecoveryUseCase]),
  * not by a separate notify-only delivery mode.
+ *
+ * [startLiveDriverImmediately] (default `true`) lets a caller opt OUT of eagerly starting
+ * [MigrationLiveDriver] here (MOB-1669, 2026-08-09): whatever prep/note-split transactions are
+ * already prove-ready runs synchronously through one blocking `finalizeReadyTransfers` call inside
+ * the live driver's very first loop iteration — for a large committed plan (e.g. a big Keystone
+ * batch's whole note-split tree becoming prove-ready at once), up to several minutes, with no
+ * progress feedback across that JNI boundary (reported: 3.5 min on Android vs instant on iOS for a
+ * 3-round Keystone batch).
+ *
+ * iOS's equivalent commit steps — both `MigrationCommitPipeline.commitSoftware` (the hot-wallet
+ * lane) and the post-Keystone-scan `storeKeystoneSignedBatch` — never eagerly start their own
+ * drive loop here either: they store/sign the schedule, call a lightweight `reconcile()` (a
+ * state/gate read, no proving), and return; whatever background driver iOS has picks up proving on
+ * its own normal cadence. Both `MigrationScheduledVM` (post-Keystone-scan) and `MigrationReviewVM`
+ * (hot-wallet confirm) pass `false` to match: the `migrationScheduler.schedule(...)` call above
+ * already arms the WorkManager job for whenever the plan's first step is actually due, so
+ * proving+broadcasting still happens — just not forced to start synchronously in the same breath
+ * as the commit/ceremony finishing. The `true` default remains only for
+ * [DebugStartMigrationE2EUseCase][co.electriccoin.zcash.ui.common.usecase.DebugStartMigrationE2EUseCase],
+ * whose whole point is fast, immediately-observable end-to-end iteration.
  */
 class FinalizeMigrationScheduleUseCase(
     private val migrationScheduler: MigrationScheduler,
@@ -34,7 +54,11 @@ class FinalizeMigrationScheduleUseCase(
     private val synchronizerProvider: SynchronizerProvider,
     private val migrationLiveDriver: MigrationLiveDriver,
 ) {
-    suspend operator fun invoke(sched: MigrationSchedule, mode: MigrationMode) {
+    suspend operator fun invoke(
+        sched: MigrationSchedule,
+        mode: MigrationMode,
+        startLiveDriverImmediately: Boolean = true,
+    ) {
         // Measured block rate — the 75s constant grossly overestimates on the bursty testnet,
         // scheduling the first worker run far past the real due heights.
         val secondsPerBlock = getOrchardMigrationSdk().estimatedSecondsPerBlock()
@@ -55,7 +79,14 @@ class FinalizeMigrationScheduleUseCase(
         // first risks it entering syncRun (syncToTip) concurrently with the anchor-retention
         // restart, the exact mechanism that exists to prevent a permanent AnchorNotFound on the
         // plan's first bucket.
-        migrationLiveDriver.startIfNotRunning(accountKeyId)
+        if (startLiveDriverImmediately) {
+            migrationLiveDriver.startIfNotRunning(accountKeyId)
+        } else {
+            migrationLog(
+                "FinalizeMigrationSchedule: skipping eager live-driver start (MOB-1669) — " +
+                    "the scheduled WorkManager job will drive this plan forward instead."
+            )
+        }
     }
 
     /**

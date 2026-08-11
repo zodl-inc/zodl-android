@@ -21,8 +21,12 @@ class MigrationPreparationDetailsTest {
         // Unlike the main timeline's last-row-only "in" rule, the sheet ALWAYS prefixes "in" —
         // including a step whose own schedule slot has already arrived (Figma shows "in ~0 hours"
         // for the immediately-due first step, never a bare "Ready to send" in this column).
-        assertEquals("in ~10 min", preparationStepTimeLabel(0L).asString())
-        assertEquals("in ~10 min", preparationStepTimeLabel(-100L).asString())
+        // fineGrained pinned explicitly (MOB-1669 test-flakiness follow-up, 2026-08-09) — this
+        // testnet-floor expectation must not depend on which Gradle flavor variant compiled this
+        // JVM test (isTestnetBuildFlavor()'s ambient BuildConfig.FLAVOR default resolves
+        // differently under testZcashmainnetStoreDebugUnitTest vs testZcashtestnetStoreDebugUnitTest).
+        assertEquals("in ~10 min", preparationStepTimeLabel(0L, fineGrained = true).asString())
+        assertEquals("in ~10 min", preparationStepTimeLabel(-100L, fineGrained = true).asString())
     }
 
     @Test
