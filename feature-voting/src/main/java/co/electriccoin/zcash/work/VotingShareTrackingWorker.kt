@@ -6,7 +6,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import co.electriccoin.zcash.ui.common.usecase.TrackVotingSharesUseCase
 import co.electriccoin.zcash.ui.common.usecase.VotingShareTrackingResult
-import co.electriccoin.zcash.ui.screen.more.VOTING_ENABLED
+import co.electriccoin.zcash.voting.VOTING_ENABLED
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
