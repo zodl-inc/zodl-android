@@ -8,8 +8,10 @@ import cash.z.ecc.android.sdk.model.Account
 import cash.z.ecc.android.sdk.model.AccountBalance
 import cash.z.ecc.android.sdk.model.AccountUuid
 import cash.z.ecc.android.sdk.model.BlockHeight
+import cash.z.ecc.android.sdk.model.Pczt
 import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.android.sdk.model.Zatoshi
+import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.SynchronizerError
@@ -17,20 +19,33 @@ import co.electriccoin.zcash.ui.common.model.TransparentInfo
 import co.electriccoin.zcash.ui.common.model.UnifiedInfo
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.voting.Proposal
+import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
+import co.electriccoin.zcash.ui.common.model.voting.VoteOption
+import co.electriccoin.zcash.ui.common.model.voting.VotingGovernancePczt
+import co.electriccoin.zcash.ui.common.model.voting.VotingServiceConfig
+import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProvider
+import co.electriccoin.zcash.ui.common.provider.RoundsListResult
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
+import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
+import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
 import co.electriccoin.zcash.ui.common.usecase.ResolveVotingRoundSessionUseCase
 import com.keystone.module.DecodeResult
 import com.keystone.module.ZcashAccounts
 import com.sparrowwallet.hummingbird.UR
 import com.sparrowwallet.hummingbird.UREncoder
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import java.lang.reflect.Proxy
+import java.time.Instant
 import java.util.Base64
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -165,6 +180,131 @@ class VotingKeystoneRepositoryTest {
             assertEquals(emptyList(), fixture.recovery.storedSignatures)
         }
 
+    @Test
+    fun resetAndRebuildPathMarksBundleRebuiltSinceProof() =
+        runTest {
+            val selectedAccount = keystoneAccount()
+            val accountUuid = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
+            val session = resetRebuildSession(RESET_REBUILD_ROUND_ID_HEX)
+
+            val recovery =
+                FakeVotingRecoveryRepository(
+                    VotingRecoverySnapshot(
+                        accountUuid = accountUuid,
+                        roundId = RESET_REBUILD_ROUND_ID_HEX,
+                        bundleCount = 1
+                    )
+                )
+
+            val votingApiProvider = mockk<VotingApiProvider>(relaxed = true)
+            coEvery { votingApiProvider.fetchServiceConfig() } returns VotingServiceConfig.EMPTY
+            coEvery { votingApiProvider.fetchAllRounds() } returns
+                RoundsListResult(
+                    rounds = emptyList(),
+                    sessionsByRoundId = mapOf(RESET_REBUILD_ROUND_ID_HEX to session)
+                )
+            val resolveVotingRoundSession =
+                ResolveVotingRoundSessionUseCase(
+                    votingApiProvider = votingApiProvider,
+                    votingApiRepository = mockk(relaxed = true),
+                    votingConfigRepository = mockk(relaxed = true)
+                )
+
+            val synchronizer = mockk<Synchronizer>(relaxed = true)
+            every { synchronizer.network } returns ZcashNetwork.Mainnet
+            coEvery { synchronizer.redactPcztForSigner(any()) } returns Pczt(byteArrayOf(0x50))
+            val synchronizerProvider = mockk<SynchronizerProvider>(relaxed = true)
+            coEvery { synchronizerProvider.getSynchronizer() } returns synchronizer
+            coEvery { synchronizerProvider.getVotingWalletDbPath() } returns VOTING_WALLET_DB_PATH
+
+            val rebuiltPczt =
+                VotingGovernancePczt(
+                    pcztBytes = byteArrayOf(0x60),
+                    rk = byteArrayOf(0x61),
+                    sighash = byteArrayOf(0x62),
+                    actionIndex = 3
+                )
+            val votingCryptoClient = mockk<VotingCryptoClient>(relaxed = true)
+            coEvery {
+                votingCryptoClient.getWalletNotesJson(any(), any(), any(), any())
+            } returns """[{"value":20000000,"position":0}]"""
+            coEvery {
+                votingCryptoClient.generateNoteWitnessesJson(any(), any(), any(), any(), any(), any())
+            } returns "{}"
+            coEvery { votingCryptoClient.extractOrchardFvkFromUfvk(any(), any()) } returns byteArrayOf(0x01)
+            coEvery { votingCryptoClient.openVotingDb(any()) } returns DB_HANDLE
+            coEvery {
+                votingCryptoClient.buildGovernancePczt(any(), any(), any(), any(), any(), any(), any(), any(), any())
+            } throws RuntimeException("Setup refusing to overwrite existing bundle data") andThen rebuiltPczt
+
+            val encoder = mockk<UREncoder>()
+            val keystoneSDKProvider = mockk<KeystoneSDKProvider>(relaxed = true)
+            every { keystoneSDKProvider.generatePczt(any()) } returns encoder
+
+            val votingHotkeySeedProvider = mockk<VotingHotkeySeedProvider>(relaxed = true)
+            coEvery { votingHotkeySeedProvider.get(accountUuid) } returns byteArrayOf(0x70)
+
+            val repository =
+                VotingKeystoneRepositoryImpl(
+                    accountDataSource = FakeAccountDataSource(selectedAccount),
+                    resolveVotingRoundSession = resolveVotingRoundSession,
+                    votingRecoveryRepository = recovery,
+                    votingCryptoClient = votingCryptoClient,
+                    votingHotkeySeedProvider = votingHotkeySeedProvider,
+                    votingProofPrecomputeRepository = mockk(relaxed = true),
+                    synchronizerProvider = synchronizerProvider,
+                    keystoneSDKProvider = keystoneSDKProvider
+                )
+
+            val signingBundle =
+                repository.createPcztEncoder(
+                    accountUuid = accountUuid,
+                    roundId = RESET_REBUILD_ROUND_ID_HEX
+                )
+
+            assertEquals(0, signingBundle.bundleIndex)
+            assertEquals(rebuiltPczt.actionIndex, signingBundle.actionIndex)
+            val markedCall = recovery.markRebuiltSinceProofCalls.single()
+            assertEquals(accountUuid, markedCall.accountUuid)
+            assertEquals(RESET_REBUILD_ROUND_ID_HEX, markedCall.roundId)
+            assertEquals(0, markedCall.bundleIndex)
+        }
+
+    private fun resetRebuildSession(roundIdHex: String) =
+        VotingSession(
+            voteRoundId = roundIdHex.chunked(2).map { it.toInt(16).toByte() }.toByteArray(),
+            snapshotHeight = 1L,
+            snapshotBlockhash = ByteArray(32) { 0x01 },
+            proposalsHash = ByteArray(32) { 0x02 },
+            voteEndTime = Instant.ofEpochSecond(3),
+            ceremonyStart = Instant.ofEpochSecond(2),
+            eaPK = ByteArray(32) { 0x03 },
+            vkZkp1 = ByteArray(32) { 0x04 },
+            vkZkp2 = ByteArray(32) { 0x05 },
+            vkZkp3 = ByteArray(32) { 0x06 },
+            ncRoot = ByteArray(32) { 0x07 },
+            nullifierIMTRoot = ByteArray(32) { 0x08 },
+            creator = "creator",
+            title = "Round",
+            description = "Round description",
+            discussionUrl = null,
+            proposals =
+                listOf(
+                    Proposal(
+                        id = 1,
+                        title = "Proposal",
+                        description = "Proposal description",
+                        options =
+                            listOf(
+                                VoteOption(id = 0, label = "Support"),
+                                VoteOption(id = 1, label = "Oppose")
+                            )
+                    )
+                ),
+            status = SessionStatus.ACTIVE,
+            createdAtHeight = 1L
+        )
+
     private suspend fun RepositoryFixture.storeBundleSignature() {
         repository.storeBundleSignature(
             accountUuid = accountUuid,
@@ -297,6 +437,8 @@ class VotingKeystoneRepositoryTest {
         private var snapshot: VotingRecoverySnapshot?
     ) : VotingRecoveryRepository {
         val storedSignatures = mutableListOf<StoredSignature>()
+        val markRebuiltSinceProofCalls = mutableListOf<RebuiltSinceProofCall>()
+        val clearRebuiltSinceProofCalls = mutableListOf<RebuiltSinceProofCall>()
 
         override fun observe(
             accountUuid: String,
@@ -387,7 +529,39 @@ class VotingKeystoneRepositoryTest {
             redactedPczt: ByteArray,
             expectedSighash: ByteArray,
             expectedRk: ByteArray?
-        ) = unsupported()
+        ) {
+            val current = snapshot ?: VotingRecoverySnapshot(accountUuid = accountUuid, roundId = roundId)
+            snapshot =
+                current.copy(
+                    pendingKeystoneRequest =
+                        VotingPendingKeystoneRequest(
+                            bundleIndex = bundleIndex,
+                            actionIndex = actionIndex,
+                            redactedPcztBase64 = Base64.getEncoder().encodeToString(redactedPczt),
+                            expectedSighashBase64 = Base64.getEncoder().encodeToString(expectedSighash),
+                            expectedRkBase64 = expectedRk?.let(Base64.getEncoder()::encodeToString)
+                        )
+                )
+        }
+
+        override suspend fun markBundleRebuiltSinceProof(
+            accountUuid: String,
+            roundId: String,
+            bundleIndex: Int
+        ) {
+            markRebuiltSinceProofCalls += RebuiltSinceProofCall(accountUuid, roundId, bundleIndex)
+            val current = snapshot ?: VotingRecoverySnapshot(accountUuid = accountUuid, roundId = roundId)
+            snapshot = current.withBundleRebuiltSinceProof(bundleIndex)
+        }
+
+        override suspend fun clearBundleRebuiltSinceProof(
+            accountUuid: String,
+            roundId: String,
+            bundleIndex: Int
+        ) {
+            clearRebuiltSinceProofCalls += RebuiltSinceProofCall(accountUuid, roundId, bundleIndex)
+            snapshot = snapshot?.withBundleRebuiltSinceProofCleared(bundleIndex)
+        }
 
         override suspend fun setPendingKeystoneRouteStage(
             accountUuid: String,
@@ -442,6 +616,12 @@ class VotingKeystoneRepositoryTest {
         val spendAuthSig: ByteArray,
         val sighash: ByteArray,
         val rk: ByteArray?
+    )
+
+    private data class RebuiltSinceProofCall(
+        val accountUuid: String,
+        val roundId: String,
+        val bundleIndex: Int
     )
 
     private class FakeVotingCryptoClient(
@@ -547,6 +727,7 @@ class VotingKeystoneRepositoryTest {
         const val VOTING_DB_PATH = "/tmp/wallet/voting.sqlite3"
         val EXPECTED_RK = byteArrayOf(0x30)
         val SIGNED_PCZT_BYTES = byteArrayOf(0x40)
+        const val RESET_REBUILD_ROUND_ID_HEX = "aa000000000000000000000000000000000000000000000000000000000000bb"
     }
 }
 

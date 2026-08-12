@@ -30,6 +30,24 @@ internal fun VotingRecoverySnapshot.withProposalSubmitted(
         updatedAt = updatedAt
     )
 
+internal fun VotingRecoverySnapshot.withBundleRebuiltSinceProof(
+    bundleIndex: Int,
+    updatedAt: Instant = Instant.now()
+): VotingRecoverySnapshot =
+    copy(
+        rebuiltSinceProofBundles = rebuiltSinceProofBundles + bundleIndex,
+        updatedAt = updatedAt
+    )
+
+internal fun VotingRecoverySnapshot.withBundleRebuiltSinceProofCleared(
+    bundleIndex: Int,
+    updatedAt: Instant = Instant.now()
+): VotingRecoverySnapshot =
+    copy(
+        rebuiltSinceProofBundles = rebuiltSinceProofBundles - bundleIndex,
+        updatedAt = updatedAt
+    )
+
 internal fun VotingRecoverySnapshot.withRemainingKeystoneBundlesSkipped(
     keepCount: Int,
     updatedAt: Instant = Instant.now()

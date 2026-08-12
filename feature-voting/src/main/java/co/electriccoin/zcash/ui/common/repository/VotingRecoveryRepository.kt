@@ -91,6 +91,12 @@ data class VotingRecoverySnapshot(
     val proposalSelections: Map<Int, VotingProposalSelection> = emptyMap(),
     val keystoneBundleSignatures: Map<Int, VotingKeystoneBundleSignature> = emptyMap(),
     val pendingKeystoneRequest: VotingPendingKeystoneRequest? = null,
+    // Bundles whose Keystone governance PCZT (and therefore `alpha`) was rebuilt after a
+    // setup-overwrite recovery (see VotingKeystoneRepository.createPcztEncoder) since the last
+    // time they were proved. A stale `proofs` row may still exist for the pre-rebuild alpha, so
+    // SubmitVotesUseCase must force a re-prove for any bundle index present here rather than
+    // trusting mere `proofs` row existence.
+    val rebuiltSinceProofBundles: Set<Int> = emptySet(),
     val submittedProposalIds: Set<Int> = emptySet(),
     val updatedAt: Instant = Instant.now()
 ) {
@@ -184,6 +190,27 @@ interface VotingRecoveryRepository {
         redactedPczt: ByteArray,
         expectedSighash: ByteArray,
         expectedRk: ByteArray? = null
+    )
+
+    /**
+     * Marks [bundleIndex] as having had its Keystone governance PCZT rebuilt (fresh `alpha`)
+     * since its last proof, so [SubmitVotesUseCase] knows to force a re-prove even if a stale
+     * `proofs` row still exists for the pre-rebuild `alpha`.
+     */
+    suspend fun markBundleRebuiltSinceProof(
+        accountUuid: String,
+        roundId: String,
+        bundleIndex: Int
+    )
+
+    /**
+     * Clears the rebuilt-since-proof flag for [bundleIndex] once a fresh proof matching the
+     * current `alpha` has been generated.
+     */
+    suspend fun clearBundleRebuiltSinceProof(
+        accountUuid: String,
+        roundId: String,
+        bundleIndex: Int
     )
 
     suspend fun setPendingKeystoneRouteStage(
@@ -505,6 +532,31 @@ class VotingRecoveryRepositoryImpl(
                 updatedAt = Instant.now()
             )
         )
+    }
+
+    override suspend fun markBundleRebuiltSinceProof(
+        accountUuid: String,
+        roundId: String,
+        bundleIndex: Int
+    ) {
+        val current =
+            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
+                accountUuid = accountUuid,
+                roundId = roundId
+            )
+        store(current.withBundleRebuiltSinceProof(bundleIndex))
+    }
+
+    override suspend fun clearBundleRebuiltSinceProof(
+        accountUuid: String,
+        roundId: String,
+        bundleIndex: Int
+    ) {
+        val current = get(accountUuid, roundId) ?: return
+        if (bundleIndex !in current.rebuiltSinceProofBundles) {
+            return
+        }
+        store(current.withBundleRebuiltSinceProofCleared(bundleIndex))
     }
 
     override suspend fun storePendingKeystoneRequest(
@@ -848,7 +900,8 @@ private fun VotingRecoverySnapshot.encode(): String =
                         }
                     )
             }
-        ).put("submitted_proposal_ids", JSONArray(submittedProposalIds.sorted()))
+        ).put("rebuilt_since_proof_bundles", JSONArray(rebuiltSinceProofBundles.sorted()))
+        .put("submitted_proposal_ids", JSONArray(submittedProposalIds.sorted()))
         .put("updated_at", updatedAt.toEpochMilli())
         .toString()
 
@@ -971,6 +1024,13 @@ private fun String.toVotingRecoverySnapshot(): VotingRecoverySnapshot {
                                 }
                     )
                 },
+        rebuiltSinceProofBundles =
+            buildSet {
+                val rebuiltBundles = json.optJSONArray("rebuilt_since_proof_bundles") ?: JSONArray()
+                for (index in 0 until rebuiltBundles.length()) {
+                    add(rebuiltBundles.getInt(index))
+                }
+            },
         submittedProposalIds =
             buildSet {
                 val submittedIds = json.optJSONArray("submitted_proposal_ids") ?: JSONArray()

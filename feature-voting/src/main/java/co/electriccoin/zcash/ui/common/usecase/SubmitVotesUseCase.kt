@@ -452,6 +452,7 @@ class SubmitVotesUseCase(
 
         val alreadyProved =
             !setupJustBuilt &&
+                bundleIndex !in context.recovery.rebuiltSinceProofBundles &&
                 currentDelegationPhase(dbHandle, roundId, bundleIndex).let {
                     it == DelegationPhase.PROVED || it == DelegationPhase.SUBMITTED || it == DelegationPhase.CONFIRMED
                 }
@@ -493,6 +494,13 @@ class SubmitVotesUseCase(
                     }
                 )
             }
+            // A fresh proof now matches the current alpha, so any earlier rebuild-since-proof
+            // flag for this bundle (see VotingKeystoneRepository.createPcztEncoder) is stale.
+            votingRecoveryRepository.clearBundleRebuiltSinceProof(
+                accountUuid = context.accountUuidString,
+                roundId = roundId,
+                bundleIndex = bundleIndex
+            )
         }
     }
 

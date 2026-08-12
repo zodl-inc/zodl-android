@@ -115,6 +115,46 @@ class VotingRecoverySnapshotExtTest {
         }
     }
 
+    @Test
+    fun rebuiltBundleIsAddedToRebuiltSinceProofSet() {
+        val updatedAt = Instant.parse("2026-05-05T12:00:00Z")
+        val snapshot =
+            VotingRecoverySnapshot(
+                accountUuid = "account",
+                roundId = "round",
+                rebuiltSinceProofBundles = setOf(0)
+            )
+
+        val marked =
+            snapshot.withBundleRebuiltSinceProof(
+                bundleIndex = 1,
+                updatedAt = updatedAt
+            )
+
+        assertEquals(setOf(0, 1), marked.rebuiltSinceProofBundles)
+        assertEquals(updatedAt, marked.updatedAt)
+    }
+
+    @Test
+    fun clearedBundleIsRemovedFromRebuiltSinceProofSet() {
+        val updatedAt = Instant.parse("2026-05-05T12:00:00Z")
+        val snapshot =
+            VotingRecoverySnapshot(
+                accountUuid = "account",
+                roundId = "round",
+                rebuiltSinceProofBundles = setOf(0, 1)
+            )
+
+        val cleared =
+            snapshot.withBundleRebuiltSinceProofCleared(
+                bundleIndex = 1,
+                updatedAt = updatedAt
+            )
+
+        assertEquals(setOf(0), cleared.rebuiltSinceProofBundles)
+        assertEquals(updatedAt, cleared.updatedAt)
+    }
+
     private fun signature() =
         VotingKeystoneBundleSignature(
             spendAuthSigBase64 = "signature",

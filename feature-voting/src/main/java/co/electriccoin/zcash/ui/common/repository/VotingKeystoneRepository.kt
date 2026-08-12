@@ -191,10 +191,22 @@ class VotingKeystoneRepositoryImpl(
                     // construct rather than pre-checking phase. By this point the caller has
                     // already returned early via `pendingRequest` above for any bundle whose
                     // redacted PCZT is still cached app-side, so a setup-overwrite refusal here
-                    // means the Rust-side PCZT survived while the app's own cache of it didn't
-                    // (e.g. reinstall) — there's no redacted PCZT left to hand back to the user,
-                    // so the only way forward is to reset this round's unsigned setup and mint a
-                    // fresh one.
+                    // means the Rust-side PCZT survived while the app's own cache of it didn't.
+                    // In practice this is triggered by Android process death: buildGovernancePczt
+                    // commits its native-side state synchronously inside this JNI call, but
+                    // storePendingKeystoneRequest() below (which persists the app's own redacted-
+                    // PCZT cache) is a distinct, later step — if the OS kills the process in that
+                    // window (routine backgrounding/memory pressure, made more likely by a slow
+                    // Halo2 proving operation), the native side is left committed while the app's
+                    // cache never got written. This is NOT reachable via a plain reinstall: the
+                    // crate's SQLite DB and this recovery cache both live in the same app-private
+                    // storage, so a real reinstall wipes them symmetrically. Either way, there's
+                    // no redacted PCZT left to hand back to the user, so the only way forward is
+                    // to reset this round's unsigned setup and mint a fresh one — which draws a
+                    // fresh `alpha`, so the rebuilt bundle is flagged via
+                    // markBundleRebuiltSinceProof below to force SubmitVotesUseCase to re-prove
+                    // rather than pairing a stale proof (computed for the old alpha) with the new
+                    // bundle fields.
                     val governancePczt =
                         runCatching {
                             votingCryptoClient.buildGovernancePczt(
@@ -216,17 +228,24 @@ class VotingKeystoneRepositoryImpl(
                                     "looks corrupted; resetting and rebuilding once"
                             )
                             votingCryptoClient.resetVotingSessionState(dbHandle, roundId)
-                            votingCryptoClient.buildGovernancePczt(
-                                dbHandle = dbHandle,
-                                roundId = roundId,
-                                bundleIndex = bundleIndex,
-                                fvkBytes = fvkBytes,
-                                hotkeySeed = hotkeySeed,
-                                accountIndex = accountIndex,
-                                notesJson = allNotesJson,
-                                seedFingerprint = seedFingerprint,
-                                roundName = session.title
-                            )
+                            votingCryptoClient
+                                .buildGovernancePczt(
+                                    dbHandle = dbHandle,
+                                    roundId = roundId,
+                                    bundleIndex = bundleIndex,
+                                    fvkBytes = fvkBytes,
+                                    hotkeySeed = hotkeySeed,
+                                    accountIndex = accountIndex,
+                                    notesJson = allNotesJson,
+                                    seedFingerprint = seedFingerprint,
+                                    roundName = session.title
+                                ).also {
+                                    votingRecoveryRepository.markBundleRebuiltSinceProof(
+                                        accountUuid = accountUuid,
+                                        roundId = roundId,
+                                        bundleIndex = bundleIndex
+                                    )
+                                }
                         }.getOrThrow()
                     val redactedPcztBytes =
                         synchronizer
