@@ -1,19 +1,24 @@
 package co.electriccoin.zcash.ui.common.repository
 
+import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.fixture.AccountFixture
 import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
 import cash.z.ecc.android.sdk.fixture.WalletBalanceFixture
 import cash.z.ecc.android.sdk.model.Account
+import cash.z.ecc.android.sdk.model.AccountBalance
+import cash.z.ecc.android.sdk.model.AccountUuid
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.SynchronizerError
 import co.electriccoin.zcash.ui.common.model.TransparentInfo
 import co.electriccoin.zcash.ui.common.model.UnifiedInfo
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProvider
+import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.usecase.ResolveVotingRoundSessionUseCase
 import com.keystone.module.DecodeResult
@@ -31,6 +36,8 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class VotingKeystoneRepositoryTest {
     @Test
@@ -99,6 +106,42 @@ class VotingKeystoneRepositoryTest {
             assertContentEquals(spendAuthSig, stored.spendAuthSig)
             assertContentEquals(expectedSighash, stored.sighash)
             assertContentEquals(EXPECTED_RK, stored.rk)
+
+            // The crate-side keystone_signatures preservation guard must also be populated,
+            // using the exact same rk/sighash/spendAuthSig triple, so a subsequent round-wide
+            // resetVotingSessionState preserves this bundle instead of wiping it.
+            val crateCall = fixture.crypto.storeKeystoneSignatureCalls.single()
+            assertEquals(DB_HANDLE, crateCall.dbHandle)
+            assertEquals(ROUND_ID, crateCall.roundId)
+            assertEquals(CURRENT_BUNDLE_INDEX, crateCall.bundleIndex)
+            assertContentEquals(spendAuthSig, crateCall.keystoneSig)
+            assertContentEquals(expectedSighash, crateCall.keystoneSighash)
+            assertContentEquals(EXPECTED_RK, crateCall.rk)
+            assertEquals(listOf(VOTING_DB_PATH), fixture.crypto.openVotingDbCalls)
+            assertEquals(listOf(DB_HANDLE), fixture.crypto.closeVotingDbCalls)
+        }
+
+    @Test
+    fun matchingSignedPcztWithoutRkSkipsCrateSidePersistence() =
+        runTest {
+            val expectedSighash = byteArrayOf(0x0b)
+            val spendAuthSig = byteArrayOf(0x0c)
+            val fixture =
+                repositoryFixture(
+                    scannedSighash = expectedSighash,
+                    expectedSighash = expectedSighash,
+                    spendAuthSig = spendAuthSig,
+                    rk = null
+                )
+
+            fixture.storeBundleSignature()
+
+            val stored = fixture.recovery.storedSignatures.single()
+            assertContentEquals(spendAuthSig, stored.spendAuthSig)
+            assertContentEquals(expectedSighash, stored.sighash)
+            assertNull(stored.rk)
+            assertTrue(fixture.crypto.storeKeystoneSignatureCalls.isEmpty())
+            assertTrue(fixture.crypto.openVotingDbCalls.isEmpty())
         }
 
     @Test
@@ -137,7 +180,8 @@ class VotingKeystoneRepositoryTest {
         expectedSighash: ByteArray,
         existingSignatures: Map<Int, VotingKeystoneBundleSignature> = emptyMap(),
         spendAuthSig: ByteArray = byteArrayOf(0x09),
-        bundleCount: Int? = BUNDLE_COUNT
+        bundleCount: Int? = BUNDLE_COUNT,
+        rk: ByteArray? = EXPECTED_RK
     ): RepositoryFixture {
         val selectedAccount = keystoneAccount()
         val accountUuid = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
@@ -154,7 +198,7 @@ class VotingKeystoneRepositoryTest {
                             actionIndex = ACTION_INDEX,
                             redactedPcztBase64 = encode(byteArrayOf(0x10)),
                             expectedSighashBase64 = encode(expectedSighash),
-                            expectedRkBase64 = encode(EXPECTED_RK)
+                            expectedRkBase64 = rk?.let(::encode)
                         )
                 )
             )
@@ -174,7 +218,7 @@ class VotingKeystoneRepositoryTest {
                     votingCryptoClient = crypto.client,
                     votingHotkeySeedProvider = unsupportedProxy(),
                     votingProofPrecomputeRepository = unsupportedProxy(),
-                    synchronizerProvider = unsupportedProxy(),
+                    synchronizerProvider = FakeSynchronizerProvider(VOTING_WALLET_DB_PATH),
                     keystoneSDKProvider = FakeKeystoneSDKProvider()
                 ),
             recovery = recovery,
@@ -406,12 +450,15 @@ class VotingKeystoneRepositoryTest {
     ) {
         var extractSighashCalls = 0
         var extractSpendAuthCalls = 0
+        val openVotingDbCalls = mutableListOf<String>()
+        val closeVotingDbCalls = mutableListOf<Long>()
+        val storeKeystoneSignatureCalls = mutableListOf<StoreKeystoneSignatureCall>()
 
         val client: VotingCryptoClient =
             Proxy.newProxyInstance(
                 VotingCryptoClient::class.java.classLoader,
                 arrayOf(VotingCryptoClient::class.java)
-            ) { _, method, _ ->
+            ) { _, method, args ->
                 when (method.name) {
                     "extractPcztSighash" -> {
                         extractSighashCalls++
@@ -423,11 +470,59 @@ class VotingKeystoneRepositoryTest {
                         spendAuthSig
                     }
 
+                    "openVotingDb" -> {
+                        openVotingDbCalls += args.valueAt<String>(0)
+                        DB_HANDLE
+                    }
+
+                    "closeVotingDb" -> {
+                        closeVotingDbCalls += args.valueAt<Long>(0)
+                        Unit
+                    }
+
+                    "storeKeystoneSignature" -> {
+                        storeKeystoneSignatureCalls +=
+                            StoreKeystoneSignatureCall(
+                                dbHandle = args.valueAt(0),
+                                roundId = args.valueAt(1),
+                                bundleIndex = args.valueAt(2),
+                                keystoneSig = args.valueAt(3),
+                                keystoneSighash = args.valueAt(4),
+                                rk = args.valueAt(5)
+                            )
+                        Unit
+                    }
+
                     else -> {
                         unsupported()
                     }
                 }
             } as VotingCryptoClient
+    }
+
+    private data class StoreKeystoneSignatureCall(
+        val dbHandle: Long,
+        val roundId: String,
+        val bundleIndex: Int,
+        val keystoneSig: ByteArray,
+        val keystoneSighash: ByteArray,
+        val rk: ByteArray
+    )
+
+    private class FakeSynchronizerProvider(
+        private val walletDbPath: String
+    ) : SynchronizerProvider {
+        override val error: StateFlow<SynchronizerError?> = MutableStateFlow(null)
+        override val synchronizer: StateFlow<Synchronizer?> = MutableStateFlow(null)
+        override val walletBalances: Flow<Map<AccountUuid, AccountBalance>?> = flowOf(null)
+
+        override suspend fun getSynchronizer(): Synchronizer = unsupported()
+
+        override suspend fun getSynchronizerOrNull(): Synchronizer? = unsupported()
+
+        override suspend fun getVotingWalletDbPath(): String = walletDbPath
+
+        override fun resetSynchronizer() = unsupported()
     }
 
     private class FakeKeystoneSDKProvider : KeystoneSDKProvider {
@@ -447,10 +542,17 @@ class VotingKeystoneRepositoryTest {
         const val ACTION_INDEX = 7
         const val CURRENT_BUNDLE_INDEX = 1
         const val BUNDLE_COUNT = 2
+        const val DB_HANDLE = 7L
+        const val VOTING_WALLET_DB_PATH = "/tmp/wallet/data.sqlite3"
+        const val VOTING_DB_PATH = "/tmp/wallet/voting.sqlite3"
         val EXPECTED_RK = byteArrayOf(0x30)
         val SIGNED_PCZT_BYTES = byteArrayOf(0x40)
     }
 }
+
+private fun <T> Array<Any?>?.valueAt(index: Int): T =
+    @Suppress("UNCHECKED_CAST")
+    (requireNotNull(this)[index] as T)
 
 private inline fun <reified T> unsupportedProxy(): T =
     Proxy.newProxyInstance(

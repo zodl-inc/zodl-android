@@ -413,6 +413,24 @@ interface VotingCryptoClient {
         submitAt: Long
     )
 
+    /**
+     * Persists a Keystone-signed delegation bundle's signature so a later round-wide
+     * [resetVotingSessionState] preserves this bundle instead of wiping its unsigned setup
+     * fields for a rebuild. Pass the `rk`/`sighash` the app already verified the signature
+     * against (the crate-computed values from the governance PCZT that was signed), not
+     * arbitrary caller-supplied values — this call does not itself re-verify the signature.
+     * @throws RuntimeException if the native layer reports a failure.
+     */
+    @Throws(RuntimeException::class)
+    suspend fun storeKeystoneSignature(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        keystoneSig: ByteArray,
+        keystoneSighash: ByteArray,
+        rk: ByteArray
+    )
+
     /** @throws RuntimeException if the native layer reports a failure. */
     @Throws(RuntimeException::class)
     suspend fun getShareDelegations(
@@ -1023,6 +1041,18 @@ class VotingCryptoClientImpl : VotingCryptoClient {
                 nullifier,
                 submitAt
             )
+        }
+
+    override suspend fun storeKeystoneSignature(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        keystoneSig: ByteArray,
+        keystoneSighash: ByteArray,
+        rk: ByteArray
+    ) =
+        withContext(Dispatchers.IO) {
+            session(dbHandle).storeKeystoneSignature(roundId, bundleIndex, keystoneSig, keystoneSighash, rk)
         }
 
     override suspend fun getShareDelegations(

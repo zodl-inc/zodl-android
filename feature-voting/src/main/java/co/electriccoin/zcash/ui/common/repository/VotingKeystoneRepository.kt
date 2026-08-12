@@ -164,12 +164,7 @@ class VotingKeystoneRepositoryImpl(
                 selectedAccount.sdkAccount.seedFingerprint
                     ?: error("Keystone account is missing seed fingerprint")
 
-            val votingDbPath =
-                File(walletDbPath)
-                    .parentFile
-                    ?.resolve("voting.sqlite3")
-                    ?.absolutePath
-                    ?: error("Unable to derive voting DB path from $walletDbPath")
+            val votingDbPath = deriveVotingDbPath(walletDbPath)
 
             val dbHandle = votingCryptoClient.openVotingDb(votingDbPath)
             check(dbHandle != 0L) { "Failed to open voting DB at $votingDbPath" }
@@ -326,6 +321,24 @@ class VotingKeystoneRepositoryImpl(
                 signedPcztBytes = signedPcztBytes,
                 actionIndex = actionIndex
             )
+        // Persist the signature crate-side first, so it's protected by
+        // `resetVotingSessionState`'s preservation guard even if the local recovery-repository
+        // write below never happens. The rk/sighash passed here are the crate-computed values
+        // from the governance PCZT this signature was produced for (checked for consistency
+        // above via rejectMismatchedKeystoneSighash), the best available proxy at this call site
+        // for the SDK's documented "already verified" pair — the actual spend-auth-sig-vs-rk
+        // check only becomes possible once a delegation proof exists, at submission time in
+        // SubmitVotesUseCase, which independently re-asserts these same values against the
+        // crate's own submission result.
+        pendingRequest.decodeExpectedRk()?.let { rk ->
+            persistKeystoneSignatureCrateSide(
+                roundId = roundId,
+                bundleIndex = bundleIndex,
+                keystoneSig = spendAuthSig,
+                keystoneSighash = sighash,
+                rk = rk
+            )
+        }
         votingRecoveryRepository.storeKeystoneBundleSignature(
             accountUuid = accountUuid,
             roundId = roundId,
@@ -335,6 +348,40 @@ class VotingKeystoneRepositoryImpl(
             rk = pendingRequest.decodeExpectedRk()
         )
     }
+
+    private suspend fun persistKeystoneSignatureCrateSide(
+        roundId: String,
+        bundleIndex: Int,
+        keystoneSig: ByteArray,
+        keystoneSighash: ByteArray,
+        rk: ByteArray
+    ) {
+        val votingDbPath = resolveVotingDbPath()
+        val dbHandle = votingCryptoClient.openVotingDb(votingDbPath)
+        check(dbHandle != 0L) { "Failed to open voting DB at $votingDbPath" }
+        try {
+            votingCryptoClient.storeKeystoneSignature(
+                dbHandle = dbHandle,
+                roundId = roundId,
+                bundleIndex = bundleIndex,
+                keystoneSig = keystoneSig,
+                keystoneSighash = keystoneSighash,
+                rk = rk
+            )
+        } finally {
+            votingCryptoClient.closeVotingDb(dbHandle)
+        }
+    }
+
+    private suspend fun resolveVotingDbPath(): String =
+        deriveVotingDbPath(synchronizerProvider.getVotingWalletDbPath())
+
+    private fun deriveVotingDbPath(walletDbPath: String): String =
+        File(walletDbPath)
+            .parentFile
+            ?.resolve("voting.sqlite3")
+            ?.absolutePath
+            ?: error("Unable to derive voting DB path from $walletDbPath")
 
     private fun ZcashNetwork.toVotingNetworkId() =
         when (this) {
