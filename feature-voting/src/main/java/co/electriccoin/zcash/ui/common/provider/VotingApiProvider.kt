@@ -723,6 +723,14 @@ class KtorVotingApiProvider(
                 // HttpClientProviderImpl) — recreate rather than keep serving a client built for the
                 // stale preference, and close the stale one so it isn't leaked.
                 existing?.close()
+                // Invalidate the cache BEFORE attempting the rebuild. If httpClientProvider.create()
+                // throws below, existing is already closed — leaving cachedHttpClient /
+                // cachedHttpClientSupportsKtorTimeouts pointing at it would risk a later call (e.g.
+                // after the user toggles Tor back to its original state) matching the stale cache
+                // entry and handing out an already-closed HttpClient. Clearing first forces the next
+                // call to attempt a fresh rebuild instead.
+                cachedHttpClient = null
+                cachedHttpClientSupportsKtorTimeouts = null
                 val fresh = httpClientProvider.create()
                 cachedHttpClient = fresh
                 cachedHttpClientSupportsKtorTimeouts = supportsKtorTimeouts
