@@ -348,15 +348,6 @@ interface VotingCryptoClient {
 
     /** @throws RuntimeException if the native layer reports a failure. */
     @Throws(RuntimeException::class)
-    suspend fun markVoteSubmitted(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        proposalId: Int
-    )
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
     suspend fun getCommitmentBundle(
         dbHandle: Long,
         roundId: String,
@@ -966,16 +957,6 @@ class VotingCryptoClientImpl : VotingCryptoClient {
             runExpectedMissingRowLookup {
                 session(dbHandle).getVoteTxHash(roundId, bundleIndex, proposalId).toAppModel()
             } ?: VotingTxHashLookup.NotFound
-        }
-
-    override suspend fun markVoteSubmitted(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        proposalId: Int
-    ) =
-        withContext(Dispatchers.IO) {
-            session(dbHandle).markVoteSubmitted(roundId, bundleIndex, proposalId)
         }
 
     override suspend fun getCommitmentBundle(

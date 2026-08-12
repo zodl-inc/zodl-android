@@ -126,7 +126,7 @@ class VotingHomeHooksImpl(
     /**
      * Re-enqueue share-tracking workers for any rounds the wallet finished submitting in a prior
      * launch. iOS triggers the equivalent on `governanceTabAppeared`; on Android the WorkManager
-     * worker outlives the process, but if the OS killed the app between `markVoteSubmitted` and
+     * worker outlives the process, but if the OS killed the app between `storeVoteTxHash` and
      * the scheduler call in `SubmitVotesUseCase`, no worker was ever enqueued. Scheduling here
      * uses `ExistingWorkPolicy.REPLACE`, so re-enqueueing an active worker is a no-op, and
      * `TrackVotingSharesUseCase` short-circuits when no unconfirmed shares remain.

@@ -890,19 +890,6 @@ class SubmitVotesUseCase(
             proposalId = proposalId,
             delegatedShareIndicesByTarget = delegatedShareIndicesByTarget
         )
-        traceVotingStep(
-            roundId = roundId,
-            step = "markCachedVoteSubmitted",
-            bundleIndex = bundleIndex,
-            proposalId = proposalId
-        ) {
-            votingCryptoClient.markVoteSubmitted(
-                dbHandle = dbHandle,
-                roundId = roundId,
-                bundleIndex = bundleIndex,
-                proposalId = proposalId
-            )
-        }
         return true
     }
 
@@ -1039,19 +1026,6 @@ class SubmitVotesUseCase(
             proposalId = proposalId,
             delegatedShareIndicesByTarget = delegatedShareIndicesByTarget
         )
-        traceVotingStep(
-            roundId = roundId,
-            step = "markNewVoteSubmitted",
-            bundleIndex = bundleIndex,
-            proposalId = proposalId
-        ) {
-            votingCryptoClient.markVoteSubmitted(
-                dbHandle = dbHandle,
-                roundId = roundId,
-                bundleIndex = bundleIndex,
-                proposalId = proposalId
-            )
-        }
     }
 
     private suspend fun markProposalSubmissionComplete(
