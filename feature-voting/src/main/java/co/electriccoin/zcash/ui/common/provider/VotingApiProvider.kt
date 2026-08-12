@@ -37,6 +37,7 @@ import co.electriccoin.zcash.ui.common.model.voting.toTallyResults
 import co.electriccoin.zcash.ui.common.model.voting.withSubmitAt
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
+import co.electriccoin.zcash.ui.common.repository.votingLog
 import co.electriccoin.zcash.ui.configuration.ConfigurationEntries
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -158,6 +159,9 @@ class KtorVotingApiProvider(
     private var cachedResolvedConfig: ResolvedVotingConfig? = null
     private val configMutex = Mutex()
     private val serverHealthTracker = VotingServerHealthTracker()
+    private val httpClientMutex = Mutex()
+    private var cachedHttpClient: HttpClient? = null
+    private var cachedHttpClientSupportsKtorTimeouts: Boolean? = null
 
     override suspend fun validateConfigSource(source: PinnedConfigSource) {
         fetchStaticConfig(listOf(source))
@@ -258,60 +262,70 @@ class KtorVotingApiProvider(
         }
     }
 
-    override suspend fun delegateShares(shares: List<SharePayload>): List<DelegatedShareInfo> =
-        executeWithKtorTimeoutSupport delegateShares@{ supportsKtorTimeouts ->
-            if (shares.isEmpty()) {
-                return@delegateShares emptyList()
-            }
+    override suspend fun delegateShares(shares: List<SharePayload>): List<DelegatedShareInfo> {
+        val startMs = System.currentTimeMillis()
+        votingLog("delegateShares START shares=${shares.size}")
+        return try {
+            executeWithKtorTimeoutSupport delegateShares@{ supportsKtorTimeouts ->
+                if (shares.isEmpty()) {
+                    return@delegateShares emptyList()
+                }
 
-            val config = getResolvedConfig().serviceConfig
-            val serverUrls =
-                config.voteServers
-                    .map { endpoint -> endpoint.url.trimEnd('/') }
-                    .distinct()
+                val config = getResolvedConfig().serviceConfig
+                val serverUrls =
+                    config.voteServers
+                        .map { endpoint -> endpoint.url.trimEnd('/') }
+                        .distinct()
 
-            if (serverUrls.isEmpty()) {
-                error("Voting server URL is not configured")
-            }
+                if (serverUrls.isEmpty()) {
+                    error("Voting server URL is not configured")
+                }
 
-            serverHealthTracker.remember(serverUrls)
+                serverHealthTracker.remember(serverUrls)
 
-            buildList {
-                for (share in shares) {
-                    val body = share.toApiBody()
-                    val healthyServers = serverHealthTracker.healthyServers(serverUrls)
-                    val quorum = max(1, (healthyServers.size + 1) / 2)
-                    val targets = healthyServers.shuffled().take(quorum)
-                    val acceptedByServers =
-                        postShareToTargets(targets, body, supportsKtorTimeouts).toMutableList()
-                    if (acceptedByServers.isEmpty()) {
-                        val fallbackTargets =
-                            serverHealthTracker
-                                .healthyServers(serverUrls)
-                                .filterNot { serverUrl -> serverUrl in targets }
-                                .shuffled()
-                        for (fallbackTarget in fallbackTargets) {
-                            if (postShare(fallbackTarget, body, supportsKtorTimeouts)) {
-                                acceptedByServers += fallbackTarget
-                                break
+                buildList {
+                    for (share in shares) {
+                        val body = share.toApiBody()
+                        val healthyServers = serverHealthTracker.healthyServers(serverUrls)
+                        val quorum = max(1, (healthyServers.size + 1) / 2)
+                        val targets = healthyServers.shuffled().take(quorum)
+                        val acceptedByServers =
+                            postShareToTargets(targets, body, supportsKtorTimeouts).toMutableList()
+                        if (acceptedByServers.isEmpty()) {
+                            val fallbackTargets =
+                                serverHealthTracker
+                                    .healthyServers(serverUrls)
+                                    .filterNot { serverUrl -> serverUrl in targets }
+                                    .shuffled()
+                            for (fallbackTarget in fallbackTargets) {
+                                if (postShare(fallbackTarget, body, supportsKtorTimeouts)) {
+                                    acceptedByServers += fallbackTarget
+                                    break
+                                }
                             }
                         }
-                    }
 
-                    if (acceptedByServers.isEmpty()) {
-                        error("No voting server accepted share ${share.encShare.shareIndex}")
-                    }
+                        if (acceptedByServers.isEmpty()) {
+                            error("No voting server accepted share ${share.encShare.shareIndex}")
+                        }
 
-                    add(
-                        DelegatedShareInfo(
-                            shareIndex = share.encShare.shareIndex,
-                            proposalId = share.proposalId,
-                            acceptedByServers = acceptedByServers
+                        add(
+                            DelegatedShareInfo(
+                                shareIndex = share.encShare.shareIndex,
+                                proposalId = share.proposalId,
+                                acceptedByServers = acceptedByServers
+                            )
                         )
-                    )
+                    }
                 }
             }
+        } finally {
+            votingLog(
+                "delegateShares END shares=${shares.size} " +
+                    "elapsed=${System.currentTimeMillis() - startMs}ms"
+            )
         }
+    }
 
     override suspend fun fetchShareStatus(
         helperBaseUrl: String,
@@ -694,9 +708,25 @@ class KtorVotingApiProvider(
         crossinline block: suspend HttpClient.(Boolean) -> T
     ): T =
         withContext(Dispatchers.IO) {
+            val (httpClient, supportsKtorTimeouts) = sharedHttpClient()
+            block(httpClient, supportsKtorTimeouts)
+        }
+
+    private suspend fun sharedHttpClient(): Pair<HttpClient, Boolean> =
+        httpClientMutex.withLock {
             val supportsKtorTimeouts = httpClientProvider.supportsKtorTimeouts()
-            httpClientProvider.create().use { httpClient ->
-                block(httpClient, supportsKtorTimeouts)
+            val existing = cachedHttpClient
+            if (existing != null && cachedHttpClientSupportsKtorTimeouts == supportsKtorTimeouts) {
+                existing to supportsKtorTimeouts
+            } else {
+                // supportsKtorTimeouts() flips exactly when the user's Tor preference flips (see
+                // HttpClientProviderImpl) — recreate rather than keep serving a client built for the
+                // stale preference, and close the stale one so it isn't leaked.
+                existing?.close()
+                val fresh = httpClientProvider.create()
+                cachedHttpClient = fresh
+                cachedHttpClientSupportsKtorTimeouts = supportsKtorTimeouts
+                fresh to supportsKtorTimeouts
             }
         }
 
