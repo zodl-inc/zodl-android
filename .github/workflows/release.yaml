@@ -56,6 +56,14 @@ jobs:
           # manual workflow_dispatch recovery run, check out the requested tag.
           ref: ${{ inputs.tag || github.ref }}
 
+      - name: Refuse to deploy with a live SDK_COMMIT_PIN
+        shell: bash
+        run: |
+          if grep -qE '^SDK_COMMIT_PIN=.+' gradle.properties; then
+            echo '::error::SDK_COMMIT_PIN is set — releases must build against a published SDK.'
+            exit 1
+          fi
+
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
         with:

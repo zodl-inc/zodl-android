@@ -78,6 +78,14 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0  # To fetch all commits
+      - name: Refuse to deploy with a live SDK_COMMIT_PIN
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          if grep -qE '^SDK_COMMIT_PIN=.+' gradle.properties; then
+            echo '::error::SDK_COMMIT_PIN is set — releases must build against a published SDK.'
+            exit 1
+          fi
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1

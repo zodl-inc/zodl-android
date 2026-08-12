@@ -18,6 +18,7 @@ runs:
       shell: bash
       run: |
         PIN="$(grep -m1 '^SDK_COMMIT_PIN=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')"
+        [ -z "${PIN}" ] || [[ "${PIN}" =~ ^[0-9a-f]{40}$ ]] || { echo '::error::SDK_COMMIT_PIN must be a full 40-char commit sha'; exit 1; }
         TARGET="${{ github.base_ref || github.ref_name }}"
         if [ -n "${PIN}" ] && [ "${TARGET}" != "main" ]; then
           echo "::error::SDK_COMMIT_PIN is set to '${PIN}' but this workflow's target branch is '${TARGET}', not main. SDK_COMMIT_PIN is only supported on main and branches targeting main — clear it before merging into maint/release/review branches, which must always build against a real published SDK version." >&2
