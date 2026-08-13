@@ -385,6 +385,15 @@ fladle {
             )
 
             flankVersion.set(libs.versions.flank.get())
+
+            filesToDownload.set(
+                listOf(
+                    ".*/logcat$",
+                    ".*/logcat\\.txt$",
+                    ".*\\.xml$",
+                    ".*/bugreport.*"
+                )
+            )
         }
     }
 }

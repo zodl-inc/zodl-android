@@ -550,3 +550,10 @@ jobs:
         run: |
           unzip ${BINARIES_ZIP_PATH}
           ./gradlew :app:runFlankSanityConfigRelease
+      - name: Upload robo test results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: Robo release test results
+          path: |
+            app/build/fladle/
