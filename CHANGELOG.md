@@ -10,6 +10,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ### Fixed:
 
 - Closing the error sheet during Keystone migration signing no longer discards already-signed rounds.
+- Tapping Receive no longer hangs indefinitely when a transient address-derivation error occurs; the request is retried and the wait is bounded with a fallback to the current address.
 
 ## [3.9.1 (2361)] - 2026-08-08
 
