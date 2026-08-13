@@ -55,7 +55,9 @@ class IsBackgroundExecutionAvailableProvider(
         val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
         return backgroundExecutionState(
             isIgnoringBatteryOptimizations = powerManager?.isIgnoringBatteryOptimizations(context.packageName) == true,
-            isBackgroundRestricted = activityManager?.isBackgroundRestricted == true,
+            isBackgroundRestricted =
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
+                    activityManager?.isBackgroundRestricted == true,
             sdkInt = Build.VERSION.SDK_INT,
         )
     }
