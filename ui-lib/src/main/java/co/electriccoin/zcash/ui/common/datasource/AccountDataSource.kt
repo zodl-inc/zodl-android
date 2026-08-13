@@ -25,6 +25,7 @@ import co.electriccoin.zcash.ui.common.provider.SelectedAccountUUIDProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.design.util.combineToFlow
 import co.electriccoin.zcash.ui.util.loggableNot
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -92,7 +93,7 @@ class AccountDataSourceImpl(
     private val log = loggableNot("AccountDataSource")
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    private val requestNextShieldedAddressChannel = MutableSharedFlow<AddressRequest>(replay = 1)
+    private val requestNextShieldedAddressChannel = MutableSharedFlow<AddressRequest>()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override val allAccounts: StateFlow<List<WalletAccount>?> =
@@ -250,6 +251,7 @@ class AccountDataSourceImpl(
                 }
             }
 
+    @Suppress("TooGenericExceptionCaught")
     private fun observeUnified(synchronizer: Synchronizer, sdkAccount: Account): Flow<UnifiedInfo> {
         suspend fun rotateAddress(): WalletAddress.Unified {
             log("deriving unified address for ${sdkAccount.accountUuid}")
@@ -279,7 +281,15 @@ class AccountDataSourceImpl(
                     requestNextShieldedAddressChannel
                         .filter { it.accountUuid == sdkAccount.accountUuid }
                         .collect {
-                            val address = rotateAddress()
+                            val address =
+                                try {
+                                    rotateAddress()
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    it.responseChannel.close(e)
+                                    throw e
+                                }
                             send(address)
                             try {
                                 it.responseChannel.send(address)
