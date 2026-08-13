@@ -51,6 +51,7 @@ import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration.Companion.seconds
 
 interface AccountDataSource {
@@ -91,7 +92,7 @@ class AccountDataSourceImpl(
     private val log = loggableNot("AccountDataSource")
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    private val requestNextShieldedAddressChannel = MutableSharedFlow<AddressRequest>()
+    private val requestNextShieldedAddressChannel = MutableSharedFlow<AddressRequest>(replay = 1)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override val allAccounts: StateFlow<List<WalletAccount>?> =
@@ -204,8 +205,13 @@ class AccountDataSourceImpl(
                 val responseChannel = Channel<WalletAddress.Unified>(1)
                 requestNextShieldedAddressChannel.emit(AddressRequest(accountUuid, responseChannel))
                 try {
-                    result = responseChannel.receive()
-                    log("received address ${result.address} for $accountUuid")
+                    val address = withTimeoutOrNull(ADDRESS_REQUEST_TIMEOUT) { responseChannel.receive() }
+                    if (address == null) {
+                        log("timed out waiting for address for $accountUuid")
+                    } else {
+                        log("received address ${address.address} for $accountUuid")
+                    }
+                    result = address
                 } catch (e: Exception) {
                     log("failed to receive address for $accountUuid", e)
                 }
@@ -362,6 +368,15 @@ private data class AddressRequest(
 )
 
 private const val RETRY_DELAY = 3L
+
+/**
+ * Upper bound on how long [AccountDataSourceImpl.requestNextShieldedAddress] waits for
+ * [AccountDataSourceImpl.observeUnified]'s collector to deliver a rotated address. The collector
+ * can be unsubscribed during a [kotlinx.coroutines.flow.retryWhen] backoff, so an unbounded wait
+ * can hang indefinitely; on timeout the caller falls back to the account's current address.
+ */
+private val ADDRESS_REQUEST_TIMEOUT = 15.seconds
+
 private const val KEYSTONE_KEYSOURCE = "keystone"
 
 class AccountDeletionException(
