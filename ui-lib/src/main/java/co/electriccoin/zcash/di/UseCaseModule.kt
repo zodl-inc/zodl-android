@@ -58,6 +58,7 @@ import co.electriccoin.zcash.ui.common.usecase.GetWalletAccountsUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetWalletRestoringStateUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetWalletSeedBytesUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetZashiAccountUseCase
+import co.electriccoin.zcash.ui.common.usecase.HandleSharedPaymentUseCase
 import co.electriccoin.zcash.ui.common.usecase.IsABContactHintVisibleUseCase
 import co.electriccoin.zcash.ui.common.usecase.IsEphemeralAddressLockedUseCase
 import co.electriccoin.zcash.ui.common.usecase.IsRestoreSuccessDialogVisibleUseCase
@@ -143,6 +144,7 @@ import co.electriccoin.zcash.ui.common.usecase.Zip321ParseUriValidationUseCase
 import co.electriccoin.zcash.ui.screen.advancedsettings.debug.db.ExecuteDebugDBQueryUseCase
 import co.electriccoin.zcash.ui.screen.deletewallet.ResetZashiUseCase
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
+import co.electriccoin.zcash.ui.screen.scan.ImageUriToQrCodeConverter
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
@@ -292,4 +294,6 @@ val useCaseModule =
         factoryOf(::SwapSupportMapper)
         factoryOf(::GetAutomaticEndpointUseCase)
         factoryOf(::IsServerAutomaticUseCase)
+        factoryOf(::ImageUriToQrCodeConverter)
+        factoryOf(::HandleSharedPaymentUseCase)
     }

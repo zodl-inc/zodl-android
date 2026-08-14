@@ -6,6 +6,7 @@ package co.electriccoin.zcash.ui
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
 import androidx.activity.enableEdgeToEdge
@@ -19,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.core.content.IntentCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Lifecycle
@@ -31,6 +33,7 @@ import co.electriccoin.zcash.ui.common.compose.BindCompLocalProvider
 import co.electriccoin.zcash.ui.common.compose.DisableScreenTimeout
 import co.electriccoin.zcash.ui.common.extension.setContentCompat
 import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
+import co.electriccoin.zcash.ui.common.usecase.HandleSharedPaymentUseCase
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationUIState
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.OldHomeViewModel
@@ -49,6 +52,7 @@ import co.electriccoin.zcash.ui.screen.authentication.view.WelcomeAnimationAutos
 import co.electriccoin.zcash.ui.screen.scan.thirdparty.ThirdPartyScan
 import co.electriccoin.zcash.ui.screen.warning.viewmodel.StorageCheckViewModel
 import co.electriccoin.zcash.work.WorkIds
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -79,6 +83,12 @@ class MainActivity : FragmentActivity() {
     private val navigationRouter: NavigationRouter by inject()
     private val migrationAppHooks: MigrationAppHooks by inject()
 
+    private val handleSharedPaymentUseCase: HandleSharedPaymentUseCase by inject()
+
+    private var pendingIntent: Intent? = null
+
+    private var sharedPaymentJob: Job? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Twig.debug { "Activity state: Create" }
@@ -91,17 +101,20 @@ class MainActivity : FragmentActivity() {
 
         monitorForBackgroundSync()
 
-        if (intent.data != null) {
-            navigationRouter.forward(ThirdPartyScan)
+        // Only on a fresh start: the launching Intent stays attached to the Activity, so replaying
+        // it after a process-death recreation would navigate into Send a second time.
+        if (savedInstanceState == null) {
+            pendingIntent = intent
         }
         handleMigrationIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-
-        if (intent.data != null) {
-            navigationRouter.forward(ThirdPartyScan)
+        if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            handleIncomingIntent(intent)
+        } else {
+            pendingIntent = intent
         }
         handleMigrationIntent(intent)
     }
@@ -113,6 +126,11 @@ class MainActivity : FragmentActivity() {
         authenticationViewModel.runAuthenticationRequiredCheck()
         checkMigrationRecoveryOnStart()
         super.onStart()
+
+        pendingIntent?.let { intent ->
+            handleIncomingIntent(intent)
+            pendingIntent = null
+        }
     }
 
     // RootNavGraph's secretState-driven redirect only re-fires when secretState changes
@@ -127,6 +145,101 @@ class MainActivity : FragmentActivity() {
         Twig.debug { "Activity state: Stop" }
         authenticationViewModel.persistGoToBackgroundTime(System.currentTimeMillis())
         super.onStop()
+    }
+
+    private fun handleIncomingIntent(intent: Intent) {
+        if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) {
+            // Restoring the task from Recents redelivers whatever Intent originally launched it.
+            Twig.info { "Ignoring intent redelivered from Recents" }
+            return
+        }
+
+        when (intent.action) {
+            Intent.ACTION_VIEW -> {
+                if (intent.data != null) {
+                    navigationRouter.forward(ThirdPartyScan)
+                }
+            }
+
+            Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE -> {
+                handleSharedPayment(intent)
+            }
+
+            else -> {
+                return
+            }
+        }
+
+        // A singleTask Activity keeps the Intent that launched its task, and onNewIntent does not
+        // replace it. Consuming it here keeps a later recreation from applying the same payment
+        // again, on the OEMs that restore from Recents without FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY.
+        setIntent(Intent(Intent.ACTION_MAIN))
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private fun handleSharedPayment(intent: Intent) {
+        // The filters this arrives through are exported, so the extras are attacker-controlled and
+        // reading them unparcels whatever the sender put there. A Parcelable this process cannot
+        // resolve throws, and crashing the wallet must not be something any installed app can do.
+        val content =
+            try {
+                sharedContent(intent)
+            } catch (e: Exception) {
+                Twig.warn { "Ignoring shared intent - unreadable extras: $e" }
+                return
+            }
+
+        if (content == null) {
+            Twig.info { "Ignoring shared intent - no text or image to read" }
+            return
+        }
+
+        // Latest wins. Two shares in flight otherwise finish in whichever order their decoding and
+        // validation happen to take, so a slow image shared first could replace a payment the user
+        // shared after it.
+        sharedPaymentJob?.cancel()
+        sharedPaymentJob =
+            lifecycleScope.launch {
+                when (content) {
+                    is SharedContent.Image -> handleSharedPaymentUseCase(content.uri)
+                    is SharedContent.Text -> handleSharedPaymentUseCase(content.text)
+                }
+            }
+    }
+
+    /**
+     * Prefers the image when one is shared, so that sharing a screenshot with a caption still reads
+     * the QR code rather than the caption. Locating the payment inside the shared text is left to
+     * [HandleSharedPaymentUseCase], which owns the validators that decide what a payment is.
+     */
+    private fun sharedContent(intent: Intent): SharedContent? {
+        if (intent.type?.startsWith("image/") == true) {
+            val uri =
+                IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+                    ?: IntentCompat
+                        .getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+                        ?.firstOrNull()
+
+            if (uri != null) return SharedContent.Image(uri)
+        }
+
+        // EXTRA_TEXT is a CharSequence, so a sender that shares styled text - which several note
+        // taking apps do - hands over a Spanned rather than a String.
+        return intent
+            .getCharSequenceExtra(Intent.EXTRA_TEXT)
+            ?.toString()
+            ?.takeIf { it.isNotBlank() }
+            ?.let { SharedContent.Text(it) }
+    }
+
+    private sealed interface SharedContent {
+        data class Image(
+            val uri: Uri
+        ) : SharedContent
+
+        data class Text(
+            val text: String
+        ) : SharedContent
     }
 
     /**
