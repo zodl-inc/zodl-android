@@ -103,10 +103,7 @@ interface VotingApiProvider {
 
     suspend fun fetchTallyResults(roundIdHex: String): TallyResults
 
-    suspend fun delegateShares(
-        shares: List<SharePayload>,
-        roundIdHex: String
-    ): List<DelegatedShareInfo>
+    suspend fun delegateShares(shares: List<SharePayload>): List<DelegatedShareInfo>
 
     suspend fun fetchShareStatus(
         helperBaseUrl: String,
@@ -116,7 +113,6 @@ interface VotingApiProvider {
 
     suspend fun resubmitShare(
         payload: SharePayload,
-        roundIdHex: String,
         candidateUrls: List<String>,
         excludeUrls: List<String>
     ): List<String>
@@ -233,10 +229,7 @@ class KtorVotingApiProvider(
         }
     }
 
-    override suspend fun delegateShares(
-        shares: List<SharePayload>,
-        roundIdHex: String
-    ): List<DelegatedShareInfo> =
+    override suspend fun delegateShares(shares: List<SharePayload>): List<DelegatedShareInfo> =
         executeWithKtorTimeoutSupport delegateShares@{ supportsKtorTimeouts ->
             if (shares.isEmpty()) {
                 return@delegateShares emptyList()
@@ -256,7 +249,7 @@ class KtorVotingApiProvider(
 
             buildList {
                 for (share in shares) {
-                    val body = share.toApiBody(roundIdHex)
+                    val body = share.toApiBody()
                     val healthyServers = serverHealthTracker.healthyServers(serverUrls)
                     val quorum = max(1, (healthyServers.size + 1) / 2)
                     val targets = healthyServers.shuffled().take(quorum)
@@ -320,7 +313,6 @@ class KtorVotingApiProvider(
 
     override suspend fun resubmitShare(
         payload: SharePayload,
-        roundIdHex: String,
         candidateUrls: List<String>,
         excludeUrls: List<String>
     ): List<String> =
@@ -334,7 +326,7 @@ class KtorVotingApiProvider(
 
             val healthyServers = serverHealthTracker.healthyServers(allServers)
             val candidateServers = healthyServers.filterNot { serverUrl -> serverUrl in excludedServers }
-            val body = payload.withSubmitAt(0).toApiBody(roundIdHex)
+            val body = payload.withSubmitAt(0).toApiBody()
 
             if (candidateServers.isEmpty()) {
                 for (serverUrl in healthyServers.shuffled()) {
@@ -731,12 +723,11 @@ private fun List<String>.normalizeServerUrls(): List<String> =
  * byte field base64, matching `VoteShareWire`'s `serde_base64_bytes` fields exactly.
  * `all_enc_shares` was dropped from this wire struct (2.0-rc.4) and must never be sent.
  *
- * [roundIdHex] stays app-supplied: the SDK's `buildSharePayloadsNative`/`JniSharePayload`
- * does not yet expose the crate's own `SharePayload::to_wire_json()` (no `vote_round_id`
- * field on the JNI model), so the app cannot forward the crate-produced JSON verbatim here
- * without a corresponding SDK change — tracked separately, out of this pass's SDK scope.
+ * `vote_round_id` is the crate-provided [SharePayload.voteRoundId] verbatim — the SDK's
+ * `buildSharePayloadsNative`/`JniSharePayload` now carries it, so nothing is injected
+ * app-side.
  */
-internal fun SharePayload.toApiBody(roundIdHex: String) =
+internal fun SharePayload.toApiBody() =
     JSONObject()
         .put("shares_hash", sharesHash.toBase64String())
         .put("proposal_id", proposalId)
@@ -749,7 +740,7 @@ internal fun SharePayload.toApiBody(roundIdHex: String) =
                 .put("share_index", encShare.shareIndex)
         ).put("share_index", encShare.shareIndex)
         .put("tree_position", treePosition)
-        .put("vote_round_id", roundIdHex)
+        .put("vote_round_id", voteRoundId)
         .put("share_comms", org.json.JSONArray(shareComms.map(ByteArray::toBase64String)))
         .put("primary_blind", primaryBlind.toBase64String())
         .put("submit_at", submitAt)

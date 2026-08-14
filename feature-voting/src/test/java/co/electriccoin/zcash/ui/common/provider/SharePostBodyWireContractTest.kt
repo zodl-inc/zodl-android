@@ -13,7 +13,8 @@ import kotlin.test.assertFalse
  * Pins [SharePayload.toApiBody]'s output against `zcash_voting::wire::VoteShareWire`
  * (MOB-1678, zcash_voting 3.0): the crate's wire struct dropped `all_enc_shares` in
  * 2.0-rc.4, so the POST body must never carry it, and every remaining field must match
- * the wire struct's names and base64 byte encoding exactly.
+ * the wire struct's names and base64 byte encoding exactly. `vote_round_id` is the
+ * crate-provided [SharePayload.voteRoundId] verbatim — nothing is injected app-side.
  *
  * Parses with kotlinx.serialization rather than `org.json` — the latter is an
  * Android-framework stub that throws under this module's plain-JVM `unitTests
@@ -23,7 +24,7 @@ import kotlin.test.assertFalse
 class SharePostBodyWireContractTest {
     @Test
     fun toApiBodyOmitsAllEncSharesAndMatchesTheWireFieldSet() {
-        val body = Json.parseToJsonElement(makeSharePayload().toApiBody(ROUND_ID_HEX)).jsonObject
+        val body = Json.parseToJsonElement(makeSharePayload().toApiBody()).jsonObject
 
         assertFalse(body.containsKey("all_enc_shares"))
         assertEquals(
@@ -44,19 +45,31 @@ class SharePostBodyWireContractTest {
     }
 
     @Test
-    fun toApiBodyCarriesTheRoundIdAsLowercaseHexVerbatim() {
-        val body = Json.parseToJsonElement(makeSharePayload().toApiBody(ROUND_ID_HEX)).jsonObject
+    fun toApiBodyCarriesTheCrateProvidedRoundIdVerbatim() {
+        val body = Json.parseToJsonElement(makeSharePayload(voteRoundId = ROUND_ID_HEX).toApiBody()).jsonObject
 
         assertEquals(ROUND_ID_HEX, body.getValue("vote_round_id").jsonPrimitive.content)
     }
 
-    private fun makeSharePayload(): SharePayload =
+    @Test
+    fun toApiBodyDoesNotInjectADifferentRoundIdThanThePayloadCarries() {
+        val otherRoundId = "02".repeat(32)
+        val payload = makeSharePayload(voteRoundId = otherRoundId)
+
+        val body = Json.parseToJsonElement(payload.toApiBody()).jsonObject
+
+        assertEquals(otherRoundId, body.getValue("vote_round_id").jsonPrimitive.content)
+        assertFalse(body.getValue("vote_round_id").jsonPrimitive.content == ROUND_ID_HEX)
+    }
+
+    private fun makeSharePayload(voteRoundId: String = ROUND_ID_HEX): SharePayload =
         SharePayload(
             sharesHash = ByteArray(32) { 1 },
             proposalId = 3,
             voteDecision = 1,
             encShare = EncryptedShare(c1 = ByteArray(32) { 2 }, c2 = ByteArray(32) { 3 }, shareIndex = 0),
             treePosition = 42L,
+            voteRoundId = voteRoundId,
             allEncShares =
                 listOf(
                     EncryptedShare(c1 = ByteArray(32) { 4 }, c2 = ByteArray(32) { 5 }, shareIndex = 0),

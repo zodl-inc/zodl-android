@@ -1556,6 +1556,7 @@ private fun List<VotingSharePayload>.toSharePayloadsJson(): String =
                 .put("vote_decision", payload.voteDecision)
                 .put("enc_share", payload.encShare.toJson())
                 .put("tree_position", payload.treePosition)
+                .put("vote_round_id", payload.voteRoundId)
                 .put("all_enc_shares", payload.allEncShares.toEncryptedSharesJsonArray())
                 .put("share_comms", payload.shareComms.toHexJsonArray())
                 .put("primary_blind", payload.primaryBlind.toHexString())

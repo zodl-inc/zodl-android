@@ -71,7 +71,7 @@
     <ID>ThrowsCount:ChainDto.kt$private fun validateChainProposals(proposals: List&lt;Proposal&gt;)</ID>
     <ID>ThrowsCount:StaticVotingConfig.kt$PinnedConfigSource.Companion$fun parse(raw: String): PinnedConfigSource</ID>
     <ID>ThrowsCount:StaticVotingConfig.kt$StaticVotingConfig$fun validate()</ID>
-    <ID>ThrowsCount:SubmitVotesUseCase.kt$SubmitVotesUseCase$private suspend fun delegateSharesWithRetry( payloads: List&lt;SharePayload&gt;, roundId: String ): List&lt;DelegatedShareInfo&gt;</ID>
+    <ID>ThrowsCount:SubmitVotesUseCase.kt$SubmitVotesUseCase$private suspend fun delegateSharesWithRetry(payloads: List&lt;SharePayload&gt;): List&lt;DelegatedShareInfo&gt;</ID>
     <ID>ThrowsCount:VotingServerFailoverException.kt$internal suspend fun &lt;T&gt; withVoteServerFailover( path: String, serverUrls: List&lt;String&gt;, shouldTryNext: (Throwable) -&gt; Boolean = ::shouldTryNextVoteServer, operation: suspend (String) -&gt; T ): T</ID>
     <ID>ThrowsCount:VotingServiceConfig.kt$VotingServiceConfig$fun validate()</ID>
     <ID>TooGenericExceptionCaught:DebugStartMigrationE2EUseCase.kt$DebugStartMigrationE2EUseCase$e: RuntimeException</ID>

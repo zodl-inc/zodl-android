@@ -1145,7 +1145,7 @@ class SubmitVotesUseCase(
             return
         }
 
-        val delegationResults = delegateSharesWithRetry(pendingPayloads, roundId)
+        val delegationResults = delegateSharesWithRetry(pendingPayloads)
         delegationResults.forEach { info ->
             val payload =
                 pendingPayloads.firstOrNull { candidate ->
@@ -1200,14 +1200,11 @@ class SubmitVotesUseCase(
         }
     }
 
-    private suspend fun delegateSharesWithRetry(
-        payloads: List<SharePayload>,
-        roundId: String
-    ): List<DelegatedShareInfo> {
+    private suspend fun delegateSharesWithRetry(payloads: List<SharePayload>): List<DelegatedShareInfo> {
         var lastRetryableError: Exception? = null
         repeat(SHARE_DELEGATION_ATTEMPTS) { attempt ->
             try {
-                return votingApiProvider.delegateShares(payloads, roundId)
+                return votingApiProvider.delegateShares(payloads)
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
