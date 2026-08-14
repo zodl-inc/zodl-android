@@ -23,6 +23,7 @@ import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.VoteOption
 import co.electriccoin.zcash.ui.common.model.voting.VotingGovernancePczt
+import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.model.voting.VotingServiceConfig
 import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProvider
@@ -197,7 +198,8 @@ class VotingKeystoneRepositoryTest {
                 )
 
             val votingApiProvider = mockk<VotingApiProvider>(relaxed = true)
-            coEvery { votingApiProvider.fetchServiceConfig() } returns VotingServiceConfig.EMPTY
+            coEvery { votingApiProvider.fetchServiceConfig() } returns
+                VotingServiceConfig.EMPTY.copy(pirLayout = TEST_PIR_LAYOUT)
             coEvery { votingApiProvider.fetchAllRounds() } returns
                 RoundsListResult(
                     rounds = emptyList(),
@@ -728,6 +730,7 @@ class VotingKeystoneRepositoryTest {
         val EXPECTED_RK = byteArrayOf(0x30)
         val SIGNED_PCZT_BYTES = byteArrayOf(0x40)
         const val RESET_REBUILD_ROUND_ID_HEX = "aa000000000000000000000000000000000000000000000000000000000000bb"
+        val TEST_PIR_LAYOUT = VotingPirLayout(pirDepth = 1, tier0Layers = 1, tier1Layers = 1, polyLen = 4096)
     }
 }
 

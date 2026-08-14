@@ -471,7 +471,8 @@ class KtorVotingApiProvider(
                 chainEaPK = session.eaPK,
                 roundIdHex = roundIdHex,
                 rounds = resolvedConfig.rawServiceConfig.rounds,
-                trustedKeys = resolvedConfig.staticConfig.trustedKeys
+                trustedKeys = resolvedConfig.staticConfig.trustedKeys,
+                pirLayout = resolvedConfig.rawServiceConfig.pirLayout
             )
         if (status != RoundAuthStatus.AUTHENTICATED) {
             throw VotingRoundAuthenticationException(status = status, roundIdHex = roundIdHex)
@@ -723,7 +724,19 @@ private fun List<String>.normalizeServerUrls(): List<String> =
         .map { serverUrl -> serverUrl.trimEnd('/') }
         .distinct()
 
-private fun SharePayload.toApiBody(roundIdHex: String) =
+/**
+ * Builds the share-delegation POST body as `zcash_voting::wire::VoteShareWire::to_json()`
+ * defines it (MOB-1678, zcash_voting 3.0): `shares_hash`, `enc_share`, `share_index`,
+ * `tree_position`, `vote_round_id`, `share_comms`, `primary_blind`, `submit_at` — every
+ * byte field base64, matching `VoteShareWire`'s `serde_base64_bytes` fields exactly.
+ * `all_enc_shares` was dropped from this wire struct (2.0-rc.4) and must never be sent.
+ *
+ * [roundIdHex] stays app-supplied: the SDK's `buildSharePayloadsNative`/`JniSharePayload`
+ * does not yet expose the crate's own `SharePayload::to_wire_json()` (no `vote_round_id`
+ * field on the JNI model), so the app cannot forward the crate-produced JSON verbatim here
+ * without a corresponding SDK change — tracked separately, out of this pass's SDK scope.
+ */
+internal fun SharePayload.toApiBody(roundIdHex: String) =
     JSONObject()
         .put("shares_hash", sharesHash.toBase64String())
         .put("proposal_id", proposalId)
@@ -737,17 +750,7 @@ private fun SharePayload.toApiBody(roundIdHex: String) =
         ).put("share_index", encShare.shareIndex)
         .put("tree_position", treePosition)
         .put("vote_round_id", roundIdHex)
-        .put(
-            "all_enc_shares",
-            org.json.JSONArray(
-                allEncShares.map { share ->
-                    JSONObject()
-                        .put("c1", share.c1.toBase64String())
-                        .put("c2", share.c2.toBase64String())
-                        .put("share_index", share.shareIndex)
-                }
-            )
-        ).put("share_comms", org.json.JSONArray(shareComms.map(ByteArray::toBase64String)))
+        .put("share_comms", org.json.JSONArray(shareComms.map(ByteArray::toBase64String)))
         .put("primary_blind", primaryBlind.toBase64String())
         .put("submit_at", submitAt)
         .toString()

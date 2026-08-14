@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingBundleSetupResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
 import co.electriccoin.zcash.ui.common.model.voting.isDelegationSetupOverwrite
+import co.electriccoin.zcash.ui.common.model.voting.requireKnownPolyLen
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
@@ -309,7 +310,7 @@ class PrepareVotingRoundUseCase(
                                     roundName = session.title,
                                     pirEndpoints =
                                         sessionContext.serviceConfig.pirEndpoints.map { endpoint -> endpoint.url },
-                                    pirLayout = sessionContext.serviceConfig.pirLayout,
+                                    pirLayout = sessionContext.serviceConfig.pirLayout.requireKnownPolyLen(),
                                     expectedSnapshotHeight = session.snapshotHeight
                                 )
                         }.onFailure { throwable ->

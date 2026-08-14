@@ -21,6 +21,7 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingTxHashLookup
 import co.electriccoin.zcash.ui.common.model.voting.isDelegationSetupOverwrite
 import co.electriccoin.zcash.ui.common.model.voting.isLastMoment
+import co.electriccoin.zcash.ui.common.model.voting.requireKnownPolyLen
 import co.electriccoin.zcash.ui.common.model.voting.toDelegationRegistration
 import co.electriccoin.zcash.ui.common.model.voting.toSharePayloads
 import co.electriccoin.zcash.ui.common.model.voting.toVoteCommitmentBundle
@@ -209,7 +210,7 @@ class SubmitVotesUseCase(
                     hotkeySeed = hotkeySeed,
                     isKeystone = isKeystone,
                     pirServerUrl = pirServerUrl,
-                    pirLayout = serviceConfig.pirLayout,
+                    pirLayout = serviceConfig.pirLayout.requireKnownPolyLen(),
                     singleShare = singleShare,
                     sortedChoices = sortedChoices,
                     totalChoices = totalChoices
