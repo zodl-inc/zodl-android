@@ -7,6 +7,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
@@ -29,6 +30,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment.Companion.CenterHorizontally
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -39,13 +41,17 @@ import cash.z.ecc.android.sdk.model.WalletAddress
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
-import co.electriccoin.zcash.ui.design.component.OldZashiBottomBar
 import co.electriccoin.zcash.ui.design.component.ZashiBadge
 import co.electriccoin.zcash.ui.design.component.ZashiBadgeColors
+import co.electriccoin.zcash.ui.design.component.ZashiBottomBar
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiQr
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -116,27 +122,43 @@ internal fun QrCodeView(
         }
 
         is QrCodeState.Prepared -> {
+            val hazeState = rememberZashiFrostState()
             BlankBgScaffold(
                 topBar = {
                     QrCodeTopAppBar(
                         onBack = state.onBack,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .zashiFrostedHeader(hazeState)
                     )
                 },
                 snackbarHost = { SnackbarHost(snackbarHostState) },
                 bottomBar = {
                     QrCodeBottomBar(
                         state = state,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .zashiFrostedFooter(hazeState)
                     )
                 }
             ) { paddingValues ->
-                QrCodeContents(
-                    state = state,
+                Box(
                     modifier =
-                        Modifier.padding(
-                            top = paddingValues.calculateTopPadding(),
-                            bottom = paddingValues.calculateBottomPadding()
-                        ),
-                )
+                        Modifier
+                            .fillMaxSize()
+                            .zashiFrostSource(hazeState)
+                ) {
+                    QrCodeContents(
+                        state = state,
+                        modifier =
+                            Modifier.padding(
+                                top = paddingValues.calculateTopPadding(),
+                                bottom = paddingValues.calculateBottomPadding()
+                            ),
+                    )
+                }
             }
         }
     }
@@ -145,9 +167,15 @@ internal fun QrCodeView(
 @Composable
 private fun QrCodeTopAppBar(
     onBack: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     ZashiSmallTopAppBar(
         title = null,
+        modifier = modifier,
+        colors =
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
         navigationAction = {
             IconButton(
                 onClick = onBack,
@@ -175,13 +203,18 @@ private fun QrCodeTopAppBar(
 @Composable
 private fun QrCodeBottomBar(
     state: QrCodeState.Prepared,
+    modifier: Modifier = Modifier,
 ) {
     val buttonModifier =
         Modifier
             .padding(horizontal = 24.dp)
             .fillMaxWidth()
 
-    OldZashiBottomBar {
+    ZashiBottomBar(
+        modifier = modifier,
+        isElevated = false,
+        color = Color.Transparent
+    ) {
         ZashiButton(
             text = stringResource(id = R.string.addressDetails_shareQR),
             icon = R.drawable.ic_share,
@@ -208,9 +241,10 @@ private fun QrCodeContents(
 ) {
     Column(
         modifier =
-            modifier
+            Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .then(modifier)
                 .padding(horizontal = ZcashTheme.dimens.screenHorizontalSpacingRegular),
     ) {
         Spacer(Modifier.height(ZcashTheme.dimens.spacingDefault))
