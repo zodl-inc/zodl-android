@@ -24,8 +24,6 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.hideFromAccessibility
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import co.electriccoin.zcash.ui.R
@@ -84,12 +82,17 @@ private fun Content(
         // up with the chain tip" instead of asserting on the sync banner's text/visibility,
         // which changes across states (Restoring/Resyncing/Syncing/gone) and can be replaced by
         // unrelated banners (e.g. Migration Required) once sync is actually done.
+        //
+        // Deliberately NOT hidden from accessibility (no hideFromAccessibility()/
+        // invisibleToUser()) — that excludes a node from the accessibility tree, which is what
+        // Maestro's Android driver queries to resolve `id:` selectors, so a hidden node can never
+        // be found. iOS's equivalent overlay keeps itself in the accessibility tree for the same
+        // reason (.accessibilityElement(children: .ignore) + a label, not a hide call).
         Box(
             modifier =
                 Modifier
                     .align(Alignment.TopStart)
                     .size(1.dp)
-                    .semantics { hideFromAccessibility() }
                     .testTag(if (state.isSyncComplete) HomeTags.SYNC_COMPLETE else HomeTags.SYNC_PENDING)
         )
         Column(
