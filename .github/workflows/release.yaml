@@ -182,6 +182,12 @@ jobs:
           gpg -u sysadmin@zodl.com --armor --digest-algo SHA256 --detach-sign app-zcashmainnet-foss-release-full-externallibs.apk
           gpg -u sysadmin@zodl.com --armor --digest-algo SHA256 --detach-sign app-zcashmainnet-google-play-store-release-universal.apk
 
+      - name: Print APK signing certificate fingerprints
+        run: |
+          cd artifacts/
+          echo "=== APK signing certificate fingerprints ==="
+          apksigner verify --print-certs app-zcashmainnet-foss-release.apk
+
       - name: Upload to Release
         uses: softprops/action-gh-release@v3
         with:
