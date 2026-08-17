@@ -26,6 +26,7 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.advancedsettings.debug.DebugArgs
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerArgs
 import co.electriccoin.zcash.ui.screen.disconnect.DisconnectArgs
+import co.electriccoin.zcash.ui.screen.theme.settings.ThemeSettingsArgs
 import co.electriccoin.zcash.ui.screen.tor.settings.TorSettingsArgs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -125,6 +126,11 @@ class AdvancedSettingsVM(
                         onClick = ::onPrivacyClick
                     ),
                     ListItemState(
+                        title = stringRes(R.string.settings_theme),
+                        bigIcon = imageRes(R.drawable.ic_advanced_settings_theme),
+                        onClick = ::onThemeClick
+                    ),
+                    ListItemState(
                         title = stringRes(R.string.advanced_settings_crash_reporting),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_crash_reporting),
                         onClick = ::onCrashReportingClick
@@ -153,6 +159,8 @@ class AdvancedSettingsVM(
     }
 
     private fun onPrivacyClick() = navigationRouter.forward(TorSettingsArgs)
+
+    private fun onThemeClick() = navigationRouter.forward(ThemeSettingsArgs)
 
     fun onBack() = navigationRouter.back()
 
