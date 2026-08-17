@@ -78,6 +78,7 @@ import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.StringResource.Companion.NUMBER_FORMAT_LOCALE
 import co.electriccoin.zcash.ui.design.util.getString
 import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.pressMorph
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringResByFiatDisplayName
 import co.electriccoin.zcash.ui.screen.balances.BalanceWidget
@@ -464,17 +465,21 @@ fun SendFormAddressTextField(
             suffix =
                 if (hasCameraFeature) {
                     {
+                        val addressBookInteractionSource = remember { MutableInteractionSource() }
+                        val scannerInteractionSource = remember { MutableInteractionSource() }
+
                         Row(
                             verticalAlignment = Alignment.Top
                         ) {
                             Image(
                                 modifier =
                                     Modifier
+                                        .pressMorph(addressBookInteractionSource)
                                         .clickable(
                                             onClick = sendAddressBookState.onButtonClick,
                                             role = Role.Button,
                                             indication = ripple(radius = 4.dp),
-                                            interactionSource = remember { MutableInteractionSource() }
+                                            interactionSource = addressBookInteractionSource
                                         ).testTag(SendTag.SEND_ADDRESS_BOOK_BUTTON),
                                 painter = painterResource(sendAddressBookState.mode.icon),
                                 contentDescription = stringResource(R.string.send_address_book_content_description),
@@ -485,11 +490,12 @@ fun SendFormAddressTextField(
                             Image(
                                 modifier =
                                     Modifier
+                                        .pressMorph(scannerInteractionSource)
                                         .clickable(
                                             onClick = onQrScannerOpen,
                                             role = Role.Button,
                                             indication = ripple(radius = 4.dp),
-                                            interactionSource = remember { MutableInteractionSource() }
+                                            interactionSource = scannerInteractionSource
                                         ).testTag(SendTag.SEND_SCAN_BUTTON),
                                 painter = painterResource(R.drawable.qr_code_icon),
                                 contentDescription = stringResource(R.string.send_scan_content_description),

@@ -37,6 +37,7 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.pressMorph
 import co.electriccoin.zcash.ui.design.util.stringRes
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -47,8 +48,10 @@ fun ZashiIconButton(
 ) {
     val haptic = LocalHapticFeedback.current
 
+    val interactionSource = remember { MutableInteractionSource() }
+
     Box(
-        modifier = modifier
+        modifier = modifier.pressMorph(interactionSource)
     ) {
         Box(
             modifier =
@@ -74,7 +77,7 @@ fun ZashiIconButton(
                             },
                         enabled = state.isEnabled,
                         role = Role.Button,
-                        interactionSource = remember { MutableInteractionSource() },
+                        interactionSource = interactionSource,
                         indication = ripple(bounded = false, radius = 24.dp)
                     ),
             contentAlignment = Alignment.Center
@@ -116,9 +119,11 @@ fun ZashiImageButton(
 ) {
     val haptic = LocalHapticFeedback.current
 
+    val interactionSource = remember { MutableInteractionSource() }
+
     Box(
         modifier =
-            modifier.combinedClickable(
+            modifier.pressMorph(interactionSource).combinedClickable(
                 onClick = {
                     state.hapticFeedbackType?.let {
                         runCatching { haptic.performHapticFeedback(it) }
@@ -134,7 +139,7 @@ fun ZashiImageButton(
                             it()
                         }
                     },
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = interactionSource,
                 indication = null,
                 enabled = state.isEnabled
             )

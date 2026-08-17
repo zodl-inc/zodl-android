@@ -1,15 +1,18 @@
 package co.electriccoin.zcash.ui.design.component
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
+import co.electriccoin.zcash.ui.design.util.pressMorph
 
 @Composable
 fun ZashiTextButton(
@@ -19,9 +22,12 @@ fun ZashiTextButton(
     colors: ButtonColors = ZashiTextButtonDefaults.colors(),
     content: @Composable RowScope.() -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+
     TextButton(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.pressMorph(interactionSource),
+        interactionSource = interactionSource,
         shape = RoundedCornerShape(12.dp),
         enabled = enabled,
         colors = colors,

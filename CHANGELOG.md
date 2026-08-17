@@ -7,6 +7,10 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Added:
+
+- Buttons, rows, and other interactive elements now respond to touch with a subtle expressive press animation.
+
 ### Changed:
 
 - Bottom sheets across the app now share one background color.

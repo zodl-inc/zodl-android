@@ -23,6 +23,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import co.electriccoin.zcash.ui.design.util.PressMorphDefaults
+import co.electriccoin.zcash.ui.design.util.pressMorph
 
 @Composable
 fun BaseListItem(
@@ -37,8 +39,10 @@ fun BaseListItem(
     color: Color = Color.Transparent,
     content: @Composable (Modifier) -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+
     Surface(
-        modifier = modifier,
+        modifier = modifier.pressMorph(interactionSource, PressMorphDefaults.PRESSED_SCALE_SUBTLE),
         shape = shape,
         color = color,
         border = border,
@@ -46,7 +50,7 @@ fun BaseListItem(
         tonalElevation = 0.dp,
     ) {
         Box(
-            modifier = clickableModifier(remember { MutableInteractionSource() }, onClick)
+            modifier = clickableModifier(interactionSource, onClick)
         ) {
             Column {
                 Row(
