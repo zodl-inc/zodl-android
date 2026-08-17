@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.key.NativeKeyEvent
 import androidx.compose.ui.input.key.onKeyEvent
@@ -62,6 +63,9 @@ import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.listitem.SimpleListItemState
 import co.electriccoin.zcash.ui.design.component.listitem.ZashiSimpleListItem
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -86,72 +90,89 @@ internal fun SwapView(
     onSideEffect: (amountFocusRequester: FocusRequester) -> Unit = { },
 ) {
     val amountFocusRequester = remember { FocusRequester() }
+    val hazeState = rememberZashiFrostState()
 
     BlankBgScaffold(
-        topBar = { TopAppBar(state, appBarState) }
+        topBar = {
+            TopAppBar(
+                state = state,
+                appBarState = appBarState,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState)
+            )
+        }
     ) {
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .scaffoldPadding(it)
+                    .zashiFrostSource(hazeState)
         ) {
-            SwapAmountTextField(
-                state = state.amountTextField,
-                focusRequester = amountFocusRequester
-            )
-
-            if (state.addressLocation == TOP) {
-                Spacer(10.dp)
-                AddressTextField(state = state)
-                Spacer(16.dp)
-            } else {
-                Spacer(16.dp)
-            }
-
-            SlippageSeparator(
-                state = state
-            )
-            Spacer(14.dp)
-            SwapAmountText(state = state.amountText)
-
-            if (state.addressLocation == BOTTOM) {
-                Spacer(10.dp)
-                AddressTextField(state = state)
-            }
-
-            Spacer(22.dp)
-
-            SlippageButton(
-                state = state.slippage
-            )
-
-            state.infoItems.forEach { infoItem ->
-                Spacer(16.dp)
-                ZashiSimpleListItem(
-                    state = infoItem
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .scaffoldPadding(it)
+            ) {
+                SwapAmountTextField(
+                    state = state.amountTextField,
+                    focusRequester = amountFocusRequester
                 )
-            }
-            Spacer(24.dp)
-            Spacer(1f)
-            if (state.errorFooter != null) {
-                SwapErrorFooter(state.errorFooter)
-                Spacer(32.dp)
-            } else if (state.infoFooter != null) {
-                ZashiInfoText(
-                    text = state.infoFooter.getValue()
+
+                if (state.addressLocation == TOP) {
+                    Spacer(10.dp)
+                    AddressTextField(state = state)
+                    Spacer(16.dp)
+                } else {
+                    Spacer(16.dp)
+                }
+
+                SlippageSeparator(
+                    state = state
                 )
+                Spacer(14.dp)
+                SwapAmountText(state = state.amountText)
+
+                if (state.addressLocation == BOTTOM) {
+                    Spacer(10.dp)
+                    AddressTextField(state = state)
+                }
+
+                Spacer(22.dp)
+
+                SlippageButton(
+                    state = state.slippage
+                )
+
+                state.infoItems.forEach { infoItem ->
+                    Spacer(16.dp)
+                    ZashiSimpleListItem(
+                        state = infoItem
+                    )
+                }
                 Spacer(24.dp)
-            }
-            if (state.primaryButton != null) {
-                ZashiButton(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .testTag(SwapTag.SWAP_REVIEW_BUTTON),
-                    state = state.primaryButton
-                )
+                Spacer(1f)
+                if (state.errorFooter != null) {
+                    SwapErrorFooter(state.errorFooter)
+                    Spacer(32.dp)
+                } else if (state.infoFooter != null) {
+                    ZashiInfoText(
+                        text = state.infoFooter.getValue()
+                    )
+                    Spacer(24.dp)
+                }
+                if (state.primaryButton != null) {
+                    ZashiButton(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .testTag(SwapTag.SWAP_REVIEW_BUTTON),
+                        state = state.primaryButton
+                    )
+                }
             }
         }
 
@@ -241,8 +262,13 @@ private fun SlippageSeparator(
 }
 
 @Composable
-private fun TopAppBar(state: SwapState, appBarState: ZashiMainTopAppBarState) {
+private fun TopAppBar(
+    state: SwapState,
+    appBarState: ZashiMainTopAppBarState,
+    modifier: Modifier = Modifier
+) {
     ZashiSmallTopAppBar(
+        modifier = modifier,
         content = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -272,6 +298,10 @@ private fun TopAppBar(state: SwapState, appBarState: ZashiMainTopAppBarState) {
             ZashiIconButton(state.swapInfoButton)
             Spacer(20.dp)
         },
+        colors =
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
     )
 }
 

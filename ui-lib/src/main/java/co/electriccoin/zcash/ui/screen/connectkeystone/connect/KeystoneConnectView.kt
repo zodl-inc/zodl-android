@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.connectkeystone.connect
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +16,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -29,6 +31,9 @@ import co.electriccoin.zcash.ui.design.component.ZashiIconButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
 import co.electriccoin.zcash.ui.design.component.listitem.ZashiListItem
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -39,9 +44,14 @@ import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConnectKeystoneView(state: KeystoneConnectState) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
                 navigationAction = {
                     ZashiTopAppBarCloseNavigation(state.onBackClick)
                 },
@@ -56,22 +66,33 @@ fun ConnectKeystoneView(state: KeystoneConnectState) {
                     )
                     Spacer(Modifier.width(20.dp))
                 },
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    ),
             )
         }
     ) {
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .scaffoldPadding(it)
+                    .zashiFrostSource(hazeState)
         ) {
-            HeaderSection()
-            Spacer(Modifier.height(24.dp))
-            HowToConnectSection()
-            Spacer(Modifier.height(24.dp))
-            Spacer(Modifier.weight(1f))
-            BottomSection(state)
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .scaffoldPadding(it)
+            ) {
+                HeaderSection()
+                Spacer(Modifier.height(24.dp))
+                HowToConnectSection()
+                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.weight(1f))
+                BottomSection(state)
+            }
         }
     }
 }

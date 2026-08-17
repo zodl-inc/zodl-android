@@ -8,6 +8,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -70,6 +71,9 @@ import co.electriccoin.zcash.ui.design.component.ZashiAutoSizeText
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiTextField
 import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
@@ -117,31 +121,51 @@ fun Send(
         return
     }
 
+    val hazeState = rememberZashiFrostState()
+
     BlankBgScaffold(topBar = {
-        ZashiTopAppbar(
-            title = null,
-            state = zashiMainTopAppBarState,
-            onBack = onBack
-        )
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .zashiFrostedHeader(hazeState)
+        ) {
+            ZashiTopAppbar(
+                title = null,
+                state = zashiMainTopAppBarState,
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    ),
+                onBack = onBack
+            )
+        }
     }) { paddingValues ->
-        SendMainContent(
-            balanceWidgetState = balanceWidgetState,
-            selectedAccount = selectedAccount,
-            exchangeRateState = exchangeRateState,
-            onBack = onBack,
-            onCreateZecSend = onCreateZecSend,
-            sendStage = sendStage,
-            onQrScannerOpen = onQrScannerOpen,
-            recipientAddressState = recipientAddressState,
-            onRecipientAddressChange = onRecipientAddressChange,
-            hasCameraFeature = hasCameraFeature,
-            amountState = amountState,
-            setAmountState = setAmountState,
-            memoState = memoState,
-            setMemoState = setMemoState,
-            sendState = sendAddressBookState,
-            modifier = Modifier.scaffoldPadding(paddingValues)
-        )
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .zashiFrostSource(hazeState)
+        ) {
+            SendMainContent(
+                balanceWidgetState = balanceWidgetState,
+                selectedAccount = selectedAccount,
+                exchangeRateState = exchangeRateState,
+                onBack = onBack,
+                onCreateZecSend = onCreateZecSend,
+                sendStage = sendStage,
+                onQrScannerOpen = onQrScannerOpen,
+                recipientAddressState = recipientAddressState,
+                onRecipientAddressChange = onRecipientAddressChange,
+                hasCameraFeature = hasCameraFeature,
+                amountState = amountState,
+                setAmountState = setAmountState,
+                memoState = memoState,
+                setMemoState = setMemoState,
+                sendState = sendAddressBookState,
+                modifier = Modifier.scaffoldPadding(paddingValues)
+            )
+        }
     }
 }
 

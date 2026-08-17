@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment.Companion.BottomEnd
 import androidx.compose.ui.Alignment.Companion.CenterHorizontally
 import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.key.NativeKeyEvent
 import androidx.compose.ui.input.key.onKeyEvent
@@ -64,6 +65,9 @@ import co.electriccoin.zcash.ui.design.component.ZashiNumberTextField
 import co.electriccoin.zcash.ui.design.component.ZashiNumberTextFieldDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -88,78 +92,95 @@ internal fun PayView(
     balanceState: BalanceWidgetState,
     appBarState: ZashiMainTopAppBarState
 ) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
-        topBar = { TopAppBar(state, appBarState) }
+        topBar = {
+            TopAppBar(
+                state = state,
+                appBarState = appBarState,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState)
+            )
+        }
     ) {
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .scaffoldPadding(it)
+                    .zashiFrostSource(hazeState)
         ) {
-            Spacer(8.dp)
-            BalanceWidget(
-                modifier = Modifier.align(CenterHorizontally),
-                state = balanceState
-            )
-            Spacer(40.dp)
-            Text(
-                stringResource(R.string.send_to),
-                style = ZashiTypography.textSm,
-                fontWeight = FontWeight.Medium,
-                color = ZashiColors.Text.textPrimary
-            )
-            Spacer(12.dp)
-            ZashiAssetCard(state.asset, modifier = Modifier.testTag(PayTag.PAY_ASSET_CARD))
-            Spacer(28.dp)
-            AddressTextField(
-                state = state
-            )
-            AnimatedVisibility(visible = state.isABHintVisible) {
-                Column {
-                    Spacer(8.dp)
-                    SendAddressBookHint(Modifier.fillMaxWidth())
-                }
-            }
-            Spacer(22.dp)
-            Text(
-                stringResource(R.string.send_amount),
-                style = ZashiTypography.textSm,
-                fontWeight = FontWeight.Medium,
-                color = ZashiColors.Text.textPrimary
-            )
-            Spacer(10.dp)
-            AmountTextFields(state)
-            if (state.amountError != null && state.amountError.getValue().isNotEmpty()) {
-                Spacer(modifier = Modifier.height(6.dp))
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .scaffoldPadding(it)
+            ) {
+                Spacer(8.dp)
+                BalanceWidget(
+                    modifier = Modifier.align(CenterHorizontally),
+                    state = balanceState
+                )
+                Spacer(40.dp)
                 Text(
-                    text = state.amountError.getValue(),
+                    stringResource(R.string.send_to),
                     style = ZashiTypography.textSm,
-                    color = ZashiColors.Inputs.ErrorDefault.hint
+                    fontWeight = FontWeight.Medium,
+                    color = ZashiColors.Text.textPrimary
                 )
-            }
-            Spacer(28.dp)
-            ZecAmountText(state)
-            Spacer(12.dp)
-            SlippageButton(state.slippage)
-            Spacer(1f)
-            Spacer(12.dp)
-            if (state.errorFooter != null) {
-                SwapErrorFooter(state.errorFooter)
-                Spacer(32.dp)
-            } else if (state.infoFooter != null) {
-                ZashiInfoText(text = state.infoFooter.getValue())
-                Spacer(24.dp)
-            }
-            if (state.primaryButton != null) {
-                ZashiButton(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .testTag(PayTag.PAY_REVIEW_BUTTON),
-                    state = state.primaryButton
+                Spacer(12.dp)
+                ZashiAssetCard(state.asset, modifier = Modifier.testTag(PayTag.PAY_ASSET_CARD))
+                Spacer(28.dp)
+                AddressTextField(
+                    state = state
                 )
+                AnimatedVisibility(visible = state.isABHintVisible) {
+                    Column {
+                        Spacer(8.dp)
+                        SendAddressBookHint(Modifier.fillMaxWidth())
+                    }
+                }
+                Spacer(22.dp)
+                Text(
+                    stringResource(R.string.send_amount),
+                    style = ZashiTypography.textSm,
+                    fontWeight = FontWeight.Medium,
+                    color = ZashiColors.Text.textPrimary
+                )
+                Spacer(10.dp)
+                AmountTextFields(state)
+                if (state.amountError != null && state.amountError.getValue().isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = state.amountError.getValue(),
+                        style = ZashiTypography.textSm,
+                        color = ZashiColors.Inputs.ErrorDefault.hint
+                    )
+                }
+                Spacer(28.dp)
+                ZecAmountText(state)
+                Spacer(12.dp)
+                SlippageButton(state.slippage)
+                Spacer(1f)
+                Spacer(12.dp)
+                if (state.errorFooter != null) {
+                    SwapErrorFooter(state.errorFooter)
+                    Spacer(32.dp)
+                } else if (state.infoFooter != null) {
+                    ZashiInfoText(text = state.infoFooter.getValue())
+                    Spacer(24.dp)
+                }
+                if (state.primaryButton != null) {
+                    ZashiButton(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .testTag(PayTag.PAY_REVIEW_BUTTON),
+                        state = state.primaryButton
+                    )
+                }
             }
         }
     }
@@ -285,8 +306,13 @@ private fun AmountTextFields(state: PayState) {
 }
 
 @Composable
-private fun TopAppBar(state: PayState, appBarState: ZashiMainTopAppBarState) {
+private fun TopAppBar(
+    state: PayState,
+    appBarState: ZashiMainTopAppBarState,
+    modifier: Modifier = Modifier
+) {
     ZashiSmallTopAppBar(
+        modifier = modifier,
         content = {
             ZashiAutoSizeText(
                 text = "CROSSPAY",
@@ -311,6 +337,10 @@ private fun TopAppBar(state: PayState, appBarState: ZashiMainTopAppBarState) {
             ZashiIconButton(state = state.info)
             Spacer(20.dp)
         },
+        colors =
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
     )
 }
 
