@@ -204,13 +204,6 @@ internal class MockSynchronizer(
         error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} yet.")
     }
 
-    override suspend fun refreshUtxos(
-        account: Account,
-        since: BlockHeight
-    ): Int? {
-        error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
-    }
-
     override suspend fun getTreeState(height: BlockHeight): ByteArray {
         error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
     }
