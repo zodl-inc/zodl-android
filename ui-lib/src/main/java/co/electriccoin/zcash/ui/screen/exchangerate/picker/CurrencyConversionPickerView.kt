@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.exchangerate.picker
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,13 +31,14 @@ import co.electriccoin.zcash.ui.design.component.ZashiHorizontalDivider
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.orDark
-import co.electriccoin.zcash.ui.design.util.scaffoldScrollPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,36 +48,46 @@ fun CurrencyConversionPickerView(state: CurrencyConversionPickerState?) {
         state = state,
         dragHandle = null,
         content = { innerState, _ ->
+            val hazeState = rememberZashiFrostState()
             TransparentBgScaffold(
                 modifier = Modifier.fillMaxSize(),
                 topBar = {
-                    TopAppBar(innerState, windowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp))
+                    TopAppBar(
+                        innerState = innerState,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .zashiFrostedHeader(hazeState),
+                        windowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp)
+                    )
                 }
             ) { padding ->
-                LazyColumn(
+                Box(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .scaffoldScrollPadding(
-                                paddingValues = padding,
-                                top = padding.calculateTopPadding(),
-                                bottom = 0.dp,
-                                start = 0.dp,
-                                end = 0.dp,
-                            ),
-                    state = rememberLazyListState(),
-                    contentPadding = PaddingValues(bottom = padding.calculateBottomPadding()),
+                            .zashiFrostSource(hazeState)
                 ) {
-                    itemsIndexed(
-                        items = innerState.items,
-                        key = { _, item -> item.key },
-                        contentType = { _, item -> item.contentType }
-                    ) { index, item ->
-                        CurrencyItem(item)
-                        if (index != innerState.items.lastIndex) {
-                            ZashiHorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 24.dp)
-                            )
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        state = rememberLazyListState(),
+                        contentPadding =
+                            PaddingValues(
+                                top = padding.calculateTopPadding(),
+                                bottom = padding.calculateBottomPadding()
+                            ),
+                    ) {
+                        itemsIndexed(
+                            items = innerState.items,
+                            key = { _, item -> item.key },
+                            contentType = { _, item -> item.contentType }
+                        ) { index, item ->
+                            CurrencyItem(item)
+                            if (index != innerState.items.lastIndex) {
+                                ZashiHorizontalDivider(
+                                    modifier = Modifier.padding(horizontal = 24.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -119,9 +131,11 @@ private fun CurrencyItem(item: CurrencyConversionPickerItemState) {
 @Composable
 private fun TopAppBar(
     innerState: CurrencyConversionPickerState,
+    modifier: Modifier = Modifier,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
 ) {
     ZashiSmallTopAppBar(
+        modifier = modifier,
         title = stringRes(co.electriccoin.zcash.ui.R.string.currencyConversion_selectCurrencyTitle).getValue(),
         navigationAction = {
             ZashiTopAppBarCloseNavigation(
@@ -129,7 +143,10 @@ private fun TopAppBar(
                 modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
             )
         },
-        colors = ZcashTheme.colors.topAppBarColors.copyColors(containerColor = Color.Transparent),
+        colors =
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
         windowInsets = windowInsets
     )
 }

@@ -16,6 +16,10 @@ import androidx.compose.material3.SheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -23,8 +27,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.Spacer
+import co.electriccoin.zcash.ui.design.component.ZashiFrostedSheetHeader
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.rememberScreenModalBottomSheetState
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -41,46 +48,22 @@ fun VotePollDescriptionView(
     ZashiScreenModalBottomSheet(
         state = state,
         sheetState = sheetState,
+        dragHandle = null,
     ) { sheetState, contentPadding ->
-        Column(modifier = Modifier.padding(contentPadding)) {
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 10.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = stringRes(R.string.coinVote_common_pollDescription).getValue(),
-                    style = ZashiTypography.textMd,
-                    fontWeight = FontWeight.SemiBold,
-                    color = ZashiColors.Text.textPrimary
-                )
-                Surface(
-                    shape = CircleShape,
-                    color = ZashiColors.Surfaces.bgPrimary,
-                    modifier =
-                        Modifier
-                            .align(Alignment.CenterStart)
-                            .size(44.dp)
-                            .clickable { sheetState.onBack() }
-                ) {
-                    Icon(
-                        painter = painterResource(co.electriccoin.zcash.ui.design.R.drawable.ic_navigation_close),
-                        contentDescription = null,
-                        tint = ZashiColors.Text.textSecondary
-                    )
-                }
-            }
-
+        val hazeState = rememberZashiFrostState()
+        var headerHeight by remember { mutableStateOf(0.dp) }
+        Box(modifier = Modifier.weight(1f, false)) {
             Column(
                 modifier =
                     Modifier
-                        .weight(1f, false)
+                        .fillMaxWidth()
+                        .zashiFrostSource(hazeState)
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 24.dp)
-                        .padding(top = 12.dp)
+                        .padding(
+                            top = headerHeight + 12.dp,
+                            bottom = contentPadding.calculateBottomPadding()
+                        )
             ) {
                 Text(
                     text = sheetState.title.getValue(),
@@ -134,6 +117,47 @@ fun VotePollDescriptionView(
                     }
                 }
             }
+
+            ZashiFrostedSheetHeader(
+                hazeState = hazeState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                onHeightChanged = { headerHeight = it },
+                title = {
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .padding(bottom = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringRes(R.string.coinVote_common_pollDescription).getValue(),
+                            style = ZashiTypography.textMd,
+                            fontWeight = FontWeight.SemiBold,
+                            color = ZashiColors.Text.textPrimary
+                        )
+                        Surface(
+                            shape = CircleShape,
+                            color = ZashiColors.Surfaces.bgSecondary,
+                            modifier =
+                                Modifier
+                                    .align(Alignment.CenterStart)
+                                    .size(44.dp)
+                                    .clickable { sheetState.onBack() }
+                        ) {
+                            Icon(
+                                painter =
+                                    painterResource(
+                                        co.electriccoin.zcash.ui.design.R.drawable.ic_navigation_close
+                                    ),
+                                contentDescription = null,
+                                tint = ZashiColors.Text.textSecondary
+                            )
+                        }
+                    }
+                }
+            )
         }
     }
 }

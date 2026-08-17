@@ -20,6 +20,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
@@ -30,7 +34,10 @@ import co.electriccoin.zcash.ui.common.model.migration.MigrationPreparationDetai
 import co.electriccoin.zcash.ui.common.model.migration.MigrationPreparationStepDetail
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiButton
+import co.electriccoin.zcash.ui.design.component.ZashiFrostedSheetHeader
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
@@ -57,77 +64,99 @@ import co.electriccoin.zcash.ui.design.R as DesignR
 @Composable
 fun MigrationPreparationDetailsBottomSheet(details: MigrationPreparationDetails?) {
     if (details == null) return
-    ZashiScreenModalBottomSheet(onDismissRequest = details.onDismiss) { contentPadding ->
-        Column(
-            modifier =
-                Modifier
-                    .padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = contentPadding.calculateBottomPadding())
-                    .verticalScroll(rememberScrollState()),
-        ) {
-            Text(
-                text = stringRes(DesignR.string.migrationPreparationDetails_title).getValue(),
-                style = ZashiTypography.header5,
-                fontWeight = FontWeight.SemiBold,
-                color = ZashiColors.Text.textPrimary,
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = stringRes(DesignR.string.migrationPreparationDetails_body, details.stepCount).getValue(),
-                style = ZashiTypography.textSm,
-                color = ZashiColors.Text.textTertiary,
-            )
-            Spacer(Modifier.height(20.dp))
+    ZashiScreenModalBottomSheet(
+        onDismissRequest = details.onDismiss,
+        dragHandle = null,
+    ) { contentPadding ->
+        val hazeState = rememberZashiFrostState()
+        var headerHeight by remember { mutableStateOf(0.dp) }
+        Box {
             Column(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .background(ZashiColors.Surfaces.bgPrimary, RoundedCornerShape(16.dp))
-                        .padding(16.dp),
+                        .zashiFrostSource(hazeState)
+                        .verticalScroll(rememberScrollState())
+                        .padding(
+                            start = 24.dp,
+                            end = 24.dp,
+                            top = headerHeight,
+                            bottom = contentPadding.calculateBottomPadding()
+                        ),
             ) {
                 Text(
-                    text = stringRes(DesignR.string.migrationPreparationDetails_stepsTitle).getValue(),
-                    style = ZashiTypography.textMd,
-                    fontWeight = FontWeight.SemiBold,
-                    color = ZashiColors.Text.textPrimary,
+                    text = stringRes(DesignR.string.migrationPreparationDetails_body, details.stepCount).getValue(),
+                    style = ZashiTypography.textSm,
+                    color = ZashiColors.Text.textTertiary,
                 )
-                Spacer(Modifier.height(16.dp))
-                details.steps.forEachIndexed { i, step ->
-                    PreparationStepRow(
-                        number = i + 1,
-                        step = step,
-                        isLast = i == details.steps.lastIndex,
+                Spacer(Modifier.height(20.dp))
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .background(ZashiColors.Surfaces.bgPrimary, RoundedCornerShape(16.dp))
+                            .padding(16.dp),
+                ) {
+                    Text(
+                        text = stringRes(DesignR.string.migrationPreparationDetails_stepsTitle).getValue(),
+                        style = ZashiTypography.textMd,
+                        fontWeight = FontWeight.SemiBold,
+                        color = ZashiColors.Text.textPrimary,
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    details.steps.forEachIndexed { i, step ->
+                        PreparationStepRow(
+                            number = i + 1,
+                            step = step,
+                            isLast = i == details.steps.lastIndex,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .background(ZashiColors.Surfaces.bgSecondary, RoundedCornerShape(12.dp))
+                            .padding(12.dp),
+                ) {
+                    Text(
+                        text = stringRes(DesignR.string.migrationPreparationDetails_amountBeingSplitTitle).getValue(),
+                        style = ZashiTypography.textXs,
+                        color = ZashiColors.Text.textTertiary,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = details.totalAmount.getValue(),
+                        style = ZashiTypography.textXs,
+                        fontWeight = FontWeight.Medium,
+                        color = ZashiColors.Text.textPrimary,
                     )
                 }
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .background(ZashiColors.Surfaces.bgPrimary, RoundedCornerShape(12.dp))
-                        .padding(12.dp),
-            ) {
-                Text(
-                    text = stringRes(DesignR.string.migrationPreparationDetails_amountBeingSplitTitle).getValue(),
-                    style = ZashiTypography.textXs,
-                    color = ZashiColors.Text.textTertiary,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    text = details.totalAmount.getValue(),
-                    style = ZashiTypography.textXs,
-                    fontWeight = FontWeight.Medium,
-                    color = ZashiColors.Text.textPrimary,
+                Spacer(Modifier.height(24.dp))
+                ZashiButton(
+                    state =
+                        ButtonState(
+                            text = stringRes(DesignR.string.migration_common_gotIt),
+                            onClick = details.onDismiss
+                        ),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
-            Spacer(Modifier.height(24.dp))
-            ZashiButton(
-                state =
-                    ButtonState(
-                        text = stringRes(DesignR.string.migration_common_gotIt),
-                        onClick = details.onDismiss
-                    ),
-                modifier = Modifier.fillMaxWidth(),
+
+            ZashiFrostedSheetHeader(
+                hazeState = hazeState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                onHeightChanged = { headerHeight = it },
+                title = {
+                    Text(
+                        text = stringRes(DesignR.string.migrationPreparationDetails_title).getValue(),
+                        style = ZashiTypography.header5,
+                        fontWeight = FontWeight.SemiBold,
+                        color = ZashiColors.Text.textPrimary,
+                        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 8.dp, bottom = 8.dp),
+                    )
+                }
             )
         }
     }
