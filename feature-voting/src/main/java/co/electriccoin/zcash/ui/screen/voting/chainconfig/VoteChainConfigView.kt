@@ -32,7 +32,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -55,9 +58,12 @@ import co.electriccoin.zcash.ui.design.component.RadioButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
+import co.electriccoin.zcash.ui.design.component.ZashiFrostedSheetHeader
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiTextField
 import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -79,7 +85,8 @@ fun VoteChainConfigView(state: VoteChainConfigState?) {
     ZashiConfirmationBottomSheet(state = state.errorSheet)
     state.editor?.let { editor ->
         ZashiScreenModalBottomSheet(
-            onDismissRequest = editor.cancelButton.onClick
+            onDismissRequest = editor.cancelButton.onClick,
+            dragHandle = null
         ) { contentPadding ->
             EditorSheet(
                 state = editor,
@@ -378,109 +385,125 @@ private fun EditorSheet(
 ) {
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val hazeState = rememberZashiFrostState()
+    var headerHeight by remember { mutableStateOf(0.dp) }
 
-    Column(
-        modifier =
-            Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = contentPadding.calculateBottomPadding())
-    ) {
-        SheetHeader(state)
-
+    Box {
         Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = ZashiDimensions.Spacing.spacing3xl)
+                    .zashiFrostSource(hazeState)
+                    .verticalScroll(rememberScrollState())
+                    .padding(
+                        top = headerHeight,
+                        bottom = contentPadding.calculateBottomPadding()
+                    )
         ) {
-            Text(
-                text = state.title.getValue(),
-                style = ZashiTypography.header6,
-                fontWeight = FontWeight.SemiBold,
-                color = ZashiColors.Text.textPrimary
-            )
-            Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingMd))
-            Text(
-                text = state.description.getValue(),
-                style = ZashiTypography.textSm,
-                color = ZashiColors.Text.textPrimary
-            )
-            Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing3xl))
-            FieldLabel(text = stringResource(R.string.coinVote_configSettings_titleField))
-            Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingMd))
-            ZashiTextField(
-                state = state.name,
-                singleLine = true,
+            Column(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .focusRequester(focusRequester),
-                innerModifier = ZashiTextFieldDefaults.innerModifier.height(46.dp),
-                colors = sheetTextFieldColors(isFocusedByDefault = true)
-            )
-            Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
-            FieldLabel(text = stringResource(R.string.coinVote_configSettings_urlField))
-            Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingMd))
-            ZashiTextField(
-                state = state.url,
-                placeholder = {
-                    Text(
-                        text = stringResource(R.string.coinVote_configSettings_urlPlaceholder),
-                        style = ZashiTypography.textMd,
-                        color = ZashiColors.Text.textTertiary
-                    )
-                },
-                trailingIcon =
-                    if (state.showsUrlCopyButton) {
-                        {
-                            IconButton(
-                                onClick = state.onUrlCopyClick,
-                                enabled = state.url.isEnabled,
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_copy),
-                                    contentDescription =
-                                        stringResource(co.electriccoin.zcash.ui.design.R.string.receive_copy),
-                                    tint = ZashiColors.Text.textTertiary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                    } else {
-                        null
-                    },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                singleLine = true,
-                modifier =
-                    Modifier
-                        .fillMaxWidth(),
-                innerModifier = ZashiTextFieldDefaults.innerModifier.height(46.dp),
-                colors = sheetTextFieldColors(isFocusedByDefault = false)
-            )
-            Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing3xl))
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacingLg)
+                        .padding(horizontal = ZashiDimensions.Spacing.spacing3xl)
             ) {
-                state.deleteButton?.let { deleteButton ->
+                Text(
+                    text = state.title.getValue(),
+                    style = ZashiTypography.header6,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ZashiColors.Text.textPrimary
+                )
+                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingMd))
+                Text(
+                    text = state.description.getValue(),
+                    style = ZashiTypography.textSm,
+                    color = ZashiColors.Text.textPrimary
+                )
+                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing3xl))
+                FieldLabel(text = stringResource(R.string.coinVote_configSettings_titleField))
+                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingMd))
+                ZashiTextField(
+                    state = state.name,
+                    singleLine = true,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequester),
+                    innerModifier = ZashiTextFieldDefaults.innerModifier.height(46.dp),
+                    colors = sheetTextFieldColors(isFocusedByDefault = true)
+                )
+                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
+                FieldLabel(text = stringResource(R.string.coinVote_configSettings_urlField))
+                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingMd))
+                ZashiTextField(
+                    state = state.url,
+                    placeholder = {
+                        Text(
+                            text = stringResource(R.string.coinVote_configSettings_urlPlaceholder),
+                            style = ZashiTypography.textMd,
+                            color = ZashiColors.Text.textTertiary
+                        )
+                    },
+                    trailingIcon =
+                        if (state.showsUrlCopyButton) {
+                            {
+                                IconButton(
+                                    onClick = state.onUrlCopyClick,
+                                    enabled = state.url.isEnabled,
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_copy),
+                                        contentDescription =
+                                            stringResource(co.electriccoin.zcash.ui.design.R.string.receive_copy),
+                                        tint = ZashiColors.Text.textTertiary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        } else {
+                            null
+                        },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                    singleLine = true,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth(),
+                    innerModifier = ZashiTextFieldDefaults.innerModifier.height(46.dp),
+                    colors = sheetTextFieldColors(isFocusedByDefault = false)
+                )
+                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing3xl))
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacingLg)
+                ) {
+                    state.deleteButton?.let { deleteButton ->
+                        ZashiButton(
+                            state = deleteButton,
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                        )
+                    }
                     ZashiButton(
-                        state = deleteButton,
+                        state = state.saveButton,
                         modifier =
                             Modifier
                                 .fillMaxWidth()
                                 .height(48.dp)
                     )
                 }
-                ZashiButton(
-                    state = state.saveButton,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                )
             }
         }
+
+        ZashiFrostedSheetHeader(
+            hazeState = hazeState,
+            modifier = Modifier.align(Alignment.TopCenter),
+            onHeightChanged = { headerHeight = it },
+            title = {
+                SheetHeader(state)
+            }
+        )
     }
 
     LaunchedEffect(Unit) {

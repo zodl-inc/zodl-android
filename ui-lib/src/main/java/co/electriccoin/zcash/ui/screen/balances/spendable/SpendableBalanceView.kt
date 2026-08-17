@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.balances.spendable
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -30,8 +35,11 @@ import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiAutoSizeText
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiCard
+import co.electriccoin.zcash.ui.design.component.ZashiFrostedSheetHeader
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.rememberScreenModalBottomSheetState
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -52,6 +60,7 @@ fun SpendableBalanceView(
     ZashiScreenModalBottomSheet(
         state = state,
         sheetState = sheetState,
+        dragHandle = null,
         content = { state, contentPadding ->
             BottomSheetContent(state, contentPadding, modifier = Modifier.weight(1f, false))
         },
@@ -64,45 +73,62 @@ fun BottomSheetContent(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier =
-            modifier
-                .verticalScroll(rememberScrollState())
-                .padding(
-                    start = 24.dp,
-                    end = 24.dp,
-                    bottom = contentPadding.calculateBottomPadding()
-                )
-    ) {
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = state.title.getValue(),
-            color = ZashiColors.Text.textPrimary,
-            style = ZashiTypography.textXl,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center
-        )
-        Spacer(12.dp)
-        Text(
-            text = state.message.getValue(),
-            color = ZashiColors.Text.textTertiary,
-            style = ZashiTypography.textMd
-        )
-        Spacer(32.dp)
-        state.rows.forEachIndexed { index, state ->
-            if (index != 0) {
-                Spacer(12.dp)
-            }
-            BalanceActionRow(state)
-        }
-        state.shieldButton?.let {
+    val hazeState = rememberZashiFrostState()
+    var headerHeight by remember { mutableStateOf(0.dp) }
+    Box(modifier = modifier) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .zashiFrostSource(hazeState)
+                    .verticalScroll(rememberScrollState())
+                    .padding(
+                        start = 24.dp,
+                        end = 24.dp,
+                        top = headerHeight,
+                        bottom = contentPadding.calculateBottomPadding()
+                    )
+        ) {
+            Text(
+                text = state.message.getValue(),
+                color = ZashiColors.Text.textTertiary,
+                style = ZashiTypography.textMd
+            )
             Spacer(32.dp)
-            BalanceShieldButton(it)
+            state.rows.forEachIndexed { index, state ->
+                if (index != 0) {
+                    Spacer(12.dp)
+                }
+                BalanceActionRow(state)
+            }
+            state.shieldButton?.let {
+                Spacer(32.dp)
+                BalanceShieldButton(it)
+            }
+            Spacer(32.dp)
+            ZashiButton(
+                modifier = Modifier.fillMaxWidth(),
+                state = state.positive
+            )
         }
-        Spacer(32.dp)
-        ZashiButton(
-            modifier = Modifier.fillMaxWidth(),
-            state = state.positive
+
+        ZashiFrostedSheetHeader(
+            hazeState = hazeState,
+            modifier = Modifier.align(Alignment.TopCenter),
+            onHeightChanged = { headerHeight = it },
+            title = {
+                Text(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(start = 24.dp, end = 24.dp, bottom = 12.dp),
+                    text = state.title.getValue(),
+                    color = ZashiColors.Text.textPrimary,
+                    style = ZashiTypography.textXl,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center
+                )
+            }
         )
     }
 }
