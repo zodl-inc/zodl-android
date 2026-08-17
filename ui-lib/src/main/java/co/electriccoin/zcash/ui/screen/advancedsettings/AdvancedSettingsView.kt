@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.advancedsettings
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +17,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -34,6 +36,9 @@ import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.listitem.ListItemState
 import co.electriccoin.zcash.ui.design.component.listitem.ZashiListItem
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -51,53 +56,65 @@ import kotlinx.collections.immutable.persistentListOf
 fun AdvancedSettings(
     state: AdvancedSettingsState,
 ) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             AdvancedSettingsTopAppBar(
                 onBack = state.onBack,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState)
             )
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .scaffoldScrollPadding(paddingValues),
+                    .zashiFrostSource(hazeState)
         ) {
-            state.items.fastForEachIndexed { index, item ->
-                ZashiListItem(
-                    state = item,
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                    leading =
-                        (item.bigIcon as? ImageResource.ByDrawable)?.let { icon ->
-                            { modifier ->
-                                SettingsListItemLeadingIcon(
-                                    modifier = modifier,
-                                    drawableRes = icon.resource,
-                                    contentDescription = item.title.getValue()
-                                )
-                            }
-                        }
-                )
-                if (index != state.items.lastIndex) {
-                    ZashiHorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 4.dp)
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
-            Spacer(modifier = Modifier.weight(1f))
-            Info()
-            Spacer(modifier = Modifier.height(20.dp))
-            ZashiButton(
+            Column(
                 modifier =
                     Modifier
-                        .padding(horizontal = 24.dp)
-                        .fillMaxWidth(),
-                defaultPrimaryColors = ZashiButtonDefaults.destructive1Colors(),
-                state = state.deleteButton
-            )
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .scaffoldScrollPadding(paddingValues),
+            ) {
+                state.items.fastForEachIndexed { index, item ->
+                    ZashiListItem(
+                        state = item,
+                        modifier = Modifier.padding(horizontal = 4.dp),
+                        leading =
+                            (item.bigIcon as? ImageResource.ByDrawable)?.let { icon ->
+                                { modifier ->
+                                    SettingsListItemLeadingIcon(
+                                        modifier = modifier,
+                                        drawableRes = icon.resource,
+                                        contentDescription = item.title.getValue()
+                                    )
+                                }
+                            }
+                    )
+                    if (index != state.items.lastIndex) {
+                        ZashiHorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
+                Spacer(modifier = Modifier.weight(1f))
+                Info()
+                Spacer(modifier = Modifier.height(20.dp))
+                ZashiButton(
+                    modifier =
+                        Modifier
+                            .padding(horizontal = 24.dp)
+                            .fillMaxWidth(),
+                    defaultPrimaryColors = ZashiButtonDefaults.destructive1Colors(),
+                    state = state.deleteButton
+                )
+            }
         }
     }
 }
@@ -125,15 +142,20 @@ private fun Info() {
 
 @Composable
 private fun AdvancedSettingsTopAppBar(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     ZashiSmallTopAppBar(
         title = stringResource(id = R.string.settings_advanced),
-        modifier = Modifier.testTag(AdvancedSettingsTag.ADVANCED_SETTINGS_TOP_APP_BAR),
+        modifier = modifier.testTag(AdvancedSettingsTag.ADVANCED_SETTINGS_TOP_APP_BAR),
         showTitleLogo = true,
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = onBack)
         },
+        colors =
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
     )
 }
 

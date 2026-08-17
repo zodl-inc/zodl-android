@@ -111,6 +111,7 @@ fun ZashiScreenModalBottomSheet(
     onDismissRequest: () -> Unit,
     sheetState: SheetState = rememberScreenModalBottomSheetState(),
     shape: Shape = ZashiModalBottomSheetDefaults.SheetShape,
+    dragHandle: @Composable (() -> Unit)? = { ZashiModalBottomSheetDragHandle() },
     content: @Composable ColumnScope.(contentPadding: PaddingValues) -> Unit = {},
 ) {
     ZashiScreenModalBottomSheet(
@@ -124,6 +125,7 @@ fun ZashiScreenModalBottomSheet(
             },
         sheetState = sheetState,
         shape = shape,
+        dragHandle = dragHandle,
         content = { _, contentPadding ->
             content(contentPadding)
             HookupKeyboardController()
