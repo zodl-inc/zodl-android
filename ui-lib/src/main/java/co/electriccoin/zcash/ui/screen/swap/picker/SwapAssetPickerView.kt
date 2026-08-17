@@ -51,6 +51,9 @@ import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
 import co.electriccoin.zcash.ui.design.component.listitem.ListItemState
 import co.electriccoin.zcash.ui.design.component.listitem.ZashiListItem
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -60,13 +63,6 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.common.CommonEmptyScreen
 import co.electriccoin.zcash.ui.screen.home.common.CommonErrorScreen
 import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
-import dev.chrisbanes.haze.HazeDefaults
-import dev.chrisbanes.haze.HazeProgressive
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -76,8 +72,7 @@ fun SwapAssetPickerView(state: SwapAssetPickerState?) {
         state = state,
         dragHandle = null,
         content = { innerState, _ ->
-            val hazeState = rememberHazeState()
-            val frostColor = ZashiColors.Surfaces.bgPrimary
+            val hazeState = rememberZashiFrostState()
             TransparentBgScaffold(
                 modifier = Modifier.fillMaxSize(),
                 topBar = {
@@ -85,20 +80,7 @@ fun SwapAssetPickerView(state: SwapAssetPickerState?) {
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .hazeEffect(hazeState) {
-                                    style =
-                                        HazeStyle(
-                                            backgroundColor = frostColor,
-                                            tint = HazeTint(frostColor.copy(alpha = 0.55f)),
-                                            blurRadius = 20.dp,
-                                            noiseFactor = HazeDefaults.noiseFactor
-                                        )
-                                    progressive =
-                                        HazeProgressive.verticalGradient(
-                                            startIntensity = 1f,
-                                            endIntensity = 0f
-                                        )
-                                }
+                                .zashiFrostedHeader(hazeState)
                     ) {
                         TopAppBar(innerState, windowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp))
 
@@ -136,7 +118,7 @@ fun SwapAssetPickerView(state: SwapAssetPickerState?) {
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .hazeSource(hazeState)
+                            .zashiFrostSource(hazeState)
                 ) {
                     when (innerState.data) {
                         is SwapAssetPickerDataState.Error -> {

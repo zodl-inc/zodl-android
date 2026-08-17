@@ -58,6 +58,9 @@ import co.electriccoin.zcash.ui.design.component.ZashiIconButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTextField
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -69,13 +72,6 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.fixture.ZashiMainTopAppBarStateFixture
 import co.electriccoin.zcash.ui.screen.home.common.CommonEmptyScreen
 import co.electriccoin.zcash.ui.screen.home.common.CommonShimmerLoadingScreen
-import dev.chrisbanes.haze.HazeDefaults
-import dev.chrisbanes.haze.HazeProgressive
-import dev.chrisbanes.haze.HazeStyle
-import dev.chrisbanes.haze.HazeTint
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.launch
 
 @Composable
@@ -84,29 +80,15 @@ fun ActivityHistoryView(
     search: TextFieldState,
     mainAppBarState: ZashiMainTopAppBarState?,
 ) {
-    val hazeState = rememberHazeState()
+    val hazeState = rememberZashiFrostState()
     val lazyListState = rememberLazyListState()
-    val frostColor = ZashiColors.Surfaces.bgPrimary
-    val frostStyle =
-        HazeStyle(
-            backgroundColor = frostColor,
-            tint = HazeTint(frostColor.copy(alpha = 0.55f)),
-            blurRadius = 20.dp,
-            noiseFactor = HazeDefaults.noiseFactor
-        )
     BlankBgScaffold(
         topBar = {
             Column(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .hazeEffect(hazeState, style = frostStyle) {
-                            progressive =
-                                HazeProgressive.verticalGradient(
-                                    startIntensity = 1f,
-                                    endIntensity = 0f
-                                )
-                        }
+                        .zashiFrostedHeader(hazeState)
             ) {
                 TransactionHistoryAppBar(
                     mainAppBarState = mainAppBarState,
@@ -165,7 +147,7 @@ fun ActivityHistoryView(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .hazeSource(hazeState)
+                    .zashiFrostSource(hazeState)
         ) {
             when (state) {
                 is ActivityHistoryState.Data -> {
