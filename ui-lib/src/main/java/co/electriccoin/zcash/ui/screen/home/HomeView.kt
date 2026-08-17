@@ -24,7 +24,7 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.invisibleToUser
+import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
@@ -89,7 +89,7 @@ private fun Content(
                 Modifier
                     .align(Alignment.TopStart)
                     .size(1.dp)
-                    .semantics { invisibleToUser() }
+                    .semantics { hideFromAccessibility() }
                     .testTag(if (state.isSyncComplete) HomeTags.SYNC_COMPLETE else HomeTags.SYNC_PENDING)
         )
         Column(
