@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -66,13 +67,13 @@ fun KeystoneNewOrActiveView(state: KeystoneNewOrActiveState) {
             Spacer(Modifier.height(24.dp))
             ZashiButton(
                 state = state.activeDevice,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag(KeystoneNewOrActiveTag.ACTIVE_DEVICE),
                 defaultPrimaryColors = ZashiButtonDefaults.secondaryColors(),
             )
             Spacer(Modifier.height(12.dp))
             ZashiButton(
                 state = state.newDevice,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag(KeystoneNewOrActiveTag.NEW_DEVICE),
             )
         }
     }

@@ -15,6 +15,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.buildAnnotatedString
@@ -79,7 +80,7 @@ fun ConnectKeystoneView(state: KeystoneConnectState) {
 private fun BottomSection(state: KeystoneConnectState) {
     Column {
         ZashiButton(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().testTag(KeystoneConnectTag.READY_TO_SCAN),
             text = stringResource(R.string.keystone_addHWWallet_readyToScan),
             onClick = state.onContinueClick
         )
