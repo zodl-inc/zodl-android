@@ -10,6 +10,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ### Added:
 
 - Buttons, rows, and other interactive elements now respond to touch with a subtle expressive press animation.
+- Screens and sheets across the app now use frosted-glass headers and footers, with content scrolling beneath them.
 
 ### Changed:
 
