@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_theme">Tema</string>
+    <string name="theme_settings_title">Tema</string>
+    <string name="theme_settings_subtitle">Elige cómo se ve Zashi en modo oscuro. Los fondos negros puros mejoran el contraste y ahorran batería en pantallas OLED.</string>
+    <string name="theme_settings_option_classic">Oscuro clásico</string>
+    <string name="theme_settings_option_classic_desc">El aspecto oscuro estándar de Zashi con fondos gris carbón.</string>
+    <string name="theme_settings_option_oled">Negro puro</string>
+    <string name="theme_settings_option_oled_desc">Fondos negros puros diseñados para pantallas OLED.</string>
+</resources>

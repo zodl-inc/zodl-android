@@ -26,6 +26,8 @@ import co.electriccoin.zcash.ui.common.provider.IsIronwoodAnnouncementShownStora
 import co.electriccoin.zcash.ui.common.provider.IsIronwoodAnnouncementShownStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsKeepScreenOnDuringRestoreProvider
 import co.electriccoin.zcash.ui.common.provider.IsKeepScreenOnDuringRestoreProviderImpl
+import co.electriccoin.zcash.ui.common.provider.IsOledThemeEnabledStorageProvider
+import co.electriccoin.zcash.ui.common.provider.IsOledThemeEnabledStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
@@ -108,6 +110,7 @@ val providerModule =
         singleOf(::HasSeenHowToVoteKeystoneStorageProviderImpl) bind
             HasSeenHowToVoteKeystoneStorageProvider::class
         singleOf(::IsTorEnabledStorageProviderImpl) bind IsTorEnabledStorageProvider::class
+        singleOf(::IsOledThemeEnabledStorageProviderImpl) bind IsOledThemeEnabledStorageProvider::class
         singleOf(::BlockchainProviderImpl) bind BlockchainProvider::class
         singleOf(::TokenIconProviderImpl) bind TokenIconProvider::class
         singleOf(::TokenNameProviderImpl) bind TokenNameProvider::class
