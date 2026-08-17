@@ -89,6 +89,7 @@ import co.electriccoin.zcash.ui.screen.scan.ScanScreenState
 import co.electriccoin.zcash.ui.screen.scan.ScanTag
 import co.electriccoin.zcash.ui.screen.scan.ScanValidationState
 import co.electriccoin.zcash.ui.screen.scan.util.QrCodeAnalyzerImpl
+import co.electriccoin.zcash.ui.screen.scankeystone.e2e.E2eKeystoneQrFrameSource
 import co.electriccoin.zcash.ui.screen.scankeystone.model.ScanKeystoneState
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.PermissionState
@@ -405,13 +406,17 @@ private fun ScanMainContent(
                 onScanStateChange(ScanScreenState.Scanning)
 
                 if (!LocalInspectionMode.current) {
-                    ScanCameraView(
-                        framePosition = framePosition,
-                        isTorchOn = isTorchOn,
-                        onScan = onScan,
-                        permissionState = permissionState,
-                        setScanState = setScanState,
-                    )
+                    if (E2eKeystoneQrFrameSource.isEnabled(LocalContext.current)) {
+                        E2eKeystoneQrFrameSource.Compose(onScan = onScan)
+                    } else {
+                        ScanCameraView(
+                            framePosition = framePosition,
+                            isTorchOn = isTorchOn,
+                            onScan = onScan,
+                            permissionState = permissionState,
+                            setScanState = setScanState,
+                        )
+                    }
                 }
 
                 Canvas(modifier = Modifier.fillMaxSize()) {
