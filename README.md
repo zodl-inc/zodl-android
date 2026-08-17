@@ -46,7 +46,8 @@ apksigner verify --print-certs app-zcashmainnet-foss-release.apk
 | SHA-1 | `7bd525dc69da6b1fbfe91488b98329f82d55c0f5` |
 | MD5 | `33d742aafb8b57a35169cc6b527fec31` |
 
-**Certificate DN:** `O=Zerocash Electric Coin Company, OU=Core Engineering, L=Denver, ST=CO, C=01`
+**Certificate DN:** `O=Zerocoin Electric Coin Company, OU=Core Engineering, L=Denver, ST=CO, C=01`
+*(Note: the DN reflects the original key created under the ECC/Zashi name — the signing key has not been rotated as part of the ZODL rebrand. The fingerprints above are the canonical source of truth.)*
 
 These fingerprints are also embedded in each GitHub release as a
 `checksums.sha256` file signed with the ZODL GPG key
