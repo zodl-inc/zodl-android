@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.screen.migration.complete
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -37,6 +39,9 @@ import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiIconButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -83,9 +88,18 @@ fun MigrationCompleteScreen() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MigrationCompleteView(state: MigrationCompleteState) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    ),
                 // The "?" opens the lock explainer as pure information. It's only meaningful while
                 // there's an unlocked residue that can still be locked, so it's hidden once the
                 // balance is locked or when there's no residual dust at all.
@@ -105,146 +119,153 @@ fun MigrationCompleteView(state: MigrationCompleteState) {
             )
         },
     ) { padding ->
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .scaffoldPadding(padding),
-            horizontalAlignment = Alignment.CenterHorizontally,
+                    .zashiFrostSource(hazeState)
         ) {
             Column(
-                Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .scaffoldPadding(padding),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Image(
-                    painter = painterResource(co.electriccoin.zcash.migration.R.drawable.ic_migration_complete),
-                    contentDescription = null,
-                    modifier = Modifier.size(52.dp),
-                )
-                Spacer(Modifier.height(24.dp))
-                Text(
-                    text = stringRes(DesignR.string.migrationComplete_title).getValue(),
-                    style = ZashiTypography.header5,
-                    fontWeight = FontWeight.SemiBold,
-                    color = ZashiColors.Text.textPrimary,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = stringRes(DesignR.string.migrationComplete_subtitle).getValue(),
-                    style = ZashiTypography.textSm,
-                    color = ZashiColors.Text.textTertiary,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(24.dp))
                 Column(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(ZashiColors.Surfaces.bgSecondary)
-                            .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    SummaryRow(
-                        label = stringRes(DesignR.string.migrationComplete_totalTransferredLabel).getValue(),
-                        value = state.totalTransferred.getValue(),
+                    Image(
+                        painter = painterResource(co.electriccoin.zcash.migration.R.drawable.ic_migration_complete),
+                        contentDescription = null,
+                        modifier = Modifier.size(52.dp),
                     )
-                    state.remainingDust?.let { dust ->
+                    Spacer(Modifier.height(24.dp))
+                    Text(
+                        text = stringRes(DesignR.string.migrationComplete_title).getValue(),
+                        style = ZashiTypography.header5,
+                        fontWeight = FontWeight.SemiBold,
+                        color = ZashiColors.Text.textPrimary,
+                        textAlign = TextAlign.Center,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = stringRes(DesignR.string.migrationComplete_subtitle).getValue(),
+                        style = ZashiTypography.textSm,
+                        color = ZashiColors.Text.textTertiary,
+                        textAlign = TextAlign.Center,
+                    )
+                    Spacer(Modifier.height(24.dp))
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(ZashiColors.Surfaces.bgSecondary)
+                                .padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
                         SummaryRow(
-                            label = stringRes(DesignR.string.migrationComplete_remainingDustLabel).getValue(),
-                            value = dust.getValue(),
+                            label = stringRes(DesignR.string.migrationComplete_totalTransferredLabel).getValue(),
+                            value = state.totalTransferred.getValue(),
+                        )
+                        state.remainingDust?.let { dust ->
+                            SummaryRow(
+                                label = stringRes(DesignR.string.migrationComplete_remainingDustLabel).getValue(),
+                                value = dust.getValue(),
+                            )
+                        }
+                        SummaryRow(
+                            label = stringRes(DesignR.string.migrationComplete_transfersLabel).getValue(),
+                            value = state.transfersProgress.getValue(),
+                        )
+                        SummaryRow(
+                            label = stringRes(DesignR.string.migrationComplete_durationLabel).getValue(),
+                            value = state.duration.getValue(),
                         )
                     }
-                    SummaryRow(
-                        label = stringRes(DesignR.string.migrationComplete_transfersLabel).getValue(),
-                        value = state.transfersProgress.getValue(),
-                    )
-                    SummaryRow(
-                        label = stringRes(DesignR.string.migrationComplete_durationLabel).getValue(),
-                        value = state.duration.getValue(),
-                    )
                 }
-            }
-            when {
-                state.remainingDust == null -> {
-                    ZashiButton(
-                        state =
-                            ButtonState(
-                                text = stringRes(DesignR.string.migration_common_gotIt),
-                                onClick = state.onDone
-                            ),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
+                when {
+                    state.remainingDust == null -> {
+                        ZashiButton(
+                            state =
+                                ButtonState(
+                                    text = stringRes(DesignR.string.migration_common_gotIt),
+                                    onClick = state.onDone
+                                ),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
 
-                state.isDustLocked -> {
-                    Spacer(Modifier.height(20.dp))
-                    LockedDisclaimer(dustAmount = state.remainingDust.getValue())
-                    Spacer(Modifier.height(20.dp))
-                    ZashiButton(
-                        state =
-                            ButtonState(
-                                text = stringRes(DesignR.string.migration_common_gotIt),
-                                onClick = state.onDone
-                            ),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
+                    state.isDustLocked -> {
+                        Spacer(Modifier.height(20.dp))
+                        LockedDisclaimer(dustAmount = state.remainingDust.getValue())
+                        Spacer(Modifier.height(20.dp))
+                        ZashiButton(
+                            state =
+                                ButtonState(
+                                    text = stringRes(DesignR.string.migration_common_gotIt),
+                                    onClick = state.onDone
+                                ),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
 
-                else -> {
-                    Spacer(Modifier.height(20.dp))
-                    PrivacyDisclaimerCard(
-                        title = stringRes(DesignR.string.migrationComplete_orchardBalanceRemainingTitle).getValue(),
-                        body =
-                            stringRes(
-                                DesignR.string.migrationComplete_orchardBalanceRemainingBody,
-                                state.remainingDust.getValue()
-                            ).getValue(),
-                    )
-                    Spacer(Modifier.height(20.dp))
-                    ZashiButton(
-                        state =
-                            ButtonState(
-                                text =
-                                    stringRes(
-                                        if (state.isMigrating) {
-                                            DesignR.string.migrationComplete_migrating
-                                        } else {
-                                            DesignR.string.migrationComplete_migrateAnyway
-                                        }
-                                    ),
-                                onClick = state.onMigrateAnyway,
-                                isEnabled = !state.isMigrating && !state.isLocking,
-                                isLoading = state.isMigrating,
-                            ),
-                        modifier = Modifier.fillMaxWidth(),
-                        defaultPrimaryColors =
-                            ZashiButtonDefaults.secondaryColors(
-                                contentColor = ZashiColors.Utility.WarningYellow.utilityOrange700,
-                                borderColor = ZashiColors.Utility.WarningYellow.utilityOrange300,
-                            ),
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    ZashiButton(
-                        state =
-                            ButtonState(
-                                text =
-                                    stringRes(
-                                        if (state.isLocking) {
-                                            DesignR.string.migrationComplete_lockingBalance
-                                        } else {
-                                            DesignR.string.migrationComplete_lockBalance
-                                        }
-                                    ),
-                                onClick = state.onLockBalance,
-                                isEnabled = !state.isMigrating && !state.isLocking,
-                                isLoading = state.isLocking,
-                            ),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    else -> {
+                        Spacer(Modifier.height(20.dp))
+                        PrivacyDisclaimerCard(
+                            title = stringRes(DesignR.string.migrationComplete_orchardBalanceRemainingTitle).getValue(),
+                            body =
+                                stringRes(
+                                    DesignR.string.migrationComplete_orchardBalanceRemainingBody,
+                                    state.remainingDust.getValue()
+                                ).getValue(),
+                        )
+                        Spacer(Modifier.height(20.dp))
+                        ZashiButton(
+                            state =
+                                ButtonState(
+                                    text =
+                                        stringRes(
+                                            if (state.isMigrating) {
+                                                DesignR.string.migrationComplete_migrating
+                                            } else {
+                                                DesignR.string.migrationComplete_migrateAnyway
+                                            }
+                                        ),
+                                    onClick = state.onMigrateAnyway,
+                                    isEnabled = !state.isMigrating && !state.isLocking,
+                                    isLoading = state.isMigrating,
+                                ),
+                            modifier = Modifier.fillMaxWidth(),
+                            defaultPrimaryColors =
+                                ZashiButtonDefaults.secondaryColors(
+                                    contentColor = ZashiColors.Utility.WarningYellow.utilityOrange700,
+                                    borderColor = ZashiColors.Utility.WarningYellow.utilityOrange300,
+                                ),
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        ZashiButton(
+                            state =
+                                ButtonState(
+                                    text =
+                                        stringRes(
+                                            if (state.isLocking) {
+                                                DesignR.string.migrationComplete_lockingBalance
+                                            } else {
+                                                DesignR.string.migrationComplete_lockBalance
+                                            }
+                                        ),
+                                    onClick = state.onLockBalance,
+                                    isEnabled = !state.isMigrating && !state.isLocking,
+                                    isLoading = state.isLocking,
+                                ),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
             }
         }

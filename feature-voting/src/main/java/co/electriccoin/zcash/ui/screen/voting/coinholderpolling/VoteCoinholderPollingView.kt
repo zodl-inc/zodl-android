@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.voting.coinholderpolling
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -36,6 +37,9 @@ import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -55,54 +59,67 @@ fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
     ZashiConfirmationBottomSheet(state = state.unverifiedPollWarningSheet)
     ZashiConfirmationBottomSheet(state = state.noRoundsSheet)
 
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             VoteAppBar(
                 title = stringResource(R.string.coinVote_common_screenTitle),
                 onBack = state.onBack,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
                 onConfigSettings = state.onConfigSettings,
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    )
             )
         },
         content = { padding ->
-            val activeRounds = state.activeRounds.orEmpty()
-            val pastRounds = state.pastRounds.orEmpty()
-            if (activeRounds.isEmpty() && pastRounds.isEmpty()) {
-                CommonShimmerLoadingScreen(
-                    shimmerItemsCount = 8,
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .scaffoldScrollPadding(padding),
-                    showDivider = false,
-                )
-            } else {
-                LazyColumn(
-                    modifier =
-                        Modifier
-                            .fillMaxSize()
-                            .padding(top = padding.calculateTopPadding()),
-                    contentPadding =
-                        PaddingValues(
-                            start = ZashiDimensions.Spacing.spacing3xl,
-                            top = ZashiDimensions.Spacing.spacingLg,
-                            end = ZashiDimensions.Spacing.spacing3xl,
-                            bottom = padding.calculateBottomPadding() + ZashiDimensions.Spacing.spacing3xl
-                        ),
-                    verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing4xl)
-                ) {
-                    items(
-                        activeRounds,
-                        key = { it.roundId },
-                        contentType = { "pollcard" }
-                    ) { round ->
-                        PollCard(round)
-                    }
-                    items(
-                        pastRounds,
-                        key = { it.roundId },
-                        contentType = { "pollcard" }
-                    ) { round ->
-                        PollCard(round)
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .zashiFrostSource(hazeState)
+            ) {
+                val activeRounds = state.activeRounds.orEmpty()
+                val pastRounds = state.pastRounds.orEmpty()
+                if (activeRounds.isEmpty() && pastRounds.isEmpty()) {
+                    CommonShimmerLoadingScreen(
+                        shimmerItemsCount = 8,
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .scaffoldScrollPadding(padding),
+                        showDivider = false,
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding =
+                            PaddingValues(
+                                start = ZashiDimensions.Spacing.spacing3xl,
+                                top = padding.calculateTopPadding() + ZashiDimensions.Spacing.spacingLg,
+                                end = ZashiDimensions.Spacing.spacing3xl,
+                                bottom = padding.calculateBottomPadding() + ZashiDimensions.Spacing.spacing3xl
+                            ),
+                        verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing4xl)
+                    ) {
+                        items(
+                            activeRounds,
+                            key = { it.roundId },
+                            contentType = { "pollcard" }
+                        ) { round ->
+                            PollCard(round)
+                        }
+                        items(
+                            pastRounds,
+                            key = { it.roundId },
+                            contentType = { "pollcard" }
+                        ) { round ->
+                            PollCard(round)
+                        }
                     }
                 }
             }
@@ -112,23 +129,39 @@ fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
 
 @Composable
 fun VoteCoinholderPollingLoadingView(state: VoteCoinholderPollingState) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             VoteAppBar(
                 title = stringResource(R.string.coinVote_common_screenTitle),
                 onBack = state.onBack,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
                 onConfigSettings = state.onConfigSettings,
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    )
             )
         },
         content = { padding ->
-            CommonShimmerLoadingScreen(
-                shimmerItemsCount = 8,
+            Box(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .scaffoldScrollPadding(padding),
-                showDivider = false,
-            )
+                        .zashiFrostSource(hazeState)
+            ) {
+                CommonShimmerLoadingScreen(
+                    shimmerItemsCount = 8,
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .scaffoldScrollPadding(padding),
+                    showDivider = false,
+                )
+            }
         }
     )
 }

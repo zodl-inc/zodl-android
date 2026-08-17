@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -47,6 +48,10 @@ import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.listitem.BaseListItem
 import co.electriccoin.zcash.ui.design.component.listitem.ZashiListItemDefaults
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -62,10 +67,19 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun AuthorizeVoteSignKeystoneView(state: AuthorizeVoteSignKeystoneState) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
                 title = stringResource(R.string.coinVote_delegationSigning_title),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    ),
                 navigationAction = {
                     ZashiTopAppBarBackNavigation(
                         onBack = state.onBack,
@@ -73,20 +87,39 @@ fun AuthorizeVoteSignKeystoneView(state: AuthorizeVoteSignKeystoneState) {
                     )
                 }
             )
+        },
+        bottomBar = {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedFooter(hazeState)
+                        .navigationBarsPadding()
+                        .padding(
+                            start = ZashiDimensions.Spacing.spacing3xl + ZashiDimensions.Spacing.spacingMd,
+                            end = ZashiDimensions.Spacing.spacing3xl + ZashiDimensions.Spacing.spacingMd,
+                            bottom = ZashiDimensions.Spacing.spacing3xl + ZashiDimensions.Spacing.spacingMd
+                        )
+            ) {
+                ZashiButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    state = state.scanButton
+                )
+            }
         }
     ) { padding ->
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .scaffoldPadding(padding)
+                    .zashiFrostSource(hazeState)
         ) {
             Column(
                 modifier =
                     Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
+                        .fillMaxSize()
                         .verticalScroll(rememberScrollState())
+                        .scaffoldPadding(padding)
                         .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
             ) {
                 Spacer(Modifier.height(12.dp))
@@ -98,18 +131,6 @@ fun AuthorizeVoteSignKeystoneView(state: AuthorizeVoteSignKeystoneState) {
                 QrCodeCard(state = state)
                 ProgressMemoSection(state = state)
                 Spacer(Modifier.height(12.dp))
-            }
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
-                        .padding(bottom = ZashiDimensions.Spacing.spacingMd)
-            ) {
-                ZashiButton(
-                    modifier = Modifier.fillMaxWidth(),
-                    state = state.scanButton
-                )
             }
         }
     }

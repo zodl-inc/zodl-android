@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -36,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -51,13 +53,16 @@ import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
+import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.common.LceRenderer
 import co.electriccoin.zcash.ui.screen.common.WalletHeaderIcons
@@ -93,29 +98,49 @@ fun MigrationReviewView(state: MigrationReviewState) {
     // Purely a "is the details sheet open" UI toggle — mirrors MigrationProgressScreen's identical
     // hoisted local state for the same shared sheet.
     var isShowingPreparationDetails by remember { mutableStateOf(false) }
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    ),
                 navigationAction = { ZashiTopAppBarBackNavigation(onBack = state.onBack) },
             )
         }
     ) { padding ->
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .scaffoldPadding(padding),
+                    .zashiFrostSource(hazeState)
         ) {
-            when (state.mode) {
-                MigrationMode.IMMEDIATE -> {
-                    ImmediateReviewContent(state)
-                }
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = ZashiDimensions.Spacing.spacing3xl),
+            ) {
+                when (state.mode) {
+                    MigrationMode.IMMEDIATE -> {
+                        ImmediateReviewContent(
+                            state = state,
+                            paddingValues = padding
+                        )
+                    }
 
-                MigrationMode.AUTOMATIC -> {
-                    PrivacyReviewContent(
-                        state = state,
-                        onShowPreparationDetails = { isShowingPreparationDetails = true },
-                    )
+                    MigrationMode.AUTOMATIC -> {
+                        PrivacyReviewContent(
+                            state = state,
+                            paddingValues = padding,
+                            onShowPreparationDetails = { isShowingPreparationDetails = true },
+                        )
+                    }
                 }
             }
         }
@@ -130,8 +155,16 @@ fun MigrationReviewView(state: MigrationReviewState) {
 }
 
 @Composable
-private fun ImmediateReviewContent(state: MigrationReviewState) {
-    Column(modifier = Modifier.fillMaxSize()) {
+private fun ImmediateReviewContent(
+    state: MigrationReviewState,
+    paddingValues: PaddingValues
+) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(bottom = paddingValues.calculateBottomPadding() + ZashiDimensions.Spacing.spacing3xl),
+    ) {
         // Content scrolls in this weighted region so the Confirm button stays pinned to the bottom
         // of the screen (matching PrivacyReviewContent), rather than floating right under the short
         // details card.
@@ -139,7 +172,8 @@ private fun ImmediateReviewContent(state: MigrationReviewState) {
             modifier =
                 Modifier
                     .weight(1f)
-                    .verticalScroll(rememberScrollState()),
+                    .verticalScroll(rememberScrollState())
+                    .padding(top = paddingValues.calculateTopPadding() + ZashiDimensions.Spacing.spacingLg),
         ) {
             WalletHeaderIcons(
                 state =
@@ -242,9 +276,18 @@ internal fun ImmediateDetailsRow(label: String, value: String) {
 @Composable
 private fun PrivacyReviewContent(
     state: MigrationReviewState,
+    paddingValues: PaddingValues,
     onShowPreparationDetails: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .padding(
+                    top = paddingValues.calculateTopPadding() + ZashiDimensions.Spacing.spacingLg,
+                    bottom = paddingValues.calculateBottomPadding() + ZashiDimensions.Spacing.spacing3xl
+                ),
+    ) {
         Text(
             text = stringRes(DesignR.string.migrationReview_confirmTransferPlanTitle).getValue(),
             style = ZashiTypography.header6,
@@ -719,6 +762,7 @@ private fun PreviewPrivacyWithMultiStepSplitBalance() =
         // 5207:16023, 2026-08-03) replaces the old inline chevron-expand this preview used to
         // exercise.
         PrivacyReviewContent(
+            paddingValues = PaddingValues(0.dp),
             state =
                 MigrationReviewState(
                     mode = MigrationMode.AUTOMATIC,

@@ -64,6 +64,8 @@ import co.electriccoin.zcash.ui.design.component.ZashiTextField
 import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
 import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
 import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -94,51 +96,70 @@ fun VoteChainConfigView(state: VoteChainConfigState?) {
             )
         }
     }
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             VoteAppBar(
                 title = stringResource(R.string.coinVote_configSettings_screenTitle),
                 onBack = state.onBack,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    )
             )
         },
         bottomBar = {
             if (state.editor == null) {
-                BottomActions(state)
+                BottomActions(
+                    state = state,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .zashiFrostedFooter(hazeState)
+                )
             }
         },
         content = { padding ->
-            LazyColumn(
+            Box(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(top = padding.calculateTopPadding()),
-                contentPadding =
-                    PaddingValues(
-                        start = ZashiDimensions.Spacing.spacing3xl,
-                        top = ZashiDimensions.Spacing.spacingLg,
-                        end = ZashiDimensions.Spacing.spacing3xl,
-                        bottom = padding.calculateBottomPadding() + ZashiDimensions.Spacing.spacing3xl
-                    ),
-                verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing3xl)
+                        .zashiFrostSource(hazeState)
             ) {
-                item(key = "intro") {
-                    Intro()
-                }
-                item(key = "chains") {
-                    Column(verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacingMd)) {
-                        state.chains.forEach { item ->
-                            ChainItem(item)
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding =
+                        PaddingValues(
+                            start = ZashiDimensions.Spacing.spacing3xl,
+                            top = padding.calculateTopPadding() + ZashiDimensions.Spacing.spacingLg,
+                            end = ZashiDimensions.Spacing.spacing3xl,
+                            bottom = padding.calculateBottomPadding() + ZashiDimensions.Spacing.spacing3xl
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing3xl)
+                ) {
+                    item(key = "intro") {
+                        Intro()
+                    }
+                    item(key = "chains") {
+                        Column(verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacingMd)) {
+                            state.chains.forEach { item ->
+                                ChainItem(item)
+                            }
                         }
                     }
-                }
-                if (state.chains.size == 1) {
-                    item(key = "empty_custom") {
-                        Text(
-                            text = stringResource(R.string.vote_chain_config_custom_empty),
-                            style = ZashiTypography.textSm,
-                            color = ZashiColors.Text.textTertiary,
-                            modifier = Modifier.padding(horizontal = 4.dp)
-                        )
+                    if (state.chains.size == 1) {
+                        item(key = "empty_custom") {
+                            Text(
+                                text = stringResource(R.string.vote_chain_config_custom_empty),
+                                style = ZashiTypography.textSm,
+                                color = ZashiColors.Text.textTertiary,
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -303,12 +324,13 @@ private fun RadioIndicator(
 }
 
 @Composable
-private fun BottomActions(state: VoteChainConfigState) {
+private fun BottomActions(
+    state: VoteChainConfigState,
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier =
-            Modifier
-                .fillMaxWidth()
-                .background(ZashiColors.Surfaces.bgPrimary)
+            modifier
                 .navigationBarsPadding()
                 .padding(
                     start = ZashiDimensions.Spacing.spacing3xl,
