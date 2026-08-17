@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -23,6 +24,8 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.invisibleToUser
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import co.electriccoin.zcash.ui.R
@@ -76,6 +79,19 @@ private fun Content(
     Box(
         modifier = modifier,
     ) {
+        // Always-present, zero-size marker mirroring iOS's AccessibilityID.Home.syncComplete/
+        // .syncPending overlay. Gives e2e flows a positive, non-flaky signal for "wallet caught
+        // up with the chain tip" instead of asserting on the sync banner's text/visibility,
+        // which changes across states (Restoring/Resyncing/Syncing/gone) and can be replaced by
+        // unrelated banners (e.g. Migration Required) once sync is actually done.
+        Box(
+            modifier =
+                Modifier
+                    .align(Alignment.TopStart)
+                    .size(1.dp)
+                    .semantics { invisibleToUser() }
+                    .testTag(if (state.isSyncComplete) HomeTags.SYNC_COMPLETE else HomeTags.SYNC_PENDING)
+        )
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -246,7 +262,8 @@ private fun Preview() {
                             icon = R.drawable.ic_home_buy,
                             onClick = {}
                         ),
-                    message = WalletErrorMessageState(onClick = {})
+                    message = WalletErrorMessageState(onClick = {}),
+                    isSyncComplete = true
                 )
         )
     }

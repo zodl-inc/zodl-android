@@ -2,9 +2,11 @@ package co.electriccoin.zcash.ui.screen.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.datasource.WalletSnapshotDataSource
 import co.electriccoin.zcash.ui.common.migration.MigrationHomeMessageSource
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
 import co.electriccoin.zcash.ui.common.model.voting.VotingSession
@@ -92,6 +94,7 @@ class HomeVM(
     private val votingShareTrackingScheduler: VotingShareTrackingScheduler,
     private val migrationHomeMessageSource: MigrationHomeMessageSource,
     private val homeMessageMapper: HomeMessageMapper,
+    walletSnapshotDataSource: WalletSnapshotDataSource,
 ) : ViewModel() {
     private var hasSyncErrorBeenShown = false
     private var hasRestoreSuccessBeenShown = false
@@ -135,14 +138,25 @@ class HomeVM(
                 initialValue = null
             )
 
+    // Mirrors iOS's SmartBannerStore.isSyncComplete — SYNCED is the SDK's sole "caught up
+    // with the chain tip" status, independent of any banner (e.g. Migration Required) that
+    // may still be showing on top of a fully-synced wallet.
+    private val isSyncComplete: Flow<Boolean> =
+        walletSnapshotDataSource
+            .observe()
+            .map { it?.status == Synchronizer.Status.SYNCED }
+
     val state: StateFlow<HomeState?> =
-        messageState
-            .map { createState(it) }
-            .stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
-                initialValue = null
-            )
+        combine(
+            messageState,
+            isSyncComplete
+        ) { messageState, isSyncComplete ->
+            createState(messageState, isSyncComplete)
+        }.stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
+            initialValue = null
+        )
 
     val uiLifecyclePipeline =
         combine(
@@ -263,34 +277,37 @@ class HomeVM(
         }
     }
 
-    private fun createState(messageState: HomeMessageState?) =
-        HomeState(
-            firstButton =
-                BigIconButtonState(
-                    text = stringRes(R.string.tabs_receive),
-                    icon = R.drawable.ic_home_receive,
-                    onClick = ::onReceiveButtonClick,
-                ),
-            secondButton =
-                BigIconButtonState(
-                    text = stringRes(R.string.tabs_send),
-                    icon = R.drawable.ic_home_send,
-                    onClick = ::onSendButtonClick,
-                ),
-            thirdButton =
-                BigIconButtonState(
-                    text = stringRes(R.string.crosspay_pay),
-                    icon = R.drawable.ic_home_pay,
-                    onClick = ::onPayButtonClick,
-                ),
-            fourthButton =
-                BigIconButtonState(
-                    text = stringRes(R.string.swapAndPay_swap),
-                    icon = R.drawable.ic_home_swap,
-                    onClick = ::onSwapButtonClick,
-                ),
-            message = messageState
-        )
+    private fun createState(
+        messageState: HomeMessageState?,
+        isSyncComplete: Boolean
+    ) = HomeState(
+        firstButton =
+            BigIconButtonState(
+                text = stringRes(R.string.tabs_receive),
+                icon = R.drawable.ic_home_receive,
+                onClick = ::onReceiveButtonClick,
+            ),
+        secondButton =
+            BigIconButtonState(
+                text = stringRes(R.string.tabs_send),
+                icon = R.drawable.ic_home_send,
+                onClick = ::onSendButtonClick,
+            ),
+        thirdButton =
+            BigIconButtonState(
+                text = stringRes(R.string.crosspay_pay),
+                icon = R.drawable.ic_home_pay,
+                onClick = ::onPayButtonClick,
+            ),
+        fourthButton =
+            BigIconButtonState(
+                text = stringRes(R.string.swapAndPay_swap),
+                icon = R.drawable.ic_home_swap,
+                onClick = ::onSwapButtonClick,
+            ),
+        message = messageState,
+        isSyncComplete = isSyncComplete
+    )
 
     private fun createMessageState(data: HomeMessageData?, isShieldFundsInfoEnabled: Boolean) =
         when (data) {
