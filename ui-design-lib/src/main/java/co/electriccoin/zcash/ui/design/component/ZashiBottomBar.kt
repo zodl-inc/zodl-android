@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
@@ -23,12 +24,13 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 fun ZashiBottomBar(
     isElevated: Boolean,
     modifier: Modifier = Modifier,
+    color: Color = ZashiColors.Surfaces.bgPrimary,
     contentPadding: PaddingValues = PaddingValues(0.dp),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
         shadowElevation = if (isElevated) 4.dp else 0.dp,
-        color = ZashiColors.Surfaces.bgPrimary,
+        color = color,
         modifier = modifier,
     ) {
         Column(
