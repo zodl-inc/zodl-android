@@ -59,7 +59,7 @@ fun VotePollDescriptionView(
                 )
                 Surface(
                     shape = CircleShape,
-                    color = ZashiColors.Surfaces.bgSecondary,
+                    color = ZashiColors.Surfaces.bgPrimary,
                     modifier =
                         Modifier
                             .align(Alignment.CenterStart)

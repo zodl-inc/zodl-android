@@ -180,7 +180,7 @@ private fun ChainItem(state: VoteChainConfigItemState) {
                     onClick = state.radioButtonState.onClick
                 ),
         shape = RoundedCornerShape(ZashiDimensions.Radius.radius2xl),
-        color = if (isSelected) ZashiColors.Surfaces.bgPrimary else ZashiColors.Surfaces.bgSecondary,
+        color = ZashiColors.Surfaces.bgPrimary,
         border =
             if (isSelected) {
                 BorderStroke(1.dp, ZashiColors.Surfaces.bgAlt)
@@ -337,7 +337,7 @@ private fun AddCustomSourceButton(state: VoteChainConfigState) {
             ),
         defaultTertiaryColors =
             ZashiButtonDefaults.tertiaryColors(
-                containerColor = ZashiColors.Surfaces.bgSecondary,
+                containerColor = ZashiColors.Surfaces.bgPrimary,
                 contentColor = ZashiColors.Text.textPrimary
             ),
         content = { scope ->
@@ -508,7 +508,7 @@ private fun SheetHeader(state: VoteChainConfigEditorState) {
         )
         Surface(
             shape = CircleShape,
-            color = ZashiColors.Surfaces.bgSecondary,
+            color = ZashiColors.Surfaces.bgPrimary,
             modifier =
                 Modifier
                     .align(Alignment.CenterStart)
@@ -541,7 +541,7 @@ private fun sheetTextFieldColors(isFocusedByDefault: Boolean) =
         textColor = ZashiColors.Text.textPrimary,
         borderColor = if (isFocusedByDefault) ZashiColors.Surfaces.bgAlt else Color.Unspecified,
         focusedBorderColor = ZashiColors.Surfaces.bgAlt,
-        containerColor = if (isFocusedByDefault) ZashiColors.Surfaces.bgPrimary else ZashiColors.Surfaces.bgSecondary,
+        containerColor = ZashiColors.Surfaces.bgPrimary,
         focusedContainerColor = ZashiColors.Surfaces.bgPrimary,
         placeholderColor = ZashiColors.Text.textTertiary
     )

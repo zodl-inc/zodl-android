@@ -104,7 +104,7 @@ fun MigrationPreparationDetailsBottomSheet(details: MigrationPreparationDetails?
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .background(ZashiColors.Surfaces.bgSecondary, RoundedCornerShape(12.dp))
+                        .background(ZashiColors.Surfaces.bgPrimary, RoundedCornerShape(12.dp))
                         .padding(12.dp),
             ) {
                 Text(

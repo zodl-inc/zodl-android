@@ -235,7 +235,7 @@ private fun ZashiAccountListItem(
         trailing = null,
         color =
             if (state.isSelected) {
-                ZashiColors.Surfaces.bgSecondary
+                ZashiColors.Surfaces.bgPrimary
             } else {
                 Color.Transparent
             },

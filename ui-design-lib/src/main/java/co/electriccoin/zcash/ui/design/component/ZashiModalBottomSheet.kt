@@ -44,7 +44,6 @@ fun ZashiModalBottomSheet(
     sheetGesturesEnabled: Boolean = true,
     sheetState: SheetState = rememberModalBottomSheetState(),
     shape: Shape = ZashiModalBottomSheetDefaults.SheetShape,
-    containerColor: Color = ZashiModalBottomSheetDefaults.ContainerColor,
     properties: ModalBottomSheetProperties = ModalBottomSheetDefaults.properties,
     dragHandle: @Composable (() -> Unit)? = { ZashiModalBottomSheetDragHandle() },
     content: @Composable ColumnScope.() -> Unit,
@@ -56,7 +55,7 @@ fun ZashiModalBottomSheet(
         sheetGesturesEnabled = sheetGesturesEnabled,
         scrimColor = scrimColor,
         shape = shape,
-        containerColor = containerColor,
+        containerColor = ZashiModalBottomSheetDefaults.ContainerColor,
         dragHandle = dragHandle,
         properties = properties,
         content = content,
@@ -140,7 +139,7 @@ object ZashiModalBottomSheetDefaults {
         get() = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
     val ContainerColor: Color
         @Composable
-        get() = ZashiColors.Surfaces.bgPrimary
+        get() = ZashiColors.Surfaces.bgSecondary
     val ContentColor: Color
         @Composable
         get() = ZashiColors.Text.textPrimary
