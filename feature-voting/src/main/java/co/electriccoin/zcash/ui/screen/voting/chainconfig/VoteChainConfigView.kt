@@ -180,7 +180,7 @@ private fun ChainItem(state: VoteChainConfigItemState) {
                     onClick = state.radioButtonState.onClick
                 ),
         shape = RoundedCornerShape(ZashiDimensions.Radius.radius2xl),
-        color = ZashiColors.Surfaces.bgPrimary,
+        color = if (isSelected) ZashiColors.Surfaces.bgPrimary else ZashiColors.Surfaces.bgSecondary,
         border =
             if (isSelected) {
                 BorderStroke(1.dp, ZashiColors.Surfaces.bgAlt)
@@ -337,7 +337,7 @@ private fun AddCustomSourceButton(state: VoteChainConfigState) {
             ),
         defaultTertiaryColors =
             ZashiButtonDefaults.tertiaryColors(
-                containerColor = ZashiColors.Surfaces.bgPrimary,
+                containerColor = ZashiColors.Surfaces.bgSecondary,
                 contentColor = ZashiColors.Text.textPrimary
             ),
         content = { scope ->

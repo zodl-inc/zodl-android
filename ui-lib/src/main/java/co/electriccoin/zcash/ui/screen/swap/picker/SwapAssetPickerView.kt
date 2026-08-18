@@ -39,13 +39,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
-import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.TextFieldState
+import co.electriccoin.zcash.ui.design.component.TransparentBgScaffold
 import co.electriccoin.zcash.ui.design.component.ZashiHorizontalDivider
+import co.electriccoin.zcash.ui.design.component.ZashiModalBottomSheetDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTextField
+import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
 import co.electriccoin.zcash.ui.design.component.listitem.ListItemState
 import co.electriccoin.zcash.ui.design.component.listitem.ZashiListItem
@@ -54,7 +56,6 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldScrollPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.common.CommonEmptyScreen
@@ -69,7 +70,7 @@ fun SwapAssetPickerView(state: SwapAssetPickerState?) {
         state = state,
         dragHandle = null,
         content = { innerState, _ ->
-            BlankBgScaffold(
+            TransparentBgScaffold(
                 modifier = Modifier.fillMaxSize(),
                 topBar = {
                     TopAppBar(innerState, windowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp))
@@ -204,7 +205,7 @@ private fun Item(item: ListItemState) {
                                             .size(24.dp)
                                             .align(Alignment.BottomEnd)
                                             .offset(6.dp, 6.dp),
-                                    border = BorderStroke(2.dp, ZashiColors.Surfaces.bgPrimary),
+                                    border = BorderStroke(2.dp, ZashiModalBottomSheetDefaults.ContainerColor),
                                     shape = CircleShape
                                 ) {
                                     Image(
@@ -236,6 +237,7 @@ private fun SearchTextField(innerState: SwapAssetPickerState, modifier: Modifier
         placeholder = {
             Text(stringResource(R.string.swapAndPay_search))
         },
+        colors = ZashiTextFieldDefaults.defaultColors(containerColor = ZashiColors.Surfaces.bgPrimary),
         singleLine = true,
         maxLines = 1
     )
@@ -255,11 +257,7 @@ private fun TopAppBar(
                 modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
             )
         },
-        colors =
-            ZcashTheme.colors.topAppBarColors orDark
-                ZcashTheme.colors.topAppBarColors.copyColors(
-                    containerColor = Color.Transparent
-                ),
+        colors = ZcashTheme.colors.topAppBarColors.copyColors(containerColor = Color.Transparent),
         windowInsets = windowInsets
     )
 }

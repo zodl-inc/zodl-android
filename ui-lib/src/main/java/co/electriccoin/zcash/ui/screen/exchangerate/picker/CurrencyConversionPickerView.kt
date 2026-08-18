@@ -25,7 +25,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
-import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
+import co.electriccoin.zcash.ui.design.component.TransparentBgScaffold
 import co.electriccoin.zcash.ui.design.component.ZashiHorizontalDivider
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
@@ -46,7 +46,7 @@ fun CurrencyConversionPickerView(state: CurrencyConversionPickerState?) {
         state = state,
         dragHandle = null,
         content = { innerState, _ ->
-            BlankBgScaffold(
+            TransparentBgScaffold(
                 modifier = Modifier.fillMaxSize(),
                 topBar = {
                     TopAppBar(innerState, windowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp))
@@ -129,11 +129,7 @@ private fun TopAppBar(
                 modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
             )
         },
-        colors =
-            ZcashTheme.colors.topAppBarColors orDark
-                ZcashTheme.colors.topAppBarColors.copyColors(
-                    containerColor = Color.Transparent
-                ),
+        colors = ZcashTheme.colors.topAppBarColors.copyColors(containerColor = Color.Transparent),
         windowInsets = windowInsets
     )
 }

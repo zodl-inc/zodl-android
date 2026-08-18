@@ -40,6 +40,28 @@ fun BlankBgScaffold(
     )
 }
 
+/**
+ * Scaffold that paints no background of its own, for content hosted inside a surface that
+ * already provides one (e.g. a modal bottom sheet).
+ */
+@Composable
+fun TransparentBgScaffold(
+    modifier: Modifier = Modifier,
+    topBar: @Composable () -> Unit = {},
+    bottomBar: @Composable () -> Unit = {},
+    snackbarHost: @Composable () -> Unit = {},
+    content: @Composable (PaddingValues) -> Unit
+) {
+    Scaffold(
+        containerColor = Color.Transparent,
+        topBar = topBar,
+        snackbarHost = snackbarHost,
+        bottomBar = bottomBar,
+        content = content,
+        modifier = modifier,
+    )
+}
+
 @Composable
 fun GradientBgScaffold(
     startColor: Color,
