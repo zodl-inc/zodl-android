@@ -283,13 +283,10 @@ jobs:
             --query SecretString --output text)
           echo "::add-mask::${CF_API_TOKEN}"
 
-          ZONE_ID=$(curl -s "https://api.cloudflare.com/client/v4/zones?name=zodl.com" \
-            -H "Authorization: Bearer ${CF_API_TOKEN}" \
-            | jq -r '.result[0].id // empty')
-          if [ -z "${ZONE_ID}" ]; then
-            echo "::error::Could not resolve Cloudflare zone ID for zodl.com"
-            exit 1
-          fi
+          ZONE_ID=$(aws secretsmanager get-secret-value \
+            --secret-id /infra/cloudflare/foss-fdroid-zone-id \
+            --query SecretString --output text)
+          echo "::add-mask::${ZONE_ID}"
 
           PURGE_SUCCESS=$(curl -s -X POST \
             "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/purge_cache" \
