@@ -66,6 +66,70 @@ jobs:
           path: app/build/outputs/apk/zcashmainnetInternal/debug/*.apk
           retention-days: 1
 
+  # Separate from `build` on purpose: this is a native CMake+Rust cross of
+  # KeystoneHQ/keystone3-firmware (the Cypherpunk simulator), unrelated to
+  # the Gradle/APK build above. The Android debug APK already contains
+  # everything the Keystone flow needs (E2eKeystoneQrFrameSource.kt is
+  # ordinary DEBUG-gated source already covered by the `build` job's cache
+  # key), so it is reused as-is via `needs: build` in e2e-keystone below --
+  # only the simulator binary needs its own build.
+  #
+  # scripts/keystone/build-simulator.sh already has its own idempotent
+  # cache (keyed on the pinned firmware release/automation SHAs + patch
+  # hash, see keystone_build_cache_key() in env.sh) -- actions/cache below
+  # just persists that same directory across runs so a cache hit skips the
+  # native build entirely instead of only skipping within a single job.
+  build-keystone-simulator:
+    runs-on: ubuntu-latest
+    # Generous headroom for a cold cache: this is a real CMake+Rust build,
+    # not just an APK assemble. Should only actually run this long when the
+    # pinned firmware SHAs or patch change (rare and deliberate -- see
+    # env.sh's comment on KEYSTONE_FIRMWARE_AUTOMATION_SHA).
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout smoke tests
+        uses: actions/checkout@v4
+        with:
+          repository: zodl-inc/zodl-qa
+          path: zodl-qa
+          token: ${{ secrets.ZODL_QA }}
+
+      - name: Restore cached simulator binary
+        id: keystone-cache
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/zodl-keystone-simulator
+          key: ${{ runner.os }}-keystone-sim-${{ hashFiles('zodl-qa/scripts/keystone/env.sh', 'zodl-qa/scripts/keystone/patches/**') }}
+
+      # Only needed to actually build (cache miss). cmake and clang are
+      # already on the ubuntu-latest image; Rust itself is too, but not
+      # necessarily the exact nightly keystone3-firmware pins via its own
+      # rust-toolchain file -- rustup auto-installs that on first cargo
+      # invocation inside the cloned checkout, so no explicit toolchain
+      # step is needed here. bindgen-cli/cbindgen are not preinstalled.
+      - name: Install build tools (cache miss only)
+        if: steps.keystone-cache.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake clang xvfb
+          cargo install bindgen-cli cbindgen
+
+      - name: Build (or reuse cached) simulator binary
+        run: |
+          chmod +x zodl-qa/scripts/keystone/build-simulator.sh
+          zodl-qa/scripts/keystone/build-simulator.sh \
+            "${{ runner.temp }}/keystone3-firmware" \
+            "${{ runner.temp }}/keystone-simulator/simulator"
+
+      - name: Upload simulator binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: keystone-simulator-binary
+          path: ${{ runner.temp }}/keystone-simulator/simulator
+          retention-days: 1
+
   e2e-android:
     needs: build
     runs-on: ubuntu-latest
@@ -199,3 +263,85 @@ jobs:
           path: |
             ~/.maestro/tests/
             ${{ runner.temp }}/zodl-enroll-fail/
+
+  # Phase K1 of KEYSTONE_E2E_CI_PLAN.md ("Android pairing canary"): drives
+  # a real Keystone Cypherpunk simulator through pairing with the app via
+  # scripts/run-keystone-android.sh, which orchestrates the non-Maestro
+  # half (simulator provisioning/navigation, real QR frame capture) and
+  # then hands off to maestro/keystone/onboarding/connect-keystone-wallet.yaml
+  # for the app-side half. Manual dispatch only for now, deliberately not
+  # on every pull_request -- see KEYSTONE_E2E_CI_PLAN.md's Phase K5, which
+  # calls for proving out runtime/flake rate on a schedule before making
+  # this PR-required alongside e2e-android.
+  e2e-keystone:
+    needs: [build, build-keystone-simulator]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    name: Keystone
+    steps:
+      - name: Checkout smoke tests
+        uses: actions/checkout@v4
+        with:
+          repository: zodl-inc/zodl-qa
+          path: zodl-qa
+          token: ${{ secrets.ZODL_QA }}
+
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: zodl-android-debug-apk
+          path: apk
+
+      - name: Download simulator binary
+        uses: actions/download-artifact@v4
+        with:
+          name: keystone-simulator-binary
+          path: keystone-simulator
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Install Maestro
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+
+      # xvfb: the simulator is an SDL app and needs a display to open a
+      # window on even though nothing here screen-captures it -- readiness
+      # and control are entirely over its TCP command channel (see
+      # simulator.sh). netcat: that command channel is spoken over `nc`.
+      - name: Install runtime deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb netcat-openbsd
+
+      - name: Run smoke tests
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          ZODL_KEYSTONE_TEST_ENTROPY_HEX: ${{ secrets.ZODL_KEYSTONE_TEST_ENTROPY_HEX }}
+          ZODL_KEYSTONE_TEST_PIN: ${{ secrets.ZODL_KEYSTONE_TEST_PIN }}
+          KEYSTONE_SIMULATOR_BINARY: ${{ github.workspace }}/keystone-simulator/simulator
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            adb install apk/*.apk
+            chmod +x keystone-simulator/simulator
+            chmod +x zodl-qa/scripts/run-keystone-android.sh
+            cd zodl-qa
+            xvfb-run -a ./scripts/run-keystone-android.sh
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-keystone-results
+          path: |
+            ~/.maestro/tests/
+            /tmp/zodl-keystone-sim.*/
