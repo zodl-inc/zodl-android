@@ -210,15 +210,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write  # Required for AWS OIDC
 
     steps:
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
-        with:
-          role-to-assume: ${{ secrets.AWS_RELEASE_ROLE_ARN }}
-          aws-region: us-east-1
-
       - name: Trigger GitLab Pages F-Droid publish and wait
         env:
           GITLAB_FDROID_TRIGGER_TOKEN: ${{ secrets.GITLAB_FDROID_TRIGGER_TOKEN }}
@@ -277,22 +270,12 @@ jobs:
           exit 1
 
       - name: Purge Cloudflare cache for foss.zodl.com
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_CACHE_PURGE_TOKEN }}
+          CF_ZONE_ID: ${{ secrets.CF_ZODL_ZONE_ID }}
         run: |
-          CF_API_TOKEN=$(aws secretsmanager get-secret-value \
-            --secret-id /infra/cloudflare/api_token \
-            --query SecretString --output text)
-          echo "::add-mask::${CF_API_TOKEN}"
-
-          ZONE_ID=$(curl -s "https://api.cloudflare.com/client/v4/zones?name=zodl.com" \
-            -H "Authorization: Bearer ${CF_API_TOKEN}" \
-            | jq -r '.result[0].id // empty')
-          if [ -z "${ZONE_ID}" ]; then
-            echo "::error::Could not resolve Cloudflare zone ID for zodl.com"
-            exit 1
-          fi
-
           PURGE_SUCCESS=$(curl -s -X POST \
-            "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/purge_cache" \
+            "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/purge_cache" \
             -H "Authorization: Bearer ${CF_API_TOKEN}" \
             -H "Content-Type: application/json" \
             --data '{
