@@ -53,17 +53,21 @@ data class StaticVotingConfig(
 
         private const val ED25519_PUBLIC_KEY_BYTES = 32
 
-        // Content-addressed pin (commit 2785311d, checksum bed0116f) — deliberately points at an
-        // immutable raw.githubusercontent.com blob, NOT the mutable
-        // https://voting.valargroup.org/prod/static-voting-config.json URL: that URL gets
-        // republished on every new round/key rotation, which would break this bundled checksum for
-        // every default-configured user on the very next republish and brick voting until an app
-        // update. Bump BOTH the commit hash and checksum together, in the same change, whenever this
-        // bundled fallback needs to move forward to a newer trusted_keys set.
+        // Content-addressed pin (checksum fb62a56f) via the resilient voting.valargroup.dev
+        // gateway — MOB-1678 hardening (analog of iOS zodl-ios#1996). The gateway serves this
+        // exact content-addressed path (/pins/prod/<sha>/...) immutably, same as the previous
+        // raw.githubusercontent.com blob pin, but reads from GitHub normally and falls back to
+        // an automatically published Cloudflare copy during a GitHub outage — so a GitHub outage
+        // no longer blocks default-configured users from loading their voting trust anchor. This
+        // is NOT the mutable https://voting.valargroup.dev/prod/static-voting-config.json URL:
+        // that one gets republished on every new round/key rotation, which would break this
+        // bundled checksum for every default-configured user on the very next republish and
+        // brick voting until an app update. Bump the checksum (in both the path and the query
+        // param) whenever this bundled fallback needs to move forward to a newer trusted_keys set.
         const val BUNDLED_PINNED_SOURCE =
-            "https://raw.githubusercontent.com/valargroup/token-holder-voting-config/" +
-                "2785311d45758e85567d70a1f13709fa01b62c6b/prod/static-voting-config.json" +
-                "?checksum=sha256:bed0116f961226b256a574b52461ce81d9f5294a57e190987dc155f07eb1e431"
+            "https://voting.valargroup.dev/pins/prod/" +
+                "fb62a56fae28debfdaa092f163cda0dab13295f87d25bbc4d0064d6ccdeb6943/static-voting-config.json" +
+                "?checksum=sha256:fb62a56fae28debfdaa092f163cda0dab13295f87d25bbc4d0064d6ccdeb6943"
 
         fun decodeAndVerify(data: ByteArray, expectedSHA256: ByteArray?): StaticVotingConfig {
             if (expectedSHA256 != null) {

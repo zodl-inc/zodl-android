@@ -7,6 +7,11 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Changed:
+
+- Coinholder Polling now loads its trusted configuration through the resilient voting config gateway, so a GitHub outage no longer blocks
+  configuration loading while the mirrored copy is available.
+
 ### Fixed:
 
 - Shielded coinholder polling works again after the voting infrastructure's v1.3.0 upgrade: the app now reads the PIR polynomial length from the
