@@ -55,8 +55,9 @@
     <ID>ReturnCount:PrepareVotingRoundUseCase.kt$PrepareVotingRoundUseCase$private fun VotingRecoverySnapshot.preparedBundleSetup(): VotingBundleSetupResult?</ID>
     <ID>ReturnCount:PrepareVotingRoundUseCase.kt$PrepareVotingRoundUseCase$private suspend fun getOrCreateHotkeySeed( accountUuid: String, roundId: String, recoverySnapshot: VotingRecoverySnapshot?, existingRoundStatePhase: RoundPhase? ): ByteArray</ID>
     <ID>ReturnCount:PrepareVotingRoundUseCase.kt$PrepareVotingRoundUseCase$private suspend fun isRoundRecoverable( recoverySnapshot: VotingRecoverySnapshot?, dbHandle: Long, roundId: String ): Boolean</ID>
-    <ID>ReturnCount:RoundAuthenticator.kt$RoundAuthenticator$fun authenticate( chainEaPK: ByteArray, roundIdHex: String, rounds: Map&lt;String, VotingServiceConfig.RoundEntry&gt;, trustedKeys: List&lt;StaticVotingConfig.TrustedKey&gt; ): RoundAuthStatus</ID>
-    <ID>ReturnCount:RoundAuthenticator.kt$RoundAuthenticator$fun verifyEntrySignatures( entry: VotingServiceConfig.RoundEntry, trustedKeys: List&lt;StaticVotingConfig.TrustedKey&gt; ): Boolean</ID>
+    <ID>ReturnCount:RoundAuthenticator.kt$RoundAuthenticator$fun authenticate( chainEaPK: ByteArray, roundIdHex: String, rounds: Map&lt;String, VotingServiceConfig.RoundEntry&gt;, trustedKeys: List&lt;StaticVotingConfig.TrustedKey&gt;, pirLayout: VotingPirLayout ): RoundAuthStatus</ID>
+    <ID>ReturnCount:RoundAuthenticator.kt$RoundAuthenticator$fun signingPayloadV2( roundIdHex: String, eaPk: ByteArray, pirLayout: VotingPirLayout ): ByteArray?</ID>
+    <ID>ReturnCount:RoundAuthenticator.kt$RoundAuthenticator$fun verifyEntrySignatures( entry: VotingServiceConfig.RoundEntry, roundIdHex: String, pirLayout: VotingPirLayout, trustedKeys: List&lt;StaticVotingConfig.TrustedKey&gt; ): Boolean</ID>
     <ID>ReturnCount:SignKeystoneVotingVM.kt$SignKeystoneVotingVM$private fun VotingRecoverySnapshot.toSkipBottomSheetState(): SkipKeystoneBundlesBottomSheetState?</ID>
     <ID>ReturnCount:VoteChainConfigVM.kt$VoteChainConfigVM$private fun onSaveEditor()</ID>
     <ID>ReturnCount:VoteOptionDisplay.kt$fun Proposal.tallyDisplayInfo( decision: Int, fallbackLabel: String, ): VoteOptionDisplayInfo</ID>
@@ -70,7 +71,7 @@
     <ID>ThrowsCount:ChainDto.kt$private fun validateChainProposals(proposals: List&lt;Proposal&gt;)</ID>
     <ID>ThrowsCount:StaticVotingConfig.kt$PinnedConfigSource.Companion$fun parse(raw: String): PinnedConfigSource</ID>
     <ID>ThrowsCount:StaticVotingConfig.kt$StaticVotingConfig$fun validate()</ID>
-    <ID>ThrowsCount:SubmitVotesUseCase.kt$SubmitVotesUseCase$private suspend fun delegateSharesWithRetry( payloads: List&lt;SharePayload&gt;, roundId: String ): List&lt;DelegatedShareInfo&gt;</ID>
+    <ID>ThrowsCount:SubmitVotesUseCase.kt$SubmitVotesUseCase$private suspend fun delegateSharesWithRetry(payloads: List&lt;SharePayload&gt;): List&lt;DelegatedShareInfo&gt;</ID>
     <ID>ThrowsCount:VotingServerFailoverException.kt$internal suspend fun &lt;T&gt; withVoteServerFailover( path: String, serverUrls: List&lt;String&gt;, shouldTryNext: (Throwable) -&gt; Boolean = ::shouldTryNextVoteServer, operation: suspend (String) -&gt; T ): T</ID>
     <ID>ThrowsCount:VotingServiceConfig.kt$VotingServiceConfig$fun validate()</ID>
     <ID>TooGenericExceptionCaught:DebugStartMigrationE2EUseCase.kt$DebugStartMigrationE2EUseCase$e: RuntimeException</ID>

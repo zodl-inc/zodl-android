@@ -508,7 +508,7 @@ private fun SheetHeader(state: VoteChainConfigEditorState) {
         )
         Surface(
             shape = CircleShape,
-            color = ZashiColors.Surfaces.bgSecondary,
+            color = ZashiColors.Surfaces.bgPrimary,
             modifier =
                 Modifier
                     .align(Alignment.CenterStart)
@@ -541,7 +541,7 @@ private fun sheetTextFieldColors(isFocusedByDefault: Boolean) =
         textColor = ZashiColors.Text.textPrimary,
         borderColor = if (isFocusedByDefault) ZashiColors.Surfaces.bgAlt else Color.Unspecified,
         focusedBorderColor = ZashiColors.Surfaces.bgAlt,
-        containerColor = if (isFocusedByDefault) ZashiColors.Surfaces.bgPrimary else ZashiColors.Surfaces.bgSecondary,
+        containerColor = ZashiColors.Surfaces.bgPrimary,
         focusedContainerColor = ZashiColors.Surfaces.bgPrimary,
         placeholderColor = ZashiColors.Text.textTertiary
     )

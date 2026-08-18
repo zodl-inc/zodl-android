@@ -127,7 +127,29 @@ data class VotingPirLayout(
     val tier0Layers: Int = 0,
     @SerialName("tier1_layers")
     val tier1Layers: Int = 0,
+    /**
+     * Absent in configs published before the v1.3.0 vote chain (zcash_voting 3.0.0-rc.3)
+     * introduced the poly_len handshake field; decodes to 0, which keeps this layout at the
+     * UNKNOWN sentinel below rather than silently assuming 2048.
+     */
+    @SerialName("poly_len")
+    val polyLen: Int = 0,
 )
+
+/**
+ * MOB-1678 (zcash_voting 3.0 bump): `pir_layout.poly_len` is load-bearing — the crate
+ * validates it locally (must be 2048 or 4096) and the PIR connect handshake re-checks it
+ * against the server. A dynamic config without the field predates the 3.0 service, so every
+ * delegation entry point fails closed *before any FFI call* rather than fabricating a value.
+ * The thrown [VotingConfigException] reuses the existing voting config-error copy — no new
+ * strings are introduced for this guard.
+ */
+fun VotingPirLayout.requireKnownPolyLen(): VotingPirLayout {
+    if (polyLen == 0) {
+        throw VotingConfigException("Voting config is missing pir_layout.poly_len required for delegation")
+    }
+    return this
+}
 
 open class VotingConfigException(
     message: String
@@ -150,7 +172,12 @@ fun VotingServiceConfig.retainingRoundsWithValidSignatures(
 ): VotingServiceConfig =
     copy(
         rounds =
-            rounds.filter { (_, entry) ->
-                RoundAuthenticator.verifyEntrySignatures(entry = entry, trustedKeys = trustedKeys)
+            rounds.filter { (roundIdHex, entry) ->
+                RoundAuthenticator.verifyEntrySignatures(
+                    entry = entry,
+                    roundIdHex = roundIdHex,
+                    pirLayout = pirLayout,
+                    trustedKeys = trustedKeys
+                )
             }
     )

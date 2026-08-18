@@ -21,6 +21,7 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingTxHashLookup
 import co.electriccoin.zcash.ui.common.model.voting.isDelegationSetupOverwrite
 import co.electriccoin.zcash.ui.common.model.voting.isLastMoment
+import co.electriccoin.zcash.ui.common.model.voting.requireKnownPolyLen
 import co.electriccoin.zcash.ui.common.model.voting.toDelegationRegistration
 import co.electriccoin.zcash.ui.common.model.voting.toSharePayloads
 import co.electriccoin.zcash.ui.common.model.voting.toVoteCommitmentBundle
@@ -209,7 +210,7 @@ class SubmitVotesUseCase(
                     hotkeySeed = hotkeySeed,
                     isKeystone = isKeystone,
                     pirServerUrl = pirServerUrl,
-                    pirLayout = serviceConfig.pirLayout,
+                    pirLayout = serviceConfig.pirLayout.requireKnownPolyLen(),
                     singleShare = singleShare,
                     sortedChoices = sortedChoices,
                     totalChoices = totalChoices
@@ -1144,7 +1145,7 @@ class SubmitVotesUseCase(
             return
         }
 
-        val delegationResults = delegateSharesWithRetry(pendingPayloads, roundId)
+        val delegationResults = delegateSharesWithRetry(pendingPayloads)
         delegationResults.forEach { info ->
             val payload =
                 pendingPayloads.firstOrNull { candidate ->
@@ -1199,14 +1200,11 @@ class SubmitVotesUseCase(
         }
     }
 
-    private suspend fun delegateSharesWithRetry(
-        payloads: List<SharePayload>,
-        roundId: String
-    ): List<DelegatedShareInfo> {
+    private suspend fun delegateSharesWithRetry(payloads: List<SharePayload>): List<DelegatedShareInfo> {
         var lastRetryableError: Exception? = null
         repeat(SHARE_DELEGATION_ATTEMPTS) { attempt ->
             try {
-                return votingApiProvider.delegateShares(payloads, roundId)
+                return votingApiProvider.delegateShares(payloads)
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {

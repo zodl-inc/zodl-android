@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -76,6 +77,24 @@ private fun Content(
     Box(
         modifier = modifier,
     ) {
+        // Always-present, zero-size marker mirroring iOS's AccessibilityID.Home.syncComplete/
+        // .syncPending overlay. Gives e2e flows a positive, non-flaky signal for "wallet caught
+        // up with the chain tip" instead of asserting on the sync banner's text/visibility,
+        // which changes across states (Restoring/Resyncing/Syncing/gone) and can be replaced by
+        // unrelated banners (e.g. Migration Required) once sync is actually done.
+        //
+        // Deliberately NOT hidden from accessibility (no hideFromAccessibility()/
+        // invisibleToUser()) — that excludes a node from the accessibility tree, which is what
+        // Maestro's Android driver queries to resolve `id:` selectors, so a hidden node can never
+        // be found. iOS's equivalent overlay keeps itself in the accessibility tree for the same
+        // reason (.accessibilityElement(children: .ignore) + a label, not a hide call).
+        Box(
+            modifier =
+                Modifier
+                    .align(Alignment.TopStart)
+                    .size(1.dp)
+                    .testTag(if (state.isSyncComplete) HomeTags.SYNC_COMPLETE else HomeTags.SYNC_PENDING)
+        )
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -246,7 +265,8 @@ private fun Preview() {
                             icon = R.drawable.ic_home_buy,
                             onClick = {}
                         ),
-                    message = WalletErrorMessageState(onClick = {})
+                    message = WalletErrorMessageState(onClick = {}),
+                    isSyncComplete = true
                 )
         )
     }

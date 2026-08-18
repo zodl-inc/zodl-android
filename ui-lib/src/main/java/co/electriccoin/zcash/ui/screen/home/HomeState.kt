@@ -7,5 +7,6 @@ data class HomeState(
     val secondButton: BigIconButtonState,
     val thirdButton: BigIconButtonState,
     val fourthButton: BigIconButtonState,
-    val message: HomeMessageState?
+    val message: HomeMessageState?,
+    val isSyncComplete: Boolean
 )

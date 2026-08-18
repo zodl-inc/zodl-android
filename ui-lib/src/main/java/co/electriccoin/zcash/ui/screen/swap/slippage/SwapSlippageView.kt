@@ -21,9 +21,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
-import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.Spacer
+import co.electriccoin.zcash.ui.design.component.TransparentBgScaffold
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiCard
 import co.electriccoin.zcash.ui.design.component.ZashiDisclaimer
@@ -51,7 +51,7 @@ fun SwapSlippageView(state: SwapSlippageState?) {
         state = state,
         dragHandle = null,
         content = { innerState, _ ->
-            BlankBgScaffold(
+            TransparentBgScaffold(
                 modifier = Modifier.fillMaxSize(),
                 topBar = { TopAppBar(innerState) }
             ) { padding ->
@@ -126,18 +126,14 @@ private fun TopAppBar(innerState: SwapSlippageState) {
                 modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
             )
         },
-        colors =
-            ZcashTheme.colors.topAppBarColors orDark
-                ZcashTheme.colors.topAppBarColors.copyColors(
-                    containerColor = Color.Transparent
-                ),
+        colors = ZcashTheme.colors.topAppBarColors.copyColors(containerColor = Color.Transparent),
     )
 }
 
 private val SwapSlippageInfoState.Mode.containerColor: Color
     @Composable get() =
         when (this) {
-            LOW -> ZashiColors.Utility.Gray.utilityGray50
+            LOW -> ZashiColors.Surfaces.bgPrimary
             MEDIUM -> ZashiColors.Utility.WarningYellow.utilityOrange50
             HIGH -> ZashiColors.Utility.ErrorRed.utilityError50
         }

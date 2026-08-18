@@ -59,11 +59,18 @@ class VotingErrorMapperTest {
                 "vote round not found" to R.string.coinVote_store_userError_roundNotFound,
                 "No active voting round" to R.string.coinVote_store_userError_roundNotActive,
                 "PIR proof root mismatch" to R.string.coinVote_store_userError_pirSnapshotMismatch,
+                "PIR poly_len mismatch: expected 4096, server advertised 2048" to
+                    R.string.coinVote_store_userError_pirSnapshotMismatch,
                 "PIR proof verification failed" to R.string.coinVote_store_userError_pirInvalidProofData,
                 "PIR server connect failed" to R.string.coinVote_store_userError_pirUnavailable,
+                "unsupported PIR layout poly_len 1024" to R.string.coinVote_store_userError_pirEndpointsMissing,
                 "No PIR endpoints are configured" to R.string.coinVote_store_userError_pirEndpointsMissing,
                 "Commitment tree did not grow" to R.string.coinVote_store_userError_commitmentTreeNotGrown,
+                "vote-commitment position is absent from the synced vote tree" to
+                    R.string.coinVote_store_userError_commitmentTreeNotGrown,
                 "invalid commitment tree anchor height" to R.string.coinVote_store_userError_invalidAnchorHeight,
+                "confirmed VAN entry does not match its synced vote-tree leaf" to
+                    R.string.coinVote_store_userError_invalidAnchorHeight,
                 "invalid zero-knowledge proof" to R.string.coinVote_store_userError_invalidProof,
                 "delegation bundle build failed" to R.string.coinVote_store_userError_proofGenerationFailed,
                 "NoTreeState" to R.string.coinVote_store_userError_noTreeState,

@@ -141,7 +141,7 @@ private fun ZashiKeystonePromoListItem(
     contentPadding: PaddingValues = PaddingValues(24.dp),
     colors: ZashiListItemColors =
         ZashiListItemDefaults.primaryColors(
-            backgroundColor = ZashiColors.Surfaces.bgTertiary
+            backgroundColor = ZashiColors.Surfaces.bgPrimary
         ),
     below: @Composable ColumnScope.(Modifier) -> Unit = {
         Image(
@@ -235,7 +235,7 @@ private fun ZashiAccountListItem(
         trailing = null,
         color =
             if (state.isSelected) {
-                ZashiColors.Surfaces.bgSecondary
+                ZashiColors.Surfaces.bgPrimary
             } else {
                 Color.Transparent
             },

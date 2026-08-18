@@ -42,7 +42,6 @@ fun BalanceBreakdownView(
     ZashiScreenModalBottomSheet(
         state = state,
         sheetState = sheetState,
-        containerColor = ZashiColors.Surfaces.bgSecondary,
         content = { state, contentPadding ->
             BottomSheetContent(state, contentPadding, modifier = Modifier.weight(1f, false))
         },

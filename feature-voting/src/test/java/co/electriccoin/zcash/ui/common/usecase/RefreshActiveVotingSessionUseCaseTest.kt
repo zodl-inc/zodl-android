@@ -83,10 +83,8 @@ class RefreshActiveVotingSessionUseCaseTest {
         override suspend fun fetchTallyResults(roundIdHex: String): TallyResults =
             error("unused")
 
-        override suspend fun delegateShares(
-            shares: List<SharePayload>,
-            roundIdHex: String
-        ): List<DelegatedShareInfo> = error("unused")
+        override suspend fun delegateShares(shares: List<SharePayload>): List<DelegatedShareInfo> =
+            error("unused")
 
         override suspend fun fetchShareStatus(
             helperBaseUrl: String,
@@ -96,7 +94,6 @@ class RefreshActiveVotingSessionUseCaseTest {
 
         override suspend fun resubmitShare(
             payload: SharePayload,
-            roundIdHex: String,
             candidateUrls: List<String>,
             excludeUrls: List<String>
         ): List<String> = error("unused")

@@ -8,6 +8,7 @@ import co.electriccoin.zcash.ui.NavigationCommand
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.MigrationSweepTransactionProposal
+import co.electriccoin.zcash.ui.common.datasource.ShieldTransactionProposal
 import co.electriccoin.zcash.ui.common.migration.MigrationNavigator
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
@@ -57,6 +58,36 @@ class CancelProposalFlowUseCaseTest {
             assertEquals(1, migrationNavigator.backToReviewCalls)
         }
 
+    @Test
+    fun shieldProposalNavigatesBackInsteadOfSend() =
+        runTest {
+            val proposal = ShieldTransactionProposal(mockk<Proposal>())
+            val keystoneProposalRepository =
+                mockk<KeystoneProposalRepository>(relaxed = true) {
+                    coEvery { getTransactionProposal() } returns proposal
+                }
+            val router = FakeNavigationRouter()
+            val useCase =
+                CancelProposalFlowUseCase(
+                    zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true),
+                    keystoneProposalRepository = keystoneProposalRepository,
+                    navigationRouter = router,
+                    observeClearSend = mockk<ObserveClearSendUseCase>(relaxed = true),
+                    accountDataSource =
+                        mockk<AccountDataSource> {
+                            coEvery { getSelectedAccount() } returns mockk<KeystoneAccount>(relaxed = true)
+                        },
+                    swapRepository = mockk<SwapRepository>(relaxed = true),
+                    migrationNavigator = FakeMigrationNavigator(),
+                )
+
+            useCase()
+
+            coVerify(exactly = 1) { keystoneProposalRepository.clear() }
+            assertEquals(0, router.backToCalls.size)
+            assertEquals(1, router.backCalls)
+        }
+
     private class FakeMigrationNavigator : MigrationNavigator {
         var backToReviewCalls = 0
 
@@ -71,6 +102,7 @@ class CancelProposalFlowUseCaseTest {
 
     private class FakeNavigationRouter : NavigationRouter {
         val backToCalls = mutableListOf<KClass<*>>()
+        var backCalls = 0
 
         override fun forward(vararg routes: Any) = Unit
 
@@ -78,7 +110,9 @@ class CancelProposalFlowUseCaseTest {
 
         override fun replaceAll(vararg routes: Any) = Unit
 
-        override fun back() = Unit
+        override fun back() {
+            backCalls++
+        }
 
         override fun backTo(route: KClass<*>) {
             backToCalls += route
