@@ -113,7 +113,7 @@ jobs:
         if: steps.keystone-cache.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake clang xvfb
+          sudo apt-get install -y cmake clang xvfb libsdl2-dev
           cargo install bindgen-cli cbindgen
 
       - name: Build (or reuse cached) simulator binary
