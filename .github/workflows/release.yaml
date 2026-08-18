@@ -210,6 +210,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write  # Required for AWS OIDC
+
     steps:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
@@ -220,6 +222,10 @@ jobs:
       - name: Trigger GitLab Pages F-Droid publish and wait
         env:
           GITLAB_FDROID_TRIGGER_TOKEN: ${{ secrets.GITLAB_FDROID_TRIGGER_TOKEN }}
+          # GITLAB_PAT is a project/personal access token with api read scope,
+          # used for polling pipeline status. Trigger tokens are scoped only to
+          # POST .../trigger/pipeline and cannot authenticate API reads.
+          GITLAB_PAT: ${{ secrets.GITLAB_PAT }}
           GITLAB_FDROID_PROJECT_ID: ${{ vars.GITLAB_FDROID_PROJECT_ID || '83433564' }}
           GITLAB_FDROID_REF: ${{ vars.GITLAB_FDROID_REF || 'main' }}
           APK_TAG: ${{ inputs.tag || github.ref_name }}
@@ -240,14 +246,15 @@ jobs:
           PIPELINE_ID=$(jq -r '.id' /tmp/trigger.json)
           PIPELINE_URL=$(jq -r '.web_url' /tmp/trigger.json)
           echo "GitLab pipeline ${PIPELINE_ID} triggered: ${PIPELINE_URL}"
-          echo "PIPELINE_ID=${PIPELINE_ID}" >> "$GITHUB_ENV"
 
-          # Poll until the pipeline finishes (max 15 min)
+          # Poll until the pipeline finishes (max 15 min, 10s intervals).
+          # Uses GITLAB_PAT (read-scoped) — GITLAB_FDROID_TRIGGER_TOKEN is a
+          # pipeline trigger token, not valid as a PRIVATE-TOKEN API credential.
           for i in $(seq 1 90); do
             sleep 10
             STATUS=$(curl -s -m 10 \
               "https://gitlab.com/api/v4/projects/${GITLAB_FDROID_PROJECT_ID}/pipelines/${PIPELINE_ID}" \
-              -H "PRIVATE-TOKEN: ${GITLAB_FDROID_TRIGGER_TOKEN}" \
+              -H "PRIVATE-TOKEN: ${GITLAB_PAT}" \
               | jq -r '.status // "unknown"')
             echo "  [${i}] pipeline status: ${STATUS}"
             case "$STATUS" in
@@ -271,17 +278,22 @@ jobs:
 
       - name: Purge Cloudflare cache for foss.zodl.com
         run: |
-          CF_ZONE=$(aws secretsmanager get-secret-value \
+          CF_API_TOKEN=$(aws secretsmanager get-secret-value \
             --secret-id /infra/cloudflare/api_token \
             --query SecretString --output text)
-          # Fetch zone ID for zodl.com
+          echo "::add-mask::${CF_API_TOKEN}"
+
           ZONE_ID=$(curl -s "https://api.cloudflare.com/client/v4/zones?name=zodl.com" \
-            -H "Authorization: Bearer ${CF_ZONE}" \
-            | jq -r '.result[0].id')
-          # Purge APK + index files
-          RESULT=$(curl -s -X POST \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            | jq -r '.result[0].id // empty')
+          if [ -z "${ZONE_ID}" ]; then
+            echo "::error::Could not resolve Cloudflare zone ID for zodl.com"
+            exit 1
+          fi
+
+          PURGE_SUCCESS=$(curl -s -X POST \
             "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/purge_cache" \
-            -H "Authorization: Bearer ${CF_ZONE}" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
             -H "Content-Type: application/json" \
             --data '{
               "files": [
@@ -290,5 +302,9 @@ jobs:
                 "https://foss.zodl.com/fdroid/repo/index-v2.json",
                 "https://foss.zodl.com/fdroid/repo/entry.jar"
               ]
-            }')
-          echo "CF purge result: $(echo $RESULT | jq -r '.success')"
+            }' | jq -r '.success')
+          echo "CF purge result: ${PURGE_SUCCESS}"
+          if [ "${PURGE_SUCCESS}" != "true" ]; then
+            echo "::error::Cloudflare cache purge failed"
+            exit 1
+          fi
