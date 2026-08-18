@@ -269,10 +269,8 @@ jobs:
   # scripts/run-keystone-android.sh, which orchestrates the non-Maestro
   # half (simulator provisioning/navigation, real QR frame capture) and
   # then hands off to maestro/keystone/onboarding/connect-keystone-wallet.yaml
-  # for the app-side half. Manual dispatch only for now, deliberately not
-  # on every pull_request -- see KEYSTONE_E2E_CI_PLAN.md's Phase K5, which
-  # calls for proving out runtime/flake rate on a schedule before making
-  # this PR-required alongside e2e-android.
+  # for the app-side half. Runs on every pull_request alongside e2e-android
+  # (shares this workflow's top-level `on:` trigger -- no per-job gate).
   e2e-keystone:
     needs: [build, build-keystone-simulator]
     runs-on: ubuntu-latest
@@ -323,8 +321,9 @@ jobs:
       - name: Run smoke tests
         uses: reactivecircus/android-emulator-runner@v2
         env:
-          ZODL_KEYSTONE_TEST_ENTROPY_HEX: ${{ secrets.ZODL_KEYSTONE_TEST_ENTROPY_HEX }}
-          ZODL_KEYSTONE_TEST_PIN: ${{ secrets.ZODL_KEYSTONE_TEST_PIN }}
+          ZODL_KEYSTONE_TEST_ENTROPY_HEX_ANDROID: ${{ secrets.ZODL_KEYSTONE_TEST_ENTROPY_HEX_ANDROID }}
+          ZODL_KEYSTONE_TEST_PIN_ANDROID: ${{ secrets.ZODL_KEYSTONE_TEST_PIN_ANDROID }}
+          ZODL_KEYSTONE_TEST_BIRTHDAY_ANDROID: ${{ secrets.ZODL_KEYSTONE_TEST_BIRTHDAY_ANDROID }}
           KEYSTONE_SIMULATOR_BINARY: ${{ github.workspace }}/keystone-simulator/simulator
         with:
           api-level: 35

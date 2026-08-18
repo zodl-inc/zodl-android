@@ -18,4 +18,5 @@ data class BirthdayPickerState(
     val secondaryButton: ButtonState?,
     val dialogButton: IconButtonState?,
     val onBack: () -> Unit,
+    val secondaryButtonTestTag: String? = null,
 )

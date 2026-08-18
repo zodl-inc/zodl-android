@@ -67,6 +67,7 @@ class KeystoneDateVM(
                 ),
             onBack = ::onBack,
             onYearMonthChange = ::onYearMonthChange,
+            secondaryButtonTestTag = KeystoneDateTag.ENTER_MANUALLY_BTN,
         )
 
     private fun onEstimateClick(yearMonth: YearMonth) =

@@ -84,6 +84,7 @@ class KeepOpenVM(
                             text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_ok),
                             onClick = ::onButtonClick,
                         ),
+                    buttonTestTag = KeepOpenTag.OK_BTN,
                 )
             }
         }
