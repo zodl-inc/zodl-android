@@ -333,8 +333,7 @@ jobs:
             adb install apk/*.apk
             chmod +x keystone-simulator/simulator
             chmod +x zodl-qa/scripts/run-keystone-android.sh
-            cd zodl-qa
-            xvfb-run -a ./scripts/run-keystone-android.sh
+            xvfb-run -a zodl-qa/scripts/run-keystone-android.sh
 
       - name: Upload test results
         if: always()
