@@ -313,10 +313,19 @@ jobs:
       # window on even though nothing here screen-captures it -- readiness
       # and control are entirely over its TCP command channel (see
       # simulator.sh). netcat: that command channel is spoken over `nc`.
+      # libsdl2-2.0-0: the simulator binary is built (and gets SDL2's
+      # runtime lib for free) in the separate build-keystone-simulator
+      # job -- this job only downloads the compiled binary, on a
+      # different fresh VM that never installed SDL2 at all, so it fails
+      # instantly with "error while loading shared libraries:
+      # libSDL2-2.0.so.0" without the runtime package here too. libxcb1
+      # added preemptively for the same reason (build needed libxcb1-dev
+      # to link against) -- not yet confirmed needed at runtime, but
+      # cheap to install and this exact class of gap already bit us once.
       - name: Install runtime deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb netcat-openbsd
+          sudo apt-get install -y xvfb netcat-openbsd libsdl2-2.0-0 libxcb1
 
       - name: Run smoke tests
         uses: reactivecircus/android-emulator-runner@v2
