@@ -7,6 +7,11 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Added:
+
+- Theme setting in Advanced Settings with an optional pure-black (OLED) dark theme.
+- The in-app browser now matches the app theme, including the pure-black (OLED) theme.
+
 ### Changed:
 
 - Bottom sheets across the app now share one background color.
