@@ -20,6 +20,20 @@ private const val FROST_TINT_ALPHA = .55f
 
 private val FROST_BLUR_RADIUS = 20.dp
 
+private const val FOOTER_BLUR_RAMP_FRACTION = .15f
+
+private const val FOOTER_BLUR_RAMP_INTENSITY = .85f
+
+private const val FOOTER_BLUR_PLATEAU_FRACTION = .5f
+
+private val FooterBlurIntensityStops =
+    listOf(
+        0f to 0f,
+        FOOTER_BLUR_RAMP_FRACTION to FOOTER_BLUR_RAMP_INTENSITY,
+        FOOTER_BLUR_PLATEAU_FRACTION to 1f,
+        1f to 1f
+    )
+
 /**
  * Creates the state which connects a frosted bar to the content scrolling underneath it. Pass the
  * same instance to [zashiFrostedHeader] / [zashiFrostedFooter] and [zashiFrostSource].
@@ -68,41 +82,22 @@ fun Modifier.zashiFrostedHeader(
  *
  * [frostColor] and [fallbackColor] behave exactly as in [zashiFrostedHeader], including the opaque
  * fallback bar where blur is unsupported.
- */
-@Composable
-fun Modifier.zashiFrostedFooter(
-    hazeState: HazeState,
-    frostColor: Color = ZashiColors.Surfaces.bgPrimary,
-    fallbackColor: Color = ZashiColors.Surfaces.bgPrimary
-): Modifier =
-    zashiFrost(
-        hazeState = hazeState,
-        frostColor = frostColor,
-        fallbackColor = fallbackColor,
-        progressive =
-            HazeProgressive.verticalGradient(
-                startIntensity = 0f,
-                endIntensity = 1f
-            )
-    )
-
-/**
- * A [zashiFrostedFooter] whose blur strength is a free-form multi-stop curve instead of a
- * two-point gradient. [intensityStops] maps a fraction of the footer's height (0f = top edge,
- * 1f = bottom edge) to a blur intensity at that line; between stops the intensity interpolates
- * linearly. A footer whose top edge carries text can, for instance, ramp steeply to a strong blur
- * right under that text.
  *
- * Only the blur follows the stops. The tint keeps the plain footer's bottom-ramp gradient and the
- * noise grain is dropped entirely, so the frost does not repaint the footer's resting colors —
- * over undisturbed background this footer looks exactly like the two-point one.
+ * Unlike the header, the footer's blur strength follows a multi-stop curve rather than a plain
+ * two-point gradient: [intensityStops] maps a fraction of the footer's height (0f = top edge,
+ * 1f = bottom edge) to a blur intensity at that line, interpolating linearly between stops. The
+ * default ramps steeply to a strong blur just below the top edge, so text sitting at the top of a
+ * footer stays readable over the content scrolling underneath.
+ *
+ * Only the blur follows the stops. The tint keeps a plain bottom-ramp gradient and the noise
+ * grain is dropped entirely, so the frost does not repaint the footer's resting colors.
  */
 @Composable
 fun Modifier.zashiFrostedFooter(
     hazeState: HazeState,
-    intensityStops: List<Pair<Float, Float>>,
     frostColor: Color = ZashiColors.Surfaces.bgPrimary,
-    fallbackColor: Color = ZashiColors.Surfaces.bgPrimary
+    fallbackColor: Color = ZashiColors.Surfaces.bgPrimary,
+    intensityStops: List<Pair<Float, Float>> = FooterBlurIntensityStops
 ): Modifier {
     val tintColor = frostColor.copy(alpha = frostColor.alpha * FROST_TINT_ALPHA)
     return zashiFrost(

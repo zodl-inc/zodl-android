@@ -111,10 +111,7 @@ fun ChooseServerView(state: ChooseServerState?) {
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .zashiFrostedFooter(
-                            hazeState = hazeState,
-                            intensityStops = FooterFrostIntensityStops
-                        )
+                        .zashiFrostedFooter(hazeState)
             )
         }
     ) { paddingValues ->
@@ -722,17 +719,3 @@ private fun ChooseServerPreviewData() =
     }
 
 private const val CHOOSE_SERVER_TOP_APP_BAR = "choose_server_top_app_bar"
-
-/**
- * The multi-server note sits at the footer's top edge, so the frost cannot simply fade in from
- * zero — the rows scrolling underneath would show through the text unblurred. The edge itself
- * stays clear (no visible tint seam against the list), ramps steeply to a strong frost right
- * under the text, and reaches full frost by the divider.
- */
-private val FooterFrostIntensityStops =
-    listOf(
-        0f to 0f,
-        .15f to .85f,
-        .5f to 1f,
-        1f to 1f
-    )
