@@ -6,6 +6,7 @@ import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.preference.StandardPreferenceProvider
 import co.electriccoin.zcash.preference.model.entry.BooleanPreferenceDefault
 import co.electriccoin.zcash.ui.common.provider.AppearanceModeStorageProvider
+import co.electriccoin.zcash.ui.common.provider.IsOledEnabledStorageProvider
 import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.preference.StandardPreferenceKeys
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.stateIn
 class OldHomeViewModel(
     private val standardPreferenceProvider: StandardPreferenceProvider,
     appearanceModeStorageProvider: AppearanceModeStorageProvider,
+    isOledEnabledStorageProvider: IsOledEnabledStorageProvider,
 ) : ViewModel() {
     /**
      * A flow of whether background sync is enabled
@@ -42,6 +44,19 @@ class OldHomeViewModel(
                 viewModelScope,
                 SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
                 AppearanceMode.SYSTEM
+            )
+
+    /**
+     * A flow of whether pure black (OLED) should be used whenever [appearanceMode] resolves to dark.
+     */
+    val isOledEnabled: StateFlow<Boolean> =
+        isOledEnabledStorageProvider
+            .observe()
+            .map { it == true }
+            .stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
+                false
             )
 
     private fun booleanStateFlow(default: BooleanPreferenceDefault): StateFlow<Boolean?> =
