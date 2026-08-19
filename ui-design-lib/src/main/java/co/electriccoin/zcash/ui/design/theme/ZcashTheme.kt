@@ -42,20 +42,24 @@ import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypographyInternal
  * Commonly used top level app theme definition
  *
  * @param forceDarkMode Set this to true to force the app to use the dark mode theme, which is helpful, e.g.,
- * for the compose previews.
- * @param isOledDark Set this to true to use the pure black (OLED) variant of the dark theme. Defaults to the value
- * provided by an enclosing [ZcashTheme] so that nested, always-dark screens inherit the user's choice.
+ * for the compose previews. The user's [appearanceMode] light/dark choice is ignored while this is true, but
+ * its OLED-ness (pure black vs. classic dark) still applies.
+ * @param appearanceMode The user's chosen appearance. Defaults to the value provided by an enclosing
+ * [ZcashTheme] so that nested, always-dark screens inherit the user's choice.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ZcashTheme(
     forceDarkMode: Boolean = false,
     balancesAvailable: Boolean = true,
-    isOledDark: Boolean = LocalIsOledDark.current,
+    appearanceMode: AppearanceMode = LocalAppearanceMode.current,
     content: @Composable () -> Unit
 ) {
-    val useDarkMode = forceDarkMode || isSystemInDarkTheme()
-    val useOledDark = useDarkMode && isOledDark
+    val useDarkMode =
+        forceDarkMode ||
+            appearanceMode.forcesDark ||
+            (appearanceMode == AppearanceMode.SYSTEM && isSystemInDarkTheme())
+    val useOledDark = appearanceMode == AppearanceMode.OLED
     val baseColors =
         when {
             useOledDark -> OledColorPalette
@@ -83,7 +87,7 @@ fun ZcashTheme(
         LocalZashiTypography provides ZashiTypographyInternal,
         LocalRippleConfiguration provides MaterialRippleConfig,
         LocalBalancesAvailable provides balancesAvailable,
-        LocalIsOledDark provides isOledDark,
+        LocalAppearanceMode provides appearanceMode,
         LocalKeyboardManager provides rememberKeyboardManager()
     ) {
         ProvideDimens {
@@ -156,4 +160,4 @@ private val DefaultDarkScrim = Color.argb(0x80, 0x1b, 0x1b, 0x1b)
 private val DefaultOledScrim = Color.argb(0x80, 0x00, 0x00, 0x00)
 
 @Suppress("CompositionLocalAllowlist")
-val LocalIsOledDark = staticCompositionLocalOf { false }
+val LocalAppearanceMode = staticCompositionLocalOf { AppearanceMode.SYSTEM }

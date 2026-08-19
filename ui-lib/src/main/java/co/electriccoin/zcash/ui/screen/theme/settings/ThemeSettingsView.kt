@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.theme.settings
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,12 +16,12 @@ import co.electriccoin.zcash.ui.design.component.ZashiBaseSettingsOptIn
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
+import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.exchangerate.settings.Option
-import co.electriccoin.zcash.ui.screen.exchangerate.settings.SimpleCheckboxState
 
 @Composable
 internal fun ThemeSettingsView(state: ThemeSettingsState) {
@@ -37,21 +38,18 @@ internal fun ThemeSettingsView(state: ThemeSettingsState) {
                 color = ZashiColors.Text.textTertiary,
             )
             Spacer(modifier = Modifier.height(24.dp))
-            Option(
-                modifier = Modifier.fillMaxWidth(),
-                isChecked = state.isClassicThemeSelected.isChecked,
-                title = stringResource(R.string.theme_settings_option_classic),
-                subtitle = stringResource(R.string.theme_settings_option_classic_desc),
-                onClick = state.isClassicThemeSelected.onClick
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Option(
-                modifier = Modifier.fillMaxWidth(),
-                isChecked = state.isOledThemeSelected.isChecked,
-                title = stringResource(R.string.theme_settings_option_oled),
-                subtitle = stringResource(R.string.theme_settings_option_oled_desc),
-                onClick = state.isOledThemeSelected.onClick
-            )
+            state.options.forEachIndexed { index, option ->
+                if (index > 0) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                Option(
+                    modifier = Modifier.fillMaxWidth(),
+                    isChecked = option.isChecked,
+                    title = stringResource(option.mode.titleRes),
+                    subtitle = stringResource(option.mode.subtitleRes),
+                    onClick = option.onClick
+                )
+            }
         },
         footer = {
             ZashiButton(
@@ -63,13 +61,30 @@ internal fun ThemeSettingsView(state: ThemeSettingsState) {
     )
 }
 
+private val AppearanceMode.labels: Pair<Int, Int>
+    get() =
+        when (this) {
+            AppearanceMode.SYSTEM -> R.string.theme_settings_option_system to R.string.theme_settings_option_system_desc
+            AppearanceMode.LIGHT -> R.string.theme_settings_option_light to R.string.theme_settings_option_light_desc
+            AppearanceMode.DARK -> R.string.theme_settings_option_classic to R.string.theme_settings_option_classic_desc
+            AppearanceMode.OLED -> R.string.theme_settings_option_oled to R.string.theme_settings_option_oled_desc
+        }
+
+@get:StringRes
+private val AppearanceMode.titleRes: Int
+    get() = labels.first
+
+@get:StringRes
+private val AppearanceMode.subtitleRes: Int
+    get() = labels.second
+
 @Suppress("UnusedPrivateMember")
 @PreviewScreens
 @Composable
 private fun ThemeSettingsPreview() =
     ZcashTheme {
         BlankSurface {
-            ThemeSettingsView(state = previewState())
+            ThemeSettingsView(state = previewState(AppearanceMode.SYSTEM))
         }
     }
 
@@ -77,24 +92,22 @@ private fun ThemeSettingsPreview() =
 @PreviewScreens
 @Composable
 private fun ThemeSettingsOledPreview() =
-    ZcashTheme(forceDarkMode = true, isOledDark = true) {
+    ZcashTheme(forceDarkMode = true, appearanceMode = AppearanceMode.OLED) {
         BlankSurface {
-            ThemeSettingsView(state = previewState())
+            ThemeSettingsView(state = previewState(AppearanceMode.OLED))
         }
     }
 
-private fun previewState() =
+private fun previewState(selected: AppearanceMode) =
     ThemeSettingsState(
-        isClassicThemeSelected =
-            SimpleCheckboxState(
-                isChecked = false,
-                onClick = {}
-            ),
-        isOledThemeSelected =
-            SimpleCheckboxState(
-                isChecked = true,
-                onClick = {}
-            ),
+        options =
+            AppearanceMode.entries.map { mode ->
+                AppearanceModeOptionState(
+                    mode = mode,
+                    isChecked = mode == selected,
+                    onClick = {}
+                )
+            },
         saveButton =
             ButtonState(
                 text = stringRes(R.string.currencyConversion_saveBtn),
