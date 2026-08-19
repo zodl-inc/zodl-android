@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.voting.scankeystone.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneDuplicateSignatureException
@@ -41,6 +42,7 @@ internal class ScanKeystoneVotingPCZTViewModel(
             )
         )
 
+    @Suppress("TooGenericExceptionCaught")
     fun onScanned(result: String) =
         viewModelScope.launch {
             try {
@@ -87,7 +89,8 @@ internal class ScanKeystoneVotingPCZTViewModel(
                 }
             } catch (_: InvalidKeystonePCZTQRException) {
                 validationState.update { ScanValidationState.INVALID }
-            } catch (_: Exception) {
+            } catch (exception: Exception) {
+                Twig.warn(exception) { "Keystone voting PCZT scan failed" }
                 validationState.update { ScanValidationState.INVALID }
             }
         }

@@ -634,6 +634,7 @@ class VotingKeystoneRepositoryTest {
         var extractSpendAuthCalls = 0
         val openVotingDbCalls = mutableListOf<String>()
         val closeVotingDbCalls = mutableListOf<Long>()
+        val setWalletIdCalls = mutableListOf<SetWalletIdCall>()
         val storeKeystoneSignatureCalls = mutableListOf<StoreKeystoneSignatureCall>()
 
         val client: VotingCryptoClient =
@@ -662,6 +663,16 @@ class VotingKeystoneRepositoryTest {
                         Unit
                     }
 
+                    "setWalletId" -> {
+                        setWalletIdCalls +=
+                            SetWalletIdCall(
+                                dbHandle = args.valueAt(0),
+                                walletId = args.valueAt(1),
+                                networkId = args.valueAt(2)
+                            )
+                        Unit
+                    }
+
                     "storeKeystoneSignature" -> {
                         storeKeystoneSignatureCalls +=
                             StoreKeystoneSignatureCall(
@@ -682,6 +693,12 @@ class VotingKeystoneRepositoryTest {
             } as VotingCryptoClient
     }
 
+    private data class SetWalletIdCall(
+        val dbHandle: Long,
+        val walletId: String,
+        val networkId: Int
+    )
+
     private data class StoreKeystoneSignatureCall(
         val dbHandle: Long,
         val roundId: String,
@@ -698,7 +715,10 @@ class VotingKeystoneRepositoryTest {
         override val synchronizer: StateFlow<Synchronizer?> = MutableStateFlow(null)
         override val walletBalances: Flow<Map<AccountUuid, AccountBalance>?> = flowOf(null)
 
-        override suspend fun getSynchronizer(): Synchronizer = unsupported()
+        private val fakeSynchronizer: Synchronizer =
+            mockk<Synchronizer>(relaxed = true).also { every { it.network } returns ZcashNetwork.Mainnet }
+
+        override suspend fun getSynchronizer(): Synchronizer = fakeSynchronizer
 
         override suspend fun getSynchronizerOrNull(): Synchronizer? = unsupported()
 

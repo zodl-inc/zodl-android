@@ -55,6 +55,7 @@ abstract class BaseKeystoneScanner(
                                 isFinished = true
                             )
                         } catch (e: Exception) {
+                            Twig.warn(e) { "Keystone scan onSuccess(ur) failed, resetting decoder" }
                             @Suppress("TooGenericExceptionCaught", "SwallowedException")
                             try {
                                 keystoneSDKProvider.resetQRDecoder()

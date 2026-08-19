@@ -352,6 +352,7 @@ class VotingKeystoneRepositoryImpl(
         // crate's own submission result.
         pendingRequest.decodeExpectedRk()?.let { rk ->
             persistKeystoneSignatureCrateSide(
+                accountUuid = accountUuid,
                 roundId = roundId,
                 bundleIndex = bundleIndex,
                 keystoneSig = spendAuthSig,
@@ -370,6 +371,7 @@ class VotingKeystoneRepositoryImpl(
     }
 
     private suspend fun persistKeystoneSignatureCrateSide(
+        accountUuid: String,
         roundId: String,
         bundleIndex: Int,
         keystoneSig: ByteArray,
@@ -377,9 +379,11 @@ class VotingKeystoneRepositoryImpl(
         rk: ByteArray
     ) {
         val votingDbPath = resolveVotingDbPath()
+        val networkId = synchronizerProvider.getSynchronizer().network.toVotingNetworkId()
         val dbHandle = votingCryptoClient.openVotingDb(votingDbPath)
         check(dbHandle != 0L) { "Failed to open voting DB at $votingDbPath" }
         try {
+            votingCryptoClient.setWalletId(dbHandle, accountUuid, networkId)
             votingCryptoClient.storeKeystoneSignature(
                 dbHandle = dbHandle,
                 roundId = roundId,
