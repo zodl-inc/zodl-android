@@ -1,0 +1,1122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="amount_with_fiat_currency_symbol" formatted="true"><xliff:g example="$" id="fiat_currency_symbol">%1$s</xliff:g><xliff:g example="123" id="amount">%2$s</xliff:g></string>
+    <string name="general_hideBalancesMost">-----</string>
+    <string name="general_back">वापस</string>
+    <string name="triple_dots">…</string>
+    <string name="seed_recovery_reveal">रिकवरी फ्रेज़ दिखाएँ</string>
+    <string name="general_masked_seed_word">•••••</string>
+    <string name="general_hidden_seed_word">छिपा हुआ रिकवरी फ्रेज़ शब्द</string>
+    <string name="swapAndPay_failure_laterTitle">सर्विस उपलब्ध नहीं है</string>
+    <string name="swapAndPay_failure_retryTitle">अनपेक्षित गड़बड़ी</string>
+    <string name="swapAndPay_failure_laterDesc">कृपया बाद में दोबारा कोशिश करें।</string>
+    <string name="swapAndPay_failure_retryDesc">कृपया अपना कनेक्शन जाँचें और दोबारा कोशिश करें।</string>
+    <string name="coinVote_error_title">कुछ गलत हो गया</string>
+    <string name="swapAndPay_failure_wrongDesc">हम एसेट लोड नहीं कर सके। कृपया अपना कनेक्शन जाँचें और दोबारा कोशिश करें।</string>
+    <string name="disconnectHWWallet_tryAgain">दोबारा कोशिश करें</string>
+    <string name="disconnectHWWallet_contactSupport">सपोर्ट से संपर्क करें</string>
+    <string name="general_show">दिखाएँ</string>
+    <string name="general_hide">छिपाएँ</string>
+    <string name="general_more">अधिक</string>
+    <string name="general_less">कम</string>
+    <string name="general_loading">लोड हो रहा है</string>
+    <string name="send_review">रिव्यू</string>
+    <string name="general_ok">ठीक है</string>
+    <string name="general_report">रिपोर्ट करें</string>
+    <string name="restoreInfo_gotIt">ठीक है!</string>
+    <string name="send_report">रिपोर्ट करें</string>
+    <string name="general_zec">%1$s %2$s</string>
+    <string name="balances_dismiss">खारिज करें</string>
+    <string name="general_select">चुनें…</string>
+    <string name="general_confirm">कन्फर्म करें</string>
+    <string name="swapAndPay_address">पता</string>
+    <string name="swapAndPay_status_processing">प्रोसेस हो रहा है</string>
+    <string name="general_enter_address">पता दर्ज करें…</string>
+    <string name="general_enter_address_partial">%s पता…</string>
+    <string name="receive_copy">कॉपी करें</string>
+    <string name="swapToZec_shareQR">QR शेयर करें</string>
+    <string name="general_cancel">रद्द करें</string>
+    <string name="tokenOnChain">पर</string>
+    <string name="general_warning">चेतावनी:&#160;</string>
+    <string name="common_empty_screen_title">कोई नतीजा नहीं</string>
+    <string name="common_empty_screen_subtitle">हमने कोशिश की, लेकिन कुछ नहीं मिला।</string>
+    <string name="general_close">बंद करें</string>
+    <string name="tooltip_close_content_description">टूलटिप बंद करें</string>
+    <string name="fiat_currency_conversion_rate_unavailable">उपलब्ध नहीं</string>
+    <string name="empty_char">-</string>
+    <string name="zcash_logo_content_description">Zcash लोगो</string>
+    <string name="scan_openSettings">सेटिंग्स खोलें</string>
+    <string name="balance_widget_available">उपलब्ध बैलेंस:</string>
+    <string name="hide_balance_placeholder">-----</string>
+    <string name="hide_balances_content_description">बैलेंस छिपाएँ</string>
+    <string name="unable_to_open_email">ईमेल ऐप नहीं खोला जा सका।</string>
+    <string name="restoring_wallet_label">[आपका वॉलेट रिस्टोर हो रहा है…]</string>
+    <string name="walletStatus_restoringWallet">आपका वॉलेट रिस्टोर हो रहा है…</string>
+    <string name="disconnected_label">[डिस्कनेक्ट हो गया…]</string>
+    <string name="walletStatus_disconnected">डिस्कनेक्ट हो गया…</string>
+    <string name="unable_to_open_play_store">Google Play Store ऐप नहीं खोला जा सका…</string>
+    <string name="general_copied_to_clipboard">क्लिपबोर्ड पर कॉपी हो गया</string>
+    <string name="general_etc">…</string>
+    <string name="recoveryPhraseDisplay_button_remindMeLater">बाद में याद दिलाएँ</string>
+    <string name="general_remind_me_in">%s में याद दिलाएँ</string>
+    <string name="general_remind_me_in_two_days">दो दिन</string>
+    <string name="general_remind_me_in_two_weeks">दो हफ़्ते</string>
+    <string name="general_remind_me_in_two_months">दो महीने</string>
+    <string name="restoreWallet_birthday_title">ब्लॉक हाइट</string>
+    <string name="restoreWallet_birthday_placeholder">नंबर दर्ज करें</string>
+    <string name="restoreWallet_birthday_fieldInfo">वॉलेट बर्थडे हाइट वह समय है जब आपका वॉलेट बनाया गया था।</string>
+    <string name="general_next">आगे</string>
+    <string name="keystone_addHWWallet_enterManually">ब्लॉक हाइट दर्ज करें</string>
+    <string name="walletBirthdayHeightSubtitle">अपनी वॉलेट बर्थडे हाइट दर्ज करने से हम आपका पूरा फंड और ट्रांज़ैक्शन हिस्ट्री सही तरीके से दिखा पाते हैं।</string>
+    <string name="recoveryPhraseDisplay_birthdayTitle">वॉलेट बर्थडे हाइट</string>
+    <string name="restoreWallet_birthday_estimateDate_title">पहला वॉलेट ट्रांज़ैक्शन</string>
+    <string name="restoreWallet_birthday_estimated_title">अनुमानित ब्लॉक हाइट</string>
+    <string name="restoreWallet_birthday_estimated_info">Zodl नीचे दिए गए ब्लॉक नंबर के बाद हुए सभी ट्रांज़ैक्शन स्कैन करके रिकवर करेगा।</string>
+    <string name="about_title">ऐप के बारे में</string>
+    <string name="about_subtitle">Zodl से मिलिए</string>
+    <string name="whatsNew_version" formatted="true">Zodl वर्ज़न <xliff:g example="1" id="version">%s</xliff:g></string>
+    <string name="about_debug_menu_app_name">ऐप का नाम:<xliff:g example="Zodl" id="app_name">%1$s</xliff:g></string>
+    <string name="about_debug_menu_build">बिल्ड: <xliff:g example="635dac0eb9ddc2bc6da5177f0dd495d8b76af4dc" id="git_commit_hash">%1$s</xliff:g></string>
+    <string name="about_overflow_menu_content_description">और विकल्प</string>
+    <string name="about_description">Zodl एक Zcash-आधारित मोबाइल वॉलेट है, जो बिना रुके चलने वाले प्राइवेट पेमेंट के लिए बनाया गया है।
+        यह शील्डेड $ZEC, यानी सचमुच प्राइवेट क्रिप्टोकरेंसी, को स्टोर करने और असल दुनिया में इस्तेमाल करने के लिए ऑप्टिमाइज़ किया गया है।\n\nइसे उसी टीम ने बनाया है जिसने ऑनचेन प्राइवेसी के लिए इंडस्ट्री का मानक तय किया, यानी Zcash प्रोटोकॉल के मूल डेवलपर्स।
+    </string>
+    <string name="about_termsOfUse">सेवा की शर्तें</string>
+    <string name="about_unable_to_web_browser">कोई वेब ब्राउज़र ऐप नहीं मिला।</string>
+    <string name="about_privacyPolicy">प्राइवेसी पॉलिसी</string>
+    <string name="keystone_drawer_title">वॉलेट और हार्डवेयर</string>
+    <string name="keystone_drawer_banner_title">Keystone हार्डवेयर वॉलेट</string>
+    <string name="keystone_drawer_banner_desc">एयरगैप्ड हार्डवेयर वॉलेट पर 5%% की छूट पाएँ। प्रोमो कोड "Zodl"।</string>
+    <string name="keystone_connect">हार्डवेयर वॉलेट कनेक्ट करें</string>
+    <string name="addressBook_addNewContact">नया कॉन्टैक्ट जोड़ें</string>
+    <string name="general_save">सेव करें</string>
+    <string name="addressBook_title">एड्रेस बुक</string>
+    <string name="addressBook_empty">आपकी एड्रेस बुक खाली है</string>
+    <string name="address_book_version">वर्ज़न <xliff:g example="1" id="version">%s</xliff:g></string>
+    <string name="addressBook_scanAddress">QR कोड स्कैन करें</string>
+    <string name="addressBook_manualEntry">मैन्युअल एंट्री</string>
+    <string name="accounts_addressBook_your">आपके वॉलेट</string>
+    <string name="accounts_addressBook_contacts">एड्रेस बुक कॉन्टैक्ट</string>
+    <string name="addressBook_selectRecipient">प्राप्तकर्ता चुनें</string>
+    <string name="settings_advanced">एडवांस्ड सेटिंग्स</string>
+    <string name="settings_recoveryPhrase">Zodl रिकवरी फ्रेज़</string>
+    <string name="settings_exportPrivateData">प्राइवेट डेटा एक्सपोर्ट करें</string>
+    <string name="settings_chooseServer">सर्वर चुनें</string>
+    <string name="settings_private">Tor सुरक्षा</string>
+    <string name="currencyConversion_title">करेंसी कन्वर्ज़न</string>
+    <string name="advanced_settings_crash_reporting">क्रैश रिपोर्टिंग</string>
+    <string name="settings_deleteZashiWarning">अगली स्क्रीन पर आपसे पुष्टि करने के लिए कहा जाएगा</string>
+    <string name="settings_deleteZashi">Zodl रीसेट करें</string>
+    <string name="taxExport_taxFile">टैक्स फाइल एक्सपोर्ट करें</string>
+    <string name="resyncWallet_title">वॉलेट दोबारा सिंक करें</string>
+    <string name="disconnectHWWallet_cta">हार्डवेयर डिस्कनेक्ट करें</string>
+    <string name="disconnect_hardware_wallet_biometric_message">अपना हार्डवेयर वॉलेट डिस्कनेक्ट करने के लिए पुष्टि करें</string>
+    <string name="disconnectHWWallet_title">डिस्कनेक्ट करें</string>
+    <string name="deleteKeystoneTitle">Keystone डिस्कनेक्ट करें</string>
+    <string name="deleteKeystoneDesc">अपना हार्डवेयर वॉलेट डिस्कनेक्ट करने पर कुछ लोकल डेटा हमेशा के लिए मिट जाएगा, जिसे ब्लॉकचेन से वापस नहीं पाया जा सकता।</string>
+    <string name="disconnectHWWallet_mayInclude">इसमें ये शामिल हो सकते हैं:</string>
+    <string name="disconnectHWWallet_bullet1">फेल या एक्सपायर हो चुके सेंड</string>
+    <string name="disconnectHWWallet_bullet2">ऐसे मेमपूल ट्रांज़ैक्शन जो कभी कन्फर्म नहीं हुए</string>
+    <string name="disconnectHWWallet_bullet3">ऐसे ट्रांज़ैक्शन जो बाद में चेन रीऑर्ग में पलट गए</string>
+    <string name="keystoneHW">Keystone हार्डवेयर</string>
+    <string name="currentlyConnected">अभी कनेक्टेड है</string>
+    <string name="connectedHWInfo">अगर आप अभी डिस्कनेक्ट करते हैं, तो आपका Keystone आपके Zodl वॉलेट से पेयर नहीं रहेगा।</string>
+    <string name="deleteWallet_sheet_title">क्या आप पक्का चाहते हैं?</string>
+    <string name="disconnectHWWallet_sheetDesc">हार्डवेयर वॉलेट डिस्कनेक्ट करने के बाद इसे वापस नहीं किया जा सकता।</string>
+    <string name="disconnectHWWallet_failureTitle">डिस्कनेक्ट नहीं हो सका</string>
+    <string name="disconnect_hardware_wallet_error_message">हार्डवेयर वॉलेट डिस्कनेक्ट करने की प्रक्रिया पूरी नहीं हो सकी। कृपया दोबारा कोशिश करें या समस्या की रिपोर्ट करें।</string>
+    <string name="authentication_system_ui_title">
+        <xliff:g id="app_name" example="Zodl">%1$s</xliff:g> के लिए ऑथेंटिकेशन
+    </string>
+    <string name="authentication_system_ui_subtitle">
+        <xliff:g id="use_case" example="Recovery Phrase">%1$s</xliff:g> तक पहुँचने के लिए बायोमेट्रिक या डिवाइस क्रेडेंशियल इस्तेमाल करें।
+    </string>
+    <string name="authentication_use_case_delete_wallet">वॉलेट डिलीट करने की सुविधा</string>
+    <string name="authentication_use_case_export_data">प्राइवेट डेटा एक्सपोर्ट करने की सुविधा</string>
+    <string name="authentication_use_case_seed_recovery">सीड रिकवरी की सुविधा</string>
+    <string name="authentication_use_case_send_funds">फंड भेजने की सुविधा</string>
+    <string name="authentication_use_case_vote_submission">वोट सबमिशन</string>
+    <string name="authentication_use_case_adress_book">एड्रेस बुक की सुविधा</string>
+    <string name="authentication_use_case_tax_export">टैक्स एक्सपोर्ट</string>
+    <string name="authentication_toast_canceled">ऑथेंटिकेशन रद्द हुआ</string>
+    <string name="authentication_toast_failed">ऑथेंटिकेशन फेल हुआ</string>
+    <string name="authentication_error_title">ऑथेंटिकेशन में गड़बड़ी</string>
+    <string name="authentication_error_text">नीचे दी गई वजह से ऑथेंटिकेशन फेल हुआ। दोबारा ऑथेंटिकेशन करें, या मदद के लिए सपोर्ट टीम से संपर्क करें।</string>
+    <string name="authentication_error_details">
+        एरर कोड: <xliff:g id="code" example="-1">%1$d</xliff:g>\nएरर मैसेज: <xliff:g id="message" example="No device credential">%2$s</xliff:g>
+    </string>
+    <string name="coinVote_common_retry">दोबारा कोशिश करें</string>
+    <string name="errorPage_action_contactSupport">सपोर्ट से संपर्क करें</string>
+    <string name="authentication_failed_title">ऑथेंटिकेशन फेल हुआ</string>
+    <string name="authentication_failed_text">
+        ऑथेंटिकेशन दिखाया गया, लेकिन पहचाना नहीं गया। दोबारा ऑथेंटिकेशन करें, या मदद के लिए सपोर्ट टीम से संपर्क करें।
+    </string>
+    <string name="authentication_failed_welcome_icon_cont_desc"><xliff:g id="app_name" example="Zodl">%1$s</xliff:g> ऐप अनलॉक करने के लिए टैप करें</string>
+    <string name="splash_authTitle">आपका Zodl अकाउंट सुरक्षित है।</string>
+    <string name="authentication_failed_welcome_subtitle">इसे अनलॉक करने के लिए चाबी वाले आइकॉन पर टैप करें।</string>
+    <string name="smartBanner_content_shield_button">शील्ड करें</string>
+    <string name="smartBanner_help_shield_transparent">Transparent</string>
+    <string name="widget_balances_button_spendable">खर्च योग्य</string>
+    <string name="balance_breakdown_title">सभी पूल में कुल बैलेंस</string>
+    <string name="balance_breakdown_subtitle">आपका ZEC बैलेंस अब Zcash पूल के अनुसार विभाजित है, ताकि आप ठीक-ठीक देख सकें कि आपका फंड कहाँ है।</string>
+    <string name="balance_breakdown_total">कुल बैलेंस</string>
+    <string name="balance_breakdown_pool_orchard">Orchard</string>
+    <string name="balance_breakdown_pool_sapling">Sapling</string>
+    <string name="balance_breakdown_pool_transparent">Transparent</string>
+    <string name="balance_breakdown_pool_ironwood">Ironwood</string>
+    <string name="balance_breakdown_got_it">ठीक है</string>
+    <string name="serverSetup_title">सर्वर</string>
+    <string name="choose_server_default_label">डिफ़ॉल्ट: <xliff:g id="server" example="example.com:123">%1$s</xliff:g></string>
+    <string name="serverSetup_custom">कस्टम</string>
+    <string name="choose_server_custom_delimiter">:</string>
+    <string name="choose_server_full_server_name">
+        <xliff:g id="hostname" example="example.com">%1$s</xliff:g>:
+        <xliff:g id="port" example="508">%2$d</xliff:g>
+    </string>
+    <string name="choose_server_full_server_name_text_field">
+        <xliff:g id="hostname" example="example.com">%1$s</xliff:g>:<xliff:g id="port" example="508">%2$d</xliff:g>
+    </string>
+    <string name="serverSetup_placeholder">&lt;hostname&gt;:&lt;port&gt;</string>
+    <string name="serverSetup_save">चुनाव सेव करें</string>
+    <string name="choose_server_saving">चुनाव सेव हो रहा है</string>
+    <string name="choose_server_validation_dialog_error_title">अमान्य सर्वर एंडपॉइंट</string>
+    <string name="choose_server_validation_dialog_error_text">गड़बड़ी: एंडपॉइंट बदलने की कोशिश फेल हो गई।
+        जाँचें कि होस्टनेम और पोर्ट सही हैं और &lt;hostname&gt;:&lt;port&gt; के रूप में लिखे गए हैं।</string>
+    <string name="choose_server_save_success_dialog_title">सर्वर सेव हो गया</string>
+    <string name="choose_server_save_success_dialog_text">चुना गया सर्वर एंडपॉइंट सफलतापूर्वक
+        सेव कर दिया गया है।</string>
+    <string name="serverSetup_default">डिफ़ॉल्ट</string>
+    <string name="serverSetup_performingTest">सर्वर टेस्ट किया जा रहा है…</string>
+    <string name="serverSetup_couldTakeTime">इसमें थोड़ा समय लग सकता है…</string>
+    <string name="serverSetup_connectionMode">कनेक्शन मोड</string>
+    <string name="serverSetup_automatic">ऑटोमैटिक</string>
+    <string name="serverSetup_manual">मैन्युअल</string>
+    <string name="serverSetup_fastestServers">सबसे तेज़ सर्वर</string>
+    <string name="serverSetup_otherServers">अन्य सर्वर</string>
+    <string name="serverSetup_allServers">सभी सर्वर देखें</string>
+    <string name="serverSetup_refresh">रिफ्रेश करें</string>
+    <string name="serverSetup_active">एक्टिव</string>
+    <string name="serverSetup_testing">टेस्ट हो रहा है</string>
+    <string name="choose_server_multi_server_info">परफॉर्मेंस बेहतर करने के लिए हम कई सर्वर इस्तेमाल कर सकते हैं। मेटाडेटा कम उजागर हो, इसके लिए मैन्युअल कनेक्शन मोड चुनकर अपनी पसंद का एक ही सर्वर चुनें, और एडवांस्ड सेटिंग्स में Tor चालू रखें।</string>
+    <string name="keystone_addHWWallet_scan">कनेक्ट करने के लिए अपने डिवाइस का QR कोड स्कैन करें।</string>
+    <string name="keystone_addHWWallet_tutorial">Keystone ट्यूटोरियल देखें</string>
+    <string name="keystone_addHWWallet_step1">अपना Keystone अनलॉक करें</string>
+    <string name="keystone_addHWWallet_step2">मेन्यू आइकॉन पर टैप करें</string>
+    <string name="keystone_addHWWallet_step3">Connect Software Wallet पर टैप करें</string>
+    <string name="keystone_addHWWallet_step4">Zodl ऐप चुनें और QR कोड स्कैन करें</string>
+    <string name="keystone_addHWWallet_howTo">निर्देश:</string>
+    <string name="keystone_addHWWallet_readyToScan">स्कैन के लिए तैयार</string>
+    <string name="keystone_addHWWallet_deviceQuestion">नया या एक्टिव डिवाइस ?</string>
+    <string name="keystone_addHWWallet_deviceDesc">ऐसे हार्डवेयर वॉलेट से कनेक्ट करने पर, जो पहले Zodl से जुड़ा रहा हो, आपकी ट्रांज़ैक्शन हिस्ट्री खोजने के लिए सिंक करना होगा। हम इसमें आपकी मदद करेंगे।</string>
+    <string name="keystone_addHWWallet_connectNew">नया डिवाइस कनेक्ट करें</string>
+    <string name="keystone_addHWWallet_connectActive">एक्टिव डिवाइस कनेक्ट करें</string>
+    <string name="keystone_addHWWallet_connected">कनेक्ट हो गया!</string>
+    <string name="keystone_addHWWallet_connectedDesc">आपका Keystone हार्डवेयर वॉलेट सफलतापूर्वक कनेक्ट हो गया है।</string>
+    <string name="keystone_addHWWallet_close">बंद करें</string>
+    <string name="firstWalletTransactionSubtitleHWWallet">जिस ब्लॉक हाइट पर आपका वॉलेट बनाया गया था, वह दर्ज करने से सही संख्या में ब्लॉक स्कैन होते हैं। अगर आप पक्के तौर पर नहीं जानते, तो कोई पुरानी तारीख चुनें।</string>
+    <string name="keystone_first_transaction_note">अगर आप पक्के तौर पर नहीं जानते, तो कोई पुरानी तारीख चुनें।</string>
+    <string name="keystone_addHWWallet_connect">कनेक्ट करें</string>
+    <string name="hardwareWalletExplainer_title">हार्डवेयर वॉलेट क्या है?</string>
+    <string name="hardwareWalletExplainer_description">हार्डवेयर वॉलेट (HW वॉलेट) एक फिजिकल डिवाइस है जो आपकी क्रिप्टोकरेंसी की प्राइवेट की ऑफलाइन स्टोर करता है, जिससे वे ऑनलाइन हैकर्स और मैलवेयर से सुरक्षित रहती हैं।</string>
+    <string name="hardwareWalletExplainer_featureTitle1">अधिकतम सुरक्षा</string>
+    <string name="hardwareWalletExplainer_featureDescription1">ट्रांज़ैक्शन साइन करते समय भी आपकी की डिवाइस से बाहर नहीं जातीं</string>
+    <string name="hardwareWalletExplainer_featureTitle2">मैलवेयर से सुरक्षा</string>
+    <string name="hardwareWalletExplainer_featureDescription2">कंप्यूटर वायरस और फिशिंग हमलों से सुरक्षित</string>
+    <string name="hardwareWalletExplainer_featureTitle3">पूरा नियंत्रण</string>
+    <string name="hardwareWalletExplainer_featureDescription3">आपकी की, आपकी क्रिप्टो</string>
+    <string name="hardwareWalletExplainer_infoBoxTitle">Keystone के बारे में</string>
+    <string name="hardwareWalletExplainer_infoBoxDescription">Keystone एक लोकप्रिय हार्डवेयर वॉलेट ब्रांड है, जो QR कोड साइनिंग के साथ एयरगैप्ड सुरक्षा देता है। Ledger और दूसरे विकल्पों की तरह यह भी कई भरोसेमंद हार्डवेयर वॉलेट में से एक है।</string>
+    <string name="hardwareWalletExplainer_cta">ठीक है</string>
+    <string name="restoreWallet_help_title">और जानना चाहते हैं?</string>
+    <string name="keystone_wbh_info_message_bold">वॉलेट बर्थडे हाइट</string>
+    <string name="keystone_wbh_info_message">वह ब्लॉक हाइट है (ब्लॉकचेन में ब्लॉक #) जिस पर आपका वॉलेट बनाया गया था। सही हाइट देना ज़रूरी है, क्योंकि इसी से तय होता है कि आपकी ट्रांज़ैक्शन हिस्ट्री और वॉलेट बैलेंस दिखाने के लिए हम कितने ब्लॉक स्कैन करेंगे। अगर आपने किसी दूसरे हार्डवेयर डिवाइस से सीड रिकवर की है, तो अपने मूल हार्डवेयर डिवाइस की ही ब्लॉक हाइट दर्ज करें।</string>
+    <string name="addressBook_newContact_name">कॉन्टैक्ट का नाम</string>
+    <string name="addressBook_newContact_namePlaceholder">कॉन्टैक्ट का नाम दर्ज करें…</string>
+    <string name="addressBook_newContact_address">वॉलेट पता</string>
+    <string name="addressBook_newContact_addressPlaceholder">वॉलेट पता दर्ज करें…</string>
+    <string name="addressBook_error_nameExists">यह कॉन्टैक्ट नाम पहले से इस्तेमाल में है। कृपया कोई दूसरा नाम चुनें।</string>
+    <string name="addressBook_error_nameLength">यह कॉन्टैक्ट नाम 32 अक्षरों की सीमा से बड़ा है। कृपया नाम छोटा करें।</string>
+    <string name="contact_address_error_not_unique">यह वॉलेट पता पहले से आपकी एड्रेस बुक में है।</string>
+    <string name="contact_chain_address_error_not_unique">इस चेन का एक पता पहले से आपकी एड्रेस बुक में मौजूद है।</string>
+    <string name="send_error_invalidAddress">अमान्य पता</string>
+    <string name="swapAndPay_addressBookSelectChain">चेन चुनें</string>
+    <string name="crash_reporting_opt_in_title">Zodl को बेहतर बनाने में मदद करें</string>
+    <string name="crash_reporting_opt_in_subtitle">क्रैश रिपोर्ट डेवलपर्स के लिए ऐप की क्वालिटी और
+        भरोसेमंदी बेहतर करने का एक ज़रूरी ज़रिया हैं। क्रैश की वजह बनने वाले बग ठीक करने में ये व्यवहार में बहुत
+        काम आती हैं।</string>
+    <string name="crash_reporting_opt_in_info">ध्यान दें: क्रैश रिपोर्ट में ऐप वर्ज़न, क्रैश होने का समय
+        और स्टैक ट्रेस की जानकारी होती है, ताकि साफ़ पता चले कि ऐप में क्रैश कहाँ हुआ। इकट्ठा किया गया डेटा
+        पूरी तरह गुमनाम होता है।</string>
+    <string name="torSetup_learn_btnIn">शामिल हों</string>
+    <string name="crash_reporting_opt_in_positive_desc">Zodl डेवलपर्स के साथ क्रैश रिपोर्ट शेयर करें।</string>
+    <string name="torSetup_learn_btnOut">बाहर रहें</string>
+    <string name="crash_reporting_opt_in_negative_desc">Zodl डेवलपर्स के साथ क्रैश रिपोर्ट शेयर न करें।</string>
+    <string name="deleteWallet_title">Zodl रीसेट करें</string>
+    <string name="deleteWallet_message2">आगे बढ़ने से पहले पक्का करें कि आपके पास अपना सीक्रेट रिकवरी फ्रेज़ और वॉलेट बर्थडे हाइट दोनों सेव हैं।</string>
+    <string name="delete_wallet_text_2">Zodl ऐप रीसेट करने पर Zodl डेटाबेस और कैश डिलीट हो जाएँगे, और सभी जुड़े हुए हार्डवेयर वॉलेट डिस्कनेक्ट हो जाएँगे।</string>
+    <string name="deleteWallet_message4">Zodl रीसेट करने के बाद, अपने फंड तक पहुँचने का एकमात्र तरीका वॉलेट रिस्टोर करना है, जिसके लिए आपका Zodl रिकवरी फ्रेज़ और वॉलेट बर्थडे हाइट चाहिए।</string>
+    <string name="deleteWallet_metadataWarn1">एन्क्रिप्टेड मेटाडेटा बैकअप रखें, जिसमें कॉन्टैक्ट, नोट्स, बुकमार्क और स्वैप/पेमेंट की जानकारी शामिल है।</string>
+    <string name="deleteWallet_metadataWarn2">यह डेटा रिस्टोर के दौरान वापस नहीं पाया जा सकता।</string>
+    <string name="deleteWallet_sheet_msg">ऐप रीसेट करने के बाद इसे वापस नहीं किया जा सकता। आपको अपने सीक्रेट रिकवरी फ्रेज़ से वॉलेट रिस्टोर करना होगा।</string>
+    <string name="deleteWallet_actionButtonTitle">Zodl रीसेट करें</string>
+    <string name="delete_wallet_failed">वॉलेट डिलीट नहीं हो सका। कृपया दोबारा कोशिश करें।</string>
+    <string name="error_general_title">कोई गड़बड़ी हुई</string>
+    <string name="error_general_message">अज्ञात कारण। अगर समस्या बनी रहे तो कृपया हमारी सपोर्ट टीम से संपर्क करें
+        ।\n\n%s</string>
+    <string name="smartBanner_help_syncError_title">सिंक में गड़बड़ी</string>
+    <string name="shieldFunds_error_title">शील्डिंग में गड़बड़ी</string>
+    <string name="shieldFunds_error_failure_message">पिछले शील्डिंग ट्रांज़ैक्शन के दौरान गड़बड़ी हुई। आप बाद में दोबारा कोशिश
+        कर सकते हैं, या समस्या बनी रहने पर इसकी रिपोर्ट कर सकते हैं।\n\n%s</string>
+    <string name="shieldFunds_error_gprc_message">पिछले शील्डिंग ट्रांज़ैक्शन के दौरान गड़बड़ी हुई। हम इस ट्रांज़ैक्शन को बाद में दोबारा सबमिट करने की कोशिश करेंगे। अगर वह भी फेल होता है, तो आपको बाद में शील्डिंग दोबारा करनी पड़ सकती है।</string>
+    <string name="error_keystone_firmware_title">Keystone फर्मवेयर अपडेट आवश्यक है</string>
+    <string name="error_keystone_firmware_message">आपके Keystone का फर्मवेयर (%1$s) न्यूनतम समर्थित वर्ज़न (%2$s) से पुराना है। अपने डिवाइस का फर्मवेयर अपडेट करें, फिर दोबारा कोशिश करें।</string>
+    <string name="error_keystone_firmware_message_legacy">आपके Keystone का फर्मवेयर इतना पुराना है कि वह अपना वर्ज़न नहीं बता सकता, और यह न्यूनतम समर्थित वर्ज़न (%1$s) से पुराना है। अपने डिवाइस का फर्मवेयर अपडेट करें, फिर दोबारा कोशिश करें।</string>
+    <string name="error_keystone_firmware_close">बंद करें</string>
+    <string name="error_keystone_account_title">Keystone अकाउंट नहीं जोड़ा जा सका</string>
+    <string name="error_keystone_account_message">स्कैन किया गया Keystone अकाउंट इस ऐप के साथ इस्तेमाल नहीं किया जा सकता। पक्का करें कि आपका Keystone डिवाइस उसी नेटवर्क पर सेट है जिस पर यह ऐप है, फिर QR कोड दोबारा स्कैन करें।</string>
+    <string name="torSetup_alert_title">Tor बंद करें?</string>
+    <string name="torSetup_alert_msg">Tor कनेक्शन में दिक्कत मिली है। परफॉर्मेंस बेहतर करने के लिए Tor बंद करके देखें। इससे एक्सचेंज रेट अपडेट होना रुक जाएगा। आप इसे बाद में एडवांस्ड सेटिंग्स से दोबारा चालू कर सकते हैं।</string>
+    <string name="torSetup_alert_disable">बंद करें</string>
+    <string name="torSetup_alert_dontDisable">बंद न करें</string>
+    <string name="currencyConversion_ipTitle">IP पते की सुरक्षा</string>
+    <string name="currencyConversion_ipDesc">Zodl का करेंसी कन्वर्ज़न फीचर आपके IP पते को उजागर नहीं करता।</string>
+    <string name="exchange_rate_info_subtitle_1_no_cmc">आपके IP पते की सुरक्षा के लिए एक्सचेंज रेट Tor के ज़रिए लिए जाते हैं। पक्का करें कि आपके क्षेत्र में Tor इस्तेमाल करने की अनुमति है।</string>
+    <string name="currencyConversion_refresh">रेट रिफ्रेश</string>
+    <string name="currencyConversion_refreshDesc">रेट अपने आप रिफ्रेश होता है और इसे मैन्युअली भी रिफ्रेश किया जा सकता है।</string>
+    <string name="tooltip_exchangeRate_title">एक्सचेंज रेट उपलब्ध नहीं</string>
+    <string name="tooltip_exchangeRate_desc">हमने कोशिश की, लेकिन आपके लिए एक्सचेंज रेट रिफ्रेश नहीं
+        कर सके। अपना कनेक्शन जाँचें, ऐप दोबारा शुरू करें, और हम फिर कोशिश करेंगे।</string>
+    <string name="send_currencyUnavailable_title">%1$s कन्वर्ज़न उपलब्ध नहीं</string>
+    <string name="send_currencyUnavailable_desc">%1$s के लाइव रेट अभी नहीं लिए जा सकते। आप विकल्प के तौर पर USD इस्तेमाल कर सकते हैं, या सिर्फ ZEC में राशि दर्ज करते रह सकते हैं।</string>
+    <string name="send_currencyUnavailable_switchToUSD">USD पर जाएँ</string>
+    <string name="send_currencyUnavailable_continueInZEC">ZEC में जारी रखें</string>
+    <string name="exchange_rate_opt_in_title">नया फीचर</string>
+    <string name="currencyConversion_enable">चालू करें</string>
+    <string name="currencyConversion_saveBtn">बदलाव सेव करें</string>
+    <string name="currencyConversion_skipBtn">अभी छोड़ें</string>
+    <string name="currencyConversion_note">बहुत ज़्यादा प्राइवेसी चाहने वालों के लिए ध्यान देने की बात: चूँकि हम कन्वर्ज़न रेट
+        एक्सचेंज से लेते हैं, इसलिए कोई एक्सचेंज यह देख सकता है कि ट्रांज़ैक्शन से पहले एक्सचेंज रेट पूछा गया था।</string>
+    <string name="torSetup_ccSheet_enable">चालू करें</string>
+    <string name="currencyConversion_learnMoreOptionEnableDesc">करेंसी कन्वर्ज़न दिखाएँ।</string>
+    <string name="currencyConversion_learnMoreOptionDisable">बंद करें</string>
+    <string name="currencyConversion_learnMoreOptionDisableDesc">करेंसी कन्वर्ज़न न दिखाएँ।</string>
+    <string name="currencyConversion_learnMoreDesc">अपना बैलेंस और पेमेंट की राशि चुनी हुई करेंसी में देखें। Swap और Pay के लिए एक्सचेंज रेट USD में ही दिखते रहेंगे। आप इस फीचर को एडवांस्ड सेटिंग्स में मैनेज कर सकते हैं।</string>
+    <string name="currencyConversion_settingsDesc">अपना बैलेंस और पेमेंट की राशि अपनी चुनी हुई करेंसी में देखें। Swap और Pay के लिए एक्सचेंज रेट USD में ही दिखते रहेंगे।</string>
+    <string name="torSetup_ccSheet_title">करेंसी कन्वर्ज़न के लिए Tor ज़रूरी है</string>
+    <string name="exchange_rate_tor_opt_in_description">Tor सुरक्षा एक बीटा फीचर है, जो आपके IP पते को अतिरिक्त
+        सुरक्षा देता है। USD एक्सचेंज रेट सिर्फ तभी उपलब्ध होते हैं जब यह चालू हो।\n\nअगर आपके क्षेत्र में Tor की अनुमति है, तो हम इसे चालू करने की सलाह देते हैं। आप इसे एडवांस्ड सेटिंग्स में मैनेज कर सकते हैं।</string>
+    <string name="torSetup_ccSheet_later">बाद में करें</string>
+    <string name="currencyConversion_torOnInfo">Tor सुरक्षा बंद करने पर करेंसी कन्वर्ज़न फीचर भी तब तक बंद रहेगा जब तक इसे दोबारा चालू न किया जाए।</string>
+    <string name="currencyConversion_torOffInfo">अगर आप अपने IP पते की सुरक्षा करना चाहते हैं, तो एडवांस्ड सेटिंग्स में Tor सुरक्षा चालू करें।</string>
+    <string name="currencyConversion_selectCurrencyTitle">करेंसी चुनें</string>
+    <string name="privateDataConsent_screenTitle">डेटा एक्सपोर्ट</string>
+    <string name="privateDataConsent_title">प्राइवेट डेटा एक्सपोर्ट करने की सहमति</string>
+    <string name="export_data_text">
+        नीचे “मैं सहमत हूँ” पर क्लिक करके आप अपने वॉलेट का सारा प्राइवेट डेटा एक्सपोर्ट करने की सहमति देते हैं, जिसमें
+        आपके वॉलेट और किसी भी जुड़े हुए हार्डवेयर वॉलेट की पूरी हिस्ट्री शामिल है। सारी निजी जानकारी, मेमो,
+        राशियाँ और प्राप्तकर्ता के पते, यहाँ तक कि आपकी शील्डेड गतिविधि के भी, एक्सपोर्ट हो जाएँगे।*\n\nयह प्राइवेट डेटा
+        यह देखने की सुविधा भी देता है कि आप आगे Zodl में क्या करते हैं।\n\nयह प्राइवेट डेटा शेयर करना
+        वापस नहीं लिया जा सकता। एक बार किसी के साथ यह डेटा शेयर कर देने पर उसकी पहुँच हटाने का कोई
+        तरीका नहीं है।\n\n*ध्यान दें कि इस प्राइवेट डेटा से कोई आपका फंड खर्च नहीं कर सकता, वह सिर्फ यह देख
+        सकता है कि आप अपने फंड के साथ क्या करते हैं।
+    </string>
+    <string name="privateDataConsent_confirmation">मैं Zodl की प्राइवेट डेटा एक्सपोर्ट पॉलिसी और प्राइवेसी पॉलिसी से सहमत हूँ</string>
+    <string name="export_data_export_data_chooser_title">Zodl का आंतरिक डेटा इनके साथ शेयर करें:</string>
+    <string name="export_data_unable_to_share">शेयर करने के लिए कोई ऐप नहीं मिला।</string>
+    <string name="support_header">सपोर्ट</string>
+    <string name="sendFeedback_title">हमें फीडबैक भेजें</string>
+    <string name="sendFeedback_ratingQuestion">आपका Zodl का अनुभव कैसा है?</string>
+    <string name="sendFeedback_howCanWeHelp">हम आपकी क्या मदद कर सकते हैं?</string>
+    <string name="sendFeedback_hcwhPlaceholder">मुझे इस बारे में पूछना है…</string>
+    <string name="tabs_send">भेजें</string>
+    <string name="support_confirmation_dialog_title">ईमेल ऐप खोलें</string>
+    <string name="support_confirmation_explanation">Zodl अभी
+        आपका ईमेल ऐप पहले से भरे हुए मैसेज के साथ खोलने वाला है।\n\nअपने ईमेल ऐप में सेंड दबाना न भूलें।</string>
+    <string name="sendFeedback_desc">कृपया हमें बताएँ कि आपको किन दिक्कतों का सामना करना पड़ा, या आगे आप कौन से फीचर देखना चाहेंगे।</string>
+    <string name="support_email_part_1">आपका Zodl का अनुभव कैसा है?\n<xliff:g id="emoji_encoding" example="😍">%1$s</xliff:g> <xliff:g id="emoji_order" example="5">%2$s</xliff:g>/5</string>
+    <string name="support_email_part_2">हम आपकी क्या मदद कर सकते हैं?\n%s</string>
+    <string name="tabs_receive">प्राप्त करें</string>
+    <string name="home_button_scan">स्कैन</string>
+    <string name="receive_request">रिक्वेस्ट</string>
+    <string name="home_button_buy">खरीदें</string>
+    <string name="smartBanner_content_backup_title">वॉलेट बैकअप ज़रूरी है</string>
+    <string name="smartBanner_content_backup_info">फंड खोने से बचें</string>
+    <string name="smartBanner_content_backup_button">शुरू करें</string>
+    <string name="smartBanner_content_disconnected_title">वॉलेट डिस्कनेक्ट है</string>
+    <string name="smartBanner_content_disconnected_info">अपना कनेक्शन जाँचें और Zodl दोबारा लोड करें</string>
+    <string name="home_message_transparent_balance_subtitle">%1$s %2$s</string>
+    <string name="smartBanner_content_shield_title">अनशील्डेड बैलेंस</string>
+    <string name="smartBanner_content_currencyConversion_info">फिएट वैल्यू दिखाने के लिए चालू करें</string>
+    <string name="smartBanner_content_currencyConversion_button">शुरू करें</string>
+    <string name="home_message_wallet_updating_title">बैलेंस अपडेट हो रहा है…</string>
+    <string name="smartBanner_content_updatingBalance_info">पिछले ट्रांज़ैक्शन के प्रोसेस होने का इंतज़ार है</string>
+    <string name="smartBanner_content_restore_title">वॉलेट रिस्टोर हो रहा है • %1$.1f%% पूरा</string>
+    <string name="smartBanner_content_restore_info">फोन की स्क्रीन चालू रखते हुए Zodl खुला रखें</string>
+    <string name="smartBanner_content_restore_infoSpendable">आपका फंड अब इस्तेमाल के लिए तैयार है</string>
+    <string name="home_message_syncing_title">सिंक हो रहा है • %1$.1f%% पूरा</string>
+    <string name="smartBannerContentResyncing">दोबारा सिंक हो रहा है</string>
+    <string name="home_message_resyncing_subtitle">फोन की स्क्रीन चालू रखते हुए Zodl खुला रखें</string>
+    <string name="smartBanner_content_sync_info">आपका वॉलेट अपडेट हो रहा है</string>
+    <string name="smartBanner_content_syncingError_title">सिंक करते समय गड़बड़ी आई</string>
+    <string name="smartBanner_content_syncingError_info">इसे ठीक करने की कोशिश हो रही है</string>
+    <string name="torSettingsSheet_title">Tor सुरक्षा चालू करें</string>
+    <string name="smartBanner_content_tor_info">अपने IP पते की सुरक्षा करें</string>
+    <string name="smartBanner_help_backup_title">बैकअप ज़रूरी है</string>
+    <string name="smartBanner_help_backup_info1">अपने वॉलेट का सुरक्षित बैकअप लेकर फंड खोने से बचें।</string>
+    <string name="smartBanner_help_backup_info2">अपने फंड तक पहुँच सुरक्षित रखने के लिए इनका बैकअप लें:</string>
+    <string name="smartBanner_help_backup_point1">सीक्रेट रिकवरी फ्रेज़ (एक तय क्रम में 24 शब्दों का
+        अनोखा सेट)</string>
+    <string name="smartBanner_help_backup_point2">वॉलेट बर्थडे हाइट (वह ब्लॉक हाइट जिस पर आपका वॉलेट
+        बनाया गया था)</string>
+    <string name="smartBanner_help_backup_info3">अगर आपकी ऐप या डिवाइस तक पहुँच खत्म हो जाए, तो सीक्रेट
+        रिकवरी फ्रेज़ जानना ही आपका फंड वापस पाने का एकमात्र तरीका है। हम इसे न देख सकते हैं और न ही इसे वापस पाने में आपकी मदद कर सकते हैं।</string>
+    <string name="smartBanner_help_backup_info4">जिसके पास भी आपका सीक्रेट रिकवरी फ्रेज़ होगा, उसका आपके वॉलेट पर
+        पूरा नियंत्रण होगा, इसलिए इसे सुरक्षित रखें और कभी किसी को न दिखाएँ।</string>
+    <string name="smartBanner_help_backup_acknowledge">मैंने वॉलेट का बैकअप न लेने के जोखिम पढ़े और समझे हैं।</string>
+    <string name="smartBanner_help_shield_notNow">अभी नहीं</string>
+    <string name="smartBanner_help_shield_doNotShowAgain">यह मैसेज दोबारा न दिखाएँ।</string>
+    <string name="smartBanner_help_shield_title">Transparent फंड हमेशा शील्ड करें</string>
+    <string name="smartBanner_help_shield_info1">यूज़र की प्राइवेसी की सुरक्षा के लिए, Zodl transparent
+        %s खर्च करने की सुविधा नहीं देता। अपने transparent फंड को खर्च करने लायक बनाने और अपना कुल Zodl बैलेंस प्राइवेट रखने के लिए नीचे \"शील्ड करें\" बटन दबाएँ। </string>
+    <string name="smartBanner_help_shield_info2">इससे वॉलेट के अंदर एक शील्डिंग ट्रांज़ैक्शन बनेगा, जो आपके
+        transparent और शील्डेड फंड को एक साथ ले आएगा। (सामान्य शुल्क: &lt; %1$s %2$s)</string>
+    <string name="smartBanner_help_diconnected_info">लगता है आप ऑफलाइन हैं। Zodl वॉलेट इस्तेमाल करने के लिए कृपया
+        अपना इंटरनेट कनेक्शन बहाल करें।</string>
+    <string name="smartBanner_help_restore_title">वॉलेट रिस्टोर चल रहा है</string>
+    <string name="smartBanner_help_restore_info">Zodl आपके ट्रांज़ैक्शन लाने के लिए ब्लॉकचेन स्कैन कर रहा है। पुराने
+        वॉलेट को रिस्टोर होने में घंटों लग सकते हैं। रुकावट से बचने के लिए ये कदम अपनाएँ:</string>
+    <string name="home_info_restoring_bullet_1">फोन की स्क्रीन चालू रखते हुए Zodl ऐप खुला रखें।</string>
+    <string name="home_info_restoring_bullet_2">फोन की स्क्रीन बंद होने से रोकने के लिए पावर सेविंग मोड
+        बंद करें और फोन को चार्जिंग पर लगा रहने दें।</string>
+    <string name="smartBanner_help_restore_warning">जब तक आपका वॉलेट रिस्टोर नहीं हो जाता, फंड खर्च नहीं किया जा सकता।</string>
+    <string name="smartBanner_help_resync_title">वॉलेट दोबारा सिंक हो रहा है</string>
+    <string name="home_info_resyncing_message">Zodl आपके नए ट्रांज़ैक्शन के लिए ब्लॉकचेन स्कैन कर रहा है, ताकि
+        आपका बैलेंस सही दिखे। रुकावट से बचने के लिए फोन की स्क्रीन चालू रखते हुए Zodl ऐप खुला रखें।</string>
+    <string name="smartBanner_help_sync_title">वॉलेट सिंक चल रहा है</string>
+    <string name="smartBanner_help_sync_info">Zodl आपके नए ट्रांज़ैक्शन के लिए ब्लॉकचेन स्कैन कर रहा है, ताकि
+        आपका बैलेंस सही दिखे। रुकावट से बचने के लिए फोन की स्क्रीन चालू रखते हुए Zodl ऐप खुला रखें।</string>
+    <string name="smartBanner_help_updatingBalance_title">बैलेंस अपडेट हो रहा है</string>
+    <string name="smartBanner_help_updatingBalance_info">आपका पिछला ट्रांज़ैक्शन माइन होकर कन्फर्म हो रहा है।</string>
+    <string name="crash_report_detail_title">Zodl को बेहतर बनाने में मदद करें</string>
+    <string name="crash_report_detail_subtitle">क्रैश रिपोर्ट डेवलपर्स का एक ज़रूरी ज़रिया हैं, जिससे ऐप की क्वालिटी और भरोसेमंदी बेहतर की जाती है। इनका एकमात्र मकसद क्रैश की वजह बनने वाले बग ठीक करना है।</string>
+    <string name="crash_report_detail_item_title_2">क्या शेयर नहीं किया जाता?</string>
+    <string name="crash_report_detail_item_subtitle_1">क्रैश रिपोर्ट इकट्ठा करने के लिए हम Firebase Crashlytics इस्तेमाल करते हैं। इनमें ऐप वर्ज़न, क्रैश होने का समय और स्टैक ट्रेस की जानकारी होती है, ताकि साफ़ पता चले कि ऐप में क्रैश कहाँ हुआ।</string>
+    <string name="crash_report_detail_item_subtitle_2">Zodl अलग-अलग यूज़र, उनके डिवाइस, ट्रांज़ैक्शन या ऐप में उनकी गतिविधि की जानकारी न तो लेता है और न ही ले सकता है। यह डेटा पूरी तरह गुमनाम होता है।</string>
+    <string name="crash_report_detail_item_title_1">क्या शेयर किया जाता है?</string>
+    <string name="home_message_crash_reporting_title">Zodl को बेहतर बनाने में मदद करें</string>
+    <string name="home_message_crash_reporting_subtitle">क्रैश रिपोर्ट शेयर करने की अनुमति दें</string>
+    <string name="balances_spendableBalance_title">खर्च योग्य बैलेंस</string>
+    <string name="balances_everythingDone">आपका सारा फंड शील्डेड और खर्च योग्य है।</string>
+    <string name="balances_infoPending">पिछले ट्रांज़ैक्शन से बचा हुआ चेंज आना बाकी है।</string>
+    <string name="balances_infoSyncing">Zodl ब्लॉकचेन स्कैन कर रहा है ताकि आपका बैलेंस सही दिखे।</string>
+    <string name="balances_infoShielding">अपना transparent %1$s शील्ड करें ताकि वह खर्च योग्य और प्राइवेट हो जाए। ऐसा करने पर वॉलेट के अंदर एक शील्डिंग ट्रांज़ैक्शन बनेगा, जो आपके transparent और शील्डेड फंड को एक साथ ले आएगा। (सामान्य शुल्क: %2$s %3$s)</string>
+    <string name="balances_spendableBalance">शील्डेड (खर्च योग्य)</string>
+    <string name="balances_pending">पेंडिंग</string>
+    <string name="crosspay_pay">पे</string>
+    <string name="swapAndPay_swap">स्वैप</string>
+    <string name="sheet_insufficientBalance_title">फंड पर्याप्त नहीं</string>
+    <string name="sheet_insufficientBalance_msg">हम आपके लिए यह ट्रांज़ैक्शन नहीं बना सके। आपके वॉलेट में ट्रांज़ैक्शन की राशि और ट्रांज़ैक्शन शुल्क, दोनों के लिए पर्याप्त बैलेंस नहीं है। कृपया शुल्क को ध्यान में रखते हुए ट्रांज़ैक्शन की राशि कम करें।</string>
+    <string name="torSetup_option3_title">इंटीग्रेशन</string>
+    <string name="integrations_coinbase">Coinbase से <xliff:g id="currency" example="ZEC">%1$s</xliff:g> खरीदें</string>
+    <string name="integrations_coinbase_subtitle"><xliff:g id="currency" example="ZEC">%1$s</xliff:g> खरीदने और सीधे अपने Zodl वॉलेट में पाने का आसान तरीका।</string>
+    <string name="integrations_info">Zodl इंटीग्रेशन थर्ड पार्टी सेवाओं तक पहुँच देते हैं। उनके साथ शेयर किए गए फीचर और जानकारी हमारे नियंत्रण से बाहर हैं और उनकी प्राइवेसी पॉलिसी के अधीन हैं।</string>
+    <string name="integrations_dialog_info">Zodl इंटीग्रेशन के साथ शेयर की गई जानकारी उनकी प्राइवेसी पॉलिसी के अधीन है।</string>
+    <string name="integrations_disabled_info">रिस्टोर की प्रक्रिया के दौरान पेमेंट इंटीग्रेशन इस्तेमाल नहीं किए जा सकते।</string>
+    <string name="settings_flexa">Flexa से पे करें</string>
+    <string name="settings_flexaDesc">हज़ारों रिटेल जगहों पर ZEC खर्च करें।</string>
+    <string name="integrations_flexa_biometric_message">Flexa से पे करने के लिए अपना ऑथेंटिकेशन करें</string>
+    <string name="settings_keystone">Keystone कनेक्ट करें</string>
+    <string name="settings_keystoneDesc">शील्डेड ZEC स्टोर करने के लिए एयरगैप्ड हार्डवेयर वॉलेट कनेक्ट करें।</string>
+    <string name="integrations_disabled_info_flexa">Flexa इस्तेमाल करने के लिए Keystone से Zodl पर स्विच करें।</string>
+    <string name="integrations_dialog_more_options">और विकल्प</string>
+    <string name="integrations_near_swap">NEAR Intents से %s स्वैप करें</string>
+    <string name="integrations_near_swap_message">%s को दूसरी क्रिप्टोकरेंसी से स्वैप करें।</string>
+    <string name="integrations_coinbase_subtitle_disabled">Coinbase Onramp फिलहाल उपलब्ध नहीं है।</string>
+    <string name="restoreInfo_title">Zodl खुला रखें!</string>
+    <string name="keep_open_description">Zodl आपके ट्रांज़ैक्शन लाने के लिए ब्लॉकचेन स्कैन कर रहा है। पुराने वॉलेट को सिंक होने में घंटों लग सकते हैं। रुकावट से बचने के लिए ये कदम अपनाएँ:</string>
+    <string name="keep_open_bullet_1">फोन की स्क्रीन चालू रखते हुए Zodl ऐप खुला रखें।</string>
+    <string name="keep_open_bullet_2">फोन की स्क्रीन बंद होने से रोकने के लिए पावर सेविंग मोड बंद करें और फोन को चार्जिंग पर लगा रहने दें।</string>
+    <string name="keepZodlOpenInstructionsHWWallet">Zodl आपके ट्रांज़ैक्शन लाने के लिए ब्लॉकचेन स्कैन कर रहा है। पुराने वॉलेट को सिंक पूरा होने में घंटों लग सकते हैं। रुकावट से बचने के लिए ये कदम अपनाएँ:</string>
+    <string name="keepZodlOpenSubtitleHWWallet">आपका वॉलेट सिंक हो रहा है।</string>
+    <string name="keep_open_keystone_warning">जब तक आपका Keystone वॉलेट सिंक नहीं हो जाता, आपका Zodl फंड खर्च नहीं किया जा सकता।</string>
+    <string name="keepScreenOnSyncing">सिंक के दौरान स्क्रीन चालू रखें</string>
+    <string name="keepZodlOpenInstructionsResyncing">Zodl आपके ट्रांज़ैक्शन लाने के लिए ब्लॉकचेन स्कैन कर रहा है। पुराने वॉलेट को दोबारा सिंक होने में घंटों लग सकते हैं। रुकावट से बचने के लिए ये कदम अपनाएँ:</string>
+    <string name="keepZodlOpenSubtitleResync">आपका वॉलेट दोबारा सिंक हो रहा है।</string>
+    <string name="keep_open_resync_warning">जब तक आपका वॉलेट दोबारा सिंक नहीं हो जाता, फंड खर्च नहीं किया जा सकता।</string>
+    <string name="keepScreenOnResyncing">दोबारा सिंक के दौरान स्क्रीन चालू रखें</string>
+    <string name="keepZodlOpenSubtitleRestore">आपका वॉलेट रिस्टोर हो रहा है।</string>
+    <string name="keep_open_restore_warning">जब तक आपका वॉलेट रिस्टोर नहीं हो जाता, फंड खर्च नहीं किया जा सकता।</string>
+    <string name="keepScreenOnRestoring">रिस्टोर के दौरान स्क्रीन चालू रखें</string>
+    <string name="plainOnboarding_title">वित्तीय स्वतंत्रता के लिए बना Zcash-आधारित मोबाइल वॉलेट।</string>
+    <string name="plainOnboarding_button_createNewWallet">नया वॉलेट बनाएँ</string>
+    <string name="plainOnboarding_button_restoreWallet">मौजूदा वॉलेट रिस्टोर करें</string>
+    <string name="crosspay_help_payWith">CrossPay के साथ</string>
+    <string name="pay_info_subtitle">किसी भी NEAR-समर्थित सिक्के या टोकन में क्रॉस-चेन पेमेंट करें।\n\nअगर असल स्लिपेज और नेटवर्क की स्थिति के कारण आपके प्राप्तकर्ता को वादा की गई राशि से कम मिलता है, तो आपका ट्रांज़ैक्शन पलट दिया जाएगा। आपको नेटवर्क शुल्क घटाकर पूरा रिफंड मिलेगा।</string>
+    <string name="swapAndPay_slippageWarn">अगर स्वैप उम्मीद से कम स्लिपेज पर पूरा होता है, तो स्लिपेज शुल्क का बचा हुआ हिस्सा रिफंड कर दिया जाएगा।</string>
+    <string name="send_requestPayment_title">पेमेंट रिक्वेस्ट</string>
+    <string name="send_requestPayment_requestedBy">रिक्वेस्ट करने वाला</string>
+    <string name="send_requestPayment_for">किसके लिए:</string>
+    <string name="send_feeSummary">शुल्क</string>
+    <string name="send_requestPayment_total">कुल</string>
+    <string name="partners_flexa_transactionFailedTitle">ट्रांज़ैक्शन फेल हुआ</string>
+    <string name="payment_request_dialog_error_text">एक गड़बड़ी हुई और फंड भेजने की कोशिश फेल हो गई। कृपया दोबारा कोशिश करें।</string>
+    <string name="payment_request_dialog_error_grpc_title">कनेक्शन में गड़बड़ी</string>
+    <string name="payment_request_dialog_error_grpc_text">Zodl को यह ट्रांज़ैक्शन नेटवर्क पर भेजते समय कुछ कनेक्शन
+        दिक्कतें आईं। यह अगले कुछ मिनटों में दोबारा कोशिश करेगा।</string>
+    <string name="payment_request_send_failed_report_unable_open_email">ईमेल ऐप नहीं खोला जा सका।</string>
+    <string name="qr_code_unified_content_description">Unified पते का QR कोड</string>
+    <string name="qr_code_sapling_content_description">Sapling पते का QR कोड</string>
+    <string name="qr_code_transparent_content_description">Transparent पते का QR कोड</string>
+    <string name="accounts_zashi_shieldedAddress">Zcash शील्डेड पता</string>
+    <string name="receive_saplingAddress">Zcash Sapling पता</string>
+    <string name="accounts_zashi_transparentAddress">Zcash Transparent पता</string>
+    <string name="component_maxPrivacy">प्राइवेट</string>
+    <string name="component_lowPrivacy">प्राइवेट नहीं</string>
+    <string name="addressDetails_shareQR">QR कोड शेयर करें</string>
+    <string name="addressDetails_copyAddress">पता कॉपी करें</string>
+    <string name="qr_code_clipboard_tag">Zcash वॉलेट पता</string>
+    <string name="qr_code_data_unable_to_share">QR कोड शेयर करने के लिए कोई ऐप नहीं मिला।</string>
+    <string name="qr_code_share_chooser_title">मेरा Zodl %s पता</string>
+    <string name="qr_code_share_chooser_text">नमस्ते, मुझे %s पेमेंट भेजने के लिए यह QR कोड स्कैन करें! डाउनलोड लिंक:
+        https://play.google.com/store/apps/details?id=co.electriccoin.zcash</string>
+    <string name="qr_code_wallet_address_shielded_keystone">Keystone शील्डेड पता</string>
+    <string name="qr_code_wallet_address_sapling_keystone">Keystone Sapling पता</string>
+    <string name="qr_code_wallet_address_transparent_keystone">Keystone Transparent पता</string>
+    <string name="receive_title">%s प्राप्त करें</string>
+    <string name="receive_warning">प्राइवेसी के लिए हमेशा शील्डेड पते का इस्तेमाल करें।</string>
+    <string name="receive_qrCode">QR कोड</string>
+    <string name="receive_clipboard_tag">Zcash वॉलेट पता</string>
+    <string name="accounts_keystone_shieldedAddress">Zcash शील्डेड पता</string>
+    <string name="accounts_keystone_transparentAddress">Zcash Transparent पता</string>
+    <string name="receive_wallet_address_unified_subtitle">हर बार इस्तेमाल करने पर बदल जाता है</string>
+    <string name="receive_help_shielded_title">Zcash शील्डेड पता (बदलता रहता है)</string>
+    <string name="receive_info_shielded_bullet_1">इस पते का इस्तेमाल अपना %s प्राइवेट तरीके से पाने और स्टोर करने के लिए करें। इस पते पर भेजा गया transparent और शील्डेड %s, शील्डेड %s के रूप में ही मिलेगा और स्टोर होगा।</string>
+    <string name="receive_help_shielded_desc2">हर बार जब आप प्राप्त करें स्क्रीन खोलते हैं, एक नया Zcash शील्डेड पता बनता है।</string>
+    <string name="receive_help_shielded_desc3">आपके अलग-अलग बदलते शील्डेड पतों पर भेजे गए सभी ट्रांज़ैक्शन एक ही सीड फ्रेज़ के तहत एक ही वॉलेट बैलेंस का हिस्सा रहेंगे।</string>
+    <string name="receive_help_shielded_desc4">हम हर बार नया पता इस्तेमाल करने की सलाह देते हैं, फिर भी हर पता दोबारा इस्तेमाल किया जा सकता है।</string>
+    <string name="receive_help_transparent_title">Zcash Transparent पता (स्थिर)</string>
+    <string name="receive_help_transparent_desc1">यह पता Bitcoin के पतों की तरह काम करता है और कोई प्राइवेसी नहीं देता। इस पते पर भेजे गए ट्रांज़ैक्शन की जानकारी सार्वजनिक होगी और ब्लॉकचेन पर दिखेगी।</string>
+    <string name="receive_help_transparent_desc2">हम इस तरह का पता इस्तेमाल करने की सलाह नहीं देते, जब तक कि जिस वॉलेट या एक्सचेंज से %s भेजा जा रहा है वह शील्डेड Zcash पतों पर फंड भेजने की सुविधा न देता हो।</string>
+    <string name="receive_help_transparent_desc3">आपकी प्राइवेसी की सुरक्षा के लिए, Zodl आपको सिर्फ एक क्लिक में मिला हुआ transparent %s शील्ड करने में मदद करेगा।</string>
+    <string name="receive_info_transparent_bullet_4">जब तक आप अपना transparent %s शील्ड नहीं करते, आप उसे खर्च नहीं कर पाएँगे।</string>
+    <string name="zecKeyboard_invalid">यह ट्रांज़ैक्शन राशि अमान्य है</string>
+    <string name="requestZec_summary_shareQR">QR कोड शेयर करें</string>
+    <string name="request_amount_empty">0</string>
+    <string name="request_amount_keyboard_zero">0</string>
+    <string name="request_amount_keyboard_one">1</string>
+    <string name="request_amount_keyboard_two">2</string>
+    <string name="request_amount_keyboard_three">3</string>
+    <string name="request_amount_keyboard_four">4</string>
+    <string name="request_amount_keyboard_five">5</string>
+    <string name="request_amount_keyboard_six">6</string>
+    <string name="request_amount_keyboard_seven">7</string>
+    <string name="request_amount_keyboard_eight">8</string>
+    <string name="request_amount_keyboard_nine">9</string>
+    <string name="general_delete">डिलीट करें</string>
+    <string name="requestZec_whatFor">यह किसलिए है?</string>
+    <string name="request_memo_bytes_counter">
+        <xliff:g id="typed_bytes" example="12">%1$s</xliff:g>/<xliff:g id="max_bytes" example="512">%2$s</xliff:g>
+    </string>
+    <string name="request_qr_code_content_description">रिक्वेस्ट QR कोड</string>
+    <string name="request_qr_code_data_unable_to_share">QR कोड शेयर करने के लिए कोई ऐप नहीं मिला।</string>
+    <string name="request_qr_code_share_chooser_title">%s की रिक्वेस्ट</string>
+    <string name="request_qr_code_share_chooser_text">नमस्ते, मुझे %s पेमेंट भेजने के लिए यह QR कोड स्कैन करें! डाउनलोड लिंक:
+        https://play.google.com/store/apps/details?id=co.electriccoin.zcash</string>
+    <string name="root_existingWallet_restore">रिस्टोर करें</string>
+    <string name="restore_subtitle">सीड रिकवरी फ्रेज़</string>
+    <string name="restoreWallet_info">कृपया अपना 24 शब्दों का सीक्रेट रिकवरी फ्रेज़ सही क्रम में लिखें।</string>
+    <string name="restore_dialog_message_1_bold_part">सीक्रेट रिकवरी फ्रेज़</string>
+    <string name="restore_dialog_message_1">एक तय क्रम में आने वाले 24 शब्दों का अनोखा सेट
+        है। इससे किसी भी डिवाइस पर किसी भी Zcash वॉलेट ऐप के ज़रिए आपके फंड पर पूरा नियंत्रण पाया जा सकता है।
+        इसे अपने वॉलेट की मास्टर की समझें। यह Zodl की एडवांस्ड सेटिंग्स में सेव रहता है।</string>
+    <string name="restore_dialog_message_2_bold_part">वॉलेट बर्थडे हाइट</string>
+    <string name="restore_dialog_message_2">वह ब्लॉक हाइट है (ब्लॉकचेन में
+        ब्लॉक #) जिस पर आपका वॉलेट बनाया गया था। अगर कभी आपकी Zodl ऐप तक पहुँच खत्म हो जाए और आपको अपना फंड
+        वापस पाना पड़े, तो रिकवरी फ्रेज़ के साथ ब्लॉक हाइट देने से यह प्रक्रिया काफी तेज़ हो जाती है।
+    </string>
+    <string name="restoreWallet_birthday_estimate">मेरी ब्लॉक हाइट का अनुमान लगाएँ</string>
+    <string name="firstWalletTransactionSubtitleRestore">तय करें कि Zodl कहाँ तक स्कैन करे। अपने पहले प्राप्त ट्रांज़ैक्शन से पहले की कोई तारीख दर्ज करें। अगर आप पक्के तौर पर नहीं जानते, तो कोई पुरानी तारीख चुनें।</string>
+    <string name="restore_seed_warning_suggestions">यह शब्द सीड फ्रेज़ की डिक्शनरी में नहीं है। कृपया सुझावों में से सही शब्द चुनें।</string>
+    <string name="torSettingsSheet_msg">अगर आपके क्षेत्र में Tor उपलब्ध है, तो हम वॉलेट रिस्टोर के दौरान बेहतर प्राइवेसी के लिए इसे चालू करने की सलाह देते हैं। यह कदम पूरी तरह वैकल्पिक है।</string>
+    <string name="torSettingsSheet_desc">बेहतर गुमनामी और प्राइवेसी सुरक्षा के लिए आपके कनेक्शन को Tor नेटवर्क से होकर भेजता है।</string>
+    <string name="firstWalletTransactionSubtitleResync">तय करें कि Zodl कहाँ तक दोबारा सिंक करे। अपने पहले प्राप्त ट्रांज़ैक्शन से पहले की कोई तारीख दर्ज करें। अगर आप पक्के तौर पर नहीं जानते, तो कोई पुरानी तारीख चुनें।</string>
+    <string name="resync_bd_estimation_message">आपका वॉलेट %1$s से दोबारा सिंक किया जाएगा (%2$s ब्लॉक)। Zodl नीचे दिए गए ब्लॉक नंबर के बाद हुए सभी ट्रांज़ैक्शन स्कैन करके रिकवर करेगा।</string>
+    <string name="resyncWallet_confirmTitle">दोबारा सिंक की पुष्टि करें</string>
+    <string name="confirm_resync_subtitle">ऐप रीसेट किए बिना मौजूदा वॉलेट दोबारा सिंक करें। इससे उन दिक्कतों को
+        ठीक किया जा सकता है जिनके लिए आम तौर पर वॉलेट रिस्टोर करना पड़ता, जैसे आपका Keystone
+        बैलेंस ठीक करना।\n\nजब तक आप नीचे कुछ और न चुनें, Zodl दिखाई गई तारीख से दोबारा सिंक करेगा।</string>
+    <string name="resyncWallet_dateInfo">जब तक आप नीचे कुछ और न चुनें, Zodl दिखाई गई तारीख से दोबारा सिंक करेगा।</string>
+    <string name="confirm_resync_info">आपका वॉलेट %1$s से दोबारा सिंक किया जाएगा (%2$s ब्लॉक)। इसे बदलना हो तो नीचे दिए बटन का इस्तेमाल करें।</string>
+    <string name="resyncWallet_change">बदलें</string>
+    <string name="resyncWallet_failedTitle">दोबारा सिंक नहीं हो सका</string>
+    <string name="resyncWallet_failedDescription">वॉलेट दोबारा सिंक करने की प्रक्रिया पूरी नहीं हो सकी। कृपया दोबारा कोशिश करें या समस्या की रिपोर्ट करें।</string>
+    <string name="keystone_confirm">Keystone से पुष्टि करें</string>
+    <string name="scan_preview_content_description">कैमरा</string>
+    <string name="scan_settings_open_failed">सेटिंग्स ऐप नहीं खोला जा सका।</string>
+    <string name="scan_cameraSettings">कैमरे की अनुमति नहीं है। कृपया Zodl की सिस्टम सेटिंग्स में जाकर इसे चालू करें।</string>
+    <string name="scan_state_failed">कैमरा शुरू नहीं हो सका। कृपया दोबारा कोशिश करें।</string>
+    <string name="scan_invalidQR">इस QR कोड में कोई मान्य Zcash पता नहीं है।</string>
+    <string name="scan_invalidImage">इस इमेज में कोई मान्य Zcash पता नहीं है।</string>
+    <string name="scan_severalCodesFound">इस इमेज में कई मान्य Zcash पते हैं।</string>
+    <string name="scan_torch_content_description">कैमरा टॉर्च चालू या बंद करें</string>
+    <string name="gallery_content_description">गैलरी</string>
+    <string name="deeplinkWarning_screenTitle">नमस्ते!</string>
+    <string name="deeplinkWarning_title">लगता है आपने पेमेंट स्कैन करने के लिए किसी थर्ड पार्टी ऐप का इस्तेमाल किया।</string>
+    <string name="deeplinkWarning_desc">बेहतर सुरक्षा के लिए QR कोड को Zodl से दोबारा स्कैन करें।</string>
+    <string name="deeplinkWarning_cta">Zodl में दोबारा स्कैन करें</string>
+    <string name="scan_keystone_failure">यह QR कोड किसी मान्य Keystone वॉलेट का नहीं है।</string>
+    <string name="scan_keystone_preview_content_description">कैमरा</string>
+    <string name="scan_keystone_settings_open_failed">सेटिंग्स ऐप नहीं खोला जा सका।</string>
+    <string name="scan_keystone_state_permission">कैमरे की अनुमति नहीं है। कृपया
+        Zodl की सिस्टम सेटिंग्स में जाकर इसे चालू करें।</string>
+    <string name="scan_keystone_state_failed">कैमरा शुरू नहीं हो सका। कृपया दोबारा कोशिश करें।</string>
+    <string name="scan_keystone_address_validation_failed">यह QR कोड किसी मान्य Zcash पते का नहीं है।</string>
+    <string name="scan_keystone_torch_content_description">कैमरा टॉर्च चालू या बंद करें</string>
+    <string name="scan_keystone_gallery_content_description">गैलरी</string>
+    <string name="scan_keystone_info">कनेक्ट करने के लिए अपना Keystone वॉलेट स्कैन करें</string>
+    <string name="coinVote_delegationSigning_scanInstructions">ट्रांज़ैक्शन साइन करने के लिए Keystone QR कोड स्कैन करें</string>
+    <string name="recoveryPhraseDisplay_screenTitle">रिकवरी फ्रेज़</string>
+    <string name="recoveryPhraseDisplay_title">सीक्रेट रिकवरी फ्रेज़</string>
+    <string name="recoveryPhraseDisplay_description">आपका फंड वापस पाने का एकमात्र तरीका यही शब्द हैं! इन्हें सही क्रम में ज़रूर सेव करें।</string>
+    <string name="recoveryPhraseDisplay_reveal">सुरक्षा जानकारी दिखाएँ</string>
+    <string name="seed_recovery_saved_button">मैंने इसे सेव कर लिया!</string>
+    <string name="recoveryPhraseDisplay_hide">सुरक्षा जानकारी छिपाएँ</string>
+    <string name="seed_recovery_bday_tooltip_message">वॉलेट बर्थडे हाइट आपके वॉलेट की जन्म (चेन) हाइट तय करती है
+        और वॉलेट रिस्टोर की प्रक्रिया तेज़ बनाती है। इस नंबर को अपने सीड फ्रेज़ के साथ किसी
+        सुरक्षित जगह पर सेव करें।</string>
+    <string name="wallet_backup_title">वॉलेट बैकअप</string>
+    <string name="recoveryPhraseDisplay_warningTitle">आपका सीक्रेट रिकवरी फ्रेज़</string>
+    <string name="recoveryPhraseDisplay_warningInfo">आपका सीक्रेट रिकवरी फ्रेज़ एक तय क्रम में आने वाले 24 शब्दों का अनोखा सेट है। यह आपके फंड तक पहुँच की सुरक्षा करता है।</string>
+    <string name="recoveryPhraseDisplay_proceedWarning">इस फ्रेज़ को सुरक्षित और छिपाकर रखें। इसका स्क्रीनशॉट न लें और न ही इसे अपने फोन में स्टोर करें!</string>
+    <string name="recoveryPhraseDisplay_warningControl_title">अपने वॉलेट पर नियंत्रण</string>
+    <string name="recoveryPhraseDisplay_warningKeep_title">इसे प्राइवेट रखें</string>
+    <string name="recoveryPhraseDisplay_warningStore_title">इसे सुरक्षित जगह रखें</string>
+    <string name="recoveryPhraseDisplay_warningControl_info">इसका इस्तेमाल दूसरे डिवाइस और Zcash वॉलेट से अपने फंड तक पहुँचने के लिए करें।</string>
+    <string name="recoveryPhraseDisplay_warningKeep_info">इसे किसी के साथ शेयर न करें! इससे आपके फंड पर पूरा नियंत्रण पाया जा सकता है।</string>
+    <string name="recoveryPhraseDisplay_warningStore_info">हमारे पास इसकी पहुँच नहीं है और हम इसे कभी नहीं माँगेंगे। अगर यह खो गया, तो इसे वापस नहीं पाया जा सकता।</string>
+    <string name="recoveryPhraseDisplay_warningHeight_info">जिस ब्लॉक हाइट पर आपका वॉलेट बनाया गया था, वह वॉलेट रिकवरी की प्रक्रिया काफी तेज़ कर सकती है।</string>
+    <string name="keystone_wallet">Keystone वॉलेट</string>
+    <string name="select_keystone_account_positive">आगे</string>
+    <string name="keystone_addHWWallet_title">पहुँच के लिए अकाउंट की पुष्टि करें</string>
+    <string name="keystone_addHWWallet_desc">आगे बढ़ने के लिए वह वॉलेट चुनें जिसे आप कनेक्ट करना चाहते हैं। कनेक्ट होने के बाद आप अपने हार्डवेयर वॉलेट से वायरलेस तरीके से ट्रांज़ैक्शन साइन कर पाएँगे।</string>
+    <string name="send_scan_content_description">स्कैन</string>
+    <string name="send_to">इन्हें भेजें</string>
+    <string name="send_addressPlaceholder">Zcash पता</string>
+    <string name="send_amount">राशि</string>
+    <string name="send_amount_hint"><xliff:g id="currency" example="ZEC">%1$s</xliff:g></string>
+    <string name="send_error_invalidAmount">अमान्य राशि</string>
+    <string name="send_message">मैसेज</string>
+    <string name="send_memoPlaceholder">एन्क्रिप्टेड मैसेज यहाँ लिखें…</string>
+    <string name="send_memo_bytes_counter">
+        <xliff:g id="typed_bytes" example="12">%1$s</xliff:g>/<xliff:g id="max_bytes" example="512">%2$s</xliff:g>
+    </string>
+    <string name="send_fee">(सामान्य शुल्क &lt; <xliff:g id="fee_amount" example="0.001">%1$s</xliff:g>)</string>
+    <string name="send_alert_failure_title">फंड नहीं भेजा जा सका</string>
+    <string name="send_dialog_error_text">गड़बड़ी: फंड भेजने की कोशिश फेल हो गई। कृपया दोबारा कोशिश करें।</string>
+    <string name="send_abbreviated_address_format" formatted="true"><xliff:g id="first_five" example="zs1g7">%1$s</xliff:g>…<xliff:g id="last_five" example="mvyzg">%2$s</xliff:g></string>
+    <string name="send_info_memo">Transparent ट्रांज़ैक्शन में मेमो नहीं हो सकते</string>
+    <string name="send_addressNotInBook">एड्रेस बुक आइकॉन पर टैप करके कॉन्टैक्ट जोड़ें।</string>
+    <string name="send_address_book_content_description">एड्रेस बुक खोलें</string>
+    <string name="send_confirmationTitle">पुष्टि</string>
+    <string name="send_orchardWarning_title">इसे भेजने के लिए Orchard फंड खर्च करना होगा</string>
+    <string name="send_orchardWarning_message">हम सलाह देते हैं कि पहले अपना फंड माइग्रेट कर लें, ताकि ट्रांज़ैक्शन की राशि चेन पर उजागर न हो।</string>
+    <string name="send_orchardWarning_continue">फिर भी जारी रखें</string>
+    <string name="send_orchardWarning_cancel">रद्द करें</string>
+    <string name="send_amountSummary">कुल राशि</string>
+    <string name="accounts_sendingFrom">यहाँ से भेजें</string>
+    <string name="send_confirmation_sending_title">भेजा जा रहा है…</string>
+    <string name="send_sendingInfo">आपके कॉइन यहाँ भेजे जा रहे हैं\n
+        <xliff:g example="zs12ghrbdjfs24383x5T…" id="index">%1$s</xliff:g>
+    </string>
+    <string name="send_confirmation_sending_title_transparent">शील्ड हो रहा है…</string>
+    <string name="send_shieldingInfo">आपके कॉइन शील्ड हो रहे हैं</string>
+    <string name="send_successShielding">शील्ड हो गया!</string>
+    <string name="send_successShieldingInfo">आपके कॉइन सफलतापूर्वक शील्ड हो गए</string>
+    <string name="send_failureShielding">शील्ड नहीं किया जा सका</string>
+    <string name="send_failureShieldingInfo">आपके कॉइन शील्ड करने की कोशिश में गड़बड़ी हुई।
+        कृपया दोबारा कोशिश करें।</string>
+    <string name="send_success">भेज दिया गया!</string>
+    <string name="send_successInfo">आपके कॉइन सफलतापूर्वक यहाँ भेज दिए गए\n
+        <xliff:g example="zs12ghrbdjfs24383x5T…" id="index">%1$s</xliff:g>
+    </string>
+    <string name="send_viewTransaction">ट्रांज़ैक्शन देखें</string>
+    <string name="transaction_failedSend">भेजना फेल हुआ</string>
+    <string name="send_failureInfo">कॉइन भेजने की कोशिश में गड़बड़ी हुई।\nकृपया दोबारा कोशिश करें।</string>
+    <string name="send_confirmation_failure_anchor_subtitle">यह ट्रांज़ैक्शन तैयार करते समय आपके वॉलेट की चेन स्थिति बदल गई। कृपया सिंक पूरा होने का इंतज़ार करें और दोबारा कोशिश करें।</string>
+    <string name="send_confirmation_failure_grpc_title">कनेक्शन की दिक्कत</string>
+    <string name="send_confirmation_failure_grpc_subtitle">Zodl को यह ट्रांज़ैक्शन भेजते समय कनेक्शन की दिक्कतें
+        आईं। यह अगले कुछ मिनटों में दोबारा कोशिश करेगा।</string>
+    <string name="send_confirmation_multiple_trx_failure_text">इस प्राप्तकर्ता को भेजने के लिए कई
+        ट्रांज़ैक्शन ज़रूरी थे, लेकिन उनमें से कुछ ही सफल हुए और बाकी फेल हो गए। आपका फंड सुरक्षित है, पर उसे
+        वापस पाने के लिए हमारी मदद चाहिए।\n\nकृपया नीचे दिए बटन से हमसे संपर्क करें। यह
+        अपने आप वह सारा डेटा तैयार कर देता है जो आपका फंड वापस दिलाने में हमें चाहिए।</string>
+    <string name="send_confirmation_multiple_trx_failure_copy_button">ट्रांज़ैक्शन ID कॉपी करें</string>
+    <string name="send_confirmation_multiple_trx_failure_ids_title">ट्रांज़ैक्शन ID</string>
+    <string name="send_confirmation_multiple_report_text">नमस्ते, Zodl टीम।\n\nTEX पते पर ट्रांज़ैक्शन भेजते समय
+        मुझे एक एरर आया। मुझे यह जानना है कि अपना फंड कैसे वापस पाऊँ।\n\nधन्यवाद
+        ।</string>
+    <string name="send_confirmation_multiple_report_statuses" formatted="true">ट्रांज़ैक्शन की स्थिति:</string>
+    <string name="send_confirmation_multiple_report_status_success">
+        <xliff:g example="1" id="index">%1$d</xliff:g>: सफल
+    </string>
+    <string name="send_confirmation_multiple_report_status_not_attempt" formatted="true">
+        <xliff:g example="2" id="index">%1$d</xliff:g>: कोशिश नहीं की गई
+    </string>
+    <string name="send_confirmation_multiple_report_status_failure" formatted="true">
+        <xliff:g example="3" id="index">%1$d</xliff:g>: फेल:
+        gRPC: <xliff:g example="true" id="grpc">%2$s</xliff:g>,
+        कोड: <xliff:g example="123" id="code">%3$d</xliff:g>,
+        विवरण: <xliff:g example="Network unreachable" id="desc">%4$s</xliff:g>
+    </string>
+    <string name="send_confirmation_multiple_trx_failure_report_unable_open_email">ईमेल ऐप नहीं खोला जा सका।</string>
+    <string name="send_confirmation_multiple_trx_failure_copy_tag">ट्रांज़ैक्शन ID</string>
+    <string name="swapAndPay_successSwapInfo">आपने सफलतापूर्वक एक स्वैप शुरू किया।\nइसकी स्थिति ट्रांज़ैक्शन स्क्रीन पर देखें।</string>
+    <string name="swapAndPay_failureSwapInfo">स्वैप शुरू करने में गड़बड़ी हुई।\nकृपया दोबारा कोशिश करें।</string>
+    <string name="swapAndPay_sendingInfo">आपके कॉइन डिपॉज़िट पते पर भेजे जा रहे हैं…</string>
+    <string name="swapAndPay_checkStatus">स्थिति देखें</string>
+    <string name="keystone_confirmPay">Keystone से पे करें</string>
+    <string name="send_pendingTitle">ट्रांज़ैक्शन पेंडिंग</string>
+    <string name="send_pendingInfo">आपका ट्रांज़ैक्शन प्रोसेस हो रहा है।</string>
+    <string name="send_pendingTimeoutInfo">सर्वर से जवाब का इंतज़ार करते हुए समय खत्म हो गया। हो सकता है आपका ट्रांज़ैक्शन फिर भी ब्रॉडकास्ट हो गया हो।</string>
+    <string name="swapAndPay_pendingSwapTitle">स्वैप पेंडिंग</string>
+    <string name="swapAndPay_pendingSwapInfo">आपका स्वैप प्रोसेस हो रहा है। इसकी स्थिति ट्रांज़ैक्शन स्क्रीन पर देखें।</string>
+    <string name="swapAndPay_pendingPayTitle">पेमेंट पेंडिंग</string>
+    <string name="swapAndPay_pendingPayInfo">आपका क्रॉस-चेन पेमेंट प्रोसेस हो रहा है। इसकी स्थिति ट्रांज़ैक्शन स्क्रीन पर देखें।</string>
+    <string name="send_pendingShieldingTitle">शील्डिंग पेंडिंग</string>
+    <string name="send_pendingShieldingInfo">आपका शील्डिंग ट्रांज़ैक्शन प्रोसेस हो रहा है।</string>
+    <string name="swapAndPay_successPayInfo">आपने सफलतापूर्वक एक क्रॉस-चेन पेमेंट शुरू किया।\nइसकी स्थिति ट्रांज़ैक्शन स्क्रीन पर देखें।</string>
+    <string name="settings_title">सेटिंग्स</string>
+    <string name="settings_about">ऐप के बारे में</string>
+    <string name="settings_feedback">हमें फीडबैक भेजें</string>
+    <string name="settings_version">वर्ज़न <xliff:g example="1" id="version">%s</xliff:g></string>
+    <string name="settings_addressBook">एड्रेस बुक</string>
+    <string name="settings_whats_new">नया क्या है</string>
+    <string name="settings_troubleshooting_menu_content_description">अतिरिक्त सेटिंग्स</string>
+    <string name="settings_troubleshooting_rescan">ब्लॉकचेन दोबारा स्कैन करें</string>
+    <string name="settings_troubleshooting_enable_background_sync">बैकग्राउंड सिंक</string>
+    <string name="settings_troubleshooting_enable_keep_screen_on">सिंक के दौरान स्क्रीन चालू रखें</string>
+    <string name="keystone_signWith_title">अपने Keystone वॉलेट से स्कैन करें</string>
+    <string name="keystone_signWith_desc">Keystone से साइन करने के बाद, नीचे दिए सिग्नेचर लें बटन पर टैप करें।</string>
+    <string name="keystone_signWith_signTransaction">ट्रांज़ैक्शन साइन करें</string>
+    <string name="keystone_signWith_hardware">हार्डवेयर</string>
+    <string name="keystone_signWith_getSignature">सिग्नेचर लें</string>
+    <string name="keystone_signWith_reject">अस्वीकार करें</string>
+    <string name="keystoneTransactionReject_title">क्या आप पक्का चाहते हैं?</string>
+    <string name="sign_keystone_transaction_bottom_sheet_subtitle">सिग्नेचर अस्वीकार करने पर ट्रांज़ैक्शन रद्द हो जाएगा, और आगे बढ़ने के लिए आपको फिर से शुरू करना होगा। यह कदम वापस नहीं लिया जा सकता।</string>
+    <string name="keystoneTransactionReject_goBack">वापस जाएँ</string>
+    <string name="keystoneTransactionReject_rejectSig">सिग्नेचर अस्वीकार करें</string>
+    <string name="swap_info_message">%1$s को किसी भी NEAR-समर्थित टोकन से स्वैप करें।\n\nअगर आप %2$s में स्वैप कर रहे हैं, तो आप किसी थर्ड पार्टी वॉलेट से फंड भेजेंगे और एक पता देंगे जहाँ बचा हुआ पैसा रिफंड हो सके।\n\nअगर आप %3$s से स्वैप कर रहे हैं, तो आपको उस एसेट का मान्य पता देना होगा जिसमें आप स्वैप कर रहे हैं।</string>
+    <string name="swapAndPay_help_swapWith">इसके साथ स्वैप करें</string>
+    <string name="swap_select_token">टोकन चुनें</string>
+    <string name="swapAndPay_search">नाम या टिकर से खोजें…</string>
+    <string name="swapAndPay_slippage">स्लिपेज</string>
+    <string name="swapAndPay_slippageDesc">यह सेटिंग तय करती है कि स्वैप की उम्मीद की गई कीमत और आपके चुकाए गए असल दाम के बीच ज़्यादा से ज़्यादा कितना अंतर मंज़ूर है। यह अंतर Zodl के नियंत्रण से बाहर है।</string>
+    <string name="swap_slippage_max_threshold">कृपया ज़्यादा से ज़्यादा 30%% स्लिपेज दर्ज करें।</string>
+    <string name="swap_slippage_info">आपको बताई गई राशि से %s तक कम मिल सकता है।</string>
+    <string name="swap_slippage_low_warning">%1$s स्लिपेज से आपका स्वैप असफल होकर रिफंड होने की संभावना बढ़ जाती है। %2$s इस्तेमाल करने पर विचार करें, खासकर बड़ी राशि के लिए।</string>
+    <string name="swap_slippage_low_warning_1">%s%% से कम</string>
+    <string name="swap_slippage_low_warning_2">%s%% या उससे ज़्यादा</string>
+    <string name="pay_slippage_info">ट्रांज़ैक्शन शुल्क के अलावा आपको %s तक ज़्यादा चुकाना पड़ सकता है।</string>
+    <string name="swapAndPay_from">से</string>
+    <string name="send_error_insufficientFunds">फंड पर्याप्त नहीं</string>
+    <string name="balance_availableTitle">खर्च योग्य: </string>
+    <string name="swapAndPay_max">खर्च योग्य: %s</string>
+    <string name="swapAndPay_to">को</string>
+    <string name="swapAndPay_rate">रेट</string>
+    <string name="swap_zec_exchange_rate">1 %1$s = %2$s</string>
+    <string name="swapAndPay_slippageTolerance">स्लिपेज सहनशीलता</string>
+    <string name="swapAndPay_canceltitle">क्या आप पक्का चाहते हैं?</string>
+    <string name="swapAndPay_cancelMsg">अगर आप यह स्क्रीन छोड़ते हैं, तो दर्ज की गई सारी जानकारी खो जाएगी।</string>
+    <string name="swapAndPay_cancelSwap">स्वैप रद्द करें</string>
+    <string name="swap_cancel_positive">रद्द न करें</string>
+    <string name="swap_quote_error_too_low_try_at_least">ब्रिज के लिए राशि बहुत कम है, कम से कम %s आज़माएँ</string>
+    <string name="swap_quote_error_too_low_try_higher">ब्रिज के लिए राशि बहुत कम है, ज़्यादा राशि आज़माएँ।</string>
+    <string name="swap_quoteUnavailable">हमने कोशिश की, लेकिन आपके तय मानकों पर पेमेंट के लिए कोई कोट नहीं मिला। आप स्लिपेज बदलकर देख सकते हैं या बाद में दोबारा कोशिश कर सकते हैं।</string>
+    <string name="swap_quoteUnavailableSwap">हमने कोशिश की, लेकिन आपके तय मानकों पर स्वैप के लिए कोई कोट नहीं मिला। आप स्लिपेज बदलकर देख सकते हैं या बाद में दोबारा कोशिश कर सकते हैं।</string>
+    <string name="swapAndPay_quoteUnavailable">कोट उपलब्ध नहीं</string>
+    <string name="swapAndPay_cancelPayment">पेमेंट रद्द करें</string>
+    <string name="swapAndPay_editPayment">पेमेंट बदलें</string>
+    <string name="swapAndPay_editSwap">स्वैप बदलें</string>
+    <string name="swapAndPay_swapNow">अभी स्वैप करें</string>
+    <string name="swapToZec_review">कोट देखें</string>
+    <string name="swapAndPay_swapFrom">इससे स्वैप करें</string>
+    <string name="swapAndPay_swapTo">इसमें स्वैप करें</string>
+    <string name="swapAndPay_totalFees">कुल शुल्क</string>
+    <string name="swapAndPay_maxSlippage">अधिकतम स्लिपेज %s</string>
+    <string name="swapAndPay_totalAmount">कुल राशि</string>
+    <string name="swapAndPay_quote_zashi">Zodl</string>
+    <string name="swapAndPay_swapQuoteSlippageWarn">आपको %s तक कम मिल सकता है, यह आपके तय किए %s स्लिपेज पर निर्भर करता है।</string>
+    <string name="swapAndPay_getQuote">कोट लें</string>
+    <string name="swapAndPay_custom">कस्टम</string>
+    <string name="swapAndPay_payNow">अभी पे करें</string>
+    <string name="swapAndPay_payFrom">इससे पे करें</string>
+    <string name="swapAndPay_payTo">इसे पे करें</string>
+    <string name="swap_to_zec_footer">फंड जमा करने के लिए अपना %s वॉलेट \n इस्तेमाल करें। दूसरे एसेट जमा करने पर फंड खो सकता है।</string>
+    <string name="swapToZec_info2">%s, %s पर</string>
+    <string name="swap_to_zec_share_text">Zodl में %3$s पर %1$s %2$s को %4$s में स्वैप करने के लिए डिपॉज़िट पता</string>
+    <string name="swapToZec_refundAddress">रिफंड पता</string>
+    <string name="swapToZec_refundAddress_title">रिफंड पता</string>
+    <string name="swap_refund_address_info_message_empty">अगर स्वैप फेल हो जाता है या बाज़ार की स्थिति बदल जाती है, तो आपका ट्रांज़ैक्शन शुल्क घटाकर रिफंड किया जा सकता है।\n\nरिफंड की राशि आपके वॉलेट में सोर्स करेंसी में वापस आएगी। फंड खोने से बचने के लिए कृपया मान्य पता दर्ज करें।</string>
+    <string name="swap_refund_address_info_message">अगर स्वैप फेल हो जाता है या बाज़ार की स्थिति बदल जाती है, तो आपका ट्रांज़ैक्शन शुल्क घटाकर रिफंड किया जा सकता है।\n\nरिफंड की राशि आपके वॉलेट में सोर्स करेंसी में, उसी नेटवर्क पर वापस आएगी। फंड खोने से बचने के लिए कृपया मान्य पता दर्ज करें।</string>
+    <string name="swapToZec_swapDetails">स्वैप की जानकारी</string>
+    <string name="swapToZec_depositTo">यहाँ जमा करें</string>
+    <string name="swapStatus_swapExpired">स्वैप एक्सपायर हुआ</string>
+    <string name="swapStatus_swapping">स्वैप हो रहा है</string>
+    <string name="swapStatus_swapped">स्वैप हो गया</string>
+    <string name="swapStatus_swapRefunded">स्वैप रिफंड हुआ</string>
+    <string name="swapStatus_swapFailed">स्वैप फेल हुआ</string>
+    <string name="swapToZec_swapProcessing">स्वैप प्रोसेस हो रहा है</string>
+    <string name="swapToZec_deposit">जमा राशि</string>
+    <string name="swapToZec_sentTheFunds">मैंने फंड भेज दिए</string>
+    <string name="depositFunds_alert_title">क्या आप पक्का बाहर निकलना चाहते हैं?</string>
+    <string name="depositFunds_alert_message">अगर आपने फंड भेज दिए हैं या भेजने वाले हैं, तो “मैंने फंड भेज दिए” पर टैप करें। या पिछली स्क्रीन पर लौटने के लिए स्वैप रद्द करें।</string>
+    <string name="depositFunds_title">फंड जमा करें</string>
+    <string name="depositFunds_desc">किसी भी NEAR-समर्थित एसेट से ZEC में स्वैप करें।</string>
+    <string name="depositFunds_bulletPoint1">दिखाई गई एसेट की ठीक उतनी ही राशि भेजें। कम भेजने पर रिफंड हो जाएगा।</string>
+    <string name="depositFunds_bulletPoint2">दोबारा जाँच लें कि आप सही नेटवर्क पर सही एसेट भेज रहे हैं (जैसे, Solana पर USDC)।</string>
+    <string name="depositFunds_bulletPoint3">सबसे अच्छा है कि आप अपने ही वॉलेट से भेजें। एक्सचेंज से भेजने पर देरी या रिफंड हो सकता है।</string>
+    <string name="taxExport_title">डेटा एक्सपोर्ट</string>
+    <string name="taxExport_desc">पिछले कैलेंडर साल की अपनी <xliff:g example="Zodl" id="account_name">%s</xliff:g> ट्रांज़ैक्शन हिस्ट्री .csv फॉर्मैट में डाउनलोड करें।</string>
+    <string name="taxExport_download">डाउनलोड करें</string>
+    <string name="texKeystone_title">यह पता समर्थित नहीं है</string>
+    <string name="texKeystone_warn1">Keystone फिलहाल Binance TEX पतों पर ट्रांसफर की सुविधा नहीं देता।</string>
+    <string name="texKeystone_warn2">कृपया अपना ट्रांज़ैक्शन पूरा करने के लिए नीचे दिए कदम अपनाएँ।</string>
+    <string name="texKeystone_workaround">वैकल्पिक तरीका</string>
+    <string name="tex_unsupported_step_1_badge">कदम 1</string>
+    <string name="texKeystone_step1_title">पहले Zodl पर भेजें</string>
+    <string name="texKeystone_step1_desc">अपने Zodl शील्डेड पते पर ZEC ट्रांसफर करें</string>
+    <string name="tex_unsupported_step_2_badge">कदम 2</string>
+    <string name="texKeystone_step2_title">Zodl से TEX पते पर भेजें</string>
+    <string name="texKeystone_step2_desc">Zodl में मिलने के बाद, टोकन अपने आखिरी TEX पते पर भेजें</string>
+    <string name="torSetup_title">Tor सुरक्षा</string>
+    <string name="tor_settings_subtitle">Tor आपके IP पते को अतिरिक्त सुरक्षा देता है। यह फीचर एक्सचेंज रेट लाने,
+        ट्रांज़ैक्शन भेजने, ट्रांज़ैक्शन डेटा लाने और थर्ड पार्टी API से जुड़ने के लिए Tor नेटवर्क
+        इस्तेमाल करता है।\n\nअगर आपके क्षेत्र में Tor की अनुमति है, तो हम इसे चालू करने की सलाह देते हैं।</string>
+    <string name="torSetup_enableDesc">Tor के ज़रिए कनेक्ट करें</string>
+    <string name="torSetup_disableDesc">Tor के ज़रिए कनेक्ट न करें।</string>
+    <string name="torSetup_option1_title">करेंसी कन्वर्ज़न</string>
+    <string name="torSetup_option1_desc">अपना IP पता बताए बिना थर्ड पार्टी सर्वर से एक्सचेंज रेट लाएँ। (सिर्फ Tor चालू होने पर उपलब्ध।)</string>
+    <string name="torSetup_option2_title">ट्रांज़ैक्शन</string>
+    <string name="torSetup_option2_desc">बेहतर प्राइवेसी के लिए ट्रांज़ैक्शन डेटा Tor के ज़रिए भेजें और लाएँ।</string>
+    <string name="torSetup_option3_desc">बेहतर प्राइवेसी के लिए थर्ड पार्टी API (जैसे NEAR) Tor के ज़रिए इस्तेमाल करें।</string>
+    <string name="tor_settings_share_feedback">फीडबैक दें</string>
+    <string name="transaction_detail_fee_minimal">&lt; 0.001 %s</string>
+    <string name="transactionHistory_viewLess">कम देखें</string>
+    <string name="transactionHistory_viewMore">और देखें</string>
+    <string name="transactionHistory_noMessage">कोई मैसेज नहीं</string>
+    <string name="transactionHistory_details">ट्रांज़ैक्शन की जानकारी</string>
+    <string name="transactionList_transactionId">ट्रांज़ैक्शन ID</string>
+    <string name="swapAndPay_status">स्थिति</string>
+    <string name="transactionDetail_feeSummary">शुल्क</string>
+    <string name="transactionHistory_sentTo">इन्हें भेजा</string>
+    <string name="transactionHistory_pending">पेंडिंग</string>
+    <string name="transactionHistory_saveAddress">पता सेव करें</string>
+    <string name="transactionHistory_sendAgain">दोबारा भेजें</string>
+    <string name="transaction_sent">भेजा गया</string>
+    <string name="transaction_sending">भेजा जा रहा है</string>
+    <string name="transaction_noteSplit">बैलेंस बाँटा गया</string>
+    <string name="transaction_noteSplitting">बैलेंस बाँटा जा रहा है</string>
+    <string name="transaction_noteSplitFailed">बैलेंस बाँटना फेल हुआ</string>
+    <string name="transaction_migrated">माइग्रेट हो गया</string>
+    <string name="transaction_migrating">माइग्रेट हो रहा है</string>
+    <string name="transaction_migrationFailed">माइग्रेशन फेल हुआ</string>
+    <string name="transaction_received">प्राप्त हुआ</string>
+    <string name="transaction_receiving">प्राप्त हो रहा है</string>
+    <string name="transaction_failedReceive">प्राप्त करना फेल हुआ</string>
+    <string name="transaction_shieldedFunds">शील्ड हो गया</string>
+    <string name="transaction_shieldingFunds">शील्ड हो रहा है</string>
+    <string name="transaction_failedShieldedFunds">शील्डिंग फेल हुई</string>
+    <string name="transaction_detail_edit_note">नोट बदलें</string>
+    <string name="annotation_addArticle">नोट जोड़ें</string>
+    <string name="annotation_title">नोट</string>
+    <string name="swapAndPay_refundedAmount">रिफंड की गई राशि</string>
+    <string name="swapAndPay_recipient">प्राप्तकर्ता</string>
+    <string name="swapAndPay_executedSlippage">असल स्लिपेज</string>
+    <string name="swapAndPay_maxSlippageTitle">अधिकतम स्लिपेज</string>
+    <string name="transactionHistory_timestamp">समय</string>
+    <string name="swapAndPay_refundInfo">आपका डिपॉज़िट मिल गया था, लेकिन स्वैप पूरा नहीं हो सका। ट्रांज़ैक्शन शुल्क घटाकर आपका फंड वापस कर दिया गया है। अगर आपको वह नहीं मिला है, तो Zodl सपोर्ट टीम से संपर्क करें।</string>
+    <string name="swapAndPay_refundTitle">फंड वापस किया गया</string>
+    <string name="swapAndPay_processingMsg">आपके स्वैप में देरी हो रही है। स्वैप आम तौर पर कुछ मिनटों में पूरे हो जाते हैं, लेकिन बाज़ार की स्थिति के हिसाब से ज़्यादा समय भी लग सकता है।</string>
+    <string name="swapAndPay_failedMsg">यह स्वैप पूरा नहीं हो सका। अगर आपने फंड जमा किया था और आपको स्वैप नहीं मिला, तो सपोर्ट से संपर्क करें ताकि हम इसे सुलझाने में मदद कर सकें।</string>
+    <string name="swapAndPay_failedTitle">स्वैप फेल हुआ</string>
+    <string name="swapAndPay_expiredMsg">यह स्वैप 24 घंटे की वैधता खत्म होने पर एक्सपायर हो गया। अगर आपने फंड नहीं भेजा था, तो कुछ करने की ज़रूरत नहीं। अगर भेजा था, तो सपोर्ट से संपर्क करें ताकि हम मदद कर सकें।</string>
+    <string name="swapAndPay_expiredTitle">स्वैप एक्सपायर हुआ</string>
+    <string name="reportSwap_report">समस्या की रिपोर्ट करें</string>
+    <string name="reportSwap_title">स्वैप की समस्या की रिपोर्ट करें</string>
+    <string name="reportSwap_msg">नीचे दिए बटन पर टैप करने से इस स्वैप की जानकारी (जैसे डिपॉज़िट पता और टारगेट एसेट) Zodl सपोर्ट टीम को भेजी जाएगी, ताकि वे आपकी समस्या सुलझाने में मदद कर सकें। ट्रांज़ैक्शन की जानकारी अपने आप जुड़ जाती है।</string>
+    <string name="transaction_detail_support_email_subject">स्वैप ट्रांज़ैक्शन की समस्या</string>
+    <string name="transaction_detail_support_email_body">कृपया अपनी समस्या यहाँ लिखें:\n\n\n\nस्वैप की जानकारी:\nडिपॉज़िट पता: %1$s\nसोर्स एसेट: %2$s\nटारगेट एसेट: %3$s</string>
+    <string name="deposits_info">डिपॉज़िट कन्फर्म होने में कई मिनट लग सकते हैं।</string>
+    <string name="swapAndPay_status_incompleteDeposit">अधूरा डिपॉज़िट</string>
+    <string name="swapAndPay_status_pending">पेंडिंग</string>
+    <string name="swapAndPay_status_success">पूरा हुआ</string>
+    <string name="swapAndPay_status_refunded">रिफंड हुआ</string>
+    <string name="swapAndPay_status_failed">फेल हुआ</string>
+    <string name="swapAndPay_status_expired">एक्सपायर हुआ</string>
+    <string name="swapAndPay_status_pendingDeposit">डिपॉज़िट पेंडिंग</string>
+    <string name="swapStatus_paying">पे हो रहा है</string>
+    <string name="swapStatus_swapIncomplete">स्वैप अधूरा</string>
+    <string name="swapStatus_paymentIncomplete">पेमेंट अधूरा</string>
+    <string name="transaction_detail_info_incomplete_deposit_message">यह स्वैप पूरा करने के लिए %2$s से पहले %1$s और जमा करें, नहीं तो आपका डिपॉज़िट रिफंड कर दिया जाएगा।</string>
+    <string name="filter_title">फ़िल्टर</string>
+    <string name="filter_sent">भेजा गया</string>
+    <string name="filter_received">प्राप्त हुआ</string>
+    <string name="filter_memos">मेमो</string>
+    <string name="transaction_filters_unread">अपठित</string>
+    <string name="filter_bookmarked">बुकमार्क किए गए</string>
+    <string name="filter_notes">नोट्स</string>
+    <string name="filter_reset">रीसेट करें</string>
+    <string name="filter_apply">लागू करें</string>
+    <string name="transaction_history_plus" formatted="true">
+        <xliff:g example="1.2345" id="amount">%1$s</xliff:g> %2$s
+    </string>
+    <string name="transaction_history_minus" formatted="true">
+        - <xliff:g example="0.2" id="amount">%1$s</xliff:g> %2$s
+    </string>
+    <string name="filter_today">आज</string>
+    <string name="filter_yesterday">कल</string>
+    <string name="filter_previous7days">पिछले 7 दिन</string>
+    <string name="filter_previous30days">पिछले 30 दिन</string>
+    <string name="filter_daysAgo" formatted="true"><xliff:g example="$" id="days">%s</xliff:g> दिन पहले</string>
+    <string name="general_activity">गतिविधि</string>
+    <string name="transaction_history_send_transaction">कुछ %s पाएँ</string>
+    <string name="transactionHistory_seeAll">सभी देखें</string>
+    <string name="transaction_history_widget_send_transaction">ट्रांज़ैक्शन भेजें</string>
+    <string name="transactionHistory_nothingHere">यहाँ अभी कुछ नहीं है।</string>
+    <string name="transaction_history_widget_empty_subtitle">पहला कदम उठाएँ…</string>
+    <string name="filter_search">खोजें</string>
+    <string name="transaction_history_sending">भेजा जा रहा है…</string>
+    <string name="transaction_history_sending_failed">भेजना फेल हुआ</string>
+    <string name="transaction_history_noteSplitting">बैलेंस बाँटा जा रहा है…</string>
+    <string name="transaction_history_noteSplitFailed">बाँटना फेल हुआ</string>
+    <string name="transaction_history_migrating">माइग्रेट हो रहा है…</string>
+    <string name="transaction_history_receiving">प्राप्त हो रहा है…</string>
+    <string name="transaction_history_receiving_failed">प्राप्त करना फेल हुआ</string>
+    <string name="transaction_history_shielding">शील्ड हो रहा है…</string>
+    <string name="swapStatus_paid">पे हो गया</string>
+    <string name="transaction_history_paying">पे हो रहा है…</string>
+    <string name="swapStatus_paymentFailed">पेमेंट फेल हुआ</string>
+    <string name="swapStatus_paymentRefunded">पेमेंट रिफंड हुआ</string>
+    <string name="transaction_history_swapping">स्वैप हो रहा है…</string>
+    <string name="swapStatus_paymentExpired">पेमेंट एक्सपायर हुआ</string>
+    <string name="annotation_edit">नोट बदलें</string>
+    <string name="annotation_delete">नोट डिलीट करें</string>
+    <string name="transaction_note_max_length"><xliff:g example="34" id="chars">%s</xliff:g>/90 अक्षर</string>
+    <string name="annotation_add">नोट जोड़ें</string>
+    <string name="annotation_save">नोट सेव करें</string>
+    <string name="update_title_available">Zodl की ओर से।</string>
+    <string name="osStatusError_title">गलती आपकी नहीं, हमारी है।</string>
+    <string name="update_description_required">
+        Zodl के लिए एक ज़रूरी अपडेट आया है,\nजो परफॉर्मेंस और/या सुरक्षा में\nबड़े सुधार करता है।
+    </string>
+    <string name="update_description_available">
+        Zodl का एक नया वर्ज़न आया है, जो परफॉर्मेंस और/या सुरक्षा
+        बेहतर करने के लिए छोटे बदलाव करता है।\n\nकृपया कुछ समय निकालकर नए वर्ज़न पर अपडेट करें।
+    </string>
+    <string name="update_link_text">इस अपडेट के बारे में यहाँ और जानें।</string>
+    <string name="update_download_button">अपडेट करें</string>
+    <string name="update_contact_title">संपर्क</string>
+    <string name="addressBook_alert_message">आप यह कॉन्टैक्ट डिलीट करने वाले हैं। इसे वापस नहीं किया जा सकता।</string>
+    <string name="notEnoughFreeSpace_title">पर्याप्त खाली जगह नहीं</string>
+    <string name="notEnoughFreeSpace_messagePre">Zcash ब्लॉकचेन सिंक करने के लिए Zodl को <xliff:g example="1" id="required_gigabytes">%1$d</xliff:g> GB जगह चाहिए, लेकिन सिर्फ</string>
+    <string name="not_enough_space_description_2"><xliff:g example="300" id="available_megabytes">%1$d</xliff:g> MB उपलब्ध है</string>
+    <string name="not_enough_space_description_3">। जब तक और जगह नहीं मिलती, सिंक रुका रहेगा।\n\nजारी रखने के लिए ~<xliff:g example="300" id="required_megabytes">%1$d</xliff:g> MB अतिरिक्त जगह चाहिए</string>
+    <string name="not_enough_space_system_settings_btn">सिस्टम सेटिंग्स</string>
+    <string name="not_enough_space_settings_open_failed">सेटिंग्स ऐप नहीं खोला जा सका।</string>
+    <string name="whats_new_title">नया क्या है</string>
+    <string name="migration_notification_channelName">Ironwood माइग्रेशन</string>
+    <string name="migration_notification_channelDescription">Orchard से Ironwood माइग्रेशन की प्रगति की सूचनाएँ</string>
+    <string name="migration_notification_title">Ironwood माइग्रेशन</string>
+    <string name="migration_notification_noteSplitProgress">%2$d में से %1$d नोट बाँटा गया</string>
+    <string name="migration_notification_noteSplitPreparing">माइग्रेशन के लिए आपका बैलेंस तैयार किया जा रहा है</string>
+    <string name="migration_notification_transferComplete">%2$d में से %1$d ट्रांसफर पूरा</string>
+    <string name="migration_notification_rescheduleWithCounts">%2$d में से %1$d ट्रांसफर नहीं भेजा जा सका। माइग्रेशन दोबारा शेड्यूल करने के लिए टैप करें।</string>
+    <string name="migration_notification_rescheduleGeneric">माइग्रेशन रुका हुआ है। दोबारा शेड्यूल करने के लिए टैप करें।</string>
+    <string name="migration_notification_actionRequiredTitle">माइग्रेशन: कार्रवाई ज़रूरी</string>
+    <string name="migration_notification_manualConfirmationWithCounts">%2$d में से %1$d ट्रांसफर तैयार है। पुष्टि करने के लिए टैप करें।</string>
+    <string name="migration_notification_manualConfirmationGeneric">एक माइग्रेशन ट्रांसफर तैयार है। पुष्टि करने के लिए टैप करें।</string>
+    <string name="migration_notification_torFailureTitle">माइग्रेशन: Tor से कनेक्ट नहीं हो सका</string>
+    <string name="migration_notification_torFailureText">एक शेड्यूल किया गया ट्रांसफर Tor के ज़रिए नहीं भेजा जा सका। इसे ठीक करने के लिए Zodl खोलें।</string>
+    <string name="migration_notification_stepDueText">आपका माइग्रेशन आगे बढ़ने के लिए तैयार है। अगला कदम चलाने के लिए टैप करें।</string>
+    <string name="migration_notification_planInvalidText">माइग्रेशन प्लान को अपडेट करना है। जानकारी देखने के लिए Zodl खोलें।</string>
+    <string name="migration_notification_transferExpiredText">एक ट्रांसफर एक्सपायर हो गया। अपना माइग्रेशन जारी रखने के लिए Zodl खोलें।</string>
+    <string name="migration_notification_completeTitle">Ironwood माइग्रेशन पूरा हुआ</string>
+    <string name="migration_notification_completeText">आपका सारा फंड Ironwood में माइग्रेट हो गया है।</string>
+    <string name="restartMigration_settingsItem">माइग्रेशन दोबारा शुरू करें</string>
+    <string name="restartMigration_title">माइग्रेशन दोबारा शुरू करें</string>
+    <string name="restartMigration_body">अगर आपका माइग्रेशन अटका हुआ लगे, तो आप इसे सुरक्षित तरीके से दोबारा शुरू कर सकते हैं। इससे आपके बचे हुए फंड के लिए नया प्लान बनता है। पूरे हो चुके ट्रांसफर पर कोई असर नहीं पड़ता।</string>
+    <string name="restartMigration_summaryMigratedLabel">माइग्रेट हुआ</string>
+    <string name="restartMigration_summaryMigratedValue">%2$d में से %1$d ट्रांसफर</string>
+    <string name="restartMigration_summaryRemainingLabel">बचा हुआ बैलेंस</string>
+    <string name="restartMigration_warning">इससे मौजूदा माइग्रेशन प्लान रद्द हो जाएगा। पुष्टि करने के बाद इसे वापस नहीं किया जा सकता।</string>
+    <string name="restartMigration_support">अगर दोबारा शुरू करने से समस्या हल न हो, तो कृपया हमें फीडबैक भेजें के ज़रिए Zodl सपोर्ट से संपर्क करें।</string>
+    <string name="restartMigration_next">आगे</string>
+    <string name="restartMigration_confirmTitle">यह माइग्रेशन दोबारा शुरू करें?</string>
+    <string name="restartMigration_confirmMessage">आपके बचे हुए %1$s के लिए नया प्लान बनाया जाएगा। पहले से पूरे हो चुके %2$d ट्रांसफर वैसे ही रहेंगे और दोहराए नहीं जाएँगे।</string>
+    <string name="restartMigration_confirmPrimary">दोबारा शुरू करने की पुष्टि करें</string>
+    <string name="migration_common_gotIt">ठीक है</string>
+    <string name="migration_common_skip">छोड़ें</string>
+    <string name="migration_common_allow">अनुमति दें</string>
+    <string name="migration_common_continue">जारी रखें</string>
+    <string name="migration_common_retry">दोबारा कोशिश करें</string>
+    <string name="migration_common_dismiss">खारिज करें</string>
+    <string name="migration_common_continueWithoutTor">Tor के बिना जारी रखें</string>
+    <string name="migration_common_tryAgain">दोबारा कोशिश करें</string>
+    <string name="migration_common_whatAreTheRisks">इसमें क्या जोखिम हैं?</string>
+    <string name="migration_common_splitBalanceTitle">बैलेंस बाँटें</string>
+    <string name="migration_common_splitBalanceNumbered">बैलेंस बाँटें %1$d</string>
+    <string name="migration_common_transferTitle">ट्रांसफर %1$d</string>
+    <string name="migration_common_showDetails">जानकारी दिखाएँ</string>
+    <string name="migration_common_progressTitle">माइग्रेशन की प्रगति</string>
+    <string name="migration_common_enableTorProtectionTitle">Tor सुरक्षा चालू करें</string>
+    <string name="migration_common_torCheckboxSubtitle">बेहतर गुमनामी और प्राइवेसी सुरक्षा के लिए आपके कनेक्शन को Tor नेटवर्क से होकर भेजता है।</string>
+    <string name="migration_status_done">पूरा हुआ</string>
+    <string name="migrationPrivacy_bodyImmediate">अगर आपके क्षेत्र में Tor उपलब्ध है, तो हम इसे चालू करने की पुरज़ोर सलाह देते हैं, ताकि आपका बैलेंस आपके IP पते से न जोड़ा जा सके। अगर आपके क्षेत्र में Tor उपलब्ध न हो, तो आप कोई भरोसेमंद VPN भी इस्तेमाल कर सकते हैं।</string>
+    <string name="migrationPrivacy_bodyAutomatic">अगर आपके क्षेत्र में Tor उपलब्ध है, तो हम इसे चालू करने की पुरज़ोर सलाह देते हैं, ताकि माइग्रेशन की राशि आपके IP पते से न जोड़ी जा सके। अगर आपके क्षेत्र में Tor उपलब्ध न हो, तो आप कोई भरोसेमंद VPN भी इस्तेमाल कर सकते हैं।</string>
+    <string name="migrationKeystoneScan_instructions">साइन करने के बाद अपने Keystone डिवाइस पर दिख रहा QR कोड स्कैन करें।</string>
+    <string name="migrationKeystoneScan_errorMessage">उस स्कैन को प्रोसेस करते समय कुछ गलत हो गया। कृपया दोबारा कोशिश करें।</string>
+    <string name="migrationKeystoneScan_firmwareUnsupported">आपका Keystone फर्मवेयर अभी माइग्रेशन की सुविधा नहीं देता। अपना Keystone डिवाइस अपडेट करें, फिर लौटकर दोबारा कोशिश करें।</string>
+    <string name="migrationSuccess_title">भेज दिया गया!</string>
+    <string name="migrationSuccess_subtitle">आपका ZEC सफलतापूर्वक\nIronwood में माइग्रेट हो गया।</string>
+    <string name="migrationSuccess_viewTransaction">ट्रांज़ैक्शन देखें</string>
+    <string name="migrationSending_title">भेजा जा रहा है...</string>
+    <string name="migrationSending_subtitle">आपका ZEC Ironwood में\nमाइग्रेट हो रहा है...</string>
+    <string name="migrationProgress_subtitleComplete">सभी %1$d ट्रांसफर पूरे हो गए।</string>
+    <string name="migrationProgress_subtitlePreStart">आपका बैलेंस %2$s में %1$d ट्रांसफर में बँटता है। %3$d ट्रांसफर बाकी हैं।</string>
+    <string name="migrationProgress_subtitleInProgressRemaining">आपका बैलेंस %1$d ट्रांसफर में बँटता है। लगभग %2$s बाकी है। %3$d ट्रांसफर बाकी हैं।</string>
+    <string name="migrationProgress_subtitleInProgressLate">आपका बैलेंस %1$d ट्रांसफर में बँटता है। पूरा हो रहा है… %2$d ट्रांसफर बाकी हैं।</string>
+    <string name="migrationProgress_orchardLabel">Orchard</string>
+    <string name="migrationProgress_ironwoodLabel">Ironwood</string>
+    <string name="migrationComplete_title">माइग्रेशन पूरा हुआ</string>
+    <string name="migrationComplete_subtitle">आपका ZEC अब Ironwood पूल में है।</string>
+    <string name="migrationComplete_totalTransferredLabel">कुल ट्रांसफर किया गया</string>
+    <string name="migrationComplete_remainingDustLabel">बची हुई डस्ट</string>
+    <string name="migrationComplete_transfersLabel">ट्रांसफर</string>
+    <string name="migrationComplete_durationLabel">अवधि</string>
+    <string name="migrationComplete_orchardBalanceRemainingTitle">बचा हुआ Orchard बैलेंस</string>
+    <string name="migrationComplete_orchardBalanceRemainingBody">%1$s Orchard में ही रह गया। इतनी सटीक राशि से नेटवर्क पर आपकी पहचान हो सकती है। आपकी प्राइवेसी की सुरक्षा के लिए, हम इस बैलेंस को माइग्रेट करने के बजाय लॉक करने की सलाह देते हैं।</string>
+    <string name="migrationComplete_migrateAnyway">फिर भी माइग्रेट करें</string>
+    <string name="migrationComplete_migrating">माइग्रेट हो रहा है…</string>
+    <string name="migrationComplete_lockBalance">बैलेंस लॉक करें</string>
+    <string name="migrationComplete_lockingBalance">बैलेंस लॉक हो रहा है…</string>
+    <string name="migrationComplete_orchardBalanceLockedTitle">Orchard बैलेंस लॉक हो गया</string>
+    <string name="migrationComplete_orchardBalanceLockedBody">%1$s अब Orchard में लॉक है। लॉक करने से यह राशि खर्च नहीं की जा सकती, जिससे आपकी प्राइवेसी सुरक्षित रहती है।</string>
+    <string name="migrationComplete_transfersProgress">%2$d में से %1$d भेजे गए</string>
+    <string name="migrationComplete_migrateAnywayFailureNetworkError">नेटवर्क तक नहीं पहुँचा जा सका। अपना कनेक्शन जाँचें और दोबारा कोशिश करें।</string>
+    <string name="migrationComplete_migrateAnywayFailureRejected">नेटवर्क ने यह ट्रांज़ैक्शन अस्वीकार कर दिया। कृपया सपोर्ट से संपर्क करें।</string>
+    <string name="migrationComplete_migrateAnywayFailureError">भेजते समय कुछ गलत हो गया। कृपया सपोर्ट से संपर्क करें।</string>
+    <string name="migrationComplete_migrateAnywayFailurePartial">इस ट्रांज़ैक्शन के कुछ हिस्से ही भेजे जा सके, सभी नहीं। कृपया सपोर्ट से संपर्क करें।</string>
+    <string name="migrationNotifPermission_title">सूचनाओं की अनुमति दें</string>
+    <string name="migrationNotifPermission_subtitle">अगर कोई शेड्यूल किया गया ट्रांसफर छूट जाए या बैकग्राउंड में भेजना फेल हो जाए, तो हम आपको सूचना भेजकर Zodl खोलने के लिए कह सकते हैं। इनकी सूचना पाएँ:</string>
+    <string name="migrationNotifPermission_statusTitle">माइग्रेशन की स्थिति</string>
+    <string name="migrationNotifPermission_statusBody">जब आपका पूरा फंड Ironwood में माइग्रेट हो जाएगा, हम आपको बता देंगे।</string>
+    <string name="migrationNotifPermission_actionNeededTitle">कार्रवाई ज़रूरी</string>
+    <string name="migrationNotifPermission_actionNeededBody">अगर कोई मौका छूट जाता है, तो हम आपसे ऐप खोलकर ट्रांसफर खुद भेजने के लिए कहेंगे।</string>
+    <string name="migrationNotifPermission_planChangesTitle">ट्रांसफर प्लान में बदलाव</string>
+    <string name="migrationNotifPermission_planChangesBody">अगर तय किया गया फंड खर्च हो जाए या कोई शेड्यूल किया गया ट्रांसफर न भेजा जा सके, तो हम आपको बता देंगे।</string>
+    <string name="migrationNotifPermission_warningHint">सूचनाओं के बिना माइग्रेशन अपने आप आगे नहीं बढ़ सकता। हर ट्रांसफर भेजने के लिए हर कदम पर Zodl खोलना आपकी ज़िम्मेदारी होगी।</string>
+    <string name="migrationCustomServerTor_title">आपका सर्वर Tor का समर्थन नहीं करता</string>
+    <string name="migrationCustomServerTor_bodyImmediate">कस्टम सर्वर इस्तेमाल करते समय माइग्रेशन ट्रांज़ैक्शन Tor के ज़रिए ब्रॉडकास्ट नहीं किया जा सकता। अगर आप जारी रखते हैं, तो यह ट्रांज़ैक्शन Tor की IP सुरक्षा के बिना भेजा जाएगा।</string>
+    <string name="migrationCustomServerTor_bodyAutomatic">कस्टम सर्वर इस्तेमाल करते समय माइग्रेशन ट्रांज़ैक्शन Tor के ज़रिए ब्रॉडकास्ट नहीं किए जा सकते। अगर आप जारी रखते हैं, तो ये ट्रांज़ैक्शन Tor की IP सुरक्षा के बिना भेजे जाएँगे।</string>
+    <string name="migrationCustomServerTor_riskBodyImmediate">Tor के बिना, आपका IP पता कस्टम सर्वर को दिख जाता है और आपके पूरे बैलेंस से जोड़ा जा सकता है।</string>
+    <string name="migrationCustomServerTor_riskBodyAutomatic">Tor के बिना, आपका IP पता कस्टम सर्वर को दिख जाता है और माइग्रेशन की राशियों से जोड़ा जा सकता है।</string>
+    <string name="migrationCustomServerTor_switchServer">सर्वर बदलें</string>
+    <string name="migrationTorFailure_title">Tor से कनेक्ट नहीं हो सका</string>
+    <string name="migrationTorFailure_body">हम Tor कनेक्शन नहीं बना सके। आप Tor सुरक्षा के बिना आगे बढ़ सकते हैं, या रद्द करके दोबारा कोशिश कर सकते हैं।</string>
+    <string name="migrationTorFailure_riskBody">Tor के बिना, आपका IP पता सर्वर को दिख जाता है और माइग्रेशन की राशियों से जोड़ा जा सकता है।</string>
+    <string name="migrationSetup_title">Ironwood पर जाएँ</string>
+    <string name="migrationSetup_bodyPrefix">"नए Zcash नेटवर्क अपग्रेड के लिए आपका "</string>
+    <string name="migrationSetup_bodyFiatSuffix">" (%1$s)"</string>
+    <string name="migrationSetup_bodySuffix">" Orchard पूल से नए Ironwood पूल में ले जाना ज़रूरी है। आपका फंड सुरक्षित है।"</string>
+    <string name="migrationSetup_findOutMore">और जानें</string>
+    <string name="migrationSetup_immediateWarning">इस ट्रांज़ैक्शन में ट्रांसफर किया गया पूरा फंड चेन पर उजागर हो जाएगा।</string>
+    <string name="migrationSetup_automaticWarning">पूल के बीच किसी एक ट्रांसफर की राशि चेन पर उजागर होती है।</string>
+    <string name="migrationSetup_automaticTitle">प्राइवेसी के साथ माइग्रेट करें</string>
+    <string name="migrationSetup_automaticSubtitle">समय के साथ बँटे ट्रांसफर · बैकग्राउंड में शेड्यूल · अधिकतम प्राइवेसी</string>
+    <string name="migrationSetup_immediateTitle">तुरंत माइग्रेट करें</string>
+    <string name="migrationSetup_immediateSubtitle">एक ही ट्रांसफर · अभी भेजें · कम प्राइवेसी</string>
+    <string name="migrationLockExplainer_title">लॉक करने से क्या होता है?</string>
+    <string name="migrationLockExplainer_bullet1Prefix">लॉक करने पर यह बैलेंस </string>
+    <string name="migrationLockExplainer_bullet1Bold">खर्च न होने योग्य हो जाता है</string>
+    <string name="migrationLockExplainer_bullet1Suffix">, जिससे यह आगे के ट्रांज़ैक्शन में आपकी प्राइवेसी को नुकसान नहीं पहुँचा सकता।</string>
+    <string name="migrationLockExplainer_bullet2Bold">यह लॉक सिर्फ इसी Zodl/Keystone इंस्टेंस पर रहता है।</string>
+    <string name="migrationLockExplainer_bullet2Suffix"> वॉलेट रिस्टोर करने पर यह साथ नहीं आएगा।</string>
+    <string name="migrationLockExplainer_bullet3Prefix">आगे आने वाले किसी वर्ज़न में आप </string>
+    <string name="migrationLockExplainer_bullet3Bold">इस बैलेंस को अनलॉक कर पाएँगे।</string>
+    <string name="migrationFailureSheet_title">भेजा नहीं जा सका</string>
+    <string name="migrationFailureMessage_networkError">नेटवर्क तक नहीं पहुँचा जा सका। अपना कनेक्शन जाँचें और दोबारा कोशिश करें।</string>
+    <string name="migrationFailureMessage_invalidNote">इस ट्रांसफर का नोट कहीं और पहले ही खर्च हो चुका है। नया प्लान बनाने के लिए दोबारा शेड्यूल करें।</string>
+    <string name="migrationFailureMessage_expired">इस ट्रांसफर का एंकर एक्सपायर हो गया। नया प्लान बनाने के लिए दोबारा शेड्यूल करें।</string>
+    <string name="migrationSending_notReady">यह ट्रांसफर अभी भेजने के लिए तैयार नहीं है। कृपया थोड़ी देर बाद दोबारा कोशिश करें।</string>
+    <string name="migrationPreparationDetails_title">अपना बैलेंस तैयार करें</string>
+    <string name="migrationPreparationDetails_body">आपके शेड्यूल किए गए ट्रांसफर शुरू होने से पहले, आपके बैलेंस को %1$d कदमों में ट्रांसफर के आकार के नोट में बाँटना ज़रूरी है।</string>
+    <string name="migrationPreparationDetails_stepsTitle">तैयारी के कदम</string>
+    <string name="migrationPreparationDetails_amountBeingSplitTitle">बाँटी जा रही राशि</string>
+    <string name="migrationTransferInvalid_planUpdateTitle">माइग्रेशन प्लान अपडेट करें</string>
+    <string name="migrationTransferInvalid_planUpdateBody">कुछ Orchard नोट माइग्रेशन फ्लो के बाहर खर्च हो गए, जिससे पहले से साइन किया गया ट्रांसफर प्लान अमान्य हो गया। बचे हुए बैलेंस के लिए प्लान दोबारा बनाना होगा। कोई फंड नहीं खोया है, सिर्फ पहले से साइन किए गए ट्रांज़ैक्शन रद्द होते हैं।</string>
+    <string name="migrationTransferInvalid_planUpdateFirstStep">अमान्य हुआ ट्रांसफर रद्द कर दिया जाता है</string>
+    <string name="migrationTransferInvalid_transferExpiredTitle">ट्रांसफर अब मान्य नहीं</string>
+    <string name="migrationTransferInvalid_transferExpiredBodyPlural">ट्रांसफर %1$s भेजे बिना एक्सपायर हो गए, क्योंकि इन्हें ब्रॉडकास्ट करने के लिए ऐप समय पर नहीं खोला गया। बचे हुए बैलेंस के लिए माइग्रेशन प्लान दोबारा बनाना होगा। कोई फंड नहीं खोया है, सिर्फ पहले से साइन किए गए ट्रांज़ैक्शन रद्द होते हैं।</string>
+    <string name="migrationTransferInvalid_transferExpiredBodySingular">ट्रांसफर %1$s भेजे बिना एक्सपायर हो गया, क्योंकि इसे ब्रॉडकास्ट करने के लिए ऐप समय पर नहीं खोला गया। बचे हुए बैलेंस के लिए माइग्रेशन प्लान दोबारा बनाना होगा। कोई फंड नहीं खोया है, सिर्फ पहले से साइन किए गए ट्रांज़ैक्शन रद्द होते हैं।</string>
+    <string name="migrationTransferInvalid_expiredStepLabelPlural">एक्सपायर हुए ट्रांसफर रद्द कर दिए जाते हैं</string>
+    <string name="migrationTransferInvalid_expiredStepLabelSingular">एक्सपायर हुआ ट्रांसफर रद्द कर दिया जाता है</string>
+    <string name="migrationTransferInvalid_whatHappensNextTitle">आगे क्या होगा</string>
+    <string name="migrationTransferInvalid_remainingBalanceReproposed">बचे हुए बैलेंस के लिए नया प्रस्ताव बनता है</string>
+    <string name="migrationTransferInvalid_transfersDoneProgress">%2$d में से %1$d ट्रांसफर हो गए; माइग्रेशन जारी रहेगा।</string>
+    <string name="migrationHowItWorks_title">यह कैसे काम करता है</string>
+    <string name="migrationHowItWorks_subtitle">Zcash पूल के बीच फंड ले जाने पर हर ट्रांसफर की राशि उजागर होती है। माइग्रेशन के दौरान हम आपकी प्राइवेसी की सुरक्षा ऐसे करते हैं।</string>
+    <string name="migrationHowItWorks_splitScheduleTitle">बाँटें और शेड्यूल करें</string>
+    <string name="migrationHowItWorks_splitScheduleDescription">आपका बैलेंस छोटी राशियों में बाँटा जाता है और समय के साथ फैलाया जाता है, जिससे उन्हें आपस में जोड़ पाना मुश्किल हो जाता है।</string>
+    <string name="migrationHowItWorks_approveOnceTitle">एक बार मंज़ूरी दें</string>
+    <string name="migrationHowItWorks_approveOnceDescription">बाकी काम Zodl संभाल लेता है, और ऐप के बैकग्राउंड में चलते हुए हर ट्रांसफर अपने तय समय पर अपने आप भेज देता है।</string>
+    <string name="migrationHowItWorks_ifSomethingFailsTitle">अगर कुछ फेल हो जाए</string>
+    <string name="migrationHowItWorks_ifSomethingFailsDescription">हम आपको सूचना देंगे, ताकि आप इसे खुद पूरा कर सकें।</string>
+    <string name="migrationHowItWorks_largeBalanceTitle">बड़ा बैलेंस</string>
+    <string name="migrationHowItWorks_largeBalanceDescription">अगर आपके वॉलेट में बड़ा बैलेंस या बहुत सारे छोटे नोट हैं, तो माइग्रेशन कई शेड्यूल किए गए राउंड में चल सकता है।</string>
+    <string name="migrationHowItWorks_disclaimer">यह विकल्प चुनने पर Orchard पूल में एक छोटी राशि (0.01 ZEC से कम) छोड़नी पड़ सकती है, जो ट्रांसफर नहीं होगी।</string>
+    <string name="migrationReview_title">ट्रांसफर देखें</string>
+    <string name="migrationReview_immediateBody">आपका पूरा Orchard बैलेंस एक ही ऑन-चेन ट्रांसफर में Ironwood पर भेजा जाएगा। पुष्टि करने के बाद यह ट्रांसफर रद्द नहीं किया जा सकता।</string>
+    <string name="migrationReview_feeLabel">शुल्क</string>
+    <string name="migrationReview_amountLabel">राशि</string>
+    <string name="migrationReview_signing">साइन हो रहा है...</string>
+    <string name="migrationReview_confirm">कन्फर्म करें</string>
+    <string name="migrationReview_confirmTransferPlanTitle">ट्रांसफर प्लान की पुष्टि करें</string>
+    <string name="migrationReview_privacyBody">आपका बैलेंस %2$s में %1$d ट्रांसफर में बँटता है। एक बार मंज़ूरी दें, बाकी हम संभाल लेंगे, बस ऐप को बैकग्राउंड में चलने दें। प्राइवेसी के लिए राशियाँ बेतरतीब रखी जाती हैं। अगर कोई मौका छूट जाता है, तो Zodl अगली बार खुलने पर आपसे कहेगा।</string>
+    <string name="migrationReview_roundOfTotal">%2$d में से %1$d राउंड</string>
+    <string name="migrationReview_startMigration">माइग्रेशन शुरू करें</string>
+    <string name="migrationReview_sendImmediately">तुरंत भेजें</string>
+    <string name="migrationKeystoneSign_prepareErrorMessage">माइग्रेशन को साइन करने के लिए तैयार नहीं किया जा सका। दोबारा कोशिश करें।</string>
+    <string name="migrationKeystoneSign_barTitle">ट्रांज़ैक्शन साइन करें</string>
+    <string name="migrationKeystoneSign_scanWithKeystone">अपने Keystone वॉलेट से स्कैन करें%1$s</string>
+    <string name="migrationKeystoneSign_roundSuffix"> (%2$d में से %1$d)</string>
+    <string name="migrationKeystoneSign_subtitle">Keystone से साइन करने के बाद, नीचे दिए सिग्नेचर लें बटन पर टैप करें।</string>
+    <string name="migrationKeystoneSign_badgeHardware">हार्डवेयर</string>
+    <string name="migrationKeystoneSign_getSignature">सिग्नेचर लें</string>
+    <string name="migrationKeystoneSign_reject">अस्वीकार करें</string>
+    <string name="migrationBattery_title">बैकग्राउंड डिलीवरी की अनुमति दें</string>
+    <string name="migrationBattery_body">माइग्रेशन ट्रांसफर तय समय पर भेजने के लिए Zodl को बैकग्राउंड में चलते रहना ज़रूरी है। अपनी डिवाइस सेटिंग्स में Zodl के लिए बैकग्राउंड गतिविधि की अनुमति दें।</string>
+    <string name="migrationBattery_scheduledWindowsTitle">ट्रांसफर अपने तय समय पर भेजे जाते हैं</string>
+    <string name="migrationBattery_scheduledWindowsBody">Zodl अपने आप जागकर हर ट्रांसफर तय समय पर भेज देता है, आपको कुछ नहीं करना पड़ता।</string>
+    <string name="migrationBattery_noNeedToOpenTitle">हर बार भेजने के लिए ऐप खोलने की ज़रूरत नहीं</string>
+    <string name="migrationBattery_noNeedToOpenBody">नया शेड्यूल कन्फर्म करने के बाद, हम ट्रांसफर बैकग्राउंड में भेज देंगे।</string>
+    <string name="migrationBattery_fixedScheduleTitle">तय शेड्यूल पर भेजे जाते हैं, आपकी गतिविधि पर नहीं</string>
+    <string name="migrationBattery_fixedScheduleBody">ट्रांसफर पूरे नेटवर्क के तय समय पर जाते हैं, इसलिए वे इस बात से नहीं जुड़ते कि आपने Zodl कब खोला।</string>
+    <string name="migrationBattery_withoutPermissionHint">इस अनुमति के बिना, आपको हर तय समय पर भेजने के लिए Zodl खुद खोलना पड़ेगा।</string>
+    <string name="migrationScheduled_schedulingTitle">शेड्यूल हो रहा है...</string>
+    <string name="migrationScheduled_schedulingSubtitle">आपका ZEC माइग्रेशन शेड्यूल कन्फर्म हो रहा है।</string>
+    <string name="migrationScheduled_totalToTransferLabel">कुल ट्रांसफर होने वाली राशि</string>
+    <string name="migrationScheduled_poolLabel">पूल</string>
+    <string name="migrationScheduled_poolValue">Orchard → Ironwood</string>
+    <string name="migrationScheduled_transfersLabel">ट्रांसफर</string>
+    <string name="migrationScheduled_durationLabel">अवधि</string>
+    <string name="migrationScheduled_doneTitle">माइग्रेशन शेड्यूल हो गया</string>
+    <string name="migrationScheduled_doneSubtitle">आपने जो शेड्यूल मंज़ूर किया है, उसके अनुसार आपका ZEC Ironwood पूल में माइग्रेट किया जाएगा।</string>
+    <string name="migrationScheduled_finalizeErrorMessage">आपका माइग्रेशन शेड्यूल पूरा करते समय कुछ गलत हो गया। कृपया दोबारा कोशिश करें।</string>
+    <string name="migrationScheduled_backgroundActivityHint">ट्रांसफर तभी चलते हैं जब आप ऐप खोलते हैं। अपने आप भेजने के लिए सेटिंग्स में बैकग्राउंड गतिविधि चालू करें।</string>
+    <string name="migrationScheduled_transfersProgressPending">%1$d में से 0</string>
+    <string name="migrationHome_completeTitle">माइग्रेशन पूरा हुआ</string>
+    <string name="migrationHome_requiredTitle">माइग्रेशन ज़रूरी है</string>
+    <string name="migrationHome_readyToSendTitle">ट्रांसफर तैयार</string>
+    <string name="migrationHome_attentionTitle">माइग्रेशन प्लान अपडेट करना है</string>
+    <string name="migrationHome_defaultSubtitle">अपना फंड Ironwood पर ले जाएँ।</string>
+</resources>
