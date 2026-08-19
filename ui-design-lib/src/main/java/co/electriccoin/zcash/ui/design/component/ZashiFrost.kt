@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.design.component
 import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -53,8 +54,11 @@ fun Modifier.zashiFrostedHeader(
         hazeState = hazeState,
         frostColor = frostColor,
         fallbackColor = fallbackColor,
-        startIntensity = 1f,
-        endIntensity = 0f
+        progressive =
+            HazeProgressive.verticalGradient(
+                startIntensity = 1f,
+                endIntensity = 0f
+            )
     )
 
 /**
@@ -75,17 +79,64 @@ fun Modifier.zashiFrostedFooter(
         hazeState = hazeState,
         frostColor = frostColor,
         fallbackColor = fallbackColor,
-        startIntensity = 0f,
-        endIntensity = 1f
+        progressive =
+            HazeProgressive.verticalGradient(
+                startIntensity = 0f,
+                endIntensity = 1f
+            )
     )
+
+/**
+ * A [zashiFrostedFooter] whose blur strength is a free-form multi-stop curve instead of a
+ * two-point gradient. [intensityStops] maps a fraction of the footer's height (0f = top edge,
+ * 1f = bottom edge) to a blur intensity at that line; between stops the intensity interpolates
+ * linearly. A footer whose top edge carries text can, for instance, ramp steeply to a strong blur
+ * right under that text.
+ *
+ * Only the blur follows the stops. The tint keeps the plain footer's bottom-ramp gradient and the
+ * noise grain is dropped entirely, so the frost does not repaint the footer's resting colors —
+ * over undisturbed background this footer looks exactly like the two-point one.
+ */
+@Composable
+fun Modifier.zashiFrostedFooter(
+    hazeState: HazeState,
+    intensityStops: List<Pair<Float, Float>>,
+    frostColor: Color = ZashiColors.Surfaces.bgPrimary,
+    fallbackColor: Color = ZashiColors.Surfaces.bgPrimary
+): Modifier {
+    val tintColor = frostColor.copy(alpha = frostColor.alpha * FROST_TINT_ALPHA)
+    return zashiFrost(
+        hazeState = hazeState,
+        frostColor = frostColor,
+        fallbackColor = fallbackColor,
+        progressive =
+            HazeProgressive.Brush(
+                Brush.verticalGradient(
+                    colorStops =
+                        intensityStops
+                            .map { (fraction, intensity) -> fraction to Color.White.copy(alpha = intensity) }
+                            .toTypedArray()
+                )
+            ),
+        tint =
+            HazeTint(
+                Brush.verticalGradient(
+                    0f to tintColor.copy(alpha = 0f),
+                    1f to tintColor
+                )
+            ),
+        noiseFactor = 0f
+    )
+}
 
 @Composable
 private fun Modifier.zashiFrost(
     hazeState: HazeState,
     frostColor: Color,
     fallbackColor: Color,
-    startIntensity: Float,
-    endIntensity: Float
+    progressive: HazeProgressive,
+    tint: HazeTint? = null,
+    noiseFactor: Float = HazeDefaults.noiseFactor
 ): Modifier =
     if (hazeState.blurEnabled) {
         hazeEffect(
@@ -93,16 +144,12 @@ private fun Modifier.zashiFrost(
             style =
                 HazeStyle(
                     backgroundColor = frostColor,
-                    tint = HazeTint(frostColor.copy(alpha = frostColor.alpha * FROST_TINT_ALPHA)),
+                    tint = tint ?: HazeTint(frostColor.copy(alpha = frostColor.alpha * FROST_TINT_ALPHA)),
                     blurRadius = FROST_BLUR_RADIUS,
-                    noiseFactor = HazeDefaults.noiseFactor
+                    noiseFactor = noiseFactor
                 )
         ) {
-            progressive =
-                HazeProgressive.verticalGradient(
-                    startIntensity = startIntensity,
-                    endIntensity = endIntensity
-                )
+            this.progressive = progressive
         }
     } else {
         background(fallbackColor)
