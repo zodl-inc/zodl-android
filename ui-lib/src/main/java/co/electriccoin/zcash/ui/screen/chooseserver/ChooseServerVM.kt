@@ -10,6 +10,7 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.component.EndpointTextFieldInnerState
 import co.electriccoin.zcash.ui.common.component.EndpointTextFieldState
+import co.electriccoin.zcash.ui.common.datasource.resolveIsEndpointCustom
 import co.electriccoin.zcash.ui.common.model.FastestServersState
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.usecase.GetAutomaticEndpointUseCase
@@ -203,7 +204,7 @@ class ChooseServerVM(
                         InnerState.Persisted(
                             endpoint = endpoint,
                             isAutomatic = isAutomatic,
-                            isCustomEndpoint = endpoint !in inner.availableServers,
+                            isCustomEndpoint = resolveIsEndpointCustom(endpoint, inner.availableServers),
                         )
                     inner.copy(
                         persisted = persisted,

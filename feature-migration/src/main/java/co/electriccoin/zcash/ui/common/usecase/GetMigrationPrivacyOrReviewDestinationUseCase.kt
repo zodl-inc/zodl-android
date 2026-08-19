@@ -9,9 +9,11 @@ import co.electriccoin.zcash.ui.screen.migration.privacy.MigrationPrivacyArgs
 import co.electriccoin.zcash.ui.screen.migration.review.MigrationReviewArgs
 
 /**
- * A custom (non-automatic) server can't broadcast the migration transaction over Tor at all —
- * unlike the global Tor toggle, this isn't a preference to honor, so it takes priority over the
- * toggle check below and is shown regardless of whether Tor is already the user's global setting.
+ * A custom (non-bundled) server can't broadcast the migration transaction over Tor at all — unlike
+ * the global Tor toggle, this isn't a preference to honor, so it takes priority over the toggle
+ * check below and is shown regardless of whether Tor is already the user's global setting. Note
+ * this is narrower than "manual mode": manually pinning one of our own bundled servers is still
+ * fine for Tor broadcast, so the check is on the endpoint itself, not just automatic-vs-manual.
  *
  * Otherwise, the Tor sheet only has something to offer when Tor isn't already the user's global
  * setting — if it's already on, both migration entry points skip straight past it. What "past it"
@@ -25,7 +27,7 @@ class GetMigrationPrivacyOrReviewDestinationUseCase(
     private val automaticServerRepository: AutomaticServerRepository,
 ) {
     suspend operator fun invoke(mode: MigrationMode): Any {
-        if (!automaticServerRepository.isServerAutomatic()) return MigrationCustomServerTorArgs(mode = mode)
+        if (automaticServerRepository.isServerCustom()) return MigrationCustomServerTorArgs(mode = mode)
         val torAlreadyOn = isTorEnabledStorageProvider.get() == true
         return when (mode) {
             MigrationMode.IMMEDIATE -> {
