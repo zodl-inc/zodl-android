@@ -6,28 +6,36 @@ import androidx.browser.customtabs.CustomTabColorSchemeParams
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.design.theme.colors.BrowserChromeColors
 
 object WebBrowserUtil {
     internal fun startActivity(
         activity: Activity,
         url: String,
-        isOledDark: Boolean
+        appearanceMode: AppearanceMode
     ) {
         val lightParams = colorSchemeParams(BrowserChromeColors.light)
         val darkParams =
-            colorSchemeParams(if (isOledDark) BrowserChromeColors.oledDark else BrowserChromeColors.dark)
-        val intent =
+            colorSchemeParams(
+                if (appearanceMode == AppearanceMode.OLED) BrowserChromeColors.oledDark else BrowserChromeColors.dark
+            )
+        val colorSchemeBuilder =
             CustomTabsIntent
                 .Builder()
                 .setUrlBarHidingEnabled(true)
                 .setShowTitle(true)
                 .setShareState(CustomTabsIntent.SHARE_STATE_OFF)
-                .setColorScheme(CustomTabsIntent.COLOR_SCHEME_SYSTEM)
                 .setColorSchemeParams(CustomTabsIntent.COLOR_SCHEME_LIGHT, lightParams)
                 .setColorSchemeParams(CustomTabsIntent.COLOR_SCHEME_DARK, darkParams)
                 .setDefaultColorSchemeParams(lightParams)
-                .build()
+        val resolvedScheme =
+            when (appearanceMode) {
+                AppearanceMode.SYSTEM -> CustomTabsIntent.COLOR_SCHEME_SYSTEM
+                AppearanceMode.LIGHT -> CustomTabsIntent.COLOR_SCHEME_LIGHT
+                AppearanceMode.DARK, AppearanceMode.OLED -> CustomTabsIntent.COLOR_SCHEME_DARK
+            }
+        val intent = colorSchemeBuilder.setColorScheme(resolvedScheme).build()
         runCatching {
             intent.launchUrl(activity, Uri.parse(url))
         }
