@@ -5,18 +5,20 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.preference.StandardPreferenceProvider
 import co.electriccoin.zcash.preference.model.entry.BooleanPreferenceDefault
-import co.electriccoin.zcash.ui.common.provider.IsOledThemeEnabledStorageProvider
+import co.electriccoin.zcash.ui.common.provider.AppearanceModeStorageProvider
+import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.preference.StandardPreferenceKeys
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 class OldHomeViewModel(
     private val standardPreferenceProvider: StandardPreferenceProvider,
-    isOledThemeEnabledStorageProvider: IsOledThemeEnabledStorageProvider,
+    appearanceModeStorageProvider: AppearanceModeStorageProvider,
 ) : ViewModel() {
     /**
      * A flow of whether background sync is enabled
@@ -30,15 +32,16 @@ class OldHomeViewModel(
     val isHideBalances: StateFlow<Boolean?> = booleanStateFlow(StandardPreferenceKeys.IS_HIDE_BALANCES)
 
     /**
-     * A flow of whether the pure black (OLED) dark theme is enabled. Null means the user has never chosen.
+     * A flow of the user's chosen [AppearanceMode]. A never-chosen preference resolves to [AppearanceMode.SYSTEM].
      */
-    val isOledThemeEnabled: StateFlow<Boolean?> =
-        isOledThemeEnabledStorageProvider
+    val appearanceMode: StateFlow<AppearanceMode> =
+        appearanceModeStorageProvider
             .observe()
+            .map { it ?: AppearanceMode.SYSTEM }
             .stateIn(
                 viewModelScope,
                 SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
-                null
+                AppearanceMode.SYSTEM
             )
 
     private fun booleanStateFlow(default: BooleanPreferenceDefault): StateFlow<Boolean?> =

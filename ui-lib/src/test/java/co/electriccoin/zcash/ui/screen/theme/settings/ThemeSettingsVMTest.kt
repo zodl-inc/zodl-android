@@ -4,8 +4,9 @@ import androidx.navigation.NavBackStackEntry
 import co.electriccoin.zcash.ui.BaseNavigationCommand
 import co.electriccoin.zcash.ui.NavigationCommand
 import co.electriccoin.zcash.ui.NavigationRouter
-import co.electriccoin.zcash.ui.common.provider.IsOledThemeEnabledStorageProvider
-import co.electriccoin.zcash.ui.common.usecase.SetOledThemeUseCase
+import co.electriccoin.zcash.ui.common.provider.AppearanceModeStorageProvider
+import co.electriccoin.zcash.ui.common.usecase.SetAppearanceModeUseCase
+import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -28,9 +29,10 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * The Theme settings screen (MOB-1724): the stored preference decides which option is checked, Save only
- * becomes available once the selection differs from the stored one, and saving persists the choice and pops
- * the screen.
+ * The Theme settings screen (MOB-1724): the stored preference decides which of the four options
+ * (System/Light/Dark/OLED) is checked, Save only becomes available once the selection differs from the
+ * stored one, and saving persists the choice and pops the screen. A never-chosen (null) preference
+ * resolves to System.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ThemeSettingsVMTest {
@@ -48,78 +50,85 @@ class ThemeSettingsVMTest {
     }
 
     @Test
-    fun neverChosenSelectsClassicWithSaveDisabled() =
+    fun neverChosenSelectsSystemWithSaveDisabled() =
         runTest(dispatcher) {
-            val vm = startedVm(provider = FakeIsOledThemeEnabledStorageProvider(stored = null))
+            val vm = startedVm(provider = FakeAppearanceModeStorageProvider(stored = null))
 
             val state = requireNotNull(vm.state.value)
-            assertTrue(state.isClassicThemeSelected.isChecked)
-            assertFalse(state.isOledThemeSelected.isChecked)
+            assertSingleSelection(state, AppearanceMode.SYSTEM)
             assertFalse(state.saveButton.isEnabled)
         }
 
     @Test
-    fun storedFalseSelectsClassicWithSaveDisabled() =
+    fun storedLightSelectsLightWithSaveDisabled() =
         runTest(dispatcher) {
-            val vm = startedVm(provider = FakeIsOledThemeEnabledStorageProvider(stored = false))
+            val vm = startedVm(provider = FakeAppearanceModeStorageProvider(stored = AppearanceMode.LIGHT))
 
             val state = requireNotNull(vm.state.value)
-            assertTrue(state.isClassicThemeSelected.isChecked)
-            assertFalse(state.isOledThemeSelected.isChecked)
+            assertSingleSelection(state, AppearanceMode.LIGHT)
             assertFalse(state.saveButton.isEnabled)
         }
 
     @Test
-    fun storedTrueSelectsOledWithSaveDisabled() =
+    fun storedDarkSelectsDarkWithSaveDisabled() =
         runTest(dispatcher) {
-            val vm = startedVm(provider = FakeIsOledThemeEnabledStorageProvider(stored = true))
+            val vm = startedVm(provider = FakeAppearanceModeStorageProvider(stored = AppearanceMode.DARK))
 
             val state = requireNotNull(vm.state.value)
-            assertFalse(state.isClassicThemeSelected.isChecked)
-            assertTrue(state.isOledThemeSelected.isChecked)
+            assertSingleSelection(state, AppearanceMode.DARK)
+            assertFalse(state.saveButton.isEnabled)
+        }
+
+    @Test
+    fun storedOledSelectsOledWithSaveDisabled() =
+        runTest(dispatcher) {
+            val vm = startedVm(provider = FakeAppearanceModeStorageProvider(stored = AppearanceMode.OLED))
+
+            val state = requireNotNull(vm.state.value)
+            assertSingleSelection(state, AppearanceMode.OLED)
             assertFalse(state.saveButton.isEnabled)
         }
 
     @Test
     fun togglingBackAndForthDisablesSaveAgain() =
         runTest(dispatcher) {
-            val vm = startedVm(provider = FakeIsOledThemeEnabledStorageProvider(stored = null))
+            val vm = startedVm(provider = FakeAppearanceModeStorageProvider(stored = null))
 
-            requireNotNull(vm.state.value).isOledThemeSelected.onClick()
+            optionFor(requireNotNull(vm.state.value), AppearanceMode.OLED).onClick()
             advanceUntilIdle()
 
             val oledSelected = requireNotNull(vm.state.value)
-            assertTrue(oledSelected.isOledThemeSelected.isChecked)
+            assertSingleSelection(oledSelected, AppearanceMode.OLED)
             assertTrue(oledSelected.saveButton.isEnabled)
 
-            oledSelected.isClassicThemeSelected.onClick()
+            optionFor(oledSelected, AppearanceMode.SYSTEM).onClick()
             advanceUntilIdle()
 
-            val classicSelected = requireNotNull(vm.state.value)
-            assertTrue(classicSelected.isClassicThemeSelected.isChecked)
-            assertFalse(classicSelected.saveButton.isEnabled)
+            val systemSelected = requireNotNull(vm.state.value)
+            assertSingleSelection(systemSelected, AppearanceMode.SYSTEM)
+            assertFalse(systemSelected.saveButton.isEnabled)
         }
 
     @Test
     fun savingOledPersistsTheChoiceAndNavigatesBack() =
         runTest(dispatcher) {
-            val provider = FakeIsOledThemeEnabledStorageProvider(stored = null)
+            val provider = FakeAppearanceModeStorageProvider(stored = null)
             val router = FakeNavigationRouter()
             val vm = startedVm(provider = provider, router = router)
 
-            requireNotNull(vm.state.value).isOledThemeSelected.onClick()
+            optionFor(requireNotNull(vm.state.value), AppearanceMode.OLED).onClick()
             advanceUntilIdle()
             requireNotNull(vm.state.value).saveButton.onClick()
             advanceUntilIdle()
 
-            assertEquals(true, provider.stored)
+            assertEquals(AppearanceMode.OLED, provider.stored)
             assertEquals(1, router.backCount)
         }
 
     @Test
     fun backDismissesWithoutChangingAnything() =
         runTest(dispatcher) {
-            val provider = FakeIsOledThemeEnabledStorageProvider(stored = null)
+            val provider = FakeAppearanceModeStorageProvider(stored = null)
             val router = FakeNavigationRouter()
             val vm = startedVm(provider = provider, router = router)
 
@@ -129,15 +138,33 @@ class ThemeSettingsVMTest {
             assertNull(provider.stored)
         }
 
+    private fun assertSingleSelection(
+        state: ThemeSettingsState,
+        expected: AppearanceMode
+    ) {
+        state.options.forEach { option ->
+            assertEquals(
+                option.mode == expected,
+                option.isChecked,
+                "unexpected checked state for ${option.mode}"
+            )
+        }
+    }
+
+    private fun optionFor(
+        state: ThemeSettingsState,
+        mode: AppearanceMode
+    ) = state.options.first { it.mode == mode }
+
     private fun TestScope.startedVm(
-        provider: FakeIsOledThemeEnabledStorageProvider = FakeIsOledThemeEnabledStorageProvider(stored = null),
+        provider: FakeAppearanceModeStorageProvider = FakeAppearanceModeStorageProvider(stored = null),
         router: FakeNavigationRouter = FakeNavigationRouter(),
     ): ThemeSettingsVM {
         val vm =
             ThemeSettingsVM(
                 navigationRouter = router,
-                isOledThemeEnabledStorageProvider = provider,
-                setOledTheme = SetOledThemeUseCase(router, provider)
+                appearanceModeStorageProvider = provider,
+                setAppearanceMode = SetAppearanceModeUseCase(router, provider)
             )
         backgroundScope.launch { vm.state.collect { } }
         advanceUntilIdle()
@@ -145,19 +172,19 @@ class ThemeSettingsVMTest {
     }
 }
 
-private class FakeIsOledThemeEnabledStorageProvider(
-    stored: Boolean?
-) : IsOledThemeEnabledStorageProvider {
-    var stored: Boolean? = stored
+private class FakeAppearanceModeStorageProvider(
+    stored: AppearanceMode?
+) : AppearanceModeStorageProvider {
+    var stored: AppearanceMode? = stored
         private set
 
-    override suspend fun get(): Boolean? = stored
+    override suspend fun get(): AppearanceMode? = stored
 
-    override suspend fun store(amount: Boolean) {
+    override suspend fun store(amount: AppearanceMode) {
         stored = amount
     }
 
-    override fun observe(): Flow<Boolean?> = emptyFlow()
+    override fun observe(): Flow<AppearanceMode?> = emptyFlow()
 
     override suspend fun clear() {
         stored = null
