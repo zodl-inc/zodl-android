@@ -11,6 +11,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 - Buttons, rows, and other interactive elements now respond to touch with a subtle expressive press animation.
 - Screens and sheets across the app now use frosted-glass headers and footers, with content scrolling beneath them.
+- We added Hindi as an app language. You can select it from your device's per-app language settings.
 
 ### Changed:
 
