@@ -1,19 +1,13 @@
 package co.electriccoin.zcash.ui.design.theme
 
 /**
- * The user's chosen appearance for the app. [SYSTEM] follows the device's light/dark setting and never
- * auto-resolves to [OLED] - pure black is always an explicit choice.
+ * The user's chosen light/dark appearance for the app. [SYSTEM] follows the device's setting.
+ *
+ * Pure black (OLED) is not a value here - it's an independent on/off modifier ([ZcashTheme]'s `isOledEnabled`)
+ * layered on top of whichever mode resolves to dark, since it only ever makes sense alongside a dark appearance.
  */
 enum class AppearanceMode {
     SYSTEM,
     LIGHT,
     DARK,
-    OLED,
 }
-
-/**
- * Whether [this] forces a dark appearance unconditionally, independent of the system setting. [AppearanceMode.SYSTEM]
- * defers to the platform instead and is not covered here.
- */
-val AppearanceMode.forcesDark: Boolean
-    get() = this == AppearanceMode.DARK || this == AppearanceMode.OLED

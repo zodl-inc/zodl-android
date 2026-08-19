@@ -169,9 +169,11 @@ class MainActivity : FragmentActivity() {
             Override(configurationOverrideFlow) {
                 val isHideBalances by oldHomeViewModel.isHideBalances.collectAsStateWithLifecycle()
                 val appearanceMode by oldHomeViewModel.appearanceMode.collectAsStateWithLifecycle()
+                val isOledEnabled by oldHomeViewModel.isOledEnabled.collectAsStateWithLifecycle()
                 ZcashTheme(
                     balancesAvailable = isHideBalances == false,
-                    appearanceMode = appearanceMode
+                    appearanceMode = appearanceMode,
+                    isOledEnabled = isOledEnabled
                 ) {
                     BlankSurface(
                         Modifier

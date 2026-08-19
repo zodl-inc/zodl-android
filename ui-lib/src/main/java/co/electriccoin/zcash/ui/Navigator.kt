@@ -7,6 +7,7 @@ import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.serialization.generateHashCode
 import co.electriccoin.zcash.ui.common.provider.AppearanceModeStorageProvider
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
+import co.electriccoin.zcash.ui.common.provider.IsOledEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.getOrSystem
 import co.electriccoin.zcash.ui.design.KeyboardManager
 import co.electriccoin.zcash.ui.screen.ExternalUrl
@@ -30,6 +31,7 @@ class NavigatorImpl(
     private val keyboardManager: KeyboardManager,
     private val applicationStateProvider: ApplicationStateProvider,
     private val appearanceModeStorageProvider: AppearanceModeStorageProvider,
+    private val isOledEnabledStorageProvider: IsOledEnabledStorageProvider,
 ) : Navigator {
     override suspend fun executeCommand(command: NavigationCommand) {
         keyboardManager.close()
@@ -182,7 +184,8 @@ class NavigatorImpl(
         WebBrowserUtil.startActivity(
             activity = activity,
             url = route.url,
-            appearanceMode = appearanceModeStorageProvider.getOrSystem()
+            appearanceMode = appearanceModeStorageProvider.getOrSystem(),
+            isOledEnabled = isOledEnabledStorageProvider.get() == true
         )
     }
 

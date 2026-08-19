@@ -13,14 +13,19 @@ object WebBrowserUtil {
     internal fun startActivity(
         activity: Activity,
         url: String,
-        appearanceMode: AppearanceMode
+        appearanceMode: AppearanceMode,
+        isOledEnabled: Boolean
     ) {
         val lightParams = colorSchemeParams(BrowserChromeColors.light)
         val darkParams =
-            colorSchemeParams(
-                if (appearanceMode == AppearanceMode.OLED) BrowserChromeColors.oledDark else BrowserChromeColors.dark
-            )
-        val colorSchemeBuilder =
+            colorSchemeParams(if (isOledEnabled) BrowserChromeColors.oledDark else BrowserChromeColors.dark)
+        val resolvedScheme =
+            when (appearanceMode) {
+                AppearanceMode.SYSTEM -> CustomTabsIntent.COLOR_SCHEME_SYSTEM
+                AppearanceMode.LIGHT -> CustomTabsIntent.COLOR_SCHEME_LIGHT
+                AppearanceMode.DARK -> CustomTabsIntent.COLOR_SCHEME_DARK
+            }
+        val intent =
             CustomTabsIntent
                 .Builder()
                 .setUrlBarHidingEnabled(true)
@@ -29,13 +34,8 @@ object WebBrowserUtil {
                 .setColorSchemeParams(CustomTabsIntent.COLOR_SCHEME_LIGHT, lightParams)
                 .setColorSchemeParams(CustomTabsIntent.COLOR_SCHEME_DARK, darkParams)
                 .setDefaultColorSchemeParams(lightParams)
-        val resolvedScheme =
-            when (appearanceMode) {
-                AppearanceMode.SYSTEM -> CustomTabsIntent.COLOR_SCHEME_SYSTEM
-                AppearanceMode.LIGHT -> CustomTabsIntent.COLOR_SCHEME_LIGHT
-                AppearanceMode.DARK, AppearanceMode.OLED -> CustomTabsIntent.COLOR_SCHEME_DARK
-            }
-        val intent = colorSchemeBuilder.setColorScheme(resolvedScheme).build()
+                .setColorScheme(resolvedScheme)
+                .build()
         runCatching {
             intent.launchUrl(activity, Uri.parse(url))
         }
