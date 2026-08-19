@@ -11,12 +11,14 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
-import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import dev.chrisbanes.haze.HazeState
 
 /**
  * Frosted top overlay for a bottom sheet: the stock drag handle band plus an optional [title],
- * blurring the sheet content which scrolls underneath it.
+ * blurring the sheet content which scrolls underneath it. [frostColor] defaults to
+ * [ZashiModalBottomSheetDefaults.ContainerColor] — the sheet surface it frosts over — as does the
+ * opaque bar it degrades to where blur is unsupported, so in both modes the band disappears into
+ * the sheet at rest.
  *
  * It exists because Material 3 composes a sheet's drag handle *above* its content, so content can
  * never scroll under the handle. A frosted sheet therefore passes `dragHandle = null` to the sheet
@@ -55,7 +57,7 @@ import dev.chrisbanes.haze.HazeState
 fun ZashiFrostedSheetHeader(
     hazeState: HazeState,
     modifier: Modifier = Modifier,
-    frostColor: Color = ZashiColors.Surfaces.bgPrimary,
+    frostColor: Color = ZashiModalBottomSheetDefaults.ContainerColor,
     onHeightChanged: (Dp) -> Unit = {},
     title: (@Composable () -> Unit)? = null
 ) {
@@ -66,7 +68,11 @@ fun ZashiFrostedSheetHeader(
                 .fillMaxWidth()
                 .onSizeChanged { size ->
                     onHeightChanged(with(density) { size.height.toDp() })
-                }.zashiFrostedHeader(hazeState, frostColor)
+                }.zashiFrostedHeader(
+                    hazeState = hazeState,
+                    frostColor = frostColor,
+                    fallbackColor = ZashiModalBottomSheetDefaults.ContainerColor
+                )
     ) {
         ZashiModalBottomSheetDragHandle()
         title?.invoke()

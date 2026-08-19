@@ -80,7 +80,11 @@ fun SwapAssetPickerView(state: SwapAssetPickerState?) {
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .zashiFrostedHeader(hazeState)
+                                .zashiFrostedHeader(
+                                    hazeState = hazeState,
+                                    frostColor = ZashiModalBottomSheetDefaults.ContainerColor,
+                                    fallbackColor = ZashiModalBottomSheetDefaults.ContainerColor
+                                )
                     ) {
                         TopAppBar(innerState, windowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp))
 

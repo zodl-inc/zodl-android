@@ -29,6 +29,7 @@ import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiCard
 import co.electriccoin.zcash.ui.design.component.ZashiDisclaimer
 import co.electriccoin.zcash.ui.design.component.ZashiDisclaimerState
+import co.electriccoin.zcash.ui.design.component.ZashiModalBottomSheetDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
@@ -63,7 +64,11 @@ fun SwapSlippageView(state: SwapSlippageState?) {
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .zashiFrostedHeader(hazeState)
+                                .zashiFrostedHeader(
+                                    hazeState = hazeState,
+                                    frostColor = ZashiModalBottomSheetDefaults.ContainerColor,
+                                    fallbackColor = ZashiModalBottomSheetDefaults.ContainerColor
+                                )
                     )
                 }
             ) { padding ->

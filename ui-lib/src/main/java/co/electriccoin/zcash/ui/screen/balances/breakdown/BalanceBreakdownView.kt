@@ -113,7 +113,6 @@ private fun BottomSheetContent(
         ZashiFrostedSheetHeader(
             hazeState = hazeState,
             modifier = Modifier.align(Alignment.TopCenter),
-            frostColor = ZashiColors.Surfaces.bgSecondary,
             onHeightChanged = { headerHeight = it },
             title = {
                 Text(

@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
 import co.electriccoin.zcash.ui.design.component.TransparentBgScaffold
 import co.electriccoin.zcash.ui.design.component.ZashiHorizontalDivider
+import co.electriccoin.zcash.ui.design.component.ZashiModalBottomSheetDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
@@ -57,7 +58,11 @@ fun CurrencyConversionPickerView(state: CurrencyConversionPickerState?) {
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .zashiFrostedHeader(hazeState),
+                                .zashiFrostedHeader(
+                                    hazeState = hazeState,
+                                    frostColor = ZashiModalBottomSheetDefaults.ContainerColor,
+                                    fallbackColor = ZashiModalBottomSheetDefaults.ContainerColor
+                                ),
                         windowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp)
                     )
                 }

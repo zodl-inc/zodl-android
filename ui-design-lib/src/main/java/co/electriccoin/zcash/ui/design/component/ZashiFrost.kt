@@ -38,18 +38,21 @@ fun rememberZashiFrostState(): HazeState = rememberHazeState()
  * Blur is only available on devices where Haze can run it (see [HazeState.blurEnabled], which
  * defaults to `HazeDefaults.blurEnabled()`). Everywhere else Haze would degrade to a translucent
  * scrim, which combined with the vertical fade would let list rows show through the header
- * unblurred, so the header instead becomes an opaque bar. That fallback bar is always
- * [ZashiColors.Surfaces.bgPrimary] and deliberately ignores [frostColor] — a transparent fallback
- * would show the content unblurred on those devices.
+ * unblurred, so the header instead becomes an opaque bar painted in [fallbackColor], deliberately
+ * ignoring [frostColor] — a transparent fallback would show the content unblurred on those
+ * devices. Surfaces whose resting background is not bgPrimary (a bottom sheet, for instance) pass
+ * their own background as [fallbackColor] so the bar disappears into them.
  */
 @Composable
 fun Modifier.zashiFrostedHeader(
     hazeState: HazeState,
-    frostColor: Color = ZashiColors.Surfaces.bgPrimary
+    frostColor: Color = ZashiColors.Surfaces.bgPrimary,
+    fallbackColor: Color = ZashiColors.Surfaces.bgPrimary
 ): Modifier =
     zashiFrost(
         hazeState = hazeState,
         frostColor = frostColor,
+        fallbackColor = fallbackColor,
         startIntensity = 1f,
         endIntensity = 0f
     )
@@ -59,17 +62,19 @@ fun Modifier.zashiFrostedHeader(
  * the footer to full frost at its bottom edge, so the content scrolling underneath blurs away as it
  * approaches the bottom of the screen.
  *
- * [frostColor] behaves exactly as in [zashiFrostedHeader], including the opaque
- * [ZashiColors.Surfaces.bgPrimary] fallback bar where blur is unsupported.
+ * [frostColor] and [fallbackColor] behave exactly as in [zashiFrostedHeader], including the opaque
+ * fallback bar where blur is unsupported.
  */
 @Composable
 fun Modifier.zashiFrostedFooter(
     hazeState: HazeState,
-    frostColor: Color = ZashiColors.Surfaces.bgPrimary
+    frostColor: Color = ZashiColors.Surfaces.bgPrimary,
+    fallbackColor: Color = ZashiColors.Surfaces.bgPrimary
 ): Modifier =
     zashiFrost(
         hazeState = hazeState,
         frostColor = frostColor,
+        fallbackColor = fallbackColor,
         startIntensity = 0f,
         endIntensity = 1f
     )
@@ -78,6 +83,7 @@ fun Modifier.zashiFrostedFooter(
 private fun Modifier.zashiFrost(
     hazeState: HazeState,
     frostColor: Color,
+    fallbackColor: Color,
     startIntensity: Float,
     endIntensity: Float
 ): Modifier =
@@ -99,7 +105,7 @@ private fun Modifier.zashiFrost(
                 )
         }
     } else {
-        background(ZashiColors.Surfaces.bgPrimary)
+        background(fallbackColor)
     }
 
 /**
