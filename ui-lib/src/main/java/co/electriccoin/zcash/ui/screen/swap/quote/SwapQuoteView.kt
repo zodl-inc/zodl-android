@@ -177,7 +177,8 @@ private fun Success(
                         SwapQuoteHeaderState(
                             from = state.from,
                             to = state.to
-                        )
+                        ),
+                    color = ZashiColors.Surfaces.bgPrimary
                 )
             }
             Spacer(32.dp)
