@@ -124,7 +124,9 @@ class EncryptedPreferenceProviderTest {
         private const val FILENAME = "encrypted_preference_test"
         private const val RECOVERY_FILENAME = "encrypted_preference_recovery_test"
 
-        // Internal keyset key names used by EncryptedSharedPreferences to store Tink keysets
+        // Internal keyset key names used by EncryptedSharedPreferences to store Tink keysets.
+        // These are not part of the public API — if androidx.security.crypto renames them, this
+        // test will silently stop simulating corruption (it will just test a normal open instead).
         private const val KEY_KEYSET = "__androidx_security_crypto_encrypted_prefs_key_keyset__"
         private const val VALUE_KEYSET = "__androidx_security_crypto_encrypted_prefs_value_keyset__"
 
