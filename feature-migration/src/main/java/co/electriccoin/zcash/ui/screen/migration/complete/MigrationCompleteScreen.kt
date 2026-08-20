@@ -133,61 +133,57 @@ fun MigrationCompleteView(state: MigrationCompleteState) {
                         .scaffoldPadding(padding),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                Spacer(Modifier.weight(1f))
+                Image(
+                    painter = painterResource(co.electriccoin.zcash.migration.R.drawable.ic_migration_complete),
+                    contentDescription = null,
+                    modifier = Modifier.size(52.dp),
+                )
+                Spacer(Modifier.height(24.dp))
+                Text(
+                    text = stringRes(DesignR.string.migrationComplete_title).getValue(),
+                    style = ZashiTypography.header5,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ZashiColors.Text.textPrimary,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = stringRes(DesignR.string.migrationComplete_subtitle).getValue(),
+                    style = ZashiTypography.textSm,
+                    color = ZashiColors.Text.textTertiary,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(24.dp))
                 Column(
-                    Modifier.weight(1f),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(ZashiColors.Surfaces.bgSecondary)
+                            .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Image(
-                        painter = painterResource(co.electriccoin.zcash.migration.R.drawable.ic_migration_complete),
-                        contentDescription = null,
-                        modifier = Modifier.size(52.dp),
+                    SummaryRow(
+                        label = stringRes(DesignR.string.migrationComplete_totalTransferredLabel).getValue(),
+                        value = state.totalTransferred.getValue(),
                     )
-                    Spacer(Modifier.height(24.dp))
-                    Text(
-                        text = stringRes(DesignR.string.migrationComplete_title).getValue(),
-                        style = ZashiTypography.header5,
-                        fontWeight = FontWeight.SemiBold,
-                        color = ZashiColors.Text.textPrimary,
-                        textAlign = TextAlign.Center,
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = stringRes(DesignR.string.migrationComplete_subtitle).getValue(),
-                        style = ZashiTypography.textSm,
-                        color = ZashiColors.Text.textTertiary,
-                        textAlign = TextAlign.Center,
-                    )
-                    Spacer(Modifier.height(24.dp))
-                    Column(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(ZashiColors.Surfaces.bgSecondary)
-                                .padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
+                    state.remainingDust?.let { dust ->
                         SummaryRow(
-                            label = stringRes(DesignR.string.migrationComplete_totalTransferredLabel).getValue(),
-                            value = state.totalTransferred.getValue(),
-                        )
-                        state.remainingDust?.let { dust ->
-                            SummaryRow(
-                                label = stringRes(DesignR.string.migrationComplete_remainingDustLabel).getValue(),
-                                value = dust.getValue(),
-                            )
-                        }
-                        SummaryRow(
-                            label = stringRes(DesignR.string.migrationComplete_transfersLabel).getValue(),
-                            value = state.transfersProgress.getValue(),
-                        )
-                        SummaryRow(
-                            label = stringRes(DesignR.string.migrationComplete_durationLabel).getValue(),
-                            value = state.duration.getValue(),
+                            label = stringRes(DesignR.string.migrationComplete_remainingDustLabel).getValue(),
+                            value = dust.getValue(),
                         )
                     }
+                    SummaryRow(
+                        label = stringRes(DesignR.string.migrationComplete_transfersLabel).getValue(),
+                        value = state.transfersProgress.getValue(),
+                    )
+                    SummaryRow(
+                        label = stringRes(DesignR.string.migrationComplete_durationLabel).getValue(),
+                        value = state.duration.getValue(),
+                    )
                 }
+                Spacer(Modifier.weight(1f))
                 when {
                     state.remainingDust == null -> {
                         ZashiButton(
