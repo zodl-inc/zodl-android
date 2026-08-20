@@ -28,6 +28,7 @@ import co.electriccoin.zcash.ui.common.repository.WalletRepository
 import co.electriccoin.zcash.ui.common.repository.WalletSnapshotRepository
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
+import co.electriccoin.zcash.voting.di.featureVotingModule
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -75,7 +76,8 @@ class ZcashApplication : CoroutineApplication() {
                 useCaseModule,
                 mapperModule,
                 viewModelModule,
-                featureMigrationModule
+                featureMigrationModule,
+                featureVotingModule
             )
         }
 

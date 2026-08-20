@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
-import co.electriccoin.zcash.ui.common.usecase.GetORSwapQuoteUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetReloadableSwapQuoteUseCase
 import co.electriccoin.zcash.ui.common.usecase.SendEmailUseCase
 import co.electriccoin.zcash.ui.common.usecase.SwapData
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -18,13 +18,13 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class SwapSupportVM(
-    getORSwapQuote: GetORSwapQuoteUseCase,
-    private val args: SwapSupportArgs,
+    args: SwapSupportArgs,
+    getReloadableSwapQuote: GetReloadableSwapQuoteUseCase,
     private val navigationRouter: NavigationRouter,
     private val sendEmailUseCase: SendEmailUseCase,
 ) : ViewModel() {
     val state: StateFlow<SwapSupportState?> =
-        getORSwapQuote
+        getReloadableSwapQuote
             .observe(args.depositAddress)
             .map { swapData ->
                 SwapSupportState(

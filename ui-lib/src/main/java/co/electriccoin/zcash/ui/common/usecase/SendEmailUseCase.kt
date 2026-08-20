@@ -176,9 +176,9 @@ class SendEmailUseCase(
                     body =
                         context.getString(
                             R.string.transaction_detail_support_email_body,
-                            status.quote.depositAddress.address,
-                            status.quote.originAsset.value(),
-                            status.quote.destinationAsset.value(),
+                            status.depositAddress.address,
+                            status.originAsset.value(),
+                            status.destinationAsset.value(),
                         ),
                     supportInfo =
                         getSupport().toSupportString(

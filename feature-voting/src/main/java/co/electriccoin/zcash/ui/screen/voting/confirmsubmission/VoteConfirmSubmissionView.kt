@@ -1,0 +1,297 @@
+package co.electriccoin.zcash.ui.screen.voting.confirmsubmission
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarTags
+import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
+import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
+import co.electriccoin.zcash.ui.design.component.Spacer
+import co.electriccoin.zcash.ui.design.component.VerticalSpacer
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
+import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
+import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
+import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
+import co.electriccoin.zcash.ui.design.theme.ZcashTheme
+import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
+import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
+import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.orDark
+import co.electriccoin.zcash.ui.design.util.scaffoldPadding
+import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.common.WalletHeaderBadgeChrome
+import co.electriccoin.zcash.ui.screen.common.WalletHeaderIcons
+import co.electriccoin.zcash.ui.screen.common.WalletHeaderIconsState
+import co.electriccoin.zcash.ui.screen.voting.votingerror.VotingErrorMapper
+
+@Composable
+fun VoteConfirmSubmissionView(state: VoteConfirmSubmissionState) {
+    ZashiConfirmationBottomSheet(state = state.errorSheet)
+
+    val screenTitle = navTitle(state.status).getValue()
+
+    val hazeState = rememberZashiFrostState()
+    BlankBgScaffold(
+        topBar = {
+            ZashiSmallTopAppBar(
+                title = screenTitle,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
+                navigationAction = {
+                    ZashiTopAppBarBackNavigation(
+                        onBack = state.onBack,
+                        modifier = Modifier.testTag(ZashiTopAppBarTags.BACK),
+                        enabled = !state.status.isInFlight(),
+                    )
+                },
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    )
+            )
+        },
+        bottomBar = {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedFooter(hazeState)
+                        .navigationBarsPadding()
+                        .padding(
+                            start = ZashiDimensions.Spacing.spacing3xl,
+                            end = ZashiDimensions.Spacing.spacing3xl,
+                            bottom = ZashiDimensions.Spacing.spacing3xl
+                        )
+            ) {
+                VoteSubmissionBottomSection(state)
+            }
+        },
+        content = { padding ->
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .zashiFrostSource(hazeState)
+            ) {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .scaffoldPadding(padding)
+                            .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
+                ) {
+                    VerticalSpacer(24.dp)
+                    HeaderSection(state)
+                    VerticalSpacer(24.dp)
+                    VoteSubmissionDetailsCard(state)
+                    if (state.status.isInFlight()) {
+                        VerticalSpacer(16.dp)
+                        Text(
+                            text = stringRes(R.string.coinVote_confirmSubmission_headerSubtitleSubmitting).getValue(),
+                            style = ZashiTypography.textSm,
+                            color = ZashiColors.Text.textSecondary,
+                        )
+                    }
+                    VerticalSpacer(24.dp)
+                }
+            }
+        }
+    )
+}
+
+@Composable
+fun VoteConfirmSubmissionLoadingView() {
+    BlankBgScaffold(
+        topBar = {
+            ZashiSmallTopAppBar(
+                title = stringRes(R.string.coinVote_common_submission).getValue(),
+                navigationAction = {
+                    ZashiTopAppBarBackNavigation(
+                        onBack = {},
+                        modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
+                    )
+                },
+                colors =
+                    ZcashTheme.colors.topAppBarColors orDark
+                        ZcashTheme.colors.topAppBarColors.copyColors(
+                            containerColor = Color.Transparent
+                        )
+            )
+        },
+        content = { padding ->
+            CircularScreenProgressIndicator(
+                modifier = Modifier.scaffoldPadding(padding)
+            )
+        }
+    )
+}
+
+@Composable
+private fun HeaderSection(state: VoteConfirmSubmissionState) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        WalletHeaderIcons(
+            state =
+                WalletHeaderIconsState(
+                    isKeystone = state.isKeystoneUser,
+                    badgeIcon =
+                        if (state.status is VoteSubmissionStatus.Completed) {
+                            R.drawable.ic_vote_check_verified_solid
+                        } else {
+                            R.drawable.ic_vote_thumbs_up
+                        },
+                    badgeChrome =
+                        if (state.status is VoteSubmissionStatus.Completed) {
+                            WalletHeaderBadgeChrome.Success
+                        } else {
+                            WalletHeaderBadgeChrome.Neutral
+                        }
+                )
+        )
+        Spacer(24.dp)
+        Text(
+            text = headerTitle(state.status).getValue(),
+            style = ZashiTypography.header6,
+            color = ZashiColors.Text.textPrimary,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(8.dp)
+        Text(
+            text = headerSubtitle(state).getValue(),
+            style = ZashiTypography.textSm,
+            color = ZashiColors.Text.textSecondary,
+        )
+    }
+}
+
+private fun navTitle(status: VoteSubmissionStatus): StringResource =
+    when (status) {
+        is VoteSubmissionStatus.Idle -> stringRes(R.string.coinVote_common_confirmation)
+        else -> stringRes(R.string.coinVote_common_submission)
+    }
+
+private fun headerTitle(status: VoteSubmissionStatus): StringResource =
+    when (status) {
+        is VoteSubmissionStatus.Idle -> {
+            stringRes(R.string.coinVote_confirmSubmission_headerTitleIdle)
+        }
+
+        is VoteSubmissionStatus.LocalAuthorizing -> {
+            stringRes(R.string.coinVote_store_submissionAuthorizingVote)
+        }
+
+        is VoteSubmissionStatus.Authorizing, is VoteSubmissionStatus.Submitting -> {
+            stringRes(R.string.coinVote_submission_continuedProcessingTitle)
+        }
+
+        is VoteSubmissionStatus.Completed -> {
+            stringRes(R.string.coinVote_confirmSubmission_headerTitleCompleted)
+        }
+
+        is VoteSubmissionStatus.LocalAuthFailed -> {
+            stringRes(R.string.coinVote_confirmSubmission_authorizationFailedTitle)
+        }
+
+        is VoteSubmissionStatus.ProtocolAuthFailed -> {
+            stringRes(R.string.coinVote_confirmSubmission_authorizationFailedTitle)
+        }
+
+        is VoteSubmissionStatus.SubmissionFailed -> {
+            stringRes(R.string.coinVote_confirmSubmission_submissionFailedTitle)
+        }
+    }
+
+private fun headerSubtitle(state: VoteConfirmSubmissionState): StringResource =
+    when (val status = state.status) {
+        is VoteSubmissionStatus.Idle -> {
+            if (state.isKeystoneUser) {
+                stringRes(R.string.coinVote_confirmSubmission_headerSubtitleIdleKeystone)
+            } else {
+                stringRes(R.string.coinVote_confirmSubmission_headerSubtitleIdle)
+            }
+        }
+
+        is VoteSubmissionStatus.LocalAuthorizing,
+        is VoteSubmissionStatus.Authorizing,
+        is VoteSubmissionStatus.Submitting -> {
+            stringRes(R.string.coinVote_confirmSubmission_headerSubtitleSubmitting)
+        }
+
+        is VoteSubmissionStatus.Completed -> {
+            stringRes(R.string.coinVote_confirmSubmission_headerSubtitleCompleted)
+        }
+
+        is VoteSubmissionStatus.LocalAuthFailed -> {
+            stringRes(R.string.coinVote_confirmSubmission_authorizationFailedMessage)
+        }
+
+        is VoteSubmissionStatus.ProtocolAuthFailed -> {
+            stringRes(R.string.coinVote_confirmSubmission_authorizationFailedMessage)
+        }
+
+        is VoteSubmissionStatus.SubmissionFailed -> {
+            status.error.toMessageOrDefault(
+                status.defaultError ?: stringRes(R.string.coinVote_confirmSubmission_submissionFailedMessage)
+            )
+        }
+    }
+
+private fun String?.toMessageOrDefault(default: StringResource): StringResource =
+    if (isNullOrBlank()) {
+        default
+    } else {
+        VotingErrorMapper.toUserFriendlyMessage(this)
+    }
+
+private fun previewState(status: VoteSubmissionStatus) =
+    VoteConfirmSubmissionState.preview.copy(status = status)
+
+@PreviewScreens
+@Composable
+private fun ConfirmSubmissionPreviewIdle() =
+    ZcashTheme { VoteConfirmSubmissionView(previewState(VoteSubmissionStatus.Idle)) }
+
+@PreviewScreens
+@Composable
+private fun ConfirmSubmissionPreviewAuthorizing() =
+    ZcashTheme { VoteConfirmSubmissionView(previewState(VoteSubmissionStatus.Authorizing(0.45f))) }
+
+@PreviewScreens
+@Composable
+private fun ConfirmSubmissionPreviewSubmitting() =
+    ZcashTheme { VoteConfirmSubmissionView(previewState(VoteSubmissionStatus.Submitting(5, 11, 0.45f))) }
+
+@PreviewScreens
+@Composable
+private fun ConfirmSubmissionPreviewCompleted() =
+    ZcashTheme { VoteConfirmSubmissionView(previewState(VoteSubmissionStatus.Completed)) }
+
+@PreviewScreens
+@Composable
+private fun ConfirmSubmissionPreviewFailed() =
+    ZcashTheme {
+        VoteConfirmSubmissionView(
+            previewState(VoteSubmissionStatus.SubmissionFailed("Network error. Please try again."))
+        )
+    }

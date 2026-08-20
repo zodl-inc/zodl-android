@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.integrations
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,11 @@ import androidx.compose.material3.SheetState
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
@@ -22,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.Spacer
+import co.electriccoin.zcash.ui.design.component.ZashiFrostedSheetHeader
 import co.electriccoin.zcash.ui.design.component.ZashiHorizontalDivider
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.listitem.ListItemState
@@ -29,6 +36,8 @@ import co.electriccoin.zcash.ui.design.component.listitem.ZashiListItem
 import co.electriccoin.zcash.ui.design.component.listitem.ZashiListItemDefaults
 import co.electriccoin.zcash.ui.design.component.rememberModalBottomSheetState
 import co.electriccoin.zcash.ui.design.component.rememberScreenModalBottomSheetState
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -47,6 +56,7 @@ internal fun IntegrationsDialogView(
     ZashiScreenModalBottomSheet(
         state = state,
         sheetState = sheetState,
+        dragHandle = null,
         content = { state, contentPadding ->
             BottomSheetContent(
                 state = state,
@@ -63,37 +73,53 @@ fun BottomSheetContent(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier =
-            modifier
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = contentPadding.calculateBottomPadding())
-    ) {
-        IntegrationItems(state, contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp))
-        if (state.showFooter) {
-            Spacer(16.dp)
-            Row(
-                modifier =
-                    Modifier
-                        .padding(horizontal = 24.dp)
-                        .fillMaxWidth(),
-            ) {
-                Image(
-                    modifier = Modifier,
-                    painter = painterResource(co.electriccoin.zcash.ui.design.R.drawable.ic_info),
-                    contentDescription = null,
-                    colorFilter = ColorFilter.tint(ZashiColors.Text.textTertiary)
-                )
-                Spacer(8.dp)
-                Text(
-                    modifier = Modifier.weight(1f),
-                    text = stringResource(id = R.string.integrations_dialog_info),
-                    textAlign = TextAlign.Start,
-                    style = ZashiTypography.textXs,
-                    color = ZashiColors.Text.textTertiary
-                )
+    val hazeState = rememberZashiFrostState()
+    var headerHeight by remember { mutableStateOf(0.dp) }
+    Box(modifier = modifier) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .zashiFrostSource(hazeState)
+                    .verticalScroll(rememberScrollState())
+                    .padding(
+                        top = headerHeight,
+                        bottom = contentPadding.calculateBottomPadding()
+                    )
+        ) {
+            IntegrationItems(state, contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp))
+            if (state.showFooter) {
+                Spacer(16.dp)
+                Row(
+                    modifier =
+                        Modifier
+                            .padding(horizontal = 24.dp)
+                            .fillMaxWidth(),
+                ) {
+                    Image(
+                        modifier = Modifier,
+                        painter = painterResource(co.electriccoin.zcash.ui.design.R.drawable.ic_info),
+                        contentDescription = null,
+                        colorFilter = ColorFilter.tint(ZashiColors.Text.textTertiary)
+                    )
+                    Spacer(8.dp)
+                    Text(
+                        modifier = Modifier.weight(1f),
+                        text = stringResource(id = R.string.integrations_dialog_info),
+                        textAlign = TextAlign.Start,
+                        style = ZashiTypography.textXs,
+                        color = ZashiColors.Text.textTertiary
+                    )
+                }
             }
         }
+
+        ZashiFrostedSheetHeader(
+            hazeState = hazeState,
+            modifier = Modifier.align(Alignment.TopCenter),
+            onHeightChanged = { headerHeight = it },
+            title = null
+        )
     }
 }
 

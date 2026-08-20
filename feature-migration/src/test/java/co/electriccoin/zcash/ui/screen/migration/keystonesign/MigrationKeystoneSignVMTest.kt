@@ -323,6 +323,11 @@ class MigrationKeystoneSignVMTest {
     @Test
     fun failureSheetDismissOnlyHidesSheet() =
         runTest {
+            // Simulate a resumed mid-batch round: pendingKeystonePczts already has an earlier
+            // round's accumulated signed PCZTs. When the retry build for the CURRENT round fails
+            // (buildKeystoneSignBatchQrParts throws — the only SDK call the "existing" branch of
+            // buildBatch makes), dismissing the resulting failure sheet must only hide the sheet,
+            // never discard the already-signed rounds by clearing pendingKeystonePczts.
             val existingPczts =
                 PendingKeystoneMigrationPczts(
                     requestId = byteArrayOf(0x01),
@@ -353,12 +358,14 @@ class MigrationKeystoneSignVMTest {
             advanceUntilIdle()
 
             assertNotNull(vm.failureSheet.value)
+            // onDismiss only hides the sheet — it must not discard already-signed rounds by
+            // rejecting the whole batch (that's a separate, explicit user action).
             vm.failureSheet.value!!
                 .onDismiss
                 .invoke()
 
-            assertNull(vm.failureSheet.value)
             assertEquals(0, router.backCount)
+            assertNull(vm.failureSheet.value)
             assertNotNull(pendingSchedule.peek(testAccountKeyId))
             assertNotNull(pendingPczts.get(testAccountKeyId))
         }

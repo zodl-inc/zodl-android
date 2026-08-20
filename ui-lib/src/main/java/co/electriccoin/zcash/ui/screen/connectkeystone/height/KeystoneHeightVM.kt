@@ -66,6 +66,8 @@ class KeystoneHeightVM(
                     ),
                 secondaryButton = null,
                 blockHeight = NumberTextFieldState(innerState = text, onValueChange = ::onValueChanged),
+                primaryButtonTestTag = KeystoneHeightTag.CONNECT_BTN,
+                blockHeightFieldTestTag = KeystoneHeightTag.BLOCK_HEIGHT_FIELD,
             )
         }.withLce(createAccountLce, errorStateMapper::mapToState)
             .stateIn(this)

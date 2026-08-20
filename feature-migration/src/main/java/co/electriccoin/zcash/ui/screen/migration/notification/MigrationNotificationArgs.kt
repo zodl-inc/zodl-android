@@ -4,6 +4,7 @@ import android.Manifest
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -30,6 +32,9 @@ import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -71,81 +76,101 @@ fun MigrationNotificationScreen() {
 
 @Composable
 fun MigrationNotificationView(state: MigrationNotificationState) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    ),
                 navigationAction = { ZashiTopAppBarBackNavigation(onBack = state.onBack) },
                 regularActions = {},
             )
         }
     ) { padding ->
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .scaffoldPadding(padding),
+                    .zashiFrostSource(hazeState)
         ) {
-            Text(
-                text = stringRes(DesignR.string.migrationNotifPermission_title).getValue(),
-                style = ZashiTypography.header6,
-                fontWeight = FontWeight.SemiBold,
-                color = ZashiColors.Text.textPrimary,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = stringRes(DesignR.string.migrationNotifPermission_subtitle).getValue(),
-                style = ZashiTypography.textSm,
-                color = ZashiColors.Text.textTertiary,
-            )
-            Spacer(Modifier.height(24.dp))
-            NotificationFeatureItem(
-                icon = co.electriccoin.zcash.migration.R.drawable.ic_migration_notif_annotation_check,
-                title = stringRes(DesignR.string.migrationNotifPermission_statusTitle).getValue(),
-                body = stringRes(DesignR.string.migrationNotifPermission_statusBody).getValue(),
-            )
-            Spacer(Modifier.height(16.dp))
-            NotificationFeatureItem(
-                icon = co.electriccoin.zcash.migration.R.drawable.ic_migration_notif_bell_ringing,
-                title = stringRes(DesignR.string.migrationNotifPermission_actionNeededTitle).getValue(),
-                body = stringRes(DesignR.string.migrationNotifPermission_actionNeededBody).getValue(),
-            )
-            Spacer(Modifier.height(16.dp))
-            NotificationFeatureItem(
-                icon = co.electriccoin.zcash.migration.R.drawable.ic_migration_notif_announcement,
-                title = stringRes(DesignR.string.migrationNotifPermission_planChangesTitle).getValue(),
-                body = stringRes(DesignR.string.migrationNotifPermission_planChangesBody).getValue(),
-            )
-            Spacer(Modifier.weight(1f))
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Icon(
-                    painter = painterResource(co.electriccoin.zcash.ui.design.R.drawable.ic_info),
-                    contentDescription = null,
-                    tint = ZashiColors.Utility.WarningYellow.utilityOrange700,
-                    modifier = Modifier.size(16.dp),
-                )
-                Spacer(Modifier.width(12.dp))
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .scaffoldPadding(padding),
+            ) {
                 Text(
-                    text = stringRes(DesignR.string.migrationNotifPermission_warningHint).getValue(),
-                    style = ZashiTypography.textXs,
-                    color = ZashiColors.Utility.WarningYellow.utilityOrange700,
+                    text = stringRes(DesignR.string.migrationNotifPermission_title).getValue(),
+                    style = ZashiTypography.header6,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ZashiColors.Text.textPrimary,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = stringRes(DesignR.string.migrationNotifPermission_subtitle).getValue(),
+                    style = ZashiTypography.textSm,
+                    color = ZashiColors.Text.textTertiary,
+                )
+                Spacer(Modifier.height(24.dp))
+                NotificationFeatureItem(
+                    icon = co.electriccoin.zcash.migration.R.drawable.ic_migration_notif_annotation_check,
+                    title = stringRes(DesignR.string.migrationNotifPermission_statusTitle).getValue(),
+                    body = stringRes(DesignR.string.migrationNotifPermission_statusBody).getValue(),
+                )
+                Spacer(Modifier.height(16.dp))
+                NotificationFeatureItem(
+                    icon = co.electriccoin.zcash.migration.R.drawable.ic_migration_notif_bell_ringing,
+                    title = stringRes(DesignR.string.migrationNotifPermission_actionNeededTitle).getValue(),
+                    body = stringRes(DesignR.string.migrationNotifPermission_actionNeededBody).getValue(),
+                )
+                Spacer(Modifier.height(16.dp))
+                NotificationFeatureItem(
+                    icon = co.electriccoin.zcash.migration.R.drawable.ic_migration_notif_announcement,
+                    title = stringRes(DesignR.string.migrationNotifPermission_planChangesTitle).getValue(),
+                    body = stringRes(DesignR.string.migrationNotifPermission_planChangesBody).getValue(),
+                )
+                Spacer(Modifier.weight(1f))
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Icon(
+                        painter = painterResource(co.electriccoin.zcash.ui.design.R.drawable.ic_info),
+                        contentDescription = null,
+                        tint = ZashiColors.Utility.WarningYellow.utilityOrange700,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = stringRes(DesignR.string.migrationNotifPermission_warningHint).getValue(),
+                        style = ZashiTypography.textXs,
+                        color = ZashiColors.Utility.WarningYellow.utilityOrange700,
+                    )
+                }
+                Spacer(Modifier.height(24.dp))
+                ZashiButton(
+                    state = ButtonState(text = stringRes(DesignR.string.migration_common_skip), onClick = state.onSkip),
+                    modifier = Modifier.fillMaxWidth(),
+                    defaultPrimaryColors =
+                        ZashiButtonDefaults.secondaryColors(
+                            contentColor = ZashiColors.Utility.WarningYellow.utilityOrange700,
+                            borderColor = ZashiColors.Utility.WarningYellow.utilityOrange300,
+                        ),
+                )
+                Spacer(Modifier.height(12.dp))
+                ZashiButton(
+                    state =
+                        ButtonState(
+                            text = stringRes(DesignR.string.migration_common_allow),
+                            onClick = state.onAllow
+                        ),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
-            Spacer(Modifier.height(24.dp))
-            ZashiButton(
-                state = ButtonState(text = stringRes(DesignR.string.migration_common_skip), onClick = state.onSkip),
-                modifier = Modifier.fillMaxWidth(),
-                defaultPrimaryColors =
-                    ZashiButtonDefaults.secondaryColors(
-                        contentColor = ZashiColors.Utility.WarningYellow.utilityOrange700,
-                        borderColor = ZashiColors.Utility.WarningYellow.utilityOrange300,
-                    ),
-            )
-            Spacer(Modifier.height(12.dp))
-            ZashiButton(
-                state = ButtonState(text = stringRes(DesignR.string.migration_common_allow), onClick = state.onAllow),
-                modifier = Modifier.fillMaxWidth(),
-            )
         }
     }
 }

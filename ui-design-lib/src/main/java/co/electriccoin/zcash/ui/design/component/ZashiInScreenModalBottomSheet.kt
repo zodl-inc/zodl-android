@@ -19,7 +19,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.unit.dp
@@ -31,7 +30,6 @@ fun <T : ModalBottomSheetState> ZashiInScreenModalBottomSheet(
     modifier: Modifier = Modifier,
     sheetState: SheetState = rememberInScreenModalBottomSheetState(),
     shape: Shape = ZashiModalBottomSheetDefaults.SheetShape,
-    containerColor: Color = ZashiModalBottomSheetDefaults.ContainerColor,
     dragHandle: @Composable (() -> Unit)? = { ZashiModalBottomSheetDragHandle() },
     content: @Composable ColumnScope.(T) -> Unit = {},
 ) {
@@ -43,7 +41,6 @@ fun <T : ModalBottomSheetState> ZashiInScreenModalBottomSheet(
             modifier = modifier,
             sheetState = sheetState,
             shape = shape,
-            containerColor = containerColor,
             properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
             dragHandle = dragHandle
         ) {

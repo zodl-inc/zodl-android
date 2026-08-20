@@ -5,7 +5,6 @@ import cash.z.ecc.android.sdk.PreparationStep
 import cash.z.ecc.android.sdk.TransferProposal
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.model.migration.MigrationMode
-import co.electriccoin.zcash.work.MigrationLiveDriver
 import co.electriccoin.zcash.work.MigrationScheduler
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -32,19 +31,17 @@ class FinalizeMigrationScheduleUseCaseTest {
             proposalHandle = 0L,
         )
 
-    private fun useCase(
-        scheduler: MigrationScheduler = mockk(relaxed = true),
-        migrationLiveDriver: MigrationLiveDriver = mockk(relaxed = true),
-    ) = FinalizeMigrationScheduleUseCase(
-        migrationScheduler = scheduler,
-        getOrchardMigrationSdk = mockk<GetOrchardMigrationSdkUseCase>(relaxed = true),
-        getSelectedWalletAccount =
-            mockk<GetSelectedWalletAccountUseCase> {
-                coEvery { this@mockk() } returns mockk<ZashiAccount>(relaxed = true)
-            },
-        synchronizerProvider = mockk(relaxed = true),
-        migrationLiveDriver = migrationLiveDriver,
-    )
+    private fun useCase(scheduler: MigrationScheduler = mockk(relaxed = true)) =
+        FinalizeMigrationScheduleUseCase(
+            migrationScheduler = scheduler,
+            getOrchardMigrationSdk = mockk<GetOrchardMigrationSdkUseCase>(relaxed = true),
+            getSelectedWalletAccount =
+                mockk<GetSelectedWalletAccountUseCase> {
+                    coEvery { this@mockk() } returns mockk<ZashiAccount>(relaxed = true)
+                },
+            synchronizerProvider = mockk(relaxed = true),
+            migrationLiveDriver = mockk(relaxed = true),
+        )
 
     @Test
     fun invokeArmsTheMigrationWorkerChain() =
@@ -57,34 +54,6 @@ class FinalizeMigrationScheduleUseCaseTest {
             useCase(scheduler)(schedule(), MigrationMode.AUTOMATIC)
 
             verify(exactly = 1) { scheduler.schedule(any(), any()) }
-        }
-
-    @Test
-    fun startLiveDriverImmediatelyDefaultsToTrueAndStartsTheDriver() =
-        runTest {
-            val driver = mockk<MigrationLiveDriver>(relaxed = true)
-
-            useCase(migrationLiveDriver = driver)(schedule(), MigrationMode.AUTOMATIC)
-
-            verify(exactly = 1) { driver.startIfNotRunning(any()) }
-        }
-
-    @Test
-    fun startLiveDriverImmediatelyFalseSkipsStartingTheDriver() =
-        runTest {
-            // MOB-1669: the post-Keystone-scan path opts out — a large batch's whole prove-ready
-            // set would otherwise run through one blocking finalizeReadyTransfers call in the live
-            // driver's very first iteration. The already-armed scheduler job still drives the plan
-            // forward (see invokeArmsTheMigrationWorkerChain), just not synchronously forced here.
-            val driver = mockk<MigrationLiveDriver>(relaxed = true)
-
-            useCase(migrationLiveDriver = driver)(
-                schedule(),
-                MigrationMode.AUTOMATIC,
-                startLiveDriverImmediately = false,
-            )
-
-            verify(exactly = 0) { driver.startIfNotRunning(any()) }
         }
 
     @Test

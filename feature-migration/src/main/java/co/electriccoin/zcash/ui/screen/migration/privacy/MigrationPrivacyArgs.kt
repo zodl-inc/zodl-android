@@ -24,6 +24,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -36,8 +40,11 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.CheckboxState
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
+import co.electriccoin.zcash.ui.design.component.ZashiFrostedSheetHeader
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.rememberScreenModalBottomSheetState
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -73,41 +80,64 @@ fun MigrationPrivacyView(
     ZashiScreenModalBottomSheet(
         state = state,
         sheetState = sheetState,
+        dragHandle = null,
     ) { innerState, contentPadding ->
-        Column(
-            modifier =
-                Modifier
-                    .verticalScroll(rememberScrollState())
-                    .padding(start = 24.dp, end = 24.dp, bottom = contentPadding.calculateBottomPadding()),
-        ) {
-            Image(
-                painter = painterResource(co.electriccoin.zcash.ui.R.drawable.ic_tor_settings),
-                contentDescription = null,
-                modifier = Modifier.size(44.dp),
-            )
-            Spacer(16.dp)
-            Text(
-                text = stringRes(DesignR.string.migration_common_enableTorProtectionTitle).getValue(),
-                style = ZashiTypography.textXl,
-                fontWeight = FontWeight.SemiBold,
-                color = ZashiColors.Text.textPrimary,
-            )
-            Spacer(4.dp)
-            Text(
-                text = innerState.body.getValue(),
-                style = ZashiTypography.textSm,
-                color = ZashiColors.Text.textTertiary,
-            )
-            Spacer(32.dp)
-            TorToggleCard(innerState.checkbox)
-            Spacer(32.dp)
-            ZashiButton(
-                state =
-                    ButtonState(
-                        text = stringRes(DesignR.string.migration_common_gotIt),
-                        onClick = innerState.onConfirm
-                    ),
-                modifier = Modifier.fillMaxWidth(),
+        val hazeState = rememberZashiFrostState()
+        var headerHeight by remember { mutableStateOf(0.dp) }
+        Box {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostSource(hazeState)
+                        .verticalScroll(rememberScrollState())
+                        .padding(
+                            start = 24.dp,
+                            end = 24.dp,
+                            top = headerHeight,
+                            bottom = contentPadding.calculateBottomPadding()
+                        ),
+            ) {
+                Text(
+                    text = innerState.body.getValue(),
+                    style = ZashiTypography.textSm,
+                    color = ZashiColors.Text.textTertiary,
+                )
+                Spacer(32.dp)
+                TorToggleCard(innerState.checkbox)
+                Spacer(32.dp)
+                ZashiButton(
+                    state =
+                        ButtonState(
+                            text = stringRes(DesignR.string.migration_common_gotIt),
+                            onClick = innerState.onConfirm
+                        ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+
+            ZashiFrostedSheetHeader(
+                hazeState = hazeState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                onHeightChanged = { headerHeight = it },
+                title = {
+                    Column(
+                        modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 4.dp)
+                    ) {
+                        Image(
+                            painter = painterResource(co.electriccoin.zcash.ui.R.drawable.ic_tor_settings),
+                            contentDescription = null,
+                            modifier = Modifier.size(44.dp),
+                        )
+                        Spacer(16.dp)
+                        Text(
+                            text = stringRes(DesignR.string.migration_common_enableTorProtectionTitle).getValue(),
+                            style = ZashiTypography.textXl,
+                            fontWeight = FontWeight.SemiBold,
+                            color = ZashiColors.Text.textPrimary,
+                        )
+                    }
+                }
             )
         }
     }
@@ -122,7 +152,7 @@ fun MigrationPrivacyView(
 @Composable
 private fun TorToggleCard(state: CheckboxState) {
     Surface(
-        color = ZashiColors.Surfaces.bgSecondary,
+        color = ZashiColors.Surfaces.bgPrimary,
         border = BorderStroke(1.dp, Color.Transparent),
         shape = RoundedCornerShape(ZashiDimensions.Radius.radiusXl),
         onClick = state.onClick,

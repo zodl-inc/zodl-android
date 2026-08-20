@@ -47,6 +47,7 @@ dependencies {
     api(libs.lottie)
     implementation(libs.zxing)
     api(libs.compose.shimmer)
+    api(libs.haze)
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.zxing)

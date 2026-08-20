@@ -3,6 +3,7 @@
 package co.electriccoin.zcash.ui.screen.reviewtransaction
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -36,13 +37,13 @@ import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ChipButtonState
-import co.electriccoin.zcash.ui.design.component.OldZashiBottomBar
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.StyledBalance
 import co.electriccoin.zcash.ui.design.component.StyledBalanceDefaults
 import co.electriccoin.zcash.ui.design.component.SwapQuoteHeaderState
 import co.electriccoin.zcash.ui.design.component.SwapTokenAmountState
 import co.electriccoin.zcash.ui.design.component.TextFieldState
+import co.electriccoin.zcash.ui.design.component.ZashiBottomBar
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiChipButton
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
@@ -52,6 +53,10 @@ import co.electriccoin.zcash.ui.design.component.ZashiSwapQuoteHeader
 import co.electriccoin.zcash.ui.design.component.ZashiTextField
 import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.balances.LocalBalancesAvailable
@@ -74,10 +79,19 @@ import kotlin.time.Clock
 
 @Composable
 fun ReviewTransactionView(state: ReviewTransactionState) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
                 title = state.title.getValue(),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    ),
                 navigationAction = {
                     ZashiTopAppBarBackNavigation(
                         onBack = state.onBack,
@@ -85,17 +99,27 @@ fun ReviewTransactionView(state: ReviewTransactionState) {
                     )
                 }
             )
+        },
+        bottomBar = {
+            BottomBar(
+                state = state,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedFooter(hazeState)
+            )
         }
     ) {
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
+                    .zashiFrostSource(hazeState)
         ) {
             Column(
                 modifier =
                     Modifier
-                        .weight(1f)
+                        .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                         .scaffoldPadding(it)
             ) {
@@ -162,7 +186,6 @@ fun ReviewTransactionView(state: ReviewTransactionState) {
 
                 Spacer(Modifier.height(32.dp))
             }
-            BottomBar(state)
         }
 
         ZashiConfirmationBottomSheet(state.orchardWarningSheet)
@@ -443,8 +466,15 @@ private fun SimpleAmountWidget(state: ExactOutputQuoteState) {
 }
 
 @Composable
-private fun BottomBar(state: ReviewTransactionState) {
-    OldZashiBottomBar {
+private fun BottomBar(
+    state: ReviewTransactionState,
+    modifier: Modifier = Modifier
+) {
+    ZashiBottomBar(
+        modifier = modifier,
+        isElevated = false,
+        color = Color.Transparent
+    ) {
         ZashiButton(
             state = state.primaryButton,
             modifier =

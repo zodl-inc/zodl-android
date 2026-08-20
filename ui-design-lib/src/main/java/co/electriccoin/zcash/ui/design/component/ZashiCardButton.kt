@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.design.component
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,7 +11,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -22,7 +25,9 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.PressMorphDefaults
 import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.pressMorph
 import co.electriccoin.zcash.ui.design.util.stringRes
 
 @Composable
@@ -32,10 +37,17 @@ fun ZashiCardButton(
 ) {
     val haptic = LocalHapticFeedback.current
 
+    val interactionSource = remember { MutableInteractionSource() }
+
     Surface(
         modifier =
             modifier
-                .clickable(enabled = state.isEnabled) {
+                .pressMorph(interactionSource, PressMorphDefaults.PRESSED_SCALE_SUBTLE)
+                .clickable(
+                    enabled = state.isEnabled,
+                    interactionSource = interactionSource,
+                    indication = ripple()
+                ) {
                     if (state.hapticFeedbackType != null) {
                         runCatching { haptic.performHapticFeedback(state.hapticFeedbackType) }
                     }

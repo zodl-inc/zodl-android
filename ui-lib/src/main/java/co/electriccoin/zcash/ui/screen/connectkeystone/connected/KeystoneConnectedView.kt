@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -73,7 +74,7 @@ fun KeystoneConnectedView(state: KeystoneConnectedState) {
                 )
                 Spacer(Modifier.weight(1f))
                 ZashiButton(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().testTag(KeystoneConnectedTag.CLOSE_BTN),
                     text = stringResource(R.string.keystone_addHWWallet_close),
                     onClick = state.onClose,
                 )

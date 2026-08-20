@@ -2,6 +2,7 @@
 
 package co.electriccoin.zcash.ui.screen.restore.height
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,29 +36,47 @@ import co.electriccoin.zcash.ui.design.component.ZashiNumberTextField
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTextFieldPlaceholder
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 
 @Composable
 fun RestoreHeightView(state: RestoreHeightState) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
-        topBar = { AppBar(state) },
-        bottomBar = {},
-        content = { padding ->
-            Content(
+        topBar = {
+            AppBar(
                 state = state,
                 modifier =
                     Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .scaffoldPadding(padding)
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState)
             )
+        },
+        bottomBar = {},
+        content = { padding ->
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .zashiFrostSource(hazeState)
+            ) {
+                Content(
+                    state = state,
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .scaffoldPadding(padding)
+                )
+            }
         }
     )
 }
@@ -134,8 +153,12 @@ private fun Content(
 }
 
 @Composable
-private fun AppBar(state: RestoreHeightState) {
+private fun AppBar(
+    state: RestoreHeightState,
+    modifier: Modifier = Modifier
+) {
     ZashiSmallTopAppBar(
+        modifier = modifier,
         title = state.title.getValue(),
         navigationAction = {
             ZashiTopAppBarBackNavigation(
@@ -148,10 +171,9 @@ private fun AppBar(state: RestoreHeightState) {
             Spacer(Modifier.width(20.dp))
         },
         colors =
-            ZcashTheme.colors.topAppBarColors orDark
-                ZcashTheme.colors.topAppBarColors.copyColors(
-                    containerColor = Color.Transparent
-                ),
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
     )
 }
 

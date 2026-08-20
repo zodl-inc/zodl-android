@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.more
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -22,6 +24,9 @@ import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.ZashiVersion
 import co.electriccoin.zcash.ui.design.component.listitem.ListItemState
 import co.electriccoin.zcash.ui.design.component.listitem.ZashiListItem
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
@@ -34,62 +39,81 @@ import kotlinx.collections.immutable.persistentListOf
 
 @Composable
 fun MoreView(state: MoreState) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             SettingsTopAppBar(
-                onBack = state.onBack
+                onBack = state.onBack,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState)
             )
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .scaffoldScrollPadding(paddingValues),
+                    .zashiFrostSource(hazeState)
         ) {
-            state.items.forEachIndexed { index, item ->
-                ZashiListItem(
-                    state = item,
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                    leading =
-                        (item.bigIcon as? ImageResource.ByDrawable)?.let { icon ->
-                            { modifier ->
-                                SettingsListItemLeadingIcon(
-                                    modifier = modifier,
-                                    drawableRes = icon.resource,
-                                    contentDescription = item.title.getValue()
-                                )
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .scaffoldScrollPadding(paddingValues),
+            ) {
+                state.items.forEachIndexed { index, item ->
+                    ZashiListItem(
+                        state = item,
+                        modifier = Modifier.padding(horizontal = 4.dp),
+                        leading =
+                            (item.bigIcon as? ImageResource.ByDrawable)?.let { icon ->
+                                { modifier ->
+                                    SettingsListItemLeadingIcon(
+                                        modifier = modifier,
+                                        drawableRes = icon.resource,
+                                        contentDescription = item.title.getValue()
+                                    )
+                                }
                             }
-                        }
-                )
-                if (index != state.items.lastIndex) {
-                    ZashiHorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 4.dp)
                     )
+                    if (index != state.items.lastIndex) {
+                        ZashiHorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
+                    }
                 }
+                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
+                Spacer(modifier = Modifier.weight(1f))
+                ZashiVersion(
+                    modifier = Modifier.fillMaxWidth(),
+                    version = state.version,
+                    onLongClick = state.onVersionLongClick,
+                    onDoubleClick = state.onVersionDoubleClick
+                )
             }
-            Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
-            Spacer(modifier = Modifier.weight(1f))
-            ZashiVersion(
-                modifier = Modifier.fillMaxWidth(),
-                version = state.version,
-                onLongClick = state.onVersionLongClick,
-                onDoubleClick = state.onVersionDoubleClick
-            )
         }
     }
 }
 
 @Composable
-private fun SettingsTopAppBar(onBack: () -> Unit) {
+private fun SettingsTopAppBar(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     ZashiSmallTopAppBar(
         title = stringResource(id = R.string.settings_title),
-        modifier = Modifier.testTag(MoreTags.SETTINGS_TOP_APP_BAR),
+        modifier = modifier.testTag(MoreTags.SETTINGS_TOP_APP_BAR),
         showTitleLogo = true,
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = onBack)
-        }
+        },
+        colors =
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
     )
 }
 

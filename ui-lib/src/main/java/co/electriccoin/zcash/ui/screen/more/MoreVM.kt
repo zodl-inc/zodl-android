@@ -11,6 +11,7 @@ import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteKeystoneStorageP
 import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteStorageProvider
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToAddressBookUseCase
+import co.electriccoin.zcash.ui.common.voting.VotingSettingsEntry
 import co.electriccoin.zcash.ui.design.component.listitem.ListItemState
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -20,22 +21,10 @@ import co.electriccoin.zcash.ui.screen.exchangerate.settings.ExchangeRateSetting
 import co.electriccoin.zcash.ui.screen.feedback.FeedbackArgs
 import co.electriccoin.zcash.ui.screen.hotfix.enhancement.EnhancementHotfixArgs
 import co.electriccoin.zcash.ui.screen.hotfix.ephemeral.EphemeralHotfixArgs
-import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
-import co.electriccoin.zcash.ui.screen.voting.howtovote.VoteHowToVoteArgs
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-
-/**
- * Master kill switch for coinholder (shielded) voting.
- *
- * While `false`, the voting entry point in [MoreVM] is suppressed and the pending-session
- * recovery in `HomeVM` bails out, leaving the voting UI unreachable even though its screens and
- * routes remain registered. Re-enabling requires flipping this to `true`, enabling the SDK
- * `chp-voting` Cargo feature, and supplying real voting config URLs via remote configuration.
- */
-internal const val VOTING_ENABLED = false
 
 class MoreVM(
     private val getVersionInfo: GetVersionInfoProvider,
@@ -44,6 +33,7 @@ class MoreVM(
     private val hasSeenHowToVote: HasSeenHowToVoteStorageProvider,
     private val hasSeenHowToVoteKeystone: HasSeenHowToVoteKeystoneStorageProvider,
     private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
+    private val votingSettingsEntry: VotingSettingsEntry,
 ) : ViewModel() {
     val state: StateFlow<MoreState> = MutableStateFlow(createState())
 
@@ -67,7 +57,7 @@ class MoreVM(
                         title = stringRes(R.string.settings_coinholderPolling),
                         bigIcon = imageRes(R.drawable.ic_settings_voting),
                         onClick = ::onVotingClick
-                    ).takeIf { VOTING_ENABLED },
+                    ).takeIf { votingSettingsEntry.isEnabled },
                     ListItemState(
                         title = stringRes(R.string.settings_advanced),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings),
@@ -112,9 +102,9 @@ class MoreVM(
                 }
 
             if (hasSeenHowToVoteForCurrentWallet) {
-                navigationRouter.forward(VoteCoinholderPollingArgs)
+                votingSettingsEntry.navigateToCoinholderPolling()
             } else {
-                navigationRouter.forward(VoteHowToVoteArgs)
+                votingSettingsEntry.navigateToHowToVote()
             }
         }
     }

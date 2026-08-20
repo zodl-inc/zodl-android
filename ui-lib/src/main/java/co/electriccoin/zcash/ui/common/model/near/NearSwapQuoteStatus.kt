@@ -17,8 +17,8 @@ data class NearSwapQuoteStatus(
     val response: SwapStatusResponseDto,
     val origin: SwapAsset,
     val destination: SwapAsset,
-    val depositAddress: SwapAddress,
-    val destinationAddress: SwapAddress,
+    override val depositAddress: SwapAddress,
+    override val destinationAddress: SwapAddress,
     val refundAddress: SwapAddress,
 ) : SwapQuoteStatus {
     init {
@@ -45,7 +45,7 @@ data class NearSwapQuoteStatus(
         }
     }
 
-    override val quote: SwapQuote =
+    val quote: SwapQuote =
         NearSwapQuote(
             response = response.quoteResponse,
             originAsset = origin,
@@ -55,10 +55,11 @@ data class NearSwapQuoteStatus(
             refundAddress = refundAddress,
         )
 
-    override val timestamp: Instant = response.quoteResponse.timestamp.toJavaInstant()
+    override val originAsset: SwapAsset = origin
+    override val destinationAsset: SwapAsset = destination
+    override val deadline = quote.deadline
 
-    override val originAssetId: String = origin.assetId
-    override val destinationAssetId: String = destination.assetId
+    override val timestamp: Instant = response.quoteResponse.timestamp.toJavaInstant()
 
     override val status: ModelSwapStatus
         get() =
@@ -93,8 +94,6 @@ data class NearSwapQuoteStatus(
 
     override val mode: SwapMode = quote.mode
 
-    override val amountIn: BigDecimal = response.swapDetails?.amountIn ?: quote.amountIn
-
     override val amountInFormatted: BigDecimal = response.swapDetails?.amountInFormatted ?: quote.amountInFormatted
 
     override val amountInFee: BigDecimal =
@@ -106,22 +105,12 @@ data class NearSwapQuoteStatus(
 
     override val amountInUsd: BigDecimal = response.swapDetails?.amountInUsd ?: quote.amountInUsd
 
-    override val amountOut: BigDecimal = response.swapDetails?.amountOut ?: quote.amountOut
-
     override val amountOutFormatted: BigDecimal =
         response.swapDetails?.amountOutFormatted ?: quote.amountOutFormatted
 
     override val amountOutUsd: BigDecimal = response.swapDetails?.amountOutUsd ?: quote.amountOutUsd
 
-    override val depositedAmount: BigDecimal? = response.swapDetails?.depositedAmount
-
     override val depositedAmountFormatted: BigDecimal? = response.swapDetails?.depositedAmountFormatted
 
-    override val depositedAmountUsd: BigDecimal? = response.swapDetails?.depositedAmountUsd
-
-    override val refunded: BigDecimal? = response.swapDetails?.refundedAmount
-
     override val refundedFormatted: BigDecimal? = response.swapDetails?.refundedAmountFormatted
-
-    override val zecExchangeRate: BigDecimal = amountInUsd.divide(amountInFormatted, MathContext.DECIMAL128)
 }

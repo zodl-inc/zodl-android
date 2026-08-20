@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.whatsnew.view
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -25,6 +27,9 @@ import co.electriccoin.zcash.ui.design.component.SmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiBulletText
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.ZashiVersion
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
@@ -43,54 +48,68 @@ fun WhatsNewView(
     state: WhatsNewState,
     onBack: () -> Unit
 ) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
-            AppBar(onBack = onBack)
+            AppBar(
+                onBack = onBack,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState)
+            )
         },
     ) { paddingValues ->
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .scaffoldPadding(paddingValues)
-                    .verticalScroll(rememberScrollState())
+                    .zashiFrostSource(hazeState)
         ) {
-            Row {
-                Text(
-                    text = state.titleVersion.getValue(),
-                    style = ZashiTypography.textXl,
-                    color = ZashiColors.Text.textPrimary,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .align(CenterVertically),
-                    text = DateTimeFormatter.ISO_LOCAL_DATE.format(state.date.toJavaLocalDate()),
-                    textAlign = TextAlign.End,
-                    style = ZashiTypography.textSm,
-                    fontWeight = FontWeight.SemiBold,
-                    color = ZashiColors.Text.textPrimary,
-                )
-            }
-
-            Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
-
-            state.sections.forEach { section ->
-                SelectionContainer {
-                    WhatsNewSection(section)
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .scaffoldPadding(paddingValues)
+            ) {
+                Row {
+                    Text(
+                        text = state.titleVersion.getValue(),
+                        style = ZashiTypography.textXl,
+                        color = ZashiColors.Text.textPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .align(CenterVertically),
+                        text = DateTimeFormatter.ISO_LOCAL_DATE.format(state.date.toJavaLocalDate()),
+                        textAlign = TextAlign.End,
+                        style = ZashiTypography.textSm,
+                        fontWeight = FontWeight.SemiBold,
+                        color = ZashiColors.Text.textPrimary,
+                    )
                 }
+
                 Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
+
+                state.sections.forEach { section ->
+                    SelectionContainer {
+                        WhatsNewSection(section)
+                    }
+                    Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
+                }
+
+                Spacer(Modifier.weight(1f))
+
+                ZashiVersion(
+                    modifier = Modifier.fillMaxWidth(),
+                    version = state.bottomVersion,
+                    onLongClick = state.onVersionLongClick
+                )
             }
-
-            Spacer(Modifier.weight(1f))
-
-            ZashiVersion(
-                modifier = Modifier.fillMaxWidth(),
-                version = state.bottomVersion,
-                onLongClick = state.onVersionLongClick
-            )
         }
     }
 }
@@ -125,13 +144,19 @@ private fun WhatsNewSection(state: WhatsNewSectionState) {
 
 @Composable
 private fun AppBar(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     SmallTopAppBar(
+        modifier = modifier,
         titleText = stringResource(id = R.string.whats_new_title).uppercase(),
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = onBack)
         },
+        colors =
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
     )
 }
 

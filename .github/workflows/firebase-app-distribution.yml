@@ -1,0 +1,344 @@
+# Manually-triggered deployment to Firebase App Distribution.
+#
+# Trigger from the Actions tab via "Run workflow": the branch picker selects which
+# branch is built, and the "variants" input selects which app variants (flavors)
+# are built and uploaded.
+#
+# Expected secrets
+# The deploy job runs in the `firebase-distribution` GitHub environment, which holds the Firebase
+# App Distribution service account keys and the shared debug keystore. That environment must not
+# declare a deployment branch policy, otherwise dispatching the workflow for a feature branch is
+# rejected before the job starts.
+#
+# FIREBASE_APP_DIST_DEBUG_KEY_BASE64 - Base64 encoded service account JSON for the debug Firebase project (secant-android-debug)
+# FIREBASE_APP_DIST_FOSS_KEY_BASE64 - Base64 encoded service account JSON for the FOSS Firebase project (secant-android-foss-debug)
+# FIREBASE_APP_DIST_RELEASE_KEY_BASE64 - Base64 encoded service account JSON for the release Firebase project (secant-android-release)
+# FIREBASE_DEBUG_KEYSTORE_BASE64 - Base64 encoded shared debug keystore (androiddebugkey alias, default passwords) used to
+#                                  sign ALL distributed builds, debug and release alike, so that successive builds keep the
+#                                  same signature and testers can update-install instead of wiping their wallet
+# FIREBASE_DEBUG_JSON_BASE64 - Optional JSON to enable Firebase (e.g. Crashlytics) for debug builds
+# FIREBASE_RELEASE_JSON_BASE64 - Optional JSON to enable Firebase (e.g. Crashlytics) for release builds
+# FLEXA_PUBLISHABLE_KEY - Optional Flexa key embedded into release variants
+# CMC_PUBLISHABLE_KEY - Optional CoinMarketCap key embedded into release variants
+# SLACK_WEBHOOK_URL_WALLET_TEAM - Optional Slack incoming webhook for the wallet-team channel; deploy result notification is skipped when unset
+
+name: Firebase App Distribution
+
+on:
+  workflow_dispatch:
+    inputs:
+      variants:
+        description: "Variants to build and upload: 'all' or a comma-separated subset of: zcashtestnetStoreDebug, zcashmainnetStoreDebug, zcashmainnetFossDebug, zcashtestnetFossDebug, zcashmainnetStoreRelease, zcashtestnetStoreRelease, zcashmainnetInternalRelease"
+        required: true
+        default: 'zcashmainnetInternalRelease,zcashtestnetFossDebug'
+        type: string
+      groups:
+        description: 'Firebase App Distribution tester groups (comma-separated)'
+        required: false
+        default: 'ec,zodl'
+        type: string
+      release_notes:
+        description: 'Release notes (empty = auto-generated from branch and commit)'
+        required: false
+        default: ''
+        type: string
+      version_code:
+        description: 'Version code override (empty = git commit count of the selected branch)'
+        required: false
+        default: ''
+        type: string
+
+concurrency: firebase-app-distribution
+
+jobs:
+  validate_gradle_wrapper:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        timeout-minutes: 1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - name: Gradle Wrapper Validation
+        timeout-minutes: 1
+        uses: gradle/actions/wrapper-validation@v6
+
+  prepare_matrix:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    outputs:
+      variants: ${{ steps.parse.outputs.variants }}
+    steps:
+      - name: Parse requested variants
+        id: parse
+        env:
+          REQUESTED_VARIANTS: ${{ inputs.variants }}
+        shell: bash
+        run: |
+          ALL_VARIANTS=(
+            zcashtestnetStoreDebug
+            zcashmainnetStoreDebug
+            zcashmainnetFossDebug
+            zcashtestnetFossDebug
+            zcashmainnetStoreRelease
+            zcashtestnetStoreRelease
+            zcashmainnetInternalRelease
+          )
+          TRIMMED=$(echo "$REQUESTED_VARIANTS" | xargs)
+          if [ "$TRIMMED" = "all" ]; then
+            SELECTED=("${ALL_VARIANTS[@]}")
+          else
+            IFS=',' read -ra RAW <<< "$TRIMMED"
+            SELECTED=()
+            for ENTRY in "${RAW[@]}"; do
+              VARIANT=$(echo "$ENTRY" | xargs)
+              [ -z "$VARIANT" ] && continue
+              if [[ " ${ALL_VARIANTS[*]} " != *" $VARIANT "* ]]; then
+                echo "Unknown variant: '$VARIANT'"
+                echo "Valid values: 'all' or any of: ${ALL_VARIANTS[*]}"
+                exit 1
+              fi
+              SELECTED+=("$VARIANT")
+            done
+            if [ ${#SELECTED[@]} -eq 0 ]; then
+              echo "No variants selected from input: '$REQUESTED_VARIANTS'"
+              exit 1
+            fi
+          fi
+          VARIANTS_JSON=$(printf '%s\n' "${SELECTED[@]}" | jq -R . | jq -cs .)
+          echo "variants=${VARIANTS_JSON}" >> "$GITHUB_OUTPUT"
+          echo "Selected variants: ${SELECTED[*]}"
+
+  build_and_deploy:
+    needs: [validate_gradle_wrapper, prepare_matrix]
+    environment: firebase-distribution
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        variant: ${{ fromJSON(needs.prepare_matrix.outputs.variants) }}
+    steps:
+      - name: Checkout
+        timeout-minutes: 1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          fetch-depth: 0  # To fetch all commits for the git-commit-count version code
+      - name: Set up Java
+        uses: ./.github/actions/setup-java
+        timeout-minutes: 1
+      - name: Set up Gradle
+        uses: ./.github/actions/setup-gradle
+        timeout-minutes: 10
+        with:
+          gradle-home-cache-cleanup: true
+      - name: Resolve variant configuration
+        id: variant
+        shell: bash
+        env:
+          VARIANT: ${{ matrix.variant }}
+          SA_KEY_DEBUG_BASE64: ${{ secrets.FIREBASE_APP_DIST_DEBUG_KEY_BASE64 }}
+          SA_KEY_FOSS_BASE64: ${{ secrets.FIREBASE_APP_DIST_FOSS_KEY_BASE64 }}
+          SA_KEY_RELEASE_BASE64: ${{ secrets.FIREBASE_APP_DIST_RELEASE_KEY_BASE64 }}
+          SA_KEY_PATH: ${{ format('{0}/firebase-service-account.json', runner.temp) }}
+        run: |
+          case "$VARIANT" in
+            zcashtestnetStoreDebug)
+              APP_ID="1:72075012504:android:2707ebbc1c0074e74ba3ed"
+              SA_KEY_BASE64="$SA_KEY_DEBUG_BASE64"
+              APK_DIR="app/build/outputs/apk/zcashtestnetStore/debug"
+              BUILD_TYPE="debug"
+              ;;
+            zcashmainnetStoreDebug)
+              APP_ID="1:72075012504:android:235e485f5bd5fc0d4ba3ed"
+              SA_KEY_BASE64="$SA_KEY_DEBUG_BASE64"
+              APK_DIR="app/build/outputs/apk/zcashmainnetStore/debug"
+              BUILD_TYPE="debug"
+              ;;
+            zcashmainnetFossDebug)
+              APP_ID="1:228274394465:android:d88850a8c32907477a2120"
+              SA_KEY_BASE64="$SA_KEY_FOSS_BASE64"
+              APK_DIR="app/build/outputs/apk/zcashmainnetFoss/debug"
+              BUILD_TYPE="debug"
+              ;;
+            zcashtestnetFossDebug)
+              APP_ID="1:228274394465:android:6362de57eaf707ea7a2120"
+              SA_KEY_BASE64="$SA_KEY_FOSS_BASE64"
+              APK_DIR="app/build/outputs/apk/zcashtestnetFoss/debug"
+              BUILD_TYPE="debug"
+              ;;
+            zcashmainnetStoreRelease)
+              APP_ID="1:1004234202961:android:b6826581ab87b8020bbd70"
+              SA_KEY_BASE64="$SA_KEY_RELEASE_BASE64"
+              APK_DIR="app/build/outputs/apk/zcashmainnetStore/release"
+              BUILD_TYPE="release"
+              ;;
+            zcashtestnetStoreRelease)
+              APP_ID="1:1004234202961:android:2299744f4e6601a80bbd70"
+              SA_KEY_BASE64="$SA_KEY_RELEASE_BASE64"
+              APK_DIR="app/build/outputs/apk/zcashtestnetStore/release"
+              BUILD_TYPE="release"
+              ;;
+            zcashmainnetInternalRelease)
+              APP_ID="1:1004234202961:android:a7d93238611deec50bbd70"
+              SA_KEY_BASE64="$SA_KEY_RELEASE_BASE64"
+              APK_DIR="app/build/outputs/apk/zcashmainnetInternal/release"
+              BUILD_TYPE="release"
+              ;;
+            *)
+              echo "Unknown variant: $VARIANT"
+              exit 1
+              ;;
+          esac
+          if [ -z "$SA_KEY_BASE64" ]; then
+            echo "Missing Firebase service account secret for variant $VARIANT"
+            exit 1
+          fi
+          echo "$SA_KEY_BASE64" | base64 --decode > "$SA_KEY_PATH"
+          echo "app_id=${APP_ID}" >> "$GITHUB_OUTPUT"
+          echo "apk_dir=${APK_DIR}" >> "$GITHUB_OUTPUT"
+          echo "build_type=${BUILD_TYPE}" >> "$GITHUB_OUTPUT"
+      - name: Export Google Services JSON
+        # Skipped for FOSS variants: these files belong to the Store Firebase project, and their
+        # presence applies the google-services plugin module-wide, which then fails for the FOSS
+        # applicationId. FOSS builds ship without Firebase, the same as in scripts/prepare-foss-build.sh.
+        env:
+          FIREBASE_DEBUG_JSON_BASE64: ${{ secrets.FIREBASE_DEBUG_JSON_BASE64 }}
+          FIREBASE_RELEASE_JSON_BASE64: ${{ secrets.FIREBASE_RELEASE_JSON_BASE64 }}
+        if: "${{ env.FIREBASE_DEBUG_JSON_BASE64 != '' && env.FIREBASE_RELEASE_JSON_BASE64 != '' && !contains(matrix.variant, 'Foss') }}"
+        shell: bash
+        run: |
+          mkdir -p app/src/debug/
+          mkdir -p app/src/release/
+          echo ${FIREBASE_DEBUG_JSON_BASE64} | base64 --decode > app/src/debug/google-services.json
+          echo ${FIREBASE_RELEASE_JSON_BASE64} | base64 --decode > app/src/release/google-services.json
+      - name: Install Shared Debug Keystore
+        env:
+          # All distributed builds (debug and release build types) are signed with this
+          # shared debug keystore. Ephemeral runners otherwise generate a fresh debug
+          # keystore per run, which would change the app signature on every deploy and
+          # force testers to uninstall (and lose their wallet database) to update.
+          DEBUG_KEYSTORE_BASE64: ${{ secrets.FIREBASE_DEBUG_KEYSTORE_BASE64 }}
+        shell: bash
+        run: |
+          if [ -z "$DEBUG_KEYSTORE_BASE64" ]; then
+            echo "FIREBASE_DEBUG_KEYSTORE_BASE64 is not configured."
+            echo "Refusing to build with an ephemeral runner-generated keystore: the resulting"
+            echo "signature would differ on every run and testers could never update-install."
+            exit 1
+          fi
+          mkdir -p "$HOME/.android"
+          echo "$DEBUG_KEYSTORE_BASE64" | base64 --decode > "$HOME/.android/debug.keystore"
+      - name: Build variant
+        timeout-minutes: 30
+        env:
+          VARIANT: ${{ matrix.variant }}
+          VERSION_CODE_OVERRIDE: ${{ inputs.version_code }}
+          # Signs release build types with the shared debug keystore installed above. This matches
+          # how every locally-distributed build has been signed so far: local distribution has only
+          # ever run from the one machine, whose ~/.gradle/gradle.properties sets
+          # IS_SIGN_RELEASE_BUILD_WITH_DEBUG_KEY=true with no release keystore configured, and
+          # FIREBASE_DEBUG_KEYSTORE_BASE64 is that machine's debug keystore.
+          ORG_GRADLE_PROJECT_IS_SIGN_RELEASE_BUILD_WITH_DEBUG_KEY: true
+          ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
+          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
+        shell: bash
+        run: |
+          CAP_VARIANT="$(echo ${VARIANT:0:1} | tr '[:lower:]' '[:upper:]')${VARIANT:1}"
+          GRADLE_ARGS=()
+          if [ -n "$VERSION_CODE_OVERRIDE" ]; then
+            GRADLE_ARGS+=("-PZCASH_VERSION_CODE=$VERSION_CODE_OVERRIDE")
+          fi
+          ./gradlew ":app:assemble${CAP_VARIANT}" "${GRADLE_ARGS[@]}"
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        timeout-minutes: 5
+        with:
+          name: ${{ format('firebase-{0}', matrix.variant) }}
+          path: ${{ steps.variant.outputs.apk_dir }}/*.apk
+      - name: Deploy to Firebase App Distribution
+        # Unlike the local deploy.sh this workflow replaces, there is deliberately no
+        # check for an already-uploaded release with the same version: re-dispatching
+        # the workflow (or re-running failed jobs) rebuilds and uploads a new release
+        # and re-notifies testers. CI builds are not byte-reproducible, so a re-run
+        # produces a genuinely new binary; a duplicate distribution is cheap, whereas
+        # a silently skipped one is confusing.
+        timeout-minutes: 15
+        shell: bash
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ format('{0}/firebase-service-account.json', runner.temp) }}
+          VARIANT: ${{ matrix.variant }}
+          APP_ID: ${{ steps.variant.outputs.app_id }}
+          APK_DIR: ${{ steps.variant.outputs.apk_dir }}
+          FIREBASE_GROUPS: ${{ inputs.groups }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+        run: |
+          APK_PATH=$(find "$APK_DIR" -name '*.apk' | head -n 1)
+          if [ -z "$APK_PATH" ]; then
+            echo "No APK found in $APK_DIR"
+            exit 1
+          fi
+          if [ -z "$RELEASE_NOTES" ]; then
+            RELEASE_NOTES="CI build of ${VARIANT} from ${GITHUB_REF_NAME} (${GITHUB_SHA::7})"
+          fi
+          DISTRIBUTE_ARGS=(appdistribution:distribute "$APK_PATH" --app "$APP_ID" --release-notes "$RELEASE_NOTES")
+          if [ -n "$FIREBASE_GROUPS" ]; then
+            DISTRIBUTE_ARGS+=(--groups "$FIREBASE_GROUPS")
+          fi
+          npx --yes firebase-tools@15.26.0 "${DISTRIBUTE_ARGS[@]}"
+
+  notify_slack:
+    # Best-effort notification: continue-on-error keeps a Slack failure from
+    # failing the workflow run, and the step exits cleanly when the webhook
+    # secret is not configured. It runs for every dispatch, including runs that
+    # fail before any variant is built, so a dispatch is never silent.
+    needs: [validate_gradle_wrapper, prepare_matrix, build_and_deploy]
+    if: ${{ always() }}
+    continue-on-error: true
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Slack notification
+        timeout-minutes: 2
+        shell: bash
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL_WALLET_TEAM }}
+          DEPLOY_RESULT: ${{ needs.build_and_deploy.result }}
+          WRAPPER_RESULT: ${{ needs.validate_gradle_wrapper.result }}
+          PREPARE_RESULT: ${{ needs.prepare_matrix.result }}
+          VARIANTS_JSON: ${{ needs.prepare_matrix.outputs.variants }}
+          REQUESTED_VARIANTS: ${{ inputs.variants }}
+          FIREBASE_GROUPS: ${{ inputs.groups }}
+          BRANCH: ${{ github.ref_name }}
+          ACTOR: ${{ github.actor }}
+          RUN_URL: ${{ format('{0}/{1}/actions/runs/{2}', github.server_url, github.repository, github.run_id) }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "SLACK_WEBHOOK_URL_WALLET_TEAM is not configured; skipping notification"
+            exit 0
+          fi
+          if [ "$DEPLOY_RESULT" = "success" ]; then
+            STATUS_LINE=":white_check_mark: Firebase App Distribution deploy succeeded"
+          elif [ "$DEPLOY_RESULT" = "skipped" ]; then
+            STATUS_LINE=":x: Firebase App Distribution failed before building (gradle wrapper validation: ${WRAPPER_RESULT}, variant parsing: ${PREPARE_RESULT})"
+          else
+            STATUS_LINE=":warning: Firebase App Distribution deploy finished with result: ${DEPLOY_RESULT}"
+          fi
+          if [ -z "$VARIANTS_JSON" ]; then
+            VARIANT_LIST="${REQUESTED_VARIANTS} (requested)"
+          else
+            VARIANT_LIST=$(echo "$VARIANTS_JSON" | jq -r 'join(", ")')
+          fi
+          PAYLOAD=$(jq -n \
+            --arg text "${STATUS_LINE}
+          *Branch:* ${BRANCH}
+          *Variants:* ${VARIANT_LIST}
+          *Groups:* ${FIREBASE_GROUPS}
+          *Triggered by:* ${ACTOR}
+          <${RUN_URL}|Workflow run>" \
+            '{"text": $text}')
+          curl -sf -X POST -H 'Content-Type: application/json' -d "$PAYLOAD" "$SLACK_WEBHOOK_URL"

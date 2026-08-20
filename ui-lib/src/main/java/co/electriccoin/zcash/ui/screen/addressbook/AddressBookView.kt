@@ -44,8 +44,8 @@ import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
 import co.electriccoin.zcash.ui.design.component.IconButtonState
-import co.electriccoin.zcash.ui.design.component.OldZashiBottomBar
 import co.electriccoin.zcash.ui.design.component.Spacer
+import co.electriccoin.zcash.ui.design.component.ZashiBottomBar
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiHorizontalDivider
 import co.electriccoin.zcash.ui.design.component.ZashiIconButton
@@ -53,6 +53,10 @@ import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.listitem.ContactListItemState
 import co.electriccoin.zcash.ui.design.component.listitem.ZashiContactListItem
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -70,38 +74,54 @@ import kotlinx.coroutines.launch
 fun AddressBookView(
     state: AddressBookState
 ) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             AddressBookTopAppBar(
                 onBack = state.onBack,
-                state = state
+                state = state,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState)
             )
-        }
-    ) { paddingValues ->
-        when {
-            state.items.isEmpty() && state.isLoading -> {
-                CircularScreenProgressIndicator()
-            }
-
-            state.items.isEmpty() && !state.isLoading -> {
-                EmptyFullscreen(
+        },
+        bottomBar = {
+            if (state.items.isNotEmpty()) {
+                AddContactBottomBar(
                     state = state,
                     modifier =
                         Modifier
-                            .fillMaxSize()
-                            .scaffoldPadding(paddingValues)
+                            .fillMaxWidth()
+                            .zashiFrostedFooter(hazeState)
                 )
             }
+        }
+    ) { paddingValues ->
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .zashiFrostSource(hazeState)
+        ) {
+            when {
+                state.items.isEmpty() && state.isLoading -> {
+                    CircularScreenProgressIndicator()
+                }
 
-            else -> {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    LazyColumn(
+                state.items.isEmpty() && !state.isLoading -> {
+                    EmptyFullscreen(
+                        state = state,
                         modifier =
                             Modifier
-                                .fillMaxWidth()
-                                .weight(1f),
+                                .fillMaxSize()
+                                .scaffoldPadding(paddingValues)
+                    )
+                }
+
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
                         contentPadding = paddingValues.asScaffoldScrollPaddingValues()
                     ) {
                         itemsIndexed(
@@ -148,19 +168,29 @@ fun AddressBookView(
                             }
                         }
                     }
-
-                    OldZashiBottomBar {
-                        AddContactButton(
-                            state = state,
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = ZashiDimensions.Spacing.spacing3xl)
-                        )
-                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AddContactBottomBar(
+    state: AddressBookState,
+    modifier: Modifier = Modifier
+) {
+    ZashiBottomBar(
+        modifier = modifier,
+        isElevated = false,
+        color = Color.Transparent
+    ) {
+        AddContactButton(
+            state = state,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = ZashiDimensions.Spacing.spacing3xl)
+        )
     }
 }
 
@@ -323,10 +353,11 @@ private fun AddContactButton(
 private fun AddressBookTopAppBar(
     onBack: () -> Unit,
     state: AddressBookState,
+    modifier: Modifier = Modifier,
 ) {
     ZashiSmallTopAppBar(
         title = state.title.getValue(),
-        modifier = Modifier.testTag(AddressBookTag.TOP_APP_BAR),
+        modifier = modifier.testTag(AddressBookTag.TOP_APP_BAR),
         showTitleLogo = true,
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = onBack)
@@ -336,7 +367,11 @@ private fun AddressBookTopAppBar(
                 ZashiIconButton(it)
                 Spacer(20.dp)
             }
-        }
+        },
+        colors =
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
     )
 }
 

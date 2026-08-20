@@ -52,7 +52,6 @@ class FixEphemeralAddressUseCase(
                             is AddressType.Invalid -> {
                                 getSwapStatus(depositAddress = address)
                                     .status
-                                    ?.quote
                                     ?.destinationAddress
                                     ?.address
                                     ?: return@launch

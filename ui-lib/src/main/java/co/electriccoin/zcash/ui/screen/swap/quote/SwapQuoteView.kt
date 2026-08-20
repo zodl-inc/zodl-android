@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.swap.quote
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -13,6 +14,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,10 +35,14 @@ import co.electriccoin.zcash.ui.design.component.SwapTokenAmountState
 import co.electriccoin.zcash.ui.design.component.ZashiAutoSizeText
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
+import co.electriccoin.zcash.ui.design.component.ZashiFrostedSheetHeader
 import co.electriccoin.zcash.ui.design.component.ZashiHorizontalDivider
 import co.electriccoin.zcash.ui.design.component.ZashiInfoText
+import co.electriccoin.zcash.ui.design.component.ZashiModalBottomSheetDragHandle
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSwapQuoteHeader
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.balances.LocalBalancesAvailable
@@ -52,6 +61,12 @@ import co.electriccoin.zcash.ui.design.util.withStyle
 internal fun SwapQuoteView(state: SwapQuoteState?) {
     ZashiScreenModalBottomSheet(
         state = state,
+        dragHandle =
+            if (state is SwapQuoteState.Success) {
+                null
+            } else {
+                { ZashiModalBottomSheetDragHandle() }
+            },
         content = { innerState, contentPadding ->
             when (innerState) {
                 is SwapQuoteState.Success -> {
@@ -140,62 +155,80 @@ private fun Success(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier =
-            modifier
-                .verticalScroll(rememberScrollState())
-                .padding(
-                    start = 24.dp,
-                    end = 24.dp,
-                    bottom = contentPadding.calculateBottomPadding()
-                )
-    ) {
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = state.title.getValue(),
-            style = ZashiTypography.header6,
-            fontWeight = FontWeight.SemiBold,
-            color = ZashiColors.Text.textPrimary,
-            textAlign = TextAlign.Center
-        )
-        Spacer(24.dp)
-        CompositionLocalProvider(LocalBalancesAvailable provides true) {
-            ZashiSwapQuoteHeader(
-                state =
-                    SwapQuoteHeaderState(
-                        from = state.from,
-                        to = state.to
+    val hazeState = rememberZashiFrostState()
+    var headerHeight by remember { mutableStateOf(0.dp) }
+    Box(modifier = modifier) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .zashiFrostSource(hazeState)
+                    .verticalScroll(rememberScrollState())
+                    .padding(
+                        start = 24.dp,
+                        end = 24.dp,
+                        top = headerHeight,
+                        bottom = contentPadding.calculateBottomPadding()
                     )
-            )
-        }
-        Spacer(32.dp)
-        state.items.forEachIndexed { index, item ->
-            if (index != 0) {
-                Spacer(12.dp)
+        ) {
+            CompositionLocalProvider(LocalBalancesAvailable provides true) {
+                ZashiSwapQuoteHeader(
+                    state =
+                        SwapQuoteHeaderState(
+                            from = state.from,
+                            to = state.to
+                        ),
+                    color = ZashiColors.Surfaces.bgPrimary
+                )
             }
-            SwapQuoteInfo(item)
-        }
-        Spacer(12.dp)
-        ZashiHorizontalDivider()
-        Spacer(12.dp)
-        SwapQuoteInfo(
-            item = state.amount,
-            descriptionStyle = ZashiTypography.textSm,
-            descriptionFontWeight = FontWeight.Medium,
-            descriptionColor = ZashiColors.Text.textPrimary
-        )
-        if (state.infoText != null) {
-            Spacer(48.dp)
-            ZashiInfoText(
-                modifier = Modifier.align(Alignment.CenterHorizontally),
-                textModifier = Modifier.padding(top = 4.dp),
-                text = state.infoText.getValue()
+            Spacer(32.dp)
+            state.items.forEachIndexed { index, item ->
+                if (index != 0) {
+                    Spacer(12.dp)
+                }
+                SwapQuoteInfo(item)
+            }
+            Spacer(12.dp)
+            ZashiHorizontalDivider()
+            Spacer(12.dp)
+            SwapQuoteInfo(
+                item = state.amount,
+                descriptionStyle = ZashiTypography.textSm,
+                descriptionFontWeight = FontWeight.Medium,
+                descriptionColor = ZashiColors.Text.textPrimary
+            )
+            if (state.infoText != null) {
+                Spacer(48.dp)
+                ZashiInfoText(
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    textModifier = Modifier.padding(top = 4.dp),
+                    text = state.infoText.getValue()
+                )
+            }
+            Spacer(24.dp)
+            ZashiButton(
+                modifier = Modifier.fillMaxWidth(),
+                state = state.primaryButton
             )
         }
-        Spacer(24.dp)
-        ZashiButton(
-            modifier = Modifier.fillMaxWidth(),
-            state = state.primaryButton
+
+        ZashiFrostedSheetHeader(
+            hazeState = hazeState,
+            modifier = Modifier.align(Alignment.TopCenter),
+            onHeightChanged = { headerHeight = it },
+            title = {
+                Text(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+                    text = state.title.getValue(),
+                    style = ZashiTypography.header6,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ZashiColors.Text.textPrimary,
+                    textAlign = TextAlign.Center
+                )
+            }
         )
     }
 }

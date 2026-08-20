@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.migration.restart
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -30,6 +32,9 @@ import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -44,51 +49,68 @@ import co.electriccoin.zcash.ui.design.R as DesignR
 
 @Composable
 fun MigrationRestartView(state: MigrationRestartState) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    ),
                 navigationAction = { ZashiTopAppBarBackNavigation(onBack = state.onBack) },
             )
         }
     ) { padding ->
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .scaffoldPadding(padding),
+                    .zashiFrostSource(hazeState)
         ) {
-            WalletHeaderIcons(
-                state =
-                    WalletHeaderIconsState(
-                        isKeystone = false,
-                        badgeIcon = R.drawable.ic_migration_coins_swap,
-                    )
-            )
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = stringRes(DesignR.string.restartMigration_title).getValue(),
-                style = ZashiTypography.header6,
-                fontWeight = FontWeight.SemiBold,
-                color = ZashiColors.Text.textPrimary,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = state.body.getValue(),
-                style = ZashiTypography.textSm,
-                color = ZashiColors.Text.textTertiary,
-            )
-            Spacer(Modifier.height(24.dp))
-            SummaryCard(state)
-            Spacer(Modifier.height(8.dp))
-            WarningCard(state.warning.getValue())
-            Spacer(Modifier.weight(1f))
-            SupportRow(state.support.getValue())
-            Spacer(Modifier.height(12.dp))
-            ZashiButton(
-                state = state.nextButton,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .scaffoldPadding(padding),
+            ) {
+                WalletHeaderIcons(
+                    state =
+                        WalletHeaderIconsState(
+                            isKeystone = false,
+                            badgeIcon = R.drawable.ic_migration_coins_swap,
+                        )
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = stringRes(DesignR.string.restartMigration_title).getValue(),
+                    style = ZashiTypography.header6,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ZashiColors.Text.textPrimary,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = state.body.getValue(),
+                    style = ZashiTypography.textSm,
+                    color = ZashiColors.Text.textTertiary,
+                )
+                Spacer(Modifier.height(24.dp))
+                SummaryCard(state)
+                Spacer(Modifier.height(8.dp))
+                WarningCard(state.warning.getValue())
+                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.weight(1f))
+                SupportRow(state.support.getValue())
+                Spacer(Modifier.height(12.dp))
+                ZashiButton(
+                    state = state.nextButton,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
     ZashiConfirmationBottomSheet(state = state.confirmationDialog)

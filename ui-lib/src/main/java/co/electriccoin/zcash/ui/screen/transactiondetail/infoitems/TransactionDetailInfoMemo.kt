@@ -38,8 +38,10 @@ import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.PressMorphDefaults
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.pressMorph
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.transactiondetail.info.TransactionDetailMemoState
 import co.electriccoin.zcash.ui.screen.transactiondetail.info.TransactionDetailMemosState
@@ -179,12 +181,16 @@ private fun TransactionDetailInfoMemo(
     state: TransactionDetailInfoMemoState,
     modifier: Modifier = Modifier
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val bottomButtonInteractionSource = remember { MutableInteractionSource() }
+
     Surface(
         modifier =
-            modifier then
-                Modifier.clickable(
+            modifier
+                .pressMorph(interactionSource, PressMorphDefaults.PRESSED_SCALE_SUBTLE)
+                .clickable(
                     indication = ripple(),
-                    interactionSource = remember { MutableInteractionSource() },
+                    interactionSource = interactionSource,
                     onClick = state.onClick,
                     role = Role.Button,
                 ),
@@ -216,10 +222,11 @@ private fun TransactionDetailInfoMemo(
                 Row(
                     modifier =
                         Modifier
+                            .pressMorph(bottomButtonInteractionSource, PressMorphDefaults.PRESSED_SCALE_SUBTLE)
                             .fillMaxWidth()
                             .clickable(
                                 indication = ripple(),
-                                interactionSource = remember { MutableInteractionSource() },
+                                interactionSource = bottomButtonInteractionSource,
                                 onClick = state.bottomButton.onClick,
                                 role = Role.Button,
                             ).padding(12.dp),

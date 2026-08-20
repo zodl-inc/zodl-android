@@ -43,7 +43,6 @@ fun <T : ModalBottomSheetState> ZashiScreenModalBottomSheet(
     properties: ModalBottomSheetProperties = ModalBottomSheetDefaults.properties,
     sheetState: SheetState = rememberScreenModalBottomSheetState(),
     shape: Shape = ZashiModalBottomSheetDefaults.SheetShape,
-    containerColor: Color = ZashiModalBottomSheetDefaults.ContainerColor,
     dragHandle: @Composable (() -> Unit)? = { ZashiModalBottomSheetDragHandle() },
     content: @Composable ColumnScope.(state: T, contentPadding: PaddingValues) -> Unit = { _, _ -> },
 ) {
@@ -73,7 +72,6 @@ fun <T : ModalBottomSheetState> ZashiScreenModalBottomSheet(
             sheetGesturesEnabled = sheetGesturesEnabled,
             scrimColor = Color.Transparent,
             shape = shape,
-            containerColor = containerColor,
             dragHandle = dragHandle,
             content = {
                 BackHandler {
@@ -113,7 +111,7 @@ fun ZashiScreenModalBottomSheet(
     onDismissRequest: () -> Unit,
     sheetState: SheetState = rememberScreenModalBottomSheetState(),
     shape: Shape = ZashiModalBottomSheetDefaults.SheetShape,
-    containerColor: Color = ZashiModalBottomSheetDefaults.ContainerColor,
+    dragHandle: @Composable (() -> Unit)? = { ZashiModalBottomSheetDragHandle() },
     content: @Composable ColumnScope.(contentPadding: PaddingValues) -> Unit = {},
 ) {
     ZashiScreenModalBottomSheet(
@@ -127,7 +125,7 @@ fun ZashiScreenModalBottomSheet(
             },
         sheetState = sheetState,
         shape = shape,
-        containerColor = containerColor,
+        dragHandle = dragHandle,
         content = { _, contentPadding ->
             content(contentPadding)
             HookupKeyboardController()

@@ -1,16 +1,16 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import co.electriccoin.zcash.spackle.Twig
-import co.electriccoin.zcash.ui.common.datasource.SwapDataSource
 import co.electriccoin.zcash.ui.common.datasource.SwapTransactionProposal
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.SwapStatus
 import co.electriccoin.zcash.ui.common.repository.MetadataRepository
+import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import kotlinx.coroutines.yield
 
 class ProcessSwapTransactionUseCase(
     private val metadataRepository: MetadataRepository,
-    private val swapDataSource: SwapDataSource,
+    private val swapRepository: SwapRepository,
     // private val ephemeralAddressRepository: EphemeralAddressRepository,
 ) {
     suspend operator fun invoke(transactionProposal: SwapTransactionProposal, result: SubmitResult) {
@@ -49,9 +49,9 @@ class ProcessSwapTransactionUseCase(
     private suspend fun submitDepositTransactions(transactionProposal: SwapTransactionProposal, result: SubmitResult) {
         suspend fun submit(txId: String, transactionProposal: SwapTransactionProposal) {
             try {
-                swapDataSource.submitDepositTransaction(
-                    txHash = txId,
-                    depositAddress = transactionProposal.destination.address
+                swapRepository.submitDepositTransaction(
+                    txId = txId,
+                    transactionProposal = transactionProposal
                 )
             } catch (e: Exception) {
                 Twig.error(e) { "Unable to submit deposit transaction" }

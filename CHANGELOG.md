@@ -7,6 +7,27 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [3.10.0 (2475)] - 2026-08-20
+
+### Added:
+
+- Buttons, rows, and other interactive elements now respond to touch with a subtle expressive press animation.
+- Screens and sheets across the app now use frosted-glass headers and footers, with content scrolling beneath them.
+- We brought back Coinholder Polling, so you can take part in Zcash community polls from your wallet.
+
+### Changed:
+
+- Bottom sheets across the app now share one background color.
+- We rebuilt polling to work with your Ironwood-migrated funds.
+- We made poll loading more reliable during service outages.
+
+### Fixed:
+
+- We polished several UI details: the swap quote review header now stands out from the sheet background, the Activity header turns frosted
+  sooner so it stays readable while you scroll, the Terms of Service icon matches the Privacy Policy one, and the Ironwood migration screens
+  scroll properly on small displays.
+- We fixed errors that interrupted signing, and made preparing a Keystone signature much faster.
+
 ## [3.9.3 (2393)] - 2026-08-17
 
 ### Changed:
@@ -23,7 +44,11 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Fixed:
 
+- The refund address explainer no longer reads like "USDC on NEAR" is a fixed destination for every refund — it now says the refund returns in the source currency on the same network, since that's true for any swap, not just NEAR-based ones.
 - Closing the error sheet during Keystone migration signing no longer discards already-signed rounds.
+- Shielded coinholder-polling rounds with more than one vote bundle no longer fail to build or submit votes beyond the first bundle.
+- Delegated vote submissions in shielded coinholder-polling rounds are no longer rejected by the voting server.
+- Fixed a rare case where a shielded coinholder-polling vote could stall waiting for confirmation instead of completing.
 - Tapping Receive no longer hangs indefinitely when a transient address-derivation error occurs; the app falls back to the account's current address instead.
 - The device authentication prompt no longer appears on app launch before a wallet has been created or restored.
 

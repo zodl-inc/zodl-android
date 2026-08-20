@@ -176,6 +176,7 @@ dependencyResolutionManagement {
             val markdownVersion = extra["MARKDOWN_VERSION"].toString()
             val mlkitScanningVersion = extra["MLKIT_SCANNING_VERSION"].toString()
             val mockkVersion = extra["MOCKK_VERSION"].toString()
+            val robolectricVersion = extra["ROBOLECTRIC_VERSION"].toString()
             val tinkVersion = extra["TINK_VERSION"].toString()
             val zcashBip39Version = extra["ZCASH_BIP39_VERSION"].toString()
             val zcashSdkVersion = extra["ZCASH_SDK_VERSION"].toString()
@@ -187,6 +188,7 @@ dependencyResolutionManagement {
             val keystoneVersion = extra["KEYSTONE_VERSION"].toString()
             val shimmerVersion = extra["SHIMMER_VERSION"].toString()
             val ktorVersion = extra["KTOR_VERSION"].toString()
+            val hazeVersion = extra["HAZE_VERSION"].toString()
 
             // Standalone versions
             version("flank", flankVersion)
@@ -257,6 +259,7 @@ dependencyResolutionManagement {
             library("flexa-spend", "co.flexa:spend:$flexaVersion")
             library("keystone", "com.github.KeystoneHQ:keystone-sdk-android:$keystoneVersion")
             library("compose-shimmer", "com.valentinilk.shimmer:compose-shimmer:$shimmerVersion")
+            library("haze", "dev.chrisbanes.haze:haze:$hazeVersion")
             library("ktor-bom", "io.ktor:ktor-bom:$ktorVersion")
             library("ktor-core", "io.ktor" ,"ktor-client-core").withoutVersion()
             library("ktor-okhttp", "io.ktor" ,"ktor-client-okhttp").withoutVersion()
@@ -280,6 +283,7 @@ dependencyResolutionManagement {
             library("androidx-uiAutomator", "androidx.test.uiautomator:uiautomator:$androidxUiAutomatorVersion")
             library("kotlinx-coroutines-test", "org.jetbrains.kotlinx:kotlinx-coroutines-test:$kotlinxCoroutinesVersion")
             library("mockk", "io.mockk:mockk:$mockkVersion")
+            library("robolectric", "org.robolectric:robolectric:$robolectricVersion")
             // Bundles
             bundle(
                 "androidx-biometric",
@@ -350,6 +354,7 @@ include("configuration-impl-android-lib")
 include("crash-lib")
 include("crash-android-lib")
 include("feature-migration")
+include("feature-voting")
 include("preference-api-lib")
 include("preference-impl-android-lib")
 include("sdk-ext-lib")

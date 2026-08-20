@@ -14,6 +14,21 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.10.0 (2475)] - 2026-08-20
+
+### Added:
+
+- We brought back Coinholder Polling, so you can take part in Zcash community polls from your wallet.
+
+### Changed:
+
+- We rebuilt polling to work with your Ironwood-migrated funds.
+- We made poll loading more reliable during service outages.
+
+### Fixed:
+
+- We fixed errors that interrupted signing, and made preparing a Keystone signature much faster.
+
 ## [3.9.3 (2393)] - 2026-08-17
 
 ### Changed:
