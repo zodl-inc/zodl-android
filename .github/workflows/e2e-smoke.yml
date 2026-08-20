@@ -1,4 +1,5 @@
 name: E2E Smoke Tests
+# CI validation: exercise the zodl-qa Android send-address paste flow.
 
 on:
   pull_request:
