@@ -35,6 +35,19 @@ private val FooterBlurIntensityStops =
     )
 
 /**
+ * The footer's blur curve mirrored top-down: full blur from the top edge through the middle of the
+ * header, then a steep ramp down to nothing at the bottom edge. Pass it to [zashiFrostedHeader] on
+ * screens whose header holds content that has to stay readable over the list scrolling underneath.
+ */
+val HeaderBlurIntensityStops =
+    listOf(
+        0f to 1f,
+        FOOTER_BLUR_PLATEAU_FRACTION to 1f,
+        1f - FOOTER_BLUR_RAMP_FRACTION to FOOTER_BLUR_RAMP_INTENSITY,
+        1f to 0f
+    )
+
+/**
  * Creates the state which connects a frosted bar to the content scrolling underneath it. Pass the
  * same instance to [zashiFrostedHeader] / [zashiFrostedFooter] and [zashiFrostSource].
  */
@@ -57,23 +70,59 @@ fun rememberZashiFrostState(): HazeState = rememberHazeState()
  * ignoring [frostColor] — a transparent fallback would show the content unblurred on those
  * devices. Surfaces whose resting background is not bgPrimary (a bottom sheet, for instance) pass
  * their own background as [fallbackColor] so the bar disappears into them.
+ *
+ * By default the blur strength follows a plain two-point gradient, full at the top edge and gone at
+ * the bottom one. Passing [intensityStops] switches it to a multi-stop curve instead, mapping a
+ * fraction of the header's height (0f = top edge, 1f = bottom edge) to a blur intensity at that
+ * line and interpolating linearly between stops; [HeaderBlurIntensityStops] holds the header
+ * mirror of the footer's curve, which keeps a strong blur under the header's own content and only
+ * ramps away just above its bottom edge. As in [zashiFrostedFooter], only the blur follows the
+ * stops: the tint becomes a plain top-ramp gradient and the noise grain is dropped, so the frost
+ * does not repaint the header's resting colors.
  */
 @Composable
 fun Modifier.zashiFrostedHeader(
     hazeState: HazeState,
     frostColor: Color = ZashiColors.Surfaces.bgPrimary,
-    fallbackColor: Color = ZashiColors.Surfaces.bgPrimary
-): Modifier =
-    zashiFrost(
+    fallbackColor: Color = ZashiColors.Surfaces.bgPrimary,
+    intensityStops: List<Pair<Float, Float>>? = null
+): Modifier {
+    if (intensityStops == null) {
+        return zashiFrost(
+            hazeState = hazeState,
+            frostColor = frostColor,
+            fallbackColor = fallbackColor,
+            progressive =
+                HazeProgressive.verticalGradient(
+                    startIntensity = 1f,
+                    endIntensity = 0f
+                )
+        )
+    }
+    val tintColor = frostColor.copy(alpha = frostColor.alpha * FROST_TINT_ALPHA)
+    return zashiFrost(
         hazeState = hazeState,
         frostColor = frostColor,
         fallbackColor = fallbackColor,
         progressive =
-            HazeProgressive.verticalGradient(
-                startIntensity = 1f,
-                endIntensity = 0f
-            )
+            HazeProgressive.Brush(
+                Brush.verticalGradient(
+                    colorStops =
+                        intensityStops
+                            .map { (fraction, intensity) -> fraction to Color.White.copy(alpha = intensity) }
+                            .toTypedArray()
+                )
+            ),
+        tint =
+            HazeTint(
+                Brush.verticalGradient(
+                    0f to tintColor,
+                    1f to tintColor.copy(alpha = 0f)
+                )
+            ),
+        noiseFactor = 0f
     )
+}
 
 /**
  * Renders a frosted footer: the mirror image of [zashiFrostedHeader], fading in from the top edge of
