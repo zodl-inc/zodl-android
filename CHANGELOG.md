@@ -7,25 +7,26 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [3.10.0 (2475)] - 2026-08-20
+
 ### Added:
 
 - Buttons, rows, and other interactive elements now respond to touch with a subtle expressive press animation.
 - Screens and sheets across the app now use frosted-glass headers and footers, with content scrolling beneath them.
+- We brought back Coinholder Polling, so you can take part in Zcash community polls from your wallet.
 
 ### Changed:
 
 - Bottom sheets across the app now share one background color.
-- Coinholder Polling now loads its trusted configuration through the resilient voting config gateway, so a GitHub outage no longer blocks
-  configuration loading while the mirrored copy is available.
+- We rebuilt polling to work with your Ironwood-migrated funds.
+- We made poll loading more reliable during service outages.
 
 ### Fixed:
 
 - We polished several UI details: the swap quote review header now stands out from the sheet background, the Activity header turns frosted
   sooner so it stays readable while you scroll, the Terms of Service icon matches the Privacy Policy one, and the Ironwood migration screens
   scroll properly on small displays.
-- Shielded coinholder polling works again after the voting infrastructure's v1.3.0 upgrade: the app now reads the PIR polynomial length from the
-  voting configuration, verifies the new round-attestation signature format, and submits vote shares with the round binding the voting server
-  requires. Rounds signed with the old attestation format are no longer shown.
+- We fixed errors that interrupted signing, and made preparing a Keystone signature much faster.
 
 ## [3.9.3 (2393)] - 2026-08-17
 
