@@ -29,10 +29,10 @@
     <string name="balances_dismiss">खारिज करें</string>
     <string name="general_select">चुनें…</string>
     <string name="general_confirm">कन्फर्म करें</string>
-    <string name="swapAndPay_address">पता</string>
+    <string name="swapAndPay_address">एड्रेस</string>
     <string name="swapAndPay_status_processing">प्रोसेस हो रहा है</string>
-    <string name="general_enter_address">पता दर्ज करें…</string>
-    <string name="general_enter_address_partial">%s पता…</string>
+    <string name="general_enter_address">एड्रेस दर्ज करें…</string>
+    <string name="general_enter_address_partial">%s एड्रेस…</string>
     <string name="receive_copy">कॉपी करें</string>
     <string name="swapToZec_shareQR">QR शेयर करें</string>
     <string name="general_cancel">रद्द करें</string>
@@ -232,13 +232,13 @@
     <string name="keystone_wbh_info_message">वह ब्लॉक हाइट है (ब्लॉकचेन में ब्लॉक #) जिस पर आपका वॉलेट बनाया गया था। सही हाइट देना ज़रूरी है, क्योंकि इसी से तय होता है कि आपकी ट्रांज़ैक्शन हिस्ट्री और वॉलेट बैलेंस दिखाने के लिए हम कितने ब्लॉक स्कैन करेंगे। अगर आपने किसी दूसरे हार्डवेयर डिवाइस से सीड रिकवर की है, तो अपने मूल हार्डवेयर डिवाइस की ही ब्लॉक हाइट दर्ज करें।</string>
     <string name="addressBook_newContact_name">कॉन्टैक्ट का नाम</string>
     <string name="addressBook_newContact_namePlaceholder">कॉन्टैक्ट का नाम दर्ज करें…</string>
-    <string name="addressBook_newContact_address">वॉलेट पता</string>
-    <string name="addressBook_newContact_addressPlaceholder">वॉलेट पता दर्ज करें…</string>
+    <string name="addressBook_newContact_address">वॉलेट एड्रेस</string>
+    <string name="addressBook_newContact_addressPlaceholder">वॉलेट एड्रेस दर्ज करें…</string>
     <string name="addressBook_error_nameExists">यह कॉन्टैक्ट नाम पहले से इस्तेमाल में है। कृपया कोई दूसरा नाम चुनें।</string>
     <string name="addressBook_error_nameLength">यह कॉन्टैक्ट नाम 32 अक्षरों की सीमा से बड़ा है। कृपया नाम छोटा करें।</string>
-    <string name="contact_address_error_not_unique">यह वॉलेट पता पहले से आपकी एड्रेस बुक में है।</string>
-    <string name="contact_chain_address_error_not_unique">इस चेन का एक पता पहले से आपकी एड्रेस बुक में मौजूद है।</string>
-    <string name="send_error_invalidAddress">अमान्य पता</string>
+    <string name="contact_address_error_not_unique">यह वॉलेट एड्रेस पहले से आपकी एड्रेस बुक में है।</string>
+    <string name="contact_chain_address_error_not_unique">इस चेन का एक एड्रेस पहले से आपकी एड्रेस बुक में मौजूद है।</string>
+    <string name="send_error_invalidAddress">अमान्य एड्रेस</string>
     <string name="swapAndPay_addressBookSelectChain">चेन चुनें</string>
     <string name="crash_reporting_opt_in_title">Zodl को बेहतर बनाने में मदद करें</string>
     <string name="crash_reporting_opt_in_subtitle">क्रैश रिपोर्ट डेवलपर्स के लिए ऐप की क्वालिटी और
@@ -278,9 +278,9 @@
     <string name="torSetup_alert_msg">Tor कनेक्शन में दिक्कत मिली है। परफॉर्मेंस बेहतर करने के लिए Tor बंद करके देखें। इससे एक्सचेंज रेट अपडेट होना रुक जाएगा। आप इसे बाद में एडवांस्ड सेटिंग्स से दोबारा चालू कर सकते हैं।</string>
     <string name="torSetup_alert_disable">बंद करें</string>
     <string name="torSetup_alert_dontDisable">बंद न करें</string>
-    <string name="currencyConversion_ipTitle">IP पते की सुरक्षा</string>
-    <string name="currencyConversion_ipDesc">Zodl का करेंसी कन्वर्ज़न फीचर आपके IP पते को उजागर नहीं करता।</string>
-    <string name="exchange_rate_info_subtitle_1_no_cmc">आपके IP पते की सुरक्षा के लिए एक्सचेंज रेट Tor के ज़रिए लिए जाते हैं। पक्का करें कि आपके क्षेत्र में Tor इस्तेमाल करने की अनुमति है।</string>
+    <string name="currencyConversion_ipTitle">IP एड्रेस की सुरक्षा</string>
+    <string name="currencyConversion_ipDesc">Zodl का करेंसी कन्वर्ज़न फीचर आपके IP एड्रेस को उजागर नहीं करता।</string>
+    <string name="exchange_rate_info_subtitle_1_no_cmc">आपके IP एड्रेस की सुरक्षा के लिए एक्सचेंज रेट Tor के ज़रिए लिए जाते हैं। पक्का करें कि आपके क्षेत्र में Tor इस्तेमाल करने की अनुमति है।</string>
     <string name="currencyConversion_refresh">रेट रिफ्रेश</string>
     <string name="currencyConversion_refreshDesc">रेट अपने आप रिफ्रेश होता है और इसे मैन्युअली भी रिफ्रेश किया जा सकता है।</string>
     <string name="tooltip_exchangeRate_title">एक्सचेंज रेट उपलब्ध नहीं</string>
@@ -303,18 +303,18 @@
     <string name="currencyConversion_learnMoreDesc">अपना बैलेंस और पेमेंट की राशि चुनी हुई करेंसी में देखें। Swap और Pay के लिए एक्सचेंज रेट USD में ही दिखते रहेंगे। आप इस फीचर को एडवांस्ड सेटिंग्स में मैनेज कर सकते हैं।</string>
     <string name="currencyConversion_settingsDesc">अपना बैलेंस और पेमेंट की राशि अपनी चुनी हुई करेंसी में देखें। Swap और Pay के लिए एक्सचेंज रेट USD में ही दिखते रहेंगे।</string>
     <string name="torSetup_ccSheet_title">करेंसी कन्वर्ज़न के लिए Tor ज़रूरी है</string>
-    <string name="exchange_rate_tor_opt_in_description">Tor सुरक्षा एक बीटा फीचर है, जो आपके IP पते को अतिरिक्त
+    <string name="exchange_rate_tor_opt_in_description">Tor सुरक्षा एक बीटा फीचर है, जो आपके IP एड्रेस को अतिरिक्त
         सुरक्षा देता है। USD एक्सचेंज रेट सिर्फ तभी उपलब्ध होते हैं जब यह चालू हो।\n\nअगर आपके क्षेत्र में Tor की अनुमति है, तो हम इसे चालू करने की सलाह देते हैं। आप इसे एडवांस्ड सेटिंग्स में मैनेज कर सकते हैं।</string>
     <string name="torSetup_ccSheet_later">बाद में करें</string>
     <string name="currencyConversion_torOnInfo">Tor सुरक्षा बंद करने पर करेंसी कन्वर्ज़न फीचर भी तब तक बंद रहेगा जब तक इसे दोबारा चालू न किया जाए।</string>
-    <string name="currencyConversion_torOffInfo">अगर आप अपने IP पते की सुरक्षा करना चाहते हैं, तो एडवांस्ड सेटिंग्स में Tor सुरक्षा चालू करें।</string>
+    <string name="currencyConversion_torOffInfo">अगर आप अपने IP एड्रेस की सुरक्षा करना चाहते हैं, तो एडवांस्ड सेटिंग्स में Tor सुरक्षा चालू करें।</string>
     <string name="currencyConversion_selectCurrencyTitle">करेंसी चुनें</string>
     <string name="privateDataConsent_screenTitle">डेटा एक्सपोर्ट</string>
     <string name="privateDataConsent_title">प्राइवेट डेटा एक्सपोर्ट करने की सहमति</string>
     <string name="export_data_text">
         नीचे “मैं सहमत हूँ” पर क्लिक करके आप अपने वॉलेट का सारा प्राइवेट डेटा एक्सपोर्ट करने की सहमति देते हैं, जिसमें
         आपके वॉलेट और किसी भी जुड़े हुए हार्डवेयर वॉलेट की पूरी हिस्ट्री शामिल है। सारी निजी जानकारी, मेमो,
-        राशियाँ और प्राप्तकर्ता के पते, यहाँ तक कि आपकी शील्डेड गतिविधि के भी, एक्सपोर्ट हो जाएँगे।*\n\nयह प्राइवेट डेटा
+        राशियाँ और प्राप्तकर्ता के एड्रेस, यहाँ तक कि आपकी शील्डेड गतिविधि के भी, एक्सपोर्ट हो जाएँगे।*\n\nयह प्राइवेट डेटा
         यह देखने की सुविधा भी देता है कि आप आगे Zodl में क्या करते हैं।\n\nयह प्राइवेट डेटा शेयर करना
         वापस नहीं लिया जा सकता। एक बार किसी के साथ यह डेटा शेयर कर देने पर उसकी पहुँच हटाने का कोई
         तरीका नहीं है।\n\n*ध्यान दें कि इस प्राइवेट डेटा से कोई आपका फंड खर्च नहीं कर सकता, वह सिर्फ यह देख
@@ -360,7 +360,7 @@
     <string name="smartBanner_content_syncingError_title">सिंक करते समय गड़बड़ी आई</string>
     <string name="smartBanner_content_syncingError_info">इसे ठीक करने की कोशिश हो रही है</string>
     <string name="torSettingsSheet_title">Tor सुरक्षा चालू करें</string>
-    <string name="smartBanner_content_tor_info">अपने IP पते की सुरक्षा करें</string>
+    <string name="smartBanner_content_tor_info">अपने IP एड्रेस की सुरक्षा करें</string>
     <string name="smartBanner_help_backup_title">बैकअप ज़रूरी है</string>
     <string name="smartBanner_help_backup_info1">अपने वॉलेट का सुरक्षित बैकअप लेकर फंड खोने से बचें।</string>
     <string name="smartBanner_help_backup_info2">अपने फंड तक पहुँच सुरक्षित रखने के लिए इनका बैकअप लें:</string>
@@ -464,39 +464,39 @@
     <string name="payment_request_dialog_error_grpc_text">Zodl को यह ट्रांज़ैक्शन नेटवर्क पर भेजते समय कुछ कनेक्शन
         दिक्कतें आईं। यह अगले कुछ मिनटों में दोबारा कोशिश करेगा।</string>
     <string name="payment_request_send_failed_report_unable_open_email">ईमेल ऐप नहीं खोला जा सका।</string>
-    <string name="qr_code_unified_content_description">Unified पते का QR कोड</string>
-    <string name="qr_code_sapling_content_description">Sapling पते का QR कोड</string>
-    <string name="qr_code_transparent_content_description">Transparent पते का QR कोड</string>
-    <string name="accounts_zashi_shieldedAddress">Zcash शील्डेड पता</string>
-    <string name="receive_saplingAddress">Zcash Sapling पता</string>
-    <string name="accounts_zashi_transparentAddress">Zcash Transparent पता</string>
+    <string name="qr_code_unified_content_description">Unified एड्रेस का QR कोड</string>
+    <string name="qr_code_sapling_content_description">Sapling एड्रेस का QR कोड</string>
+    <string name="qr_code_transparent_content_description">Transparent एड्रेस का QR कोड</string>
+    <string name="accounts_zashi_shieldedAddress">Zcash शील्डेड एड्रेस</string>
+    <string name="receive_saplingAddress">Zcash Sapling एड्रेस</string>
+    <string name="accounts_zashi_transparentAddress">Zcash Transparent एड्रेस</string>
     <string name="component_maxPrivacy">प्राइवेट</string>
     <string name="component_lowPrivacy">प्राइवेट नहीं</string>
     <string name="addressDetails_shareQR">QR कोड शेयर करें</string>
-    <string name="addressDetails_copyAddress">पता कॉपी करें</string>
-    <string name="qr_code_clipboard_tag">Zcash वॉलेट पता</string>
+    <string name="addressDetails_copyAddress">एड्रेस कॉपी करें</string>
+    <string name="qr_code_clipboard_tag">Zcash वॉलेट एड्रेस</string>
     <string name="qr_code_data_unable_to_share">QR कोड शेयर करने के लिए कोई ऐप नहीं मिला।</string>
-    <string name="qr_code_share_chooser_title">मेरा Zodl %s पता</string>
+    <string name="qr_code_share_chooser_title">मेरा Zodl %s एड्रेस</string>
     <string name="qr_code_share_chooser_text">नमस्ते, मुझे %s पेमेंट भेजने के लिए यह QR कोड स्कैन करें! डाउनलोड लिंक:
         https://play.google.com/store/apps/details?id=co.electriccoin.zcash</string>
-    <string name="qr_code_wallet_address_shielded_keystone">Keystone शील्डेड पता</string>
-    <string name="qr_code_wallet_address_sapling_keystone">Keystone Sapling पता</string>
-    <string name="qr_code_wallet_address_transparent_keystone">Keystone Transparent पता</string>
+    <string name="qr_code_wallet_address_shielded_keystone">Keystone शील्डेड एड्रेस</string>
+    <string name="qr_code_wallet_address_sapling_keystone">Keystone Sapling एड्रेस</string>
+    <string name="qr_code_wallet_address_transparent_keystone">Keystone Transparent एड्रेस</string>
     <string name="receive_title">%s प्राप्त करें</string>
-    <string name="receive_warning">प्राइवेसी के लिए हमेशा शील्डेड पते का इस्तेमाल करें।</string>
+    <string name="receive_warning">प्राइवेसी के लिए हमेशा शील्डेड एड्रेस का इस्तेमाल करें।</string>
     <string name="receive_qrCode">QR कोड</string>
-    <string name="receive_clipboard_tag">Zcash वॉलेट पता</string>
-    <string name="accounts_keystone_shieldedAddress">Zcash शील्डेड पता</string>
-    <string name="accounts_keystone_transparentAddress">Zcash Transparent पता</string>
+    <string name="receive_clipboard_tag">Zcash वॉलेट एड्रेस</string>
+    <string name="accounts_keystone_shieldedAddress">Zcash शील्डेड एड्रेस</string>
+    <string name="accounts_keystone_transparentAddress">Zcash Transparent एड्रेस</string>
     <string name="receive_wallet_address_unified_subtitle">हर बार इस्तेमाल करने पर बदल जाता है</string>
-    <string name="receive_help_shielded_title">Zcash शील्डेड पता (बदलता रहता है)</string>
-    <string name="receive_info_shielded_bullet_1">इस पते का इस्तेमाल अपना %s प्राइवेट तरीके से पाने और स्टोर करने के लिए करें। इस पते पर भेजा गया transparent और शील्डेड %s, शील्डेड %s के रूप में ही मिलेगा और स्टोर होगा।</string>
-    <string name="receive_help_shielded_desc2">हर बार जब आप प्राप्त करें स्क्रीन खोलते हैं, एक नया Zcash शील्डेड पता बनता है।</string>
-    <string name="receive_help_shielded_desc3">आपके अलग-अलग बदलते शील्डेड पतों पर भेजे गए सभी ट्रांज़ैक्शन एक ही सीड फ्रेज़ के तहत एक ही वॉलेट बैलेंस का हिस्सा रहेंगे।</string>
-    <string name="receive_help_shielded_desc4">हम हर बार नया पता इस्तेमाल करने की सलाह देते हैं, फिर भी हर पता दोबारा इस्तेमाल किया जा सकता है।</string>
-    <string name="receive_help_transparent_title">Zcash Transparent पता (स्थिर)</string>
-    <string name="receive_help_transparent_desc1">यह पता Bitcoin के पतों की तरह काम करता है और कोई प्राइवेसी नहीं देता। इस पते पर भेजे गए ट्रांज़ैक्शन की जानकारी सार्वजनिक होगी और ब्लॉकचेन पर दिखेगी।</string>
-    <string name="receive_help_transparent_desc2">हम इस तरह का पता इस्तेमाल करने की सलाह नहीं देते, जब तक कि जिस वॉलेट या एक्सचेंज से %s भेजा जा रहा है वह शील्डेड Zcash पतों पर फंड भेजने की सुविधा न देता हो।</string>
+    <string name="receive_help_shielded_title">Zcash शील्डेड एड्रेस (बदलता रहता है)</string>
+    <string name="receive_info_shielded_bullet_1">इस एड्रेस का इस्तेमाल अपना %s प्राइवेट तरीके से पाने और स्टोर करने के लिए करें। इस एड्रेस पर भेजा गया transparent और शील्डेड %s, शील्डेड %s के रूप में ही मिलेगा और स्टोर होगा।</string>
+    <string name="receive_help_shielded_desc2">हर बार जब आप प्राप्त करें स्क्रीन खोलते हैं, एक नया Zcash शील्डेड एड्रेस बनता है।</string>
+    <string name="receive_help_shielded_desc3">आपके अलग-अलग बदलते शील्डेड एड्रेसेस पर भेजे गए सभी ट्रांज़ैक्शन एक ही सीड फ्रेज़ के तहत एक ही वॉलेट बैलेंस का हिस्सा रहेंगे।</string>
+    <string name="receive_help_shielded_desc4">हम हर बार नया एड्रेस इस्तेमाल करने की सलाह देते हैं, फिर भी हर एड्रेस दोबारा इस्तेमाल किया जा सकता है।</string>
+    <string name="receive_help_transparent_title">Zcash Transparent एड्रेस (स्थिर)</string>
+    <string name="receive_help_transparent_desc1">यह एड्रेस Bitcoin के एड्रेसेस की तरह काम करता है और कोई प्राइवेसी नहीं देता। इस एड्रेस पर भेजे गए ट्रांज़ैक्शन की जानकारी सार्वजनिक होगी और ब्लॉकचेन पर दिखेगी।</string>
+    <string name="receive_help_transparent_desc2">हम इस तरह का एड्रेस इस्तेमाल करने की सलाह नहीं देते, जब तक कि जिस वॉलेट या एक्सचेंज से %s भेजा जा रहा है वह शील्डेड Zcash एड्रेसेस पर फंड भेजने की सुविधा न देता हो।</string>
     <string name="receive_help_transparent_desc3">आपकी प्राइवेसी की सुरक्षा के लिए, Zodl आपको सिर्फ एक क्लिक में मिला हुआ transparent %s शील्ड करने में मदद करेगा।</string>
     <string name="receive_info_transparent_bullet_4">जब तक आप अपना transparent %s शील्ड नहीं करते, आप उसे खर्च नहीं कर पाएँगे।</string>
     <string name="zecKeyboard_invalid">यह ट्रांज़ैक्शन राशि अमान्य है</string>
@@ -555,9 +555,9 @@
     <string name="scan_settings_open_failed">सेटिंग्स ऐप नहीं खोला जा सका।</string>
     <string name="scan_cameraSettings">कैमरे की अनुमति नहीं है। कृपया Zodl की सिस्टम सेटिंग्स में जाकर इसे चालू करें।</string>
     <string name="scan_state_failed">कैमरा शुरू नहीं हो सका। कृपया दोबारा कोशिश करें।</string>
-    <string name="scan_invalidQR">इस QR कोड में कोई मान्य Zcash पता नहीं है।</string>
-    <string name="scan_invalidImage">इस इमेज में कोई मान्य Zcash पता नहीं है।</string>
-    <string name="scan_severalCodesFound">इस इमेज में कई मान्य Zcash पते हैं।</string>
+    <string name="scan_invalidQR">इस QR कोड में कोई मान्य Zcash एड्रेस नहीं है।</string>
+    <string name="scan_invalidImage">इस इमेज में कोई मान्य Zcash एड्रेस नहीं है।</string>
+    <string name="scan_severalCodesFound">इस इमेज में कई मान्य Zcash एड्रेस हैं।</string>
     <string name="scan_torch_content_description">कैमरा टॉर्च चालू या बंद करें</string>
     <string name="gallery_content_description">गैलरी</string>
     <string name="deeplinkWarning_screenTitle">नमस्ते!</string>
@@ -570,7 +570,7 @@
     <string name="scan_keystone_state_permission">कैमरे की अनुमति नहीं है। कृपया
         Zodl की सिस्टम सेटिंग्स में जाकर इसे चालू करें।</string>
     <string name="scan_keystone_state_failed">कैमरा शुरू नहीं हो सका। कृपया दोबारा कोशिश करें।</string>
-    <string name="scan_keystone_address_validation_failed">यह QR कोड किसी मान्य Zcash पते का नहीं है।</string>
+    <string name="scan_keystone_address_validation_failed">यह QR कोड किसी मान्य Zcash एड्रेस का नहीं है।</string>
     <string name="scan_keystone_torch_content_description">कैमरा टॉर्च चालू या बंद करें</string>
     <string name="scan_keystone_gallery_content_description">गैलरी</string>
     <string name="scan_keystone_info">कनेक्ट करने के लिए अपना Keystone वॉलेट स्कैन करें</string>
@@ -601,7 +601,7 @@
     <string name="keystone_addHWWallet_desc">आगे बढ़ने के लिए वह वॉलेट चुनें जिसे आप कनेक्ट करना चाहते हैं। कनेक्ट होने के बाद आप अपने हार्डवेयर वॉलेट से वायरलेस तरीके से ट्रांज़ैक्शन साइन कर पाएँगे।</string>
     <string name="send_scan_content_description">स्कैन</string>
     <string name="send_to">इन्हें भेजें</string>
-    <string name="send_addressPlaceholder">Zcash पता</string>
+    <string name="send_addressPlaceholder">Zcash एड्रेस</string>
     <string name="send_amount">राशि</string>
     <string name="send_amount_hint"><xliff:g id="currency" example="ZEC">%1$s</xliff:g></string>
     <string name="send_error_invalidAmount">अमान्य राशि</string>
@@ -652,7 +652,7 @@
         अपने आप वह सारा डेटा तैयार कर देता है जो आपका फंड वापस दिलाने में हमें चाहिए।</string>
     <string name="send_confirmation_multiple_trx_failure_copy_button">ट्रांज़ैक्शन ID कॉपी करें</string>
     <string name="send_confirmation_multiple_trx_failure_ids_title">ट्रांज़ैक्शन ID</string>
-    <string name="send_confirmation_multiple_report_text">नमस्ते, Zodl टीम।\n\nTEX पते पर ट्रांज़ैक्शन भेजते समय
+    <string name="send_confirmation_multiple_report_text">नमस्ते, Zodl टीम।\n\nTEX एड्रेस पर ट्रांज़ैक्शन भेजते समय
         मुझे एक एरर आया। मुझे यह जानना है कि अपना फंड कैसे वापस पाऊँ।\n\nधन्यवाद
         ।</string>
     <string name="send_confirmation_multiple_report_statuses" formatted="true">ट्रांज़ैक्शन की स्थिति:</string>
@@ -672,7 +672,7 @@
     <string name="send_confirmation_multiple_trx_failure_copy_tag">ट्रांज़ैक्शन ID</string>
     <string name="swapAndPay_successSwapInfo">आपने सफलतापूर्वक एक स्वैप शुरू किया।\nइसकी स्थिति ट्रांज़ैक्शन स्क्रीन पर देखें।</string>
     <string name="swapAndPay_failureSwapInfo">स्वैप शुरू करने में गड़बड़ी हुई।\nकृपया दोबारा कोशिश करें।</string>
-    <string name="swapAndPay_sendingInfo">आपके कॉइन डिपॉज़िट पते पर भेजे जा रहे हैं…</string>
+    <string name="swapAndPay_sendingInfo">आपके कॉइन डिपॉज़िट एड्रेस पर भेजे जा रहे हैं…</string>
     <string name="swapAndPay_checkStatus">स्थिति देखें</string>
     <string name="keystone_confirmPay">Keystone से पे करें</string>
     <string name="send_pendingTitle">ट्रांज़ैक्शन पेंडिंग</string>
@@ -705,7 +705,7 @@
     <string name="sign_keystone_transaction_bottom_sheet_subtitle">सिग्नेचर अस्वीकार करने पर ट्रांज़ैक्शन रद्द हो जाएगा, और आगे बढ़ने के लिए आपको फिर से शुरू करना होगा। यह कदम वापस नहीं लिया जा सकता।</string>
     <string name="keystoneTransactionReject_goBack">वापस जाएँ</string>
     <string name="keystoneTransactionReject_rejectSig">सिग्नेचर अस्वीकार करें</string>
-    <string name="swap_info_message">%1$s को किसी भी NEAR-समर्थित टोकन से स्वैप करें।\n\nअगर आप %2$s में स्वैप कर रहे हैं, तो आप किसी थर्ड पार्टी वॉलेट से फंड भेजेंगे और एक पता देंगे जहाँ बचा हुआ पैसा रिफंड हो सके।\n\nअगर आप %3$s से स्वैप कर रहे हैं, तो आपको उस एसेट का मान्य पता देना होगा जिसमें आप स्वैप कर रहे हैं।</string>
+    <string name="swap_info_message">%1$s को किसी भी NEAR-समर्थित टोकन से स्वैप करें।\n\nअगर आप %2$s में स्वैप कर रहे हैं, तो आप किसी थर्ड पार्टी वॉलेट से फंड भेजेंगे और एक एड्रेस देंगे जहाँ बचा हुआ पैसा रिफंड हो सके।\n\nअगर आप %3$s से स्वैप कर रहे हैं, तो आपको उस एसेट का मान्य एड्रेस देना होगा जिसमें आप स्वैप कर रहे हैं।</string>
     <string name="swapAndPay_help_swapWith">इसके साथ स्वैप करें</string>
     <string name="swap_select_token">टोकन चुनें</string>
     <string name="swapAndPay_search">नाम या टिकर से खोजें…</string>
@@ -753,11 +753,11 @@
     <string name="swapAndPay_payTo">इसे पे करें</string>
     <string name="swap_to_zec_footer">फंड जमा करने के लिए अपना %s वॉलेट \n इस्तेमाल करें। दूसरे एसेट जमा करने पर फंड खो सकता है।</string>
     <string name="swapToZec_info2">%s, %s पर</string>
-    <string name="swap_to_zec_share_text">Zodl में %3$s पर %1$s %2$s को %4$s में स्वैप करने के लिए डिपॉज़िट पता</string>
-    <string name="swapToZec_refundAddress">रिफंड पता</string>
-    <string name="swapToZec_refundAddress_title">रिफंड पता</string>
-    <string name="swap_refund_address_info_message_empty">अगर स्वैप फेल हो जाता है या बाज़ार की स्थिति बदल जाती है, तो आपका ट्रांज़ैक्शन शुल्क घटाकर रिफंड किया जा सकता है।\n\nरिफंड की राशि आपके वॉलेट में सोर्स करेंसी में वापस आएगी। फंड खोने से बचने के लिए कृपया मान्य पता दर्ज करें।</string>
-    <string name="swap_refund_address_info_message">अगर स्वैप फेल हो जाता है या बाज़ार की स्थिति बदल जाती है, तो आपका ट्रांज़ैक्शन शुल्क घटाकर रिफंड किया जा सकता है।\n\nरिफंड की राशि आपके वॉलेट में सोर्स करेंसी में, उसी नेटवर्क पर वापस आएगी। फंड खोने से बचने के लिए कृपया मान्य पता दर्ज करें।</string>
+    <string name="swap_to_zec_share_text">Zodl में %3$s पर %1$s %2$s को %4$s में स्वैप करने के लिए डिपॉज़िट एड्रेस</string>
+    <string name="swapToZec_refundAddress">रिफंड एड्रेस</string>
+    <string name="swapToZec_refundAddress_title">रिफंड एड्रेस</string>
+    <string name="swap_refund_address_info_message_empty">अगर स्वैप फेल हो जाता है या बाज़ार की स्थिति बदल जाती है, तो आपका ट्रांज़ैक्शन शुल्क घटाकर रिफंड किया जा सकता है।\n\nरिफंड की राशि आपके वॉलेट में सोर्स करेंसी में वापस आएगी। फंड खोने से बचने के लिए कृपया मान्य एड्रेस दर्ज करें।</string>
+    <string name="swap_refund_address_info_message">अगर स्वैप फेल हो जाता है या बाज़ार की स्थिति बदल जाती है, तो आपका ट्रांज़ैक्शन शुल्क घटाकर रिफंड किया जा सकता है।\n\nरिफंड की राशि आपके वॉलेट में सोर्स करेंसी में, उसी नेटवर्क पर वापस आएगी। फंड खोने से बचने के लिए कृपया मान्य एड्रेस दर्ज करें।</string>
     <string name="swapToZec_swapDetails">स्वैप की जानकारी</string>
     <string name="swapToZec_depositTo">यहाँ जमा करें</string>
     <string name="swapStatus_swapExpired">स्वैप एक्सपायर हुआ</string>
@@ -778,24 +778,24 @@
     <string name="taxExport_title">डेटा एक्सपोर्ट</string>
     <string name="taxExport_desc">पिछले कैलेंडर साल की अपनी <xliff:g example="Zodl" id="account_name">%s</xliff:g> ट्रांज़ैक्शन हिस्ट्री .csv फॉर्मैट में डाउनलोड करें।</string>
     <string name="taxExport_download">डाउनलोड करें</string>
-    <string name="texKeystone_title">यह पता समर्थित नहीं है</string>
-    <string name="texKeystone_warn1">Keystone फिलहाल Binance TEX पतों पर ट्रांसफर की सुविधा नहीं देता।</string>
+    <string name="texKeystone_title">यह एड्रेस समर्थित नहीं है</string>
+    <string name="texKeystone_warn1">Keystone फिलहाल Binance TEX एड्रेसेस पर ट्रांसफर की सुविधा नहीं देता।</string>
     <string name="texKeystone_warn2">कृपया अपना ट्रांज़ैक्शन पूरा करने के लिए नीचे दिए कदम अपनाएँ।</string>
     <string name="texKeystone_workaround">वैकल्पिक तरीका</string>
     <string name="tex_unsupported_step_1_badge">कदम 1</string>
     <string name="texKeystone_step1_title">पहले Zodl पर भेजें</string>
-    <string name="texKeystone_step1_desc">अपने Zodl शील्डेड पते पर ZEC ट्रांसफर करें</string>
+    <string name="texKeystone_step1_desc">अपने Zodl शील्डेड एड्रेस पर ZEC ट्रांसफर करें</string>
     <string name="tex_unsupported_step_2_badge">कदम 2</string>
-    <string name="texKeystone_step2_title">Zodl से TEX पते पर भेजें</string>
-    <string name="texKeystone_step2_desc">Zodl में मिलने के बाद, टोकन अपने आखिरी TEX पते पर भेजें</string>
+    <string name="texKeystone_step2_title">Zodl से TEX एड्रेस पर भेजें</string>
+    <string name="texKeystone_step2_desc">Zodl में मिलने के बाद, टोकन अपने आखिरी TEX एड्रेस पर भेजें</string>
     <string name="torSetup_title">Tor सुरक्षा</string>
-    <string name="tor_settings_subtitle">Tor आपके IP पते को अतिरिक्त सुरक्षा देता है। यह फीचर एक्सचेंज रेट लाने,
+    <string name="tor_settings_subtitle">Tor आपके IP एड्रेस को अतिरिक्त सुरक्षा देता है। यह फीचर एक्सचेंज रेट लाने,
         ट्रांज़ैक्शन भेजने, ट्रांज़ैक्शन डेटा लाने और थर्ड पार्टी API से जुड़ने के लिए Tor नेटवर्क
         इस्तेमाल करता है।\n\nअगर आपके क्षेत्र में Tor की अनुमति है, तो हम इसे चालू करने की सलाह देते हैं।</string>
     <string name="torSetup_enableDesc">Tor के ज़रिए कनेक्ट करें</string>
     <string name="torSetup_disableDesc">Tor के ज़रिए कनेक्ट न करें।</string>
     <string name="torSetup_option1_title">करेंसी कन्वर्ज़न</string>
-    <string name="torSetup_option1_desc">अपना IP पता बताए बिना थर्ड पार्टी सर्वर से एक्सचेंज रेट लाएँ। (सिर्फ Tor चालू होने पर उपलब्ध।)</string>
+    <string name="torSetup_option1_desc">अपना IP एड्रेस बताए बिना थर्ड पार्टी सर्वर से एक्सचेंज रेट लाएँ। (सिर्फ Tor चालू होने पर उपलब्ध।)</string>
     <string name="torSetup_option2_title">ट्रांज़ैक्शन</string>
     <string name="torSetup_option2_desc">बेहतर प्राइवेसी के लिए ट्रांज़ैक्शन डेटा Tor के ज़रिए भेजें और लाएँ।</string>
     <string name="torSetup_option3_desc">बेहतर प्राइवेसी के लिए थर्ड पार्टी API (जैसे NEAR) Tor के ज़रिए इस्तेमाल करें।</string>
@@ -810,7 +810,7 @@
     <string name="transactionDetail_feeSummary">शुल्क</string>
     <string name="transactionHistory_sentTo">इन्हें भेजा</string>
     <string name="transactionHistory_pending">पेंडिंग</string>
-    <string name="transactionHistory_saveAddress">पता सेव करें</string>
+    <string name="transactionHistory_saveAddress">एड्रेस सेव करें</string>
     <string name="transactionHistory_sendAgain">दोबारा भेजें</string>
     <string name="transaction_sent">भेजा गया</string>
     <string name="transaction_sending">भेजा जा रहा है</string>
@@ -843,9 +843,9 @@
     <string name="swapAndPay_expiredTitle">स्वैप एक्सपायर हुआ</string>
     <string name="reportSwap_report">समस्या की रिपोर्ट करें</string>
     <string name="reportSwap_title">स्वैप की समस्या की रिपोर्ट करें</string>
-    <string name="reportSwap_msg">नीचे दिए बटन पर टैप करने से इस स्वैप की जानकारी (जैसे डिपॉज़िट पता और टारगेट एसेट) Zodl सपोर्ट टीम को भेजी जाएगी, ताकि वे आपकी समस्या सुलझाने में मदद कर सकें। ट्रांज़ैक्शन की जानकारी अपने आप जुड़ जाती है।</string>
+    <string name="reportSwap_msg">नीचे दिए बटन पर टैप करने से इस स्वैप की जानकारी (जैसे डिपॉज़िट एड्रेस और टारगेट एसेट) Zodl सपोर्ट टीम को भेजी जाएगी, ताकि वे आपकी समस्या सुलझाने में मदद कर सकें। ट्रांज़ैक्शन की जानकारी अपने आप जुड़ जाती है।</string>
     <string name="transaction_detail_support_email_subject">स्वैप ट्रांज़ैक्शन की समस्या</string>
-    <string name="transaction_detail_support_email_body">कृपया अपनी समस्या यहाँ लिखें:\n\n\n\nस्वैप की जानकारी:\nडिपॉज़िट पता: %1$s\nसोर्स एसेट: %2$s\nटारगेट एसेट: %3$s</string>
+    <string name="transaction_detail_support_email_body">कृपया अपनी समस्या यहाँ लिखें:\n\n\n\nस्वैप की जानकारी:\nडिपॉज़िट एड्रेस: %1$s\nसोर्स एसेट: %2$s\nटारगेट एसेट: %3$s</string>
     <string name="deposits_info">डिपॉज़िट कन्फर्म होने में कई मिनट लग सकते हैं।</string>
     <string name="swapAndPay_status_incompleteDeposit">अधूरा डिपॉज़िट</string>
     <string name="swapAndPay_status_pending">पेंडिंग</string>
@@ -971,8 +971,8 @@
     <string name="migration_common_enableTorProtectionTitle">Tor सुरक्षा चालू करें</string>
     <string name="migration_common_torCheckboxSubtitle">बेहतर गुमनामी और प्राइवेसी सुरक्षा के लिए आपके कनेक्शन को Tor नेटवर्क से होकर भेजता है।</string>
     <string name="migration_status_done">पूरा हुआ</string>
-    <string name="migrationPrivacy_bodyImmediate">अगर आपके क्षेत्र में Tor उपलब्ध है, तो हम इसे चालू करने की पुरज़ोर सलाह देते हैं, ताकि आपका बैलेंस आपके IP पते से न जोड़ा जा सके। अगर आपके क्षेत्र में Tor उपलब्ध न हो, तो आप कोई भरोसेमंद VPN भी इस्तेमाल कर सकते हैं।</string>
-    <string name="migrationPrivacy_bodyAutomatic">अगर आपके क्षेत्र में Tor उपलब्ध है, तो हम इसे चालू करने की पुरज़ोर सलाह देते हैं, ताकि माइग्रेशन की राशि आपके IP पते से न जोड़ी जा सके। अगर आपके क्षेत्र में Tor उपलब्ध न हो, तो आप कोई भरोसेमंद VPN भी इस्तेमाल कर सकते हैं।</string>
+    <string name="migrationPrivacy_bodyImmediate">अगर आपके क्षेत्र में Tor उपलब्ध है, तो हम इसे चालू करने की पुरज़ोर सलाह देते हैं, ताकि आपका बैलेंस आपके IP एड्रेस से न जोड़ा जा सके। अगर आपके क्षेत्र में Tor उपलब्ध न हो, तो आप कोई भरोसेमंद VPN भी इस्तेमाल कर सकते हैं।</string>
+    <string name="migrationPrivacy_bodyAutomatic">अगर आपके क्षेत्र में Tor उपलब्ध है, तो हम इसे चालू करने की पुरज़ोर सलाह देते हैं, ताकि माइग्रेशन की राशि आपके IP एड्रेस से न जोड़ी जा सके। अगर आपके क्षेत्र में Tor उपलब्ध न हो, तो आप कोई भरोसेमंद VPN भी इस्तेमाल कर सकते हैं।</string>
     <string name="migrationKeystoneScan_instructions">साइन करने के बाद अपने Keystone डिवाइस पर दिख रहा QR कोड स्कैन करें।</string>
     <string name="migrationKeystoneScan_errorMessage">उस स्कैन को प्रोसेस करते समय कुछ गलत हो गया। कृपया दोबारा कोशिश करें।</string>
     <string name="migrationKeystoneScan_firmwareUnsupported">आपका Keystone फर्मवेयर अभी माइग्रेशन की सुविधा नहीं देता। अपना Keystone डिवाइस अपडेट करें, फिर लौटकर दोबारा कोशिश करें।</string>
@@ -1018,12 +1018,12 @@
     <string name="migrationCustomServerTor_title">आपका सर्वर Tor का समर्थन नहीं करता</string>
     <string name="migrationCustomServerTor_bodyImmediate">कस्टम सर्वर इस्तेमाल करते समय माइग्रेशन ट्रांज़ैक्शन Tor के ज़रिए ब्रॉडकास्ट नहीं किया जा सकता। अगर आप जारी रखते हैं, तो यह ट्रांज़ैक्शन Tor की IP सुरक्षा के बिना भेजा जाएगा।</string>
     <string name="migrationCustomServerTor_bodyAutomatic">कस्टम सर्वर इस्तेमाल करते समय माइग्रेशन ट्रांज़ैक्शन Tor के ज़रिए ब्रॉडकास्ट नहीं किए जा सकते। अगर आप जारी रखते हैं, तो ये ट्रांज़ैक्शन Tor की IP सुरक्षा के बिना भेजे जाएँगे।</string>
-    <string name="migrationCustomServerTor_riskBodyImmediate">Tor के बिना, आपका IP पता कस्टम सर्वर को दिख जाता है और आपके पूरे बैलेंस से जोड़ा जा सकता है।</string>
-    <string name="migrationCustomServerTor_riskBodyAutomatic">Tor के बिना, आपका IP पता कस्टम सर्वर को दिख जाता है और माइग्रेशन की राशियों से जोड़ा जा सकता है।</string>
+    <string name="migrationCustomServerTor_riskBodyImmediate">Tor के बिना, आपका IP एड्रेस कस्टम सर्वर को दिख जाता है और आपके पूरे बैलेंस से जोड़ा जा सकता है।</string>
+    <string name="migrationCustomServerTor_riskBodyAutomatic">Tor के बिना, आपका IP एड्रेस कस्टम सर्वर को दिख जाता है और माइग्रेशन की राशियों से जोड़ा जा सकता है।</string>
     <string name="migrationCustomServerTor_switchServer">सर्वर बदलें</string>
     <string name="migrationTorFailure_title">Tor से कनेक्ट नहीं हो सका</string>
     <string name="migrationTorFailure_body">हम Tor कनेक्शन नहीं बना सके। आप Tor सुरक्षा के बिना आगे बढ़ सकते हैं, या रद्द करके दोबारा कोशिश कर सकते हैं।</string>
-    <string name="migrationTorFailure_riskBody">Tor के बिना, आपका IP पता सर्वर को दिख जाता है और माइग्रेशन की राशियों से जोड़ा जा सकता है।</string>
+    <string name="migrationTorFailure_riskBody">Tor के बिना, आपका IP एड्रेस सर्वर को दिख जाता है और माइग्रेशन की राशियों से जोड़ा जा सकता है।</string>
     <string name="migrationSetup_title">Ironwood पर जाएँ</string>
     <string name="migrationSetup_bodyPrefix">"नए Zcash नेटवर्क अपग्रेड के लिए आपका "</string>
     <string name="migrationSetup_bodyFiatSuffix">" (%1$s)"</string>
