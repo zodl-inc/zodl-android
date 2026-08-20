@@ -20,8 +20,9 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Fixed:
 
-- We polished several UI details: the swap quote review header now blends into the screen background, the Activity header frost fades out more
-  gently, the Terms of Service icon matches the Privacy Policy one, and the Ironwood migration screens scroll properly on small displays.
+- We polished several UI details: the swap quote review header now stands out from the sheet background, the Activity header turns frosted
+  sooner so it stays readable while you scroll, the Terms of Service icon matches the Privacy Policy one, and the Ironwood migration screens
+  scroll properly on small displays.
 - Shielded coinholder polling works again after the voting infrastructure's v1.3.0 upgrade: the app now reads the PIR polynomial length from the
   voting configuration, verifies the new round-attestation signature format, and submits vote shares with the round binding the voting server
   requires. Rounds signed with the old attestation format are no longer shown.

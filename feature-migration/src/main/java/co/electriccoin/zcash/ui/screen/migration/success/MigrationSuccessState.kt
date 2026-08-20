@@ -1,7 +1,6 @@
 package co.electriccoin.zcash.ui.screen.migration.success
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -71,32 +70,28 @@ fun MigrationSuccessView(state: MigrationSuccessState) {
                     .scaffoldPadding(padding),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.ic_fist_punch),
-                    contentDescription = null,
-                    modifier = Modifier.size(148.dp),
-                )
-                Spacer(Modifier.height(24.dp))
-                Text(
-                    text = stringRes(DesignR.string.migrationSuccess_title).getValue(),
-                    style = ZashiTypography.header5,
-                    fontWeight = FontWeight.SemiBold,
-                    color = ZashiColors.Text.textPrimary,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = stringRes(DesignR.string.migrationSuccess_subtitle).getValue(),
-                    style = ZashiTypography.textSm,
-                    color = ZashiColors.Text.textTertiary,
-                    textAlign = TextAlign.Center,
-                )
-            }
+            Spacer(Modifier.weight(1f))
+            Image(
+                painter = painterResource(R.drawable.ic_fist_punch),
+                contentDescription = null,
+                modifier = Modifier.size(148.dp),
+            )
+            Spacer(Modifier.height(24.dp))
+            Text(
+                text = stringRes(DesignR.string.migrationSuccess_title).getValue(),
+                style = ZashiTypography.header5,
+                fontWeight = FontWeight.SemiBold,
+                color = ZashiColors.Text.textPrimary,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = stringRes(DesignR.string.migrationSuccess_subtitle).getValue(),
+                style = ZashiTypography.textSm,
+                color = ZashiColors.Text.textTertiary,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.weight(1f))
             state.onViewTransaction?.let { onView ->
                 ZashiButton(
                     state =
