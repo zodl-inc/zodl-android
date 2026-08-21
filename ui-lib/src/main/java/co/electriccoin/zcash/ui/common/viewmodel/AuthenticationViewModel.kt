@@ -15,6 +15,7 @@ import co.electriccoin.zcash.preference.model.entry.BooleanPreferenceDefault
 import co.electriccoin.zcash.spackle.AndroidApiVersion
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.provider.GetMonotonicTimeProvider
 import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
 import co.electriccoin.zcash.ui.preference.StandardPreferenceKeys
 import co.electriccoin.zcash.ui.screen.authentication.AuthenticationUseCase
@@ -40,6 +41,7 @@ private val AUTHENTICATE_TIMEOUT = 15.minutes.inWholeMilliseconds
 class AuthenticationViewModel(
     application: Application,
     private val biometricManager: BiometricManager,
+    private val getMonotonicTime: GetMonotonicTimeProvider,
     private val getVersionInfo: GetVersionInfoProvider,
     private val standardPreferenceProvider: StandardPreferenceProvider,
     private val walletViewModel: WalletViewModel,
@@ -143,20 +145,19 @@ class AuthenticationViewModel(
         showWelcomeAnimation.value = true
     }
 
-    fun runAuthenticationRequiredCheck() =
-        viewModelScope.launch {
-            val latestAppBackgroundedTimeMillis =
-                StandardPreferenceKeys.LATEST_APP_BACKGROUND_TIME_MILLIS.getValue(standardPreferenceProvider())
+    private var latestAppBackgroundedElapsedRealtimeMillis: Long? = null
 
-            if ((System.currentTimeMillis() - latestAppBackgroundedTimeMillis) > AUTHENTICATE_TIMEOUT) {
-                resetEntireAuthenticationState()
-            }
-        }
+    fun runAuthenticationRequiredCheck() {
+        val latestAppBackgroundedElapsedRealtimeMillis = latestAppBackgroundedElapsedRealtimeMillis ?: return
 
-    fun persistGoToBackgroundTime(millis: Long) =
-        viewModelScope.launch {
-            StandardPreferenceKeys.LATEST_APP_BACKGROUND_TIME_MILLIS.putValue(standardPreferenceProvider(), millis)
+        if ((getMonotonicTime() - latestAppBackgroundedElapsedRealtimeMillis) > AUTHENTICATE_TIMEOUT) {
+            resetEntireAuthenticationState()
         }
+    }
+
+    fun onEnteredBackground() {
+        latestAppBackgroundedElapsedRealtimeMillis = getMonotonicTime()
+    }
 
     /**
      * Authentication framework result

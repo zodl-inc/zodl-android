@@ -10,6 +10,7 @@ import co.electriccoin.zcash.ui.common.provider.CrashReportingStorageProvider
 import co.electriccoin.zcash.ui.common.provider.CrashReportingStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.EphemeralAddressStorageProvider
 import co.electriccoin.zcash.ui.common.provider.EphemeralAddressStorageProviderImpl
+import co.electriccoin.zcash.ui.common.provider.GetMonotonicTimeProvider
 import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
 import co.electriccoin.zcash.ui.common.provider.GetZcashCurrencyProvider
 import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteKeystoneStorageProvider
@@ -72,6 +73,7 @@ import org.koin.dsl.module
 val providerModule =
     module {
         factoryOf(::LightWalletEndpointProvider)
+        singleOf(::GetMonotonicTimeProvider)
         singleOf(::GetVersionInfoProvider)
         singleOf(::GetZcashCurrencyProvider)
         singleOf(::SelectedAccountUUIDProviderImpl) bind SelectedAccountUUIDProvider::class
