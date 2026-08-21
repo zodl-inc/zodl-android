@@ -24,6 +24,7 @@ import co.electriccoin.zcash.ui.common.model.near.RefundType
 import co.electriccoin.zcash.ui.common.model.near.SubmitDepositTransactionRequest
 import co.electriccoin.zcash.ui.common.model.near.SwapAmountInconsistencyException
 import co.electriccoin.zcash.ui.common.model.near.SwapType
+import co.electriccoin.zcash.ui.common.model.near.requestedAssetId
 import co.electriccoin.zcash.ui.common.provider.BlockchainProvider
 import co.electriccoin.zcash.ui.common.provider.NearApiProvider
 import co.electriccoin.zcash.ui.common.provider.ResponseWithNearErrorException
@@ -209,14 +210,13 @@ class NearSwapDataSource(
         )
     }
 
-    // The 1Click API normalises asset IDs for routing (e.g. "nep141:btc.omft.near" →
-    // "1cs_v1:btc:native:coin"). Try an exact match first; fall back to extracting the ticker
-    // from the normalised "1cs_v1:<ticker>:..." format and matching by tokenTicker.
-    private fun findAssetByEchoedId(supportedTokens: List<SwapAsset>, echoedId: String): SwapAsset? =
-        supportedTokens.find { it.assetId == echoedId }
-            ?: echoedId.split(":").getOrNull(1)?.let { ticker ->
-                supportedTokens.find { it.tokenTicker.equals(ticker, ignoreCase = true) }
-            }
+    // The status endpoint echoes the asset ids the app sent, so this is normally an exact match. Mapping
+    // the echoed id first keeps the lookup working if status starts echoing the asset 1Click routed
+    // through instead.
+    private fun findAssetByEchoedId(supportedTokens: List<SwapAsset>, echoedId: String): SwapAsset? {
+        val requestedId = requestedAssetId(echoedId)
+        return supportedTokens.find { it.assetId == requestedId }
+    }
 
     private suspend fun getDepositAddress(response: QuoteResponseDto, originAsset: SwapAsset): SwapAddress {
         val address = response.quote.depositAddress
