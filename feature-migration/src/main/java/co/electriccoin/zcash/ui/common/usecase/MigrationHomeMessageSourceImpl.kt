@@ -41,6 +41,14 @@ import co.electriccoin.zcash.ui.design.R as DesignR
 
 private const val PERCENT_MULTIPLIER = 100
 
+/** The banner phase + title/subtitle override for one [MigrationMessageState] — replaces an
+ * anonymous [Triple] so each field is named at the call site instead of positional. */
+private data class BannerCopy(
+    val phase: MigrationBannerPhase,
+    val title: String?,
+    val subtitle: String?,
+)
+
 /**
  * The home-banner source, fully LIVE off the engine — no plan cache anywhere (see
  * `spec/2026-07-30-plan-cache-elimination-proposal.md`): counts come from the engine's transfer
@@ -137,18 +145,18 @@ class MigrationHomeMessageSourceImpl(
             }
         // Spec §6.2/§6.3 — takes priority over the ordinary phases below: a plan needing
         // re-confirmation is more actionable than its last-known progress/completion state.
-        val (phase, title, subtitle) =
+        val bannerCopy =
             when (data.attentionKind) {
                 MigrationAttentionKind.PLAN_UPDATE -> {
-                    Triple(MigrationBannerPhase.ATTENTION, "Update migration plan", "Tap to review the details")
+                    BannerCopy(MigrationBannerPhase.ATTENTION, "Update migration plan", "Tap to review the details")
                 }
 
                 MigrationAttentionKind.TRANSFER_EXPIRED -> {
                     val range = data.attentionRangeText
-                    Triple(
-                        MigrationBannerPhase.ATTENTION,
-                        if (range != null) "Transfer $range expired" else "A transfer expired",
-                        "Tap to review the details",
+                    BannerCopy(
+                        phase = MigrationBannerPhase.ATTENTION,
+                        title = if (range != null) "Transfer $range expired" else "A transfer expired",
+                        subtitle = "Tap to review the details",
                     )
                 }
 
@@ -159,29 +167,29 @@ class MigrationHomeMessageSourceImpl(
                         // the "Migration complete" celebration title.
                         data.isComplete && data.isResidueOnly -> {
                             val amount = stringRes(Zatoshi(data.residualBalanceZatoshi)).getString(context)
-                            Triple(
-                                MigrationBannerPhase.COMPLETE,
-                                stringRes(DesignR.string.migrationHome_residueTitle, amount).getString(context),
-                                stringRes(DesignR.string.migrationHome_residueSubtitle).getString(context),
+                            BannerCopy(
+                                phase = MigrationBannerPhase.COMPLETE,
+                                title = stringRes(DesignR.string.migrationHome_residueTitle, amount).getString(context),
+                                subtitle = stringRes(DesignR.string.migrationHome_residueSubtitle).getString(context),
                             )
                         }
 
                         data.isComplete -> {
-                            Triple(MigrationBannerPhase.COMPLETE, null, "Tap to review the details")
+                            BannerCopy(MigrationBannerPhase.COMPLETE, null, "Tap to review the details")
                         }
 
                         // Spec §6.4: numbered per the due transfer, matching the convention used
                         // elsewhere (e.g. Progress's "Transfer ${completedCount + 1}").
                         data.isReadyToSend -> {
-                            Triple(
-                                MigrationBannerPhase.READY_TO_SEND,
-                                null,
-                                "Transfer ${data.completedCount + 1} is ready to send",
+                            BannerCopy(
+                                phase = MigrationBannerPhase.READY_TO_SEND,
+                                title = null,
+                                subtitle = "Transfer ${data.completedCount + 1} is ready to send",
                             )
                         }
 
                         !data.isRunActive -> {
-                            Triple(MigrationBannerPhase.REQUIRED, null, null)
+                            BannerCopy(MigrationBannerPhase.REQUIRED, null, null)
                         }
 
                         // MOB-1620: always the numeric count, including the 0-of-N case right
@@ -189,20 +197,21 @@ class MigrationHomeMessageSourceImpl(
                         // sending…" copy read as vaguer/stuck to Harry, and 0-based counts render
                         // fine ("0 of 5 transfers done ~0% complete").
                         else -> {
-                            Triple(
-                                MigrationBannerPhase.IN_PROGRESS,
-                                null,
-                                "${data.completedCount} of ${data.totalCount} transfers done" +
-                                    " ~ $percent% complete",
+                            BannerCopy(
+                                phase = MigrationBannerPhase.IN_PROGRESS,
+                                title = null,
+                                subtitle =
+                                    "${data.completedCount} of ${data.totalCount} transfers done" +
+                                        " ~ $percent% complete",
                             )
                         }
                     }
                 }
             }
         return MigrationMessageState(
-            phase = phase,
-            title = title,
-            progressLabel = subtitle,
+            phase = bannerCopy.phase,
+            title = bannerCopy.title,
+            progressLabel = bannerCopy.subtitle,
             progressPercent = percent.toFloat(),
             onClick = {
                 onMigrationMessageClick(
