@@ -20,6 +20,9 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Fixed:
 
+- A temporary Android Keystore failure at startup is no longer mistaken for corrupted encrypted storage: the encrypted secret store is now
+  recreated only when its data is provably undecryptable (for example after a device-to-device transfer, which cannot move hardware-bound
+  keys), and any other failure keeps the stored data intact.
 - Shielded coinholder polling works again after the voting infrastructure's v1.3.0 upgrade: the app now reads the PIR polynomial length from the
   voting configuration, verifies the new round-attestation signature format, and submits vote shares with the round binding the voting server
   requires. Rounds signed with the old attestation format are no longer shown.
