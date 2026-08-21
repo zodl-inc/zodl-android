@@ -45,32 +45,16 @@ interface KeystoneProposalRepository {
 
     val submitState: StateFlow<SubmitProposalState?>
 
-    @Throws(
-        TransactionProposalNotCreatedException::class,
-        InsufficientFundsException::class,
-        TexUnsupportedOnKSException::class
-    )
+    @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createProposal(zecSend: ZecSend)
 
-    @Throws(
-        TransactionProposalNotCreatedException::class,
-        InsufficientFundsException::class,
-        TexUnsupportedOnKSException::class
-    )
+    @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createExactInputSwapProposal(zecSend: ZecSend, quote: SwapQuote): ExactInputSwapTransactionProposal
 
-    @Throws(
-        TransactionProposalNotCreatedException::class,
-        InsufficientFundsException::class,
-        TexUnsupportedOnKSException::class
-    )
+    @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createExactOutputSwapProposal(zecSend: ZecSend, quote: SwapQuote): ExactOutputSwapTransactionProposal
 
-    @Throws(
-        TransactionProposalNotCreatedException::class,
-        InsufficientFundsException::class,
-        TexUnsupportedOnKSException::class
-    )
+    @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createZip321Proposal(zip321Uri: String): Zip321TransactionProposal
 
     @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
@@ -83,7 +67,7 @@ interface KeystoneProposalRepository {
      */
     fun setMigrationSweepProposal(proposal: Proposal, amount: Zatoshi)
 
-    @Throws(PcztException.CreatePcztFromProposalException::class)
+    @Throws(PcztException.CreatePcztFromProposalException::class, TexUnsupportedOnKSException::class)
     suspend fun createPCZTFromProposal()
 
     @Throws(IllegalStateException::class)

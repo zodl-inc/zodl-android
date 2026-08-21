@@ -18,7 +18,6 @@ import cash.z.ecc.android.sdk.model.proposeSend
 import cash.z.ecc.android.sdk.type.AddressType
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.spackle.Twig
-import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.NetworkDimension
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.SwapQuote
@@ -35,36 +34,20 @@ import org.zecdev.zip321.parser.ParserContext
 import java.math.BigDecimal
 
 interface ProposalDataSource {
-    @Throws(
-        TransactionProposalNotCreatedException::class,
-        InsufficientFundsException::class,
-        TexUnsupportedOnKSException::class
-    )
+    @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createProposal(account: WalletAccount, send: ZecSend): RegularTransactionProposal
 
-    @Throws(
-        TransactionProposalNotCreatedException::class,
-        InsufficientFundsException::class,
-        TexUnsupportedOnKSException::class
-    )
+    @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createZip321Proposal(account: WalletAccount, zip321Uri: String): Zip321TransactionProposal
 
-    @Throws(
-        TransactionProposalNotCreatedException::class,
-        InsufficientFundsException::class,
-        TexUnsupportedOnKSException::class
-    )
+    @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createExactInputProposal(
         account: WalletAccount,
         send: ZecSend,
         quote: SwapQuote,
     ): ExactInputSwapTransactionProposal
 
-    @Throws(
-        TransactionProposalNotCreatedException::class,
-        InsufficientFundsException::class,
-        TexUnsupportedOnKSException::class
-    )
+    @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createExactOutputProposal(
         account: WalletAccount,
         send: ZecSend,
@@ -74,7 +57,7 @@ interface ProposalDataSource {
     @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createShieldProposal(account: WalletAccount): ShieldTransactionProposal
 
-    @Throws(PcztException.CreatePcztFromProposalException::class)
+    @Throws(PcztException.CreatePcztFromProposalException::class, TexUnsupportedOnKSException::class)
     suspend fun createPcztFromProposal(account: WalletAccount, proposal: Proposal): Pczt
 
     @Throws(PcztException.AddProofsToPcztException::class)
@@ -92,7 +75,9 @@ class TransactionProposalNotCreatedException(
     cause: Exception
 ) : Exception(cause)
 
-class InsufficientFundsException : Exception()
+class InsufficientFundsException(
+    cause: Throwable? = null
+) : Exception(cause)
 
 class TexUnsupportedOnKSException : Exception("TEX addresses are unsupported on Keystone")
 
@@ -106,7 +91,6 @@ class ProposalDataSourceImpl(
     override suspend fun createProposal(account: WalletAccount, send: ZecSend): RegularTransactionProposal =
         withContext(Dispatchers.IO) {
             getOrThrow { synchronizer ->
-                validate(account, synchronizer, send.destination.address)
                 RegularTransactionProposal(
                     destination = send.destination,
                     amount = send.amount,
@@ -140,8 +124,6 @@ class ProposalDataSourceImpl(
                         )
                     }
 
-                validate(account, synchronizer, payment.recipientAddress.value)
-
                 if (payment.nonNegativeAmount == null) {
                     throw TransactionProposalNotCreatedException(IllegalArgumentException("Null amount"))
                 }
@@ -171,7 +153,6 @@ class ProposalDataSourceImpl(
     ): ExactInputSwapTransactionProposal =
         withContext(Dispatchers.IO) {
             getOrThrow { synchronizer ->
-                validate(account, synchronizer, send.destination.address)
                 ExactInputSwapTransactionProposal(
                     destination = send.destination,
                     amount = send.amount,
@@ -189,7 +170,6 @@ class ProposalDataSourceImpl(
     ): ExactOutputSwapTransactionProposal =
         withContext(Dispatchers.IO) {
             getOrThrow { synchronizer ->
-                validate(account, synchronizer, send.destination.address)
                 ExactOutputSwapTransactionProposal(
                     destination = send.destination,
                     amount = send.amount,
@@ -221,11 +201,14 @@ class ProposalDataSourceImpl(
 
     override suspend fun createPcztFromProposal(account: WalletAccount, proposal: Proposal): Pczt =
         withContext(Dispatchers.IO) {
-            val synchronizer = synchronizerProvider.getSynchronizer()
-            synchronizer.createPcztFromProposal(
-                accountUuid = account.sdkAccount.accountUuid,
-                proposal = proposal
-            )
+            try {
+                synchronizerProvider.getSynchronizer().createPcztFromProposal(
+                    accountUuid = account.sdkAccount.accountUuid,
+                    proposal = proposal
+                )
+            } catch (_: PcztException.MultiStepProposalUnsupportedException) {
+                throw TexUnsupportedOnKSException()
+            }
         }
 
     override suspend fun addProofsToPczt(pczt: Pczt): Pczt =
@@ -257,20 +240,6 @@ class ProposalDataSourceImpl(
                 .getSynchronizer()
                 .redactPcztForSigner(pczt)
         }
-
-    /**
-     * @throws TexUnsupportedOnKSException if the address is a TEX address and the account is a Keystone account
-     */
-    @Throws(TexUnsupportedOnKSException::class)
-    private suspend fun validate(
-        account: WalletAccount,
-        synchronizer: Synchronizer,
-        address: String
-    ) {
-        if (account is KeystoneAccount && synchronizer.validateAddress(address) == AddressType.Tex) {
-            throw TexUnsupportedOnKSException()
-        }
-    }
 
     @Suppress("CyclomaticComplexMethod", "TooGenericExceptionCaught")
     private suspend fun submitTransactionInternal(
@@ -355,17 +324,8 @@ class ProposalDataSourceImpl(
         try {
             val synchronizer = synchronizerProvider.getSynchronizer()
             block(synchronizer)
-        } catch (e: TransactionEncoderException.ProposalFromParametersException) {
-            val message = e.rootCause.message ?: ""
-            if (message.contains("Insufficient balance", true) ||
-                message.contains("The transaction requires an additional change output of", true)
-            ) {
-                throw InsufficientFundsException()
-            } else {
-                throw TransactionProposalNotCreatedException(e)
-            }
-        } catch (e: TexUnsupportedOnKSException) {
-            throw e
+        } catch (e: TransactionEncoderException.InsufficientFundsException) {
+            throw InsufficientFundsException(e)
         } catch (e: TransactionProposalNotCreatedException) {
             throw e
         } catch (e: Exception) {

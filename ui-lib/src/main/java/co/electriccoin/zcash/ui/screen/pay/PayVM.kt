@@ -317,6 +317,13 @@ internal interface InternalState {
 
     val totalSpendableBalance: Zatoshi
         get() = account?.spendableShieldedBalance ?: Zatoshi(0)
+
+    /**
+     * The single spendability primitive the whole app validates against, so the typing-time check and
+     * the proposal-time check in the SDK can never disagree. Re-evaluated whenever the selected
+     * account emits a new balance.
+     */
+    fun canSpend(amount: Zatoshi): Boolean = account?.canSpend(amount) ?: false
 }
 
 internal data class InternalStateImpl(
