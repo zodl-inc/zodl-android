@@ -29,6 +29,43 @@ signed with the same upload key — no reinstall needed when switching.
 
 Or download the latest APK from the [Releases Section](https://github.com/zodl-inc/zodl-android/releases/latest).
 
+## APK signing
+
+All release APKs (GitHub Releases, F-Droid, Google Play) are signed with the
+same ZODL release key. You can verify any APK with:
+
+```sh
+apksigner verify --print-certs app-zcashmainnet-foss-release.apk
+```
+
+**Expected certificate fingerprints:**
+
+| Algorithm | Fingerprint |
+|-----------|-------------|
+| SHA-256 | `412a1d2412a0be5ffbad9e7dd1eeedb9442dad8b9e9dffc334c07a0c3645ddfe` |
+| SHA-1 | `7bd525dc69da6b1fbfe91488b98329f82d55c0f5` |
+| MD5 | `33d742aafb8b57a35169cc6b527fec31` |
+
+**Certificate DN:** `O=Zerocoin Electric Coin Company, OU=Core Engineering, L=Denver, ST=CO, C=01`
+*(Note: the DN reflects the original key created under the ECC/Zashi name — the signing key has not been rotated as part of the ZODL rebrand. The fingerprints above are the canonical source of truth.)*
+
+These fingerprints are also embedded in each GitHub release as a
+`checksums.sha256` file signed with the ZODL GPG key
+(`0338...6AB1`) so you can verify the chain:
+APK → SHA-256 → GPG signature → ZODL key.
+
+### Obtainium
+
+Add Zodl to [Obtainium](https://github.com/ImranR98/Obtainium) using this
+source URL:
+
+```
+https://github.com/zodl-inc/zodl-android
+```
+
+Set **APK filter** to `app-zcashmainnet-foss-release.apk` and enable
+**Verify APK signature** with the SHA-256 fingerprint above.
+
 # Zodl Support
 
 Obtain help for Zodl and connect with our team at [support.zodl.com](https://support.zodl.com/).

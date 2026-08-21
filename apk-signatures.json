@@ -1,0 +1,18 @@
+{
+  "name": "Zodl Android Wallet",
+  "packageId": "co.electriccoin.zcash",
+  "source": "https://github.com/zodl-inc/zodl-android",
+  "website": "https://zodl.com",
+  "signingCertificates": [
+    {
+      "description": "ZODL release key",
+      "dn": "O=Zerocoin Electric Coin Company, OU=Core Engineering, L=Denver, ST=CO, C=01",
+      "sha256": "412a1d2412a0be5ffbad9e7dd1eeedb9442dad8b9e9dffc334c07a0c3645ddfe",
+      "sha1": "7bd525dc69da6b1fbfe91488b98329f82d55c0f5",
+      "md5": "33d742aafb8b57a35169cc6b527fec31"
+    }
+  ],
+  "releaseAssetFilter": "app-zcashmainnet-foss-release.apk",
+  "gpgKeyId": "0338...6AB1",
+  "gpgKeyFingerprint": "See https://github.com/zodl-inc/zodl-android/releases — each release includes a .asc GPG signature"
+}
