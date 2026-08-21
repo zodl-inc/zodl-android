@@ -103,7 +103,7 @@ internal class ExactOutputVMMapper {
         return stringResByDynamicCurrencyNumber(state.getZec() ?: BigDecimal(0), CURRENCY_TICKER).withStyle(
             StyledStringStyle(
                 color =
-                    if (zatoshi != null && state.totalSpendableBalance < zatoshi) {
+                    if (zatoshi != null && !state.canSpend(zatoshi)) {
                         StringResourceColor.HINT_ERROR
                     } else {
                         StringResourceColor.PRIMARY
@@ -137,7 +137,7 @@ internal class ExactOutputVMMapper {
 
     private fun createAmountErrorState(state: ExactOutputInternalState): StringResource? {
         val zatoshi = state.getZatoshi()
-        return if (zatoshi != null && state.totalSpendableBalance < zatoshi) {
+        return if (zatoshi != null && !state.canSpend(zatoshi)) {
             stringRes(R.string.send_error_insufficientFunds)
         } else {
             null
@@ -181,7 +181,7 @@ internal class ExactOutputVMMapper {
             },
             isEnabled = !state.isRequestingQuote,
             explicitError =
-                if (zatoshi != null && state.totalSpendableBalance < zatoshi) {
+                if (zatoshi != null && !state.canSpend(zatoshi)) {
                     stringRes("")
                 } else {
                     null
@@ -223,7 +223,7 @@ internal class ExactOutputVMMapper {
             },
             isEnabled = !state.isRequestingQuote,
             explicitError =
-                if (zatoshi != null && state.totalSpendableBalance < zatoshi) {
+                if (zatoshi != null && !state.canSpend(zatoshi)) {
                     stringRes("")
                 } else {
                     null

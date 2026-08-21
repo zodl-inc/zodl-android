@@ -374,6 +374,14 @@ internal interface InternalState {
 
     val totalSpendableBalance: Zatoshi
         get() = account?.spendableShieldedBalance ?: Zatoshi(0)
+
+    /**
+     * The single spendability primitive the whole app validates against, so the typing-time check and
+     * the pre-quote check in
+     * [co.electriccoin.zcash.ui.common.usecase.RequestSwapQuoteUseCase.requestExactInput] can never
+     * disagree. Re-evaluated whenever the selected account emits a new balance.
+     */
+    fun canSpend(amount: Zatoshi): Boolean = account?.canSpend(amount) ?: false
 }
 
 internal data class InternalStateImpl(

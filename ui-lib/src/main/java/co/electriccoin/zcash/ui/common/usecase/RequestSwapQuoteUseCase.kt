@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import cash.z.ecc.android.sdk.ext.convertZecToZatoshi
 import cash.z.ecc.android.sdk.model.Memo
 import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.android.sdk.model.Zatoshi
@@ -47,6 +48,11 @@ class RequestSwapQuoteUseCase(
         slippage: BigDecimal,
         canNavigateToSwapQuote: () -> Boolean
     ) {
+        if (!accountDataSource.getSelectedAccount().canSpend(amount.convertZecToZatoshi())) {
+            navigationRouter.forward(InsufficientFundsArgs)
+            return
+        }
+
         val newAddress = accountDataSource.requestNextShieldedAddress()
         requestQuote(
             requestQuote = {
