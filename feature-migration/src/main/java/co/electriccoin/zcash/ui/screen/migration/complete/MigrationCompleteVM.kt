@@ -29,6 +29,7 @@ import co.electriccoin.zcash.ui.common.repository.BiometricsCancelledException
 import co.electriccoin.zcash.ui.common.repository.BiometricsFailureException
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetIronwoodBalanceUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetOrchardBalanceUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetOrchardMigrationSdkUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
@@ -50,6 +51,7 @@ import co.electriccoin.zcash.ui.design.R as DesignR
 class MigrationCompleteVM(
     private val args: MigrationCompleteArgs,
     private val getOrchardBalance: GetOrchardBalanceUseCase,
+    private val getIronwoodBalance: GetIronwoodBalanceUseCase,
     private val hasSeenMigrationCompleteStorageProvider: HasSeenMigrationCompleteStorageProvider,
     private val hasLockedOrchardDustStorageProvider: HasLockedOrchardDustStorageProvider,
     private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
@@ -95,22 +97,41 @@ class MigrationCompleteVM(
 
     init {
         loadLce.execute {
-            // Read the REAL migration summary (amount migrated, transfer count, duration) from the
-            // ENGINE's persisted migration data — the single source of truth that survives
-            // completion. The app-side plan is cleared once migration finishes, so it can no longer
-            // supply these (it would read 0.000 ZEC / 0 of 0). Null-safe: a missing summary
-            // falls back to zeros.
-            val summary = getOrchardMigrationSdk().getMigrationSummary()
-            // Whatever's still in the real Orchard balance once every transfer has sent is the
-            // dust/residual left behind (below the migratable threshold, or an un-migrated
-            // opt-in residual — either way, it's what's actually still sitting in Orchard).
-            Summary(
-                totalTransferred = summary?.totalMigratedZatoshi ?: 0L,
-                totalCount = summary?.transferCount ?: 0,
-                firstAt = summary?.firstMinedEpochSeconds ?: 0L,
-                lastAt = summary?.lastMinedEpochSeconds ?: 0L,
-                dustZatoshi = getOrchardBalance().value,
-            )
+            // MOB-1750: the residue variant's "In Ironwood" row is the live Ironwood pool
+            // balance (GetIronwoodBalanceUseCase, same source GetBalancePoolsUseCase's Balance
+            // Breakdown sheet already uses) rather than the migration engine's own campaign-
+            // scoped bookkeeping — and the view never shows totalCount/duration for this variant
+            // (SummaryCard's residue branch omits those rows), so there's nothing to gain from
+            // reading getMigrationSummary() here at all. That engine summary can genuinely have
+            // no rows for this account (e.g. after a debug migration restart, or a residue not
+            // tied to any in-app-run campaign at all) even though the wallet's real Ironwood
+            // balance is very much nonzero — reading it here would show a misleading
+            // "0.000 ZEC" next to real prior "Migrated" activity.
+            if (args.isResidueOnly) {
+                Summary(
+                    totalTransferred = getIronwoodBalance().value,
+                    totalCount = 0,
+                    firstAt = 0L,
+                    lastAt = 0L,
+                    dustZatoshi = getOrchardBalance().value,
+                )
+            } else {
+                // Read the REAL migration summary (amount migrated, transfer count, duration)
+                // from the ENGINE's persisted migration data — the single source of truth that
+                // survives completion. The app-side plan is cleared once migration finishes, so
+                // it can no longer supply these (it would read 0.000 ZEC / 0 of 0). Null-safe: a
+                // missing summary falls back to zeros. "Total transferred" here is deliberately
+                // about *this specific completed campaign*, not the account's current Ironwood
+                // total (see the residue branch above for that).
+                val summary = getOrchardMigrationSdk().getMigrationSummary()
+                Summary(
+                    totalTransferred = summary?.totalMigratedZatoshi ?: 0L,
+                    totalCount = summary?.transferCount ?: 0,
+                    firstAt = summary?.firstMinedEpochSeconds ?: 0L,
+                    lastAt = summary?.lastMinedEpochSeconds ?: 0L,
+                    dustZatoshi = getOrchardBalance().value,
+                )
+            }
         }
         // Cancel the background chain and clear any leftover notification as soon as THIS screen
         // is shown, not deferred until the user taps "Got it" (the previous behavior — onDone()

@@ -25,6 +25,7 @@ import co.electriccoin.zcash.ui.common.provider.MigrationNotifier
 import co.electriccoin.zcash.ui.common.repository.BiometricRepository
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetIronwoodBalanceUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetOrchardBalanceUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetOrchardMigrationSdkUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
@@ -345,6 +346,47 @@ class MigrationCompleteVMTest {
         }
 
     @Test
+    fun residueVariantReadsTotalTransferredFromLiveIronwoodBalanceNotEngineSummary() =
+        runTest {
+            // MOB-1750: for isResidueOnly, "In Ironwood" must be the live Ironwood pool balance
+            // (GetIronwoodBalanceUseCase) -- never the migration engine's campaign-scoped
+            // getMigrationSummary(), which can genuinely have no rows for this account (e.g.
+            // after a debug migration restart) even though the wallet's real Ironwood balance is
+            // nonzero. Pins that the engine summary is never even queried for this variant, and
+            // a mismatched summary value (999 ZEC) is ignored in favor of the real balance.
+            val sdk =
+                mockk<OrchardMigrationSdk> {
+                    coEvery { getMigrationSummary() } returns
+                        MigrationSummary(
+                            totalMigratedZatoshi = 99_900_000_000L,
+                            transferCount = 5,
+                            firstMinedEpochSeconds = 1_785_281_502L,
+                            lastMinedEpochSeconds = 1_785_283_542L,
+                        )
+                }
+            val vm =
+                vm(
+                    account = mockk<KeystoneAccount>(relaxed = true),
+                    orchardBalanceZatoshi = 500_000L,
+                    router = FakeNavigationRouter(),
+                    args = MigrationCompleteArgs(isResidueOnly = true),
+                    ironwoodBalanceZatoshi = 12_450_000L,
+                    getOrchardMigrationSdk = mockk { coEvery { this@mockk() } returns sdk },
+                )
+
+            val collectJob = launch { vm.state.collect {} }
+            advanceUntilIdle()
+
+            assertEquals(
+                stringRes(Zatoshi(12_450_000L)),
+                vm.state.value.content
+                    ?.totalTransferred
+            )
+            coVerify(exactly = 0) { sdk.getMigrationSummary() }
+            collectJob.cancel()
+        }
+
+    @Test
     fun durationDoesNotApplyThePrivacyFloorSinceBothTimestampsAreAlreadyMined() =
         runTest {
             // The displayed duration spans the campaign's first to last MINED transfer -- both
@@ -450,6 +492,7 @@ class MigrationCompleteVMTest {
         orchardBalanceZatoshi: Long,
         router: FakeNavigationRouter,
         args: MigrationCompleteArgs = MigrationCompleteArgs(),
+        ironwoodBalanceZatoshi: Long = 0L,
         getOrchardMigrationSdk: GetOrchardMigrationSdkUseCase =
             mockk {
                 coEvery { this@mockk() } returns mockk(relaxed = true)
@@ -465,6 +508,10 @@ class MigrationCompleteVMTest {
         getOrchardBalance =
             mockk<GetOrchardBalanceUseCase> {
                 coEvery { this@mockk() } returns Zatoshi(orchardBalanceZatoshi)
+            },
+        getIronwoodBalance =
+            mockk<GetIronwoodBalanceUseCase> {
+                coEvery { this@mockk() } returns Zatoshi(ironwoodBalanceZatoshi)
             },
         hasSeenMigrationCompleteStorageProvider = seen,
         hasLockedOrchardDustStorageProvider =

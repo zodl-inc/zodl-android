@@ -52,6 +52,7 @@ import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
 import co.electriccoin.zcash.ui.common.usecase.FinalizeMigrationScheduleUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetBalancePoolsUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetIronwoodBalanceUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetMigrationPrivacyOrReviewDestinationUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetOrchardBalanceUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetOrchardMigrationSdkUseCase
@@ -126,6 +127,7 @@ class MigrationKoinGraphSmokeTest {
                 factory { mockk<GetOrchardMigrationSdkUseCase>(relaxed = true) }
                 factory { mockk<GetSelectedWalletAccountUseCase>(relaxed = true) }
                 factory { mockk<GetOrchardBalanceUseCase>(relaxed = true) }
+                factory { mockk<GetIronwoodBalanceUseCase>(relaxed = true) }
                 factory { mockk<GetBalancePoolsUseCase>(relaxed = true) }
                 factory { mockk<LockOrchardBalanceUseCase>(relaxed = true) }
                 factory { mockk<FinalizeMigrationScheduleUseCase>(relaxed = true) }
