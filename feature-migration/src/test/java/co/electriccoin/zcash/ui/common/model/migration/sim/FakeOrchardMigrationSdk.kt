@@ -90,8 +90,8 @@ class FakeOrchardMigrationSdk : OrchardMigrationSdk {
     /** Seconds-per-block the harness reports; testnet-fast by default to match live tuning. */
     var secondsPerBlock: Long = 28L
 
-    /** Dust threshold — the fixed protocol constant (0.001 ZEC). */
-    var dustThresholdZatoshi: Long = 100_000L
+    /** Dust threshold — the fixed protocol constant (0.0001 ZEC). */
+    var dustThresholdZatoshi: Long = 10_000L
 
     /**
      * The Orchard balance the fake reports as *still migratable* — i.e. the residual left after

@@ -48,6 +48,7 @@ import kotlinx.coroutines.withContext
 import co.electriccoin.zcash.ui.design.R as DesignR
 
 class MigrationCompleteVM(
+    private val args: MigrationCompleteArgs,
     private val getOrchardBalance: GetOrchardBalanceUseCase,
     private val hasSeenMigrationCompleteStorageProvider: HasSeenMigrationCompleteStorageProvider,
     private val hasLockedOrchardDustStorageProvider: HasLockedOrchardDustStorageProvider,
@@ -170,6 +171,7 @@ class MigrationCompleteVM(
                 ),
             isMigrating = isMigrating,
             isLocking = isLocking,
+            isResidueOnly = args.isResidueOnly,
             onDone = ::onDone,
             onMigrateAnyway = { migrateAnywayLce.guardLoading(::onMigrateAnyway) },
             onLockBalance = { lockLce.guardLoading(::onLockBalance) },

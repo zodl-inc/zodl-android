@@ -140,7 +140,15 @@ class MigrationBannerStateTest {
                 hasSeenComplete = false,
                 orchardBalanceZatoshi = 500_000L, // in the (dust, min) gap — residue
             )
-        assertEquals(MigrationHomeMessageData(isRunActive = false, isComplete = true), result)
+        assertEquals(
+            MigrationHomeMessageData(
+                isRunActive = false,
+                isComplete = true,
+                isResidueOnly = true,
+                residualBalanceZatoshi = 500_000L,
+            ),
+            result,
+        )
     }
 
     /**
@@ -273,7 +281,15 @@ class MigrationBannerStateTest {
                 hasSeenComplete = false,
                 orchardBalanceZatoshi = 500_000L, // in (dust, min) gap — residue, un-migratable
             )
-        assertEquals(MigrationHomeMessageData(isRunActive = false, isComplete = true), result)
+        assertEquals(
+            MigrationHomeMessageData(
+                isRunActive = false,
+                isComplete = true,
+                isResidueOnly = true,
+                residualBalanceZatoshi = 500_000L,
+            ),
+            result,
+        )
     }
 
     // ─── §3 Cross-branch: SyncRequiredBeforeNext during InProgress ────────────

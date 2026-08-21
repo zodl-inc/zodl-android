@@ -61,6 +61,7 @@ import co.electriccoin.zcash.ui.common.usecase.ScheduleNextMigrationWindowUseCas
 import co.electriccoin.zcash.ui.common.usecase.SubmitProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.ViewTransactionDetailAfterSuccessfulProposalUseCase
 import co.electriccoin.zcash.ui.screen.migration.battery.MigrationBatteryVM
+import co.electriccoin.zcash.ui.screen.migration.complete.MigrationCompleteArgs
 import co.electriccoin.zcash.ui.screen.migration.complete.MigrationCompleteVM
 import co.electriccoin.zcash.ui.screen.migration.customservertor.MigrationCustomServerTorArgs
 import co.electriccoin.zcash.ui.screen.migration.customservertor.MigrationCustomServerTorVM
@@ -169,6 +170,7 @@ class MigrationKoinGraphSmokeTest {
                 factory { MigrationPrivacyArgs(mode = MigrationMode.AUTOMATIC) }
                 factory { MigrationReviewArgs(mode = MigrationMode.AUTOMATIC) }
                 factory { MigrationSuccessArgs(txId = null) }
+                factory { MigrationCompleteArgs() }
             }
 
         koin =

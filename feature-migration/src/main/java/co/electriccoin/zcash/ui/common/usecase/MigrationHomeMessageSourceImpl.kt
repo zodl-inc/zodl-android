@@ -1,8 +1,10 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import android.content.Context
 import cash.z.ecc.android.sdk.AttentionReason
 import cash.z.ecc.android.sdk.MigrationBlocker
 import cash.z.ecc.android.sdk.MigrationState
+import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.migration.MigrationHomeMessageSource
@@ -19,6 +21,8 @@ import co.electriccoin.zcash.ui.common.provider.HasSeenMigrationCompleteStorageP
 import co.electriccoin.zcash.ui.common.provider.IsBackgroundExecutionAvailableProvider
 import co.electriccoin.zcash.ui.common.repository.MigrationHomeMessage
 import co.electriccoin.zcash.ui.common.repository.MigrationHomeMessageData
+import co.electriccoin.zcash.ui.design.util.getString
+import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.HomeMessageState
 import co.electriccoin.zcash.ui.screen.home.migration.MigrationBannerPhase
 import co.electriccoin.zcash.ui.screen.home.migration.MigrationMessageState
@@ -33,6 +37,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlin.time.Clock
 import kotlin.time.Instant
+import co.electriccoin.zcash.ui.design.R as DesignR
 
 private const val PERCENT_MULTIPLIER = 100
 
@@ -43,6 +48,7 @@ private const val PERCENT_MULTIPLIER = 100
  * live Orchard balance. The only persisted inputs are genuine UX flags (hasSeenComplete).
  */
 class MigrationHomeMessageSourceImpl(
+    private val context: Context,
     private val accountDataSource: AccountDataSource,
     private val getOrchardMigrationSdk: GetOrchardMigrationSdkUseCase,
     private val observeMigrationLiveReadout: ObserveMigrationLiveReadoutUseCase,
@@ -148,6 +154,18 @@ class MigrationHomeMessageSourceImpl(
 
                 null -> {
                     when {
+                        // MOB-1750: a small leftover Orchard balance not tied to an unseen in-app
+                        // migration celebration gets its own "X ZEC left in Orchard" copy instead of
+                        // the "Migration complete" celebration title.
+                        data.isComplete && data.isResidueOnly -> {
+                            val amount = stringRes(Zatoshi(data.residualBalanceZatoshi)).getString(context)
+                            Triple(
+                                MigrationBannerPhase.COMPLETE,
+                                stringRes(DesignR.string.migrationHome_residueTitle, amount).getString(context),
+                                stringRes(DesignR.string.migrationHome_residueSubtitle).getString(context),
+                            )
+                        }
+
                         data.isComplete -> {
                             Triple(MigrationBannerPhase.COMPLETE, null, "Tap to review the details")
                         }
@@ -192,6 +210,7 @@ class MigrationHomeMessageSourceImpl(
                     isComplete = data.isComplete,
                     isReadyToSend = data.isReadyToSend,
                     hasAttention = data.attentionKind != null,
+                    isResidueOnly = data.isResidueOnly,
                 )
             },
             onButtonClick = {
@@ -200,6 +219,7 @@ class MigrationHomeMessageSourceImpl(
                     isComplete = data.isComplete,
                     isReadyToSend = data.isReadyToSend,
                     hasAttention = data.attentionKind != null,
+                    isResidueOnly = data.isResidueOnly,
                 )
             },
         )
@@ -210,6 +230,7 @@ class MigrationHomeMessageSourceImpl(
         isComplete: Boolean,
         isReadyToSend: Boolean = false,
         hasAttention: Boolean = false,
+        isResidueOnly: Boolean = false,
     ) {
         when {
             // A plan needing re-confirmation (spec §6.2/§6.3) always routes to the Transfer Invalid
@@ -217,8 +238,9 @@ class MigrationHomeMessageSourceImpl(
             hasAttention -> navigationRouter.forward(MigrationTransferInvalidArgs)
 
             // Tapping the widget just opens the celebration screen — MigrationCompleteVM.onDone()
-            // owns the seen-flag decision.
-            isComplete -> navigationRouter.forward(MigrationCompleteArgs)
+            // owns the seen-flag decision. MOB-1750: isResidueOnly threads which copy/summary
+            // variant MigrationCompleteScreen should render.
+            isComplete -> navigationRouter.forward(MigrationCompleteArgs(isResidueOnly = isResidueOnly))
 
             // Ready-to-send routes to Progress too — everything is pre-signed, there is nothing
             // to review; Progress's foreground broadcast loop executes the step silently while
@@ -358,7 +380,12 @@ internal fun migrationMessageFor(
         !midRunAttention &&
             orchardBalanceZatoshi > dustThresholdZatoshi &&
             orchardBalanceZatoshi < MIGRATION_RESIDUAL_MIN_ZATOSHI -> {
-            MigrationHomeMessageData(isRunActive = false, isComplete = true)
+            MigrationHomeMessageData(
+                isRunActive = false,
+                isComplete = true,
+                isResidueOnly = true,
+                residualBalanceZatoshi = orchardBalanceZatoshi,
+            )
         }
 
         // Migratable balance with no run in progress — covers "never migrated", "a Keystone round

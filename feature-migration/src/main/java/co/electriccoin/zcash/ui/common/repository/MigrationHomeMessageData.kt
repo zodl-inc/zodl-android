@@ -25,4 +25,12 @@ data class MigrationHomeMessageData(
     // generic message again. attentionRangeText is only meaningful for TRANSFER_EXPIRED.
     val attentionKind: MigrationAttentionKind? = null,
     val attentionRangeText: String? = null,
+    // MOB-1750: true when this Complete banner comes from the RESIDUE branch (a small leftover
+    // Orchard balance not tied to an unseen in-app migration celebration) rather than the one-time
+    // post-migration celebration — drives both the home banner's "X ZEC left in Orchard" copy and
+    // MigrationCompleteScreen's reduced summary card (no Transfers/Duration rows).
+    val isResidueOnly: Boolean = false,
+    // The live Orchard balance at decision time. Only meaningful when [isResidueOnly] is true — the
+    // home banner needs the amount for its title; the celebration branch's copy is static.
+    val residualBalanceZatoshi: Long = 0L,
 ) : MigrationHomeMessage()
