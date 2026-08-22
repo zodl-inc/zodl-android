@@ -27,6 +27,7 @@ import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapAssetPickerUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapInfoUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapQuoteIfAvailableUseCase
 import co.electriccoin.zcash.ui.common.usecase.RequestSwapQuoteUseCase
+import co.electriccoin.zcash.ui.common.usecase.resolve
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.InnerTextFieldState
 import co.electriccoin.zcash.ui.design.component.NumberTextFieldInnerState
@@ -217,12 +218,16 @@ internal class SwapVM(
             if (result != null) {
                 navigationRouter.back()
                 internalState.update {
+                    val resolved = result.resolve(getCuratedSwapAssetsUseCase().data.orEmpty(), it.swapAsset)
                     it.copy(
                         selectedContact = null,
-                        addressText = result.address,
+                        addressText = resolved.address,
+                        swapAsset = resolved.asset,
                         amountTextState =
-                            if (result.amount != null) {
-                                NumberTextFieldInnerState.fromAmount(result.amount)
+                            if (resolved.amount != null) {
+                                NumberTextFieldInnerState.fromAmount(resolved.amount)
+                            } else if (resolved.isPaymentRequest) {
+                                NumberTextFieldInnerState()
                             } else {
                                 it.amountTextState
                             }

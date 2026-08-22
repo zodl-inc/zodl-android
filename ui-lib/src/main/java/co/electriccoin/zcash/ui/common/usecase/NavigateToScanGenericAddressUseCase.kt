@@ -1,6 +1,8 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.model.CrossPayRequest
+import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.screen.scan.ScanGenericAddressArgs
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
@@ -16,8 +18,13 @@ class NavigateToScanGenericAddressUseCase(
         navigationRouter.forward(args)
         val result = pipeline.first { it.args.requestId == args.requestId }
         return when (result) {
-            is ScanAddressPipelineResult.Cancelled -> null
-            is ScanAddressPipelineResult.Scanned -> ScanResult(address = result.address, amount = result.amount)
+            is ScanAddressPipelineResult.Cancelled -> {
+                null
+            }
+
+            is ScanAddressPipelineResult.Scanned -> {
+                ScanResult(address = result.address, amount = result.amount, request = result.request)
+            }
         }
     }
 
@@ -29,9 +36,10 @@ class NavigateToScanGenericAddressUseCase(
     suspend fun onScanned(
         address: String,
         amount: BigDecimal?,
-        args: ScanGenericAddressArgs
+        args: ScanGenericAddressArgs,
+        request: CrossPayRequest? = null
     ) {
-        pipeline.emit(ScanAddressPipelineResult.Scanned(address, amount, args))
+        pipeline.emit(ScanAddressPipelineResult.Scanned(address, amount, request, args))
     }
 }
 
@@ -45,11 +53,30 @@ private sealed interface ScanAddressPipelineResult {
     data class Scanned(
         val address: String,
         val amount: BigDecimal?,
+        val request: CrossPayRequest?,
         override val args: ScanGenericAddressArgs
     ) : ScanAddressPipelineResult
 }
 
 data class ScanResult(
     val address: String,
-    val amount: BigDecimal?
+    val amount: BigDecimal?,
+    val request: CrossPayRequest? = null
 )
+
+data class ResolvedScanResult(
+    val address: String,
+    val amount: BigDecimal?,
+    val asset: SwapAsset?,
+    val isPaymentRequest: Boolean
+)
+
+fun ScanResult.resolve(assets: Collection<SwapAsset>, currentAsset: SwapAsset?): ResolvedScanResult {
+    val requestedAsset = request?.resolveAsset(assets, currentAsset)
+    return ResolvedScanResult(
+        address = address,
+        amount = request?.resolvedAmount(requestedAsset) ?: amount.takeIf { request == null },
+        asset = requestedAsset ?: currentAsset.takeIf { request == null },
+        isPaymentRequest = request != null
+    )
+}

@@ -63,6 +63,7 @@ class NearSwapDataSource(
             tokenIcon = tokenIconProvider.getIcon(dto.symbol),
             usdPrice = dto.price,
             assetId = dto.assetId,
+            contractAddress = dto.contractAddress,
             decimals = dto.decimals,
             blockchain = blockchainProvider.getBlockchain(dto.blockchain),
         )

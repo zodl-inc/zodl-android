@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.scan
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import co.electriccoin.zcash.ui.common.model.CrossPayRequestParser
 import co.electriccoin.zcash.ui.common.usecase.NavigateToScanGenericAddressUseCase
 import co.electriccoin.zcash.ui.common.usecase.Zip321ParseUriValidationUseCase
 import co.electriccoin.zcash.ui.common.usecase.Zip321ParseUriValidationUseCase.Zip321ParseUriValidation
@@ -39,11 +40,13 @@ internal class ScanGenericAddressVM(
         }
 
     private suspend fun onAddressScanned(result: String) {
+        val request = CrossPayRequestParser.parse(result)
         state.update { ScanValidationState.VALID }
         navigateToScanAddress.onScanned(
-            address = result,
-            amount = null,
-            args = args
+            address = request?.address ?: result,
+            amount = request?.amount?.value,
+            args = args,
+            request = request
         )
         hasBeenScannedSuccessfully = true
     }

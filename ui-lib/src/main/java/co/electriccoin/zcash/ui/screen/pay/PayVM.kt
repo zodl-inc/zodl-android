@@ -24,6 +24,7 @@ import co.electriccoin.zcash.ui.common.usecase.NavigateToSlippageUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapAssetPickerUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapQuoteIfAvailableUseCase
 import co.electriccoin.zcash.ui.common.usecase.RequestSwapQuoteUseCase
+import co.electriccoin.zcash.ui.common.usecase.resolve
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.NumberTextFieldInnerState
 import co.electriccoin.zcash.ui.design.util.imageRes
@@ -47,7 +48,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @Suppress("TooManyFunctions")
 internal class PayVM(
-    getCuratedSwapAssetsUseCase: GetCuratedSwapAssetsUseCase,
+    private val getCuratedSwapAssetsUseCase: GetCuratedSwapAssetsUseCase,
     getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
     private val swapRepository: SwapRepository,
     private val cancelSwap: CancelSwapUseCase,
@@ -185,15 +186,24 @@ internal class PayVM(
             if (result != null) {
                 navigationRouter.back()
                 internalState.update {
+                    val resolved = result.resolve(getCuratedSwapAssetsUseCase().data.orEmpty(), it.asset)
+                    val amount =
+                        when {
+                            resolved.amount != null -> NumberTextFieldInnerState.fromAmount(resolved.amount)
+                            resolved.isPaymentRequest -> NumberTextFieldInnerState()
+                            else -> it.amount
+                        }
                     it.copy(
                         selectedABContact = null,
-                        address = result.address,
-                        amount =
-                            if (result.amount != null) {
-                                NumberTextFieldInnerState.fromAmount(result.amount)
-                            } else {
-                                it.amount
-                            }
+                        address = resolved.address,
+                        asset = resolved.asset,
+                        amount = amount,
+                        fiatAmount =
+                            exactOutputVMMapper.createFiatAmountInnerState(
+                                amountInnerState = amount,
+                                fiatInnerState = it.fiatAmount,
+                                asset = resolved.asset
+                            )
                     )
                 }
             }
