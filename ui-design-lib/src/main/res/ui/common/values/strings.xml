@@ -1134,6 +1134,7 @@ Your vote can no longer be submitted.</string>
     <string name="vote_confirm_cta_submitting" tools:ignore="MissingTranslation">Submitting vote %1$d of %2$d</string>
     <string name="coinVote_store_submissionAuthorizingVote" tools:ignore="MissingTranslation">Authorizing vote...</string>
     <string name="coinVote_confirmSubmission_progressSubmittingVoteCount" tools:ignore="MissingTranslation">Submitting vote %1$d of %2$d...</string>
+    <string name="coinVote_confirmSubmission_submittingExplainerNote" tools:ignore="MissingTranslation">This can take a few minutes. Wallets with more voting weight take longer to process.</string>
     <string name="coinVote_results_percentValue" tools:ignore="MissingTranslation">%1$d%%</string>
     <string name="coinVote_common_submission" tools:ignore="MissingTranslation">Submission</string>
     <string name="coinVote_confirmSubmission_headerTitleIdle" tools:ignore="MissingTranslation">Confirm &amp; Submit</string>
