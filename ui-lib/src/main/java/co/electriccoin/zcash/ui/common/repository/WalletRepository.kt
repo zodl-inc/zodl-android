@@ -11,6 +11,7 @@ import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import cash.z.ecc.sdk.type.fromResources
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.preference.StandardPreferenceProvider
+import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.datasource.RestoreTimestampDataSource
 import co.electriccoin.zcash.ui.common.model.FastestServersState
 import co.electriccoin.zcash.ui.common.model.OnboardingState
@@ -196,8 +197,15 @@ class WalletRepositoryImpl(
                 initialValue = WalletRestoringState.NONE
             )
 
+    @Suppress("TooGenericExceptionCaught")
     override fun init() {
-        scope.launch { migrateDecommissionedEndpointIfNeeded() }
+        scope.launch {
+            try {
+                migrateDecommissionedEndpointIfNeeded()
+            } catch (e: Exception) {
+                Twig.error(e) { "Decommissioned endpoint migration failed; will retry on next launch" }
+            }
+        }
     }
 
     private suspend fun migrateDecommissionedEndpointIfNeeded() {

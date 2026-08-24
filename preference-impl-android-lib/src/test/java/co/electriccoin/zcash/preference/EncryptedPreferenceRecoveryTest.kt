@@ -3,6 +3,7 @@ package co.electriccoin.zcash.preference
 import java.io.CharConversionException
 import java.io.IOException
 import java.security.GeneralSecurityException
+import java.security.InvalidKeyException
 import java.security.KeyStoreException
 import javax.crypto.AEADBadTagException
 import javax.crypto.BadPaddingException
@@ -40,6 +41,16 @@ class EncryptedPreferenceRecoveryTest {
             )
         )
         assertTrue(isUnrecoverableCorruption(GeneralSecurityException(KeyStoreException())))
+    }
+
+    @Test
+    fun `Keystore-orphaned file failure is unrecoverable corruption`() {
+        assertTrue(
+            isUnrecoverableCorruption(
+                InvalidKeyException("Failed to unwrap key")
+            )
+        )
+        assertTrue(isUnrecoverableCorruption(GeneralSecurityException(InvalidKeyException())))
     }
 
     @Test
