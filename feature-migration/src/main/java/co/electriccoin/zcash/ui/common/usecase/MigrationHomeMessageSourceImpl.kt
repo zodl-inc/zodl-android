@@ -121,11 +121,21 @@ class MigrationHomeMessageSourceImpl(
                 val dustThreshold =
                     runCatching { getOrchardMigrationSdk().migrationDustThresholdZatoshi() }
                         .getOrDefault(MIGRATION_DUST_THRESHOLD_ZATOSHI)
+                // Kris Nuttycombe's per-note dust total (Slack, MOB-1750 follow-up): sum of each
+                // spendable Orchard note's value net of MARGINAL_FEE, not the raw aggregate
+                // balance — a wallet can hold a raw balance above dustThreshold made up entirely
+                // of notes too small individually to be worth spending. Falls back to the raw
+                // balance (old behavior) if the SDK call fails, same guard shape as dustThreshold.
+                val orchardBalanceZatoshi = orchardBalance?.value ?: 0L
+                val migratableOrchardTotal =
+                    runCatching { getOrchardMigrationSdk().migratableOrchardTotal() }
+                        .getOrDefault(orchardBalanceZatoshi)
                 migrationMessageFor(
                     sdkState = sdkState,
                     snapshot = snapshot,
                     hasSeenComplete = hasSeenComplete,
-                    orchardBalanceZatoshi = orchardBalance?.value ?: 0L,
+                    orchardBalanceZatoshi = orchardBalanceZatoshi,
+                    migratableOrchardTotalZatoshi = migratableOrchardTotal,
                     dustThresholdZatoshi = dustThreshold,
                     isBackgroundExecutionAvailable = isBackgroundExecutionAvailableProvider.isAvailable(),
                     hasOverdueTransfers = readout?.hasOverdueTransfers ?: false,
@@ -286,12 +296,21 @@ class MigrationHomeMessageSourceImpl(
  *
  * - round running                → engine InProgress (counts from [snapshot])
  * - celebration (campaign done)  → engine Complete && balance < RESIDUAL_MIN && !hasSeenComplete
- * - residue (lock/migrate-anyway)→ dust < balance < RESIDUAL_MIN && not running
+ * - residue (lock/migrate-anyway)→ migratable total > dust threshold && balance < RESIDUAL_MIN &&
+ *                                   not running
  * - next round / never migrated  → balance ≥ RESIDUAL_MIN && not running → "Migrate now"
  *
  * The "Complete && balance ≥ min ⇒ Migrate now" mapping is deliberately identical whether the
  * balance is a next Keystone round's residual or newly received funds — both need a migration, so
  * the ambiguity the old cleared-plan marker guarded against does not exist.
+ *
+ * The residue branch's lower bound is gated on [migratableOrchardTotalZatoshi] — Kris
+ * Nuttycombe's per-note total (sum of each spendable note's value net of MARGINAL_FEE, over notes
+ * whose value exceeds MARGINAL_FEE), not the raw [orchardBalanceZatoshi] — a raw balance can sit
+ * above [dustThresholdZatoshi] while being made up entirely of notes too small individually to be
+ * worth spending. The displayed amount ([MigrationHomeMessageData.residualBalanceZatoshi]) still
+ * uses the raw balance — the user's real, current Orchard balance — only the "is this worth
+ * prompting about" gate uses the net-of-fee total.
  */
 @Suppress("CyclomaticComplexMethod")
 internal fun migrationMessageFor(
@@ -299,6 +318,7 @@ internal fun migrationMessageFor(
     snapshot: LiveMigrationSnapshot?,
     hasSeenComplete: Boolean,
     orchardBalanceZatoshi: Long,
+    migratableOrchardTotalZatoshi: Long = orchardBalanceZatoshi,
     dustThresholdZatoshi: Long = MIGRATION_DUST_THRESHOLD_ZATOSHI,
     isBackgroundExecutionAvailable: Boolean = true,
     hasOverdueTransfers: Boolean = false,
@@ -386,8 +406,10 @@ internal fun migrationMessageFor(
         // as "migration completed" and route to MigrationCompleteScreen, whose residue flow lets
         // the user LOCK it or MIGRATE it anyway. The reported balance is the *spendable* Orchard
         // balance (locked notes excluded), so locking makes this stop firing on its own.
+        // Lower bound uses migratableOrchardTotalZatoshi (per-note, net of MARGINAL_FEE), not the
+        // raw balance — see the function doc.
         !midRunAttention &&
-            orchardBalanceZatoshi > dustThresholdZatoshi &&
+            migratableOrchardTotalZatoshi > dustThresholdZatoshi &&
             orchardBalanceZatoshi < MIGRATION_RESIDUAL_MIN_ZATOSHI -> {
             MigrationHomeMessageData(
                 isRunActive = false,

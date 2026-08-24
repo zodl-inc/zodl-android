@@ -443,6 +443,8 @@ class FakeOrchardMigrationSdk : OrchardMigrationSdk {
 
     override suspend fun migrationDustThresholdZatoshi(): Long = dustThresholdZatoshi
 
+    override suspend fun migratableOrchardTotal(): Long = migratableOrchardZatoshi
+
     override fun isSyncBlocked(): Flow<Boolean> = syncBlocked.asStateFlow()
 
     override fun privacySyncBufferDuration(): Duration = 30.seconds
