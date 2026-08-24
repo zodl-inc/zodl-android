@@ -79,6 +79,13 @@ class RequestSwapQuoteUseCase(
         )
     }
 
+    /**
+     * The balance pre-check here is a best-effort fast path against a snapshot of the selected
+     * account: it saves the address rotation and the provider round-trip when the amount is plainly
+     * unaffordable. The authoritative check is the SDK's typed insufficient-funds failure at
+     * proposal time, which is evaluated against the account the proposal is actually built for and
+     * lands on the same Insufficient Funds sheet.
+     */
     suspend fun requestExactOutput(
         amount: BigDecimal,
         address: String,
@@ -86,6 +93,14 @@ class RequestSwapQuoteUseCase(
         slippage: BigDecimal,
         canNavigateToSwapQuote: () -> Boolean
     ) {
+        if (!accountDataSource.getSelectedAccount().canSpend(amount.convertZecToZatoshi())) {
+            swapRepository.clearQuote()
+            zashiProposalRepository.clear()
+            keystoneProposalRepository.clear()
+            navigationRouter.forward(InsufficientFundsArgs)
+            return
+        }
+
         val newAddress = accountDataSource.requestNextShieldedAddress()
         requestQuote(
             requestQuote = {
@@ -140,9 +155,11 @@ class RequestSwapQuoteUseCase(
             try {
                 createProposal(result.quote)
             } catch (_: TexUnsupportedOnKSException) {
-                navigationRouter.forward(TEXUnsupportedArgs)
-                keystoneProposalRepository.clear()
+                swapRepository.clearQuote()
                 zashiProposalRepository.clear()
+                keystoneProposalRepository.clear()
+                navigationRouter.forward(TEXUnsupportedArgs)
+                return@withContext
             } catch (_: InsufficientFundsException) {
                 swapRepository.clearQuote()
                 zashiProposalRepository.clear()

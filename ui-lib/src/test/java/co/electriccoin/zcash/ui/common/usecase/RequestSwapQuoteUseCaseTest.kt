@@ -232,6 +232,20 @@ class RequestSwapQuoteUseCaseTest {
             assertNavigatedToError()
         }
 
+    @Test
+    fun exactOutputZashiWithoutSpendableBalanceIsBlockedBeforeTheQuote() =
+        runBlocking {
+            useCase(exactOutputQuote(), zashi(canSpend = false)).exactOutput()
+            assertBlockedBeforeTheQuote()
+        }
+
+    @Test
+    fun exactOutputKeystoneWithoutSpendableBalanceIsBlockedBeforeTheQuote() =
+        runBlocking {
+            useCase(exactOutputQuote(), keystone(canSpend = false)).exactOutput()
+            assertBlockedBeforeTheQuote()
+        }
+
     // endregion
     // region requestFlexInputIntoZec — happy (no proposal, no account branch)
 
@@ -268,6 +282,7 @@ class RequestSwapQuoteUseCaseTest {
         verify { keystoneProposalRepository.clear() }
         coVerify(exactly = 0) { accountDataSource.requestNextShieldedAddress() }
         verify(exactly = 0) { swapRepository.requestExactInputQuote(any(), any(), any(), any(), any()) }
+        verify(exactly = 0) { swapRepository.requestExactOutputQuote(any(), any(), any(), any(), any()) }
         verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
     }
 
@@ -288,6 +303,7 @@ class RequestSwapQuoteUseCaseTest {
 
     private fun assertNavigatedToTexUnsupported() {
         verify { navigationRouter.forward(TEXUnsupportedArgs) }
+        verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
     }
 
     /**
