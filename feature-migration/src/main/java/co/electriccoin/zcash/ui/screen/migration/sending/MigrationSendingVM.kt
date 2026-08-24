@@ -170,7 +170,7 @@ class MigrationSendingVM(
                             // This was the plan's last transfer — one Migration Complete screen covers
                             // both this (foreground, just confirmed) and the background-completion case
                             // (CheckMigrationRecoveryUseCase, on next app open), rather than two.
-                            navigationRouter.forward(MigrationCompleteArgs)
+                            navigationRouter.forward(MigrationCompleteArgs())
                         } else {
                             navigationRouter.forward(MigrationSuccessArgs(r.txId.txIdString()))
                         }

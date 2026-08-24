@@ -55,6 +55,7 @@ import co.electriccoin.zcash.ui.screen.common.PrivacyDisclaimerCard
 import co.electriccoin.zcash.ui.screen.migration.component.MigrationFailureBottomSheet
 import kotlinx.serialization.Serializable
 import org.koin.androidx.compose.koinViewModel
+import org.koin.core.parameter.parametersOf
 import co.electriccoin.zcash.ui.design.R as DesignR
 
 data class MigrationCompleteState(
@@ -70,14 +71,20 @@ data class MigrationCompleteState(
     val isMigrating: Boolean = false,
     val isLocking: Boolean = false,
     val failureSheet: co.electriccoin.zcash.ui.common.model.migration.MigrationTransferFailureState? = null,
+    // MOB-1750: true for a small leftover Orchard balance not tied to an unseen in-app migration
+    // celebration ("You've moved to Ironwood" copy, no Transfers/Duration rows) — false for the
+    // original post-migration celebration variant ("Migration Complete"), unchanged.
+    val isResidueOnly: Boolean = false,
 )
 
 @Serializable
-data object MigrationCompleteArgs
+data class MigrationCompleteArgs(
+    val isResidueOnly: Boolean = false
+)
 
 @Composable
-fun MigrationCompleteScreen() {
-    val vm = koinViewModel<MigrationCompleteVM>()
+fun MigrationCompleteScreen(args: MigrationCompleteArgs) {
+    val vm = koinViewModel<MigrationCompleteVM> { parametersOf(args) }
     val state by vm.state.collectAsStateWithLifecycle()
     LceRenderer(
         state = state,
@@ -141,7 +148,14 @@ fun MigrationCompleteView(state: MigrationCompleteState) {
                 )
                 Spacer(Modifier.height(24.dp))
                 Text(
-                    text = stringRes(DesignR.string.migrationComplete_title).getValue(),
+                    text =
+                        stringRes(
+                            if (state.isResidueOnly) {
+                                DesignR.string.migrationComplete_residueTitle
+                            } else {
+                                DesignR.string.migrationComplete_title
+                            }
+                        ).getValue(),
                     style = ZashiTypography.header5,
                     fontWeight = FontWeight.SemiBold,
                     color = ZashiColors.Text.textPrimary,
@@ -149,40 +163,20 @@ fun MigrationCompleteView(state: MigrationCompleteState) {
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = stringRes(DesignR.string.migrationComplete_subtitle).getValue(),
+                    text =
+                        stringRes(
+                            if (state.isResidueOnly) {
+                                DesignR.string.migrationComplete_residueSubtitle
+                            } else {
+                                DesignR.string.migrationComplete_subtitle
+                            }
+                        ).getValue(),
                     style = ZashiTypography.textSm,
                     color = ZashiColors.Text.textTertiary,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(24.dp))
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(ZashiColors.Surfaces.bgSecondary)
-                            .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    SummaryRow(
-                        label = stringRes(DesignR.string.migrationComplete_totalTransferredLabel).getValue(),
-                        value = state.totalTransferred.getValue(),
-                    )
-                    state.remainingDust?.let { dust ->
-                        SummaryRow(
-                            label = stringRes(DesignR.string.migrationComplete_remainingDustLabel).getValue(),
-                            value = dust.getValue(),
-                        )
-                    }
-                    SummaryRow(
-                        label = stringRes(DesignR.string.migrationComplete_transfersLabel).getValue(),
-                        value = state.transfersProgress.getValue(),
-                    )
-                    SummaryRow(
-                        label = stringRes(DesignR.string.migrationComplete_durationLabel).getValue(),
-                        value = state.duration.getValue(),
-                    )
-                }
+                SummaryCard(state)
                 Spacer(Modifier.weight(1f))
                 when {
                     state.remainingDust == null -> {
@@ -216,7 +210,11 @@ fun MigrationCompleteView(state: MigrationCompleteState) {
                             title = stringRes(DesignR.string.migrationComplete_orchardBalanceRemainingTitle).getValue(),
                             body =
                                 stringRes(
-                                    DesignR.string.migrationComplete_orchardBalanceRemainingBody,
+                                    if (state.isResidueOnly) {
+                                        DesignR.string.migrationComplete_residueRecommendationBody
+                                    } else {
+                                        DesignR.string.migrationComplete_orchardBalanceRemainingBody
+                                    },
                                     state.remainingDust.getValue()
                                 ).getValue(),
                         )
@@ -267,6 +265,54 @@ fun MigrationCompleteView(state: MigrationCompleteState) {
         }
     }
     MigrationFailureBottomSheet(state.failureSheet)
+}
+
+@Composable
+private fun SummaryCard(state: MigrationCompleteState) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(ZashiColors.Surfaces.bgSecondary)
+                .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        if (state.isResidueOnly) {
+            // MOB-1750: reduced summary — no Transfers/Duration rows, since a residue not tied
+            // to an unseen in-app celebration has no round-trip campaign to report on (whether
+            // it's genuinely 0 sent-in-app, or an already-seen completion's leftover residue).
+            SummaryRow(
+                label = stringRes(DesignR.string.migrationComplete_inIronwoodLabel).getValue(),
+                value = state.totalTransferred.getValue(),
+            )
+            state.remainingDust?.let { dust ->
+                SummaryRow(
+                    label = stringRes(DesignR.string.migrationComplete_leftInOrchardLabel).getValue(),
+                    value = dust.getValue(),
+                )
+            }
+        } else {
+            SummaryRow(
+                label = stringRes(DesignR.string.migrationComplete_totalTransferredLabel).getValue(),
+                value = state.totalTransferred.getValue(),
+            )
+            state.remainingDust?.let { dust ->
+                SummaryRow(
+                    label = stringRes(DesignR.string.migrationComplete_remainingDustLabel).getValue(),
+                    value = dust.getValue(),
+                )
+            }
+            SummaryRow(
+                label = stringRes(DesignR.string.migrationComplete_transfersLabel).getValue(),
+                value = state.transfersProgress.getValue(),
+            )
+            SummaryRow(
+                label = stringRes(DesignR.string.migrationComplete_durationLabel).getValue(),
+                value = state.duration.getValue(),
+            )
+        }
+    }
 }
 
 @Composable
@@ -376,6 +422,27 @@ private fun PreviewNoDust() =
                     isDustLocked = false,
                     transfersProgress = stringRes("5 of 5 sent"),
                     duration = stringRes("~24 hours"),
+                    onDone = {},
+                    onMigrateAnyway = {},
+                    onLockBalance = {},
+                    onHelp = {},
+                )
+        )
+    }
+
+@PreviewScreens
+@Composable
+private fun PreviewResidueOnly() =
+    ZcashTheme {
+        MigrationCompleteView(
+            state =
+                MigrationCompleteState(
+                    totalTransferred = stringRes("12.45 ZEC"),
+                    remainingDust = stringRes("0.008 ZEC"),
+                    isDustLocked = false,
+                    transfersProgress = stringRes("0 of 0 sent"),
+                    duration = stringRes("~0 hours"),
+                    isResidueOnly = true,
                     onDone = {},
                     onMigrateAnyway = {},
                     onLockBalance = {},

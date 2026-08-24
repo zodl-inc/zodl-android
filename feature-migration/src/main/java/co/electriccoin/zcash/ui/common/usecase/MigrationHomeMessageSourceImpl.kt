@@ -1,8 +1,10 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import android.content.Context
 import cash.z.ecc.android.sdk.AttentionReason
 import cash.z.ecc.android.sdk.MigrationBlocker
 import cash.z.ecc.android.sdk.MigrationState
+import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.migration.MigrationHomeMessageSource
@@ -19,6 +21,8 @@ import co.electriccoin.zcash.ui.common.provider.HasSeenMigrationCompleteStorageP
 import co.electriccoin.zcash.ui.common.provider.IsBackgroundExecutionAvailableProvider
 import co.electriccoin.zcash.ui.common.repository.MigrationHomeMessage
 import co.electriccoin.zcash.ui.common.repository.MigrationHomeMessageData
+import co.electriccoin.zcash.ui.design.util.getString
+import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.HomeMessageState
 import co.electriccoin.zcash.ui.screen.home.migration.MigrationBannerPhase
 import co.electriccoin.zcash.ui.screen.home.migration.MigrationMessageState
@@ -33,8 +37,17 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlin.time.Clock
 import kotlin.time.Instant
+import co.electriccoin.zcash.ui.design.R as DesignR
 
 private const val PERCENT_MULTIPLIER = 100
+
+/** The banner phase + title/subtitle override for one [MigrationMessageState] — replaces an
+ * anonymous [Triple] so each field is named at the call site instead of positional. */
+private data class BannerCopy(
+    val phase: MigrationBannerPhase,
+    val title: String?,
+    val subtitle: String?,
+)
 
 /**
  * The home-banner source, fully LIVE off the engine — no plan cache anywhere (see
@@ -43,6 +56,7 @@ private const val PERCENT_MULTIPLIER = 100
  * live Orchard balance. The only persisted inputs are genuine UX flags (hasSeenComplete).
  */
 class MigrationHomeMessageSourceImpl(
+    private val context: Context,
     private val accountDataSource: AccountDataSource,
     private val getOrchardMigrationSdk: GetOrchardMigrationSdkUseCase,
     private val observeMigrationLiveReadout: ObserveMigrationLiveReadoutUseCase,
@@ -107,11 +121,21 @@ class MigrationHomeMessageSourceImpl(
                 val dustThreshold =
                     runCatching { getOrchardMigrationSdk().migrationDustThresholdZatoshi() }
                         .getOrDefault(MIGRATION_DUST_THRESHOLD_ZATOSHI)
+                // Kris Nuttycombe's per-note dust total (Slack, MOB-1750 follow-up): sum of each
+                // spendable Orchard note's value net of MARGINAL_FEE, not the raw aggregate
+                // balance — a wallet can hold a raw balance above dustThreshold made up entirely
+                // of notes too small individually to be worth spending. Falls back to the raw
+                // balance (old behavior) if the SDK call fails, same guard shape as dustThreshold.
+                val orchardBalanceZatoshi = orchardBalance?.value ?: 0L
+                val migratableOrchardTotal =
+                    runCatching { getOrchardMigrationSdk().migratableOrchardTotal() }
+                        .getOrDefault(orchardBalanceZatoshi)
                 migrationMessageFor(
                     sdkState = sdkState,
                     snapshot = snapshot,
                     hasSeenComplete = hasSeenComplete,
-                    orchardBalanceZatoshi = orchardBalance?.value ?: 0L,
+                    orchardBalanceZatoshi = orchardBalanceZatoshi,
+                    migratableOrchardTotalZatoshi = migratableOrchardTotal,
                     dustThresholdZatoshi = dustThreshold,
                     isBackgroundExecutionAvailable = isBackgroundExecutionAvailableProvider.isAvailable(),
                     hasOverdueTransfers = readout?.hasOverdueTransfers ?: false,
@@ -131,39 +155,51 @@ class MigrationHomeMessageSourceImpl(
             }
         // Spec §6.2/§6.3 — takes priority over the ordinary phases below: a plan needing
         // re-confirmation is more actionable than its last-known progress/completion state.
-        val (phase, title, subtitle) =
+        val bannerCopy =
             when (data.attentionKind) {
                 MigrationAttentionKind.PLAN_UPDATE -> {
-                    Triple(MigrationBannerPhase.ATTENTION, "Update migration plan", "Tap to review the details")
+                    BannerCopy(MigrationBannerPhase.ATTENTION, "Update migration plan", "Tap to review the details")
                 }
 
                 MigrationAttentionKind.TRANSFER_EXPIRED -> {
                     val range = data.attentionRangeText
-                    Triple(
-                        MigrationBannerPhase.ATTENTION,
-                        if (range != null) "Transfer $range expired" else "A transfer expired",
-                        "Tap to review the details",
+                    BannerCopy(
+                        phase = MigrationBannerPhase.ATTENTION,
+                        title = if (range != null) "Transfer $range expired" else "A transfer expired",
+                        subtitle = "Tap to review the details",
                     )
                 }
 
                 null -> {
                     when {
+                        // MOB-1750: a small leftover Orchard balance not tied to an unseen in-app
+                        // migration celebration gets its own "X ZEC left in Orchard" copy instead of
+                        // the "Migration complete" celebration title.
+                        data.isComplete && data.isResidueOnly -> {
+                            val amount = stringRes(Zatoshi(data.residualBalanceZatoshi)).getString(context)
+                            BannerCopy(
+                                phase = MigrationBannerPhase.COMPLETE,
+                                title = stringRes(DesignR.string.migrationHome_residueTitle, amount).getString(context),
+                                subtitle = stringRes(DesignR.string.migrationHome_residueSubtitle).getString(context),
+                            )
+                        }
+
                         data.isComplete -> {
-                            Triple(MigrationBannerPhase.COMPLETE, null, "Tap to review the details")
+                            BannerCopy(MigrationBannerPhase.COMPLETE, null, "Tap to review the details")
                         }
 
                         // Spec §6.4: numbered per the due transfer, matching the convention used
                         // elsewhere (e.g. Progress's "Transfer ${completedCount + 1}").
                         data.isReadyToSend -> {
-                            Triple(
-                                MigrationBannerPhase.READY_TO_SEND,
-                                null,
-                                "Transfer ${data.completedCount + 1} is ready to send",
+                            BannerCopy(
+                                phase = MigrationBannerPhase.READY_TO_SEND,
+                                title = null,
+                                subtitle = "Transfer ${data.completedCount + 1} is ready to send",
                             )
                         }
 
                         !data.isRunActive -> {
-                            Triple(MigrationBannerPhase.REQUIRED, null, null)
+                            BannerCopy(MigrationBannerPhase.REQUIRED, null, null)
                         }
 
                         // MOB-1620: always the numeric count, including the 0-of-N case right
@@ -171,20 +207,21 @@ class MigrationHomeMessageSourceImpl(
                         // sending…" copy read as vaguer/stuck to Harry, and 0-based counts render
                         // fine ("0 of 5 transfers done ~0% complete").
                         else -> {
-                            Triple(
-                                MigrationBannerPhase.IN_PROGRESS,
-                                null,
-                                "${data.completedCount} of ${data.totalCount} transfers done" +
-                                    " ~ $percent% complete",
+                            BannerCopy(
+                                phase = MigrationBannerPhase.IN_PROGRESS,
+                                title = null,
+                                subtitle =
+                                    "${data.completedCount} of ${data.totalCount} transfers done" +
+                                        " ~ $percent% complete",
                             )
                         }
                     }
                 }
             }
         return MigrationMessageState(
-            phase = phase,
-            title = title,
-            progressLabel = subtitle,
+            phase = bannerCopy.phase,
+            title = bannerCopy.title,
+            progressLabel = bannerCopy.subtitle,
             progressPercent = percent.toFloat(),
             onClick = {
                 onMigrationMessageClick(
@@ -192,6 +229,7 @@ class MigrationHomeMessageSourceImpl(
                     isComplete = data.isComplete,
                     isReadyToSend = data.isReadyToSend,
                     hasAttention = data.attentionKind != null,
+                    isResidueOnly = data.isResidueOnly,
                 )
             },
             onButtonClick = {
@@ -200,6 +238,7 @@ class MigrationHomeMessageSourceImpl(
                     isComplete = data.isComplete,
                     isReadyToSend = data.isReadyToSend,
                     hasAttention = data.attentionKind != null,
+                    isResidueOnly = data.isResidueOnly,
                 )
             },
         )
@@ -210,6 +249,7 @@ class MigrationHomeMessageSourceImpl(
         isComplete: Boolean,
         isReadyToSend: Boolean = false,
         hasAttention: Boolean = false,
+        isResidueOnly: Boolean = false,
     ) {
         when {
             // A plan needing re-confirmation (spec §6.2/§6.3) always routes to the Transfer Invalid
@@ -217,8 +257,9 @@ class MigrationHomeMessageSourceImpl(
             hasAttention -> navigationRouter.forward(MigrationTransferInvalidArgs)
 
             // Tapping the widget just opens the celebration screen — MigrationCompleteVM.onDone()
-            // owns the seen-flag decision.
-            isComplete -> navigationRouter.forward(MigrationCompleteArgs)
+            // owns the seen-flag decision. MOB-1750: isResidueOnly threads which copy/summary
+            // variant MigrationCompleteScreen should render.
+            isComplete -> navigationRouter.forward(MigrationCompleteArgs(isResidueOnly = isResidueOnly))
 
             // Ready-to-send routes to Progress too — everything is pre-signed, there is nothing
             // to review; Progress's foreground broadcast loop executes the step silently while
@@ -255,12 +296,21 @@ class MigrationHomeMessageSourceImpl(
  *
  * - round running                → engine InProgress (counts from [snapshot])
  * - celebration (campaign done)  → engine Complete && balance < RESIDUAL_MIN && !hasSeenComplete
- * - residue (lock/migrate-anyway)→ dust < balance < RESIDUAL_MIN && not running
+ * - residue (lock/migrate-anyway)→ migratable total > dust threshold && balance < RESIDUAL_MIN &&
+ *                                   not running
  * - next round / never migrated  → balance ≥ RESIDUAL_MIN && not running → "Migrate now"
  *
  * The "Complete && balance ≥ min ⇒ Migrate now" mapping is deliberately identical whether the
  * balance is a next Keystone round's residual or newly received funds — both need a migration, so
  * the ambiguity the old cleared-plan marker guarded against does not exist.
+ *
+ * The residue branch's lower bound is gated on [migratableOrchardTotalZatoshi] — Kris
+ * Nuttycombe's per-note total (sum of each spendable note's value net of MARGINAL_FEE, over notes
+ * whose value exceeds MARGINAL_FEE), not the raw [orchardBalanceZatoshi] — a raw balance can sit
+ * above [dustThresholdZatoshi] while being made up entirely of notes too small individually to be
+ * worth spending. The displayed amount ([MigrationHomeMessageData.residualBalanceZatoshi]) still
+ * uses the raw balance — the user's real, current Orchard balance — only the "is this worth
+ * prompting about" gate uses the net-of-fee total.
  */
 @Suppress("CyclomaticComplexMethod")
 internal fun migrationMessageFor(
@@ -268,6 +318,7 @@ internal fun migrationMessageFor(
     snapshot: LiveMigrationSnapshot?,
     hasSeenComplete: Boolean,
     orchardBalanceZatoshi: Long,
+    migratableOrchardTotalZatoshi: Long = orchardBalanceZatoshi,
     dustThresholdZatoshi: Long = MIGRATION_DUST_THRESHOLD_ZATOSHI,
     isBackgroundExecutionAvailable: Boolean = true,
     hasOverdueTransfers: Boolean = false,
@@ -355,10 +406,17 @@ internal fun migrationMessageFor(
         // as "migration completed" and route to MigrationCompleteScreen, whose residue flow lets
         // the user LOCK it or MIGRATE it anyway. The reported balance is the *spendable* Orchard
         // balance (locked notes excluded), so locking makes this stop firing on its own.
+        // Lower bound uses migratableOrchardTotalZatoshi (per-note, net of MARGINAL_FEE), not the
+        // raw balance — see the function doc.
         !midRunAttention &&
-            orchardBalanceZatoshi > dustThresholdZatoshi &&
+            migratableOrchardTotalZatoshi > dustThresholdZatoshi &&
             orchardBalanceZatoshi < MIGRATION_RESIDUAL_MIN_ZATOSHI -> {
-            MigrationHomeMessageData(isRunActive = false, isComplete = true)
+            MigrationHomeMessageData(
+                isRunActive = false,
+                isComplete = true,
+                isResidueOnly = true,
+                residualBalanceZatoshi = orchardBalanceZatoshi,
+            )
         }
 
         // Migratable balance with no run in progress — covers "never migrated", "a Keystone round

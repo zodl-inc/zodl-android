@@ -102,7 +102,15 @@ class GetHomeMessageUseCaseMigrationTest {
                 hasSeenComplete = false,
                 orchardBalanceZatoshi = 500_000L,
             )
-        assertEquals(MigrationHomeMessageData(isRunActive = false, isComplete = true), result)
+        assertEquals(
+            MigrationHomeMessageData(
+                isRunActive = false,
+                isComplete = true,
+                isResidueOnly = true,
+                residualBalanceZatoshi = 500_000L,
+            ),
+            result,
+        )
     }
 
     @Test
@@ -114,7 +122,15 @@ class GetHomeMessageUseCaseMigrationTest {
                 hasSeenComplete = false,
                 orchardBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI - 1L,
             )
-        assertEquals(MigrationHomeMessageData(isRunActive = false, isComplete = true), result)
+        assertEquals(
+            MigrationHomeMessageData(
+                isRunActive = false,
+                isComplete = true,
+                isResidueOnly = true,
+                residualBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI - 1L,
+            ),
+            result,
+        )
     }
 
     @Test
@@ -126,7 +142,15 @@ class GetHomeMessageUseCaseMigrationTest {
                 hasSeenComplete = false,
                 orchardBalanceZatoshi = MIGRATION_DUST_THRESHOLD_ZATOSHI + 1L,
             )
-        assertEquals(MigrationHomeMessageData(isRunActive = false, isComplete = true), result)
+        assertEquals(
+            MigrationHomeMessageData(
+                isRunActive = false,
+                isComplete = true,
+                isResidueOnly = true,
+                residualBalanceZatoshi = MIGRATION_DUST_THRESHOLD_ZATOSHI + 1L,
+            ),
+            result,
+        )
     }
 
     @Test

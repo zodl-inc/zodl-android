@@ -249,7 +249,7 @@ class MigrationNavContributorImpl : MigrationNavContributor {
             composable<MigrationSendingArgs> { MigrationSendingScreen() }
             composable<MigrationSuccessArgs> { MigrationSuccessScreen(it.toRoute()) }
             composable<MigrationScheduledArgs> { MigrationScheduledScreen() }
-            composable<MigrationCompleteArgs> { MigrationCompleteScreen() }
+            composable<MigrationCompleteArgs> { MigrationCompleteScreen(it.toRoute()) }
             composable<MigrationProgressArgs> { MigrationProgressScreen() }
             composable<MigrationTransferInvalidArgs> { MigrationTransferInvalidScreen() }
             composable<MigrationRestartArgs> { MigrationRestartScreen() }
