@@ -25,6 +25,7 @@ import kotlinx.coroutines.withContext
 import java.io.CharConversionException
 import java.io.File
 import java.security.KeyStore
+import java.security.KeyStoreException
 import javax.crypto.BadPaddingException
 
 /**
@@ -243,8 +244,13 @@ private class AndroidPreferenceFactoryImpl : AndroidPreferenceFactory {
     /**
      * The device-to-device migration signature: the encrypted preferences file exists, but a
      * working Keystore definitively reports the master key absent, so nothing can ever decrypt
-     * the file. A Keystore that cannot even be queried yields false — an unknown Keystore state
-     * must never authorize deleting the stored secrets.
+     * the file. The query is retried once so that a momentary Keystore hiccup does not disguise
+     * a genuinely orphaned file as healthy; a Keystore that still cannot be queried yields false —
+     * an unknown Keystore state must never authorize deleting the stored secrets.
+     *
+     * Must be evaluated before attempting [createEncryptedSharedPreferences]: a failed attempt has
+     * already recreated the master key alias via [MasterKey.Builder.build], so querying the
+     * Keystore afterwards would always report the alias present and never detect the orphan.
      */
     private fun isEncryptedFileOrphaned(
         context: Context,
@@ -253,27 +259,10 @@ private class AndroidPreferenceFactoryImpl : AndroidPreferenceFactory {
         if (!encryptedPreferencesFile(context, filename).exists()) {
             return false
         }
-        return runCatching {
-            val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE)
-            keyStore.load(null)
-            !keyStore.containsAlias(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
-        }.getOrDefault(false)
+        return retryOnceOrDefault(false) {
+            !androidKeyStore().containsAlias(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
+        }
     }
-
-    /**
-     * True only for failures that are deterministic for the stored ciphertext: an AEAD/padding
-     * authentication failure, or a Tink keyset that no longer decodes ([CharConversionException]
-     * is Tink's malformed-hex signature, InvalidProtocolBufferException its malformed-proto one).
-     * Keystore and general IO failures are excluded because they can be transient.
-     */
-    private fun isUnrecoverableCorruption(exception: Exception): Boolean =
-        generateSequence<Throwable>(exception) { it.cause }
-            .take(CAUSE_CHAIN_LIMIT)
-            .any {
-                it is BadPaddingException ||
-                    it is CharConversionException ||
-                    it.javaClass.simpleName == "InvalidProtocolBufferException"
-            }
 
     private fun createEncryptedSharedPreferences(
         context: Context,
@@ -298,9 +287,7 @@ private class AndroidPreferenceFactoryImpl : AndroidPreferenceFactory {
         filename: String
     ) {
         runCatching {
-            val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE)
-            keyStore.load(null)
-            keyStore.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
+            androidKeyStore().deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
         }
         // Clear in-memory SharedPreferences cache so the retry gets a clean instance.
         // Without this, Android returns the cached (corrupted) instance even after file deletion.
@@ -320,9 +307,42 @@ private class AndroidPreferenceFactoryImpl : AndroidPreferenceFactory {
         context: Context,
         filename: String
     ) = File(context.filesDir.parent, "shared_prefs/$filename.xml")
-
-    companion object {
-        private const val ANDROID_KEYSTORE = "AndroidKeyStore"
-        private const val CAUSE_CHAIN_LIMIT = 10
-    }
 }
+
+private const val ANDROID_KEYSTORE = "AndroidKeyStore"
+private const val CAUSE_CHAIN_LIMIT = 10
+
+private fun androidKeyStore(): KeyStore =
+    KeyStore
+        .getInstance(ANDROID_KEYSTORE)
+        .apply { load(null) }
+
+/**
+ * True only for failures that are deterministic for the stored ciphertext or this device's
+ * Keystore: an AEAD/padding authentication failure, a Tink keyset that no longer decodes
+ * ([CharConversionException] is Tink's malformed-hex signature, InvalidProtocolBufferException its
+ * malformed-proto one), or Tink's Keystore self-test failure ([KeyStoreException] — thrown by
+ * `AndroidKeystoreKmsClient` after its own internal retry when the Keystore provably cannot
+ * round-trip data, a permanent condition on devices with a buggy hardware Keystore). Other
+ * Keystore and general IO failures are excluded because they can be transient.
+ */
+internal fun isUnrecoverableCorruption(exception: Exception): Boolean =
+    generateSequence<Throwable>(exception) { it.cause }
+        .take(CAUSE_CHAIN_LIMIT)
+        .any {
+            it is BadPaddingException ||
+                it is CharConversionException ||
+                it is KeyStoreException ||
+                it.javaClass.simpleName == "InvalidProtocolBufferException"
+        }
+
+/**
+ * Runs [block], retrying once if it throws; returns [default] when both attempts throw.
+ */
+internal fun <T> retryOnceOrDefault(
+    default: T,
+    block: () -> T
+): T =
+    runCatching(block)
+        .recoverCatching { block() }
+        .getOrDefault(default)
