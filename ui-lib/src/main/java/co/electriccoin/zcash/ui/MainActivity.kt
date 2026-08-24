@@ -125,7 +125,7 @@ class MainActivity : FragmentActivity() {
 
     override fun onStop() {
         Twig.debug { "Activity state: Stop" }
-        authenticationViewModel.persistGoToBackgroundTime(System.currentTimeMillis())
+        authenticationViewModel.onEnteredBackground()
         super.onStop()
     }
 

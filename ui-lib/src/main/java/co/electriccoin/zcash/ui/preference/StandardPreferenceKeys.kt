@@ -2,7 +2,6 @@ package co.electriccoin.zcash.ui.preference
 
 import co.electriccoin.zcash.preference.model.entry.BooleanPreferenceDefault
 import co.electriccoin.zcash.preference.model.entry.IntegerPreferenceDefault
-import co.electriccoin.zcash.preference.model.entry.LongPreferenceDefault
 import co.electriccoin.zcash.preference.model.entry.PreferenceKey
 import co.electriccoin.zcash.ui.common.model.OnboardingState
 
@@ -31,10 +30,5 @@ object StandardPreferenceKeys {
         BooleanPreferenceDefault(
             PreferenceKey("IS_HIDE_BALANCES"),
             false
-        )
-    val LATEST_APP_BACKGROUND_TIME_MILLIS =
-        LongPreferenceDefault(
-            PreferenceKey("LATEST_APP_BACKGROUND_TIME_MILLIS"),
-            Long.MAX_VALUE
         )
 }
