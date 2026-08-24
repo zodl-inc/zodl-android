@@ -686,6 +686,7 @@
     <string name="send_abbreviated_address_format" formatted="true"><xliff:g id="first_five" example="zs1g7">%1$s</xliff:g>…<xliff:g id="last_five" example="mvyzg">%2$s</xliff:g></string>
     <string name="send_info_memo">Transparent transactions can\'t have memos</string>
     <string name="send_addressNotInBook">Add contact by tapping on Address Book icon.</string>
+    <string name="send_syncingBalanceHint">Sync in progress. Your spendable balance may change until it finishes.</string>
     <string name="send_address_book_content_description">Open address book</string>
 
     <!-- ===== send_confirmation ===== -->

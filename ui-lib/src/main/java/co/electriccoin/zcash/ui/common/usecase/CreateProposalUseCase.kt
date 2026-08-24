@@ -24,7 +24,18 @@ class CreateProposalUseCase(
     suspend operator fun invoke(zecSend: ZecSend, floor: Boolean) {
         val normalized = if (floor) zecSend.copy(amount = zecSend.amount.floor()) else zecSend
         try {
-            when (accountDataSource.getSelectedAccount()) {
+            // The Send form gates its button on the cached spendable balance, which can be stale while
+            // the SDK is between a chain-tip update and the scan of the queued range. Re-read it from
+            // the SDK first so an amount the wallet can no longer cover lands on the Insufficient Funds
+            // sheet instead of surfacing the SDK's "Insufficient balance (have 0, ...)" as a raw error.
+            val account = accountDataSource.refreshSelectedAccount()
+            if (!account.canSpend(normalized.amount)) {
+                keystoneProposalRepository.clear()
+                zashiProposalRepository.clear()
+                navigationRouter.forward(InsufficientFundsArgs)
+                return
+            }
+            when (account) {
                 is KeystoneAccount -> {
                     keystoneProposalRepository.createProposal(normalized)
                     keystoneProposalRepository.createPCZTFromProposal()

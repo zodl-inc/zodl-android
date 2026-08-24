@@ -648,6 +648,7 @@
     <string name="send_abbreviated_address_format" formatted="true"><xliff:g id="first_five" example="zs1g7">%1$s</xliff:g>…<xliff:g id="last_five" example="mvyzg">%2$s</xliff:g></string>
     <string name="send_info_memo">Las transacciones transparentes no pueden tener mensajes</string>
     <string name="send_addressNotInBook">Agrega un contacto tocando el ícono de la libreta de direcciones.</string>
+    <string name="send_syncingBalanceHint">Sincronización en curso. Tu saldo disponible puede cambiar hasta que termine.</string>
     <string name="send_address_book_content_description">Abrir libreta de direcciones.</string>
 
     <!-- ===== send_confirmation ===== -->

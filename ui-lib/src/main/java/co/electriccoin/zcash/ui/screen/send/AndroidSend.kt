@@ -123,6 +123,8 @@ internal fun WrapSend(
 
     val sendAddressBookState by viewModel.sendAddressBookState.collectAsStateWithLifecycle()
 
+    val isSyncing by viewModel.isSyncing.collectAsStateWithLifecycle()
+
     val topAppBarViewModel = koinActivityViewModel<ZashiTopAppBarVM>()
 
     val zashiMainTopAppBarState by topAppBarViewModel.state.collectAsStateWithLifecycle()
@@ -323,7 +325,8 @@ internal fun WrapSend(
             selectedAccount = selectedAccount,
             exchangeRateState = exchangeRateState,
             sendAddressBookState = sendAddressBookState,
-            zashiMainTopAppBarState = zashiMainTopAppBarState
+            zashiMainTopAppBarState = zashiMainTopAppBarState,
+            isSyncing = isSyncing,
         )
     }
 }

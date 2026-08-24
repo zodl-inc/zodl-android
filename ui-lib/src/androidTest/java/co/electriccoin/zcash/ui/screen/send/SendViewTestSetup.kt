@@ -142,7 +142,8 @@ class SendViewTestSetup(
                             ) {
                                 onSettingsCount.incrementAndGet()
                             }
-                    )
+                    ),
+                isSyncing = false
             )
         }
     }

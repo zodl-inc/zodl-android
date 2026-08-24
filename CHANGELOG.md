@@ -20,6 +20,10 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Fixed:
 
+- Sending an amount the wallet can no longer cover now shows the Insufficient Funds sheet instead of the technical "Insufficient balance
+  (have 0, need N including fee)" error. The spendable balance is re-read from the SDK right before the transaction proposal is built, so a
+  balance that went stale while the wallet was still syncing (for example over Tor, or when far behind the chain tip) is caught first. The
+  Send screen also notes while sync is in progress that the spendable balance may still change.
 - Shielded coinholder polling works again after the voting infrastructure's v1.3.0 upgrade: the app now reads the PIR polynomial length from the
   voting configuration, verifies the new round-attestation signature format, and submits vote shares with the round binding the voting server
   requires. Rounds signed with the old attestation format are no longer shown.

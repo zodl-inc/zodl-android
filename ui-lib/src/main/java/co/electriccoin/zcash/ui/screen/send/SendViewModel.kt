@@ -2,10 +2,13 @@ package co.electriccoin.zcash.ui.screen.send
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.model.ZecSend
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.datasource.WalletSnapshotDataSource
+import co.electriccoin.zcash.ui.common.model.WalletSnapshot
 import co.electriccoin.zcash.ui.common.repository.ExchangeRateRepository
 import co.electriccoin.zcash.ui.common.usecase.CreateProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetWalletAccountsUseCase
@@ -23,10 +26,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -40,8 +45,24 @@ class SendViewModel(
     private val observeWalletAccounts: GetWalletAccountsUseCase,
     private val navigateToSelectRecipient: NavigateToSelectRecipientUseCase,
     private val navigationRouter: NavigationRouter,
+    walletSnapshotDataSource: WalletSnapshotDataSource,
 ) : ViewModel() {
     val recipientAddressState = MutableStateFlow(RecipientAddressState.new("", null))
+
+    /**
+     * True while the synchronizer is anything other than [Synchronizer.Status.SYNCED]. The spendable
+     * balance shown on the form is only refreshed by the SDK per scanned batch, so until sync settles it
+     * may still move; the form surfaces this next to the balance.
+     */
+    val isSyncing: StateFlow<Boolean> =
+        walletSnapshotDataSource
+            .observe()
+            .map { it.isSyncing() }
+            .stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
+                walletSnapshotDataSource.observe().value.isSyncing()
+            )
 
     private var onCreateZecSendClickJob: Job? = null
 
@@ -149,3 +170,9 @@ class SendViewModel(
             }
     }
 }
+
+/**
+ * A snapshot that has not yet reached [Synchronizer.Status.SYNCED]. An absent snapshot (no synchronizer
+ * yet) counts as not syncing so the hint never flashes before the wallet is even loaded.
+ */
+internal fun WalletSnapshot?.isSyncing(): Boolean = this != null && status != Synchronizer.Status.SYNCED

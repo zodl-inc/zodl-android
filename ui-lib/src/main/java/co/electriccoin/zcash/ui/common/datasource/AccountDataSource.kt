@@ -1,8 +1,10 @@
 package co.electriccoin.zcash.ui.common.datasource
 
 import android.content.Context
+import cash.z.ecc.android.sdk.SdkSynchronizer
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.model.Account
+import cash.z.ecc.android.sdk.model.AccountBalance
 import cash.z.ecc.android.sdk.model.AccountImportSetup
 import cash.z.ecc.android.sdk.model.AccountPurpose
 import cash.z.ecc.android.sdk.model.AccountUuid
@@ -14,6 +16,7 @@ import cash.z.ecc.android.sdk.model.WalletBalance
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.Zip32AccountIndex
 import cash.z.ecc.sdk.extension.ZERO
+import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.SaplingInfo
@@ -65,6 +68,21 @@ interface AccountDataSource {
     suspend fun getAllAccounts(): List<WalletAccount>
 
     suspend fun getSelectedAccount(): WalletAccount
+
+    /**
+     * Forces the SDK to re-read the wallet summary from the wallet database and returns the selected
+     * account with its balances taken from that fresh read.
+     *
+     * [selectedAccount] is only as fresh as [cash.z.ecc.android.sdk.Synchronizer.walletBalances], which
+     * the SDK refreshes at processor start and after each scanned batch. Between a chain-tip update and
+     * the scan of the queued range (minutes over Tor, or when far behind the tip) the Rust wallet treats
+     * every non-stabilized note in the tip shard as unspendable, so the displayed spendable balance can be
+     * stale in either direction. Call this right before an operation that must agree with the Rust
+     * wallet's current view (proposal creation) instead of trusting the cached account.
+     *
+     * A failed refresh never blocks the caller: it is logged and the last known account is returned.
+     */
+    suspend fun refreshSelectedAccount(): WalletAccount
 
     suspend fun getZashiAccount(): ZashiAccount
 
@@ -163,6 +181,29 @@ class AccountDataSourceImpl(
     override suspend fun getSelectedAccount() = withContext(Dispatchers.IO) { selectedAccount.filterNotNull().first() }
 
     override suspend fun getZashiAccount() = withContext(Dispatchers.IO) { zashiAccount.filterNotNull().first() }
+
+    @Suppress("TooGenericExceptionCaught")
+    override suspend fun refreshSelectedAccount(): WalletAccount =
+        withContext(Dispatchers.IO) {
+            val account = getSelectedAccount()
+            val synchronizer = synchronizerProvider.getSynchronizer()
+            if (synchronizer !is SdkSynchronizer) {
+                return@withContext account
+            }
+            try {
+                synchronizer.refreshAllBalances()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Twig.warn(e) { "Balance refresh failed; falling back to the last known balance" }
+                return@withContext account
+            }
+            // Read the SDK's StateFlow directly rather than waiting on [selectedAccount]: the refresh
+            // has already published the new summary synchronously, whereas the account pipeline above
+            // propagates it asynchronously (and never re-emits if nothing changed).
+            val balance = synchronizer.walletBalances.value?.get(account.sdkAccount.accountUuid)
+            if (balance == null) account else account.withBalances(balance)
+        }
 
     override suspend fun selectAccount(account: Account) =
         withContext(Dispatchers.IO) {
@@ -312,12 +353,7 @@ class AccountDataSourceImpl(
 
         val balanceFlow =
             synchronizerProvider.walletBalances
-                .map {
-                    it
-                        ?.get(sdkAccount.accountUuid)
-                        ?.let { balance -> balance.orchard + balance.ironwood }
-                        ?: createEmptyWalletBalance()
-                }
+                .map { it?.get(sdkAccount.accountUuid).unifiedBalance() }
 
         return combine(addressFlow, balanceFlow) { address, balance ->
             UnifiedInfo(address = address, balance = balance)
@@ -333,8 +369,7 @@ class AccountDataSourceImpl(
                 true
             }
         return combine(transparentAddress, synchronizerProvider.walletBalances) { address, balances ->
-            val balance = balances?.get(sdkAccount.accountUuid)
-            TransparentInfo(address = address, balance = balance?.unshielded ?: Zatoshi.ZERO)
+            TransparentInfo(address = address, balance = balances?.get(sdkAccount.accountUuid).transparentBalance())
         }
     }
 
@@ -350,8 +385,7 @@ class AccountDataSourceImpl(
                     true
                 }
             combine(saplingAddress, synchronizerProvider.walletBalances) { address, balances ->
-                val balance = balances?.get(sdkAccount.accountUuid)
-                SaplingInfo(address = address, balance = balance?.sapling ?: createEmptyWalletBalance())
+                SaplingInfo(address = address, balance = balances?.get(sdkAccount.accountUuid).saplingBalance())
             }
         }
 
@@ -359,18 +393,53 @@ class AccountDataSourceImpl(
     // just its balance.
     private fun observeIronwoodBalance(sdkAccount: Account): Flow<WalletBalance> =
         synchronizerProvider.walletBalances.map { balances ->
-            balances?.get(sdkAccount.accountUuid)?.ironwood ?: createEmptyWalletBalance()
+            balances?.get(sdkAccount.accountUuid).ironwoodBalance()
+        }
+}
+
+/**
+ * Returns a copy of this account carrying the balances of [balance]. This is the single place that maps
+ * an SDK [AccountBalance] onto [WalletAccount]'s pool fields, shared by the account observers and by
+ * [AccountDataSource.refreshSelectedAccount], so a refreshed account and an observed one always agree.
+ */
+internal fun WalletAccount.withBalances(balance: AccountBalance): WalletAccount =
+    when (this) {
+        is ZashiAccount -> {
+            copy(
+                unified = unified.copy(balance = balance.unifiedBalance()),
+                sapling = sapling.copy(balance = balance.saplingBalance()),
+                ironwoodBalance = balance.ironwoodBalance(),
+                transparent = transparent.copy(balance = balance.transparentBalance()),
+            )
         }
 
-    private fun createEmptyWalletBalance() = WalletBalance(Zatoshi.ZERO, Zatoshi.ZERO, Zatoshi.ZERO)
+        is KeystoneAccount -> {
+            copy(
+                unified = unified.copy(balance = balance.unifiedBalance()),
+                ironwoodBalance = balance.ironwoodBalance(),
+                transparent = transparent.copy(balance = balance.transparentBalance()),
+            )
+        }
+    }
 
-    private operator fun WalletBalance.plus(other: WalletBalance) =
-        WalletBalance(
-            available = available + other.available,
-            changePending = changePending + other.changePending,
-            valuePending = valuePending + other.valuePending
-        )
-}
+// The unified pool folds Orchard + Ironwood together (see WalletAccount.unified's kdoc).
+private fun AccountBalance?.unifiedBalance(): WalletBalance =
+    this?.let { it.orchard + it.ironwood } ?: createEmptyWalletBalance()
+
+private fun AccountBalance?.saplingBalance(): WalletBalance = this?.sapling ?: createEmptyWalletBalance()
+
+private fun AccountBalance?.ironwoodBalance(): WalletBalance = this?.ironwood ?: createEmptyWalletBalance()
+
+private fun AccountBalance?.transparentBalance(): Zatoshi = this?.unshielded ?: Zatoshi.ZERO
+
+private fun createEmptyWalletBalance() = WalletBalance(Zatoshi.ZERO, Zatoshi.ZERO, Zatoshi.ZERO)
+
+private operator fun WalletBalance.plus(other: WalletBalance) =
+    WalletBalance(
+        available = available + other.available,
+        changePending = changePending + other.changePending,
+        valuePending = valuePending + other.valuePending
+    )
 
 private data class AddressRequest(
     val accountUuid: AccountUuid,

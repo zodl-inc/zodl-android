@@ -116,6 +116,7 @@ fun Send(
     exchangeRateState: ExchangeRateState,
     sendAddressBookState: SendAddressBookState,
     zashiMainTopAppBarState: ZashiMainTopAppBarState?,
+    isSyncing: Boolean,
 ) {
     if (selectedAccount == null) {
         return
@@ -163,6 +164,7 @@ fun Send(
                 memoState = memoState,
                 setMemoState = setMemoState,
                 sendState = sendAddressBookState,
+                isSyncing = isSyncing,
                 modifier = Modifier.scaffoldPadding(paddingValues)
             )
         }
@@ -187,6 +189,7 @@ private fun SendMainContent(
     memoState: MemoState,
     setMemoState: (MemoState) -> Unit,
     sendState: SendAddressBookState,
+    isSyncing: Boolean,
     modifier: Modifier = Modifier,
 ) {
     // For now, we merge [SendStage.Form] and [SendStage.Proposing] into one stage. We could eventually display a
@@ -206,6 +209,7 @@ private fun SendMainContent(
         onQrScannerOpen = onQrScannerOpen,
         hasCameraFeature = hasCameraFeature,
         sendState = sendState,
+        isSyncing = isSyncing,
         modifier = modifier
     )
 
@@ -239,6 +243,7 @@ private fun SendForm(
     onQrScannerOpen: () -> Unit,
     hasCameraFeature: Boolean,
     sendState: SendAddressBookState,
+    isSyncing: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -254,6 +259,13 @@ private fun SendForm(
         BalanceWidget(
             state = balanceWidgetState
         )
+
+        AnimatedVisibility(visible = isSyncing) {
+            Column {
+                Spacer(12.dp)
+                SendSyncingHint(Modifier.fillMaxWidth())
+            }
+        }
 
         Spacer(24.dp)
 
