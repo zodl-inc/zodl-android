@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.common.usecase
 
-import cash.z.ecc.android.sdk.ext.convertZecToZatoshi
 import cash.z.ecc.android.sdk.model.Memo
 import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.android.sdk.model.Zatoshi
@@ -25,6 +24,7 @@ import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.screen.insufficientfunds.InsufficientFundsArgs
+import co.electriccoin.zcash.ui.screen.swap.convertZecToZatoshi
 import co.electriccoin.zcash.ui.screen.swap.quote.SwapQuoteArgs
 import co.electriccoin.zcash.ui.screen.texunsupported.TEXUnsupportedArgs
 import kotlinx.coroutines.Dispatchers
@@ -41,6 +41,13 @@ class RequestSwapQuoteUseCase(
     private val accountDataSource: AccountDataSource,
     private val synchronizerProvider: SynchronizerProvider,
 ) {
+    /**
+     * The balance pre-check here is a best-effort fast path against a snapshot of the selected
+     * account: it saves the address rotation and the provider round-trip when the amount is plainly
+     * unaffordable. The authoritative check is the SDK's typed insufficient-funds failure at
+     * proposal time, which is evaluated against the account the proposal is actually built for and
+     * lands on the same Insufficient Funds sheet.
+     */
     suspend fun requestExactInput(
         amount: BigDecimal,
         address: String,
@@ -49,6 +56,9 @@ class RequestSwapQuoteUseCase(
         canNavigateToSwapQuote: () -> Boolean
     ) {
         if (!accountDataSource.getSelectedAccount().canSpend(amount.convertZecToZatoshi())) {
+            swapRepository.clearQuote()
+            zashiProposalRepository.clear()
+            keystoneProposalRepository.clear()
             navigationRouter.forward(InsufficientFundsArgs)
             return
         }

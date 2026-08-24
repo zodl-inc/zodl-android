@@ -98,19 +98,17 @@ internal class ExactOutputVMMapper {
         )
     }
 
-    private fun createZecAmount(state: ExactOutputInternalState): StyledStringResource {
-        val zatoshi = state.getZatoshi()
-        return stringResByDynamicCurrencyNumber(state.getZec() ?: BigDecimal(0), CURRENCY_TICKER).withStyle(
+    private fun createZecAmount(state: ExactOutputInternalState): StyledStringResource =
+        stringResByDynamicCurrencyNumber(state.getZec() ?: BigDecimal(0), CURRENCY_TICKER).withStyle(
             StyledStringStyle(
                 color =
-                    if (zatoshi != null && !state.canSpend(zatoshi)) {
+                    if (state.isInsufficientFunds) {
                         StringResourceColor.HINT_ERROR
                     } else {
                         StringResourceColor.PRIMARY
                     }
             )
         )
-    }
 
     fun createFiatAmountInnerState(
         amountInnerState: NumberTextFieldInnerState,
@@ -135,21 +133,18 @@ internal class ExactOutputVMMapper {
         )
     }
 
-    private fun createAmountErrorState(state: ExactOutputInternalState): StringResource? {
-        val zatoshi = state.getZatoshi()
-        return if (zatoshi != null && !state.canSpend(zatoshi)) {
+    private fun createAmountErrorState(state: ExactOutputInternalState): StringResource? =
+        if (state.isInsufficientFunds) {
             stringRes(R.string.send_error_insufficientFunds)
         } else {
             null
         }
-    }
 
     private fun createAmountState(
         state: ExactOutputInternalState,
         onTextFieldChange: (amount: NumberTextFieldInnerState, fiat: NumberTextFieldInnerState) -> Unit,
-    ): NumberTextFieldState {
-        val zatoshi = state.getZatoshi()
-        return NumberTextFieldState(
+    ): NumberTextFieldState =
+        NumberTextFieldState(
             innerState = state.amount,
             onValueChange = { amountInnerState ->
                 val amount = amountInnerState.amount
@@ -181,20 +176,18 @@ internal class ExactOutputVMMapper {
             },
             isEnabled = !state.isRequestingQuote,
             explicitError =
-                if (zatoshi != null && !state.canSpend(zatoshi)) {
+                if (state.isInsufficientFunds) {
                     stringRes("")
                 } else {
                     null
                 }
         )
-    }
 
     private fun createFiatAmountState(
         state: ExactOutputInternalState,
         onTextFieldChange: (amount: NumberTextFieldInnerState, fiat: NumberTextFieldInnerState) -> Unit,
-    ): NumberTextFieldState {
-        val zatoshi = state.getZatoshi()
-        return NumberTextFieldState(
+    ): NumberTextFieldState =
+        NumberTextFieldState(
             innerState = state.fiatAmount,
             onValueChange = { fiatInnerState ->
                 val fiat = fiatInnerState.amount
@@ -223,13 +216,12 @@ internal class ExactOutputVMMapper {
             },
             isEnabled = !state.isRequestingQuote,
             explicitError =
-                if (zatoshi != null && !state.canSpend(zatoshi)) {
+                if (state.isInsufficientFunds) {
                     stringRes("")
                 } else {
                     null
                 }
         )
-    }
 
     private fun createAssetState(
         state: ExactOutputInternalState,
@@ -418,6 +410,13 @@ private data class ExactOutputInternalState(
         isABHintVisible = original.isABHintVisible,
         isEphemeralAddressLocked = original.isEphemeralAddressLocked
     )
+
+    /**
+     * The one insufficient-funds signal every facet of this screen (ZEC amount color, error label,
+     * both text fields) renders from, computed once per state instance so the rule can never drift
+     * between them.
+     */
+    val isInsufficientFunds: Boolean = getZatoshi()?.let { !canSpend(it) } == true
 
     fun getOriginFiatAmount(): BigDecimal? {
         val tokenAmount = amount.amount

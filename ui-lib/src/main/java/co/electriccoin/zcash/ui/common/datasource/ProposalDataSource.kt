@@ -57,7 +57,16 @@ interface ProposalDataSource {
     @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createShieldProposal(account: WalletAccount): ShieldTransactionProposal
 
-    @Throws(PcztException.CreatePcztFromProposalException::class, TexUnsupportedOnKSException::class)
+    /**
+     * Propagates the SDK's [PcztException.MultiStepProposalUnsupportedException] untouched: whether a
+     * multi-step rejection means "TEX is unsupported on Keystone" depends on what the proposal was
+     * for, which only the caller knows (see
+     * [co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository.createPCZTFromProposal]).
+     */
+    @Throws(
+        PcztException.CreatePcztFromProposalException::class,
+        PcztException.MultiStepProposalUnsupportedException::class
+    )
     suspend fun createPcztFromProposal(account: WalletAccount, proposal: Proposal): Pczt
 
     @Throws(PcztException.AddProofsToPcztException::class)
@@ -201,14 +210,10 @@ class ProposalDataSourceImpl(
 
     override suspend fun createPcztFromProposal(account: WalletAccount, proposal: Proposal): Pczt =
         withContext(Dispatchers.IO) {
-            try {
-                synchronizerProvider.getSynchronizer().createPcztFromProposal(
-                    accountUuid = account.sdkAccount.accountUuid,
-                    proposal = proposal
-                )
-            } catch (_: PcztException.MultiStepProposalUnsupportedException) {
-                throw TexUnsupportedOnKSException()
-            }
+            synchronizerProvider.getSynchronizer().createPcztFromProposal(
+                accountUuid = account.sdkAccount.accountUuid,
+                proposal = proposal
+            )
         }
 
     override suspend fun addProofsToPczt(pczt: Pczt): Pczt =

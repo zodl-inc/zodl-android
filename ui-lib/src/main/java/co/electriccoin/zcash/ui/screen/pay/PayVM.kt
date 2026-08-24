@@ -9,6 +9,8 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.model.canSpend
+import co.electriccoin.zcash.ui.common.model.totalSpendableBalance
 import co.electriccoin.zcash.ui.common.repository.DEFAULT_SLIPPAGE
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
@@ -316,14 +318,13 @@ internal interface InternalState {
     val isEphemeralAddressLocked: Boolean
 
     val totalSpendableBalance: Zatoshi
-        get() = account?.spendableShieldedBalance ?: Zatoshi(0)
+        get() = account.totalSpendableBalance
 
     /**
-     * The single spendability primitive the whole app validates against, so the typing-time check and
-     * the proposal-time check in the SDK can never disagree. Re-evaluated whenever the selected
-     * account emits a new balance.
+     * Delegates to the shared [co.electriccoin.zcash.ui.common.model.canSpend] primitive.
+     * Re-evaluated whenever the selected account emits a new balance.
      */
-    fun canSpend(amount: Zatoshi): Boolean = account?.canSpend(amount) ?: false
+    fun canSpend(amount: Zatoshi): Boolean = account.canSpend(amount)
 }
 
 internal data class InternalStateImpl(

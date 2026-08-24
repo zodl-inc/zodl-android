@@ -257,8 +257,15 @@ class RequestSwapQuoteUseCaseTest {
     // endregion
     // region helpers
 
+    /**
+     * The pre-quote block must leave no stale state behind: it clears the previous quote and both
+     * proposal repositories exactly like the proposal-time insufficient-funds path does.
+     */
     private fun assertBlockedBeforeTheQuote() {
         verify { navigationRouter.forward(InsufficientFundsArgs) }
+        verify { swapRepository.clearQuote() }
+        verify { zashiProposalRepository.clear() }
+        verify { keystoneProposalRepository.clear() }
         coVerify(exactly = 0) { accountDataSource.requestNextShieldedAddress() }
         verify(exactly = 0) { swapRepository.requestExactInputQuote(any(), any(), any(), any(), any()) }
         verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }

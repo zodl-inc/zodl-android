@@ -89,18 +89,24 @@ class ProposalDataSourceTest {
             assertSame(alreadyMapped, thrown)
         }
 
+    /**
+     * The multi-step rejection must reach the caller untouched: only
+     * [co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository] knows whether the
+     * proposal pays a TEX address and may therefore remap it to [TexUnsupportedOnKSException].
+     */
     @Test
-    fun aMultiStepProposalBecomesTexUnsupportedOnKeystone() =
+    fun aMultiStepProposalFailurePropagatesUntouched() =
         runBlocking {
             val synchronizer = mockk<Synchronizer>()
-            coEvery { synchronizer.createPcztFromProposal(any(), any()) } throws
-                PcztException.MultiStepProposalUnsupportedException()
+            val sdkException = PcztException.MultiStepProposalUnsupportedException()
+            coEvery { synchronizer.createPcztFromProposal(any(), any()) } throws sdkException
 
-            assertFailsWith<TexUnsupportedOnKSException> {
-                dataSource(synchronizer).createPcztFromProposal(account, mockk<Proposal>())
-            }
+            val thrown =
+                assertFailsWith<PcztException.MultiStepProposalUnsupportedException> {
+                    dataSource(synchronizer).createPcztFromProposal(account, mockk<Proposal>())
+                }
 
-            Unit
+            assertTrue(thrown.causeChain().any { it === sdkException })
         }
 
     @Test
