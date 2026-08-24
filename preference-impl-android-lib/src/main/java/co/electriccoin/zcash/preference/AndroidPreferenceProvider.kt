@@ -322,14 +322,15 @@ private fun androidKeyStore(): KeyStore =
  * True only for failures that are deterministic for the stored ciphertext or this device's
  * Keystore: an AEAD/padding authentication failure, a Tink keyset that no longer decodes
  * ([CharConversionException] is Tink's malformed-hex signature, InvalidProtocolBufferException its
- * malformed-proto one), Tink's Keystore self-test failure ([KeyStoreException] — thrown by
- * `AndroidKeystoreKmsClient` after its own internal retry when the Keystore provably cannot
- * round-trip data, a permanent condition on devices with a buggy hardware Keystore), or
- * [InvalidKeyException], the failure [createEncryptedSharedPreferences] actually throws for a
- * genuinely device-to-device-orphaned file when [isEncryptedFileOrphaned]'s Keystore query itself
- * failed twice (see [retryOnceOrDefault]) and so could not flag the orphan first — this is the
- * second line of defense for that case. Other Keystore and general IO failures are excluded
- * because they can be transient.
+ * malformed-proto one), Tink's Keystore self-test failure ([KeyStoreException] — in tink-android
+ * 1.8.0, `AndroidKeystoreKmsClient` throws it from exactly one place, `validateAead()`, when a
+ * post-key-creation AEAD encrypt/decrypt round-trip of a random message doesn't match; a
+ * permanent condition on devices with a buggy hardware Keystore), or [InvalidKeyException], the
+ * failure [createEncryptedSharedPreferences] actually throws for a genuinely
+ * device-to-device-orphaned file when [isEncryptedFileOrphaned]'s Keystore query itself failed
+ * twice (see [retryOnceOrDefault]) and so could not flag the orphan first — this is the second
+ * line of defense for that case. Other Keystore and general IO failures are excluded because they
+ * can be transient.
  */
 internal fun isUnrecoverableCorruption(exception: Exception): Boolean =
     generateSequence<Throwable>(exception) { it.cause }
