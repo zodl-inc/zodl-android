@@ -219,8 +219,9 @@ class KeystoneProposalRepositoryImpl(
                 try {
                     val result = proposalDataSource.addProofsToPczt(proposalPczt.clonePczt())
                     pcztWithProofs.update { PcztState(isLoading = false, pczt = result) }
-                } catch (_: PcztException.AddProofsToPcztException) {
-                    pcztWithProofs.update { PcztState(isLoading = false, pczt = null) }
+                } catch (e: PcztException.AddProofsToPcztException) {
+                    Twig.error(e) { "Failed to add proofs to PCZT" }
+                    pcztWithProofs.update { PcztState(isLoading = false, pczt = null, error = e) }
                 }
             }
     }
@@ -276,9 +277,12 @@ class KeystoneProposalRepositoryImpl(
                     throw cause
                 } else {
                     submitState.update { SubmitProposalState.Submitting }
-                    val pcztWithProofs = pcztWithProofs.filter { !it.isLoading }.first().pczt
+                    val pcztWithProofsState = pcztWithProofs.filter { !it.isLoading }.first()
+                    val pcztWithProofs = pcztWithProofsState.pczt
                     if (pcztWithProofs == null) {
-                        val cause = IllegalStateException("PCZT with proofs is null")
+                        val cause =
+                            pcztWithProofsState.error
+                                ?: IllegalStateException("PCZT with proofs is null")
                         submitState.update { SubmitProposalState.Result(SubmitResult.Error(cause)) }
                         throw cause
                     } else {
@@ -334,5 +338,6 @@ class KeystoneProposalRepositoryImpl(
 
 private data class PcztState(
     val isLoading: Boolean,
-    val pczt: Pczt?
+    val pczt: Pczt?,
+    val error: Exception? = null
 )
