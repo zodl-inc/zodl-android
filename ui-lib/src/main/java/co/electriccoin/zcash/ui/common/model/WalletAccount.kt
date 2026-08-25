@@ -174,3 +174,17 @@ data class SaplingInfo(
     val address: WalletAddress.Sapling,
     val balance: WalletBalance
 )
+
+/**
+ * The single spendability primitive the whole app validates against, so a typing-time check and the
+ * proposal-time check in the SDK can never disagree. A null receiver (no account selected yet) can
+ * spend nothing.
+ */
+fun WalletAccount?.canSpend(amount: Zatoshi): Boolean = this?.canSpend(amount) ?: false
+
+/**
+ * The spendable balance a screen may display for a possibly-not-yet-selected account, zero when no
+ * account is available.
+ */
+val WalletAccount?.totalSpendableBalance: Zatoshi
+    get() = this?.spendableShieldedBalance ?: Zatoshi(0)

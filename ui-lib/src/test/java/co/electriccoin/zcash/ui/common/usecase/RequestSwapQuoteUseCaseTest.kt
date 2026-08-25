@@ -17,7 +17,6 @@ import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
-import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
 import co.electriccoin.zcash.ui.common.repository.SwapQuoteData
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
@@ -63,6 +62,8 @@ class RequestSwapQuoteUseCaseTest {
     private val navigateToError = mockk<NavigateToErrorUseCase>(relaxed = true)
     private val zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true)
     private val keystoneProposalRepository = mockk<KeystoneProposalRepository>(relaxed = true)
+    private val swapRepository = mockk<SwapRepository>(relaxed = true)
+    private val accountDataSource = mockk<AccountDataSource>()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val dispatcher = StandardTestDispatcher()
@@ -248,6 +249,7 @@ class RequestSwapQuoteUseCaseTest {
 
     private fun assertNavigatedToTexUnsupported() {
         verify { navigationRouter.forward(TEXUnsupportedArgs) }
+        verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
     }
 
     private fun zashi(): WalletAccount = mockk<ZashiAccount>()
@@ -283,21 +285,15 @@ class RequestSwapQuoteUseCaseTest {
 
     private suspend fun useCase(
         swapQuote: SwapQuote,
-        selectedAccount: WalletAccount = mockk<ZashiAccount>(),
-        supportedData: List<SwapAsset> = listOf(btc)
+        selectedAccount: WalletAccount = zashi()
     ): RequestSwapQuoteUseCase {
-        val swapRepository = mockk<SwapRepository>(relaxed = true)
-        every { swapRepository.assets } returns MutableStateFlow(SwapAssetsData(data = supportedData, zecAsset = zec))
         every { swapRepository.quote } returns MutableStateFlow(SwapQuoteData.Success(swapQuote))
 
         val shieldedAddress = WalletAddress.Unified.new("deposit")
         val synchronizer = mockk<Synchronizer> { coEvery { validateAddress(any()) } returns AddressType.Unified }
         val synchronizerProvider = mockk<SynchronizerProvider> { coEvery { getSynchronizer() } returns synchronizer }
-        val accountDataSource =
-            mockk<AccountDataSource> {
-                coEvery { requestNextShieldedAddress() } returns shieldedAddress
-                coEvery { getSelectedAccount() } returns selectedAccount
-            }
+        coEvery { accountDataSource.requestNextShieldedAddress() } returns shieldedAddress
+        coEvery { accountDataSource.getSelectedAccount() } returns selectedAccount
         return RequestSwapQuoteUseCase(
             navigationRouter = navigationRouter,
             navigateToErrorUseCase = navigateToError,

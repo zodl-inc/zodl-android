@@ -161,9 +161,7 @@ internal class SwapVMMapper {
             error =
                 when (state.swapDirection) {
                     SWAP_FROM_ZEC -> {
-                        if (originAmount != null &&
-                            state.totalSpendableBalance.value < originAmount.convertZecToZatoshi().value
-                        ) {
+                        if (originAmount != null && !state.canSpend(originAmount.convertZecToZatoshi())) {
                             stringRes(R.string.send_error_insufficientFunds)
                         } else {
                             null

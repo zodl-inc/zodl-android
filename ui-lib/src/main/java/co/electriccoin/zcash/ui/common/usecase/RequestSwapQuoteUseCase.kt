@@ -124,9 +124,11 @@ class RequestSwapQuoteUseCase(
             try {
                 createProposal(result.quote)
             } catch (_: TexUnsupportedOnKSException) {
-                navigationRouter.forward(TEXUnsupportedArgs)
-                keystoneProposalRepository.clear()
+                swapRepository.clearQuote()
                 zashiProposalRepository.clear()
+                keystoneProposalRepository.clear()
+                navigationRouter.forward(TEXUnsupportedArgs)
+                return@withContext
             } catch (_: InsufficientFundsException) {
                 swapRepository.clearQuote()
                 zashiProposalRepository.clear()
