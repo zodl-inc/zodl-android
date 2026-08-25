@@ -210,6 +210,9 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0 # to fetch all commits
+      - name: Set up companion SDK build (if SDK_COMMIT_PIN is set)
+        timeout-minutes: 30
+        uses: ./.github/actions/setup-sdk-companion
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1
@@ -217,7 +220,10 @@ jobs:
         uses: ./.github/actions/setup-gradle
         timeout-minutes: 5
       - name: Test
-        timeout-minutes: 15
+        # 45 rather than the usual 15: when SDK_COMMIT_PIN is set (see
+        # setup-sdk-companion), compiling :ui-lib pulls in the full companion SDK's Rust
+        # dependency graph, which can take ~20-25 min alone on a cold cargo/target cache.
+        timeout-minutes: 45
         run: |
           ./gradlew :configuration-api-lib:check :crash-lib:check :preference-api-lib:check :spackle-lib:check :ui-design-lib:check
           ./gradlew :ui-lib:testZcashmainnetStoreDebugUnitTest
