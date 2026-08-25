@@ -114,7 +114,7 @@ internal fun VoteSubmissionBottomSection(state: VoteConfirmSubmissionState) {
                 }
             }
         val progressNote: StringResource? =
-            if (state.status is VoteSubmissionStatus.Submitting) {
+            if (progressTitle != null) {
                 stringRes(R.string.coinVote_confirmSubmission_submittingExplainerNote)
             } else {
                 null
