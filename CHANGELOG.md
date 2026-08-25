@@ -29,8 +29,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Fixed:
 
-- Requesting a swap quote you cannot afford now shows the Insufficient Funds sheet instead of the technical error screen. The balance is
-  re-checked right before the quote is requested, so a balance that dropped after you typed the amount is caught, and any remaining shortfall
+- Requesting a swap quote you cannot afford now shows the Insufficient Funds sheet instead of the technical error screen. A shortfall
   found while building the transaction is now reported by the SDK as an insufficient-funds failure rather than a raw error.
 - The app-lock re-authentication timeout is now measured with a monotonic clock instead of the system wall clock, so it can no longer be
   bypassed by changing the device's date and time.
