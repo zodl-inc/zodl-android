@@ -4,9 +4,11 @@ import android.content.Context
 import cash.z.ecc.android.sdk.AttentionReason
 import cash.z.ecc.android.sdk.MigrationBlocker
 import cash.z.ecc.android.sdk.MigrationState
+import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
+import co.electriccoin.zcash.ui.common.datasource.WalletSnapshotDataSource
 import co.electriccoin.zcash.ui.common.migration.MigrationHomeMessageSource
 import co.electriccoin.zcash.ui.common.model.migration.LiveMigrationSnapshot
 import co.electriccoin.zcash.ui.common.model.migration.MIGRATION_DUST_THRESHOLD_ZATOSHI
@@ -61,6 +63,7 @@ class MigrationHomeMessageSourceImpl(
     private val getOrchardMigrationSdk: GetOrchardMigrationSdkUseCase,
     private val observeMigrationLiveReadout: ObserveMigrationLiveReadoutUseCase,
     private val getOrchardBalance: GetOrchardBalanceUseCase,
+    private val walletSnapshotDataSource: WalletSnapshotDataSource,
     private val hasSeenMigrationCompleteStorageProvider: HasSeenMigrationCompleteStorageProvider,
     private val isBackgroundExecutionAvailableProvider: IsBackgroundExecutionAvailableProvider,
     private val navigationRouter: NavigationRouter,
@@ -84,7 +87,14 @@ class MigrationHomeMessageSourceImpl(
                 // never touches the engine) the balance is the only input that can hide the
                 // "Migrate required" banner once the Orchard funds are spent.
                 getOrchardBalance.observe(),
-            ) { hasSeenComplete, readout, orchardBalance ->
+                // Mirrors HomeVM's isSyncComplete (iOS: SmartBannerStore.isSyncComplete) — the
+                // RESIDUE branch below reads a live balance/migratable-total pair that can
+                // disagree with each other mid-sync (two different queries against the same,
+                // still-changing DB), so it must not fire until the wallet has caught up with
+                // the chain tip. See MOB-1750 mid-sync race investigation.
+                walletSnapshotDataSource.observe(),
+            ) { hasSeenComplete, readout, orchardBalance, walletSnapshot ->
+                val isFullySynced = walletSnapshot?.status == Synchronizer.Status.SYNCED
                 val sdkState = readout?.migrationState
                 val states = readout?.states
                 val snapshot =
@@ -137,6 +147,7 @@ class MigrationHomeMessageSourceImpl(
                     orchardBalanceZatoshi = orchardBalanceZatoshi,
                     migratableOrchardTotalZatoshi = migratableOrchardTotal,
                     dustThresholdZatoshi = dustThreshold,
+                    isFullySynced = isFullySynced,
                     isBackgroundExecutionAvailable = isBackgroundExecutionAvailableProvider.isAvailable(),
                     hasOverdueTransfers = readout?.hasOverdueTransfers ?: false,
                     attentionKind = attentionKind,
@@ -311,6 +322,14 @@ class MigrationHomeMessageSourceImpl(
  * worth spending. The displayed amount ([MigrationHomeMessageData.residualBalanceZatoshi]) still
  * uses the raw balance — the user's real, current Orchard balance — only the "is this worth
  * prompting about" gate uses the net-of-fee total.
+ *
+ * The residue branch is additionally gated on [isFullySynced]: [orchardBalanceZatoshi] and
+ * [migratableOrchardTotalZatoshi] are two independent reads of the same, still-changing DB while
+ * the wallet is mid-sync, and can disagree window-to-window — firing the residue prompt on that
+ * stale pair produced a bogus balance and a "Migrate anyway" that failed with "no Orchard input
+ * found" once the notes it referenced had moved on. Not applied to the other branches above: the
+ * celebration branch is explicitly out of scope for this fix, and the plain "Migrate now" branch
+ * only shows a CTA (no one-click transfer proposal) so the same race isn't user-visible there.
  */
 @Suppress("CyclomaticComplexMethod")
 internal fun migrationMessageFor(
@@ -320,6 +339,7 @@ internal fun migrationMessageFor(
     orchardBalanceZatoshi: Long,
     migratableOrchardTotalZatoshi: Long = orchardBalanceZatoshi,
     dustThresholdZatoshi: Long = MIGRATION_DUST_THRESHOLD_ZATOSHI,
+    isFullySynced: Boolean = true,
     isBackgroundExecutionAvailable: Boolean = true,
     hasOverdueTransfers: Boolean = false,
     now: Instant = Clock.System.now(),
@@ -407,8 +427,15 @@ internal fun migrationMessageFor(
         // the user LOCK it or MIGRATE it anyway. The reported balance is the *spendable* Orchard
         // balance (locked notes excluded), so locking makes this stop firing on its own.
         // Lower bound uses migratableOrchardTotalZatoshi (per-note, net of MARGINAL_FEE), not the
-        // raw balance — see the function doc.
+        // raw balance — see the function doc. Gated on isFullySynced: orchardBalanceZatoshi (live
+        // synchronizer balance) and migratableOrchardTotalZatoshi (one-shot SQLite query) can
+        // disagree with each other while the wallet is still catching up to the chain tip — both
+        // read the same DB but at different consistency points during active scanning. Firing this
+        // branch on stale/mid-sync data showed a bogus "X ZEC left in Orchard" popup and let
+        // "Migrate anyway" propose a transfer against notes that no longer existed by the time the
+        // proposal ran (Slack repro, 2026-08-24).
         !midRunAttention &&
+            isFullySynced &&
             migratableOrchardTotalZatoshi > dustThresholdZatoshi &&
             orchardBalanceZatoshi < MIGRATION_RESIDUAL_MIN_ZATOSHI -> {
             MigrationHomeMessageData(
