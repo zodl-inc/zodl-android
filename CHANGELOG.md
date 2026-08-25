@@ -7,6 +7,12 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Fixed:
+
+- A temporary Android Keystore failure at startup is no longer mistaken for corrupted encrypted storage: the encrypted secret store is now
+  recreated only when its data is provably undecryptable (for example after a device-to-device transfer, which cannot move hardware-bound
+  keys), and any other failure keeps the stored data intact.
+
 ## [3.10.0 (2475)] - 2026-08-20
 
 ### Added:

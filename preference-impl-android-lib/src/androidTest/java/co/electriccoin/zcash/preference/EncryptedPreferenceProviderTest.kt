@@ -3,6 +3,8 @@
 package co.electriccoin.zcash.preference
 
 import android.content.Context
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.filters.SmallTest
 import co.electriccoin.zcash.preference.test.fixture.StringDefaultPreferenceFixture
@@ -13,6 +15,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.io.File
+import java.security.KeyStore
 
 // Areas that are not covered yet:
 // 1. Test observer behavior
@@ -120,9 +123,48 @@ class EncryptedPreferenceProviderTest {
             assertFalse(restoredProvider.hasKey(StringDefaultPreferenceFixture.KEY))
         }
 
+    @Test
+    @SmallTest
+    fun graceful_recovery_when_master_key_is_lost_in_migration() =
+        runBlocking {
+            val context = ApplicationProvider.getApplicationContext<Context>()
+
+            // Faithful D2D simulation: the prefs file holds keysets encrypted with a Keystore
+            // master key, and that hardware-bound key does not exist on the target device.
+            // We reproduce this by writing through EncryptedSharedPreferences directly (bypassing
+            // the factory cache) and then deleting the master key from the Keystore.
+            val masterKey =
+                MasterKey
+                    .Builder(context)
+                    .apply { setKeyScheme(MasterKey.KeyScheme.AES256_GCM) }
+                    .build()
+            EncryptedSharedPreferences
+                .create(
+                    context,
+                    D2D_FILENAME,
+                    masterKey,
+                    EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                    EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                ).edit()
+                .putString(StringDefaultPreferenceFixture.KEY.key, "secret")
+                .commit()
+
+            KeyStore.getInstance("AndroidKeyStore").apply {
+                load(null)
+                deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
+            }
+
+            // Should NOT throw — the orphaned file is provably undecryptable, so it is recreated
+            val restoredProvider = AndroidPreferenceProvider.newEncrypted(context, D2D_FILENAME)
+
+            // Prefs are empty: user will re-enter seed phrase to recover wallet
+            assertFalse(restoredProvider.hasKey(StringDefaultPreferenceFixture.KEY))
+        }
+
     companion object {
         private const val FILENAME = "encrypted_preference_test"
         private const val RECOVERY_FILENAME = "encrypted_preference_recovery_test"
+        private const val D2D_FILENAME = "encrypted_preference_d2d_test"
 
         // Internal keyset key names used by EncryptedSharedPreferences to store Tink keysets
         private const val KEY_KEYSET = "__androidx_security_crypto_encrypted_prefs_key_keyset__"
