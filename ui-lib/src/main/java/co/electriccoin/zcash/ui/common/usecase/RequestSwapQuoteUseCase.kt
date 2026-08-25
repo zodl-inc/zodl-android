@@ -31,6 +31,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.math.BigDecimal
+import java.math.MathContext
 
 class RequestSwapQuoteUseCase(
     private val navigationRouter: NavigationRouter,
@@ -85,6 +86,12 @@ class RequestSwapQuoteUseCase(
      * unaffordable. The authoritative check is the SDK's typed insufficient-funds failure at
      * proposal time, which is evaluated against the account the proposal is actually built for and
      * lands on the same Insufficient Funds sheet.
+     *
+     * Unlike [requestExactInput], [amount] here is denominated in [selectedAsset]'s units, not ZEC
+     * (it is the destination amount the caller typed in), so it must go through the same USD
+     * cross-rate conversion as the pre-quote ZEC estimate before the check can run at all. When the
+     * ZEC or destination asset price isn't loaded yet, the pre-check is skipped rather than blocking
+     * on an unpriced amount, leaving the authoritative proposal-time check to decide.
      */
     suspend fun requestExactOutput(
         amount: BigDecimal,
@@ -93,7 +100,8 @@ class RequestSwapQuoteUseCase(
         slippage: BigDecimal,
         canNavigateToSwapQuote: () -> Boolean
     ) {
-        if (!accountDataSource.getSelectedAccount().canSpend(amount.convertZecToZatoshi())) {
+        val destinationZatoshi = amount.toDestinationAssetZatoshi(selectedAsset)
+        if (destinationZatoshi != null && !accountDataSource.getSelectedAccount().canSpend(destinationZatoshi)) {
             swapRepository.clearQuote()
             zashiProposalRepository.clear()
             keystoneProposalRepository.clear()
@@ -207,6 +215,26 @@ class RequestSwapQuoteUseCase(
                     FLEX_INPUT -> throw UnsupportedOperationException("Flex input swap not supported")
                 }
             }
+        }
+    }
+
+    /**
+     * Converts an amount denominated in [destinationAsset]'s units into the ZEC it costs to buy, via
+     * the same USD cross-rate [co.electriccoin.zcash.ui.screen.pay.ExactOutputVMMapper] already uses
+     * for its own zatoshi estimate, then clamps it to zatoshi through [convertZecToZatoshi]. Returns
+     * null when either price isn't loaded yet.
+     */
+    private fun BigDecimal.toDestinationAssetZatoshi(destinationAsset: SwapAsset): Zatoshi? {
+        val zecPrice =
+            swapRepository.assets.value.zecAsset
+                ?.usdPrice
+        val assetPrice = destinationAsset.usdPrice
+        return if (zecPrice == null || assetPrice == null) {
+            null
+        } else {
+            multiply(assetPrice, MathContext.DECIMAL128)
+                .divide(zecPrice, MathContext.DECIMAL128)
+                .convertZecToZatoshi()
         }
     }
 

@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.common.usecase
 
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.model.WalletAddress
+import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.type.AddressType
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
@@ -23,6 +24,7 @@ import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.screen.insufficientfunds.InsufficientFundsArgs
+import co.electriccoin.zcash.ui.screen.swap.convertZecToZatoshi
 import co.electriccoin.zcash.ui.screen.swap.quote.SwapQuoteArgs
 import co.electriccoin.zcash.ui.screen.texunsupported.TEXUnsupportedArgs
 import io.mockk.coEvery
@@ -40,6 +42,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.Test
 import java.math.BigDecimal
+import java.math.MathContext
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 
@@ -235,15 +238,35 @@ class RequestSwapQuoteUseCaseTest {
     @Test
     fun exactOutputZashiWithoutSpendableBalanceIsBlockedBeforeTheQuote() =
         runBlocking {
-            useCase(exactOutputQuote(), zashi(canSpend = false)).exactOutput()
+            val account = zashi(canSpend = false)
+            useCase(exactOutputQuote(), account).exactOutput()
+            verify { account.canSpend(exactOutputDestinationZatoshi()) }
             assertBlockedBeforeTheQuote()
         }
 
     @Test
     fun exactOutputKeystoneWithoutSpendableBalanceIsBlockedBeforeTheQuote() =
         runBlocking {
-            useCase(exactOutputQuote(), keystone(canSpend = false)).exactOutput()
+            val account = keystone(canSpend = false)
+            useCase(exactOutputQuote(), account).exactOutput()
+            verify { account.canSpend(exactOutputDestinationZatoshi()) }
             assertBlockedBeforeTheQuote()
+        }
+
+    /**
+     * The pre-check needs both the destination asset's and ZEC's usdPrice to convert the
+     * destination-denominated amount into zatoshi; when either is missing it must not block,
+     * leaving the authoritative proposal-time check to decide.
+     */
+    @Test
+    fun exactOutputSkipsBalanceCheckWhenAssetPriceIsUnavailable() =
+        runBlocking {
+            val account = zashi(canSpend = false)
+            val unpriced = SwapAssetTestFixture.asset(tokenTicker = "eth", chainTicker = "eth", usdPrice = null)
+            useCase(exactOutputQuote(destinationAsset = unpriced), account, supportedData = listOf(unpriced))
+                .exactOutput(selectedAsset = unpriced)
+            verify(exactly = 0) { account.canSpend(any()) }
+            assertForwardedToQuote()
         }
 
     // endregion
@@ -315,6 +338,21 @@ class RequestSwapQuoteUseCaseTest {
 
     private fun keystone(canSpend: Boolean = true): WalletAccount =
         mockk<KeystoneAccount> { every { this@mockk.canSpend(any()) } returns canSpend }
+
+    /**
+     * The zatoshi the exact-output pre-check should compute for [amount] of [destinationAsset],
+     * via the same USD cross-rate the use case applies (destination amount * asset price / ZEC
+     * price) — used to assert the actual value reaches [WalletAccount.canSpend], not just that some
+     * value did.
+     */
+    private fun exactOutputDestinationZatoshi(
+        amount: BigDecimal = BigDecimal("1"),
+        destinationAsset: SwapAsset = btc
+    ): Zatoshi =
+        amount
+            .multiply(destinationAsset.usdPrice!!, MathContext.DECIMAL128)
+            .divide(zec.usdPrice!!, MathContext.DECIMAL128)
+            .convertZecToZatoshi()
 
     private suspend fun RequestSwapQuoteUseCase.exactInput(selectedAsset: SwapAsset = btc) =
         requestExactInput(
