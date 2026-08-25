@@ -472,4 +472,73 @@ class MigrationBannerStateTest {
             result,
         )
     }
+
+    // ─── §6 RESIDUE gated on isFullySynced (mid-sync race) ────────────────────
+
+    /**
+     * Neal's repro (Slack, 2026-08-24): a wallet that was already fully swept elsewhere (0 ZEC)
+     * but hadn't finished syncing this instance showed a bogus "X ZEC left in Orchard" residue
+     * popup, and its "Migrate anyway" action failed with "no Orchard input found for TXID..." —
+     * orchardBalanceZatoshi and migratableOrchardTotalZatoshi are two independent reads of the
+     * same, still-changing DB mid-sync and can disagree window-to-window. The residue branch must
+     * not fire until the wallet has caught up with the chain tip.
+     */
+    @Test
+    fun residueBranchSuppressedWhileNotFullySynced() {
+        val result =
+            migrationMessageFor(
+                sdkState = null,
+                snapshot = null,
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = 500_000L, // in (dust, min) gap — would be residue if synced
+                migratableOrchardTotalZatoshi = MIGRATION_DUST_THRESHOLD_ZATOSHI + 1L,
+                isFullySynced = false,
+            )
+        assertNull(result, "Residue banner must not fire while the wallet is still mid-sync")
+    }
+
+    /**
+     * Contrast case: identical inputs, but the wallet is fully synced — the residue banner fires
+     * exactly as before. Confirms the new gate doesn't change behavior once sync has caught up.
+     */
+    @Test
+    fun residueBranchFiresOnceFullySynced() {
+        val result =
+            migrationMessageFor(
+                sdkState = null,
+                snapshot = null,
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = 500_000L,
+                migratableOrchardTotalZatoshi = MIGRATION_DUST_THRESHOLD_ZATOSHI + 1L,
+                isFullySynced = true,
+            )
+        assertEquals(
+            MigrationHomeMessageData(
+                isRunActive = false,
+                isComplete = true,
+                isResidueOnly = true,
+                residualBalanceZatoshi = 500_000L,
+            ),
+            result,
+        )
+    }
+
+    /**
+     * The plain "Migrate now" branch (raw balance ≥ [MIGRATION_RESIDUAL_MIN_ZATOSHI], no run) is
+     * deliberately NOT gated on [isFullySynced] — unlike the residue branch it only surfaces a CTA
+     * (no one-click transfer proposal reading stale notes), so the same mid-sync race isn't
+     * user-visible there. This pins that it still fires while mid-sync.
+     */
+    @Test
+    fun migrateNowBranchStillFiresWhileNotFullySynced() {
+        val result =
+            migrationMessageFor(
+                sdkState = null,
+                snapshot = null,
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI + 1_000_000L,
+                isFullySynced = false,
+            )
+        assertEquals(MigrationHomeMessageData(isRunActive = false), result)
+    }
 }
