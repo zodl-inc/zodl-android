@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.common.repository
 import cash.z.ecc.android.sdk.exception.PcztException
 import cash.z.ecc.android.sdk.model.Pczt
 import cash.z.ecc.android.sdk.model.Proposal
+import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZecSend
 import co.electriccoin.zcash.spackle.Twig
@@ -12,6 +13,7 @@ import co.electriccoin.zcash.ui.common.datasource.ExactOutputSwapTransactionProp
 import co.electriccoin.zcash.ui.common.datasource.InsufficientFundsException
 import co.electriccoin.zcash.ui.common.datasource.MigrationSweepTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.ProposalDataSource
+import co.electriccoin.zcash.ui.common.datasource.SendTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TexUnsupportedOnKSException
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposalNotCreatedException
@@ -45,32 +47,16 @@ interface KeystoneProposalRepository {
 
     val submitState: StateFlow<SubmitProposalState?>
 
-    @Throws(
-        TransactionProposalNotCreatedException::class,
-        InsufficientFundsException::class,
-        TexUnsupportedOnKSException::class
-    )
+    @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createProposal(zecSend: ZecSend)
 
-    @Throws(
-        TransactionProposalNotCreatedException::class,
-        InsufficientFundsException::class,
-        TexUnsupportedOnKSException::class
-    )
+    @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createExactInputSwapProposal(zecSend: ZecSend, quote: SwapQuote): ExactInputSwapTransactionProposal
 
-    @Throws(
-        TransactionProposalNotCreatedException::class,
-        InsufficientFundsException::class,
-        TexUnsupportedOnKSException::class
-    )
+    @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createExactOutputSwapProposal(zecSend: ZecSend, quote: SwapQuote): ExactOutputSwapTransactionProposal
 
-    @Throws(
-        TransactionProposalNotCreatedException::class,
-        InsufficientFundsException::class,
-        TexUnsupportedOnKSException::class
-    )
+    @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
     suspend fun createZip321Proposal(zip321Uri: String): Zip321TransactionProposal
 
     @Throws(TransactionProposalNotCreatedException::class, InsufficientFundsException::class)
@@ -83,7 +69,19 @@ interface KeystoneProposalRepository {
      */
     fun setMigrationSweepProposal(proposal: Proposal, amount: Zatoshi)
 
-    @Throws(PcztException.CreatePcztFromProposalException::class)
+    /**
+     * The SDK rejects any multi-step proposal for PCZT generation. That rejection is surfaced as
+     * [TexUnsupportedOnKSException] only when the current proposal actually pays a TEX (ZIP-320)
+     * address — the one flow where a multi-step proposal is the expected shape. For every other
+     * proposal (shielding, migration sweeps), the raw
+     * [PcztException.MultiStepProposalUnsupportedException] propagates so a TEX-specific error can
+     * never be shown for a failure unrelated to TEX.
+     */
+    @Throws(
+        PcztException.CreatePcztFromProposalException::class,
+        PcztException.MultiStepProposalUnsupportedException::class,
+        TexUnsupportedOnKSException::class
+    )
     suspend fun createPCZTFromProposal()
 
     @Throws(IllegalStateException::class)
@@ -202,14 +200,22 @@ class KeystoneProposalRepositoryImpl(
     }
 
     override suspend fun createPCZTFromProposal() {
+        val transactionProposal = getTransactionProposal()
         val result =
-            proposalDataSource.createPcztFromProposal(
-                account = accountDataSource.getSelectedAccount(),
-                proposal = getTransactionProposal().proposal
-            )
+            try {
+                proposalDataSource.createPcztFromProposal(
+                    account = accountDataSource.getSelectedAccount(),
+                    proposal = transactionProposal.proposal
+                )
+            } catch (e: PcztException.MultiStepProposalUnsupportedException) {
+                if (transactionProposal.paysTexAddress()) throw TexUnsupportedOnKSException() else throw e
+            }
         proposalPczt = result
         addProofsToPczt(result)
     }
+
+    private fun TransactionProposal.paysTexAddress(): Boolean =
+        this is SendTransactionProposal && destination is WalletAddress.Tex
 
     private fun addProofsToPczt(proposalPczt: Pczt) {
         pcztWithProofsJob?.cancel()
@@ -219,8 +225,9 @@ class KeystoneProposalRepositoryImpl(
                 try {
                     val result = proposalDataSource.addProofsToPczt(proposalPczt.clonePczt())
                     pcztWithProofs.update { PcztState(isLoading = false, pczt = result) }
-                } catch (_: PcztException.AddProofsToPcztException) {
-                    pcztWithProofs.update { PcztState(isLoading = false, pczt = null) }
+                } catch (e: PcztException.AddProofsToPcztException) {
+                    Twig.error(e) { "Failed to add proofs to PCZT" }
+                    pcztWithProofs.update { PcztState(isLoading = false, pczt = null, error = e) }
                 }
             }
     }
@@ -276,9 +283,12 @@ class KeystoneProposalRepositoryImpl(
                     throw cause
                 } else {
                     submitState.update { SubmitProposalState.Submitting }
-                    val pcztWithProofs = pcztWithProofs.filter { !it.isLoading }.first().pczt
+                    val pcztWithProofsState = pcztWithProofs.filter { !it.isLoading }.first()
+                    val pcztWithProofs = pcztWithProofsState.pczt
                     if (pcztWithProofs == null) {
-                        val cause = IllegalStateException("PCZT with proofs is null")
+                        val cause =
+                            pcztWithProofsState.error
+                                ?: IllegalStateException("PCZT with proofs is null")
                         submitState.update { SubmitProposalState.Result(SubmitResult.Error(cause)) }
                         throw cause
                     } else {
@@ -334,5 +344,6 @@ class KeystoneProposalRepositoryImpl(
 
 private data class PcztState(
     val isLoading: Boolean,
-    val pczt: Pczt?
+    val pczt: Pczt?,
+    val error: Exception? = null
 )

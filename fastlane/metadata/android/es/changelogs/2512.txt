@@ -1,0 +1,5 @@
+Añadido:
+- Añadimos un banner en la pantalla de inicio y una pantalla de seguimiento para un pequeño monto de ZEC que puede quedar en Orchard después de migrar a Ironwood, para que decidas si bloquearlo o moverlo.
+
+Corregido:
+- Corregimos la migración con una billetera Keystone: ahora las migraciones se dividen correctamente en rondas de firma.

@@ -1134,6 +1134,7 @@ Your vote can no longer be submitted.</string>
     <string name="vote_confirm_cta_submitting" tools:ignore="MissingTranslation">Submitting vote %1$d of %2$d</string>
     <string name="coinVote_store_submissionAuthorizingVote" tools:ignore="MissingTranslation">Authorizing vote...</string>
     <string name="coinVote_confirmSubmission_progressSubmittingVoteCount" tools:ignore="MissingTranslation">Submitting vote %1$d of %2$d...</string>
+    <string name="coinVote_confirmSubmission_submittingExplainerNote" tools:ignore="MissingTranslation">This can take a few minutes. Wallets with more voting weight take longer to process.</string>
     <string name="coinVote_results_percentValue" tools:ignore="MissingTranslation">%1$d%%</string>
     <string name="coinVote_common_submission" tools:ignore="MissingTranslation">Submission</string>
     <string name="coinVote_confirmSubmission_headerTitleIdle" tools:ignore="MissingTranslation">Confirm &amp; Submit</string>
@@ -1357,6 +1358,11 @@ Your vote can no longer be submitted.</string>
     <string name="migrationComplete_migrateAnywayFailureRejected">The network rejected this transaction. Please contact support.</string>
     <string name="migrationComplete_migrateAnywayFailureError">Something went wrong while sending. Please contact support.</string>
     <string name="migrationComplete_migrateAnywayFailurePartial">Some but not all of this transaction\'s parts were sent. Please contact support.</string>
+    <string name="migrationComplete_residueTitle">You’ve moved to Ironwood</string>
+    <string name="migrationComplete_residueSubtitle">A small balance is still sitting in Orchard.</string>
+    <string name="migrationComplete_inIronwoodLabel">In Ironwood</string>
+    <string name="migrationComplete_leftInOrchardLabel">Left in Orchard</string>
+    <string name="migrationComplete_residueRecommendationBody">%1$s is still in Orchard. Moving an amount this specific would link your Ironwood funds back to your Orchard history. We recommend locking it instead.</string>
 
     <string name="migrationNotifPermission_title">Allow Notifications</string>
     <string name="migrationNotifPermission_subtitle">If a scheduled transfer is missed or a background submission fails, we can send you a local notification and prompt you to open Zodl. Get notified about:</string>
@@ -1484,5 +1490,7 @@ Your vote can no longer be submitted.</string>
     <string name="migrationHome_readyToSendTitle">Transfer Ready</string>
     <string name="migrationHome_attentionTitle">Migration plan needs update</string>
     <string name="migrationHome_defaultSubtitle">Move your funds to Ironwood.</string>
+    <string name="migrationHome_residueTitle">%1$s left in Orchard</string>
+    <string name="migrationHome_residueSubtitle">Tap to decide what happens to it</string>
 
 </resources>

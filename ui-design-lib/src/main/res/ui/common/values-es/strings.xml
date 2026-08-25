@@ -1076,6 +1076,11 @@
     <string name="migrationComplete_migrateAnywayFailureRejected">La red rechazó esta transacción. Comunícate con el soporte.</string>
     <string name="migrationComplete_migrateAnywayFailureError">Ocurrió un error al enviar. Comunícate con el soporte.</string>
     <string name="migrationComplete_migrateAnywayFailurePartial">Se enviaron algunas partes de esta transacción, pero no todas. Comunícate con el soporte.</string>
+    <string name="migrationComplete_residueTitle">Te has movido a Ironwood</string>
+    <string name="migrationComplete_residueSubtitle">Un pequeño saldo todavía permanece en Orchard.</string>
+    <string name="migrationComplete_inIronwoodLabel">En Ironwood</string>
+    <string name="migrationComplete_leftInOrchardLabel">Restante en Orchard</string>
+    <string name="migrationComplete_residueRecommendationBody">%1$s todavía está en Orchard. Mover un monto tan específico podría vincular tus fondos de Ironwood con tu historial de Orchard. Te recomendamos bloquearlo en su lugar.</string>
 
     <string name="migrationNotifPermission_title">Permitir notificaciones</string>
     <string name="migrationNotifPermission_subtitle">Si se pierde una transferencia programada o falla un envío en segundo plano, podemos enviarte una notificación local para que abras Zodl. Recibe avisos sobre:</string>
@@ -1203,5 +1208,7 @@
     <string name="migrationHome_readyToSendTitle">Transferencia lista</string>
     <string name="migrationHome_attentionTitle">El plan de migración necesita actualización</string>
     <string name="migrationHome_defaultSubtitle">Mueve tus fondos a Ironwood.</string>
+    <string name="migrationHome_residueTitle">%1$s restante en Orchard</string>
+    <string name="migrationHome_residueSubtitle">Toca para decidir qué hacer con él</string>
 
 </resources>
