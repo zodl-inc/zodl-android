@@ -14,6 +14,16 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.10.1 (2512)] - 2026-08-25
+
+### Añadido:
+
+- Añadimos un banner en la pantalla de inicio y una pantalla de seguimiento para un pequeño monto de ZEC que puede quedar en Orchard después de migrar a Ironwood, para que decidas si bloquearlo o moverlo.
+
+### Corregido:
+
+- Corregimos la migración con una billetera Keystone: ahora las migraciones se dividen correctamente en rondas de firma.
+
 ## [3.10.0 (2475)] - 2026-08-20
 
 ### Añadido:
