@@ -25,6 +25,7 @@ import co.electriccoin.zcash.ui.common.provider.MigrationNotifier
 import co.electriccoin.zcash.ui.common.repository.BiometricRepository
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetIronwoodBalanceUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetOrchardBalanceUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetOrchardMigrationSdkUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
@@ -208,7 +209,7 @@ class MigrationCompleteVMTest {
         runTest {
             // Regression guard for the threshold discrepancy this test used to reproduce: onDone()'s
             // `moreRoundsNeeded` check used to compare the residual only against
-            // MIGRATION_DUST_THRESHOLD_ZATOSHI (0.001 ZEC) instead of MIGRATION_RESIDUAL_MIN_ZATOSHI
+            // MIGRATION_DUST_THRESHOLD_ZATOSHI (0.0001 ZEC) instead of MIGRATION_RESIDUAL_MIN_ZATOSHI
             // (0.01 ZEC) -- the actual engine minimum below which proposeMigrationTransfers() returns
             // NothingToMigrate. For a balance in the gap between the two (e.g. the live-observed
             // 0.005 ZEC / 500_000L zatoshi used by GetHomeMessageUseCaseMigrationTest's own
@@ -345,6 +346,47 @@ class MigrationCompleteVMTest {
         }
 
     @Test
+    fun residueVariantReadsTotalTransferredFromLiveIronwoodBalanceNotEngineSummary() =
+        runTest {
+            // MOB-1750: for isResidueOnly, "In Ironwood" must be the live Ironwood pool balance
+            // (GetIronwoodBalanceUseCase) -- never the migration engine's campaign-scoped
+            // getMigrationSummary(), which can genuinely have no rows for this account (e.g.
+            // after a debug migration restart) even though the wallet's real Ironwood balance is
+            // nonzero. Pins that the engine summary is never even queried for this variant, and
+            // a mismatched summary value (999 ZEC) is ignored in favor of the real balance.
+            val sdk =
+                mockk<OrchardMigrationSdk> {
+                    coEvery { getMigrationSummary() } returns
+                        MigrationSummary(
+                            totalMigratedZatoshi = 99_900_000_000L,
+                            transferCount = 5,
+                            firstMinedEpochSeconds = 1_785_281_502L,
+                            lastMinedEpochSeconds = 1_785_283_542L,
+                        )
+                }
+            val vm =
+                vm(
+                    account = mockk<KeystoneAccount>(relaxed = true),
+                    orchardBalanceZatoshi = 500_000L,
+                    router = FakeNavigationRouter(),
+                    args = MigrationCompleteArgs(isResidueOnly = true),
+                    ironwoodBalanceZatoshi = 12_450_000L,
+                    getOrchardMigrationSdk = mockk { coEvery { this@mockk() } returns sdk },
+                )
+
+            val collectJob = launch { vm.state.collect {} }
+            advanceUntilIdle()
+
+            assertEquals(
+                stringRes(Zatoshi(12_450_000L)),
+                vm.state.value.content
+                    ?.totalTransferred
+            )
+            coVerify(exactly = 0) { sdk.getMigrationSummary() }
+            collectJob.cancel()
+        }
+
+    @Test
     fun durationDoesNotApplyThePrivacyFloorSinceBothTimestampsAreAlreadyMined() =
         runTest {
             // The displayed duration spans the campaign's first to last MINED transfer -- both
@@ -385,6 +427,52 @@ class MigrationCompleteVMTest {
             collectJob.cancel()
         }
 
+    @Test
+    fun isResidueOnlyArgPropagatesThroughToState() =
+        runTest {
+            // MOB-1750: MigrationCompleteArgs.isResidueOnly must reach MigrationCompleteState
+            // unchanged — this is what MigrationCompleteScreen branches its copy/summary card on.
+            val vm =
+                vm(
+                    account = mockk<KeystoneAccount>(relaxed = true),
+                    orchardBalanceZatoshi = 500_000L,
+                    router = FakeNavigationRouter(),
+                    args = MigrationCompleteArgs(isResidueOnly = true),
+                )
+
+            val collectJob = launch { vm.state.collect {} }
+            advanceUntilIdle()
+
+            assertEquals(
+                true,
+                vm.state.value.content
+                    ?.isResidueOnly
+            )
+            collectJob.cancel()
+        }
+
+    @Test
+    fun isResidueOnlyDefaultsToFalseForTheOriginalCelebrationVariant() =
+        runTest {
+            val vm =
+                vm(
+                    account = mockk<KeystoneAccount>(relaxed = true),
+                    orchardBalanceZatoshi = 500_000L,
+                    router = FakeNavigationRouter(),
+                    args = MigrationCompleteArgs(isResidueOnly = false),
+                )
+
+            val collectJob = launch { vm.state.collect {} }
+            advanceUntilIdle()
+
+            assertEquals(
+                false,
+                vm.state.value.content
+                    ?.isResidueOnly
+            )
+            collectJob.cancel()
+        }
+
     private fun invokeOnDone(vm: MigrationCompleteVM) {
         val onDone = MigrationCompleteVM::class.java.getDeclaredMethod("onDone")
         onDone.isAccessible = true
@@ -403,6 +491,8 @@ class MigrationCompleteVMTest {
         account: WalletAccount,
         orchardBalanceZatoshi: Long,
         router: FakeNavigationRouter,
+        args: MigrationCompleteArgs = MigrationCompleteArgs(),
+        ironwoodBalanceZatoshi: Long = 0L,
         getOrchardMigrationSdk: GetOrchardMigrationSdkUseCase =
             mockk {
                 coEvery { this@mockk() } returns mockk(relaxed = true)
@@ -414,9 +504,14 @@ class MigrationCompleteVMTest {
         migrationScheduler: MigrationScheduler = mockk(relaxed = true),
         migrationNotifier: MigrationNotifier = mockk(relaxed = true),
     ) = MigrationCompleteVM(
+        args = args,
         getOrchardBalance =
             mockk<GetOrchardBalanceUseCase> {
                 coEvery { this@mockk() } returns Zatoshi(orchardBalanceZatoshi)
+            },
+        getIronwoodBalance =
+            mockk<GetIronwoodBalanceUseCase> {
+                coEvery { this@mockk() } returns Zatoshi(ironwoodBalanceZatoshi)
             },
         hasSeenMigrationCompleteStorageProvider = seen,
         hasLockedOrchardDustStorageProvider =

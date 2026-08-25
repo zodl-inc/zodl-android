@@ -250,6 +250,16 @@ jobs:
           api-level: 35
           arch: x86_64
           profile: pixel_6
+          # Default emulator-options with `-gpu swiftshader_indirect`
+          # swapped for `swangle_indirect`. Since #2442 put Haze
+          # backdrop blur on most screens, SwiftShader's host renderer
+          # loses graphics buffers under the RenderEffect load and
+          # takes the whole emulator process down mid-suite ("Failed to
+          # find ColorBuffer: N", then every later flow fails with
+          # "0 devices connected"). SwANGLE is the more robust
+          # headless backend; if the crash recurs, gate Haze's blur off
+          # on emulators in ZashiFrost.kt instead.
+          emulator-options: -no-window -gpu swangle_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
             adb install apk/*.apk
             chmod +x zodl-qa/scripts/run-smoke-android.sh
@@ -338,6 +348,9 @@ jobs:
           api-level: 35
           arch: x86_64
           profile: pixel_6
+          # See the e2e-android job above for why the GPU backend is
+          # pinned to SwANGLE rather than the default SwiftShader.
+          emulator-options: -no-window -gpu swangle_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
             adb install apk/*.apk
             chmod +x keystone-simulator/simulator

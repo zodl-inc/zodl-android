@@ -9,6 +9,7 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import co.electriccoin.zcash.preference.api.PreferenceProvider
 import co.electriccoin.zcash.preference.model.entry.PreferenceKey
+import co.electriccoin.zcash.spackle.Twig
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
@@ -21,8 +22,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.io.CharConversionException
 import java.io.File
+import java.security.InvalidKeyException
 import java.security.KeyStore
+import java.security.KeyStoreException
+import javax.crypto.BadPaddingException
 
 /**
  * Provides an Android implementation of shared preferences.
@@ -201,26 +206,64 @@ private class AndroidPreferenceFactoryImpl : AndroidPreferenceFactory {
     /**
      * Android Keystore keys are hardware-bound and not transferred during device-to-device
      * migration, so the encrypted prefs file arrives on the new device but cannot be decrypted.
-     * On failure, [deleteCorruptedEncryptedPreferences] wipes the orphaned file and creation is
-     * retried fresh.
+     * Only failures that provably mean the stored data can never be decrypted again trigger
+     * [deleteCorruptedEncryptedPreferences] and a fresh start: the master key being verifiably
+     * absent while the file exists ([isEncryptedFileOrphaned]), or a deterministic decryption or
+     * keyset-parse failure ([isUnrecoverableCorruption]). Every other failure — for example a
+     * transient Keystore outage — is logged and rethrown, because misclassifying it as corruption
+     * would irreversibly destroy the stored secrets.
      */
-    @Suppress("TooGenericExceptionCaught", "SwallowedException")
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun newEncrypted(context: Context, filename: String): PreferenceProvider =
         encryptedCache.getOrCreate(filename) {
             val dispatcher = Dispatchers.IO.limitedParallelism(1)
 
             val sharedPreferences =
                 withContext(dispatcher) {
+                    val isOrphaned = isEncryptedFileOrphaned(context, filename)
                     try {
                         createEncryptedSharedPreferences(context, filename)
-                    } catch (_: Exception) {
-                        deleteCorruptedEncryptedPreferences(context, filename)
-                        createEncryptedSharedPreferences(context, filename)
+                    } catch (e: Exception) {
+                        if (isOrphaned || isUnrecoverableCorruption(e)) {
+                            Twig.error(e) {
+                                "Encrypted preferences $filename can never be decrypted again; recreating them"
+                            }
+                            deleteCorruptedEncryptedPreferences(context, filename)
+                            createEncryptedSharedPreferences(context, filename)
+                        } else {
+                            Twig.error(e) {
+                                "Opening encrypted preferences $filename failed; keeping data intact for a retry"
+                            }
+                            throw e
+                        }
                     }
                 }
 
             AndroidPreferenceProvider(sharedPreferences, dispatcher)
         }
+
+    /**
+     * The device-to-device migration signature: the encrypted preferences file exists, but a
+     * working Keystore definitively reports the master key absent, so nothing can ever decrypt
+     * the file. The query is retried once so that a momentary Keystore hiccup does not disguise
+     * a genuinely orphaned file as healthy; a Keystore that still cannot be queried yields false —
+     * an unknown Keystore state must never authorize deleting the stored secrets.
+     *
+     * Must be evaluated before attempting [createEncryptedSharedPreferences]: a failed attempt has
+     * already recreated the master key alias via [MasterKey.Builder.build], so querying the
+     * Keystore afterwards would always report the alias present and never detect the orphan.
+     */
+    private fun isEncryptedFileOrphaned(
+        context: Context,
+        filename: String
+    ): Boolean {
+        if (!encryptedPreferencesFile(context, filename).exists()) {
+            return false
+        }
+        return retryOnceOrDefault(false) {
+            !androidKeyStore().containsAlias(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
+        }
+    }
 
     private fun createEncryptedSharedPreferences(
         context: Context,
@@ -245,9 +288,7 @@ private class AndroidPreferenceFactoryImpl : AndroidPreferenceFactory {
         filename: String
     ) {
         runCatching {
-            val keyStore = KeyStore.getInstance("AndroidKeyStore")
-            keyStore.load(null)
-            keyStore.deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
+            androidKeyStore().deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
         }
         // Clear in-memory SharedPreferences cache so the retry gets a clean instance.
         // Without this, Android returns the cached (corrupted) instance even after file deletion.
@@ -259,7 +300,56 @@ private class AndroidPreferenceFactoryImpl : AndroidPreferenceFactory {
                 .commit()
         }
         runCatching {
-            File(context.filesDir.parent, "shared_prefs/$filename.xml").delete()
+            encryptedPreferencesFile(context, filename).delete()
         }
     }
+
+    private fun encryptedPreferencesFile(
+        context: Context,
+        filename: String
+    ) = File(context.filesDir.parent, "shared_prefs/$filename.xml")
 }
+
+private const val ANDROID_KEYSTORE = "AndroidKeyStore"
+private const val CAUSE_CHAIN_LIMIT = 10
+
+private fun androidKeyStore(): KeyStore =
+    KeyStore
+        .getInstance(ANDROID_KEYSTORE)
+        .apply { load(null) }
+
+/**
+ * True only for failures that are deterministic for the stored ciphertext or this device's
+ * Keystore: an AEAD/padding authentication failure, a Tink keyset that no longer decodes
+ * ([CharConversionException] is Tink's malformed-hex signature, InvalidProtocolBufferException its
+ * malformed-proto one), Tink's Keystore self-test failure ([KeyStoreException] — in tink-android
+ * 1.8.0, `AndroidKeystoreKmsClient` throws it from exactly one place, `validateAead()`, when a
+ * post-key-creation AEAD encrypt/decrypt round-trip of a random message doesn't match; a
+ * permanent condition on devices with a buggy hardware Keystore), or [InvalidKeyException], the
+ * failure [createEncryptedSharedPreferences] actually throws for a genuinely
+ * device-to-device-orphaned file when [isEncryptedFileOrphaned]'s Keystore query itself failed
+ * twice (see [retryOnceOrDefault]) and so could not flag the orphan first — this is the second
+ * line of defense for that case. Other Keystore and general IO failures are excluded because they
+ * can be transient.
+ */
+internal fun isUnrecoverableCorruption(exception: Exception): Boolean =
+    generateSequence<Throwable>(exception) { it.cause }
+        .take(CAUSE_CHAIN_LIMIT)
+        .any {
+            it is BadPaddingException ||
+                it is CharConversionException ||
+                it is KeyStoreException ||
+                it is InvalidKeyException ||
+                it.javaClass.simpleName == "InvalidProtocolBufferException"
+        }
+
+/**
+ * Runs [block], retrying once if it throws; returns [default] when both attempts throw.
+ */
+internal fun <T> retryOnceOrDefault(
+    default: T,
+    block: () -> T
+): T =
+    runCatching(block)
+        .recoverCatching { block() }
+        .getOrDefault(default)

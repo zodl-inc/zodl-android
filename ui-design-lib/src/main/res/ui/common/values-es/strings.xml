@@ -75,15 +75,15 @@
     <string name="about_title">Acerca de</string>
     <string name="about_subtitle">Presentando Zodl</string>
     <string name="about_overflow_menu_content_description">Más opciones</string>
-    <string name="whatsNew_version" formatted="true">VersiÃ³n de Zodl <xliff:g example="1" id="version">%s</xliff:g></string>
+    <string name="whatsNew_version" formatted="true">Versión de Zodl <xliff:g example="1" id="version">%s</xliff:g></string>
     <string name="about_debug_menu_app_name">Nombre de la app:<xliff:g example="Zodl" id="app_name">%1$s</xliff:g></string>
-    <string name="about_debug_menu_build">CompilaciÃ³n: <xliff:g example="635dac0eb9ddc2bc6da5177f0dd495d8b76af4dc" id="git_commit_hash">%1$s</xliff:g></string>
-    <string name="about_description">Zodl es una wallet mÃ³vil impulsada por Zcash, creada para pagos privados imparables.
-        EstÃ¡ optimizada para almacenar y usar en el mundo real $ZEC protegido: la criptomoneda verdaderamente privada.\n\nDesarrollada por el equipo que estableciÃ³ el estÃ¡ndar de la industria en privacidad en cadena (on-chain), los desarrolladores originales del protocolo Zcash.
+    <string name="about_debug_menu_build">Compilación: <xliff:g example="635dac0eb9ddc2bc6da5177f0dd495d8b76af4dc" id="git_commit_hash">%1$s</xliff:g></string>
+    <string name="about_description">Zodl es una wallet móvil impulsada por Zcash, creada para pagos privados imparables.
+        Está optimizada para almacenar y usar en el mundo real $ZEC protegido: la criptomoneda verdaderamente privada.\n\nDesarrollada por el equipo que estableció el estándar de la industria en privacidad en cadena (on-chain), los desarrolladores originales del protocolo Zcash.
     </string>
-    <string name="about_termsOfUse">TÃ©rminos del Servicio</string>
-    <string name="about_unable_to_web_browser">No se pudo encontrar una aplicaciÃ³n de navegador web.</string>
-    <string name="about_privacyPolicy">PolÃ­tica de privacidad</string>
+    <string name="about_termsOfUse">Términos del Servicio</string>
+    <string name="about_unable_to_web_browser">No se pudo encontrar una aplicación de navegador web.</string>
+    <string name="about_privacyPolicy">Política de privacidad</string>
 
     <!-- ===== account_list ===== -->
     <string name="keystone_drawer_title">Billeteras y Dispositivos</string>
@@ -1076,6 +1076,11 @@
     <string name="migrationComplete_migrateAnywayFailureRejected">La red rechazó esta transacción. Comunícate con el soporte.</string>
     <string name="migrationComplete_migrateAnywayFailureError">Ocurrió un error al enviar. Comunícate con el soporte.</string>
     <string name="migrationComplete_migrateAnywayFailurePartial">Se enviaron algunas partes de esta transacción, pero no todas. Comunícate con el soporte.</string>
+    <string name="migrationComplete_residueTitle">Te has movido a Ironwood</string>
+    <string name="migrationComplete_residueSubtitle">Un pequeño saldo todavía permanece en Orchard.</string>
+    <string name="migrationComplete_inIronwoodLabel">En Ironwood</string>
+    <string name="migrationComplete_leftInOrchardLabel">Restante en Orchard</string>
+    <string name="migrationComplete_residueRecommendationBody">%1$s todavía está en Orchard. Mover un monto tan específico podría vincular tus fondos de Ironwood con tu historial de Orchard. Te recomendamos bloquearlo en su lugar.</string>
 
     <string name="migrationNotifPermission_title">Permitir notificaciones</string>
     <string name="migrationNotifPermission_subtitle">Si se pierde una transferencia programada o falla un envío en segundo plano, podemos enviarte una notificación local para que abras Zodl. Recibe avisos sobre:</string>
@@ -1203,5 +1208,7 @@
     <string name="migrationHome_readyToSendTitle">Transferencia lista</string>
     <string name="migrationHome_attentionTitle">El plan de migración necesita actualización</string>
     <string name="migrationHome_defaultSubtitle">Mueve tus fondos a Ironwood.</string>
+    <string name="migrationHome_residueTitle">%1$s restante en Orchard</string>
+    <string name="migrationHome_residueSubtitle">Toca para decidir qué hacer con él</string>
 
 </resources>

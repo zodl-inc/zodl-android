@@ -140,7 +140,15 @@ class MigrationBannerStateTest {
                 hasSeenComplete = false,
                 orchardBalanceZatoshi = 500_000L, // in the (dust, min) gap — residue
             )
-        assertEquals(MigrationHomeMessageData(isRunActive = false, isComplete = true), result)
+        assertEquals(
+            MigrationHomeMessageData(
+                isRunActive = false,
+                isComplete = true,
+                isResidueOnly = true,
+                residualBalanceZatoshi = 500_000L,
+            ),
+            result,
+        )
     }
 
     /**
@@ -273,7 +281,15 @@ class MigrationBannerStateTest {
                 hasSeenComplete = false,
                 orchardBalanceZatoshi = 500_000L, // in (dust, min) gap — residue, un-migratable
             )
-        assertEquals(MigrationHomeMessageData(isRunActive = false, isComplete = true), result)
+        assertEquals(
+            MigrationHomeMessageData(
+                isRunActive = false,
+                isComplete = true,
+                isResidueOnly = true,
+                residualBalanceZatoshi = 500_000L,
+            ),
+            result,
+        )
     }
 
     // ─── §3 Cross-branch: SyncRequiredBeforeNext during InProgress ────────────
@@ -374,5 +390,155 @@ class MigrationBannerStateTest {
         // Full equality also asserts isReadyToSend == false (the data class default) — the
         // ready-to-send branch must not have fired despite its other preconditions being met.
         assertEquals(MigrationHomeMessageData(isRunActive = false, completedCount = 1, totalCount = 2), result)
+    }
+
+    // ─── §5 Per-note dust gate (Kris Nuttycombe's formula) ────────────────────
+
+    /**
+     * A raw Orchard balance above [MIGRATION_DUST_THRESHOLD_ZATOSHI] can still be true dust if it's
+     * made up of notes too small individually to be worth spending net of MARGINAL_FEE — e.g. many
+     * sub-MARGINAL_FEE notes, or few notes just barely above MARGINAL_FEE. In that case the SDK's
+     * migratableOrchardTotal() (per-note, net of MARGINAL_FEE) reports at or below the threshold
+     * even though the raw balance does not. [migrationMessageFor] must gate the residue banner on
+     * the per-note total, not the raw balance — otherwise it prompts to migrate/lock a balance that
+     * costs more to move than it's worth.
+     */
+    @Test
+    fun rawBalanceAboveDustButPerNoteTotalAtDustShowsNothing() {
+        val result =
+            migrationMessageFor(
+                sdkState = null,
+                snapshot = null,
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = MIGRATION_DUST_THRESHOLD_ZATOSHI + 50_000L, // raw: well above dust
+                migratableOrchardTotalZatoshi = MIGRATION_DUST_THRESHOLD_ZATOSHI, // per-note: at the threshold
+            )
+        // No banner — the per-note total is not strictly above the threshold, even though the raw
+        // balance is. Falls through both the residue branch (gated on the per-note total) and the
+        // "Migrate now" branch (raw balance is still below MIGRATION_RESIDUAL_MIN_ZATOSHI).
+        assertNull(result)
+    }
+
+    /**
+     * Contrast case: when the per-note total genuinely exceeds the threshold, the residue banner
+     * fires exactly as before, and still displays the raw balance (not the net-of-fee total) as
+     * [MigrationHomeMessageData.residualBalanceZatoshi] — the user should see what they actually
+     * hold, not the fee-adjusted figure used only for the internal gate.
+     */
+    @Test
+    fun rawBalanceAndPerNoteTotalBothAboveDustShowsResidueWithRawBalanceDisplayed() {
+        val rawBalance = MIGRATION_DUST_THRESHOLD_ZATOSHI + 50_000L
+        val result =
+            migrationMessageFor(
+                sdkState = null,
+                snapshot = null,
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = rawBalance,
+                migratableOrchardTotalZatoshi = MIGRATION_DUST_THRESHOLD_ZATOSHI + 1L,
+            )
+        assertEquals(
+            MigrationHomeMessageData(
+                isRunActive = false,
+                isComplete = true,
+                isResidueOnly = true,
+                residualBalanceZatoshi = rawBalance,
+            ),
+            result,
+        )
+    }
+
+    /**
+     * Omitting [migrationMessageFor]'s migratableOrchardTotalZatoshi parameter defaults it to
+     * orchardBalanceZatoshi — i.e. legacy raw-balance behavior — so every pre-existing call site in
+     * this file and [GetHomeMessageUseCaseMigrationTest] that doesn't pass it keeps its original
+     * meaning unchanged.
+     */
+    @Test
+    fun migratableOrchardTotalZatoshiDefaultsToRawBalance() {
+        val result =
+            migrationMessageFor(
+                sdkState = null,
+                snapshot = null,
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = 500_000L, // in (dust, min) gap — residue, per legacy behavior
+            )
+        assertEquals(
+            MigrationHomeMessageData(
+                isRunActive = false,
+                isComplete = true,
+                isResidueOnly = true,
+                residualBalanceZatoshi = 500_000L,
+            ),
+            result,
+        )
+    }
+
+    // ─── §6 RESIDUE gated on isFullySynced (mid-sync race) ────────────────────
+
+    /**
+     * Neal's repro (Slack, 2026-08-24): a wallet that was already fully swept elsewhere (0 ZEC)
+     * but hadn't finished syncing this instance showed a bogus "X ZEC left in Orchard" residue
+     * popup, and its "Migrate anyway" action failed with "no Orchard input found for TXID..." —
+     * orchardBalanceZatoshi and migratableOrchardTotalZatoshi are two independent reads of the
+     * same, still-changing DB mid-sync and can disagree window-to-window. The residue branch must
+     * not fire until the wallet has caught up with the chain tip.
+     */
+    @Test
+    fun residueBranchSuppressedWhileNotFullySynced() {
+        val result =
+            migrationMessageFor(
+                sdkState = null,
+                snapshot = null,
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = 500_000L, // in (dust, min) gap — would be residue if synced
+                migratableOrchardTotalZatoshi = MIGRATION_DUST_THRESHOLD_ZATOSHI + 1L,
+                isFullySynced = false,
+            )
+        assertNull(result, "Residue banner must not fire while the wallet is still mid-sync")
+    }
+
+    /**
+     * Contrast case: identical inputs, but the wallet is fully synced — the residue banner fires
+     * exactly as before. Confirms the new gate doesn't change behavior once sync has caught up.
+     */
+    @Test
+    fun residueBranchFiresOnceFullySynced() {
+        val result =
+            migrationMessageFor(
+                sdkState = null,
+                snapshot = null,
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = 500_000L,
+                migratableOrchardTotalZatoshi = MIGRATION_DUST_THRESHOLD_ZATOSHI + 1L,
+                isFullySynced = true,
+            )
+        assertEquals(
+            MigrationHomeMessageData(
+                isRunActive = false,
+                isComplete = true,
+                isResidueOnly = true,
+                residualBalanceZatoshi = 500_000L,
+            ),
+            result,
+        )
+    }
+
+    /**
+     * The plain "Migrate now" branch (raw balance ≥ [MIGRATION_RESIDUAL_MIN_ZATOSHI], no run) is
+     * deliberately NOT gated on [isFullySynced] — unlike the residue branch it only surfaces a CTA
+     * (no one-click transfer proposal reading stale notes), so the same mid-sync race isn't
+     * user-visible there. This pins that it still fires while mid-sync.
+     */
+    @Test
+    fun migrateNowBranchStillFiresWhileNotFullySynced() {
+        val result =
+            migrationMessageFor(
+                sdkState = null,
+                snapshot = null,
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = MIGRATION_RESIDUAL_MIN_ZATOSHI + 1_000_000L,
+                isFullySynced = false,
+            )
+        assertEquals(MigrationHomeMessageData(isRunActive = false), result)
     }
 }

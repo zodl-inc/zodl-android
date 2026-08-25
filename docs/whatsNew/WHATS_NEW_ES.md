@@ -14,6 +14,21 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.10.0 (2475)] - 2026-08-20
+
+### Añadido:
+
+- Recuperamos Coinholder Polling para que puedas participar en las encuestas de la comunidad Zcash desde tu billetera.
+
+### Cambiado:
+
+- Actualizamos las encuestas para que funcionen con tus fondos migrados a Ironwood.
+- La carga de encuestas es más confiable ante fallas del servicio.
+
+### Corregido:
+
+- Corregimos errores al firmar y aceleramos la preparación de firmas con Keystone.
+
 ## [3.9.3 (2393)] - 2026-08-17
 
 ### Cambiado:
