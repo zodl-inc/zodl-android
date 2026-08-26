@@ -7,4 +7,6 @@ import co.electriccoin.zcash.ui.util.loggable
  * Mirrors `feature-migration`'s MigrationLogger: one plain tag, no unrelated noise, no-op in
  * release builds (see `loggable`'s `BuildConfig.DEBUG` gate).
  */
-val votingLog = co.electriccoin.zcash.ui.util.loggable("VOTING")
+val votingLog =
+    co.electriccoin.zcash.ui.util
+        .loggable("VOTING")

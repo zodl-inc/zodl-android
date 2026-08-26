@@ -36,14 +36,22 @@ class HttpPirSnapshotResolver(
             throw PirSnapshotResolverException.NoEndpointsConfigured
         }
 
+        // MOB-1808: probes used to fan out concurrently but all through ONE shared/isolated Tor
+        // HttpClient (built once outside the loop). Confirmed live (via the identical pattern in
+        // VotingApiProvider.delegateShares) that the native Tor engine serializes concurrent
+        // requests on a single isolated client/stream regardless of Kotlin-level concurrency —
+        // so this fan-out was likely no faster than probing endpoints one at a time. Fix: give
+        // each concurrent probe its own freshly-built isolated Tor client instead.
         val outcomes =
-            httpClientProvider.create().use { client ->
-                coroutineScope {
-                    normalizedEndpoints
-                        .map { url ->
-                            async { probe(client, url, expectedSnapshotHeight) }
-                        }.awaitAll()
-                }
+            coroutineScope {
+                normalizedEndpoints
+                    .map { url ->
+                        async {
+                            httpClientProvider.create().use { client ->
+                                probe(client, url, expectedSnapshotHeight)
+                            }
+                        }
+                    }.awaitAll()
             }
 
         return outcomes
