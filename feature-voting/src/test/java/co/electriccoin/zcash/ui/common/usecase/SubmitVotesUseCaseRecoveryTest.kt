@@ -10,10 +10,12 @@ import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.TransparentInfo
 import co.electriccoin.zcash.ui.common.model.UnifiedInfo
 import co.electriccoin.zcash.ui.common.model.voting.BundleDelegationPhase
+import co.electriccoin.zcash.ui.common.model.voting.CastVoteSignature
 import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLatest
 import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLeafBlock
 import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLeafPage
 import co.electriccoin.zcash.ui.common.model.voting.DelegationPhase
+import co.electriccoin.zcash.ui.common.model.voting.DelegatedShareInfo
 import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.TxConfirmation
@@ -21,11 +23,14 @@ import co.electriccoin.zcash.ui.common.model.voting.TxEvent
 import co.electriccoin.zcash.ui.common.model.voting.TxEventAttribute
 import co.electriccoin.zcash.ui.common.model.voting.TxResult
 import co.electriccoin.zcash.ui.common.model.voting.VoteOption
+import co.electriccoin.zcash.ui.common.model.voting.VoteCommitmentBundle
+import co.electriccoin.zcash.ui.common.model.voting.VotingCommittedVoteRecord
 import co.electriccoin.zcash.ui.common.model.voting.VotingDelegationSubmission
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingServiceConfig
 import co.electriccoin.zcash.ui.common.model.voting.VotingSession
+import co.electriccoin.zcash.ui.common.model.voting.VotingVoteCommitment
 import co.electriccoin.zcash.ui.common.model.voting.VotingTxHashLookup
 import co.electriccoin.zcash.ui.common.provider.PirSnapshotResolver
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -52,6 +57,7 @@ import java.util.Base64
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class SubmitVotesUseCaseRecoveryTest {
     @Test
@@ -114,6 +120,196 @@ class SubmitVotesUseCaseRecoveryTest {
             assertEquals(listOf(StoredVanPosition(bundleIndex = 0, position = 1)), fixture.storedVanPositions)
             assertEquals(listOf(1L..20L, 11L..20L), fixture.requestedLeafRanges)
         }
+
+    @Test
+    fun castVoteAcceptedResponseLossRestartsAndRecoversOriginalHash() =
+        runTest {
+            val fixture = CastVoteRecoveryFixture(keystoneAccount())
+
+            assertFailsWith<CastVoteResponseLost> {
+                fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
+            }
+
+            assertEquals(1, fixture.submittedBundles.size)
+            assertEquals(emptyList(), fixture.storedVoteHashes)
+            assertEquals(emptyList(), fixture.recordedVcPositions)
+            assertEquals(emptyList(), fixture.recordedShares)
+            assertEquals(1, fixture.closeDbCalls)
+
+            val result = fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
+
+            assertEquals(1, result.submittedProposalCount)
+            assertEquals(2, fixture.submittedBundles.size)
+            assertEquals(fixture.submittedBundles[0], fixture.submittedBundles[1])
+            assertEquals(fixture.submittedSignatures[0], fixture.submittedSignatures[1])
+            assertEquals(listOf(ORIGINAL_CAST_TX_HASH), fixture.confirmationLookups)
+            assertEquals(listOf(ORIGINAL_CAST_TX_HASH), fixture.storedVoteHashes)
+            assertTrue(fixture.storedVanPositions.contains(StoredVanPosition(bundleIndex = 0, position = 7)))
+            assertEquals(listOf(12L), fixture.recordedVcPositions)
+            assertEquals(listOf(0), fixture.recordedShares)
+            assertEquals(VotingRecoveryPhase.SHARES_SUBMITTED, fixture.recovery.phase)
+            assertEquals(2, fixture.closeDbCalls)
+        }
+
+    private class CastVoteRecoveryFixture(
+        private val selectedAccount: KeystoneAccount
+    ) {
+        val crypto = mockk<VotingCryptoClient>(relaxed = true)
+        val api = mockk<VotingApiProvider>(relaxed = true)
+        val submittedBundles = mutableListOf<VoteCommitmentBundle>()
+        val submittedSignatures = mutableListOf<CastVoteSignature>()
+        val storedVoteHashes = mutableListOf<String>()
+        val storedVanPositions = mutableListOf<StoredVanPosition>()
+        val recordedVcPositions = mutableListOf<Long>()
+        val recordedShares = mutableListOf<Int>()
+        val confirmationLookups = mutableListOf<String>()
+        var closeDbCalls = 0
+
+        private val accountUuid = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
+        var recovery =
+            VotingRecoverySnapshot(
+                accountUuid = accountUuid,
+                roundId = ROUND_ID,
+                phase = VotingRecoveryPhase.DELEGATION_SUBMITTED,
+                bundleCount = 1,
+                eligibleWeight = 1,
+                bundleWeights = listOf(1),
+                hotkeyAddress = "hotkey"
+            )
+
+        private val recoveryRepository = mockk<VotingRecoveryRepository>(relaxed = true)
+        private val synchronizerProvider = mockk<SynchronizerProvider>(relaxed = true)
+        private val prepareVotingRound = mockk<PrepareVotingRoundUseCase>()
+        private val resolveVotingRoundSession = mockk<ResolveVotingRoundSessionUseCase>()
+        private val getSelectedWalletAccount = mockk<GetSelectedWalletAccountUseCase>()
+        private val pirSnapshotResolver = mockk<PirSnapshotResolver>()
+        private val hotkeySeedProvider = mockk<VotingHotkeySeedProvider>()
+        private val session = votingSession()
+        private var submissionAttempt = 0
+
+        init {
+            val synchronizer = mockk<Synchronizer>()
+            every { synchronizer.network } returns ZcashNetwork.Mainnet
+            coEvery { synchronizerProvider.getSynchronizer() } returns synchronizer
+            coEvery { synchronizerProvider.getVotingWalletDbPath() } returns "/tmp/wallet/data.sqlite3"
+            coEvery { getSelectedWalletAccount() } returns selectedAccount
+            coEvery { prepareVotingRound(ROUND_ID) } returns
+                VotingRoundPreparationResult.Ready(ROUND_ID, 1, 1, "hotkey")
+            coEvery { resolveVotingRoundSession(ROUND_ID) } returns
+                VotingRoundSessionContext(
+                    session = session,
+                    serviceConfig =
+                        VotingServiceConfig(
+                            voteServers = listOf(VotingServiceConfig.ServiceEndpoint("https://vote", "vote")),
+                            pirEndpoints = listOf(VotingServiceConfig.ServiceEndpoint("https://pir", "pir")),
+                            pirLayout = VotingPirLayout(pirDepth = 1, tier0Layers = 1, tier1Layers = 1, polyLen = 4096)
+                        )
+                )
+            coEvery { pirSnapshotResolver.resolve(any(), any()) } returns "https://pir"
+            coEvery { recoveryRepository.get(accountUuid, ROUND_ID) } answers { recovery }
+            coEvery { recoveryRepository.setPhase(accountUuid, ROUND_ID, any()) } answers {
+                recovery = recovery.copy(phase = thirdArg())
+            }
+            coEvery { recoveryRepository.markProposalSubmitted(accountUuid, ROUND_ID, 1) } answers {
+                recovery = recovery.copy(submittedProposalIds = recovery.submittedProposalIds + 1)
+            }
+            coEvery { hotkeySeedProvider.get(accountUuid) } returns ByteArray(32) { 9 }
+
+            coEvery { crypto.getWalletNotesJson(any(), any(), any(), any()) } returns "[]"
+            coEvery { crypto.openVotingDb(any()) } returns 1
+            coEvery { crypto.closeVotingDb(any()) } answers { closeDbCalls += 1 }
+            coEvery { crypto.getVotes(any(), any()) } returns emptyList()
+            coEvery { crypto.getShareDelegations(any(), any()) } returns emptyList()
+            coEvery { crypto.getVoteTxHash(any(), any(), any(), any()) } returns VotingTxHashLookup.NotFound
+            coEvery { crypto.syncVoteTree(any(), any(), any()) } returns 10
+            coEvery { crypto.generateVanWitnessJson(any(), any(), any(), any()) } returns
+                """{"position":7,"anchor_height":10}"""
+            coEvery {
+                crypto.buildVoteCommitment(
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    any()
+                )
+            } returns
+                castVoteCommitment()
+            coEvery { crypto.storeVoteTxHash(any(), any(), any(), any(), any()) } answers {
+                storedVoteHashes += arg<String>(4)
+            }
+            coEvery { crypto.storeVanPosition(any(), any(), any(), any()) } answers {
+                storedVanPositions += StoredVanPosition(thirdArg(), arg(3))
+            }
+            coEvery { crypto.recordVcPosition(any(), any(), any(), any(), any()) } answers {
+                recordedVcPositions += arg<Long>(4)
+            }
+            coEvery { crypto.recoverCommittedVote(any(), any(), any(), any()) } returns
+                VotingCommittedVoteRecord(
+                    bundleIndex = 0,
+                    proposalId = 1,
+                    vcTreePosition = 12,
+                    sharePayloadsJson = sharePayloadsJson()
+                )
+            coEvery { crypto.scheduledShareSubmitAt(any(), any(), any(), any()) } returns 0
+            coEvery { crypto.recordShareDelegation(any(), any(), any(), any(), any(), any(), any(), any()) } answers {
+                recordedShares += arg<Int>(4)
+            }
+
+            coEvery { api.submitVoteCommitment(any(), any()) } answers {
+                submittedBundles += firstArg<VoteCommitmentBundle>()
+                submittedSignatures += secondArg<CastVoteSignature>()
+                submissionAttempt += 1
+                if (submissionAttempt == 1) {
+                    throw CastVoteResponseLost()
+                }
+                TxResult(
+                    txHash = ORIGINAL_CAST_TX_HASH,
+                    code = 2,
+                    log = "nullifier already spent"
+                )
+            }
+            coEvery { api.fetchTxConfirmation(ORIGINAL_CAST_TX_HASH) } answers {
+                confirmationLookups += ORIGINAL_CAST_TX_HASH
+                TxConfirmation(
+                    height = 20,
+                    code = 0,
+                    events =
+                        listOf(
+                            TxEvent(
+                                type = "cast_vote",
+                                attributes = listOf(TxEventAttribute("leaf_index", "7,12"))
+                            )
+                        )
+                )
+            }
+            coEvery { api.delegateShares(any()) } returns
+                listOf(DelegatedShareInfo(shareIndex = 0, proposalId = 1, acceptedByServers = listOf("https://helper")))
+        }
+
+        fun newUseCase() =
+            SubmitVotesUseCase(
+                resolveVotingRoundSession = resolveVotingRoundSession,
+                votingRecoveryRepository = recoveryRepository,
+                votingSessionStore = mockk<VotingSessionStore>(relaxed = true),
+                votingCryptoClient = crypto,
+                votingProofPrecomputeRepository = mockk<VotingProofPrecomputeRepository>(relaxed = true),
+                votingApiProvider = api,
+                pirSnapshotResolver = pirSnapshotResolver,
+                votingHotkeySeedProvider = hotkeySeedProvider,
+                synchronizerProvider = synchronizerProvider,
+                getSelectedWalletAccount = getSelectedWalletAccount,
+                getWalletSeedBytes = mockk(relaxed = true),
+                prepareVotingRound = prepareVotingRound,
+                votingShareTrackingScheduler = mockk<VotingShareTrackingScheduler>(relaxed = true)
+            )
+    }
 
     private class RecoveryFixture(
         private val selectedAccount: KeystoneAccount,
@@ -304,8 +500,11 @@ class SubmitVotesUseCaseRecoveryTest {
 
     private class ContinuationReached : CancellationException()
 
+    private class CastVoteResponseLost : CancellationException()
+
     private companion object {
         const val ROUND_ID = "1111111111111111111111111111111111111111111111111111111111111111"
+        const val ORIGINAL_CAST_TX_HASH = "original-cast-tx"
         val SPEND_AUTH_SIG = byteArrayOf(2)
         val SIGHASH = byteArrayOf(3)
         val RK = byteArrayOf(4)
@@ -326,6 +525,51 @@ class SubmitVotesUseCaseRecoveryTest {
                 alpha = ByteArray(0),
                 voteRoundId = ROUND_ID
             )
+
+        fun castVoteCommitment() =
+            VotingVoteCommitment(
+                vanNullifier = byteArrayOf(1),
+                voteAuthorityNoteNew = byteArrayOf(2),
+                voteCommitment = byteArrayOf(3),
+                rVpk = byteArrayOf(4),
+                voteAuthSig = byteArrayOf(5),
+                anchorHeight = 10,
+                encSharesJson = """[{"c1":"06","c2":"07","share_index":0}]""",
+                rawBundleJson =
+                    """
+                    {
+                      "van_nullifier":"01",
+                      "vote_authority_note_new":"02",
+                      "vote_commitment":"03",
+                      "proposal_id":1,
+                      "proof":"04",
+                      "enc_shares":[{"c1":"06","c2":"07","share_index":0}],
+                      "anchor_height":10,
+                      "vote_round_id":"$ROUND_ID",
+                      "shares_hash":"08",
+                      "share_blinds":[],
+                      "share_comms":[],
+                      "r_vpk_bytes":"04",
+                      "alpha_v":"09"
+                    }
+                    """.trimIndent()
+            )
+
+        fun sharePayloadsJson() =
+            """
+            [
+              {
+                "shares_hash":"08",
+                "proposal_id":1,
+                "vote_decision":0,
+                "enc_share":{"c1":"06","c2":"07","share_index":0},
+                "tree_position":12,
+                "vote_round_id":"$ROUND_ID",
+                "share_comms":[],
+                "primary_blind":"09"
+              }
+            ]
+            """.trimIndent()
 
         fun leafBlock(
             height: Long,
