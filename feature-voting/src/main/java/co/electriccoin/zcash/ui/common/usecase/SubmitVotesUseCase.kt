@@ -630,7 +630,20 @@ class SubmitVotesUseCase(
                 val registration = submission.toDelegationRegistration()
                 val result =
                     try {
-                        votingApiProvider.submitDelegation(registration)
+                        val accepted = votingApiProvider.submitDelegation(registration)
+                        check(accepted.code == 0) {
+                            "MANUAL_TEST requires a real accepted delegation, got code=${accepted.code}"
+                        }
+                        delay(2_000L)
+                        Log.w(
+                            TAG,
+                            "MANUAL_TEST replacing accepted delegation response with hashless spent-nullifier response"
+                        )
+                        accepted.copy(
+                            txHash = "",
+                            code = 1,
+                            log = "nullifier already spent: MANUAL_TEST"
+                        )
                     } catch (exception: CancellationException) {
                         throw exception
                     } catch (exception: Exception) {
@@ -675,6 +688,7 @@ class SubmitVotesUseCase(
                 bundleIndex = bundleIndex,
                 position = submissionResolution.position
             )
+            Log.w(TAG, "MANUAL_TEST commitment-tree path completed for bundle=$bundleIndex")
             return
         }
         val acceptedTransaction =
@@ -719,13 +733,16 @@ class SubmitVotesUseCase(
     ): Int? {
         val voteChainStartHeight = context.session.createdAtHeight.coerceAtLeast(0)
         return try {
+            Log.w(TAG, "MANUAL_TEST commitment-tree lookup started")
             findVanCommitmentPosition(
                 roundId = context.roundId,
                 startHeight = voteChainStartHeight,
                 expectedVanCmx = expectedVanCmx,
                 fetchLatest = votingApiProvider::fetchCommitmentTreeLatest,
                 fetchLeafPage = votingApiProvider::fetchCommitmentTreeLeafPage
-            )
+            ).also { position ->
+                Log.w(TAG, "MANUAL_TEST commitment-tree lookup result=$position")
+            }
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {
