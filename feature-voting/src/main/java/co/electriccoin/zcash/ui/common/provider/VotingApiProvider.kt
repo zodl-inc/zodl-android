@@ -1195,13 +1195,18 @@ private const val MAX_CONCURRENT_SHARE_DELEGATIONS = 16
 // connection doesn't dominate a batch's wall time the way we observed (up to 60s on one attempt).
 private const val SHARE_REQUEST_TIMEOUT_MILLIS = 15_000L
 
-// MOB-1808: how long fetchServiceConfig() reuses a source-matching cached config before treating
-// it as stale — well above the CHP round list's fastest polling loop (5s round-status
-// auto-refresh) and the foreground share-rediscovery driver (15s), so those loops collapse onto
-// one shared fetch instead of each re-fetching from scratch, while still keeping served config
-// close to real-time for anything that isn't already forcing a fresh fetch via
-// invalidateConfigCache() (e.g. the submit flow, or a config-source change).
-private const val CONFIG_CACHE_TTL_MS = 60_000L
+// MOB-1808: how long fetchServiceConfig() reuses a source-matching cached config (both the
+// static AND dynamic legs — fetchTrustedConfig() fetches them together as one unit, cached
+// together as one ResolvedVotingConfig) before treating it as stale. Well above the CHP round
+// list's fastest polling loop (5s round-status auto-refresh) and the foreground
+// share-rediscovery driver (15s), so those loops collapse onto one shared fetch instead of each
+// re-fetching from scratch. 10 minutes rather than something tighter: this config changes rarely
+// (trusted_keys rotation, server list changes) and nothing in the app already guarantees
+// real-time propagation of those changes, so a 10-minute-stale worst case is an acceptable
+// trade for cutting request volume much further — anything that genuinely needs a guaranteed
+// fresh fetch already bypasses this TTL via invalidateConfigCache() (the submit flow, or a
+// config-source change).
+private const val CONFIG_CACHE_TTL_MS = 600_000L
 
 private fun List<String>.normalizeServerUrls(): List<String> =
     map(String::trim)
