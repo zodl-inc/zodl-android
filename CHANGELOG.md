@@ -30,6 +30,9 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - Bottom sheets across the app now share one background color.
 - We rebuilt polling to work with your Ironwood-migrated funds.
 - We made poll loading more reliable during service outages.
+- Coinholder Polling no longer becomes unavailable when the primary voting configuration service is unreachable or blocked: the app
+  verifies the same pinned configuration from a second independent mirror, walks the configuration's own mirror list, and config
+  requests now give up after 15 seconds instead of two minutes.
 
 ### Fixed:
 

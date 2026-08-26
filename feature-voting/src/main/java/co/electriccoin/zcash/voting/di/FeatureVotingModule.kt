@@ -76,7 +76,14 @@ val featureVotingModule =
         // Providers
         singleOf(::VotingCryptoClientImpl) bind VotingCryptoClient::class
         singleOf(::VotingHotkeySeedProviderImpl) bind VotingHotkeySeedProvider::class
-        singleOf(::KtorVotingApiProvider) bind VotingApiProvider::class
+        single<VotingApiProvider> {
+            KtorVotingApiProvider(
+                httpClientProvider = get(),
+                configurationRepository = get(),
+                votingChainConfigRepository = get(),
+                votingCryptoClient = get()
+            )
+        }
         singleOf(::HttpPirSnapshotResolver) bind PirSnapshotResolver::class
         singleOf(::VotingShareTrackingScheduler)
 

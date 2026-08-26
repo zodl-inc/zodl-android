@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.common.provider
 
 import co.electriccoin.zcash.ui.common.model.voting.StaticVotingConfig
 import co.electriccoin.zcash.ui.common.model.voting.VotingConfigException
+import co.electriccoin.zcash.ui.common.model.voting.toLowerHex
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
@@ -108,18 +109,44 @@ class VoteServerFailoverTest {
     }
 
     @Test
-    fun invalidConfiguredSourceFallsBackToBundledPinnedSource() {
-        val source = resolvePinnedConfigSource("not a url")
-        val bundled = resolvePinnedConfigSource(StaticVotingConfig.BUNDLED_PINNED_SOURCE)
+    fun invalidConfiguredSourceFallsBackToBundledPinnedSources() {
+        val sources = resolvePinnedConfigSource("not a url")
 
-        assertEquals(bundled, source)
+        assertEquals(StaticVotingConfig.BUNDLED_PINNED_CONFIG_SOURCES, sources)
+    }
+
+    @Test
+    fun emptyConfiguredSourceFallsBackToBundledPinnedSources() {
+        val sources = resolvePinnedConfigSource("")
+
+        assertEquals(StaticVotingConfig.BUNDLED_PINNED_CONFIG_SOURCES, sources)
     }
 
     @Test
     fun validConfiguredSourceCanBeUnpinned() {
-        val source = resolvePinnedConfigSource("https://override.example.com/static-voting-config.json?foo=bar")
+        val sources = resolvePinnedConfigSource("https://override.example.com/static-voting-config.json?foo=bar")
 
-        assertEquals("https://override.example.com/static-voting-config.json?foo=bar", source.url)
-        assertEquals(null, source.sha256)
+        assertEquals(1, sources.size)
+        assertEquals("https://override.example.com/static-voting-config.json?foo=bar", sources.single().url)
+        assertEquals(null, sources.single().sha256)
+    }
+
+    @Test
+    fun bundledMirrorEqualOverrideResolvesToFullBundledWalk() {
+        val sources = resolvePinnedConfigSource(StaticVotingConfig.BUNDLED_PINNED_SOURCE_MIRROR)
+
+        assertEquals(StaticVotingConfig.BUNDLED_PINNED_CONFIG_SOURCES, sources)
+    }
+
+    @Test
+    fun bundledUrlWithDifferentChecksumStaysSingleSource() {
+        val differentChecksum = "0a".repeat(32)
+        val overrideUrl =
+            StaticVotingConfig.BUNDLED_PINNED_SOURCE.substringBefore("checksum=") + "checksum=sha256:$differentChecksum"
+
+        val sources = resolvePinnedConfigSource(overrideUrl)
+
+        assertEquals(1, sources.size)
+        assertEquals(differentChecksum, sources.single().sha256?.toLowerHex())
     }
 }
