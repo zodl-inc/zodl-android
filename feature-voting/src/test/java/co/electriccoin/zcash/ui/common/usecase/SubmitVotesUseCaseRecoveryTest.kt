@@ -67,7 +67,7 @@ class SubmitVotesUseCaseRecoveryTest {
             assertEquals(DelegationPhase.PROVED, fixture.delegationPhases[1])
             assertEquals(listOf(StoredVanPosition(bundleIndex = 0, position = 1)), fixture.storedVanPositions)
             assertEquals(emptyList(), fixture.storedDelegationHashes)
-            assertEquals(listOf(0L..20L, 11L..20L), fixture.requestedLeafRanges)
+            assertEquals(listOf(1L..20L, 11L..20L), fixture.requestedLeafRanges)
 
             assertFailsWith<ContinuationReached> {
                 fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
@@ -112,7 +112,7 @@ class SubmitVotesUseCaseRecoveryTest {
 
             assertEquals(DelegationPhase.CONFIRMED, fixture.delegationPhases[0])
             assertEquals(listOf(StoredVanPosition(bundleIndex = 0, position = 1)), fixture.storedVanPositions)
-            assertEquals(listOf(0L..20L, 11L..20L), fixture.requestedLeafRanges)
+            assertEquals(listOf(1L..20L, 11L..20L), fixture.requestedLeafRanges)
         }
 
     private class RecoveryFixture(
@@ -246,7 +246,7 @@ class SubmitVotesUseCaseRecoveryTest {
                 val fromHeight = secondArg<Long>()
                 requestedLeafRanges += fromHeight..20L
                 when (fromHeight) {
-                    0L ->
+                    1L ->
                         CommitmentTreeLeafPage(
                             blocks =
                                 listOf(
@@ -340,7 +340,7 @@ class SubmitVotesUseCaseRecoveryTest {
         fun votingSession() =
             VotingSession(
                 voteRoundId = ROUND_ID.chunked(2).map { it.toInt(16).toByte() }.toByteArray(),
-                snapshotHeight = 1,
+                snapshotHeight = 3_459_350,
                 snapshotBlockhash = ByteArray(32),
                 proposalsHash = ByteArray(32),
                 voteEndTime = Instant.parse("2100-01-02T00:00:00Z"),

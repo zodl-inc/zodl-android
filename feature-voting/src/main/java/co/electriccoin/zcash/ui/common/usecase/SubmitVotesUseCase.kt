@@ -716,10 +716,12 @@ class SubmitVotesUseCase(
     private suspend fun findPersistedVanPosition(
         context: VotingSubmitContext,
         expectedVanCmx: ByteArray
-    ): Int? =
-        try {
+    ): Int? {
+        val voteChainStartHeight = context.session.createdAtHeight.coerceAtLeast(0)
+        return try {
             findVanCommitmentPosition(
                 roundId = context.roundId,
+                startHeight = voteChainStartHeight,
                 expectedVanCmx = expectedVanCmx,
                 fetchLatest = votingApiProvider::fetchCommitmentTreeLatest,
                 fetchLeafPage = votingApiProvider::fetchCommitmentTreeLeafPage
@@ -730,6 +732,7 @@ class SubmitVotesUseCase(
             Log.w(TAG, "Unable to reconcile persisted VAN commitment for round ${context.roundId}", exception)
             null
         }
+    }
 
     private suspend fun submitVoteCommitmentsAndShares(
         context: VotingSubmitContext,
@@ -1473,6 +1476,7 @@ internal suspend fun reconcileDelegationTransactionResult(
 
 internal suspend fun findVanCommitmentPosition(
     roundId: String,
+    startHeight: Long = 0,
     expectedVanCmx: ByteArray,
     maxRecoveryAttempts: Int = SPENT_NULLIFIER_RECOVERY_ATTEMPTS,
     recoveryDelayMillis: Long = SPENT_NULLIFIER_RECOVERY_POLL_MS,
@@ -1481,6 +1485,7 @@ internal suspend fun findVanCommitmentPosition(
     fetchLeafPage: suspend (String, Long, Long) -> CommitmentTreeLeafPage
 ): Int? {
     require(roundId.isNotBlank()) { "roundId must not be blank" }
+    require(startHeight >= 0) { "startHeight must be non-negative" }
     require(expectedVanCmx.size == COMMITMENT_BYTES) {
         "expectedVanCmx must be $COMMITMENT_BYTES bytes"
     }
@@ -1492,10 +1497,11 @@ internal suspend fun findVanCommitmentPosition(
         val latest = fetchLatest(roundId)
         require(latest.height >= 0) { "Commitment tree height must be non-negative" }
         require(latest.nextIndex >= 0) { "Commitment tree next_index must be non-negative" }
+        val scanStartHeight = startHeight.takeIf { it <= latest.height } ?: 0L
         val matches = mutableSetOf<Long>()
         var previousNextIndex: Long? = null
         var previousBlockHeight: Long? = null
-        var pageStart = 0L
+        var pageStart = scanStartHeight
         var pageCount = 0
         do {
             check(pageCount < maxPagesPerAttempt) {

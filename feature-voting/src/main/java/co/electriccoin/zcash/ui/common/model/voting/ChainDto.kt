@@ -93,6 +93,7 @@ data class ChainRoundDto(
     @SerialName("nullifier_imt_root") val nullifierImtRoot: String = "",
     @SerialName("creator") val creator: String = "",
     @SerialName("discussion_url") val discussionUrl: String? = null,
+    // Cosmos vote-chain height where this round record was created, distinct from snapshotHeight.
     @SerialName("created_at_height") val createdAtHeight: Long = 0,
 ) {
     fun toVotingRound(): VotingRound {
