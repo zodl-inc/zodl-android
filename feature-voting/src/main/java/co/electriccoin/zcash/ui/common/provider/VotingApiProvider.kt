@@ -151,7 +151,7 @@ class KtorVotingApiProvider(
     /**
      * Per-attempt timeout for both config-fetch legs (MOB-1809), defaulting to
      * [StaticVotingConfig.CONFIG_REQUEST_TIMEOUT_MS]. Overridable only so tests can inject a
-     * short value when exercising the app-side [withConfigRequestTimeoutFallback] path — the
+     * short value when exercising the app-side [withTorRequestTimeoutFallback] path — the
      * production default never changes, and DI (see `featureVotingModule`) never passes an
      * override, so every real caller gets the same 15s bound both the Ktor-level and app-side
      * timeout mechanisms share.
@@ -605,7 +605,7 @@ class KtorVotingApiProvider(
         supportsKtorTimeouts: Boolean
     ): ByteArray =
         try {
-            withConfigRequestTimeoutFallback(supportsKtorTimeouts, configRequestTimeoutMillis) {
+            withTorRequestTimeoutFallback(supportsKtorTimeouts, configRequestTimeoutMillis) {
                 get(url) {
                     noCache()
                     configRequestTimeout(supportsKtorTimeouts, configRequestTimeoutMillis)
@@ -702,7 +702,7 @@ class KtorVotingApiProvider(
         supportsKtorTimeouts: Boolean
     ): String =
         try {
-            withConfigRequestTimeoutFallback(supportsKtorTimeouts, configRequestTimeoutMillis) {
+            withTorRequestTimeoutFallback(supportsKtorTimeouts, configRequestTimeoutMillis) {
                 get(url.withCacheBustIfNeeded(cacheBustToken)) {
                     noCache()
                     configRequestTimeout(supportsKtorTimeouts, configRequestTimeoutMillis)
@@ -853,12 +853,29 @@ class KtorVotingApiProvider(
         supportsKtorTimeouts: Boolean
     ): Boolean =
         try {
-            post("$serverUrl/shielded-vote/v1/shares") {
-                setBody(TextContent(body, ContentType.Application.Json))
-                helperRequestTimeout(supportsKtorTimeouts)
+            // MOB-1808: observed live (see the "slow window" trace) that a single share hitting a
+            // vote server with a flaky/dropping Tor connection could hang far past every other
+            // share's latency — helperRequestTimeout() is a Ktor-level timeout that's a no-op
+            // under Tor (installTimeouts = false, same blind spot MOB-1809 already fixed for the
+            // config-fetch legs), so nothing was actually bounding this attempt when
+            // supportsKtorTimeouts is false. Wrapping in withTorRequestTimeoutFallback fails this
+            // one attempt fast instead of stalling the whole delegateShares() batch (awaitAll())
+            // on its slowest share.
+            withTorRequestTimeoutFallback(supportsKtorTimeouts, SHARE_REQUEST_TIMEOUT_MILLIS) {
+                post("$serverUrl/shielded-vote/v1/shares") {
+                    setBody(TextContent(body, ContentType.Application.Json))
+                    helperRequestTimeout(supportsKtorTimeouts)
+                }
             }
             serverHealthTracker.recordSuccess(serverUrl)
             true
+        } catch (_: TimeoutCancellationException) {
+            // Our own withTorRequestTimeoutFallback deadline firing, NOT a genuine outer
+            // cancellation (see that function's TRAP doc) — treat exactly like any other failed
+            // attempt so the caller's fallback-target loop still runs, instead of the rethrow
+            // below misidentifying it as delegateShares' sibling-cancellation signal.
+            serverHealthTracker.recordFailure(serverUrl)
+            false
         } catch (throwable: Throwable) {
             // MOB-1808: delegateShares() now cancels sibling shares via coroutineScope on the
             // first failing share. Without this rethrow, a cancelled share's suspended post()
@@ -1059,24 +1076,26 @@ private fun HttpRequestBuilder.configRequestTimeout(
 }
 
 /**
- * Bounds a config-fetch attempt to [timeoutMillis] app-side when Ktor-level timeouts are
- * unavailable ([supportsKtorTimeouts] == false — the Tor client is built with
- * `installTimeouts = false`, so [configRequestTimeout] is a no-op there and a stalling origin
- * would otherwise hang the attempt forever). When [supportsKtorTimeouts] is true, [block] runs
- * unbounded here — Ktor's own per-request [io.ktor.client.plugins.HttpTimeout] already enforces
- * the same bound.
+ * Bounds a request attempt to [timeoutMillis] app-side when Ktor-level timeouts are unavailable
+ * ([supportsKtorTimeouts] == false — every Tor-routed client is built with
+ * `installTimeouts = false`, so a Ktor-level `timeout { }` block is a no-op there and a stalling
+ * origin would otherwise hang the attempt forever). When [supportsKtorTimeouts] is true, [block]
+ * runs unbounded here — Ktor's own per-request [io.ktor.client.plugins.HttpTimeout] already
+ * enforces the same bound. Originally written for the config-fetch legs (MOB-1809); reused as-is
+ * for delegateShares()'s per-share POST (MOB-1808) — same blind spot, same fix, different caller.
  *
  * TRAP: [kotlinx.coroutines.TimeoutCancellationException] EXTENDS [CancellationException].
  * kotlinx.coroutines guarantees it is delivered only to the [kotlinx.coroutines.withTimeout]
  * frame whose own deadline actually expired; a genuine OUTER cancellation manifests as a
  * *different* [CancellationException] and is never caught by a `catch (TimeoutCancellationException)`
  * clause here. Every caller MUST catch [TimeoutCancellationException] explicitly and convert it to
- * that leg's own retryable exception BEFORE any generic `catch (exception: Exception)` /
+ * that leg's own retryable/failed outcome BEFORE any generic `catch (exception: Exception)` /
  * [rethrowIfCancellation] handling runs — letting it fall through to that generic handling would
- * rethrow it as a cancellation and abort the whole mirror walk instead of falling through to the
- * next mirror.
+ * rethrow it as a genuine cancellation instead of a per-attempt timeout (aborting a whole mirror
+ * walk, or in postShare's case wrongly killing sibling shares via structured concurrency, instead
+ * of just trying the next mirror/fallback server).
  */
-private suspend fun <T> withConfigRequestTimeoutFallback(
+private suspend fun <T> withTorRequestTimeoutFallback(
     supportsKtorTimeouts: Boolean,
     timeoutMillis: Long,
     block: suspend () -> T
@@ -1093,7 +1112,7 @@ private suspend fun <T> withConfigRequestTimeoutFallback(
  * fallback, which classifies and fails fast per attempt. Left unmarked, the client's default
  * policy (`~5` attempts with exponential backoff, roughly 90s) would internally exhaust itself
  * against a single dead mirror before the walk's own classification — and
- * [withConfigRequestTimeoutFallback]'s fail-fast bound — ever runs. Uses Ktor's own per-request
+ * [withTorRequestTimeoutFallback]'s fail-fast bound — ever runs. Uses Ktor's own per-request
  * retry configuration ([io.ktor.client.plugins.retry]); on a client where [HttpRequestRetry]
  * isn't installed at all (the Tor client), this is a harmless no-op.
  */
@@ -1166,6 +1185,15 @@ private const val TRANSIENT_HTTP_STATUS_MAX = 599
 // larger wallet's fan-out to something that won't look like an anomalous multi-circuit burst to
 // the vote servers or exhaust local Tor/thread resources.
 private const val MAX_CONCURRENT_SHARE_DELEGATIONS = 16
+
+// MOB-1808: per-attempt app-side timeout for a single share POST under Tor (see postShare's
+// withTorRequestTimeoutFallback usage) — bounds how long one flaky/dropping vote-server
+// connection can stall delegateShares()'s awaitAll() before that attempt fails fast and the
+// caller's fallback-target loop tries a different server. Matches StaticVotingConfig's
+// CONFIG_REQUEST_TIMEOUT_MS convention (15s): comfortably above the ~0.3-2s a healthy share POST
+// (including circuit build) took in live measurement, short enough that one dead operator
+// connection doesn't dominate a batch's wall time the way we observed (up to 60s on one attempt).
+private const val SHARE_REQUEST_TIMEOUT_MILLIS = 15_000L
 
 // MOB-1808: how long fetchServiceConfig() reuses a source-matching cached config before treating
 // it as stale — well above the CHP round list's fastest polling loop (5s round-status
