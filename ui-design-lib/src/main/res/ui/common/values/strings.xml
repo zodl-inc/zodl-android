@@ -444,6 +444,7 @@
     <string name="home_message_crash_reporting_title">Help improve Zodl</string>
     <string name="home_message_crash_reporting_subtitle">Allow sharing crash reports</string>
     <string name="home_message_coinholder_polling_subtitle" tools:ignore="MissingTranslation">Shape the future of the Zcash network.</string>
+    <string name="home_message_coinholder_polling_button" tools:ignore="MissingTranslation">Start</string>
     <string name="balances_spendableBalance_title">Spendable Balance</string>
     <string name="balances_everythingDone">All your funds are shielded and spendable.</string>
     <string name="balances_infoPending">Pending receipt of change from a prior transaction.</string>

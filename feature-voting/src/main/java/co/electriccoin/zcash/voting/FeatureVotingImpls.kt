@@ -3,7 +3,6 @@ package co.electriccoin.zcash.voting
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
-import cash.z.ecc.android.sdk.ext.toHex
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
@@ -13,7 +12,6 @@ import co.electriccoin.zcash.ui.common.repository.VotingKeystoneRouteStage
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
-import co.electriccoin.zcash.ui.common.repository.effectiveChoices
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshActiveVotingSessionUseCase
@@ -190,7 +188,7 @@ class VotingHomeMessageSourceImpl(
 ) : VotingHomeMessageSource {
     private data class ActiveScope(
         val accountUuid: String,
-        val session: VotingSession
+        val roundId: String
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -203,15 +201,15 @@ class VotingHomeMessageSourceImpl(
                 getSelectedWalletAccount.observe(),
             ) { apiSnapshot, account ->
                 val accountUuid = account?.sdkAccount?.accountUuid?.toVotingAccountScopeId()
-                val activeSession =
-                    apiSnapshot.sessionsByRoundId.values.firstOrNull { session ->
-                        session.status == SessionStatus.ACTIVE
+                val activeEntry =
+                    apiSnapshot.sessionsByRoundId.entries.firstOrNull { entry ->
+                        entry.value.status == SessionStatus.ACTIVE
                     }
 
                 when {
-                    accountUuid == null || activeSession == null -> null
-                    !Instant.now().isBefore(activeSession.voteEndTime) -> null
-                    else -> ActiveScope(accountUuid, activeSession)
+                    accountUuid == null || activeEntry == null -> null
+                    !Instant.now().isBefore(activeEntry.value.voteEndTime) -> null
+                    else -> ActiveScope(accountUuid, activeEntry.key)
                 }
             }.distinctUntilChanged()
 
@@ -220,20 +218,15 @@ class VotingHomeMessageSourceImpl(
                 if (scope == null) {
                     flowOf(false)
                 } else {
-                    val roundId = scope.session.voteRoundId.toHex()
+                    val roundId = scope.roundId
                     combine(
                         votingSessionStore.state,
                         votingRecoveryRepository.observe(scope.accountUuid, roundId),
                     ) { sessionStoreState, recovery ->
                         val inMemoryCount = sessionStoreState.submittedProposalCount(scope.accountUuid, roundId)
-                        val persistedCount =
-                            recovery
-                                ?.takeIf { it.submittedAtEpochSeconds != null }
-                                ?.effectiveChoices(scope.session.proposals)
-                                ?.size
-                        val submittedCount = inMemoryCount ?: persistedCount
+                        val hasVoted = inMemoryCount != null || recovery?.submittedAtEpochSeconds != null
 
-                        submittedCount == null || submittedCount < scope.session.proposals.size
+                        !hasVoted
                     }
                 }
             }.distinctUntilChanged()

@@ -67,7 +67,7 @@ fun CoinholderPollingMessage(
                 state =
                     ButtonState(
                         onClick = state.onButtonClick,
-                        text = stringRes(R.string.smartBanner_content_backup_button)
+                        text = stringRes(R.string.home_message_coinholder_polling_button)
                     )
             )
         }
