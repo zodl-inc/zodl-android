@@ -184,6 +184,44 @@ class StaticVotingConfigTest {
     }
 
     @Test
+    fun unsupportedVersionExceptionMessageIsExact() {
+        val data =
+            makeStaticConfigJson()
+                .replace("\"static_config_version\": 1", "\"static_config_version\": 3")
+                .toByteArray(Charsets.UTF_8)
+
+        val exception =
+            assertFailsWith<VotingConfigException> {
+                StaticVotingConfig.decodeAndVerify(data = data, expectedSHA256 = null)
+            }
+
+        assertEquals("Unsupported static_config_version 3", exception.message)
+    }
+
+    /**
+     * The unsupported-version check must win over every field check: a v3 payload with neither
+     * `dynamic_config_url` nor `dynamic_config_urls` (nor even `trusted_keys`) must still report
+     * the version error, not a missing-field error.
+     */
+    @Test
+    fun unsupportedVersionWinsOverMissingDynamicUrlFields() {
+        val data =
+            """
+            {
+              "static_config_version": 3,
+              "trusted_keys": []
+            }
+            """.trimIndent().toByteArray(Charsets.UTF_8)
+
+        val exception =
+            assertFailsWith<VotingConfigException> {
+                StaticVotingConfig.decodeAndVerify(data = data, expectedSHA256 = null)
+            }
+
+        assertEquals("Unsupported static_config_version 3", exception.message)
+    }
+
+    @Test
     fun staticConfigV2RejectsMissingOrEmptyDynamicConfigUrls() {
         listOf(
             makeStaticConfigJsonV2(dynamicConfigUrls = emptyList()),

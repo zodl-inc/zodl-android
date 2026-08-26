@@ -36,7 +36,9 @@ import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.configuration.ConfigurationEntries
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.HttpRequestRetry
 import io.ktor.client.plugins.ResponseException
+import io.ktor.client.plugins.retry
 import io.ktor.client.plugins.timeout
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.get
@@ -51,12 +53,14 @@ import io.ktor.http.content.TextContent
 import io.ktor.http.contentType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
 import java.net.URI
 import java.util.UUID
@@ -129,6 +133,15 @@ class KtorVotingApiProvider(
     private val configurationRepository: ConfigurationRepository,
     private val votingChainConfigRepository: VotingChainConfigRepository,
     private val votingCryptoClient: VotingCryptoClient,
+    /**
+     * Per-attempt timeout for both config-fetch legs (MOB-1809), defaulting to
+     * [StaticVotingConfig.CONFIG_REQUEST_TIMEOUT_MS]. Overridable only so tests can inject a
+     * short value when exercising the app-side [withConfigRequestTimeoutFallback] path — the
+     * production default never changes, and DI (see `featureVotingModule`) never passes an
+     * override, so every real caller gets the same 15s bound both the Ktor-level and app-side
+     * timeout mechanisms share.
+     */
+    private val configRequestTimeoutMillis: Long = StaticVotingConfig.CONFIG_REQUEST_TIMEOUT_MS,
 ) : VotingApiProvider {
     private var cachedResolvedConfig: ResolvedVotingConfig? = null
     private val configMutex = Mutex()
@@ -451,13 +464,20 @@ class KtorVotingApiProvider(
         supportsKtorTimeouts: Boolean
     ): ByteArray =
         try {
-            get(url) {
-                noCache()
-                configRequestTimeout(supportsKtorTimeouts)
-            }.bodyAsBytes()
+            withConfigRequestTimeoutFallback(supportsKtorTimeouts, configRequestTimeoutMillis) {
+                get(url) {
+                    noCache()
+                    configRequestTimeout(supportsKtorTimeouts, configRequestTimeoutMillis)
+                    excludeFromClientRetry()
+                }.bodyAsBytes()
+            }
         } catch (responseException: ResponseException) {
             throw StaticVotingConfigFetchFailedException(
                 "Static voting config fetch failed: HTTP ${responseException.response.status.value}"
+            )
+        } catch (_: TimeoutCancellationException) {
+            throw StaticVotingConfigFetchFailedException(
+                "Static voting config fetch failed: request timed out after ${configRequestTimeoutMillis}ms"
             )
         } catch (exception: Exception) {
             exception.rethrowIfCancellation()
@@ -529,6 +549,11 @@ class KtorVotingApiProvider(
      * random value per walk invocation, shared by every busted request in that walk; the
      * cache-bust query parameter is applied to the request only — [url] itself, un-busted, is
      * what the caller logs and reports as the serving origin.
+     *
+     * The generic transport-failure branch below builds its message from that clean [url] plus
+     * the exception's short class name — never from `exception.message` verbatim, since for a
+     * Ktor timeout/connect failure that message can contain the full busted request URL,
+     * including the cache-bust token.
      */
     private suspend fun HttpClient.fetchDynamicConfigBody(
         url: String,
@@ -536,16 +561,23 @@ class KtorVotingApiProvider(
         supportsKtorTimeouts: Boolean
     ): String =
         try {
-            get(url.withCacheBustIfNeeded(cacheBustToken)) {
-                noCache()
-                configRequestTimeout(supportsKtorTimeouts)
-            }.bodyAsText()
+            withConfigRequestTimeoutFallback(supportsKtorTimeouts, configRequestTimeoutMillis) {
+                get(url.withCacheBustIfNeeded(cacheBustToken)) {
+                    noCache()
+                    configRequestTimeout(supportsKtorTimeouts, configRequestTimeoutMillis)
+                    excludeFromClientRetry()
+                }.bodyAsText()
+            }
         } catch (responseException: ResponseException) {
             throw responseException.toDynamicVotingConfigException()
+        } catch (_: TimeoutCancellationException) {
+            throw DynamicVotingConfigTransientException(
+                "Dynamic voting config fetch failed for $url: request timed out after ${configRequestTimeoutMillis}ms"
+            )
         } catch (exception: Exception) {
             exception.rethrowIfCancellation()
             throw DynamicVotingConfigTransientException(
-                "Dynamic voting config fetch failed: ${exception.message ?: exception::class.simpleName}"
+                "Dynamic voting config fetch failed for $url: ${exception::class.simpleName ?: "unknown error"}"
             )
         }
 
@@ -838,14 +870,60 @@ private fun HttpRequestBuilder.helperRequestTimeout(supportsKtorTimeouts: Boolea
     }
 }
 
-private fun HttpRequestBuilder.configRequestTimeout(supportsKtorTimeouts: Boolean) {
+private fun HttpRequestBuilder.configRequestTimeout(
+    supportsKtorTimeouts: Boolean,
+    timeoutMillis: Long
+) {
     if (supportsKtorTimeouts) {
         timeout {
-            requestTimeoutMillis = StaticVotingConfig.CONFIG_REQUEST_TIMEOUT_MS
-            socketTimeoutMillis = StaticVotingConfig.CONFIG_REQUEST_TIMEOUT_MS
-            connectTimeoutMillis = StaticVotingConfig.CONFIG_REQUEST_TIMEOUT_MS
+            requestTimeoutMillis = timeoutMillis
+            socketTimeoutMillis = timeoutMillis
+            connectTimeoutMillis = timeoutMillis
         }
     }
+}
+
+/**
+ * Bounds a config-fetch attempt to [timeoutMillis] app-side when Ktor-level timeouts are
+ * unavailable ([supportsKtorTimeouts] == false — the Tor client is built with
+ * `installTimeouts = false`, so [configRequestTimeout] is a no-op there and a stalling origin
+ * would otherwise hang the attempt forever). When [supportsKtorTimeouts] is true, [block] runs
+ * unbounded here — Ktor's own per-request [io.ktor.client.plugins.HttpTimeout] already enforces
+ * the same bound.
+ *
+ * TRAP: [kotlinx.coroutines.TimeoutCancellationException] EXTENDS [CancellationException].
+ * kotlinx.coroutines guarantees it is delivered only to the [kotlinx.coroutines.withTimeout]
+ * frame whose own deadline actually expired; a genuine OUTER cancellation manifests as a
+ * *different* [CancellationException] and is never caught by a `catch (TimeoutCancellationException)`
+ * clause here. Every caller MUST catch [TimeoutCancellationException] explicitly and convert it to
+ * that leg's own retryable exception BEFORE any generic `catch (exception: Exception)` /
+ * [rethrowIfCancellation] handling runs — letting it fall through to that generic handling would
+ * rethrow it as a cancellation and abort the whole mirror walk instead of falling through to the
+ * next mirror.
+ */
+private suspend fun <T> withConfigRequestTimeoutFallback(
+    supportsKtorTimeouts: Boolean,
+    timeoutMillis: Long,
+    block: suspend () -> T
+): T =
+    if (supportsKtorTimeouts) {
+        block()
+    } else {
+        withTimeout(timeoutMillis) { block() }
+    }
+
+/**
+ * Marks a config-fetch request as exempt from the direct client's [HttpRequestRetry] policy
+ * (MOB-1809): retry policy for a config request belongs entirely to [walkConfigSources]'s mirror
+ * fallback, which classifies and fails fast per attempt. Left unmarked, the client's default
+ * policy (`~5` attempts with exponential backoff, roughly 90s) would internally exhaust itself
+ * against a single dead mirror before the walk's own classification — and
+ * [withConfigRequestTimeoutFallback]'s fail-fast bound — ever runs. Uses Ktor's own per-request
+ * retry configuration ([io.ktor.client.plugins.retry]); on a client where [HttpRequestRetry]
+ * isn't installed at all (the Tor client), this is a harmless no-op.
+ */
+private fun HttpRequestBuilder.excludeFromClientRetry() {
+    retry { noRetry() }
 }
 
 /**
@@ -855,14 +933,43 @@ private fun HttpRequestBuilder.configRequestTimeout(supportsKtorTimeouts: Boolea
  * CDN caches branch paths for roughly 300 seconds server-side and ignores request cache-control
  * headers, which matters during round rollover; a content-addressed pin never needs this since
  * its bytes are immutable by definition.
+ *
+ * This is only ever applied to the DYNAMIC config leg's URLs. The static leg's
+ * raw.githubusercontent.com mirror ([StaticVotingConfig.BUNDLED_PINNED_SOURCE_MIRROR]) is
+ * deliberately never cache-busted, matching iOS: that path is content-addressed (the checksum is
+ * in the filename itself), so its bytes are immutable by construction and a pin bump changes the
+ * URL rather than the content behind an existing one — there is nothing for a CDN cache to serve
+ * stale.
+ *
+ * Rebuilt via URI components (scheme/authority/path/query/fragment) rather than blind string
+ * concatenation, so the busted query parameter always lands before a fragment instead of being
+ * appended after one and silently becoming part of it. Config URLs are not expected to carry a
+ * fragment in practice, but this stays correct if one is ever present.
  */
 private fun String.withCacheBustIfNeeded(token: String): String {
-    val host = runCatching { URI(this).host }.getOrNull()
-    if (!host.equals(RAW_GITHUBUSERCONTENT_HOST, ignoreCase = true)) {
+    val uri = runCatching { URI(this) }.getOrNull()
+    if (uri == null || !uri.host.equals(RAW_GITHUBUSERCONTENT_HOST, ignoreCase = true)) {
         return this
     }
-    val separator = if (contains('?')) '&' else '?'
-    return "$this$separator$CACHE_BUST_QUERY_PARAM=$token"
+    val existingQuery = uri.rawQuery
+    val bustedQuery =
+        if (existingQuery.isNullOrEmpty()) {
+            "$CACHE_BUST_QUERY_PARAM=$token"
+        } else {
+            "$existingQuery&$CACHE_BUST_QUERY_PARAM=$token"
+        }
+    return buildString {
+        append(uri.scheme)
+        append("://")
+        append(uri.rawAuthority)
+        append(uri.rawPath.orEmpty())
+        append('?')
+        append(bustedQuery)
+        if (uri.rawFragment != null) {
+            append('#')
+            append(uri.rawFragment)
+        }
+    }
 }
 
 private const val HELPER_REQUEST_TIMEOUT_MILLIS = 5_000L

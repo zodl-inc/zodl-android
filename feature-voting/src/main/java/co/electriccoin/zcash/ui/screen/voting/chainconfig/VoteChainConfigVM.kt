@@ -425,7 +425,7 @@ private fun compactSource(raw: String): String =
  * matching URL with a *different* checksum is a deliberately re-pinned custom source and must
  * stay custom, not silently collapse to Default.
  */
-private fun PinnedConfigSource.isBundledDefaultUrl(): Boolean =
+internal fun PinnedConfigSource.isBundledDefaultUrl(): Boolean =
     this in StaticVotingConfig.BUNDLED_PINNED_CONFIG_SOURCES
 
 private fun EditorDraft.canSave(): Boolean =

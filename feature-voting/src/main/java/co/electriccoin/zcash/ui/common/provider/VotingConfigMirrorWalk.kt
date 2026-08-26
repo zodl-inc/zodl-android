@@ -35,6 +35,8 @@ internal suspend fun <TSource, T> walkConfigSources(
             val result = operation(source)
             if (index > 0) {
                 Twig.info { "Voting config resolved via ${describe(source)} (attempt ${index + 1})" }
+            } else {
+                Twig.debug { "Voting config resolved via ${describe(source)}" }
             }
             return result
         } catch (exception: VotingConfigException) {
