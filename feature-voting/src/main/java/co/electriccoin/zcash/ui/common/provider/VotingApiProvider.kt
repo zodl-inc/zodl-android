@@ -1048,7 +1048,7 @@ private fun VoteCommitmentBundle.toApiBody(signature: CastVoteSignature): String
         .put("vote_auth_sig", signature.voteAuthSig.toBase64String())
         .toString()
 
-private fun String.toTxResult(): TxResult {
+internal fun String.toTxResult(): TxResult {
     val json = JSONObject(this)
     return TxResult(
         txHash = json.optString("tx_hash"),
@@ -1057,7 +1057,7 @@ private fun String.toTxResult(): TxResult {
     )
 }
 
-private fun String.toTxConfirmation(): TxConfirmation {
+internal fun String.toTxConfirmation(): TxConfirmation {
     val json = JSONObject(this)
     val events = json.optJSONArray("events")
     return TxConfirmation(

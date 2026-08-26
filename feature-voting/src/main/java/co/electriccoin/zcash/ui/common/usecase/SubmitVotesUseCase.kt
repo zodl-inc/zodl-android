@@ -582,7 +582,7 @@ class SubmitVotesUseCase(
             phase = VotingRecoveryPhase.DELEGATION_PROVED
         )
 
-        val txResult =
+        val acceptedTransaction =
             runVotingAuthorizationStep(context.isKeystone) {
                 val submission =
                     if (context.isKeystone) {
@@ -625,24 +625,27 @@ class SubmitVotesUseCase(
                         }
                     }
                 }
-                votingApiProvider
-                    .submitDelegation(submission.toDelegationRegistration())
-                    .requireAccepted("Delegation transaction was rejected")
+                reconcileVotingTransactionResult(
+                    result = votingApiProvider.submitDelegation(submission.toDelegationRegistration()),
+                    rejectionMessage = "Delegation transaction was rejected",
+                    fetchTxConfirmation = votingApiProvider::fetchTxConfirmation
+                )
             }
         votingCryptoClient.storeDelegationTxHash(
             dbHandle = dbHandle,
             roundId = roundId,
             bundleIndex = bundleIndex,
-            txHash = txResult.txHash
+            txHash = acceptedTransaction.txHash
         )
 
         val confirmation =
-            runVotingAuthorizationStep(context.isKeystone) {
-                awaitTxConfirmation(txResult.txHash)
-                    ?: throw VotingSubmissionRecoverableException(
-                        VotingErrors.TxConfirmationTimedOut(txResult.txHash)
-                    )
-            }
+            acceptedTransaction.confirmation
+                ?: runVotingAuthorizationStep(context.isKeystone) {
+                    awaitTxConfirmation(acceptedTransaction.txHash)
+                        ?: throw VotingSubmissionRecoverableException(
+                            VotingErrors.TxConfirmationTimedOut(acceptedTransaction.txHash)
+                        )
+                }
         runVotingAuthorizationStep(context.isKeystone) {
             confirmation.requireAccepted("Delegation transaction failed")
         }
@@ -964,12 +967,16 @@ class SubmitVotesUseCase(
                 )
             }
         val signature = CastVoteSignature(voteAuthSig = commitment.voteAuthSig)
-        val txResult =
-            votingApiProvider
-                .submitVoteCommitment(
-                    bundle = commitment.toVoteCommitmentBundle(),
-                    signature = signature
-                ).requireAccepted("Vote commitment transaction was rejected")
+        val acceptedTransaction =
+            reconcileVotingTransactionResult(
+                result =
+                    votingApiProvider.submitVoteCommitment(
+                        bundle = commitment.toVoteCommitmentBundle(),
+                        signature = signature
+                    ),
+                rejectionMessage = "Vote commitment transaction was rejected",
+                fetchTxConfirmation = votingApiProvider::fetchTxConfirmation
+            )
         traceVotingStep(
             roundId = roundId,
             step = "storeVoteTxHash",
@@ -981,14 +988,15 @@ class SubmitVotesUseCase(
                 roundId = roundId,
                 bundleIndex = bundleIndex,
                 proposalId = proposalId,
-                txHash = txResult.txHash
+                txHash = acceptedTransaction.txHash
             )
         }
 
         val confirmation =
-            awaitTxConfirmation(txResult.txHash)
+            acceptedTransaction.confirmation
+                ?: awaitTxConfirmation(acceptedTransaction.txHash)
                 ?: throw VotingSubmissionRecoverableException(
-                    VotingErrors.TxConfirmationTimedOut(txResult.txHash)
+                    VotingErrors.TxConfirmationTimedOut(acceptedTransaction.txHash)
                 )
         confirmation.requireAccepted("Vote commitment transaction failed")
 
@@ -1255,37 +1263,10 @@ class SubmitVotesUseCase(
     private fun ZcashNetwork.toVotingNetworkId() =
         if (isMainnet()) 1 else 0
 
-    private fun TxResult.requireAccepted(fallbackMessage: String): TxResult {
-        if (code != 0) {
-            throw IllegalStateException(log.ifEmpty { fallbackMessage })
-        }
-        return this
-    }
-
     private fun TxConfirmation.requireAccepted(fallbackMessage: String) {
         if (code != 0) {
             throw IllegalStateException(log.ifEmpty { fallbackMessage })
         }
-    }
-
-    private fun TxConfirmation.castVoteLeafPositions(): Pair<Int, Long> {
-        val rawLeafIndex =
-            event("cast_vote")
-                ?.attribute("leaf_index")
-                ?: error("Missing cast_vote leaf_index")
-        val leafParts = rawLeafIndex.split(',')
-        require(leafParts.size == 2) {
-            "Malformed cast_vote leaf_index: $rawLeafIndex"
-        }
-
-        val vanPosition =
-            leafParts[0].trim().toIntOrNull()
-                ?: error("Malformed VAN leaf position: ${leafParts[0]}")
-        val voteCommitmentPosition =
-            leafParts[1].trim().toLongOrNull()
-                ?: error("Malformed vote commitment leaf position: ${leafParts[1]}")
-
-        return vanPosition to voteCommitmentPosition
     }
 
     private fun String.toVanWitnessSummary(): VanWitnessSummary {
@@ -1315,6 +1296,55 @@ class SubmitVotesUseCase(
     }
 }
 
+internal data class AcceptedVotingTransaction(
+    val txHash: String,
+    val confirmation: TxConfirmation?
+)
+
+/**
+ * Treats a spent-nullifier rejection as an ambiguous retry only when the rejected response's hash
+ * resolves to a successful transaction. This mirrors Vizor's bounded recovery behavior without
+ * persisting an unconfirmed rejection hash.
+ */
+internal suspend fun reconcileVotingTransactionResult(
+    result: TxResult,
+    rejectionMessage: String,
+    maxRecoveryAttempts: Int = SPENT_NULLIFIER_RECOVERY_ATTEMPTS,
+    recoveryDelayMillis: Long = SPENT_NULLIFIER_RECOVERY_POLL_MS,
+    fetchTxConfirmation: suspend (String) -> TxConfirmation?
+): AcceptedVotingTransaction {
+    require(maxRecoveryAttempts >= 1) { "maxRecoveryAttempts must be >= 1, was $maxRecoveryAttempts" }
+    require(recoveryDelayMillis >= 0) { "recoveryDelayMillis must be non-negative" }
+
+    if (result.code == 0) {
+        check(result.txHash.isNotBlank()) { "Accepted voting transaction did not include tx_hash" }
+        return AcceptedVotingTransaction(result.txHash, confirmation = null)
+    }
+
+    if (result.txHash.isNotBlank() && result.log.isSpentNullifierRejection()) {
+        repeat(maxRecoveryAttempts) { attempt ->
+            val confirmation = fetchTxConfirmation(result.txHash)
+            if (confirmation?.code == 0) {
+                return AcceptedVotingTransaction(result.txHash, confirmation)
+            }
+            if (confirmation != null) {
+                throw IllegalStateException(
+                    confirmation.log.ifEmpty { result.log.ifEmpty { rejectionMessage } }
+                )
+            }
+            if (attempt + 1 < maxRecoveryAttempts) {
+                delay(recoveryDelayMillis)
+            }
+        }
+    }
+
+    throw IllegalStateException(result.log.ifEmpty { rejectionMessage })
+}
+
+private fun String.isSpentNullifierRejection(): Boolean =
+    contains("nullifier", ignoreCase = true) &&
+        contains("spent", ignoreCase = true)
+
 internal fun Exception.asVotingAuthorizationExceptionIfNeeded(isKeystone: Boolean): Exception =
     when {
         this is VotingSubmissionRecoverableException -> this
@@ -1331,6 +1361,26 @@ internal fun TxConfirmation.delegateVoteVanPosition(bundleIndex: Int): Int {
 
     return rawLeafIndex.toIntOrNull()
         ?: throw unexpectedSdkResponse("Malformed delegate_vote leaf_index for bundle $bundleIndex: $rawLeafIndex")
+}
+
+internal fun TxConfirmation.castVoteLeafPositions(): Pair<Int, Long> {
+    val rawLeafIndex =
+        event("cast_vote")
+            ?.attribute("leaf_index")
+            ?: throw unexpectedSdkResponse("Missing cast_vote leaf_index")
+    val leafParts = rawLeafIndex.split(',')
+    if (leafParts.size != 2) {
+        throw unexpectedSdkResponse("Malformed cast_vote leaf_index: $rawLeafIndex")
+    }
+
+    val vanPosition =
+        leafParts[0].trim().toIntOrNull()
+            ?: throw unexpectedSdkResponse("Malformed VAN leaf position: ${leafParts[0]}")
+    val voteCommitmentPosition =
+        leafParts[1].trim().toLongOrNull()
+            ?: throw unexpectedSdkResponse("Malformed vote commitment leaf position: ${leafParts[1]}")
+
+    return vanPosition to voteCommitmentPosition
 }
 
 private fun unexpectedSdkResponse(message: String) =
@@ -1356,3 +1406,6 @@ internal fun calculateSubmittingBundleProgress(
 
     return (completedBundles / bundleTotal).toFloat().coerceIn(0f, 1f)
 }
+
+private const val SPENT_NULLIFIER_RECOVERY_ATTEMPTS = 3
+private const val SPENT_NULLIFIER_RECOVERY_POLL_MS = 1_000L

@@ -33,6 +33,76 @@ import kotlin.test.assertFalse
 
 class KtorVotingApiProviderTest {
     @Test
+    fun rejectedTransactionParserPreservesHashCodeAndLog() {
+        val result =
+            """
+            {
+              "tx_hash": "duplicate-tx",
+              "code": 1,
+              "log": "nullifier already spent: abc123"
+            }
+            """.trimIndent().toTxResult()
+
+        assertEquals("duplicate-tx", result.txHash)
+        assertEquals(1, result.code)
+        assertEquals("nullifier already spent: abc123", result.log)
+    }
+
+    @Test
+    fun rejectedTransactionParserRepresentsMissingHashAsEmpty() {
+        val result =
+            """
+            {
+              "code": 1,
+              "log": "nullifier already spent: abc123"
+            }
+            """.trimIndent().toTxResult()
+
+        assertEquals("", result.txHash)
+        assertEquals(1, result.code)
+    }
+
+    @Test
+    fun transactionConfirmationParserPreservesSuccessfulEvents() {
+        val confirmation =
+            """
+            {
+              "height": "12",
+              "code": 0,
+              "log": "",
+              "events": [
+                {
+                  "type": "delegate_vote",
+                  "attributes": [
+                    {"key": "leaf_index", "value": "7"}
+                  ]
+                }
+              ]
+            }
+            """.trimIndent().toTxConfirmation()
+
+        assertEquals(12, confirmation.height)
+        assertEquals(0, confirmation.code)
+        assertEquals("7", confirmation.event("delegate_vote")?.attribute("leaf_index"))
+    }
+
+    @Test
+    fun transactionConfirmationParserPreservesRejectedStatus() {
+        val confirmation =
+            """
+            {
+              "height": 12,
+              "code": 2,
+              "log": "transaction failed",
+              "events": []
+            }
+            """.trimIndent().toTxConfirmation()
+
+        assertEquals(2, confirmation.code)
+        assertEquals("transaction failed", confirmation.log)
+    }
+
+    @Test
     fun validateConfigSourceOnlyFetchesStaticConfig() =
         runBlocking {
             val requests = mutableListOf<String>()
