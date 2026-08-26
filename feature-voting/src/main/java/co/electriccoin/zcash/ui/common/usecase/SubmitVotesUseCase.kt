@@ -630,7 +630,18 @@ class SubmitVotesUseCase(
                 val registration = submission.toDelegationRegistration()
                 val result =
                     try {
-                        votingApiProvider.submitDelegation(registration)
+                        val accepted = votingApiProvider.submitDelegation(registration)
+                        check(accepted.code == 0) {
+                            "MANUAL_TEST requires a real accepted delegation, got code=${accepted.code}"
+                        }
+                        Log.w(
+                            TAG,
+                            "MANUAL_TEST replacing accepted delegation response with spent-nullifier response"
+                        )
+                        accepted.copy(
+                            code = 1,
+                            log = "nullifier already spent: MANUAL_TEST"
+                        )
                     } catch (exception: CancellationException) {
                         throw exception
                     } catch (exception: Exception) {
@@ -1407,6 +1418,9 @@ internal suspend fun reconcileVotingTransactionResult(
         repeat(maxRecoveryAttempts) { attempt ->
             val confirmation = fetchTxConfirmation(result.txHash)
             if (confirmation?.code == 0) {
+                if (result.log.contains("MANUAL_TEST")) {
+                    Log.w("SubmitVotesUseCase", "MANUAL_TEST transaction-hash reconciliation succeeded")
+                }
                 return AcceptedVotingTransaction(result.txHash, confirmation)
             }
             if (confirmation != null) {
@@ -1458,6 +1472,9 @@ internal suspend fun reconcileDelegationTransactionResult(
             }
         try {
             confirmation.delegateVoteVanPosition(bundleIndex)
+            if (result.log.contains("MANUAL_TEST")) {
+                Log.w("SubmitVotesUseCase", "MANUAL_TEST delegation fast path completed")
+            }
             return DelegationSubmissionResolution.AcceptedTransaction(accepted)
         } catch (exception: CancellationException) {
             throw exception
