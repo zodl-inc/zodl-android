@@ -29,6 +29,7 @@ class SubmitVotesUseCaseProgressTest {
             val resolution =
                 reconcileDelegationTransactionResult(
                     result = spentNullifierResult(txHash = "rejected-retry-hash"),
+                    bundleIndex = 0,
                     rejectionMessage = "rejected",
                     fetchTxConfirmation = { null },
                     findVanPosition = {
@@ -54,6 +55,80 @@ class SubmitVotesUseCaseProgressTest {
                 )
 
             assertEquals(1, (resolution as DelegationSubmissionResolution.ConfirmedVan).position)
+        }
+
+    @Test
+    fun successfulSpentNullifierHashRecoverySkipsVanLookup() =
+        runTest {
+            var vanLookups = 0
+            val confirmation =
+                TxConfirmation(
+                    height = 12,
+                    code = 0,
+                    events =
+                        listOf(
+                            TxEvent(
+                                type = "delegate_vote",
+                                attributes = listOf(TxEventAttribute(key = "leaf_index", value = "7"))
+                            )
+                        )
+                )
+
+            val resolution =
+                reconcileDelegationTransactionResult(
+                    result = spentNullifierResult(),
+                    bundleIndex = 0,
+                    rejectionMessage = "rejected",
+                    fetchTxConfirmation = { confirmation },
+                    findVanPosition = {
+                        vanLookups += 1
+                        8
+                    }
+                )
+
+            assertIs<DelegationSubmissionResolution.AcceptedTransaction>(resolution)
+            assertEquals(0, vanLookups)
+        }
+
+    @Test
+    fun missingSpentNullifierHashLeafFallsBackToVanAndRetainsHash() =
+        runTest {
+            val resolution =
+                reconcileDelegationTransactionResult(
+                    result = spentNullifierResult(txHash = "confirmed-tx"),
+                    bundleIndex = 0,
+                    rejectionMessage = "rejected",
+                    fetchTxConfirmation = { TxConfirmation(height = 12, code = 0) },
+                    findVanPosition = { 8 }
+                )
+
+            val confirmedVan = assertIs<DelegationSubmissionResolution.ConfirmedVan>(resolution)
+            assertEquals(8, confirmedVan.position)
+            assertEquals("confirmed-tx", confirmedVan.txHash)
+        }
+
+    @Test
+    fun spentNullifierHashCancellationDoesNotFallBackToVan() =
+        runTest {
+            var vanLookups = 0
+            val cancellation = CancellationException("cancelled")
+
+            val thrown =
+                assertFailsWith<CancellationException> {
+                    reconcileDelegationTransactionResult(
+                        result = spentNullifierResult(),
+                        bundleIndex = 0,
+                        rejectionMessage = "rejected",
+                        fetchTxConfirmation = { throw cancellation },
+                        findVanPosition = {
+                            vanLookups += 1
+                            8
+                        }
+                    )
+                }
+
+            assertSame(cancellation, thrown)
+            assertEquals(0, vanLookups)
         }
 
     @Test
@@ -129,6 +204,33 @@ class SubmitVotesUseCaseProgressTest {
 
             assertEquals("Commitment tree pagination exceeded 2 pages", failure.message)
             assertEquals(2, pageCalls)
+        }
+
+    @Test
+    fun vanCommitmentLookupRejectsCursorBeforeLastReturnedBlock() =
+        runTest {
+            assertFailsWith<IllegalArgumentException> {
+                findVanCommitmentPosition(
+                    roundId = "round",
+                    expectedVanCmx = ByteArray(32) { 9 },
+                    maxRecoveryAttempts = 1,
+                    recoveryDelayMillis = 0,
+                    fetchLatest = { CommitmentTreeLatest(height = 100, nextIndex = 1) },
+                    fetchLeafPage = { _, _, _ ->
+                        leafPage(
+                            blocks =
+                                listOf(
+                                    leafBlock(
+                                        height = 10,
+                                        startIndex = 0,
+                                        leaves = listOf(ByteArray(32) { 1 })
+                                    )
+                                ),
+                            nextFromHeight = 5
+                        )
+                    }
+                )
+            }
         }
 
     @Test

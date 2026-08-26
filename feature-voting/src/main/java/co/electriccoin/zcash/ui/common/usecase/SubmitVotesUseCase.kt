@@ -634,9 +634,6 @@ class SubmitVotesUseCase(
                     } catch (exception: CancellationException) {
                         throw exception
                     } catch (exception: Exception) {
-                        if (!exception.isTransientVotingInfrastructureFailure()) {
-                            throw exception
-                        }
                         val recoveredPosition =
                             findPersistedVanPosition(
                                 context = context,
@@ -652,6 +649,7 @@ class SubmitVotesUseCase(
 
                 reconcileDelegationTransactionResult(
                     result = result,
+                    bundleIndex = bundleIndex,
                     rejectionMessage = "Delegation transaction was rejected",
                     fetchTxConfirmation = votingApiProvider::fetchTxConfirmation,
                     findVanPosition = {
@@ -663,6 +661,14 @@ class SubmitVotesUseCase(
                 )
             }
         if (submissionResolution is DelegationSubmissionResolution.ConfirmedVan) {
+            submissionResolution.txHash?.let { txHash ->
+                votingCryptoClient.storeDelegationTxHash(
+                    dbHandle = dbHandle,
+                    roundId = roundId,
+                    bundleIndex = bundleIndex,
+                    txHash = txHash
+                )
+            }
             votingCryptoClient.storeVanPosition(
                 dbHandle = dbHandle,
                 roundId = roundId,
@@ -1369,7 +1375,8 @@ internal sealed interface DelegationSubmissionResolution {
     ) : DelegationSubmissionResolution
 
     data class ConfirmedVan(
-        val position: Int
+        val position: Int,
+        val txHash: String? = null
     ) : DelegationSubmissionResolution
 }
 
@@ -1415,28 +1422,54 @@ internal suspend fun reconcileVotingTransactionResult(
 
 internal suspend fun reconcileDelegationTransactionResult(
     result: TxResult,
+    bundleIndex: Int,
     rejectionMessage: String,
     fetchTxConfirmation: suspend (String) -> TxConfirmation?,
     findVanPosition: suspend () -> Int?
-): DelegationSubmissionResolution =
-    try {
-        DelegationSubmissionResolution.AcceptedTransaction(
+): DelegationSubmissionResolution {
+    if (!result.log.isSpentNullifierRejection()) {
+        return DelegationSubmissionResolution.AcceptedTransaction(
+            reconcileVotingTransactionResult(result, rejectionMessage, fetchTxConfirmation = fetchTxConfirmation)
+        )
+    }
+
+    var hashFailure: Exception? = null
+    val acceptedTransaction =
+        try {
             reconcileVotingTransactionResult(
                 result = result,
                 rejectionMessage = rejectionMessage,
                 fetchTxConfirmation = fetchTxConfirmation
             )
-        )
-    } catch (exception: CancellationException) {
-        throw exception
-    } catch (exception: Exception) {
-        if (!result.log.isSpentNullifierRejection()) {
+        } catch (exception: CancellationException) {
             throw exception
+        } catch (exception: Exception) {
+            hashFailure = exception
+            null
         }
-        findVanPosition()
-            ?.let(DelegationSubmissionResolution::ConfirmedVan)
-            ?: throw exception
+
+    acceptedTransaction?.let { accepted ->
+        val confirmation =
+            checkNotNull(accepted.confirmation) {
+                "Spent-nullifier hash recovery must include a confirmation"
+            }
+        try {
+            confirmation.delegateVoteVanPosition(bundleIndex)
+            return DelegationSubmissionResolution.AcceptedTransaction(accepted)
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (leafException: Exception) {
+            val vanPosition = findVanPosition() ?: throw leafException
+            return DelegationSubmissionResolution.ConfirmedVan(
+                position = vanPosition,
+                txHash = accepted.txHash
+            )
+        }
     }
+
+    val vanPosition = findVanPosition() ?: throw hashFailure ?: IllegalStateException(rejectionMessage)
+    return DelegationSubmissionResolution.ConfirmedVan(vanPosition)
+}
 
 internal suspend fun findVanCommitmentPosition(
     roundId: String,
@@ -1461,6 +1494,7 @@ internal suspend fun findVanCommitmentPosition(
         require(latest.nextIndex >= 0) { "Commitment tree next_index must be non-negative" }
         val matches = mutableSetOf<Long>()
         var previousNextIndex: Long? = null
+        var previousBlockHeight: Long? = null
         var pageStart = 0L
         var pageCount = 0
         do {
@@ -1469,7 +1503,6 @@ internal suspend fun findVanCommitmentPosition(
             }
             pageCount += 1
             val page = fetchLeafPage(roundId, pageStart, latest.height)
-            var previousBlockHeight: Long? = null
             page.blocks.forEach { block ->
                 require(block.height in pageStart..latest.height) {
                     "Commitment leaf block ${block.height} is outside requested range $pageStart..${latest.height}"
@@ -1508,6 +1541,11 @@ internal suspend fun findVanCommitmentPosition(
             }
             require(nextFromHeight == 0L || nextFromHeight <= latest.height) {
                 "Commitment tree next_from_height exceeds latest height"
+            }
+            if (nextFromHeight != 0L && page.blocks.isNotEmpty()) {
+                require(nextFromHeight > page.blocks.last().height) {
+                    "Commitment tree next_from_height must follow the last returned block"
+                }
             }
             pageStart = nextFromHeight
         } while (pageStart != 0L)

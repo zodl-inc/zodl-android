@@ -65,6 +65,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import org.json.JSONObject
 import java.net.URI
 import java.util.UUID
@@ -421,9 +423,10 @@ class KtorVotingApiProvider(
         val path = commitmentTreeLatestPath(roundIdHex)
         return executeWithVoteServerFailover(path) { baseUrl ->
             val tree =
-                get("$baseUrl$path")
-                .body<ChainCommitmentTreeLatestResponse>()
-                .tree
+                commitmentTreeJson
+                    .decodeFromString<ChainCommitmentTreeLatestResponse>(
+                        get("$baseUrl$path").bodyAsText()
+                    ).tree
             require(tree.height >= 0) { "Commitment tree height must be non-negative" }
             require(tree.nextIndex >= 0) { "Commitment tree next_index must be non-negative" }
             CommitmentTreeLatest(height = tree.height, nextIndex = tree.nextIndex)
@@ -437,10 +440,12 @@ class KtorVotingApiProvider(
     ): CommitmentTreeLeafPage {
         require(fromHeight >= 0) { "fromHeight must be non-negative" }
         require(toHeight >= fromHeight) { "toHeight must be at least fromHeight" }
-        val path = commitmentTreeLeavesPath(roundIdHex)
+        val path = commitmentTreeLeavesPath(roundIdHex, fromHeight, toHeight)
         return executeWithVoteServerFailover(path) { baseUrl ->
-            get("$baseUrl$path?from_height=$fromHeight&to_height=$toHeight")
-                .body<ChainCommitmentTreeLeavesResponse>()
+            commitmentTreeJson
+                .decodeFromString<ChainCommitmentTreeLeavesResponse>(
+                    get("$baseUrl$path").bodyAsText()
+                )
                 .toModel()
         }
     }
@@ -1025,6 +1030,7 @@ private const val RAW_GITHUBUSERCONTENT_HOST = "raw.githubusercontent.com"
 private const val CACHE_BUST_QUERY_PARAM = "zodl_cache_bust"
 private const val TRANSIENT_HTTP_STATUS_MIN = 500
 private const val TRANSIENT_HTTP_STATUS_MAX = 599
+private val commitmentTreeJson = Json { ignoreUnknownKeys = true }
 
 private fun List<String>.normalizeServerUrls(): List<String> =
     map(String::trim)
@@ -1163,8 +1169,12 @@ private fun txConfirmationPath(txHash: String): String =
 internal fun commitmentTreeLatestPath(roundIdHex: String): String =
     "/shielded-vote/v1/commitment-tree/$roundIdHex/latest"
 
-internal fun commitmentTreeLeavesPath(roundIdHex: String): String =
-    "/shielded-vote/v1/commitment-tree/$roundIdHex/leaves"
+internal fun commitmentTreeLeavesPath(
+    roundIdHex: String,
+    fromHeight: Long,
+    toHeight: Long
+): String =
+    "/shielded-vote/v1/commitment-tree/$roundIdHex/leaves?from_height=$fromHeight&to_height=$toHeight"
 
 internal fun shouldTreatEndorsedRoundsStatusAsEmpty(status: HttpStatusCode): Boolean =
     status == HttpStatusCode.BadRequest || status == HttpStatusCode.NotFound

@@ -3,6 +3,8 @@ package co.electriccoin.zcash.ui.common.provider
 import co.electriccoin.zcash.configuration.model.map.Configuration
 import co.electriccoin.zcash.ui.common.model.voting.ChainCommitmentTreeLatestResponse
 import co.electriccoin.zcash.ui.common.model.voting.ChainCommitmentTreeLeavesResponse
+import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLatest
+import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLeafPage
 import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
 import co.electriccoin.zcash.ui.common.model.voting.VotingConfigException
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
@@ -42,8 +44,8 @@ class KtorVotingApiProviderTest {
             commitmentTreeLatestPath("round-id")
         )
         assertEquals(
-            "/shielded-vote/v1/commitment-tree/round-id/leaves",
-            commitmentTreeLeavesPath("round-id")
+            "/shielded-vote/v1/commitment-tree/round-id/leaves?from_height=11&to_height=20",
+            commitmentTreeLeavesPath("round-id", fromHeight = 11, toHeight = 20)
         )
     }
 
@@ -84,6 +86,42 @@ class KtorVotingApiProviderTest {
         assertEquals(0, latest.tree.height)
         assertEquals(0, latest.tree.nextIndex)
     }
+
+    @Test
+    fun commitmentTreeProviderSendsCursorQueryParameters() =
+        runBlocking {
+            val requests = mutableListOf<String>()
+            val provider =
+                newProvider(
+                    requests = requests,
+                    responseOverrides =
+                        mapOf(
+                            "/dynamic-voting-config.json" to TestResponse(dynamicVotingConfigJson()),
+                            "/shielded-vote/v1/commitment-tree/round-id/latest" to
+                                TestResponse("""{"tree":{"height":20,"next_index":2}}"""),
+                            "/shielded-vote/v1/commitment-tree/round-id/leaves?from_height=11&to_height=20" to
+                                TestResponse("""{"blocks":[],"next_from_height":0}""")
+                        )
+                )
+
+            assertEquals(
+                CommitmentTreeLatest(height = 20, nextIndex = 2),
+                provider.fetchCommitmentTreeLatest("round-id")
+            )
+            assertEquals(
+                CommitmentTreeLeafPage(blocks = emptyList(), nextFromHeight = 0),
+                provider.fetchCommitmentTreeLeafPage("round-id", fromHeight = 11, toHeight = 20)
+            )
+            assertEquals(
+                listOf(
+                    "/static-voting-config.json",
+                    "/dynamic-voting-config.json",
+                    "/shielded-vote/v1/commitment-tree/round-id/latest",
+                    "/shielded-vote/v1/commitment-tree/round-id/leaves?from_height=11&to_height=20"
+                ),
+                requests
+            )
+        }
 
     @Test
     fun rejectedTransactionParserPreservesHashCodeAndLog() {
@@ -759,10 +797,17 @@ class KtorVotingApiProviderTest {
     private fun newProvider(
         requests: MutableList<String>,
         supportsKtorTimeouts: Boolean = true,
-        requestTimeoutCapabilities: MutableList<Boolean> = mutableListOf()
+        requestTimeoutCapabilities: MutableList<Boolean> = mutableListOf(),
+        responseOverrides: Map<String, TestResponse> = emptyMap()
     ) =
         KtorVotingApiProvider(
-            httpClientProvider = TestHttpClientProvider(requests, supportsKtorTimeouts, requestTimeoutCapabilities),
+            httpClientProvider =
+                TestHttpClientProvider(
+                    requests,
+                    supportsKtorTimeouts,
+                    requestTimeoutCapabilities,
+                    responseOverrides
+                ),
             configurationRepository = TestConfigurationRepository(),
             votingChainConfigRepository = TestVotingChainConfigRepository(),
             votingCryptoClient = unusedVotingCryptoClient()
@@ -781,7 +826,8 @@ class KtorVotingApiProviderTest {
     private class TestHttpClientProvider(
         private val requests: MutableList<String>,
         private val supportsKtorTimeouts: Boolean,
-        private val requestTimeoutCapabilities: MutableList<Boolean>
+        private val requestTimeoutCapabilities: MutableList<Boolean>,
+        private val responseOverrides: Map<String, TestResponse>
     ) : HttpClientProvider {
         override suspend fun supportsKtorTimeouts(): Boolean = supportsKtorTimeouts
 
@@ -790,8 +836,21 @@ class KtorVotingApiProviderTest {
         override suspend fun create(): HttpClient =
             HttpClient(
                 MockEngine { request ->
-                    requests += request.url.encodedPath
+                    val requestTarget =
+                        request.url.encodedPath +
+                            request.url.encodedQuery
+                                .takeIf(String::isNotEmpty)
+                                ?.let { query -> "?$query" }
+                                .orEmpty()
+                    requests += requestTarget
                     requestTimeoutCapabilities += (request.getCapabilityOrNull(HttpTimeoutCapability) != null)
+                    responseOverrides[requestTarget]?.let { response ->
+                        return@MockEngine respond(
+                            content = response.content,
+                            status = response.status,
+                            headers = headersOf(HttpHeaders.ContentType, "application/json")
+                        )
+                    }
                     when (request.url.encodedPath) {
                         "/static-voting-config.json" -> {
                             respond(
@@ -859,6 +918,11 @@ class KtorVotingApiProviderTest {
                 expectSuccess = true
             }
     }
+
+    private data class TestResponse(
+        val content: String,
+        val status: HttpStatusCode = HttpStatusCode.OK
+    )
 
     private class TestConfigurationRepository : ConfigurationRepository {
         override val configurationFlow: StateFlow<Configuration?> = MutableStateFlow(null)
@@ -957,6 +1021,23 @@ private fun validDynamicServiceConfigJson(): String =
         "vote_protocol": "v0",
         "tally": "v0",
         "vote_server": "v1"
+      },
+      "rounds": {}
+    }
+    """.trimIndent()
+
+private fun dynamicVotingConfigJson(): String =
+    """
+    {
+      "config_version": 1,
+      "vote_servers": [{"url":"https://vote.example.com","label":"vote"}],
+      "pir_endpoints": [{"url":"https://pir.example.com","label":"pir"}],
+      "pir_layout": {"pir_depth":1,"tier0_layers":1,"tier1_layers":1,"poly_len":4096},
+      "supported_versions": {
+        "pir":["v0"],
+        "vote_protocol":"v0",
+        "tally":"v0",
+        "vote_server":"v1"
       },
       "rounds": {}
     }
