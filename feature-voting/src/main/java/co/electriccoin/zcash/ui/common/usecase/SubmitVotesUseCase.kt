@@ -49,7 +49,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
-import java.net.SocketTimeoutException
 import java.time.Instant
 import java.util.Base64
 
@@ -1040,22 +1039,10 @@ class SubmitVotesUseCase(
         val acceptedTransaction =
             reconcileVotingTransactionResult(
                 result =
-                    votingApiProvider
-                        .submitVoteCommitment(
-                            bundle = commitment.toVoteCommitmentBundle(),
-                            signature = signature
-                        ).also { accepted ->
-                            if (accepted.code == 0) {
-                                Log.w(
-                                    TAG,
-                                    "MANUAL_TEST cast-vote POST accepted txHash=${accepted.txHash}; " +
-                                        "simulating lost response before storeVoteTxHash"
-                                )
-                                throw SocketTimeoutException(
-                                    "MANUAL_TEST cast-vote response lost after server acceptance"
-                                )
-                            }
-                        },
+                    votingApiProvider.submitVoteCommitment(
+                        bundle = commitment.toVoteCommitmentBundle(),
+                        signature = signature
+                    ),
                 rejectionMessage = "Vote commitment transaction was rejected",
                 fetchTxConfirmation = votingApiProvider::fetchTxConfirmation
             )
