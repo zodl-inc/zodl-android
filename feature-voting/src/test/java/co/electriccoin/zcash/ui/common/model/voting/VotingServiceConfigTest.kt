@@ -117,6 +117,92 @@ class StaticVotingConfigTest {
         }
     }
 
+    @Test
+    fun staticConfigV1StillParses() {
+        val data = makeStaticConfigJson().toByteArray(Charsets.UTF_8)
+
+        val config = StaticVotingConfig.decodeAndVerify(data = data, expectedSHA256 = null)
+
+        assertEquals(1, config.staticConfigVersion)
+        assertEquals("https://example.com/dynamic-voting-config.json", config.dynamicConfigURL)
+        assertEquals(emptyList(), config.dynamicConfigURLs)
+    }
+
+    @Test
+    fun staticConfigV2ParsesAndValidates() {
+        val data = makeStaticConfigJsonV2().toByteArray(Charsets.UTF_8)
+        val sha256 = MessageDigest.getInstance("SHA-256").digest(data)
+
+        val config = StaticVotingConfig.decodeAndVerify(data = data, expectedSHA256 = sha256)
+
+        assertEquals(2, config.staticConfigVersion)
+        assertEquals(V2_DYNAMIC_CONFIG_URLS, config.dynamicConfigURLs)
+        assertEquals(null, config.dynamicConfigURL)
+        assertEquals(1, config.trustedKeys.size)
+    }
+
+    @Test
+    fun staticConfigRejectsUnsupportedVersion() {
+        val data =
+            makeStaticConfigJson()
+                .replace("\"static_config_version\": 1", "\"static_config_version\": 3")
+                .toByteArray(Charsets.UTF_8)
+
+        assertFailsWith<VotingConfigException> {
+            StaticVotingConfig.decodeAndVerify(data = data, expectedSHA256 = null)
+        }
+    }
+
+    @Test
+    fun staticConfigV2RejectsMissingOrEmptyDynamicConfigUrls() {
+        listOf(
+            makeStaticConfigJsonV2(dynamicConfigUrls = emptyList()),
+            makeStaticConfigJsonV2WithoutDynamicConfigUrlsField()
+        ).forEach { json ->
+            val data = json.toByteArray(Charsets.UTF_8)
+
+            assertFailsWith<VotingConfigException>(json) {
+                StaticVotingConfig.decodeAndVerify(data = data, expectedSHA256 = null)
+            }
+        }
+    }
+
+    @Test
+    fun staticConfigV1RejectsMissingDynamicConfigUrl() {
+        val data = makeStaticConfigJsonV1WithoutDynamicConfigUrl().toByteArray(Charsets.UTF_8)
+
+        assertFailsWith<VotingConfigException> {
+            StaticVotingConfig.decodeAndVerify(data = data, expectedSHA256 = null)
+        }
+    }
+
+    @Test
+    fun resolvedDynamicConfigUrlsUnifiesV1AndV2() {
+        val v1Config =
+            StaticVotingConfig.decodeAndVerify(
+                data = makeStaticConfigJson().toByteArray(Charsets.UTF_8),
+                expectedSHA256 = null
+            )
+        val v2Config =
+            StaticVotingConfig.decodeAndVerify(
+                data = makeStaticConfigJsonV2().toByteArray(Charsets.UTF_8),
+                expectedSHA256 = null
+            )
+
+        assertEquals(listOf("https://example.com/dynamic-voting-config.json"), v1Config.resolvedDynamicConfigUrls())
+        assertEquals(V2_DYNAMIC_CONFIG_URLS, v2Config.resolvedDynamicConfigUrls())
+    }
+
+    @Test
+    fun bundledPinnedSourceHasExpectedV2Sha256() {
+        val source = PinnedConfigSource.parse(StaticVotingConfig.BUNDLED_PINNED_SOURCE)
+
+        assertEquals(
+            "28fc9b631091ae8bc2f8635d8930489238ce144174cbd15a03efb0530b301ebe",
+            source.sha256?.toLowerHex()
+        )
+    }
+
     private fun makeStaticConfigJson(
         pubkey: String = ADMIN_PUBKEY_BASE64
     ): String =
@@ -133,6 +219,65 @@ class StaticVotingConfigTest {
           ]
         }
         """.trimIndent()
+
+    private fun makeStaticConfigJsonV1WithoutDynamicConfigUrl(
+        pubkey: String = ADMIN_PUBKEY_BASE64
+    ): String =
+        """
+        {
+          "static_config_version": 1,
+          "trusted_keys": [
+            {
+              "key_id": "valar-test",
+              "alg": "ed25519",
+              "pubkey": "$pubkey"
+            }
+          ]
+        }
+        """.trimIndent()
+
+    private fun makeStaticConfigJsonV2(
+        pubkey: String = ADMIN_PUBKEY_BASE64,
+        dynamicConfigUrls: List<String> = V2_DYNAMIC_CONFIG_URLS
+    ): String =
+        """
+        {
+          "static_config_version": 2,
+          "dynamic_config_urls": [${dynamicConfigUrls.joinToString(",") { url -> "\"$url\"" }}],
+          "trusted_keys": [
+            {
+              "key_id": "valar-test",
+              "alg": "ed25519",
+              "pubkey": "$pubkey"
+            }
+          ]
+        }
+        """.trimIndent()
+
+    private fun makeStaticConfigJsonV2WithoutDynamicConfigUrlsField(
+        pubkey: String = ADMIN_PUBKEY_BASE64
+    ): String =
+        """
+        {
+          "static_config_version": 2,
+          "trusted_keys": [
+            {
+              "key_id": "valar-test",
+              "alg": "ed25519",
+              "pubkey": "$pubkey"
+            }
+          ]
+        }
+        """.trimIndent()
+
+    private companion object {
+        val V2_DYNAMIC_CONFIG_URLS =
+            listOf(
+                "https://voting.valargroup.dev/prod/dynamic-voting-config.json",
+                "https://raw.githubusercontent.com/valargroup/token-holder-voting-config/main/prod/" +
+                    "dynamic-voting-config.json"
+            )
+    }
 }
 
 class ZodlEndorsedRoundsResponseTest {

@@ -434,17 +434,8 @@ class KtorVotingApiProvider(
         val staticConfig = fetchStaticConfig(source)
         val rawServiceConfig =
             execute {
-                try {
-                    get(staticConfig.dynamicConfigURL) {
-                        noCache()
-                    }.bodyAsText()
-                } catch (responseException: ResponseException) {
-                    throw VotingConfigException(
-                        "Dynamic voting config fetch failed: HTTP ${responseException.response.status.value}"
-                    )
-                }
-            }.let(VotingServiceConfig::decode)
-                .also(VotingServiceConfig::validate)
+                fetchDynamicServiceConfig(staticConfig.resolvedDynamicConfigUrls())
+            }
         val serviceConfig = rawServiceConfig.retainingRoundsWithValidSignatures(staticConfig.trustedKeys)
 
         return ResolvedVotingConfig(
@@ -453,6 +444,50 @@ class KtorVotingApiProvider(
             rawServiceConfig = rawServiceConfig,
             serviceConfig = serviceConfig
         )
+    }
+
+    /**
+     * Tries every configured dynamic-config URL in order (v2's fallback mirror alongside the
+     * primary valargroup.dev host — MOB-1806) and returns the first one that fetches, decodes,
+     * and validates successfully. Unlike [withVoteServerFailover]/[shouldTryNextVoteServer], a
+     * [VotingConfigException] from decode or validate is retryable here too — a malformed or
+     * unreachable mirror should not prevent falling through to the next URL. All URLs failing
+     * throws one [VotingConfigException] naming every URL's failure.
+     */
+    private suspend fun HttpClient.fetchDynamicServiceConfig(urls: List<String>): VotingServiceConfig {
+        val normalizedUrls = urls.map(String::trim).filter(String::isNotEmpty).distinct()
+        if (normalizedUrls.isEmpty()) {
+            throw VotingConfigException("Static voting config does not list any dynamic_config_urls")
+        }
+
+        val failures = mutableListOf<String>()
+        for (url in normalizedUrls) {
+            try {
+                return fetchSingleDynamicServiceConfig(url)
+            } catch (exception: Exception) {
+                exception.rethrowIfCancellation()
+                failures += "$url: ${exception.message ?: exception::class.simpleName}"
+            }
+        }
+
+        throw VotingConfigException(
+            "Dynamic voting config fetch failed for all ${normalizedUrls.size} configured URL(s): " +
+                failures.joinToString("; ")
+        )
+    }
+
+    private suspend fun HttpClient.fetchSingleDynamicServiceConfig(url: String): VotingServiceConfig {
+        val body =
+            try {
+                get(url) {
+                    noCache()
+                }.bodyAsText()
+            } catch (responseException: ResponseException) {
+                throw VotingConfigException(
+                    "Dynamic voting config fetch failed: HTTP ${responseException.response.status.value}"
+                )
+            }
+        return VotingServiceConfig.decode(body).also(VotingServiceConfig::validate)
     }
 
     private suspend fun authenticateVotingSession(session: VotingSession): VotingSession {
@@ -843,6 +878,17 @@ private fun tallyResultsPath(roundIdHex: String): String =
 
 private fun txConfirmationPath(txHash: String): String =
     "/shielded-vote/v1/tx/$txHash"
+
+/**
+ * Never swallow a coroutine cancellation while collecting per-URL failures — rethrowing it
+ * here (instead of inline in [KtorVotingApiProvider.fetchDynamicServiceConfig]) keeps that
+ * loop's own throw count within detekt's [ThrowsCount] budget.
+ */
+private fun Throwable.rethrowIfCancellation() {
+    if (this is CancellationException) {
+        throw this
+    }
+}
 
 internal fun shouldTreatEndorsedRoundsStatusAsEmpty(status: HttpStatusCode): Boolean =
     status == HttpStatusCode.BadRequest || status == HttpStatusCode.NotFound

@@ -30,6 +30,8 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - Bottom sheets across the app now share one background color.
 - We rebuilt polling to work with your Ironwood-migrated funds.
 - We made poll loading more reliable during service outages.
+- Coinholder Polling now supports multiple dynamic configuration URLs and automatically falls back to the next one if the first is
+  unreachable, adding resilience against an ISP blocking the primary voting configuration host.
 
 ### Fixed:
 
