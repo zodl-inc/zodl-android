@@ -7,6 +7,10 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Added:
+
+- We added a Wallet Status Widget prompt for Coinholder Polling, so you can jump straight into an active poll you haven't voted in yet.
+
 ### Fixed:
 
 - A temporary Android Keystore failure at startup is no longer mistaken for corrupted encrypted storage: the encrypted secret store is now

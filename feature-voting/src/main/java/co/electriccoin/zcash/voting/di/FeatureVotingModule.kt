@@ -34,6 +34,7 @@ import co.electriccoin.zcash.ui.common.usecase.SkipRemainingKeystoneBundlesUseCa
 import co.electriccoin.zcash.ui.common.usecase.SubmitVotesUseCase
 import co.electriccoin.zcash.ui.common.usecase.TrackVotingSharesUseCase
 import co.electriccoin.zcash.ui.common.voting.VotingHomeHooks
+import co.electriccoin.zcash.ui.common.voting.VotingHomeMessageSource
 import co.electriccoin.zcash.ui.common.voting.VotingNavContributor
 import co.electriccoin.zcash.ui.common.voting.VotingSettingsEntry
 import co.electriccoin.zcash.ui.screen.voting.chainconfig.VoteChainConfigVM
@@ -47,6 +48,7 @@ import co.electriccoin.zcash.ui.screen.voting.scankeystone.viewmodel.ScanKeyston
 import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingVM
 import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingVM
 import co.electriccoin.zcash.voting.VotingHomeHooksImpl
+import co.electriccoin.zcash.voting.VotingHomeMessageSourceImpl
 import co.electriccoin.zcash.voting.VotingNavContributorImpl
 import co.electriccoin.zcash.voting.VotingSettingsEntryImpl
 import co.electriccoin.zcash.work.VotingShareTrackingScheduler
@@ -69,6 +71,7 @@ val featureVotingModule =
         singleOf(::VotingHomeHooksImpl) bind VotingHomeHooks::class
         singleOf(::VotingSettingsEntryImpl) bind VotingSettingsEntry::class
         singleOf(::VotingNavContributorImpl) bind VotingNavContributor::class
+        singleOf(::VotingHomeMessageSourceImpl) bind VotingHomeMessageSource::class
 
         // Providers
         singleOf(::VotingCryptoClientImpl) bind VotingCryptoClient::class
