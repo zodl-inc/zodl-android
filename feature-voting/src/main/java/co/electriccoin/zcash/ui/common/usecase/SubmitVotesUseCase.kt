@@ -1039,34 +1039,13 @@ class SubmitVotesUseCase(
         val acceptedTransaction =
             reconcileVotingTransactionResult(
                 result =
-                    votingApiProvider
-                        .submitVoteCommitment(
-                            bundle = commitment.toVoteCommitmentBundle(),
-                            signature = signature
-                        ).also { accepted ->
-                            check(accepted.code == 0) {
-                                "MANUAL_TEST requires a real accepted cast vote, got code=${accepted.code}"
-                            }
-                            delay(2_000L)
-                            Log.w(
-                                TAG,
-                                "MANUAL_TEST replacing accepted cast-vote response with spent-nullifier response"
-                            )
-                        }.let { accepted ->
-                            accepted.copy(
-                                code = 1,
-                                log = "nullifier already spent: MANUAL_TEST",
-                                txHash = accepted.txHash
-                            )
-                        },
+                    votingApiProvider.submitVoteCommitment(
+                        bundle = commitment.toVoteCommitmentBundle(),
+                        signature = signature
+                    ),
                 rejectionMessage = "Vote commitment transaction was rejected",
                 fetchTxConfirmation = votingApiProvider::fetchTxConfirmation
             )
-        Log.w(
-            TAG,
-            "MANUAL_TEST cast-vote transaction-hash reconciliation succeeded " +
-                "for bundle=$bundleIndex proposal=$proposalId"
-        )
         traceVotingStep(
             roundId = roundId,
             step = "storeVoteTxHash",
@@ -1124,10 +1103,6 @@ class SubmitVotesUseCase(
             bundleIndex = bundleIndex,
             proposalId = proposalId,
             delegatedShareIndicesByTarget = delegatedShareIndicesByTarget
-        )
-        Log.w(
-            TAG,
-            "MANUAL_TEST cast-vote fast path completed for bundle=$bundleIndex proposal=$proposalId"
         )
     }
 
