@@ -150,6 +150,7 @@ class VoteCoinholderPollingVM(
                 onBack = ::onBack,
                 onRefresh = ::refreshVotingData,
                 onConfigSettings = ::onConfigSettings,
+                isInitialLoading = true,
             )
 
     val state =
@@ -163,10 +164,23 @@ class VoteCoinholderPollingVM(
             val apiSnapshot = apiSnapshotWithConfig.apiSnapshot
             val rounds =
                 when {
-                    !apiSnapshotWithConfig.isSelectedConfigLoaded -> null
+                    // Cache-and-fresh: show the repository's last-fetched rounds immediately,
+                    // even before *this* VM instance (recreated on every screen re-entry) has
+                    // completed its own load — `isSelectedConfigLoaded` is VM-local state that
+                    // resets to false on every fresh instance, but `apiSnapshot.rounds` is a
+                    // repository-scoped cache that `onScreenEntered()`'s soft refresh
+                    // deliberately preserves (see softRefresh's "avoid card flicker" comment in
+                    // refreshVotingDataInternal). A genuine config-source switch or explicit
+                    // refresh already clears the repository first (clearLoadedVotingStateForServiceConfigRefresh),
+                    // so trusting non-empty `apiSnapshot.rounds` here never shows stale-source data.
                     apiSnapshot.rounds.isNotEmpty() -> apiSnapshot.rounds
+
+                    !apiSnapshotWithConfig.isSelectedConfigLoaded -> null
+
                     roundsLceState.loading -> null
+
                     roundsLceState.content is LceContent.Success -> emptyList()
+
                     else -> null
                 }
 
