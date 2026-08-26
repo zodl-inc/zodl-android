@@ -190,7 +190,7 @@ class SubmitVotesUseCase(
                     accountUuidBytes = selectedAccount.sdkAccount.accountUuid.value
                 )
 
-            val singleShare = session.isLastMoment()
+            val singleShare = recovery.singleShareMode ?: session.isLastMoment()
             val sortedChoices = choices.toSortedMap()
             val totalChoices = sortedChoices.size
 
@@ -759,6 +759,27 @@ class SubmitVotesUseCase(
                             )
                     }
                 }.toMap()
+        val latestRecovery =
+            votingRecoveryRepository.get(context.accountUuidString, roundId)
+                ?: context.recovery
+        val conflictingProposalId =
+            latestRecovery.proposalSelections.entries
+                .firstOrNull { (proposalId, lockedSelection) ->
+                    val requestedSelection = proposalSelections[proposalId]
+                    if (proposalId in latestRecovery.submittedProposalIds) {
+                        requestedSelection != null && requestedSelection != lockedSelection
+                    } else {
+                        requestedSelection != lockedSelection
+                    }
+                }?.key
+        if (conflictingProposalId != null) {
+            throw VotingSubmissionRecoverableException(
+                VotingErrors.ConflictingProposalSelection(
+                    roundId = roundId,
+                    proposalId = conflictingProposalId
+                )
+            )
+        }
         if (proposalSelections.isNotEmpty()) {
             votingRecoveryRepository.storeProposalSelections(
                 accountUuid = context.accountUuidString,
@@ -1046,6 +1067,16 @@ class SubmitVotesUseCase(
                 rejectionMessage = "Vote commitment transaction was rejected",
                 fetchTxConfirmation = votingApiProvider::fetchTxConfirmation
             )
+        acceptedTransaction.confirmation?.let { recoveredConfirmation ->
+            requireRecoveredCastVoteMatchesCommitment(
+                context = context,
+                bundleIndex = bundleIndex,
+                proposalId = proposalId,
+                expectedVanCmx = commitment.voteAuthorityNoteNew,
+                expectedVoteCommitment = commitment.voteCommitment,
+                confirmation = recoveredConfirmation
+            )
+        }
         traceVotingStep(
             roundId = roundId,
             step = "storeVoteTxHash",
@@ -1104,6 +1135,46 @@ class SubmitVotesUseCase(
             proposalId = proposalId,
             delegatedShareIndicesByTarget = delegatedShareIndicesByTarget
         )
+    }
+
+    private suspend fun requireRecoveredCastVoteMatchesCommitment(
+        context: VotingSubmitContext,
+        bundleIndex: Int,
+        proposalId: Int,
+        expectedVanCmx: ByteArray,
+        expectedVoteCommitment: ByteArray,
+        confirmation: TxConfirmation
+    ) {
+        val (confirmedVanPosition, confirmedVoteCommitmentPosition) = confirmation.castVoteLeafPositions()
+        val startHeight = context.session.createdAtHeight.coerceAtLeast(0)
+        val actualVanPosition =
+            findVanCommitmentPosition(
+                roundId = context.roundId,
+                startHeight = startHeight,
+                expectedVanCmx = expectedVanCmx,
+                fetchLatest = votingApiProvider::fetchCommitmentTreeLatest,
+                fetchLeafPage = votingApiProvider::fetchCommitmentTreeLeafPage
+            )
+        val actualVoteCommitmentPosition =
+            findVanCommitmentPosition(
+                roundId = context.roundId,
+                startHeight = startHeight,
+                expectedVanCmx = expectedVoteCommitment,
+                fetchLatest = votingApiProvider::fetchCommitmentTreeLatest,
+                fetchLeafPage = votingApiProvider::fetchCommitmentTreeLeafPage
+            )?.toLong()
+        if (
+            actualVanPosition != confirmedVanPosition ||
+            actualVoteCommitmentPosition != confirmedVoteCommitmentPosition
+        ) {
+            throw VotingSubmissionRecoverableException(
+                VotingErrors.RecoveredVoteCommitmentMismatch(
+                    roundId = context.roundId,
+                    bundleIndex = bundleIndex,
+                    proposalId = proposalId
+                )
+            )
+        }
     }
 
     private suspend fun markProposalSubmissionComplete(

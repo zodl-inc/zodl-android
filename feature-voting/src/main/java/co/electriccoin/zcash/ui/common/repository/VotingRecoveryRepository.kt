@@ -494,6 +494,14 @@ class VotingRecoveryRepositoryImpl(
                 accountUuid = accountUuid,
                 roundId = roundId
             )
+        val conflictingProposalId =
+            proposalSelections.entries
+                .firstOrNull { (proposalId, selection) ->
+                    current.proposalSelections[proposalId]?.let { it != selection } == true
+                }?.key
+        require(conflictingProposalId == null) {
+            "Proposal $conflictingProposalId selection is already locked for round $roundId"
+        }
         store(
             current.copy(
                 proposalSelections = current.proposalSelections + proposalSelections,
@@ -688,6 +696,9 @@ class VotingRecoveryRepositoryImpl(
                 accountUuid = accountUuid,
                 roundId = roundId
             )
+        require(current.singleShareMode == null || current.singleShareMode == singleShareMode) {
+            "Share mode is already locked for round $roundId"
+        }
         store(
             current.copy(
                 singleShareMode = singleShareMode,

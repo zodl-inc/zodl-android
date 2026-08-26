@@ -102,6 +102,30 @@ sealed interface VotingErrors {
     }
 
     /**
+     * A retry supplied a different choice after the original selection was locked for broadcast.
+     */
+    data class ConflictingProposalSelection(
+        val roundId: String,
+        val proposalId: Int
+    ) : VotingErrors {
+        override val userMessage =
+            "Vote selection for proposal $proposalId cannot change after submission started for round $roundId"
+    }
+
+    /**
+     * A spent-nullifier response referenced a successful transaction whose commitment-tree leaves
+     * do not contain the exact vote commitment currently being recovered.
+     */
+    data class RecoveredVoteCommitmentMismatch(
+        val roundId: String,
+        val bundleIndex: Int,
+        val proposalId: Int
+    ) : VotingErrors {
+        override val userMessage =
+            "Recovered transaction does not match round $roundId bundle $bundleIndex proposal $proposalId"
+    }
+
+    /**
      * A successful SDK or vote-server response was missing required structured data.
      */
     data class UnexpectedSdkResponse(
