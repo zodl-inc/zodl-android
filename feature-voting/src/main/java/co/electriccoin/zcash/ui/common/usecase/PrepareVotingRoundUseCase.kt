@@ -25,6 +25,7 @@ import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -95,8 +96,8 @@ class PrepareVotingRoundUseCase(
             val preparationResult =
                 try {
                     votingCryptoClient.setWalletId(dbHandle, accountUuidString, networkId)
-                    val existingRoundState = votingCryptoClient.getRoundState(dbHandle, roundId)
-                    val effectiveRecoverySnapshot = recoverySnapshot
+                    var existingRoundState = votingCryptoClient.getRoundState(dbHandle, roundId)
+                    var effectiveRecoverySnapshot = recoverySnapshot
                     // An existing round may contain an ambiguously broadcast transaction whose
                     // accepted response was lost. In that state there is no stored tx hash, but the
                     // bundle's alpha and van_comm_rand are still the only way to reconcile and
@@ -111,9 +112,25 @@ class PrepareVotingRoundUseCase(
                                 }
                             )
                         }
-                    if (existingRoundRecoveryAction == ExistingRoundRecoveryAction.FAIL_CLOSED) {
-                        Log.w(TAG, "Retaining incomplete voting round $roundId for recovery")
-                        throw VotingSubmissionRecoverableException(VotingErrors.MissingBundleCount(roundId))
+                    when (existingRoundRecoveryAction) {
+                        ExistingRoundRecoveryAction.REINITIALIZE -> {
+                            Log.i(TAG, "Reinitializing verified empty voting round $roundId")
+                            votingCryptoClient.clearRound(dbHandle, roundId)
+                            votingCryptoClient.clearRecoveryState(dbHandle, roundId)
+                            votingRecoveryRepository.clearRound(accountUuidString, roundId)
+                            existingRoundState = null
+                            effectiveRecoverySnapshot = null
+                        }
+
+                        ExistingRoundRecoveryAction.FAIL_CLOSED -> {
+                            Log.w(TAG, "Retaining incomplete voting round $roundId for recovery")
+                            throw VotingSubmissionRecoverableException(VotingErrors.MissingBundleCount(roundId))
+                        }
+
+                        ExistingRoundRecoveryAction.RESUME,
+                        null -> {
+                            Unit
+                        }
                     }
                     // iOS distinguishes `noNotes` (`VotingStore+Session.swift:268`) and
                     // `balanceTooLow` (`:282`) by checking the un-bundled note count before smart
@@ -560,6 +577,7 @@ class PrepareVotingRoundUseCase(
 
 internal enum class ExistingRoundRecoveryAction {
     RESUME,
+    REINITIALIZE,
     FAIL_CLOSED
 }
 
@@ -570,10 +588,17 @@ internal suspend fun existingRoundRecoveryAction(
     if (hasPreparedRecovery) {
         return ExistingRoundRecoveryAction.RESUME
     }
-    val dbBundleCount = runCatching { getBundleCount() }.getOrNull()
-    return if (dbBundleCount != null && dbBundleCount > 0) {
-        ExistingRoundRecoveryAction.RESUME
-    } else {
-        ExistingRoundRecoveryAction.FAIL_CLOSED
+    val dbBundleCount =
+        try {
+            getBundleCount()
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (_: Exception) {
+            return ExistingRoundRecoveryAction.FAIL_CLOSED
+        }
+    return when {
+        dbBundleCount > 0 -> ExistingRoundRecoveryAction.RESUME
+        dbBundleCount == 0 -> ExistingRoundRecoveryAction.REINITIALIZE
+        else -> ExistingRoundRecoveryAction.FAIL_CLOSED
     }
 }

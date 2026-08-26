@@ -1,8 +1,11 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertSame
 
 class PrepareVotingRoundUseCaseTest {
     @Test
@@ -36,7 +39,7 @@ class PrepareVotingRoundUseCaseTest {
         }
 
     @Test
-    fun emptyExistingRoundFailsClosedInsteadOfRequestingClear() =
+    fun emptyExistingRoundIsSafeToReinitialize() =
         runTest {
             val action =
                 existingRoundRecoveryAction(
@@ -44,7 +47,7 @@ class PrepareVotingRoundUseCaseTest {
                     getBundleCount = { 0 }
                 )
 
-            assertEquals(ExistingRoundRecoveryAction.FAIL_CLOSED, action)
+            assertEquals(ExistingRoundRecoveryAction.REINITIALIZE, action)
         }
 
     @Test
@@ -57,5 +60,21 @@ class PrepareVotingRoundUseCaseTest {
                 )
 
             assertEquals(ExistingRoundRecoveryAction.FAIL_CLOSED, action)
+        }
+
+    @Test
+    fun nativeBundleLookupCancellationPropagates() =
+        runTest {
+            val cancellation = CancellationException("cancelled")
+
+            val thrown =
+                assertFailsWith<CancellationException> {
+                    existingRoundRecoveryAction(
+                        hasPreparedRecovery = false,
+                        getBundleCount = { throw cancellation }
+                    )
+                }
+
+            assertSame(cancellation, thrown)
         }
 }

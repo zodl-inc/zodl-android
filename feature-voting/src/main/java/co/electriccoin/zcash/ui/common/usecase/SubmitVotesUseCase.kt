@@ -5,6 +5,8 @@ import cash.z.ecc.android.sdk.ext.toHex
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.voting.CastVoteSignature
+import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLatest
+import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLeafPage
 import co.electriccoin.zcash.ui.common.model.voting.DelegatedShareInfo
 import co.electriccoin.zcash.ui.common.model.voting.DelegationPhase
 import co.electriccoin.zcash.ui.common.model.voting.SharePayload
@@ -48,6 +50,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
 import java.time.Instant
+import java.util.Base64
 
 class VotingAuthorizationException(
     cause: Exception
@@ -564,13 +567,12 @@ class SubmitVotesUseCase(
         // this one for a different purpose): SUBMITTED means delegation_tx_hash is set but
         // van_leaf_position isn't yet — the normal in-flight state while awaiting confirmation, not
         // an edge case. Falling through is safe: buildDelegationProofIfNeeded no-ops for an
-        // already-SUBMITTED bundle (see its own phase check), and getDelegationSubmission(...)
-        // deterministically re-derives the same submission bytes from the already-persisted PCZT/
-        // proof state (the Keystone sig/sighash/rk equality asserts below rely on exactly this), so
-        // re-running the submit step below is an idempotent re-broadcast. It then proceeds to the
-        // full awaitTxConfirmation retry budget and storeVanPosition, instead of returning early and
-        // leaving van_leaf_position unset (which previously wedged the round downstream in
-        // submitFreshVoteBundle → syncVoteTree → generateVanWitnessJson).
+        // already-SUBMITTED bundle (see its own phase check). A software-wallet retry may have a
+        // different RedPallas signature and transaction hash even though the persisted VAN
+        // commitment is unchanged, so the submit path below reconciles a spent-nullifier response
+        // against that commitment. It then stores van_leaf_position instead of leaving it unset
+        // (which previously wedged the round downstream in submitFreshVoteBundle → syncVoteTree →
+        // generateVanWitnessJson).
         if (currentDelegationPhase(dbHandle, roundId, bundleIndex) == DelegationPhase.CONFIRMED) {
             return
         }
@@ -582,7 +584,7 @@ class SubmitVotesUseCase(
             phase = VotingRecoveryPhase.DELEGATION_PROVED
         )
 
-        val acceptedTransaction =
+        val submissionResolution =
             runVotingAuthorizationStep(context.isKeystone) {
                 val submission =
                     if (context.isKeystone) {
@@ -625,12 +627,52 @@ class SubmitVotesUseCase(
                         }
                     }
                 }
-                reconcileVotingTransactionResult(
-                    result = votingApiProvider.submitDelegation(submission.toDelegationRegistration()),
+                val registration = submission.toDelegationRegistration()
+                val result =
+                    try {
+                        votingApiProvider.submitDelegation(registration)
+                    } catch (exception: CancellationException) {
+                        throw exception
+                    } catch (exception: Exception) {
+                        if (!exception.isTransientVotingInfrastructureFailure()) {
+                            throw exception
+                        }
+                        val recoveredPosition =
+                            findPersistedVanPosition(
+                                context = context,
+                                expectedVanCmx = registration.vanCmx
+                            )
+                        if (recoveredPosition != null) {
+                            return@runVotingAuthorizationStep DelegationSubmissionResolution.ConfirmedVan(
+                                recoveredPosition
+                            )
+                        }
+                        throw exception
+                    }
+
+                reconcileDelegationTransactionResult(
+                    result = result,
                     rejectionMessage = "Delegation transaction was rejected",
-                    fetchTxConfirmation = votingApiProvider::fetchTxConfirmation
+                    fetchTxConfirmation = votingApiProvider::fetchTxConfirmation,
+                    findVanPosition = {
+                        findPersistedVanPosition(
+                            context = context,
+                            expectedVanCmx = registration.vanCmx
+                        )
+                    }
                 )
             }
+        if (submissionResolution is DelegationSubmissionResolution.ConfirmedVan) {
+            votingCryptoClient.storeVanPosition(
+                dbHandle = dbHandle,
+                roundId = roundId,
+                bundleIndex = bundleIndex,
+                position = submissionResolution.position
+            )
+            return
+        }
+        val acceptedTransaction =
+            (submissionResolution as DelegationSubmissionResolution.AcceptedTransaction).transaction
         votingCryptoClient.storeDelegationTxHash(
             dbHandle = dbHandle,
             roundId = roundId,
@@ -664,6 +706,24 @@ class SubmitVotesUseCase(
             )
         }
     }
+
+    private suspend fun findPersistedVanPosition(
+        context: VotingSubmitContext,
+        expectedVanCmx: ByteArray
+    ): Int? =
+        try {
+            findVanCommitmentPosition(
+                roundId = context.roundId,
+                expectedVanCmx = expectedVanCmx,
+                fetchLatest = votingApiProvider::fetchCommitmentTreeLatest,
+                fetchLeafPage = votingApiProvider::fetchCommitmentTreeLeafPage
+            )
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            Log.w(TAG, "Unable to reconcile persisted VAN commitment for round ${context.roundId}", exception)
+            null
+        }
 
     private suspend fun submitVoteCommitmentsAndShares(
         context: VotingSubmitContext,
@@ -1236,17 +1296,19 @@ class SubmitVotesUseCase(
             lower.contains("all configured vote servers failed")
     }
 
-    private fun Throwable.isTransientVotingInfrastructureFailure(): Boolean {
-        val lower = message.orEmpty().lowercase()
-        return lower.contains("http 5") ||
-            lower.contains("timeout") ||
-            lower.contains("timed out") ||
-            lower.contains("connect") ||
-            lower.contains("connection") ||
-            lower.contains("transport became inactive") ||
-            lower.contains("grpcstatus") ||
-            lower.contains("network")
-    }
+    private fun Throwable.isTransientVotingInfrastructureFailure(): Boolean =
+        generateSequence(this) { throwable -> throwable.cause }
+            .map { throwable -> throwable.message.orEmpty().lowercase() }
+            .any { lower ->
+                lower.contains("http 5") ||
+                    lower.contains("timeout") ||
+                    lower.contains("timed out") ||
+                    lower.contains("connect") ||
+                    lower.contains("connection") ||
+                    lower.contains("transport became inactive") ||
+                    lower.contains("grpcstatus") ||
+                    lower.contains("network")
+            }
 
     private suspend fun <T> runVotingAuthorizationStep(
         isKeystone: Boolean,
@@ -1301,6 +1363,16 @@ internal data class AcceptedVotingTransaction(
     val confirmation: TxConfirmation?
 )
 
+internal sealed interface DelegationSubmissionResolution {
+    data class AcceptedTransaction(
+        val transaction: AcceptedVotingTransaction
+    ) : DelegationSubmissionResolution
+
+    data class ConfirmedVan(
+        val position: Int
+    ) : DelegationSubmissionResolution
+}
+
 /**
  * Treats a spent-nullifier rejection as an ambiguous retry only when the rejected response's hash
  * resolves to a successful transaction. This mirrors Vizor's bounded recovery behavior without
@@ -1339,6 +1411,122 @@ internal suspend fun reconcileVotingTransactionResult(
     }
 
     throw IllegalStateException(result.log.ifEmpty { rejectionMessage })
+}
+
+internal suspend fun reconcileDelegationTransactionResult(
+    result: TxResult,
+    rejectionMessage: String,
+    fetchTxConfirmation: suspend (String) -> TxConfirmation?,
+    findVanPosition: suspend () -> Int?
+): DelegationSubmissionResolution =
+    try {
+        DelegationSubmissionResolution.AcceptedTransaction(
+            reconcileVotingTransactionResult(
+                result = result,
+                rejectionMessage = rejectionMessage,
+                fetchTxConfirmation = fetchTxConfirmation
+            )
+        )
+    } catch (exception: CancellationException) {
+        throw exception
+    } catch (exception: Exception) {
+        if (!result.log.isSpentNullifierRejection()) {
+            throw exception
+        }
+        findVanPosition()
+            ?.let(DelegationSubmissionResolution::ConfirmedVan)
+            ?: throw exception
+    }
+
+internal suspend fun findVanCommitmentPosition(
+    roundId: String,
+    expectedVanCmx: ByteArray,
+    maxRecoveryAttempts: Int = SPENT_NULLIFIER_RECOVERY_ATTEMPTS,
+    recoveryDelayMillis: Long = SPENT_NULLIFIER_RECOVERY_POLL_MS,
+    maxPagesPerAttempt: Int = COMMITMENT_TREE_MAX_PAGES,
+    fetchLatest: suspend (String) -> CommitmentTreeLatest,
+    fetchLeafPage: suspend (String, Long, Long) -> CommitmentTreeLeafPage
+): Int? {
+    require(roundId.isNotBlank()) { "roundId must not be blank" }
+    require(expectedVanCmx.size == COMMITMENT_BYTES) {
+        "expectedVanCmx must be $COMMITMENT_BYTES bytes"
+    }
+    require(maxRecoveryAttempts >= 1) { "maxRecoveryAttempts must be >= 1" }
+    require(recoveryDelayMillis >= 0) { "recoveryDelayMillis must be non-negative" }
+    require(maxPagesPerAttempt >= 1) { "maxPagesPerAttempt must be >= 1" }
+
+    repeat(maxRecoveryAttempts) { attempt ->
+        val latest = fetchLatest(roundId)
+        require(latest.height >= 0) { "Commitment tree height must be non-negative" }
+        require(latest.nextIndex >= 0) { "Commitment tree next_index must be non-negative" }
+        val matches = mutableSetOf<Long>()
+        var previousNextIndex: Long? = null
+        var pageStart = 0L
+        var pageCount = 0
+        do {
+            check(pageCount < maxPagesPerAttempt) {
+                "Commitment tree pagination exceeded $maxPagesPerAttempt pages"
+            }
+            pageCount += 1
+            val page = fetchLeafPage(roundId, pageStart, latest.height)
+            var previousBlockHeight: Long? = null
+            page.blocks.forEach { block ->
+                require(block.height in pageStart..latest.height) {
+                    "Commitment leaf block ${block.height} is outside requested range $pageStart..${latest.height}"
+                }
+                require(previousBlockHeight == null || block.height > previousBlockHeight) {
+                    "Commitment leaf block heights must be strictly increasing"
+                }
+                require(block.startIndex >= 0) { "Commitment leaf start_index must be non-negative" }
+                if (previousNextIndex == null) {
+                    require(block.startIndex == 0L) {
+                        "First commitment leaf block must start at index 0"
+                    }
+                }
+                previousNextIndex?.let { expectedStartIndex ->
+                    require(block.startIndex == expectedStartIndex) {
+                        "Commitment leaf start_index ${block.startIndex} does not continue at $expectedStartIndex"
+                    }
+                }
+                block.leavesBase64.forEachIndexed { leafOffset, encodedLeaf ->
+                    val leaf =
+                        runCatching { Base64.getDecoder().decode(encodedLeaf) }
+                            .getOrElse { throw IllegalArgumentException("Malformed commitment leaf", it) }
+                    require(leaf.size == COMMITMENT_BYTES) {
+                        "Commitment leaf must be $COMMITMENT_BYTES bytes"
+                    }
+                    if (leaf.contentEquals(expectedVanCmx)) {
+                        matches += Math.addExact(block.startIndex, leafOffset.toLong())
+                    }
+                }
+                previousNextIndex = Math.addExact(block.startIndex, block.leavesBase64.size.toLong())
+                previousBlockHeight = block.height
+            }
+            val nextFromHeight = page.nextFromHeight
+            require(nextFromHeight == 0L || nextFromHeight > pageStart) {
+                "Commitment tree next_from_height must advance or be zero"
+            }
+            require(nextFromHeight == 0L || nextFromHeight <= latest.height) {
+                "Commitment tree next_from_height exceeds latest height"
+            }
+            pageStart = nextFromHeight
+        } while (pageStart != 0L)
+
+        val scannedNextIndex = previousNextIndex ?: 0L
+        require(scannedNextIndex == latest.nextIndex) {
+            "Commitment tree scan ended at index $scannedNextIndex, expected ${latest.nextIndex}"
+        }
+
+        require(matches.size <= 1) { "Persisted VAN commitment appears more than once in the round tree" }
+        matches.singleOrNull()?.let { position ->
+            require(position <= Int.MAX_VALUE) { "VAN position exceeds supported range: $position" }
+            return position.toInt()
+        }
+        if (attempt + 1 < maxRecoveryAttempts) {
+            delay(recoveryDelayMillis)
+        }
+    }
+    return null
 }
 
 private fun String.isSpentNullifierRejection(): Boolean =
@@ -1409,3 +1597,5 @@ internal fun calculateSubmittingBundleProgress(
 
 private const val SPENT_NULLIFIER_RECOVERY_ATTEMPTS = 3
 private const val SPENT_NULLIFIER_RECOVERY_POLL_MS = 1_000L
+private const val COMMITMENT_BYTES = 32
+private const val COMMITMENT_TREE_MAX_PAGES = 128

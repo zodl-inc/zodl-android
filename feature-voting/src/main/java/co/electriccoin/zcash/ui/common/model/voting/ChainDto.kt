@@ -33,6 +33,47 @@ data class ChainTxDto(
 
 @Serializable
 @JsonIgnoreUnknownKeys
+data class ChainCommitmentTreeLatestResponse(
+    val tree: ChainCommitmentTreeLatestDto
+)
+
+@Serializable
+@JsonIgnoreUnknownKeys
+data class ChainCommitmentTreeLatestDto(
+    val height: Long = 0,
+    @SerialName("next_index") val nextIndex: Long = 0,
+)
+
+@Serializable
+@JsonIgnoreUnknownKeys
+data class ChainCommitmentTreeLeavesResponse(
+    val blocks: List<ChainCommitmentTreeLeafBlockDto> = emptyList(),
+    @SerialName("next_from_height") val nextFromHeight: Long = 0
+) {
+    fun toModel() =
+        CommitmentTreeLeafPage(
+            blocks = blocks.map(ChainCommitmentTreeLeafBlockDto::toModel),
+            nextFromHeight = nextFromHeight
+        )
+}
+
+@Serializable
+@JsonIgnoreUnknownKeys
+data class ChainCommitmentTreeLeafBlockDto(
+    val height: Long,
+    @SerialName("start_index") val startIndex: Long = 0,
+    val leaves: List<String> = emptyList(),
+) {
+    fun toModel() =
+        CommitmentTreeLeafBlock(
+            height = height,
+            startIndex = startIndex,
+            leavesBase64 = leaves
+        )
+}
+
+@Serializable
+@JsonIgnoreUnknownKeys
 data class ChainRoundDto(
     @SerialName("vote_round_id") val voteRoundId: String,
     @SerialName("title") val title: String = "",

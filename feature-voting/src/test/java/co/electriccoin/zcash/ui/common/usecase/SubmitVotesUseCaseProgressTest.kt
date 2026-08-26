@@ -1,5 +1,8 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLeafBlock
+import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLatest
+import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLeafPage
 import co.electriccoin.zcash.ui.common.model.voting.TxConfirmation
 import co.electriccoin.zcash.ui.common.model.voting.TxEvent
 import co.electriccoin.zcash.ui.common.model.voting.TxEventAttribute
@@ -8,6 +11,7 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
+import java.util.Base64
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -17,6 +21,251 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class SubmitVotesUseCaseProgressTest {
+    @Test
+    fun vanCommitmentFallbackFindsOriginalWhenRetryHashIsNotConfirmed() =
+        runTest {
+            val expectedVan = ByteArray(32) { 7 }
+
+            val resolution =
+                reconcileDelegationTransactionResult(
+                    result = spentNullifierResult(txHash = "rejected-retry-hash"),
+                    rejectionMessage = "rejected",
+                    fetchTxConfirmation = { null },
+                    findVanPosition = {
+                        findVanCommitmentPosition(
+                            roundId = "round",
+                            expectedVanCmx = expectedVan,
+                            recoveryDelayMillis = 0,
+                            fetchLatest = { CommitmentTreeLatest(height = 100, nextIndex = 2) },
+                            fetchLeafPage = { _, _, _ ->
+                                leafPage(
+                                    blocks =
+                                        listOf(
+                                            leafBlock(
+                                                height = 100,
+                                                startIndex = 0,
+                                                leaves = listOf(ByteArray(32) { 1 }, expectedVan)
+                                            )
+                                        )
+                                )
+                            }
+                        )
+                    }
+                )
+
+            assertEquals(1, (resolution as DelegationSubmissionResolution.ConfirmedVan).position)
+        }
+
+    @Test
+    fun vanCommitmentLookupFollowsServerContinuationCursor() =
+        runTest {
+            val expectedVan = ByteArray(32) { 9 }
+            val requestedRanges = mutableListOf<LongRange>()
+
+            val position =
+                findVanCommitmentPosition(
+                    roundId = "round",
+                    expectedVanCmx = expectedVan,
+                    recoveryDelayMillis = 0,
+                    fetchLatest = { CommitmentTreeLatest(height = 18, nextIndex = 4) },
+                    fetchLeafPage = { roundId, fromHeight, toHeight ->
+                        assertEquals("round", roundId)
+                        requestedRanges += fromHeight..toHeight
+                        when (fromHeight) {
+                            0L ->
+                                leafPage(
+                                    blocks =
+                                        listOf(
+                                            leafBlock(
+                                                height = 12,
+                                                startIndex = 0,
+                                                leaves = listOf(ByteArray(32) { 1 }, ByteArray(32) { 2 })
+                                            )
+                                        ),
+                                    nextFromHeight = 15
+                                )
+
+                            15L ->
+                                leafPage(
+                                    blocks =
+                                        listOf(
+                                            leafBlock(
+                                                height = 16,
+                                                startIndex = 2,
+                                                leaves = listOf(ByteArray(32) { 3 }, expectedVan)
+                                            )
+                                        )
+                                )
+
+                            else -> error("unexpected cursor $fromHeight")
+                        }
+                    }
+                )
+
+            assertEquals(3, position)
+            assertEquals(listOf(0L..18L, 15L..18L), requestedRanges)
+        }
+
+    @Test
+    fun vanCommitmentLookupRejectsUnboundedServerPagination() =
+        runTest {
+            var pageCalls = 0
+
+            val failure =
+                assertFailsWith<IllegalStateException> {
+                    findVanCommitmentPosition(
+                        roundId = "round",
+                        expectedVanCmx = ByteArray(32) { 9 },
+                        maxRecoveryAttempts = 1,
+                        recoveryDelayMillis = 0,
+                        maxPagesPerAttempt = 2,
+                        fetchLatest = { CommitmentTreeLatest(height = 100, nextIndex = 0) },
+                        fetchLeafPage = { _, fromHeight, _ ->
+                            pageCalls += 1
+                            leafPage(nextFromHeight = fromHeight + 1)
+                        }
+                    )
+                }
+
+            assertEquals("Commitment tree pagination exceeded 2 pages", failure.message)
+            assertEquals(2, pageCalls)
+        }
+
+    @Test
+    fun vanCommitmentLookupRejectsOmittedLeafPrefix() =
+        runTest {
+            assertFailsWith<IllegalArgumentException> {
+                findVanCommitmentPosition(
+                    roundId = "round",
+                    expectedVanCmx = ByteArray(32) { 9 },
+                    maxRecoveryAttempts = 1,
+                    recoveryDelayMillis = 0,
+                    fetchLatest = { CommitmentTreeLatest(height = 100, nextIndex = 2) },
+                    fetchLeafPage = { _, _, _ ->
+                        leafPage(
+                            blocks =
+                                listOf(
+                                    leafBlock(
+                                        height = 100,
+                                        startIndex = 1,
+                                        leaves = listOf(ByteArray(32) { 9 })
+                                    )
+                                )
+                        )
+                    }
+                )
+            }
+        }
+
+    @Test
+    fun vanCommitmentLookupRetriesForDelayedIndexing() =
+        runTest {
+            val expectedVan = ByteArray(32) { 5 }
+            var latestCalls = 0
+
+            val position =
+                findVanCommitmentPosition(
+                    roundId = "round",
+                    expectedVanCmx = expectedVan,
+                    maxRecoveryAttempts = 2,
+                    recoveryDelayMillis = 0,
+                    fetchLatest = {
+                        latestCalls += 1
+                        if (latestCalls == 1) {
+                            CommitmentTreeLatest(height = 100, nextIndex = 0)
+                        } else {
+                            CommitmentTreeLatest(height = 101, nextIndex = 1)
+                        }
+                    },
+                    fetchLeafPage = { _, _, toHeight ->
+                        if (toHeight == 101L) {
+                            leafPage(
+                                blocks = listOf(leafBlock(height = 101, startIndex = 0, leaves = listOf(expectedVan)))
+                            )
+                        } else {
+                            leafPage()
+                        }
+                    }
+                )
+
+            assertEquals(0, position)
+            assertEquals(2, latestCalls)
+        }
+
+    @Test
+    fun absentVanCommitmentExhaustsBoundedAttemptsWithoutPosition() =
+        runTest {
+            var latestCalls = 0
+
+            val position =
+                findVanCommitmentPosition(
+                    roundId = "round",
+                    expectedVanCmx = ByteArray(32) { 5 },
+                    maxRecoveryAttempts = 3,
+                    recoveryDelayMillis = 0,
+                    fetchLatest = {
+                        latestCalls += 1
+                        CommitmentTreeLatest(height = 100, nextIndex = 0)
+                    },
+                    fetchLeafPage = { _, _, _ -> leafPage() }
+                )
+
+            assertNull(position)
+            assertEquals(3, latestCalls)
+        }
+
+    @Test
+    fun duplicateVanCommitmentIsRejected() =
+        runTest {
+            val expectedVan = ByteArray(32) { 5 }
+
+            assertFailsWith<IllegalArgumentException> {
+                findVanCommitmentPosition(
+                    roundId = "round",
+                    expectedVanCmx = expectedVan,
+                    recoveryDelayMillis = 0,
+                    fetchLatest = { CommitmentTreeLatest(height = 100, nextIndex = 2) },
+                    fetchLeafPage = { _, _, _ ->
+                        leafPage(
+                            blocks =
+                                listOf(
+                                    leafBlock(
+                                        height = 100,
+                                        startIndex = 0,
+                                        leaves = listOf(expectedVan, expectedVan)
+                                    )
+                                )
+                        )
+                    }
+                )
+            }
+        }
+
+    @Test
+    fun malformedVanCommitmentLeafIsRejected() =
+        runTest {
+            assertFailsWith<IllegalArgumentException> {
+                findVanCommitmentPosition(
+                    roundId = "round",
+                    expectedVanCmx = ByteArray(32) { 5 },
+                    recoveryDelayMillis = 0,
+                    fetchLatest = { CommitmentTreeLatest(height = 100, nextIndex = 1) },
+                    fetchLeafPage = { _, _, _ ->
+                        leafPage(
+                            blocks =
+                                listOf(
+                                    CommitmentTreeLeafBlock(
+                                        height = 100,
+                                        startIndex = 0,
+                                        leavesBase64 = listOf("not base64")
+                                    )
+                                )
+                        )
+                    }
+                )
+            }
+        }
+
     @Test
     fun acceptedVotingTransactionDoesNotPollForRecovery() =
         runTest {
@@ -404,4 +653,22 @@ class SubmitVotesUseCaseProgressTest {
             code = 1,
             log = "nullifier already spent: abc123"
         )
+
+    private fun leafBlock(
+        height: Long,
+        startIndex: Long,
+        leaves: List<ByteArray>
+    ) = CommitmentTreeLeafBlock(
+        height = height,
+        startIndex = startIndex,
+        leavesBase64 = leaves.map { leaf -> Base64.getEncoder().encodeToString(leaf) }
+    )
+
+    private fun leafPage(
+        blocks: List<CommitmentTreeLeafBlock> = emptyList(),
+        nextFromHeight: Long = 0
+    ) = CommitmentTreeLeafPage(
+        blocks = blocks,
+        nextFromHeight = nextFromHeight
+    )
 }

@@ -1,6 +1,8 @@
 package co.electriccoin.zcash.ui.common.provider
 
 import co.electriccoin.zcash.configuration.model.map.Configuration
+import co.electriccoin.zcash.ui.common.model.voting.ChainCommitmentTreeLatestResponse
+import co.electriccoin.zcash.ui.common.model.voting.ChainCommitmentTreeLeavesResponse
 import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
 import co.electriccoin.zcash.ui.common.model.voting.VotingConfigException
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
@@ -25,6 +27,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
 import java.lang.reflect.Proxy
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -32,6 +35,56 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 
 class KtorVotingApiProviderTest {
+    @Test
+    fun commitmentTreePathsAreRoundScoped() {
+        assertEquals(
+            "/shielded-vote/v1/commitment-tree/round-id/latest",
+            commitmentTreeLatestPath("round-id")
+        )
+        assertEquals(
+            "/shielded-vote/v1/commitment-tree/round-id/leaves",
+            commitmentTreeLeavesPath("round-id")
+        )
+    }
+
+    @Test
+    fun commitmentTreeResponsesParseLatestHeightAndAbsoluteIndices() {
+        val latest =
+            Json.decodeFromString<ChainCommitmentTreeLatestResponse>(
+                """{"tree":{"height":123,"next_index":2,"root":"ignored"}}"""
+            )
+        val leaves =
+            Json.decodeFromString<ChainCommitmentTreeLeavesResponse>(
+                """
+                {
+                  "blocks": [
+                    {"height":120,"leaves":["AQ=="],"root":"ignored"},
+                    {"height":123,"start_index":1,"leaves":["Ag=="],"root":"ignored"}
+                  ],
+                  "next_from_height": 124
+                }
+                """.trimIndent()
+            )
+
+        assertEquals(123, latest.tree.height)
+        assertEquals(2, latest.tree.nextIndex)
+        assertEquals(0, leaves.blocks[0].startIndex)
+        assertEquals(1, leaves.blocks[1].startIndex)
+        assertEquals(listOf("Ag=="), leaves.blocks[1].toModel().leavesBase64)
+        assertEquals(124, leaves.toModel().nextFromHeight)
+    }
+
+    @Test
+    fun emptyCommitmentTreeDefaultsOmittedProtoFieldsToZero() {
+        val latest =
+            Json.decodeFromString<ChainCommitmentTreeLatestResponse>(
+                """{"tree":{}}"""
+            )
+
+        assertEquals(0, latest.tree.height)
+        assertEquals(0, latest.tree.nextIndex)
+    }
+
     @Test
     fun rejectedTransactionParserPreservesHashCodeAndLog() {
         val result =

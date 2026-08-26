@@ -1,6 +1,8 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import co.electriccoin.zcash.ui.common.model.voting.CastVoteSignature
+import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLatest
+import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLeafPage
 import co.electriccoin.zcash.ui.common.model.voting.DelegatedShareInfo
 import co.electriccoin.zcash.ui.common.model.voting.DelegationRegistration
 import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
@@ -100,6 +102,15 @@ class RefreshActiveVotingSessionUseCaseTest {
 
         override suspend fun fetchTxConfirmation(txHash: String): TxConfirmation? =
             error("unused")
+
+        override suspend fun fetchCommitmentTreeLatest(roundIdHex: String): CommitmentTreeLatest =
+            error("unused")
+
+        override suspend fun fetchCommitmentTreeLeafPage(
+            roundIdHex: String,
+            fromHeight: Long,
+            toHeight: Long
+        ): CommitmentTreeLeafPage = error("unused")
     }
 
     private class FakeVotingConfigRepository : VotingConfigRepository {

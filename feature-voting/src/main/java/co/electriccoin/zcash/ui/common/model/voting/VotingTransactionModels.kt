@@ -28,3 +28,19 @@ data class TxResult(
     val code: Int,
     val log: String = ""
 )
+
+data class CommitmentTreeLeafBlock(
+    val height: Long,
+    val startIndex: Long,
+    val leavesBase64: List<String>
+)
+
+data class CommitmentTreeLatest(
+    val height: Long,
+    val nextIndex: Long
+)
+
+data class CommitmentTreeLeafPage(
+    val blocks: List<CommitmentTreeLeafBlock>,
+    val nextFromHeight: Long
+)
