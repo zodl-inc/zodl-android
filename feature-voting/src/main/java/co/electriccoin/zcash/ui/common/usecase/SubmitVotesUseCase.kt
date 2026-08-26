@@ -49,6 +49,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
+import java.net.SocketTimeoutException
 import java.time.Instant
 import java.util.Base64
 
@@ -630,7 +631,15 @@ class SubmitVotesUseCase(
                 val registration = submission.toDelegationRegistration()
                 val result =
                     try {
-                        votingApiProvider.submitDelegation(registration)
+                        val result = votingApiProvider.submitDelegation(registration)
+                        if (result.code == 0) {
+                            delay(2_000L)
+                            Log.w(TAG, "MANUAL_TEST throwing timeout after accepted delegation")
+                            throw SocketTimeoutException(
+                                "MANUAL_TEST timeout after accepted delegation response"
+                            )
+                        }
+                        result
                     } catch (exception: CancellationException) {
                         throw exception
                     } catch (exception: Exception) {
@@ -640,6 +649,11 @@ class SubmitVotesUseCase(
                                 expectedVanCmx = registration.vanCmx
                             )
                         if (recoveredPosition != null) {
+                            Log.w(
+                                TAG,
+                                "MANUAL_TEST timeout recovered via commitment tree " +
+                                    "bundle=$bundleIndex position=$recoveredPosition"
+                            )
                             return@runVotingAuthorizationStep DelegationSubmissionResolution.ConfirmedVan(
                                 recoveredPosition
                             )
