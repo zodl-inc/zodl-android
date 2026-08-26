@@ -368,7 +368,11 @@ class VoteCoinholderPollingVM(
 
     private fun refreshVotingData() {
         roundsLce.execute {
-            refreshVotingDataInternal(resetVisibleConfigError = true)
+            // softRefresh = true (MOB-1808): this is the pull-to-refresh action — it should
+            // behave like onScreenEntered()'s re-entry refresh, keeping the currently-visible
+            // (possibly stale) rounds up while a fresh fetch runs, not clear the repository
+            // cache first and force the full-screen loading view back for the whole round trip.
+            refreshVotingDataInternal(resetVisibleConfigError = true, softRefresh = true)
         }
     }
 
@@ -381,7 +385,11 @@ class VoteCoinholderPollingVM(
                 }
 
                 try {
-                    refreshVotingDataInternal(resetVisibleConfigError = false)
+                    // softRefresh = true (MOB-1808): this timer fires every 5s while any round is
+                    // ACTIVE/TALLYING (votingDataAutoRefreshIntervalMs()) — without softRefresh this
+                    // was a hard refresh (votingApiRepository.clear()) on every tick, wiping the
+                    // cache and forcing the full-screen shimmer back roughly every 10s in practice.
+                    refreshVotingDataInternal(resetVisibleConfigError = false, softRefresh = true)
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (throwable: Throwable) {
