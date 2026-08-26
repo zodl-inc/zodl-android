@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.provider
 
 import android.util.Log
+import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.model.voting.CastVoteSignature
 import co.electriccoin.zcash.ui.common.model.voting.ChainActiveRoundResponse
 import co.electriccoin.zcash.ui.common.model.voting.ChainRoundsResponse
@@ -13,6 +14,7 @@ import co.electriccoin.zcash.ui.common.model.voting.RoundAuthenticator
 import co.electriccoin.zcash.ui.common.model.voting.ShareConfirmationResult
 import co.electriccoin.zcash.ui.common.model.voting.SharePayload
 import co.electriccoin.zcash.ui.common.model.voting.StaticVotingConfig
+import co.electriccoin.zcash.ui.common.model.voting.StaticVotingConfigHashMismatchException
 import co.electriccoin.zcash.ui.common.model.voting.TallyResults
 import co.electriccoin.zcash.ui.common.model.voting.TxConfirmation
 import co.electriccoin.zcash.ui.common.model.voting.TxEvent
@@ -56,6 +58,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.net.URI
+import java.util.UUID
 import kotlin.math.max
 
 data class RoundsListResult(
@@ -131,7 +135,7 @@ class KtorVotingApiProvider(
     private val serverHealthTracker = VotingServerHealthTracker()
 
     override suspend fun validateConfigSource(source: PinnedConfigSource) {
-        fetchStaticConfig(source)
+        fetchStaticConfig(listOf(source))
     }
 
     override suspend fun invalidateConfigCache() {
@@ -390,18 +394,18 @@ class KtorVotingApiProvider(
 
     private suspend fun getResolvedConfig(forceRefresh: Boolean = false): ResolvedVotingConfig =
         configMutex.withLock {
-            val source = resolveConfigSource()
+            val sources = resolveConfigSources()
             val cached = cachedResolvedConfig
-            if (!forceRefresh && cached?.source == source) {
+            if (!forceRefresh && cached?.sources == sources) {
                 cached
             } else {
-                fetchTrustedConfig(source).also { resolved ->
+                fetchTrustedConfig(sources).also { resolved ->
                     cachedResolvedConfig = resolved
                 }
             }
         }
 
-    private suspend fun resolveConfigSource(): PinnedConfigSource {
+    private suspend fun resolveConfigSources(): List<PinnedConfigSource> {
         val selectedPinnedSource = votingChainConfigRepository.get().selectedPinnedSource
         if (selectedPinnedSource != null) {
             return resolvePinnedConfigSource(selectedPinnedSource)
@@ -412,83 +416,138 @@ class KtorVotingApiProvider(
         return resolvePinnedConfigSource(configUrl)
     }
 
-    private suspend fun fetchStaticConfig(source: PinnedConfigSource): StaticVotingConfig =
-        execute {
-            val bytes =
-                try {
-                    get(source.url) {
-                        noCache()
-                    }.bodyAsBytes()
-                } catch (responseException: ResponseException) {
-                    throw VotingConfigException(
-                        "Static voting config fetch failed: HTTP ${responseException.response.status.value}"
-                    )
-                }
-            StaticVotingConfig.decodeAndVerify(
-                data = bytes,
-                expectedSHA256 = source.sha256
+    private suspend fun fetchStaticConfig(sources: List<PinnedConfigSource>): StaticVotingConfig =
+        executeWithKtorTimeoutSupport { supportsKtorTimeouts ->
+            fetchStaticConfigWalk(sources, supportsKtorTimeouts)
+        }
+
+    /**
+     * Walks [sources] — the bundled trust anchor's mirror list, or a single-element list for a
+     * user override — deliberately WIDER than [fetchDynamicServiceConfigWalk]: since every
+     * mirror is independently checksum-gated, a transport failure, ANY non-200 response
+     * ([StaticVotingConfigFetchFailedException]), or a checksum mismatch
+     * ([StaticVotingConfigHashMismatchException]) is retryable, falling through to the next
+     * mirror. A decode or [StaticVotingConfig.validate] failure *after* the checksum matched is
+     * authoritative and thrown immediately — the pin guarantees identical bytes from every
+     * mirror, so no other mirror can do better. When every mirror fails, the first (canonical
+     * origin's) error is thrown.
+     */
+    private suspend fun HttpClient.fetchStaticConfigWalk(
+        sources: List<PinnedConfigSource>,
+        supportsKtorTimeouts: Boolean
+    ): StaticVotingConfig =
+        walkConfigSources(
+            sources = sources,
+            emptyMessage = "Static voting config source list is empty",
+            describe = { source -> source.url },
+            shouldTryNext = ::isRetryableStaticVotingConfigFailure
+        ) { source ->
+            val bytes = fetchStaticConfigBytes(source.url, supportsKtorTimeouts)
+            StaticVotingConfig.decodeAndVerify(data = bytes, expectedSHA256 = source.sha256)
+        }
+
+    private suspend fun HttpClient.fetchStaticConfigBytes(
+        url: String,
+        supportsKtorTimeouts: Boolean
+    ): ByteArray =
+        try {
+            get(url) {
+                noCache()
+                configRequestTimeout(supportsKtorTimeouts)
+            }.bodyAsBytes()
+        } catch (responseException: ResponseException) {
+            throw StaticVotingConfigFetchFailedException(
+                "Static voting config fetch failed: HTTP ${responseException.response.status.value}"
+            )
+        } catch (exception: Exception) {
+            exception.rethrowIfCancellation()
+            throw StaticVotingConfigFetchFailedException(
+                "Static voting config fetch failed: ${exception.message ?: exception::class.simpleName}"
             )
         }
 
-    private suspend fun fetchTrustedConfig(source: PinnedConfigSource): ResolvedVotingConfig {
-        val staticConfig = fetchStaticConfig(source)
-        val rawServiceConfig =
-            execute {
-                fetchDynamicServiceConfig(staticConfig.resolvedDynamicConfigUrls())
-            }
+    private suspend fun fetchTrustedConfig(sources: List<PinnedConfigSource>): ResolvedVotingConfig {
+        val staticConfig = fetchStaticConfig(sources)
+        val rawServiceConfig = fetchDynamicServiceConfig(staticConfig.resolvedDynamicConfigUrls())
         val serviceConfig = rawServiceConfig.retainingRoundsWithValidSignatures(staticConfig.trustedKeys)
 
         return ResolvedVotingConfig(
-            source = source,
+            sources = sources,
             staticConfig = staticConfig,
             rawServiceConfig = rawServiceConfig,
             serviceConfig = serviceConfig
         )
     }
 
+    private suspend fun fetchDynamicServiceConfig(urls: List<String>): VotingServiceConfig =
+        executeWithKtorTimeoutSupport { supportsKtorTimeouts ->
+            fetchDynamicServiceConfigWalk(urls, supportsKtorTimeouts)
+        }
+
     /**
      * Tries every configured dynamic-config URL in order (v2's fallback mirror alongside the
-     * primary valargroup.dev host — MOB-1806) and returns the first one that fetches, decodes,
-     * and validates successfully. Unlike [withVoteServerFailover]/[shouldTryNextVoteServer], a
-     * [VotingConfigException] from decode or validate is retryable here too — a malformed or
-     * unreachable mirror should not prevent falling through to the next URL. All URLs failing
-     * throws one [VotingConfigException] naming every URL's failure.
+     * primary valargroup.dev host — MOB-1806/MOB-1809) and returns the first one that fetches,
+     * decodes, and validates successfully. Unlike [fetchStaticConfigWalk], this walk is
+     * NARROWER: only a transport failure or an HTTP 5xx response
+     * ([DynamicVotingConfigTransientException]) is retryable. An HTTP 4xx response, and any
+     * decode or [VotingServiceConfig.validate] failure of successfully fetched bytes, is
+     * authoritative and thrown immediately — the README-normative semantics mirroring iOS's
+     * `fetchDynamicConfigData`. When every URL fails, the first (canonical origin's) error is
+     * thrown, not a joined list.
      */
-    private suspend fun HttpClient.fetchDynamicServiceConfig(urls: List<String>): VotingServiceConfig {
+    private suspend fun HttpClient.fetchDynamicServiceConfigWalk(
+        urls: List<String>,
+        supportsKtorTimeouts: Boolean
+    ): VotingServiceConfig {
         val normalizedUrls = urls.map(String::trim).filter(String::isNotEmpty).distinct()
-        if (normalizedUrls.isEmpty()) {
-            throw VotingConfigException("Static voting config does not list any dynamic_config_urls")
-        }
+        val cacheBustToken = UUID.randomUUID().toString()
 
-        val failures = mutableListOf<String>()
-        for (url in normalizedUrls) {
-            try {
-                return fetchSingleDynamicServiceConfig(url)
-            } catch (exception: Exception) {
-                exception.rethrowIfCancellation()
-                failures += "$url: ${exception.message ?: exception::class.simpleName}"
-            }
+        return walkConfigSources(
+            sources = normalizedUrls,
+            emptyMessage = "Static voting config does not list any dynamic_config_urls",
+            describe = { url -> url },
+            shouldTryNext = ::isRetryableDynamicVotingConfigFailure
+        ) { url ->
+            fetchSingleDynamicServiceConfig(url, cacheBustToken, supportsKtorTimeouts)
         }
-
-        throw VotingConfigException(
-            "Dynamic voting config fetch failed for all ${normalizedUrls.size} configured URL(s): " +
-                failures.joinToString("; ")
-        )
     }
 
-    private suspend fun HttpClient.fetchSingleDynamicServiceConfig(url: String): VotingServiceConfig {
-        val body =
-            try {
-                get(url) {
-                    noCache()
-                }.bodyAsText()
-            } catch (responseException: ResponseException) {
-                throw VotingConfigException(
-                    "Dynamic voting config fetch failed: HTTP ${responseException.response.status.value}"
-                )
-            }
+    private suspend fun HttpClient.fetchSingleDynamicServiceConfig(
+        url: String,
+        cacheBustToken: String,
+        supportsKtorTimeouts: Boolean
+    ): VotingServiceConfig {
+        val body = fetchDynamicConfigBody(url, cacheBustToken, supportsKtorTimeouts)
         return VotingServiceConfig.decode(body).also(VotingServiceConfig::validate)
     }
+
+    /**
+     * Fetches the raw body for one dynamic-config URL, cache-busting only requests to
+     * raw.githubusercontent.com (its branch paths are CDN-cached ~300s server-side and ignore
+     * request cache headers — a plain host-equality check, never contains/endsWith, so this
+     * never fires for the content-addressed static-config mirror). [cacheBustToken] is one
+     * random value per walk invocation, shared by every busted request in that walk; the
+     * cache-bust query parameter is applied to the request only — [url] itself, un-busted, is
+     * what the caller logs and reports as the serving origin.
+     */
+    private suspend fun HttpClient.fetchDynamicConfigBody(
+        url: String,
+        cacheBustToken: String,
+        supportsKtorTimeouts: Boolean
+    ): String =
+        try {
+            get(url.withCacheBustIfNeeded(cacheBustToken)) {
+                noCache()
+                configRequestTimeout(supportsKtorTimeouts)
+            }.bodyAsText()
+        } catch (responseException: ResponseException) {
+            throw responseException.toDynamicVotingConfigException()
+        } catch (exception: Exception) {
+            exception.rethrowIfCancellation()
+            throw DynamicVotingConfigTransientException(
+                "Dynamic voting config fetch failed: ${exception.message ?: exception::class.simpleName}"
+            )
+        }
 
     private suspend fun authenticateVotingSession(session: VotingSession): VotingSession {
         val resolvedConfig = getResolvedConfig()
@@ -714,11 +773,55 @@ private class VotingServerHealthTracker {
 }
 
 private data class ResolvedVotingConfig(
-    val source: PinnedConfigSource,
+    val sources: List<PinnedConfigSource>,
     val staticConfig: StaticVotingConfig,
     val rawServiceConfig: VotingServiceConfig,
     val serviceConfig: VotingServiceConfig,
 )
+
+/**
+ * Thrown only by the static-config walk's fetch step for a transport failure or ANY non-200
+ * response. Together with [StaticVotingConfigHashMismatchException], this is one of the two
+ * failure classes [isRetryableStaticVotingConfigFailure] treats as retryable. A decode or
+ * [StaticVotingConfig.validate] failure of successfully fetched, checksum-matched bytes is
+ * thrown as a plain [VotingConfigException] instead, so it is never retried.
+ */
+internal class StaticVotingConfigFetchFailedException(
+    message: String
+) : VotingConfigException(message)
+
+internal fun isRetryableStaticVotingConfigFailure(throwable: Throwable): Boolean =
+    throwable is StaticVotingConfigFetchFailedException || throwable is StaticVotingConfigHashMismatchException
+
+/**
+ * Thrown only by the dynamic-config walk's fetch step for a transport failure or an HTTP 5xx
+ * response — the two failure classes [isRetryableDynamicVotingConfigFailure] treats as
+ * retryable. An HTTP 4xx response, and a decode or `validate()` failure of successfully fetched
+ * bytes, are thrown as a plain [VotingConfigException] instead, so the walk's narrower predicate
+ * never lets them retry and they propagate as authoritative.
+ */
+internal class DynamicVotingConfigTransientException(
+    message: String
+) : VotingConfigException(message)
+
+internal fun isRetryableDynamicVotingConfigFailure(throwable: Throwable): Boolean =
+    throwable is DynamicVotingConfigTransientException
+
+/**
+ * Classifies a dynamic-config fetch's non-2xx response without throwing, so the single `throw`
+ * at the call site is the only throw statement this classification contributes to that
+ * function's count: an HTTP 5xx is [DynamicVotingConfigTransientException] (retryable), every
+ * other status is a plain [VotingConfigException] (authoritative).
+ */
+private fun ResponseException.toDynamicVotingConfigException(): VotingConfigException {
+    val statusValue = response.status.value
+    val message = "Dynamic voting config fetch failed: HTTP $statusValue"
+    return if (statusValue in TRANSIENT_HTTP_STATUS_MIN..TRANSIENT_HTTP_STATUS_MAX) {
+        DynamicVotingConfigTransientException(message)
+    } else {
+        VotingConfigException(message)
+    }
+}
 
 private fun HttpRequestBuilder.noCache() {
     header("Cache-Control", "no-cache")
@@ -735,6 +838,33 @@ private fun HttpRequestBuilder.helperRequestTimeout(supportsKtorTimeouts: Boolea
     }
 }
 
+private fun HttpRequestBuilder.configRequestTimeout(supportsKtorTimeouts: Boolean) {
+    if (supportsKtorTimeouts) {
+        timeout {
+            requestTimeoutMillis = StaticVotingConfig.CONFIG_REQUEST_TIMEOUT_MS
+            socketTimeoutMillis = StaticVotingConfig.CONFIG_REQUEST_TIMEOUT_MS
+            connectTimeoutMillis = StaticVotingConfig.CONFIG_REQUEST_TIMEOUT_MS
+        }
+    }
+}
+
+/**
+ * Appends a unique `zodl_cache_bust` query parameter when, and only when, this URL's host is
+ * exactly `raw.githubusercontent.com` (case-insensitive equality — never contains/endsWith, so
+ * an unrelated host that merely mentions it in a path or query is never matched). GitHub's raw
+ * CDN caches branch paths for roughly 300 seconds server-side and ignores request cache-control
+ * headers, which matters during round rollover; a content-addressed pin never needs this since
+ * its bytes are immutable by definition.
+ */
+private fun String.withCacheBustIfNeeded(token: String): String {
+    val host = runCatching { URI(this).host }.getOrNull()
+    if (!host.equals(RAW_GITHUBUSERCONTENT_HOST, ignoreCase = true)) {
+        return this
+    }
+    val separator = if (contains('?')) '&' else '?'
+    return "$this$separator$CACHE_BUST_QUERY_PARAM=$token"
+}
+
 private const val HELPER_REQUEST_TIMEOUT_MILLIS = 5_000L
 private const val HELPER_SOCKET_TIMEOUT_MILLIS = 10_000L
 private const val HELPER_CONNECT_TIMEOUT_MILLIS = 5_000L
@@ -744,6 +874,10 @@ private const val ROUNDS_PATH = "/shielded-vote/v1/rounds"
 private const val ENDORSED_ROUNDS_PATH = "/shielded-vote/v1/endorsed-rounds/zodl"
 private const val DELEGATE_VOTE_PATH = "/shielded-vote/v1/delegate-vote"
 private const val CAST_VOTE_PATH = "/shielded-vote/v1/cast-vote"
+private const val RAW_GITHUBUSERCONTENT_HOST = "raw.githubusercontent.com"
+private const val CACHE_BUST_QUERY_PARAM = "zodl_cache_bust"
+private const val TRANSIENT_HTTP_STATUS_MIN = 500
+private const val TRANSIENT_HTTP_STATUS_MAX = 599
 
 private fun List<String>.normalizeServerUrls(): List<String> =
     map(String::trim)
@@ -879,17 +1013,6 @@ private fun tallyResultsPath(roundIdHex: String): String =
 private fun txConfirmationPath(txHash: String): String =
     "/shielded-vote/v1/tx/$txHash"
 
-/**
- * Never swallow a coroutine cancellation while collecting per-URL failures — rethrowing it
- * here (instead of inline in [KtorVotingApiProvider.fetchDynamicServiceConfig]) keeps that
- * loop's own throw count within detekt's [ThrowsCount] budget.
- */
-private fun Throwable.rethrowIfCancellation() {
-    if (this is CancellationException) {
-        throw this
-    }
-}
-
 internal fun shouldTreatEndorsedRoundsStatusAsEmpty(status: HttpStatusCode): Boolean =
     status == HttpStatusCode.BadRequest || status == HttpStatusCode.NotFound
 
@@ -901,12 +1024,29 @@ internal fun shouldTreatEndorsedRoundsFailoverFailuresAsEmpty(
             status != null && shouldTreatEndorsedRoundsStatusAsEmpty(status)
         }
 
-internal fun resolvePinnedConfigSource(configUrl: String): PinnedConfigSource =
-    if (configUrl.isNotEmpty()) {
-        runCatching { PinnedConfigSource.parse(configUrl) }.getOrNull()
+/**
+ * Resolves an override URL (a custom chain's pinned source, or remote config's
+ * `voting_config_url`) to its source list. An override that fails to parse, or an empty URL
+ * (no override configured), resolves to the full bundled mirror list
+ * ([StaticVotingConfig.BUNDLED_PINNED_CONFIG_SOURCES]) — canonical origin first, so a saved
+ * copy of the default keeps its own mirror fallback. A valid override is a single-element list
+ * (no mirrors) UNLESS it is byte-equal (URL and checksum, i.e. [PinnedConfigSource] equality)
+ * to one of the bundled mirrors, in which case the full bundled list is used instead.
+ */
+internal fun resolvePinnedConfigSource(configUrl: String): List<PinnedConfigSource> {
+    val parsedOverride =
+        if (configUrl.isNotEmpty()) {
+            runCatching { PinnedConfigSource.parse(configUrl) }.getOrNull()
+        } else {
+            null
+        } ?: return StaticVotingConfig.BUNDLED_PINNED_CONFIG_SOURCES
+
+    return if (parsedOverride in StaticVotingConfig.BUNDLED_PINNED_CONFIG_SOURCES) {
+        StaticVotingConfig.BUNDLED_PINNED_CONFIG_SOURCES
     } else {
-        null
-    } ?: PinnedConfigSource.parse(StaticVotingConfig.BUNDLED_PINNED_SOURCE)
+        listOf(parsedOverride)
+    }
+}
 
 private suspend fun Throwable.isNoActiveRoundFailure(): Boolean =
     when (this) {

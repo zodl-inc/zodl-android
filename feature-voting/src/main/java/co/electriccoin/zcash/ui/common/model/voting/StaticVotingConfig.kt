@@ -12,7 +12,7 @@ import java.util.Base64
 @Serializable
 data class StaticVotingConfig(
     @SerialName("static_config_version")
-    val staticConfigVersion: Int = STATIC_CONFIG_VERSION_V1,
+    val staticConfigVersion: Int,
     @SerialName("dynamic_config_url")
     val dynamicConfigURL: String? = null,
     @SerialName("dynamic_config_urls")
@@ -41,6 +41,7 @@ data class StaticVotingConfig(
                 if (dynamicConfigURL.isNullOrBlank()) {
                     throw VotingConfigException("dynamic_config_url must not be blank")
                 }
+                requireHttpsScheme(dynamicConfigURL, "dynamic_config_url")
             }
 
             STATIC_CONFIG_VERSION_V2 -> {
@@ -50,6 +51,7 @@ data class StaticVotingConfig(
                 if (dynamicConfigURLs.any(String::isBlank)) {
                     throw VotingConfigException("dynamic_config_urls must not contain blank entries")
                 }
+                dynamicConfigURLs.forEach { url -> requireHttpsScheme(url, "dynamic_config_urls") }
             }
         }
         if (trustedKeys.isEmpty()) {
@@ -109,11 +111,45 @@ data class StaticVotingConfig(
                 "28fc9b631091ae8bc2f8635d8930489238ce144174cbd15a03efb0530b301ebe/v2-static-voting-config.json" +
                 "?checksum=sha256:28fc9b631091ae8bc2f8635d8930489238ce144174cbd15a03efb0530b301ebe"
 
+        /**
+         * Mirror of [BUNDLED_PINNED_SOURCE] on raw.githubusercontent.com, serving the identical
+         * content-addressed bytes (same checksum, both in the path segment and the query param).
+         * Trust here is carried entirely by the checksum, not by which origin served the bytes —
+         * this mirror is exactly as trustworthy as the gateway itself. It exists for networks
+         * where the voting.valargroup.dev domain is blocked outright (the gateway's own
+         * GitHub-outage fallback does not help if the gateway domain cannot be reached at all).
+         * Bump alongside [BUNDLED_PINNED_SOURCE] whenever the checksum moves forward.
+         */
+        const val BUNDLED_PINNED_SOURCE_MIRROR =
+            "https://raw.githubusercontent.com/valargroup/token-holder-voting-config/main/pins/prod/" +
+                "28fc9b631091ae8bc2f8635d8930489238ce144174cbd15a03efb0530b301ebe/v2-static-voting-config.json" +
+                "?checksum=sha256:28fc9b631091ae8bc2f8635d8930489238ce144174cbd15a03efb0530b301ebe"
+
+        /**
+         * The static-config trust anchor's full mirror list, canonical origin
+         * ([BUNDLED_PINNED_SOURCE]) first. Walked in order when no override is configured (or
+         * the configured override resolves to one of these entries), falling through to the
+         * next mirror on transport failure, a non-200 response, or a checksum mismatch.
+         */
+        val BUNDLED_PINNED_SOURCES: List<String> = listOf(BUNDLED_PINNED_SOURCE, BUNDLED_PINNED_SOURCE_MIRROR)
+
+        /** [BUNDLED_PINNED_SOURCES], pre-parsed. */
+        val BUNDLED_PINNED_CONFIG_SOURCES: List<PinnedConfigSource> by lazy {
+            BUNDLED_PINNED_SOURCES.map(PinnedConfigSource::parse)
+        }
+
+        /**
+         * Per-attempt request timeout for both the static and dynamic config fetch legs: a
+         * blackholed route must fail fast enough to fall through to the next mirror, rather
+         * than hanging for the client's session-wide default (two minutes).
+         */
+        const val CONFIG_REQUEST_TIMEOUT_MS = 15_000L
+
         fun decodeAndVerify(data: ByteArray, expectedSHA256: ByteArray?): StaticVotingConfig {
             if (expectedSHA256 != null) {
                 val actualSHA256 = MessageDigest.getInstance("SHA-256").digest(data)
                 if (!actualSHA256.contentEquals(expectedSHA256)) {
-                    throw VotingConfigException(
+                    throw StaticVotingConfigHashMismatchException(
                         "Static voting config hash mismatch: expected ${expectedSHA256.toLowerHex()}, " +
                             "got ${actualSHA256.toLowerHex()}"
                     )
@@ -131,6 +167,28 @@ data class StaticVotingConfig(
             config.validate()
             return config
         }
+    }
+}
+
+/**
+ * Thrown by [StaticVotingConfig.decodeAndVerify] specifically for a checksum mismatch against
+ * the pinned expected hash, as distinct from a decode or [StaticVotingConfig.validate] failure.
+ * A mirror walk (see `KtorVotingApiProvider`) must retry the next mirror on this exception but
+ * treat every other [VotingConfigException] from the same call as authoritative — decode or
+ * validation failing after the hash matched means the mirror served identical, malformed bytes,
+ * and every other pinned mirror serves the same bytes by definition.
+ */
+class StaticVotingConfigHashMismatchException(
+    message: String
+) : VotingConfigException(message)
+
+private fun requireHttpsScheme(
+    url: String,
+    fieldName: String
+) {
+    val scheme = runCatching { URI(url).scheme }.getOrNull()
+    if (!scheme.equals("https", ignoreCase = true)) {
+        throw VotingConfigException("$fieldName must use https; got $url")
     }
 }
 
