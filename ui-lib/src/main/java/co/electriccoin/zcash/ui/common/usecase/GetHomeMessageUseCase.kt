@@ -17,6 +17,7 @@ import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepository
 import co.electriccoin.zcash.ui.common.repository.HomeMessageData
 import co.electriccoin.zcash.ui.common.repository.MigrationHomeMessage
 import co.electriccoin.zcash.ui.common.repository.RuntimeMessage
+import co.electriccoin.zcash.ui.common.voting.VotingHomeMessageSource
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -49,6 +50,7 @@ class GetHomeMessageUseCase(
     private val cache: HomeMessageCacheRepository,
     private val isTorEnabledStorageProvider: IsTorEnabledStorageProvider,
     private val migrationHomeMessageSource: MigrationHomeMessageSource,
+    private val votingHomeMessageSource: VotingHomeMessageSource,
 ) {
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     fun observe(): Flow<HomeMessageData?> =
@@ -59,14 +61,20 @@ class GetHomeMessageUseCase(
                     walletBackupMessageUseCase.observe(),
                     observeIsTorMessageVisible(),
                     observeIsExchangeRateMessageVisible(),
-                    crashReportingStorageProvider.observe().map { it == null },
-                ) { runtimeMessage, backup, isTorAvailable, isCCAvailable, isCrashReportingEnabled ->
+                    combine(
+                        votingHomeMessageSource.observeIsCoinholderPollingMessageVisible(),
+                        crashReportingStorageProvider.observe().map { it == null },
+                    ) { isCoinholderPollingVisible, isCrashReportingVisible ->
+                        TrailingPrioritizedInputs(isCoinholderPollingVisible, isCrashReportingVisible)
+                    },
+                ) { runtimeMessage, backup, isTorAvailable, isCCAvailable, trailing ->
                     createMessage(
                         runtimeMessage = runtimeMessage,
                         backup = backup,
                         isTorVisible = isTorAvailable,
                         isCurrencyConversionEnabled = isCCAvailable,
-                        isCrashReportingVisible = isCrashReportingEnabled,
+                        isCoinholderPollingVisible = trailing.isCoinholderPollingVisible,
+                        isCrashReportingVisible = trailing.isCrashReportingVisible,
                     )
                 }
 
@@ -120,6 +128,17 @@ class GetHomeMessageUseCase(
         val migration: MigrationHomeMessage?,
         val account: WalletAccount?,
         val walletSnapshot: WalletSnapshot
+    )
+
+    /**
+     * [HomeMessageData.CoinholderPolling] and [HomeMessageData.CrashReport] bundled together into
+     * one flow purely so the outer `observe()` combine (already at kotlinx's 5-flow overload
+     * ceiling) doesn't need a 6th argument — same "bundle inputs into a data class" trick as
+     * [RuntimeMessageInputs] above.
+     */
+    private data class TrailingPrioritizedInputs(
+        val isCoinholderPollingVisible: Boolean,
+        val isCrashReportingVisible: Boolean,
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -186,10 +205,12 @@ class GetHomeMessageUseCase(
         backup: WalletBackupData,
         isTorVisible: Boolean,
         isCurrencyConversionEnabled: Boolean,
+        isCoinholderPollingVisible: Boolean,
         isCrashReportingVisible: Boolean,
     ) = when {
         runtimeMessage != null -> runtimeMessage
         backup is WalletBackupData.Available -> HomeMessageData.Backup
+        isCoinholderPollingVisible -> HomeMessageData.CoinholderPolling
         isTorVisible -> HomeMessageData.EnableTor
         isCurrencyConversionEnabled -> HomeMessageData.EnableCurrencyConversion
         isCrashReportingVisible -> HomeMessageData.CrashReport
