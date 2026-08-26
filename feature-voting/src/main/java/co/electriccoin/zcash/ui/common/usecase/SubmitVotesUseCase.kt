@@ -1667,8 +1667,22 @@ internal fun TxConfirmation.delegateVoteVanPosition(bundleIndex: Int): Int {
             ?.attribute("leaf_index")
             ?: throw unexpectedSdkResponse("Missing delegate_vote leaf_index for bundle $bundleIndex")
 
-    return rawLeafIndex.toIntOrNull()
-        ?: throw unexpectedSdkResponse("Malformed delegate_vote leaf_index for bundle $bundleIndex: $rawLeafIndex")
+    val normalizedLeafIndex = rawLeafIndex.trim()
+    normalizedLeafIndex.toIntOrNull()?.let { return it }
+
+    // Some compatibility clients opportunistically Base64-decode CometBFT event text.
+    // Re-encoding a resulting non-ASCII value restores the original decimal position.
+    if (normalizedLeafIndex.any { character -> character.code > ASCII_MAX_CODE_POINT }) {
+        Base64
+            .getEncoder()
+            .encodeToString(normalizedLeafIndex.toByteArray(Charsets.UTF_8))
+            .toIntOrNull()
+            ?.let { return it }
+    }
+
+    throw unexpectedSdkResponse(
+        "Malformed delegate_vote leaf_index for bundle $bundleIndex: $rawLeafIndex"
+    )
 }
 
 internal fun TxConfirmation.castVoteLeafPositions(): Pair<Int, Long> {
@@ -1687,6 +1701,8 @@ internal fun TxConfirmation.castVoteLeafPositions(): Pair<Int, Long> {
 
 private fun unexpectedSdkResponse(message: String) =
     VotingSubmissionRecoverableException(VotingErrors.UnexpectedSdkResponse(message))
+
+private const val ASCII_MAX_CODE_POINT = 0x7F
 
 internal fun calculateSubmittingBundleProgress(
     proposalIndex: Int,

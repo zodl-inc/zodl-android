@@ -623,6 +623,35 @@ class SubmitVotesUseCaseProgressTest {
     }
 
     @Test
+    fun delegateVoteVanPositionRecoversLegacyBase64DecodedLeafIndex() {
+        val decodedLeafIndex =
+            String(
+                Base64.getDecoder().decode("3753"),
+                Charsets.UTF_8
+            )
+        val confirmation =
+            TxConfirmation(
+                height = 1,
+                code = 0,
+                events =
+                    listOf(
+                        TxEvent(
+                            type = "delegate_vote",
+                            attributes =
+                                listOf(
+                                    TxEventAttribute(
+                                        key = "leaf_index",
+                                        value = decodedLeafIndex
+                                    )
+                                )
+                        )
+                    )
+            )
+
+        assertEquals(3753, confirmation.delegateVoteVanPosition(bundleIndex = 0))
+    }
+
+    @Test
     fun castVoteLeafPositionsParseRecoveredConfirmation() {
         val confirmation =
             TxConfirmation(
