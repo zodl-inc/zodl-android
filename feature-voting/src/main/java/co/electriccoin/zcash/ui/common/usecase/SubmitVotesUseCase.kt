@@ -1132,6 +1132,7 @@ class SubmitVotesUseCase(
         )
     }
 
+    @Suppress("TooGenericExceptionCaught")
     private suspend fun requireRecoveredCastVoteMatchesCommitment(
         context: VotingSubmitContext,
         bundleIndex: Int,
@@ -1142,22 +1143,40 @@ class SubmitVotesUseCase(
     ) {
         val (confirmedVanPosition, confirmedVoteCommitmentPosition) = confirmation.castVoteLeafPositions()
         val startHeight = context.session.createdAtHeight.coerceAtLeast(0)
-        val actualVanPosition =
-            findVanCommitmentPosition(
-                roundId = context.roundId,
-                startHeight = startHeight,
-                expectedVanCmx = expectedVanCmx,
-                fetchLatest = votingApiProvider::fetchCommitmentTreeLatest,
-                fetchLeafPage = votingApiProvider::fetchCommitmentTreeLeafPage
-            )
-        val actualVoteCommitmentPosition =
-            findVanCommitmentPosition(
-                roundId = context.roundId,
-                startHeight = startHeight,
-                expectedVanCmx = expectedVoteCommitment,
-                fetchLatest = votingApiProvider::fetchCommitmentTreeLatest,
-                fetchLeafPage = votingApiProvider::fetchCommitmentTreeLeafPage
-            )?.toLong()
+        // A scan that cannot be completed proves nothing: report it as a
+        // retryable verification failure, never as a verified mismatch and
+        // never as a raw scan-invariant exception.
+        val (actualVanPosition, actualVoteCommitmentPosition) =
+            try {
+                val vanPosition =
+                    findVanCommitmentPosition(
+                        roundId = context.roundId,
+                        startHeight = startHeight,
+                        expectedVanCmx = expectedVanCmx,
+                        fetchLatest = votingApiProvider::fetchCommitmentTreeLatest,
+                        fetchLeafPage = votingApiProvider::fetchCommitmentTreeLeafPage
+                    )
+                val voteCommitmentPosition =
+                    findVanCommitmentPosition(
+                        roundId = context.roundId,
+                        startHeight = startHeight,
+                        expectedVanCmx = expectedVoteCommitment,
+                        fetchLatest = votingApiProvider::fetchCommitmentTreeLatest,
+                        fetchLeafPage = votingApiProvider::fetchCommitmentTreeLeafPage
+                    )?.toLong()
+                vanPosition to voteCommitmentPosition
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                throw VotingSubmissionRecoverableException(
+                    VotingErrors.RecoveredVoteVerificationUnavailable(
+                        roundId = context.roundId,
+                        bundleIndex = bundleIndex,
+                        proposalId = proposalId
+                    ),
+                    exception
+                )
+            }
         if (
             actualVanPosition != confirmedVanPosition ||
             actualVoteCommitmentPosition != confirmedVoteCommitmentPosition
@@ -1606,11 +1625,13 @@ internal suspend fun findVanCommitmentPosition(
                 }
                 block.leavesBase64.forEachIndexed { leafOffset, encodedLeaf ->
                     val leaf =
-                        runCatching { Base64.getDecoder().decode(encodedLeaf) }
-                            .getOrElse { throw IllegalArgumentException("Malformed commitment leaf", it) }
-                    require(leaf.size == COMMITMENT_BYTES) {
-                        "Commitment leaf must be $COMMITMENT_BYTES bytes"
-                    }
+                        runCatching {
+                            Base64.getDecoder().decode(encodedLeaf).also { decoded ->
+                                require(decoded.size == COMMITMENT_BYTES) {
+                                    "Commitment leaf must be $COMMITMENT_BYTES bytes"
+                                }
+                            }
+                        }.getOrElse { throw IllegalArgumentException("Malformed commitment leaf", it) }
                     if (leaf.contentEquals(expectedVanCmx)) {
                         matches += Math.addExact(block.startIndex, leafOffset.toLong())
                     }

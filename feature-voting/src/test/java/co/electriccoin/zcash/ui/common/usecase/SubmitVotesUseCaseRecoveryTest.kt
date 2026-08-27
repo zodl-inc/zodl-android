@@ -208,6 +208,29 @@ class SubmitVotesUseCaseRecoveryTest {
         }
 
     @Test
+    fun unverifiableRecoveredCastVoteSurfacesTypedRetryableError() =
+        runTest {
+            val fixture =
+                CastVoteRecoveryFixture(
+                    selectedAccount = keystoneAccount(),
+                    latestNextIndexOverride = 14
+                )
+
+            assertFailsWith<CastVoteResponseLost> {
+                fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
+            }
+
+            val failure =
+                assertFailsWith<VotingSubmissionRecoverableException> {
+                    fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
+                }
+
+            assertIs<VotingErrors.RecoveredVoteVerificationUnavailable>(failure.failure)
+            assertEquals(emptyList(), fixture.storedVoteHashes)
+            assertEquals(emptyList(), fixture.storedVanPositions)
+        }
+
+    @Test
     fun changedChoiceCannotReuseCachedConfirmedVote() =
         runTest {
             val fixture =
@@ -288,7 +311,8 @@ class SubmitVotesUseCaseRecoveryTest {
         private val proposalCount: Int = 1,
         private val failFirstTreeSync: Boolean = false,
         private val cachedVoteTxHash: String? = null,
-        private val initialSelections: Map<Int, VotingProposalSelection> = emptyMap()
+        private val initialSelections: Map<Int, VotingProposalSelection> = emptyMap(),
+        private val latestNextIndexOverride: Long? = null
     ) {
         val crypto = mockk<VotingCryptoClient>(relaxed = true)
         val api = mockk<VotingApiProvider>(relaxed = true)
@@ -459,7 +483,8 @@ class SubmitVotesUseCaseRecoveryTest {
                     leaves[7] = confirmedCommitment.voteAuthorityNoteNew
                     leaves[12] = confirmedCommitment.voteCommitment
                 }
-            coEvery { api.fetchCommitmentTreeLatest(ROUND_ID) } returns CommitmentTreeLatest(20, 13)
+            coEvery { api.fetchCommitmentTreeLatest(ROUND_ID) } returns
+                CommitmentTreeLatest(20, latestNextIndexOverride ?: 13)
             coEvery { api.fetchCommitmentTreeLeafPage(ROUND_ID, 1, 20) } returns
                 CommitmentTreeLeafPage(
                     blocks =
