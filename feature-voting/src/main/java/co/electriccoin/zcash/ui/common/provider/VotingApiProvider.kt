@@ -356,7 +356,9 @@ class KtorVotingApiProvider(
                                         val quorum = max(1, (healthyServers.size + 1) / 2)
                                         val targets = healthyServers.shuffled().take(quorum)
                                         val acceptedByServers =
-                                            client.postShareToTargets(targets, body, supportsKtorTimeouts).toMutableList()
+                                            client
+                                                .postShareToTargets(targets, body, supportsKtorTimeouts)
+                                                .toMutableList()
                                         if (acceptedByServers.isEmpty()) {
                                             val fallbackTargets =
                                                 serverHealthTracker
@@ -880,21 +882,26 @@ class KtorVotingApiProvider(
         } catch (_: TimeoutCancellationException) {
             // Our own withTorRequestTimeoutFallback deadline firing, NOT a genuine outer
             // cancellation (see that function's TRAP doc) — treat exactly like any other failed
-            // attempt so the caller's fallback-target loop still runs, instead of the rethrow
-            // below misidentifying it as delegateShares' sibling-cancellation signal.
+            // attempt so the caller's fallback-target loop still runs, instead of the catch
+            // below misidentifying it as delegateShares' sibling-cancellation signal. This catch
+            // clause MUST stay ordered before the plain CancellationException one below —
+            // TimeoutCancellationException extends it, so Kotlin's first-match catch ordering
+            // requires the more specific type first.
             serverHealthTracker.recordFailure(serverUrl)
             false
-        } catch (throwable: Throwable) {
+        } catch (cancellation: CancellationException) {
             // MOB-1808: delegateShares() now cancels sibling shares via coroutineScope on the
             // first failing share. Without this rethrow, a cancelled share's suspended post()
             // call would swallow its own CancellationException here, fall through to the
             // fallback-target loop, and fire MORE requests after the batch already failed —
             // plus wrongly recordFailure() a server that was never actually rejected, risking
             // tripping its circuit breaker. Matches the same rethrow already used correctly in
-            // this file's fetchTxConfirmation.
-            if (throwable is CancellationException) {
-                throw throwable
-            }
+            // this file's fetchTxConfirmation. A dedicated catch clause (rather than an `is`
+            // check inside a broader Throwable catch) so detekt's InstanceOfCheckForException
+            // rule doesn't flag it.
+            throw cancellation
+        } catch (throwable: Throwable) {
+            votingLog("postShare FAILED server=$serverUrl", throwable)
             serverHealthTracker.recordFailure(serverUrl)
             false
         }
