@@ -96,6 +96,8 @@ class VotingErrorMapperTest {
             mapOf<VotingErrors, Int>(
                 VotingErrors.ConflictingProposalSelection(roundId, proposalId = 1) to
                     R.string.coinVote_store_userError_conflictingSelection,
+                VotingErrors.OmittedCommittedProposal(roundId, proposalId = 1) to
+                    R.string.coinVote_store_userError_omittedCommittedProposal,
                 VotingErrors.RecoveredVoteCommitmentMismatch(roundId, bundleIndex = 0, proposalId = 1) to
                     R.string.coinVote_store_userError_recoveredVoteMismatch,
                 VotingErrors.RecoveredVoteVerificationUnavailable(roundId, bundleIndex = 0, proposalId = 1) to

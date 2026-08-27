@@ -51,6 +51,10 @@ object VotingErrorMapper {
                 stringRes(UiR.string.coinVote_store_userError_conflictingSelection)
             }
 
+            is VotingErrors.OmittedCommittedProposal -> {
+                stringRes(UiR.string.coinVote_store_userError_omittedCommittedProposal)
+            }
+
             is VotingErrors.RecoveredVoteCommitmentMismatch -> {
                 stringRes(UiR.string.coinVote_store_userError_recoveredVoteMismatch)
             }

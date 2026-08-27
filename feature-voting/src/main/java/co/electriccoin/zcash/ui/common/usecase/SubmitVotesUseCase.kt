@@ -233,12 +233,21 @@ class SubmitVotesUseCase(
                         ?: throw VotingSubmissionRecoverableException(
                             VotingErrors.MissingBundleCount(roundId)
                         )
+                val persistedVotes =
+                    votingCryptoClient.getVotes(
+                        dbHandle = dbHandle,
+                        roundId = roundId
+                    )
+                val unresolvedCommittedProposalIds =
+                    persistedVotes.mapTo(mutableSetOf()) { vote -> vote.proposalId } -
+                        context.recovery.submittedProposalIds
+                requireCommitmentBackedRetriesIncluded(
+                    context = context,
+                    unresolvedCommittedProposalIds = unresolvedCommittedProposalIds
+                )
                 val submittedBundleIndicesByProposal =
-                    votingCryptoClient
-                        .getVotes(
-                            dbHandle = dbHandle,
-                            roundId = roundId
-                        ).filter { vote ->
+                    persistedVotes
+                        .filter { vote ->
                             vote.submitted
                         }.groupBy { vote ->
                             vote.proposalId
@@ -275,6 +284,7 @@ class SubmitVotesUseCase(
                         bundleCount = bundleCount,
                         submittedBundleIndicesByProposal = submittedBundleIndicesByProposal,
                         delegatedShareIndicesByTarget = delegatedShareIndicesByTarget,
+                        unresolvedCommittedProposalIds = unresolvedCommittedProposalIds,
                         onProgress = onProgress
                     )
 
@@ -337,6 +347,27 @@ class SubmitVotesUseCase(
         phase != VotingRecoveryPhase.DELEGATION_SUBMITTED &&
             phase != VotingRecoveryPhase.VOTES_SUBMITTED &&
             phase != VotingRecoveryPhase.SHARES_SUBMITTED
+
+    /**
+     * A persisted vote record means commitment construction completed and its POST may have
+     * reached the chain. Until the proposal is durably complete, retries must include it so its
+     * resulting VAN is reconciled before a later proposal attempts to spend the same input VAN.
+     */
+    private fun requireCommitmentBackedRetriesIncluded(
+        context: VotingSubmitContext,
+        unresolvedCommittedProposalIds: Set<Int>
+    ) {
+        val omittedProposalId =
+            (unresolvedCommittedProposalIds - context.sortedChoices.keys).minOrNull()
+        if (omittedProposalId != null) {
+            throw VotingSubmissionRecoverableException(
+                VotingErrors.OmittedCommittedProposal(
+                    roundId = context.roundId,
+                    proposalId = omittedProposalId
+                )
+            )
+        }
+    }
 
     private suspend fun submitDelegationBundles(
         context: VotingSubmitContext,
@@ -617,80 +648,80 @@ class SubmitVotesUseCase(
     ): DelegationSubmissionResolution {
         val roundId = context.roundId
         return runVotingAuthorizationStep(context.isKeystone) {
-                val submission =
-                    if (context.isKeystone) {
-                        val keystoneSignature =
-                            context.recovery.keystoneBundleSignatures[bundleIndex]
-                                ?: error("Keystone signature is missing for voting bundle $bundleIndex")
-                        votingCryptoClient.getDelegationSubmissionWithKeystoneSignature(
-                            dbHandle = dbHandle,
-                            roundId = roundId,
-                            bundleIndex = bundleIndex,
-                            keystoneSig = keystoneSignature.decodeSpendAuthSig(),
-                            keystoneSighash = keystoneSignature.decodeSighash()
-                        )
-                    } else {
-                        votingCryptoClient.getDelegationSubmission(
-                            dbHandle = dbHandle,
-                            roundId = roundId,
-                            bundleIndex = bundleIndex,
-                            walletDbPath = context.walletDbPath,
-                            accountUuid = context.accountUuidCanonical,
-                            hotkeySeed = context.hotkeySeed,
-                            roundName = context.session.title,
-                            senderSeed = requireNotNull(context.senderSeed)
-                        )
-                    }
+            val submission =
                 if (context.isKeystone) {
                     val keystoneSignature =
                         context.recovery.keystoneBundleSignatures[bundleIndex]
                             ?: error("Keystone signature is missing for voting bundle $bundleIndex")
-                    val expectedSpendAuthSig = keystoneSignature.decodeSpendAuthSig()
-                    require(submission.spendAuthSig.contentEquals(expectedSpendAuthSig)) {
-                        "Delegation signature mismatch for Keystone voting bundle $bundleIndex"
-                    }
-                    require(submission.sighash.contentEquals(keystoneSignature.decodeSighash())) {
-                        "Delegation sighash mismatch for Keystone voting bundle $bundleIndex"
-                    }
-                    keystoneSignature.decodeRk()?.let { expectedRk ->
-                        require(submission.rk.contentEquals(expectedRk)) {
-                            "Delegation rk mismatch for Keystone voting bundle $bundleIndex"
-                        }
+                    votingCryptoClient.getDelegationSubmissionWithKeystoneSignature(
+                        dbHandle = dbHandle,
+                        roundId = roundId,
+                        bundleIndex = bundleIndex,
+                        keystoneSig = keystoneSignature.decodeSpendAuthSig(),
+                        keystoneSighash = keystoneSignature.decodeSighash()
+                    )
+                } else {
+                    votingCryptoClient.getDelegationSubmission(
+                        dbHandle = dbHandle,
+                        roundId = roundId,
+                        bundleIndex = bundleIndex,
+                        walletDbPath = context.walletDbPath,
+                        accountUuid = context.accountUuidCanonical,
+                        hotkeySeed = context.hotkeySeed,
+                        roundName = context.session.title,
+                        senderSeed = requireNotNull(context.senderSeed)
+                    )
+                }
+            if (context.isKeystone) {
+                val keystoneSignature =
+                    context.recovery.keystoneBundleSignatures[bundleIndex]
+                        ?: error("Keystone signature is missing for voting bundle $bundleIndex")
+                val expectedSpendAuthSig = keystoneSignature.decodeSpendAuthSig()
+                require(submission.spendAuthSig.contentEquals(expectedSpendAuthSig)) {
+                    "Delegation signature mismatch for Keystone voting bundle $bundleIndex"
+                }
+                require(submission.sighash.contentEquals(keystoneSignature.decodeSighash())) {
+                    "Delegation sighash mismatch for Keystone voting bundle $bundleIndex"
+                }
+                keystoneSignature.decodeRk()?.let { expectedRk ->
+                    require(submission.rk.contentEquals(expectedRk)) {
+                        "Delegation rk mismatch for Keystone voting bundle $bundleIndex"
                     }
                 }
-                val registration = submission.toDelegationRegistration()
-                val result =
-                    try {
-                        votingApiProvider.submitDelegation(registration)
-                    } catch (exception: CancellationException) {
-                        throw exception
-                    } catch (exception: Exception) {
-                        val recoveredPosition =
-                            findPersistedVanPosition(
-                                context = context,
-                                expectedVanCmx = registration.vanCmx
-                            )
-                        if (recoveredPosition != null) {
-                            return@runVotingAuthorizationStep DelegationSubmissionResolution.ConfirmedVan(
-                                recoveredPosition
-                            )
-                        }
-                        throw exception
-                    }
-
-                reconcileDelegationTransactionResult(
-                    result = result,
-                    bundleIndex = bundleIndex,
-                    rejectionMessage = "Delegation transaction was rejected",
-                    fetchTxConfirmation = votingApiProvider::fetchTxConfirmation,
-                    findVanPosition = {
+            }
+            val registration = submission.toDelegationRegistration()
+            val result =
+                try {
+                    votingApiProvider.submitDelegation(registration)
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (exception: Exception) {
+                    val recoveredPosition =
                         findPersistedVanPosition(
                             context = context,
                             expectedVanCmx = registration.vanCmx
                         )
+                    if (recoveredPosition != null) {
+                        return@runVotingAuthorizationStep DelegationSubmissionResolution.ConfirmedVan(
+                            recoveredPosition
+                        )
                     }
-                )
-            }
+                    throw exception
+                }
+
+            reconcileDelegationTransactionResult(
+                result = result,
+                bundleIndex = bundleIndex,
+                rejectionMessage = "Delegation transaction was rejected",
+                fetchTxConfirmation = votingApiProvider::fetchTxConfirmation,
+                findVanPosition = {
+                    findPersistedVanPosition(
+                        context = context,
+                        expectedVanCmx = registration.vanCmx
+                    )
+                }
+            )
+        }
     }
 
     private suspend fun storeConfirmedDelegation(
@@ -761,6 +792,7 @@ class SubmitVotesUseCase(
         bundleCount: Int,
         submittedBundleIndicesByProposal: MutableMap<Int, MutableSet<Int>>,
         delegatedShareIndicesByTarget: MutableMap<ShareDelegationTarget, MutableSet<Int>>,
+        unresolvedCommittedProposalIds: Set<Int>,
         onProgress: (VotingSubmissionProgress) -> Unit
     ): Int {
         val roundId = context.roundId
@@ -779,7 +811,13 @@ class SubmitVotesUseCase(
         // path below) counts as submitted — the user's previous attempt already
         // succeeded for that proposal.
         var processedProposalCount = 0
-        context.sortedChoices.entries.forEachIndexed { proposalIndex, (proposalId, choiceId) ->
+        // Unresolved commitments first; the stable sort keeps ascending proposal
+        // order within each group.
+        val orderedChoices =
+            context.sortedChoices.entries.sortedBy { entry ->
+                entry.key !in unresolvedCommittedProposalIds
+            }
+        orderedChoices.forEachIndexed { proposalIndex, (proposalId, choiceId) ->
             val proposal =
                 context.session.proposals.firstOrNull { it.id == proposalId }
                     ?: error("Unknown proposal id $proposalId for round $roundId")

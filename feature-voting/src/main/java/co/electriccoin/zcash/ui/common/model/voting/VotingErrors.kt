@@ -113,6 +113,19 @@ sealed interface VotingErrors {
     }
 
     /**
+     * A retry omitted a proposal whose vote commitment is already persisted but not yet durably
+     * complete. The proposal must be included so its chain result and successor VAN are
+     * reconciled before later proposals build against them.
+     */
+    data class OmittedCommittedProposal(
+        val roundId: String,
+        val proposalId: Int
+    ) : VotingErrors {
+        override val userMessage =
+            "Proposal $proposalId has an unresolved vote commitment and must be included to retry round $roundId"
+    }
+
+    /**
      * A spent-nullifier response referenced a successful transaction whose commitment-tree leaves
      * do not contain the exact vote commitment currently being recovered.
      */
