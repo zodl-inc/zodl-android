@@ -743,42 +743,6 @@ class SubmitVotesUseCase(
         onProgress: (VotingSubmissionProgress) -> Unit
     ): Int {
         val roundId = context.roundId
-        val proposalSelections =
-            context.sortedChoices
-                .mapNotNull { (proposalId, choiceId) ->
-                    val proposal =
-                        context.session.proposals.firstOrNull { it.id == proposalId }
-                            ?: error("Unknown proposal id $proposalId for round $roundId")
-                    if (proposal.options.none { option -> option.id == choiceId }) {
-                        null
-                    } else {
-                        proposalId to
-                            VotingProposalSelection(
-                                choiceId = choiceId,
-                                numOptions = proposal.options.size
-                            )
-                    }
-                }.toMap()
-        val latestRecovery =
-            votingRecoveryRepository.get(context.accountUuidString, roundId)
-                ?: context.recovery
-        // A locked proposal conflicts only when the request supplies a different
-        // selection for it. A request that omits a locked proposal leaves that
-        // proposal untouched — omission is not a change of choice.
-        val conflictingProposalId =
-            latestRecovery.proposalSelections.entries
-                .firstOrNull { (proposalId, lockedSelection) ->
-                    val requestedSelection = proposalSelections[proposalId]
-                    requestedSelection != null && requestedSelection != lockedSelection
-                }?.key
-        if (conflictingProposalId != null) {
-            throw VotingSubmissionRecoverableException(
-                VotingErrors.ConflictingProposalSelection(
-                    roundId = roundId,
-                    proposalId = conflictingProposalId
-                )
-            )
-        }
         votingRecoveryRepository.storeSingleShareMode(
             accountUuid = context.accountUuidString,
             roundId = roundId,
@@ -798,6 +762,17 @@ class SubmitVotesUseCase(
             val proposal =
                 context.session.proposals.firstOrNull { it.id == proposalId }
                     ?: error("Unknown proposal id $proposalId for round $roundId")
+            // Null when the requested choice no longer matches a known option;
+            // such a request neither locks a selection nor conflicts with one.
+            val requestedSelection =
+                proposal.options
+                    .firstOrNull { option -> option.id == choiceId }
+                    ?.let {
+                        VotingProposalSelection(
+                            choiceId = choiceId,
+                            numOptions = proposal.options.size
+                        )
+                    }
             val progressBase = proposalIndex + 1
 
             fun emitSubmittingProgress(
@@ -832,14 +807,15 @@ class SubmitVotesUseCase(
                         progress = progressBase.toFloat() / context.totalChoices.coerceAtLeast(1)
                     )
                 )
-                markProposalSubmissionComplete(context.accountUuidString, roundId, proposalId)
+                markProposalSubmissionComplete(context.accountUuidString, roundId, proposalId, requestedSelection)
                 processedProposalCount++
                 return@forEachIndexed
             }
 
-            require(proposal.options.any { option -> option.id == choiceId }) {
-                "Unknown vote option $choiceId for proposal $proposalId"
-            }
+            val selection =
+                requireNotNull(requestedSelection) {
+                    "Unknown vote option $choiceId for proposal $proposalId"
+                }
 
             repeat(bundleCount) { bundleIndex ->
                 if (bundleIndex in submittedBundles) {
@@ -854,6 +830,7 @@ class SubmitVotesUseCase(
                         dbHandle = dbHandle,
                         bundleIndex = bundleIndex,
                         proposalId = proposalId,
+                        requestedSelection = selection,
                         delegatedShareIndicesByTarget = delegatedShareIndicesByTarget
                     )
                 ) {
@@ -878,7 +855,7 @@ class SubmitVotesUseCase(
                 emitSubmittingProgress(bundleIndex, 1.0)
             }
 
-            markProposalSubmissionComplete(context.accountUuidString, roundId, proposalId)
+            markProposalSubmissionComplete(context.accountUuidString, roundId, proposalId, selection)
             processedProposalCount++
         }
         return processedProposalCount
@@ -915,6 +892,7 @@ class SubmitVotesUseCase(
         dbHandle: Long,
         bundleIndex: Int,
         proposalId: Int,
+        requestedSelection: VotingProposalSelection,
         delegatedShareIndicesByTarget: MutableMap<ShareDelegationTarget, MutableSet<Int>>
     ): Boolean {
         val roundId = context.roundId
@@ -925,6 +903,15 @@ class SubmitVotesUseCase(
                 bundleIndex = bundleIndex,
                 proposalId = proposalId
             ) ?: return false
+
+        // Reusing the cached transaction re-binds this proposal to its previously
+        // broadcast choice; revalidate the request against the selection lock
+        // before recording any positions.
+        votingRecoveryRepository.storeProposalSelections(
+            accountUuid = context.accountUuidString,
+            roundId = roundId,
+            proposalSelections = mapOf(proposalId to requestedSelection)
+        )
 
         val confirmation = cachedConfirmation.confirmation
         val (confirmedVanPosition, vcTreePosition) = confirmation.castVoteLeafPositions()
@@ -1188,8 +1175,19 @@ class SubmitVotesUseCase(
     private suspend fun markProposalSubmissionComplete(
         accountUuid: String,
         roundId: String,
-        proposalId: Int
+        proposalId: Int,
+        requestedSelection: VotingProposalSelection?
     ) {
+        // Completing a proposal revalidates its selection lock, so a request
+        // that changes a previously broadcast choice can never silently count
+        // the old vote as this submission.
+        if (requestedSelection != null) {
+            votingRecoveryRepository.storeProposalSelections(
+                accountUuid = accountUuid,
+                roundId = roundId,
+                proposalSelections = mapOf(proposalId to requestedSelection)
+            )
+        }
         // Recovery is durable and written first; if the process dies before the
         // in-memory session store is pruned, the next launch replays this state.
         votingRecoveryRepository.markProposalSubmitted(

@@ -208,6 +208,31 @@ class SubmitVotesUseCaseRecoveryTest {
         }
 
     @Test
+    fun changedChoiceCannotReuseCachedConfirmedVote() =
+        runTest {
+            val fixture =
+                CastVoteRecoveryFixture(
+                    selectedAccount = keystoneAccount(),
+                    cachedVoteTxHash = ORIGINAL_CAST_TX_HASH,
+                    initialSelections = mapOf(1 to VotingProposalSelection(choiceId = 0, numOptions = 2))
+                )
+
+            val failure =
+                assertFailsWith<VotingSubmissionRecoverableException> {
+                    fixture.newUseCase()(ROUND_ID, mapOf(1 to 1))
+                }
+
+            assertIs<VotingErrors.ConflictingProposalSelection>(failure.failure)
+            assertEquals(emptyList(), fixture.storedVoteHashes)
+            assertEquals(emptyList(), fixture.storedVanPositions)
+            assertEquals(emptyList(), fixture.recordedVcPositions)
+            assertEquals(
+                VotingProposalSelection(choiceId = 0, numOptions = 2),
+                fixture.recovery.proposalSelections[1]
+            )
+        }
+
+    @Test
     fun preBroadcastFailureLeavesSelectionUnlockedForRetry() =
         runTest {
             val fixture = CastVoteRecoveryFixture(keystoneAccount(), failFirstTreeSync = true)
@@ -261,7 +286,9 @@ class SubmitVotesUseCaseRecoveryTest {
         private val selectedAccount: KeystoneAccount,
         private val confirmedChoice: Int = 0,
         private val proposalCount: Int = 1,
-        private val failFirstTreeSync: Boolean = false
+        private val failFirstTreeSync: Boolean = false,
+        private val cachedVoteTxHash: String? = null,
+        private val initialSelections: Map<Int, VotingProposalSelection> = emptyMap()
     ) {
         val crypto = mockk<VotingCryptoClient>(relaxed = true)
         val api = mockk<VotingApiProvider>(relaxed = true)
@@ -283,7 +310,8 @@ class SubmitVotesUseCaseRecoveryTest {
                 bundleCount = 1,
                 eligibleWeight = 1,
                 bundleWeights = listOf(1),
-                hotkeyAddress = "hotkey"
+                hotkeyAddress = "hotkey",
+                proposalSelections = initialSelections
             )
 
         private val recoveryRepository = mockk<VotingRecoveryRepository>(relaxed = true)
@@ -320,12 +348,22 @@ class SubmitVotesUseCaseRecoveryTest {
                 recovery = recovery.copy(phase = thirdArg())
             }
             coEvery { recoveryRepository.storeProposalSelections(accountUuid, ROUND_ID, any()) } answers {
-                recovery =
-                    recovery.copy(
-                        proposalSelections =
-                            recovery.proposalSelections +
-                                thirdArg<Map<Int, VotingProposalSelection>>()
+                // Mirrors VotingRecoveryRepositoryImpl's selection-lock contract.
+                val supplied = thirdArg<Map<Int, VotingProposalSelection>>()
+                val conflictingProposalId =
+                    supplied.entries
+                        .firstOrNull { (proposalId, selection) ->
+                            recovery.proposalSelections[proposalId]?.let { it != selection } == true
+                        }?.key
+                if (conflictingProposalId != null) {
+                    throw VotingSubmissionRecoverableException(
+                        VotingErrors.ConflictingProposalSelection(
+                            roundId = ROUND_ID,
+                            proposalId = conflictingProposalId
+                        )
                     )
+                }
+                recovery = recovery.copy(proposalSelections = recovery.proposalSelections + supplied)
             }
             coEvery { recoveryRepository.storeSingleShareMode(accountUuid, ROUND_ID, any()) } answers {
                 recovery = recovery.copy(singleShareMode = thirdArg())
@@ -340,7 +378,8 @@ class SubmitVotesUseCaseRecoveryTest {
             coEvery { crypto.closeVotingDb(any()) } answers { closeDbCalls += 1 }
             coEvery { crypto.getVotes(any(), any()) } returns emptyList()
             coEvery { crypto.getShareDelegations(any(), any()) } returns emptyList()
-            coEvery { crypto.getVoteTxHash(any(), any(), any(), any()) } returns VotingTxHashLookup.NotFound
+            coEvery { crypto.getVoteTxHash(any(), any(), any(), any()) } returns
+                (cachedVoteTxHash?.let(VotingTxHashLookup::Present) ?: VotingTxHashLookup.NotFound)
             var treeSyncCalls = 0
             coEvery { crypto.syncVoteTree(any(), any(), any()) } answers {
                 treeSyncCalls += 1

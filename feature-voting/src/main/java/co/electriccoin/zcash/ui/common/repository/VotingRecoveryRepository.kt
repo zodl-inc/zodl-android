@@ -3,6 +3,8 @@ package co.electriccoin.zcash.ui.common.repository
 import co.electriccoin.zcash.preference.EncryptedPreferenceProvider
 import co.electriccoin.zcash.preference.api.PreferenceProvider
 import co.electriccoin.zcash.preference.model.entry.PreferenceKey
+import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
+import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
@@ -167,6 +169,13 @@ interface VotingRecoveryRepository {
         draftChoices: Map<Int, Int>
     )
 
+    /**
+     * Locks the supplied selections for their proposals. A selection that is already locked
+     * accepts only an identical value; storing a different value throws
+     * [VotingSubmissionRecoverableException] with [VotingErrors.ConflictingProposalSelection].
+     * This is the single owner of the selection-lock invariant: every submission path that
+     * binds or reuses a proposal choice revalidates through this method.
+     */
     suspend fun storeProposalSelections(
         accountUuid: String,
         roundId: String,
@@ -499,8 +508,13 @@ class VotingRecoveryRepositoryImpl(
                 .firstOrNull { (proposalId, selection) ->
                     current.proposalSelections[proposalId]?.let { it != selection } == true
                 }?.key
-        require(conflictingProposalId == null) {
-            "Proposal $conflictingProposalId selection is already locked for round $roundId"
+        if (conflictingProposalId != null) {
+            throw VotingSubmissionRecoverableException(
+                VotingErrors.ConflictingProposalSelection(
+                    roundId = roundId,
+                    proposalId = conflictingProposalId
+                )
+            )
         }
         store(
             current.copy(
