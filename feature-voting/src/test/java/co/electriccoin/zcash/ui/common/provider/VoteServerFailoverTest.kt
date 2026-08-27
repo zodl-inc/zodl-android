@@ -4,7 +4,10 @@ import co.electriccoin.zcash.ui.common.model.voting.StaticVotingConfig
 import co.electriccoin.zcash.ui.common.model.voting.VotingConfigException
 import co.electriccoin.zcash.ui.common.model.voting.toLowerHex
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -13,6 +16,54 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class VoteServerFailoverTest {
+    @Test
+    fun timeoutCancellationDuringAttemptFallsThroughToNextServerInsteadOfAborting() =
+        runBlocking {
+            // MOB-1811: a per-server attempt bounded by withConfigRequestTimeoutFallback throws
+            // TimeoutCancellationException (a CancellationException subtype) on expiry. Before
+            // the fix, withVoteServerFailover's catch (exception is CancellationException) branch
+            // misread that as genuine outer cancellation and aborted the whole walk instead of
+            // trying the second server.
+            val triedServers = mutableListOf<String>()
+
+            val result =
+                withVoteServerFailover(
+                    path = "/shielded-vote/v1/rounds",
+                    serverUrls = listOf("https://first.example.com", "https://second.example.com")
+                ) { serverUrl ->
+                    triedServers += serverUrl
+                    if (serverUrl == "https://first.example.com") {
+                        withTimeout(10L) { delay(1_000L) }
+                    }
+                    "rounds"
+                }
+
+            assertEquals("rounds", result)
+            assertEquals(
+                listOf("https://first.example.com", "https://second.example.com"),
+                triedServers
+            )
+        }
+
+    @Test
+    fun genuineCancellationDuringAttemptStillPropagatesInsteadOfTryingNextServer() {
+        val triedServers = mutableListOf<String>()
+
+        assertFailsWith<CancellationException> {
+            runBlocking {
+                withVoteServerFailover(
+                    path = "/shielded-vote/v1/rounds",
+                    serverUrls = listOf("https://first.example.com", "https://second.example.com")
+                ) { serverUrl ->
+                    triedServers += serverUrl
+                    throw CancellationException("outer job cancelled")
+                }
+            }
+        }
+
+        assertEquals(listOf("https://first.example.com"), triedServers)
+    }
+
     @Test
     fun firstVoteServerFailureFallsThroughToSecondServer() =
         runBlocking {

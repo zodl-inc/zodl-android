@@ -154,6 +154,18 @@ class KtorVotingApiProvider(
      * timeout mechanisms share.
      */
     private val configRequestTimeoutMillis: Long = StaticVotingConfig.CONFIG_REQUEST_TIMEOUT_MS,
+    /**
+     * Per-attempt timeout for every [executeWithVoteServerFailover] call (MOB-1811), overridable
+     * only so tests can inject a short value. One of the ~10 configured vote servers can drop
+     * (not refuse) a Tor connection instead of failing it outright; under Tor
+     * ([HttpClientProvider]'s isolated client has `installTimeouts = false`) Ktor's own
+     * [io.ktor.client.plugins.HttpTimeout] is a no-op, so without this an attempt against that
+     * server can hang indefinitely instead of the failover loop moving on to the next one -
+     * exactly the "waiting for a health check before displaying the proposal" symptom reported
+     * against the round list and the pre-vote screen's [co.electriccoin.zcash.ui.common.usecase
+     * .PrepareVotingRoundUseCase] gate.
+     */
+    private val voteServerFailoverTimeoutMillis: Long = VOTE_SERVER_FAILOVER_TIMEOUT_MILLIS,
 ) : VotingApiProvider {
     private var cachedResolvedConfig: ResolvedVotingConfig? = null
     private val configMutex = Mutex()
@@ -659,12 +671,21 @@ class KtorVotingApiProvider(
         block: suspend HttpClient.(String) -> T
     ): T {
         val serverUrls = configuredVoteServerUrls()
-        return execute {
+        return executeWithKtorTimeoutSupport { supportsKtorTimeouts ->
             withVoteServerFailover(
                 path = path,
                 serverUrls = serverUrls,
                 shouldTryNext = shouldTryNext,
-                operation = { serverUrl -> block(serverUrl) }
+                operation = { serverUrl ->
+                    // MOB-1811: bounds each per-server attempt so one dropping (not refusing)
+                    // Tor connection can't stall the whole failover walk - see the constructor
+                    // param doc above and withConfigRequestTimeoutFallback's own TRAP doc for why
+                    // withVoteServerFailover's catch clauses must (and do) special-case the
+                    // TimeoutCancellationException this throws under Tor.
+                    withConfigRequestTimeoutFallback(supportsKtorTimeouts, voteServerFailoverTimeoutMillis) {
+                        block(serverUrl)
+                    }
+                }
             )
         }
     }
@@ -1012,6 +1033,9 @@ private fun String.withCacheBustIfNeeded(token: String): String {
 private const val HELPER_REQUEST_TIMEOUT_MILLIS = 5_000L
 private const val HELPER_SOCKET_TIMEOUT_MILLIS = 10_000L
 private const val HELPER_CONNECT_TIMEOUT_MILLIS = 5_000L
+
+// MOB-1811: matches CONFIG_REQUEST_TIMEOUT_MS's 15s convention for a bounded network attempt.
+private const val VOTE_SERVER_FAILOVER_TIMEOUT_MILLIS = 15_000L
 private const val TAG = "VotingApiProvider"
 private const val ACTIVE_ROUNDS_PATH = "/shielded-vote/v1/rounds/active"
 private const val ROUNDS_PATH = "/shielded-vote/v1/rounds"
