@@ -7,11 +7,6 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
-
-### Added:
-
-- We added a Wallet Status Widget prompt for Coinholder Polling, so you can jump straight into an active poll you haven't voted in yet.
-
 ## [3.10.1 (2512)] - 2026-08-25
 
 ### Added:

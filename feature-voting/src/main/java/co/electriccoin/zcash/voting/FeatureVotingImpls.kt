@@ -66,6 +66,16 @@ import java.time.Instant
  */
 const val VOTING_ENABLED = true
 
+/**
+ * Temporarily disables the Coinholder Polling home-widget prompt (MOB-1805, PR #2472) while its
+ * eligibility check and the unconditional voting-session network refresh it rides along with are
+ * redesigned - see MOB-1814 and the Slack thread linked there. This does NOT touch
+ * [VOTING_ENABLED] or the underlying [RefreshActiveVotingSessionUseCase] call in
+ * [VotingHomeHooksImpl.recoverPendingRouteIfNeeded] - voting itself, and that pre-existing
+ * refresh, are unaffected. Re-enable by flipping this back to `true` once the redesign lands.
+ */
+const val COINHOLDER_HOME_PROMPT_ENABLED = false
+
 class VotingHomeHooksImpl(
     private val votingRecoveryRepository: VotingRecoveryRepository,
     private val votingApiRepository: VotingApiRepository,
@@ -78,20 +88,26 @@ class VotingHomeHooksImpl(
     @Suppress("ReturnCount", "SpreadOperator")
     override suspend fun recoverPendingRouteIfNeeded(): Boolean {
         if (!VOTING_ENABLED) return false
+        val accountUuid = getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId()
+
+        // Purely local check - most home-screen opens have no pending Keystone request at all,
+        // so skip the network refresh entirely rather than fetching service config + all rounds
+        // on every open just to find nothing to recover (MOB-1814).
+        val pendingRoundIds = votingRecoveryRepository.getRoundIdsWithPendingKeystoneRequest(accountUuid)
+        if (pendingRoundIds.isEmpty()) return false
+
         runCatching {
             refreshActiveVotingSession()
         }.getOrElse {
             return false
         }
-        val accountUuid = getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId()
-        var recovery: VotingRecoverySnapshot? = null
-        for (roundId in votingApiRepository.snapshot.value.sessionsByRoundId.keys) {
-            val candidate = votingRecoveryRepository.get(accountUuid, roundId)
-            if (candidate?.pendingKeystoneRequest != null) {
-                recovery = candidate
-                break
-            }
-        }
+        val activeRoundIds = votingApiRepository.snapshot.value.sessionsByRoundId.keys
+        val recovery =
+            pendingRoundIds
+                .filter { roundId -> roundId in activeRoundIds }
+                .firstNotNullOfOrNull { roundId ->
+                    votingRecoveryRepository.get(accountUuid, roundId)?.takeIf { it.pendingKeystoneRequest != null }
+                }
         recovery ?: return false
         val roundId = recovery.roundId
         val pendingRequest = recovery.pendingKeystoneRequest ?: return false
@@ -193,7 +209,7 @@ class VotingHomeMessageSourceImpl(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun observeIsCoinholderPollingMessageVisible(): Flow<Boolean> {
-        if (!VOTING_ENABLED) return flowOf(false)
+        if (!VOTING_ENABLED || !COINHOLDER_HOME_PROMPT_ENABLED) return flowOf(false)
 
         val activeScope: Flow<ActiveScope?> =
             combine(

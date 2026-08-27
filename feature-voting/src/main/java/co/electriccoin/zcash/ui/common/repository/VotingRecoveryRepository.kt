@@ -276,6 +276,15 @@ interface VotingRecoveryRepository {
      * short-circuits when there are no unconfirmed shares.
      */
     suspend fun getRoundIdsRequiringShareTracking(accountUuid: String): List<String>
+
+    /**
+     * Enumerates round ids for the given account with a stored [VotingPendingKeystoneRequest] -
+     * a Keystone signature this device is still waiting on. Purely local (backed by the same
+     * on-device index as [getRoundIdsRequiringShareTracking]): callers can check "is there
+     * anything to recover at all" without first fetching the active session list from the
+     * network, and only pay for that fetch when this returns a non-empty list.
+     */
+    suspend fun getRoundIdsWithPendingKeystoneRequest(accountUuid: String): List<String>
 }
 
 class VotingRecoveryRepositoryImpl(
@@ -746,7 +755,16 @@ class VotingRecoveryRepositoryImpl(
         removeFromIndex(preferenceProvider, accountUuid, roundId)
     }
 
-    override suspend fun getRoundIdsRequiringShareTracking(accountUuid: String): List<String> {
+    override suspend fun getRoundIdsRequiringShareTracking(accountUuid: String): List<String> =
+        roundIdsMatching(accountUuid) { snapshot -> snapshot.submittedProposalIds.isNotEmpty() }
+
+    override suspend fun getRoundIdsWithPendingKeystoneRequest(accountUuid: String): List<String> =
+        roundIdsMatching(accountUuid) { snapshot -> snapshot.pendingKeystoneRequest != null }
+
+    private suspend fun roundIdsMatching(
+        accountUuid: String,
+        predicate: (VotingRecoverySnapshot) -> Boolean
+    ): List<String> {
         val preferenceProvider = encryptedPreferenceProvider()
         val scopedAccount = accountUuid.lowercase()
         val pairs = readIndex(preferenceProvider)
@@ -762,11 +780,7 @@ class VotingRecoveryRepositoryImpl(
                         removeFromIndex(preferenceProvider, scopedAccount, indexedRoundId)
                         return@mapNotNull null
                     }
-                if (snapshot.submittedProposalIds.isNotEmpty()) {
-                    snapshot.roundId
-                } else {
-                    null
-                }
+                snapshot.roundId.takeIf { predicate(snapshot) }
             }
     }
 
