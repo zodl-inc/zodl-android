@@ -88,20 +88,26 @@ class VotingHomeHooksImpl(
     @Suppress("ReturnCount", "SpreadOperator")
     override suspend fun recoverPendingRouteIfNeeded(): Boolean {
         if (!VOTING_ENABLED) return false
+        val accountUuid = getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId()
+
+        // Purely local check - most home-screen opens have no pending Keystone request at all,
+        // so skip the network refresh entirely rather than fetching service config + all rounds
+        // on every open just to find nothing to recover (MOB-1814).
+        val pendingRoundIds = votingRecoveryRepository.getRoundIdsWithPendingKeystoneRequest(accountUuid)
+        if (pendingRoundIds.isEmpty()) return false
+
         runCatching {
             refreshActiveVotingSession()
         }.getOrElse {
             return false
         }
-        val accountUuid = getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId()
-        var recovery: VotingRecoverySnapshot? = null
-        for (roundId in votingApiRepository.snapshot.value.sessionsByRoundId.keys) {
-            val candidate = votingRecoveryRepository.get(accountUuid, roundId)
-            if (candidate?.pendingKeystoneRequest != null) {
-                recovery = candidate
-                break
-            }
-        }
+        val activeRoundIds = votingApiRepository.snapshot.value.sessionsByRoundId.keys
+        val recovery =
+            pendingRoundIds
+                .filter { roundId -> roundId in activeRoundIds }
+                .firstNotNullOfOrNull { roundId ->
+                    votingRecoveryRepository.get(accountUuid, roundId)?.takeIf { it.pendingKeystoneRequest != null }
+                }
         recovery ?: return false
         val roundId = recovery.roundId
         val pendingRequest = recovery.pendingKeystoneRequest ?: return false
