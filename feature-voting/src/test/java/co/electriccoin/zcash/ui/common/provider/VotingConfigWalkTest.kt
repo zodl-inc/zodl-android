@@ -411,7 +411,13 @@ class VotingConfigWalkTest {
                     requestedUrls = requestedUrls
                 )
 
+            // MOB-1808: fetchServiceConfig() now reuses a source-matching cache entry within
+            // CONFIG_CACHE_TTL_MS instead of walking again on every call, so a bare second call
+            // here would short-circuit to the cache and never issue a second request at all.
+            // invalidateConfigCache() forces the second call to actually re-walk, which is what
+            // this test needs to observe a second, freshly-tokenened request.
             provider.fetchServiceConfig()
+            provider.invalidateConfigCache()
             provider.fetchServiceConfig()
 
             assertEquals(2, requestedUrls.size)

@@ -35,7 +35,7 @@ internal suspend fun <T> withVoteServerFailover(
             return operation(serverUrl)
         } catch (exception: TimeoutCancellationException) {
             // MOB-1811: a per-server attempt is now bounded by the caller wrapping [operation]
-            // in withConfigRequestTimeoutFallback (VotingApiProvider.kt) to stop a vote server
+            // in withTorRequestTimeoutFallback (VotingApiProvider.kt) to stop a vote server
             // that's dropping - not refusing - Tor connections from hanging this whole failover
             // walk. TimeoutCancellationException EXTENDS CancellationException, so it MUST be
             // caught here, before the plain CancellationException clause below, or a deliberate

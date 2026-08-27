@@ -19,7 +19,7 @@ class VoteServerFailoverTest {
     @Test
     fun timeoutCancellationDuringAttemptFallsThroughToNextServerInsteadOfAborting() =
         runBlocking {
-            // MOB-1811: a per-server attempt bounded by withConfigRequestTimeoutFallback throws
+            // MOB-1811: a per-server attempt bounded by withTorRequestTimeoutFallback throws
             // TimeoutCancellationException (a CancellationException subtype) on expiry. Before
             // the fix, withVoteServerFailover's catch (exception is CancellationException) branch
             // misread that as genuine outer cancellation and aborted the whole walk instead of

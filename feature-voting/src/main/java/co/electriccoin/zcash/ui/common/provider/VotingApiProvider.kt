@@ -37,6 +37,7 @@ import co.electriccoin.zcash.ui.common.model.voting.toTallyResults
 import co.electriccoin.zcash.ui.common.model.voting.withSubmitAt
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
+import co.electriccoin.zcash.ui.common.repository.votingLog
 import co.electriccoin.zcash.ui.configuration.ConfigurationEntries
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -62,7 +63,9 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
@@ -148,7 +151,7 @@ class KtorVotingApiProvider(
     /**
      * Per-attempt timeout for both config-fetch legs (MOB-1809), defaulting to
      * [StaticVotingConfig.CONFIG_REQUEST_TIMEOUT_MS]. Overridable only so tests can inject a
-     * short value when exercising the app-side [withConfigRequestTimeoutFallback] path — the
+     * short value when exercising the app-side [withTorRequestTimeoutFallback] path — the
      * production default never changes, and DI (see `featureVotingModule`) never passes an
      * override, so every real caller gets the same 15s bound both the Ktor-level and app-side
      * timeout mechanisms share.
@@ -166,10 +169,35 @@ class KtorVotingApiProvider(
      * .PrepareVotingRoundUseCase] gate.
      */
     private val voteServerFailoverTimeoutMillis: Long = VOTE_SERVER_FAILOVER_TIMEOUT_MILLIS,
+    /**
+     * Per-attempt timeout for [postShare] (MOB-1808), defaulting to
+     * [SHARE_REQUEST_TIMEOUT_MILLIS]. Overridable only so tests can inject a short value when
+     * exercising the app-side [withTorRequestTimeoutFallback] path for share posting, mirroring
+     * [configRequestTimeoutMillis] above — production callers (DI, see `featureVotingModule`)
+     * never pass an override.
+     */
+    private val shareRequestTimeoutMillis: Long = SHARE_REQUEST_TIMEOUT_MILLIS,
+    /**
+     * TTL for the resolved-config cache (MOB-1808), defaulting to [CONFIG_CACHE_TTL_MS].
+     * Overridable only so tests can inject a short value to actually exercise the expiry
+     * fallthrough branch of [resolveConfigCached] (a real elapsed-time wait past a tiny TTL,
+     * as opposed to [invalidateConfigCache]'s null-out, which only exercises the cache-miss
+     * branch and cannot distinguish "never cached" from "expired") — mirrors
+     * [configRequestTimeoutMillis] above; production callers never pass an override.
+     */
+    private val configCacheTtlMillis: Long = CONFIG_CACHE_TTL_MS,
 ) : VotingApiProvider {
     private var cachedResolvedConfig: ResolvedVotingConfig? = null
+    private var cachedResolvedConfigFetchedAtMs: Long? = null
     private val configMutex = Mutex()
     private val serverHealthTracker = VotingServerHealthTracker()
+    private val httpClientMutex = Mutex()
+    private var cachedHttpClient: HttpClient? = null
+    private var cachedHttpClientSupportsKtorTimeouts: Boolean? = null
+
+    // Bounds how many isolated Tor clients delegateShares() builds at once (MOB-1808) — see the
+    // comment at its call site for why an uncapped fan-out is a real client- and server-side risk.
+    private val shareDelegationSemaphore = Semaphore(MAX_CONCURRENT_SHARE_DELEGATIONS)
 
     override suspend fun validateConfigSource(source: PinnedConfigSource) {
         fetchStaticConfig(listOf(source))
@@ -178,11 +206,28 @@ class KtorVotingApiProvider(
     override suspend fun invalidateConfigCache() {
         configMutex.withLock {
             cachedResolvedConfig = null
+            cachedResolvedConfigFetchedAtMs = null
         }
     }
 
+    // MOB-1808: fetchServiceConfig() used to force-refresh unconditionally on every call. With
+    // the CHP round list open during an active round, at least 3 independent loops call this
+    // path — the 5s round-status auto-refresh, the 15s+ foreground share-rediscovery driver, and
+    // ad-hoc tally/tx-confirmation polling — each re-fetching the full static+dynamic config over
+    // Tor from scratch, never reusing what a sibling loop fetched moments earlier ("CHP is
+    // actually firing a lot of requests on its own from its screens" per the team's own Slack
+    // report). getResolvedConfig()'s cache was already source-aware (a config-source change
+    // still forces a real refetch) but forceRefresh=true bypassed it entirely regardless of age.
+    // Switching to TTL-bounded reuse (getResolvedConfigWithTtl) keeps every one of those loops
+    // fed from one shared fetch instead of each paying its own round trip, while still bounding
+    // how stale the served config can get. A guaranteed-fresh fetch still goes through the
+    // explicit invalidateConfigCache() path instead of relying on this method to force one — its
+    // sole caller today is VoteCoinholderPollingVM's refreshVotingDataInternal(), invoked on
+    // screen entry, pull-to-refresh, and a config-source change, so the submit flow's own config
+    // reads are only as fresh as whatever that screen-level invalidation + this TTL last left
+    // cached, not independently guaranteed fresh by the submit flow itself.
     override suspend fun fetchServiceConfig(): VotingServiceConfig =
-        getResolvedConfig(forceRefresh = true).serviceConfig
+        getResolvedConfigWithTtl().serviceConfig
 
     override suspend fun fetchActiveVotingSession(): VotingSession? =
         try {
@@ -280,60 +325,115 @@ class KtorVotingApiProvider(
         }
     }
 
-    override suspend fun delegateShares(shares: List<SharePayload>): List<DelegatedShareInfo> =
-        executeWithKtorTimeoutSupport delegateShares@{ supportsKtorTimeouts ->
-            if (shares.isEmpty()) {
-                return@delegateShares emptyList()
-            }
+    override suspend fun delegateShares(shares: List<SharePayload>): List<DelegatedShareInfo> {
+        val startMs = System.currentTimeMillis()
+        votingLog("delegateShares START shares=${shares.size}")
+        return try {
+            executeWithKtorTimeoutSupport delegateShares@{ supportsKtorTimeouts ->
+                if (shares.isEmpty()) {
+                    return@delegateShares emptyList()
+                }
 
-            val config = getResolvedConfig().serviceConfig
-            val serverUrls =
-                config.voteServers
-                    .map { endpoint -> endpoint.url.trimEnd('/') }
-                    .distinct()
+                val config = getResolvedConfig().serviceConfig
+                val serverUrls =
+                    config.voteServers
+                        .map { endpoint -> endpoint.url.trimEnd('/') }
+                        .distinct()
 
-            if (serverUrls.isEmpty()) {
-                error("Voting server URL is not configured")
-            }
+                if (serverUrls.isEmpty()) {
+                    error("Voting server URL is not configured")
+                }
 
-            serverHealthTracker.remember(serverUrls)
+                serverHealthTracker.remember(serverUrls)
 
-            buildList {
-                for (share in shares) {
-                    val body = share.toApiBody()
-                    val healthyServers = serverHealthTracker.healthyServers(serverUrls)
-                    val quorum = max(1, (healthyServers.size + 1) / 2)
-                    val targets = healthyServers.shuffled().take(quorum)
-                    val acceptedByServers =
-                        postShareToTargets(targets, body, supportsKtorTimeouts).toMutableList()
-                    if (acceptedByServers.isEmpty()) {
-                        val fallbackTargets =
-                            serverHealthTracker
-                                .healthyServers(serverUrls)
-                                .filterNot { serverUrl -> serverUrl in targets }
-                                .shuffled()
-                        for (fallbackTarget in fallbackTargets) {
-                            if (postShare(fallbackTarget, body, supportsKtorTimeouts)) {
-                                acceptedByServers += fallbackTarget
-                                break
+                // MOB-1808: shares within one bundle used to be POSTed one at a time — each
+                // share awaited its own postShareToTargets() before the next share started.
+                // Measured live: ~1-1.3s/share over Tor, so a 16-share bundle took 16-22s
+                // sequentially — ~73% of a full vote submission's wall time across the ~12
+                // bundles in a 6-proposal round.
+                //
+                // First attempt: run the shares concurrently but still through the single
+                // cached HttpClient from sharedHttpClient() (see execute()/
+                // executeWithKtorTimeoutSupport below). That barely helped (16-22s -> 13-14.5s)
+                // — live Tor logs showed every "Connecting through Tor" firing exactly when the
+                // previous request's "Response status code" landed, back-to-back with no
+                // overlap, proving the *native* Tor engine serializes concurrent requests on one
+                // isolated client/stream regardless of Kotlin-level concurrency.
+                //
+                // Fix: give each concurrent share its own freshly-built isolated Tor client
+                // (httpClientProvider.create(), not the shared one) instead. Confirmed live:
+                // all 16 "Connecting through Tor" lines now fire within ~15ms of each other and
+                // circuit builds themselves parallelize fine (~300-700ms each even 16-at-once),
+                // collapsing the share-POST phase to a consistent ~1.5-2.5s per bundle — a
+                // ~7-10x win on the true bottleneck, not just the ~10-20% a same-client fan-out
+                // gets. The cached/shared client (sharedHttpClient) remains the right choice for
+                // every OTHER call site here (fetchAllRounds, fetchServiceConfig, delegation/
+                // commitment submission, tx confirmation) since those are one-shot, not an
+                // internal concurrent fan-out — reuse still saves them a redundant circuit build
+                // per call without hitting this serialization.
+                //
+                // Trade-off: serverHealthTracker.healthyServers() is now read once per share
+                // concurrently off the same starting snapshot rather than adapting share-by-share
+                // within the batch — recordSuccess/recordFailure inside postShare still updates
+                // the tracker for the *next* bundle, so this only affects in-flight target
+                // selection within a single batch, not longer-term health tracking.
+                //
+                // shareDelegationSemaphore bounds how many isolated Tor clients get built at
+                // once: uncapped, a wallet with far more shares than our ~16-share test batch
+                // would fan out proportionally more simultaneous Tor circuits with no limit —
+                // client-side resource/thread pressure, and server-side it's exactly the kind of
+                // burst (N distinctly-circuited requests for the same round within milliseconds
+                // of each other) that can look like an anomaly or trip rate-limiting.
+                coroutineScope {
+                    shares
+                        .map { share ->
+                            async {
+                                shareDelegationSemaphore.withPermit {
+                                    httpClientProvider.create().use { client ->
+                                        val body = share.toApiBody()
+                                        val healthyServers = serverHealthTracker.healthyServers(serverUrls)
+                                        val quorum = max(1, (healthyServers.size + 1) / 2)
+                                        val targets = healthyServers.shuffled().take(quorum)
+                                        val acceptedByServers =
+                                            client
+                                                .postShareToTargets(targets, body, supportsKtorTimeouts)
+                                                .toMutableList()
+                                        if (acceptedByServers.isEmpty()) {
+                                            val fallbackTargets =
+                                                serverHealthTracker
+                                                    .healthyServers(serverUrls)
+                                                    .filterNot { serverUrl -> serverUrl in targets }
+                                                    .shuffled()
+                                            for (fallbackTarget in fallbackTargets) {
+                                                if (client.postShare(fallbackTarget, body, supportsKtorTimeouts)) {
+                                                    acceptedByServers += fallbackTarget
+                                                    break
+                                                }
+                                            }
+                                        }
+
+                                        if (acceptedByServers.isEmpty()) {
+                                            error("No voting server accepted share ${share.encShare.shareIndex}")
+                                        }
+
+                                        DelegatedShareInfo(
+                                            shareIndex = share.encShare.shareIndex,
+                                            proposalId = share.proposalId,
+                                            acceptedByServers = acceptedByServers
+                                        )
+                                    }
+                                }
                             }
-                        }
-                    }
-
-                    if (acceptedByServers.isEmpty()) {
-                        error("No voting server accepted share ${share.encShare.shareIndex}")
-                    }
-
-                    add(
-                        DelegatedShareInfo(
-                            shareIndex = share.encShare.shareIndex,
-                            proposalId = share.proposalId,
-                            acceptedByServers = acceptedByServers
-                        )
-                    )
+                        }.awaitAll()
                 }
             }
+        } finally {
+            votingLog(
+                "delegateShares END shares=${shares.size} " +
+                    "elapsed=${System.currentTimeMillis() - startMs}ms"
+            )
         }
+    }
 
     override suspend fun fetchShareStatus(
         helperBaseUrl: String,
@@ -465,14 +565,45 @@ class KtorVotingApiProvider(
     }
 
     private suspend fun getResolvedConfig(forceRefresh: Boolean = false): ResolvedVotingConfig =
+        resolveConfigCached(useTtl = false, forceRefresh = forceRefresh)
+
+    /**
+     * Like [getResolvedConfig] but additionally requires a source-matching cache entry to be
+     * younger than [CONFIG_CACHE_TTL_MS] to be reused — used by [fetchServiceConfig], the entry
+     * point several independent polling loops call on their own short cadence (see that call
+     * site's comment for why this matters). A cache miss, a source change, or an expired entry
+     * all fall through to a real fetch.
+     */
+    private suspend fun getResolvedConfigWithTtl(): ResolvedVotingConfig =
+        resolveConfigCached(useTtl = true, forceRefresh = false)
+
+    /**
+     * Single mutex-guarded decision point shared by [getResolvedConfig] and
+     * [getResolvedConfigWithTtl] — folding both into one critical section (rather than the TTL
+     * variant checking freshness outside the lock and then calling the non-TTL variant, which is
+     * what an earlier version of this code did) closes two problems at once: (1) it avoids two
+     * callers racing to independently decide "expired" and both firing a real fetch, and (2) it
+     * avoids the non-TTL variant's own cache check — source-match only, no age check — silently
+     * re-serving a [useTtl]-expired entry right back out because from *its* perspective the cache
+     * looked perfectly valid.
+     */
+    private suspend fun resolveConfigCached(
+        useTtl: Boolean,
+        forceRefresh: Boolean
+    ): ResolvedVotingConfig =
         configMutex.withLock {
             val sources = resolveConfigSources()
             val cached = cachedResolvedConfig
-            if (!forceRefresh && cached?.sources == sources) {
+            val fetchedAtMs = cachedResolvedConfigFetchedAtMs
+            val sourcesMatch = cached != null && cached.sources == sources
+            val withinTtl =
+                !useTtl || (fetchedAtMs != null && System.currentTimeMillis() - fetchedAtMs < configCacheTtlMillis)
+            if (!forceRefresh && sourcesMatch && withinTtl) {
                 cached
             } else {
                 fetchTrustedConfig(sources).also { resolved ->
                     cachedResolvedConfig = resolved
+                    cachedResolvedConfigFetchedAtMs = System.currentTimeMillis()
                 }
             }
         }
@@ -523,7 +654,7 @@ class KtorVotingApiProvider(
         supportsKtorTimeouts: Boolean
     ): ByteArray =
         try {
-            withConfigRequestTimeoutFallback(supportsKtorTimeouts, configRequestTimeoutMillis) {
+            withTorRequestTimeoutFallback(supportsKtorTimeouts, configRequestTimeoutMillis) {
                 get(url) {
                     noCache()
                     configRequestTimeout(supportsKtorTimeouts, configRequestTimeoutMillis)
@@ -620,7 +751,7 @@ class KtorVotingApiProvider(
         supportsKtorTimeouts: Boolean
     ): String =
         try {
-            withConfigRequestTimeoutFallback(supportsKtorTimeouts, configRequestTimeoutMillis) {
+            withTorRequestTimeoutFallback(supportsKtorTimeouts, configRequestTimeoutMillis) {
                 get(url.withCacheBustIfNeeded(cacheBustToken)) {
                     noCache()
                     configRequestTimeout(supportsKtorTimeouts, configRequestTimeoutMillis)
@@ -689,10 +820,10 @@ class KtorVotingApiProvider(
                 operation = { serverUrl ->
                     // MOB-1811: bounds each per-server attempt so one dropping (not refusing)
                     // Tor connection can't stall the whole failover walk - see the constructor
-                    // param doc above and withConfigRequestTimeoutFallback's own TRAP doc for why
+                    // param doc above and withTorRequestTimeoutFallback's own TRAP doc for why
                     // withVoteServerFailover's catch clauses must (and do) special-case the
                     // TimeoutCancellationException this throws under Tor.
-                    withConfigRequestTimeoutFallback(supportsKtorTimeouts, voteServerFailoverTimeoutMillis) {
+                    withTorRequestTimeoutFallback(supportsKtorTimeouts, voteServerFailoverTimeoutMillis) {
                         block(serverUrl)
                     }
                 }
@@ -725,9 +856,33 @@ class KtorVotingApiProvider(
         crossinline block: suspend HttpClient.(Boolean) -> T
     ): T =
         withContext(Dispatchers.IO) {
+            val (httpClient, supportsKtorTimeouts) = sharedHttpClient()
+            block(httpClient, supportsKtorTimeouts)
+        }
+
+    private suspend fun sharedHttpClient(): Pair<HttpClient, Boolean> =
+        httpClientMutex.withLock {
             val supportsKtorTimeouts = httpClientProvider.supportsKtorTimeouts()
-            httpClientProvider.create().use { httpClient ->
-                block(httpClient, supportsKtorTimeouts)
+            val existing = cachedHttpClient
+            if (existing != null && cachedHttpClientSupportsKtorTimeouts == supportsKtorTimeouts) {
+                existing to supportsKtorTimeouts
+            } else {
+                // supportsKtorTimeouts() flips exactly when the user's Tor preference flips (see
+                // HttpClientProviderImpl) — recreate rather than keep serving a client built for the
+                // stale preference, and close the stale one so it isn't leaked.
+                existing?.close()
+                // Invalidate the cache BEFORE attempting the rebuild. If httpClientProvider.create()
+                // throws below, existing is already closed — leaving cachedHttpClient /
+                // cachedHttpClientSupportsKtorTimeouts pointing at it would risk a later call (e.g.
+                // after the user toggles Tor back to its original state) matching the stale cache
+                // entry and handing out an already-closed HttpClient. Clearing first forces the next
+                // call to attempt a fresh rebuild instead.
+                cachedHttpClient = null
+                cachedHttpClientSupportsKtorTimeouts = null
+                val fresh = httpClientProvider.create()
+                cachedHttpClient = fresh
+                cachedHttpClientSupportsKtorTimeouts = supportsKtorTimeouts
+                fresh to supportsKtorTimeouts
             }
         }
 
@@ -756,13 +911,45 @@ class KtorVotingApiProvider(
         supportsKtorTimeouts: Boolean
     ): Boolean =
         try {
-            post("$serverUrl/shielded-vote/v1/shares") {
-                setBody(TextContent(body, ContentType.Application.Json))
-                helperRequestTimeout(supportsKtorTimeouts)
+            // MOB-1808: observed live (see the "slow window" trace) that a single share hitting a
+            // vote server with a flaky/dropping Tor connection could hang far past every other
+            // share's latency — helperRequestTimeout() is a Ktor-level timeout that's a no-op
+            // under Tor (installTimeouts = false, same blind spot MOB-1809 already fixed for the
+            // config-fetch legs), so nothing was actually bounding this attempt when
+            // supportsKtorTimeouts is false. Wrapping in withTorRequestTimeoutFallback fails this
+            // one attempt fast instead of stalling the whole delegateShares() batch (awaitAll())
+            // on its slowest share.
+            withTorRequestTimeoutFallback(supportsKtorTimeouts, shareRequestTimeoutMillis) {
+                post("$serverUrl/shielded-vote/v1/shares") {
+                    setBody(TextContent(body, ContentType.Application.Json))
+                    helperRequestTimeout(supportsKtorTimeouts)
+                }
             }
             serverHealthTracker.recordSuccess(serverUrl)
             true
-        } catch (_: Throwable) {
+        } catch (_: TimeoutCancellationException) {
+            // Our own withTorRequestTimeoutFallback deadline firing, NOT a genuine outer
+            // cancellation (see that function's TRAP doc) — treat exactly like any other failed
+            // attempt so the caller's fallback-target loop still runs, instead of the catch
+            // below misidentifying it as delegateShares' sibling-cancellation signal. This catch
+            // clause MUST stay ordered before the plain CancellationException one below —
+            // TimeoutCancellationException extends it, so Kotlin's first-match catch ordering
+            // requires the more specific type first.
+            serverHealthTracker.recordFailure(serverUrl)
+            false
+        } catch (cancellation: CancellationException) {
+            // MOB-1808: delegateShares() now cancels sibling shares via coroutineScope on the
+            // first failing share. Without this rethrow, a cancelled share's suspended post()
+            // call would swallow its own CancellationException here, fall through to the
+            // fallback-target loop, and fire MORE requests after the batch already failed —
+            // plus wrongly recordFailure() a server that was never actually rejected, risking
+            // tripping its circuit breaker. Matches the same rethrow already used correctly in
+            // this file's fetchTxConfirmation. A dedicated catch clause (rather than an `is`
+            // check inside a broader Throwable catch) so detekt's InstanceOfCheckForException
+            // rule doesn't flag it.
+            throw cancellation
+        } catch (throwable: Throwable) {
+            votingLog("postShare FAILED server=$serverUrl", throwable)
             serverHealthTracker.recordFailure(serverUrl)
             false
         }
@@ -952,24 +1139,26 @@ private fun HttpRequestBuilder.configRequestTimeout(
 }
 
 /**
- * Bounds a config-fetch attempt to [timeoutMillis] app-side when Ktor-level timeouts are
- * unavailable ([supportsKtorTimeouts] == false — the Tor client is built with
- * `installTimeouts = false`, so [configRequestTimeout] is a no-op there and a stalling origin
- * would otherwise hang the attempt forever). When [supportsKtorTimeouts] is true, [block] runs
- * unbounded here — Ktor's own per-request [io.ktor.client.plugins.HttpTimeout] already enforces
- * the same bound.
+ * Bounds a request attempt to [timeoutMillis] app-side when Ktor-level timeouts are unavailable
+ * ([supportsKtorTimeouts] == false — every Tor-routed client is built with
+ * `installTimeouts = false`, so a Ktor-level `timeout { }` block is a no-op there and a stalling
+ * origin would otherwise hang the attempt forever). When [supportsKtorTimeouts] is true, [block]
+ * runs unbounded here — Ktor's own per-request [io.ktor.client.plugins.HttpTimeout] already
+ * enforces the same bound. Originally written for the config-fetch legs (MOB-1809); reused as-is
+ * for delegateShares()'s per-share POST (MOB-1808) — same blind spot, same fix, different caller.
  *
  * TRAP: [kotlinx.coroutines.TimeoutCancellationException] EXTENDS [CancellationException].
  * kotlinx.coroutines guarantees it is delivered only to the [kotlinx.coroutines.withTimeout]
  * frame whose own deadline actually expired; a genuine OUTER cancellation manifests as a
  * *different* [CancellationException] and is never caught by a `catch (TimeoutCancellationException)`
  * clause here. Every caller MUST catch [TimeoutCancellationException] explicitly and convert it to
- * that leg's own retryable exception BEFORE any generic `catch (exception: Exception)` /
+ * that leg's own retryable/failed outcome BEFORE any generic `catch (exception: Exception)` /
  * [rethrowIfCancellation] handling runs — letting it fall through to that generic handling would
- * rethrow it as a cancellation and abort the whole mirror walk instead of falling through to the
- * next mirror.
+ * rethrow it as a genuine cancellation instead of a per-attempt timeout (aborting a whole mirror
+ * walk, or in postShare's case wrongly killing sibling shares via structured concurrency, instead
+ * of just trying the next mirror/fallback server).
  */
-private suspend fun <T> withConfigRequestTimeoutFallback(
+private suspend fun <T> withTorRequestTimeoutFallback(
     supportsKtorTimeouts: Boolean,
     timeoutMillis: Long,
     block: suspend () -> T
@@ -986,7 +1175,7 @@ private suspend fun <T> withConfigRequestTimeoutFallback(
  * fallback, which classifies and fails fast per attempt. Left unmarked, the client's default
  * policy (`~5` attempts with exponential backoff, roughly 90s) would internally exhaust itself
  * against a single dead mirror before the walk's own classification — and
- * [withConfigRequestTimeoutFallback]'s fail-fast bound — ever runs. Uses Ktor's own per-request
+ * [withTorRequestTimeoutFallback]'s fail-fast bound — ever runs. Uses Ktor's own per-request
  * retry configuration ([io.ktor.client.plugins.retry]); on a client where [HttpRequestRetry]
  * isn't installed at all (the Tor client), this is a harmless no-op.
  */
@@ -1056,6 +1245,34 @@ private const val RAW_GITHUBUSERCONTENT_HOST = "raw.githubusercontent.com"
 private const val CACHE_BUST_QUERY_PARAM = "zodl_cache_bust"
 private const val TRANSIENT_HTTP_STATUS_MIN = 500
 private const val TRANSIENT_HTTP_STATUS_MAX = 599
+
+// MOB-1808: cap on simultaneously in-flight isolated Tor clients within one delegateShares()
+// fan-out. Comfortably above our observed 16-share test batches while still bounding a much
+// larger wallet's fan-out to something that won't look like an anomalous multi-circuit burst to
+// the vote servers or exhaust local Tor/thread resources.
+private const val MAX_CONCURRENT_SHARE_DELEGATIONS = 16
+
+// MOB-1808: per-attempt app-side timeout for a single share POST under Tor (see postShare's
+// withTorRequestTimeoutFallback usage) — bounds how long one flaky/dropping vote-server
+// connection can stall delegateShares()'s awaitAll() before that attempt fails fast and the
+// caller's fallback-target loop tries a different server. Matches StaticVotingConfig's
+// CONFIG_REQUEST_TIMEOUT_MS convention (15s): comfortably above the ~0.3-2s a healthy share POST
+// (including circuit build) took in live measurement, short enough that one dead operator
+// connection doesn't dominate a batch's wall time the way we observed (up to 60s on one attempt).
+private const val SHARE_REQUEST_TIMEOUT_MILLIS = 15_000L
+
+// MOB-1808: how long fetchServiceConfig() reuses a source-matching cached config (both the
+// static AND dynamic legs — fetchTrustedConfig() fetches them together as one unit, cached
+// together as one ResolvedVotingConfig) before treating it as stale. Well above the CHP round
+// list's fastest polling loop (5s round-status auto-refresh) and the foreground
+// share-rediscovery driver (15s), so those loops collapse onto one shared fetch instead of each
+// re-fetching from scratch. 10 minutes rather than something tighter: this config changes rarely
+// (trusted_keys rotation, server list changes) and nothing in the app already guarantees
+// real-time propagation of those changes, so a 10-minute-stale worst case is an acceptable
+// trade for cutting request volume much further — anything that genuinely needs a guaranteed
+// fresh fetch already bypasses this TTL via invalidateConfigCache() (the submit flow, or a
+// config-source change).
+private const val CONFIG_CACHE_TTL_MS = 600_000L
 
 private fun List<String>.normalizeServerUrls(): List<String> =
     map(String::trim)

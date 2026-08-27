@@ -5,7 +5,9 @@ import co.electriccoin.zcash.ui.common.model.voting.ChainCommitmentTreeLatestRes
 import co.electriccoin.zcash.ui.common.model.voting.ChainCommitmentTreeLeavesResponse
 import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLatest
 import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLeafPage
+import co.electriccoin.zcash.ui.common.model.voting.EncryptedShare
 import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
+import co.electriccoin.zcash.ui.common.model.voting.SharePayload
 import co.electriccoin.zcash.ui.common.model.voting.VotingConfigException
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
@@ -31,6 +33,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import java.lang.reflect.Proxy
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -611,6 +614,296 @@ class KtorVotingApiProviderTest {
 
     // endregion
 
+    // region TTL cache for fetchServiceConfig (MOB-1808)
+
+    @Test
+    fun fetchServiceConfigReusesCacheWithinTtlWindow() =
+        runBlocking {
+            val requestLog = mutableListOf<String>()
+            val provider = multiEndpointProvider(requestLog = requestLog)
+
+            provider.fetchServiceConfig()
+            provider.fetchServiceConfig()
+
+            // fetchServiceConfig() goes through getResolvedConfigWithTtl(), a DIFFERENT cache path
+            // than fetchAllRounds()'s getResolvedConfig() (see resolvedConfigIsMemoizedAcrossConsecutiveCalls
+            // above) - this pins the TTL-gated path specifically, not just memoization in general.
+            assertEquals(1, requestLog.count { path -> path == "/static-voting-config.json" })
+            assertEquals(1, requestLog.count { path -> path == "/dynamic-voting-config.json" })
+        }
+
+    @Test
+    fun invalidateConfigCacheForcesRefetchOnTheTtlPath() =
+        runBlocking {
+            val requestLog = mutableListOf<String>()
+            val provider = multiEndpointProvider(requestLog = requestLog)
+
+            provider.fetchServiceConfig()
+            provider.invalidateConfigCache()
+            provider.fetchServiceConfig()
+
+            // NOTE (Milan's #2483 round-2 review): this pins invalidation-forces-refetch on the
+            // TTL path specifically (mirrors invalidateConfigCacheForcesRefetch above, which only
+            // covers the non-TTL fetchAllRounds() path) - it does NOT pin the TTL-expiry
+            // fallthrough itself. invalidateConfigCache() nulls cachedResolvedConfigFetchedAtMs
+            // outright, which exercises resolveConfigCached()'s cache-MISS branch (fetchedAtMs ==
+            // null); the old buggy code (getResolvedConfigWithTtl() falling through to
+            // getResolvedConfig(forceRefresh = false) with no age check at all) would also have
+            // passed this test, since a null fetchedAtMs was never the bug - a genuinely EXPIRED
+            // but still-present entry was. See
+            // fetchServiceConfigRefetchesAfterTtlExpiry below for the real expiry pin.
+            assertEquals(2, requestLog.count { path -> path == "/static-voting-config.json" })
+            assertEquals(2, requestLog.count { path -> path == "/dynamic-voting-config.json" })
+        }
+
+    @Test
+    fun fetchServiceConfigRefetchesAfterTtlExpiry() =
+        runBlocking {
+            val requestLog = mutableListOf<String>()
+            val provider =
+                multiEndpointProvider(
+                    requestLog = requestLog,
+                    configCacheTtlMillis = SHORT_CONFIG_CACHE_TTL_MILLIS
+                )
+
+            provider.fetchServiceConfig()
+            delay(SHORT_CONFIG_CACHE_TTL_MILLIS * 2)
+            provider.fetchServiceConfig()
+
+            // The real regression pin for the fallthrough bug an earlier review caught: unlike
+            // invalidateConfigCacheForcesRefetchOnTheTtlPath above (cache-miss branch), this
+            // entry is genuinely still PRESENT and source-matching when the TTL check runs - only
+            // its age has crossed configCacheTtlMillis. getResolvedConfigWithTtl()'s old
+            // fallthrough into getResolvedConfig(forceRefresh = false) had no age awareness at
+            // all, so this exact scenario used to silently re-serve the stale entry forever.
+            assertEquals(2, requestLog.count { path -> path == "/static-voting-config.json" })
+            assertEquals(2, requestLog.count { path -> path == "/dynamic-voting-config.json" })
+        }
+
+    @Test
+    fun concurrentColdCacheFetchServiceConfigCallsCoalesceOntoOneFetch() =
+        runBlocking {
+            val requestLog = mutableListOf<String>()
+            val provider =
+                KtorVotingApiProvider(
+                    httpClientProvider =
+                        object : HttpClientProvider {
+                            override suspend fun supportsKtorTimeouts(): Boolean = true
+
+                            override suspend fun createTor(): HttpClient = create()
+
+                            override suspend fun create(): HttpClient =
+                                HttpClient(
+                                    MockEngine { request ->
+                                        val path = request.url.encodedPath
+                                        requestLog += path
+                                        when (path) {
+                                            "/static-voting-config.json" -> {
+                                                // Held open deliberately so a second concurrent caller's
+                                                // configMutex.withLock has a real window to contend on
+                                                // while the first is still resolving, not just win a
+                                                // same-tick race.
+                                                delay(CANCELLATION_DELAY_MILLIS)
+                                                respond(
+                                                    content = staticConfigJson(dynamicConfigUrl = DYNAMIC_CONFIG_URL),
+                                                    status = HttpStatusCode.OK,
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                )
+                                            }
+
+                                            "/dynamic-voting-config.json" -> {
+                                                respond(
+                                                    content = validDynamicServiceConfigJson(),
+                                                    status = HttpStatusCode.OK,
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                )
+                                            }
+
+                                            else -> {
+                                                respond(content = "not found", status = HttpStatusCode.NotFound)
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    expectSuccess = true
+                                    install(ContentNegotiation) { json() }
+                                }
+                        },
+                    configurationRepository = TestConfigurationRepository(),
+                    votingChainConfigRepository = TestVotingChainConfigRepository(),
+                    votingCryptoClient = unusedVotingCryptoClient()
+                )
+
+            // Regression pin for the race an earlier review caught alongside the TTL fallthrough bug:
+            // two callers racing a cold/expired cache used to each independently decide "expired" and
+            // both fire a real fetch. resolveConfigCached()'s single configMutex.withLock section now
+            // makes the second, slightly-later caller wait for and reuse the first's in-flight fetch.
+            val first = async { provider.fetchServiceConfig() }
+            val second = async { provider.fetchServiceConfig() }
+            first.await()
+            second.await()
+
+            assertEquals(1, requestLog.count { path -> path == "/static-voting-config.json" })
+            assertEquals(1, requestLog.count { path -> path == "/dynamic-voting-config.json" })
+        }
+
+    // endregion
+
+    // region delegateShares concurrency cap and per-share timeout handling (MOB-1808)
+
+    @Test
+    fun postShareTimeoutIsTreatedAsAFailureNotACancellation() =
+        runBlocking {
+            val share = makeDelegateSharePayload()
+            val provider =
+                KtorVotingApiProvider(
+                    httpClientProvider =
+                        object : HttpClientProvider {
+                            override suspend fun supportsKtorTimeouts(): Boolean = false
+
+                            override suspend fun createTor(): HttpClient = create()
+
+                            override suspend fun create(): HttpClient =
+                                HttpClient(
+                                    MockEngine { request ->
+                                        when (request.url.encodedPath) {
+                                            "/static-voting-config.json" -> {
+                                                respond(
+                                                    content = staticConfigJson(dynamicConfigUrl = DYNAMIC_CONFIG_URL),
+                                                    status = HttpStatusCode.OK,
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                )
+                                            }
+
+                                            "/dynamic-voting-config.json" -> {
+                                                respond(
+                                                    content = validDynamicServiceConfigJson(),
+                                                    status = HttpStatusCode.OK,
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                )
+                                            }
+
+                                            // Never responds - with supportsKtorTimeouts = false, Ktor's
+                                            // own HttpTimeout plugin is a no-op under Tor, so only
+                                            // postShare()'s app-side withTorRequestTimeoutFallback bounds
+                                            // this attempt (MOB-1808).
+                                            "/shielded-vote/v1/shares" -> {
+                                                awaitCancellation()
+                                            }
+
+                                            else -> {
+                                                respond(content = "not found", status = HttpStatusCode.NotFound)
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    expectSuccess = true
+                                    install(ContentNegotiation) { json() }
+                                }
+                        },
+                    configurationRepository = TestConfigurationRepository(),
+                    votingChainConfigRepository = TestVotingChainConfigRepository(),
+                    votingCryptoClient = unusedVotingCryptoClient(),
+                    shareRequestTimeoutMillis = TEST_TIMEOUT_MILLIS
+                )
+
+            // Regression pin for the postShare() catch-clause restructuring (MOB-1808 review): the
+            // TimeoutCancellationException that withTorRequestTimeoutFallback's own deadline throws
+            // must be treated as an ordinary failed attempt, not misidentified as delegateShares'
+            // sibling-cancellation signal (see postShare's own TRAP doc). If it were, this would
+            // surface as a raw CancellationException instead of the normal "no server accepted"
+            // failure below.
+            val exception =
+                assertFailsWith<IllegalStateException> {
+                    provider.delegateShares(listOf(share))
+                }
+            assertFalse(exception is CancellationException)
+            assertEquals("No voting server accepted share ${share.encShare.shareIndex}", exception.message)
+        }
+
+    @Test
+    fun delegateSharesBoundsConcurrentShareDelegationToTheSemaphoreCap() =
+        runBlocking {
+            val inFlight = AtomicInteger(0)
+            val maxObserved = AtomicInteger(0)
+            val provider =
+                KtorVotingApiProvider(
+                    httpClientProvider =
+                        object : HttpClientProvider {
+                            override suspend fun supportsKtorTimeouts(): Boolean = true
+
+                            override suspend fun createTor(): HttpClient = create()
+
+                            override suspend fun create(): HttpClient =
+                                HttpClient(
+                                    MockEngine { request ->
+                                        when (request.url.encodedPath) {
+                                            "/static-voting-config.json" -> {
+                                                respond(
+                                                    content = staticConfigJson(dynamicConfigUrl = DYNAMIC_CONFIG_URL),
+                                                    status = HttpStatusCode.OK,
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                )
+                                            }
+
+                                            "/dynamic-voting-config.json" -> {
+                                                respond(
+                                                    content = validDynamicServiceConfigJson(),
+                                                    status = HttpStatusCode.OK,
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                )
+                                            }
+
+                                            "/shielded-vote/v1/shares" -> {
+                                                val current = inFlight.incrementAndGet()
+                                                maxObserved.updateAndGet { max -> maxOf(max, current) }
+                                                delay(SEMAPHORE_TEST_HOLD_MILLIS)
+                                                inFlight.decrementAndGet()
+                                                respond(
+                                                    content = "{}",
+                                                    status = HttpStatusCode.OK,
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                )
+                                            }
+
+                                            else -> {
+                                                respond(content = "not found", status = HttpStatusCode.NotFound)
+                                            }
+                                        }
+                                    }
+                                ) {
+                                    expectSuccess = true
+                                    install(ContentNegotiation) { json() }
+                                }
+                        },
+                    configurationRepository = TestConfigurationRepository(),
+                    votingChainConfigRepository = TestVotingChainConfigRepository(),
+                    votingCryptoClient = unusedVotingCryptoClient()
+                )
+            val shares = (0 until SHARE_COUNT_ABOVE_SEMAPHORE_CAP).map { index -> makeDelegateSharePayload(index) }
+
+            val results = provider.delegateShares(shares)
+
+            assertEquals(SHARE_COUNT_ABOVE_SEMAPHORE_CAP, results.size)
+            // MAX_CONCURRENT_SHARE_DELEGATIONS in VotingApiProvider.kt is 16 and file-private, so its
+            // value is duplicated here as SEMAPHORE_CAP - regression pin for the fan-out concurrency
+            // cap (MOB-1808): with more shares than the cap all held open concurrently by the delay
+            // above, the semaphore must let exactly SEMAPHORE_CAP requests in flight at once, never more.
+            assertEquals(SEMAPHORE_CAP, maxObserved.get())
+        }
+
+    // endregion
+
+    private fun makeDelegateSharePayload(shareIndex: Int = 0): SharePayload =
+        SharePayload(
+            sharesHash = ByteArray(32) { 1 },
+            proposalId = 3,
+            voteDecision = 1,
+            encShare = EncryptedShare(c1 = ByteArray(32) { 2 }, c2 = ByteArray(32) { 3 }, shareIndex = shareIndex),
+            treePosition = 42L,
+            voteRoundId = "01".repeat(32)
+        )
+
     // region cancellation propagation with the app-side timeout fallback in place (MOB-1809)
 
     @Test
@@ -761,7 +1054,8 @@ class KtorVotingApiProviderTest {
 
     private fun multiEndpointProvider(
         requestLog: MutableList<String> = mutableListOf(),
-        timeoutCapabilities: MutableList<Pair<String, Long?>> = mutableListOf()
+        timeoutCapabilities: MutableList<Pair<String, Long?>> = mutableListOf(),
+        configCacheTtlMillis: Long? = null
     ): KtorVotingApiProvider =
         KtorVotingApiProvider(
             httpClientProvider =
@@ -815,7 +1109,8 @@ class KtorVotingApiProviderTest {
                 },
             configurationRepository = TestConfigurationRepository(),
             votingChainConfigRepository = TestVotingChainConfigRepository(),
-            votingCryptoClient = unusedVotingCryptoClient()
+            votingCryptoClient = unusedVotingCryptoClient(),
+            configCacheTtlMillis = configCacheTtlMillis ?: DEFAULT_TEST_CONFIG_CACHE_TTL_MILLIS
         )
 
     private class SwitchableVotingChainConfigRepository(
@@ -1031,7 +1326,20 @@ class KtorVotingApiProviderTest {
         const val ROUNDS_TEST_PATH = "/shielded-vote/v1/rounds"
         const val TEST_TIMEOUT_MILLIS = 100L
         const val CANCELLATION_DELAY_MILLIS = 50L
+
+        // KtorVotingApiProvider's own default (CONFIG_CACHE_TTL_MS, VotingApiProvider.kt) is
+        // file-private there too, same reasoning as SEMAPHORE_CAP below — this file's real
+        // production-equivalent default for tests that don't care about TTL expiry timing.
+        const val DEFAULT_TEST_CONFIG_CACHE_TTL_MILLIS = 600_000L
+        const val SHORT_CONFIG_CACHE_TTL_MILLIS = 20L
         const val CLIENT_RETRY_MAX_RETRIES = 4
+
+        // MAX_CONCURRENT_SHARE_DELEGATIONS in VotingApiProvider.kt is 16 and file-private (a
+        // top-level `private const val` there is file-scoped, not visible here), so its value is
+        // duplicated as SEMAPHORE_CAP for delegateSharesBoundsConcurrentShareDelegationToTheSemaphoreCap.
+        const val SEMAPHORE_CAP = 16
+        const val SHARE_COUNT_ABOVE_SEMAPHORE_CAP = 20
+        const val SEMAPHORE_TEST_HOLD_MILLIS = 40L
         val TEST_CHAIN_CONFIG_STATE =
             VotingChainConfigState(
                 selected = VotingChainConfigSelection.Custom("test-chain"),
