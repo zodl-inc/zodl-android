@@ -361,7 +361,7 @@ class SubmitVotesUseCase(
                 .minOrNull()
         if (omittedProposalId != null) {
             throw VotingSubmissionRecoverableException(
-                VotingErrors.ConflictingProposalSelection(
+                VotingErrors.OmittedCommittedProposal(
                     roundId = context.roundId,
                     proposalId = omittedProposalId
                 )

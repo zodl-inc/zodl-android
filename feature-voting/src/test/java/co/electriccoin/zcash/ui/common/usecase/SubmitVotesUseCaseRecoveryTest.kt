@@ -202,7 +202,7 @@ class SubmitVotesUseCaseRecoveryTest {
                     fixture.newUseCase()(ROUND_ID, mapOf(2 to 0))
                 }
 
-            assertIs<VotingErrors.ConflictingProposalSelection>(failure.failure)
+            assertIs<VotingErrors.OmittedCommittedProposal>(failure.failure)
             assertEquals(1, fixture.submittedBundles.size)
             assertEquals(emptyList(), fixture.storedVoteHashes)
             assertEquals(
