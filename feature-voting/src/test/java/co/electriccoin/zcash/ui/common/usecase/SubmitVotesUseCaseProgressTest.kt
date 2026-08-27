@@ -1,7 +1,7 @@
 package co.electriccoin.zcash.ui.common.usecase
 
-import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLeafBlock
 import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLatest
+import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLeafBlock
 import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLeafPage
 import co.electriccoin.zcash.ui.common.model.voting.TxConfirmation
 import co.electriccoin.zcash.ui.common.model.voting.TxEvent
@@ -147,7 +147,7 @@ class SubmitVotesUseCaseProgressTest {
                         assertEquals("round", roundId)
                         requestedRanges += fromHeight..toHeight
                         when (fromHeight) {
-                            0L ->
+                            0L -> {
                                 leafPage(
                                     blocks =
                                         listOf(
@@ -159,8 +159,9 @@ class SubmitVotesUseCaseProgressTest {
                                         ),
                                     nextFromHeight = 15
                                 )
+                            }
 
-                            15L ->
+                            15L -> {
                                 leafPage(
                                     blocks =
                                         listOf(
@@ -171,8 +172,11 @@ class SubmitVotesUseCaseProgressTest {
                                             )
                                         )
                                 )
+                            }
 
-                            else -> error("unexpected cursor $fromHeight")
+                            else -> {
+                                error("unexpected cursor $fromHeight")
+                            }
                         }
                     }
                 )

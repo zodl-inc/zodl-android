@@ -652,80 +652,80 @@ class SubmitVotesUseCase(
     ): DelegationSubmissionResolution {
         val roundId = context.roundId
         return runVotingAuthorizationStep(context.isKeystone) {
-                val submission =
-                    if (context.isKeystone) {
-                        val keystoneSignature =
-                            context.recovery.keystoneBundleSignatures[bundleIndex]
-                                ?: error("Keystone signature is missing for voting bundle $bundleIndex")
-                        votingCryptoClient.getDelegationSubmissionWithKeystoneSignature(
-                            dbHandle = dbHandle,
-                            roundId = roundId,
-                            bundleIndex = bundleIndex,
-                            keystoneSig = keystoneSignature.decodeSpendAuthSig(),
-                            keystoneSighash = keystoneSignature.decodeSighash()
-                        )
-                    } else {
-                        votingCryptoClient.getDelegationSubmission(
-                            dbHandle = dbHandle,
-                            roundId = roundId,
-                            bundleIndex = bundleIndex,
-                            walletDbPath = context.walletDbPath,
-                            accountUuid = context.accountUuidCanonical,
-                            hotkeySeed = context.hotkeySeed,
-                            roundName = context.session.title,
-                            senderSeed = requireNotNull(context.senderSeed)
-                        )
-                    }
+            val submission =
                 if (context.isKeystone) {
                     val keystoneSignature =
                         context.recovery.keystoneBundleSignatures[bundleIndex]
                             ?: error("Keystone signature is missing for voting bundle $bundleIndex")
-                    val expectedSpendAuthSig = keystoneSignature.decodeSpendAuthSig()
-                    require(submission.spendAuthSig.contentEquals(expectedSpendAuthSig)) {
-                        "Delegation signature mismatch for Keystone voting bundle $bundleIndex"
-                    }
-                    require(submission.sighash.contentEquals(keystoneSignature.decodeSighash())) {
-                        "Delegation sighash mismatch for Keystone voting bundle $bundleIndex"
-                    }
-                    keystoneSignature.decodeRk()?.let { expectedRk ->
-                        require(submission.rk.contentEquals(expectedRk)) {
-                            "Delegation rk mismatch for Keystone voting bundle $bundleIndex"
-                        }
+                    votingCryptoClient.getDelegationSubmissionWithKeystoneSignature(
+                        dbHandle = dbHandle,
+                        roundId = roundId,
+                        bundleIndex = bundleIndex,
+                        keystoneSig = keystoneSignature.decodeSpendAuthSig(),
+                        keystoneSighash = keystoneSignature.decodeSighash()
+                    )
+                } else {
+                    votingCryptoClient.getDelegationSubmission(
+                        dbHandle = dbHandle,
+                        roundId = roundId,
+                        bundleIndex = bundleIndex,
+                        walletDbPath = context.walletDbPath,
+                        accountUuid = context.accountUuidCanonical,
+                        hotkeySeed = context.hotkeySeed,
+                        roundName = context.session.title,
+                        senderSeed = requireNotNull(context.senderSeed)
+                    )
+                }
+            if (context.isKeystone) {
+                val keystoneSignature =
+                    context.recovery.keystoneBundleSignatures[bundleIndex]
+                        ?: error("Keystone signature is missing for voting bundle $bundleIndex")
+                val expectedSpendAuthSig = keystoneSignature.decodeSpendAuthSig()
+                require(submission.spendAuthSig.contentEquals(expectedSpendAuthSig)) {
+                    "Delegation signature mismatch for Keystone voting bundle $bundleIndex"
+                }
+                require(submission.sighash.contentEquals(keystoneSignature.decodeSighash())) {
+                    "Delegation sighash mismatch for Keystone voting bundle $bundleIndex"
+                }
+                keystoneSignature.decodeRk()?.let { expectedRk ->
+                    require(submission.rk.contentEquals(expectedRk)) {
+                        "Delegation rk mismatch for Keystone voting bundle $bundleIndex"
                     }
                 }
-                val registration = submission.toDelegationRegistration()
-                val result =
-                    try {
-                        votingApiProvider.submitDelegation(registration)
-                    } catch (exception: CancellationException) {
-                        throw exception
-                    } catch (exception: Exception) {
-                        val recoveredPosition =
-                            findPersistedVanPosition(
-                                context = context,
-                                expectedVanCmx = registration.vanCmx
-                            )
-                        if (recoveredPosition != null) {
-                            return@runVotingAuthorizationStep DelegationSubmissionResolution.ConfirmedVan(
-                                recoveredPosition
-                            )
-                        }
-                        throw exception
-                    }
-
-                reconcileDelegationTransactionResult(
-                    result = result,
-                    bundleIndex = bundleIndex,
-                    rejectionMessage = "Delegation transaction was rejected",
-                    fetchTxConfirmation = votingApiProvider::fetchTxConfirmation,
-                    findVanPosition = {
+            }
+            val registration = submission.toDelegationRegistration()
+            val result =
+                try {
+                    votingApiProvider.submitDelegation(registration)
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (exception: Exception) {
+                    val recoveredPosition =
                         findPersistedVanPosition(
                             context = context,
                             expectedVanCmx = registration.vanCmx
                         )
+                    if (recoveredPosition != null) {
+                        return@runVotingAuthorizationStep DelegationSubmissionResolution.ConfirmedVan(
+                            recoveredPosition
+                        )
                     }
-                )
-            }
+                    throw exception
+                }
+
+            reconcileDelegationTransactionResult(
+                result = result,
+                bundleIndex = bundleIndex,
+                rejectionMessage = "Delegation transaction was rejected",
+                fetchTxConfirmation = votingApiProvider::fetchTxConfirmation,
+                findVanPosition = {
+                    findPersistedVanPosition(
+                        context = context,
+                        expectedVanCmx = registration.vanCmx
+                    )
+                }
+            )
+        }
     }
 
     private suspend fun storeConfirmedDelegation(
