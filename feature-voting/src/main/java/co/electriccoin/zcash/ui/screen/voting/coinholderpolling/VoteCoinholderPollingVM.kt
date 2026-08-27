@@ -121,7 +121,6 @@ class VoteCoinholderPollingVM(
                 }
         }
         observeVotingChainConfigChanges()
-        startVotingDataAutoRefresh()
         startForegroundShareTracking()
     }
 
@@ -376,29 +375,6 @@ class VoteCoinholderPollingVM(
         }
     }
 
-    private fun startVotingDataAutoRefresh() {
-        viewModelScope.launch {
-            while (true) {
-                delay(votingDataAutoRefreshIntervalMs())
-                if (roundsLce.state.value.loading) {
-                    continue
-                }
-
-                try {
-                    // softRefresh = true (MOB-1808): this timer fires every 5s while any round is
-                    // ACTIVE/TALLYING (votingDataAutoRefreshIntervalMs()) — without softRefresh this
-                    // was a hard refresh (votingApiRepository.clear()) on every tick, wiping the
-                    // cache and forcing the full-screen shimmer back roughly every 10s in practice.
-                    refreshVotingDataInternal(resetVisibleConfigError = false, softRefresh = true)
-                } catch (exception: CancellationException) {
-                    throw exception
-                } catch (throwable: Throwable) {
-                    Log.w(TAG, "Round list auto refresh failed", throwable)
-                }
-            }
-        }
-    }
-
     /**
      * Foreground driver that mirrors iOS `pollShareStatus` (`VotingStore+Navigation.swift:267-419`).
      *
@@ -602,18 +578,6 @@ class VoteCoinholderPollingVM(
         votingConfigRepository.clear()
         votingSessionStore.clear()
         votingApiRepository.clear()
-    }
-
-    private fun votingDataAutoRefreshIntervalMs(): Long {
-        val rounds = votingApiRepository.snapshot.value.rounds
-        val hasRoundChangingStatus =
-            rounds.isEmpty() ||
-                rounds.any { round -> round.status == SessionStatus.ACTIVE || round.status == SessionStatus.TALLYING }
-        return if (hasRoundChangingStatus) {
-            ROUND_STATUS_AUTO_REFRESH_INTERVAL_MS
-        } else {
-            ROUND_LIST_AUTO_REFRESH_INTERVAL_MS
-        }
     }
 
     private fun refreshRecoveryVoteCounts(
@@ -840,8 +804,6 @@ class VoteCoinholderPollingVM(
 
     private companion object {
         const val TAG = "VoteCoinholderPolling"
-        const val ROUND_STATUS_AUTO_REFRESH_INTERVAL_MS = 5_000L
-        const val ROUND_LIST_AUTO_REFRESH_INTERVAL_MS = 30_000L
 
         // Minimum sleep between successive `TrackVotingSharesUseCase` invocations for a round.
         // Matches `MIN_DELAY_MILLIS` inside the use case itself; duplicated here as a defensive
