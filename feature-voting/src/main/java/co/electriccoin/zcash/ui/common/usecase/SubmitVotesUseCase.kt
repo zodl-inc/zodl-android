@@ -238,9 +238,13 @@ class SubmitVotesUseCase(
                         dbHandle = dbHandle,
                         roundId = roundId
                     )
+                val unresolvedCommittedProposalIds =
+                    persistedVotes
+                        .mapTo(mutableSetOf()) { vote -> vote.proposalId }
+                        .apply { removeAll(context.recovery.submittedProposalIds) }
                 requireCommitmentBackedRetriesIncluded(
                     context = context,
-                    committedProposalIds = persistedVotes.mapTo(mutableSetOf()) { vote -> vote.proposalId }
+                    unresolvedCommittedProposalIds = unresolvedCommittedProposalIds
                 )
                 val submittedBundleIndicesByProposal =
                     persistedVotes
@@ -281,6 +285,7 @@ class SubmitVotesUseCase(
                         bundleCount = bundleCount,
                         submittedBundleIndicesByProposal = submittedBundleIndicesByProposal,
                         delegatedShareIndicesByTarget = delegatedShareIndicesByTarget,
+                        unresolvedCommittedProposalIds = unresolvedCommittedProposalIds,
                         onProgress = onProgress
                     )
 
@@ -351,12 +356,11 @@ class SubmitVotesUseCase(
      */
     private fun requireCommitmentBackedRetriesIncluded(
         context: VotingSubmitContext,
-        committedProposalIds: Set<Int>
+        unresolvedCommittedProposalIds: Set<Int>
     ) {
         val omittedProposalId =
-            committedProposalIds
+            unresolvedCommittedProposalIds
                 .asSequence()
-                .filterNot(context.recovery.submittedProposalIds::contains)
                 .filterNot(context.sortedChoices::containsKey)
                 .minOrNull()
         if (omittedProposalId != null) {
@@ -792,6 +796,7 @@ class SubmitVotesUseCase(
         bundleCount: Int,
         submittedBundleIndicesByProposal: MutableMap<Int, MutableSet<Int>>,
         delegatedShareIndicesByTarget: MutableMap<ShareDelegationTarget, MutableSet<Int>>,
+        unresolvedCommittedProposalIds: Set<Int>,
         onProgress: (VotingSubmissionProgress) -> Unit
     ): Int {
         val roundId = context.roundId
@@ -810,7 +815,11 @@ class SubmitVotesUseCase(
         // path below) counts as submitted — the user's previous attempt already
         // succeeded for that proposal.
         var processedProposalCount = 0
-        context.sortedChoices.entries.forEachIndexed { proposalIndex, (proposalId, choiceId) ->
+        val orderedChoices =
+            context.sortedChoices.entries.sortedBy { entry ->
+                if (entry.key in unresolvedCommittedProposalIds) 0 else 1
+            }
+        orderedChoices.forEachIndexed { proposalIndex, (proposalId, choiceId) ->
             val proposal =
                 context.session.proposals.firstOrNull { it.id == proposalId }
                     ?: error("Unknown proposal id $proposalId for round $roundId")
