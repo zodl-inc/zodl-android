@@ -14,6 +14,21 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.10.2 (2569)] - 2026-08-27
+
+### Added:
+
+- We added a pull-to-refresh option to Coinholder Polling, so you can manually check for new polls anytime.
+
+### Changed:
+
+- We made Coinholder Polling faster and more reliable over Tor: polls load quicker and vote submission no longer gets stuck on a slow server.
+- We made Coinholder Polling more resilient to voting-service outages with backup configuration sources.
+
+### Fixed:
+
+- We fixed cases where Coinholder Polling could hang indefinitely when a voting server was unreachable.
+
 ## [3.10.1 (2512)] - 2026-08-25
 
 ### Added:

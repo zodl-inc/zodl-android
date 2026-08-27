@@ -1,6 +1,8 @@
 package co.electriccoin.zcash.ui.screen.voting.votingerror
 
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
+import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
 import co.electriccoin.zcash.ui.design.util.StringResource
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -85,6 +87,63 @@ class VotingErrorMapperTest {
                 rawMessage
             )
         }
+    }
+
+    @Test
+    fun typedRecoverableFailuresMapBySubtype() {
+        val roundId = "1111111111111111111111111111111111111111111111111111111111111111"
+        val cases =
+            mapOf<VotingErrors, Int>(
+                VotingErrors.ConflictingProposalSelection(roundId, proposalId = 1) to
+                    R.string.coinVote_store_userError_conflictingSelection,
+                VotingErrors.OmittedCommittedProposal(roundId, proposalId = 1) to
+                    R.string.coinVote_store_userError_omittedCommittedProposal,
+                VotingErrors.RecoveredVoteCommitmentMismatch(roundId, bundleIndex = 0, proposalId = 1) to
+                    R.string.coinVote_store_userError_recoveredVoteMismatch,
+                VotingErrors.RecoveredVoteVerificationUnavailable(roundId, bundleIndex = 0, proposalId = 1) to
+                    R.string.coinVote_store_userError_recoveredVoteUnverified,
+                VotingErrors.MissingBundleCount(roundId) to
+                    R.string.coinVote_store_userError_roundNotPrepared,
+                VotingErrors.MissingPreparedRecovery(roundId) to
+                    R.string.coinVote_store_userError_roundNotPrepared,
+                VotingErrors.MissingHotkeySeed(roundId) to
+                    R.string.coinVote_store_userError_roundNotPrepared,
+                VotingErrors.TxConfirmationTimedOut("tx-hash") to
+                    R.string.coinVote_store_userError_commitmentTreeNotGrown,
+            )
+
+        cases.forEach { (failure, expectedString) ->
+            assertEquals(
+                expectedString,
+                VotingErrorMapper
+                    .toUserFriendlyMessage(VotingSubmissionRecoverableException(failure))
+                    .resourceId(),
+                failure.toString()
+            )
+        }
+    }
+
+    @Test
+    fun typedFailuresWithoutDedicatedStringsKeepSubstringMapping() {
+        assertEquals(
+            R.string.vote_error_mapper_wallet_sync,
+            VotingErrorMapper
+                .toUserFriendlyMessage(
+                    VotingSubmissionRecoverableException(
+                        VotingErrors.WalletSyncing(scannedHeight = 1, snapshotHeight = 2)
+                    )
+                ).resourceId()
+        )
+    }
+
+    @Test
+    fun foreignThrowablesFallBackToSubstringMapping() {
+        assertEquals(
+            R.string.coinVote_store_userError_nullifierAlreadySpent,
+            VotingErrorMapper
+                .toUserFriendlyMessage(IllegalStateException("nullifier already spent"))
+                .resourceId()
+        )
     }
 
     @Test

@@ -7,6 +7,24 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [3.10.2 (2569)] - 2026-08-27
+
+### Added:
+
+- Coinholder Polling now shows a pull-to-refresh indicator on the poll list, so you can manually refresh it on demand.
+
+### Changed:
+
+- Coinholder Polling's poll list no longer refreshes itself in the background while you're just browsing it; it now updates when you open the screen, return to it, or pull to refresh.
+- Vote submission is faster and more reliable over Tor: a slow or unresponsive vote-helper server no longer stalls the whole submission.
+- Coinholder Polling no longer becomes unavailable when the primary voting configuration service is unreachable or blocked: the app
+  verifies the same pinned configuration from a second independent mirror, walks the configuration's own mirror list, and config
+  requests now give up after 15 seconds instead of two minutes.
+
+### Fixed:
+
+- Coinholder Polling's poll list and proposal loading no longer hang indefinitely when a vote server is unreachable over Tor; a slow or dropped connection now fails over to the next server within a bounded time.
+
 ## [3.10.1 (2512)] - 2026-08-25
 
 ### Added:

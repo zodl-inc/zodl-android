@@ -102,6 +102,58 @@ sealed interface VotingErrors {
     }
 
     /**
+     * A retry supplied a different choice after the original selection was locked for broadcast.
+     */
+    data class ConflictingProposalSelection(
+        val roundId: String,
+        val proposalId: Int
+    ) : VotingErrors {
+        override val userMessage =
+            "Vote selection for proposal $proposalId cannot change after submission started for round $roundId"
+    }
+
+    /**
+     * A retry omitted a proposal whose vote commitment is already persisted but not yet durably
+     * complete. The proposal must be included so its chain result and successor VAN are
+     * reconciled before later proposals build against them.
+     */
+    data class OmittedCommittedProposal(
+        val roundId: String,
+        val proposalId: Int
+    ) : VotingErrors {
+        override val userMessage =
+            "Proposal $proposalId has an unresolved vote commitment and must be included to retry round $roundId"
+    }
+
+    /**
+     * A spent-nullifier response referenced a successful transaction whose commitment-tree leaves
+     * do not contain the exact vote commitment currently being recovered.
+     */
+    data class RecoveredVoteCommitmentMismatch(
+        val roundId: String,
+        val bundleIndex: Int,
+        val proposalId: Int
+    ) : VotingErrors {
+        override val userMessage =
+            "Recovered transaction does not match round $roundId bundle $bundleIndex proposal $proposalId"
+    }
+
+    /**
+     * The commitment-tree scan that verifies a recovered transaction could not be completed,
+     * so the recovered transaction is neither confirmed nor ruled out. Retryable: the next
+     * attempt repeats the verification.
+     */
+    data class RecoveredVoteVerificationUnavailable(
+        val roundId: String,
+        val bundleIndex: Int,
+        val proposalId: Int
+    ) : VotingErrors {
+        override val userMessage =
+            "Could not verify the recovered transaction for round $roundId " +
+                "bundle $bundleIndex proposal $proposalId"
+    }
+
+    /**
      * A successful SDK or vote-server response was missing required structured data.
      */
     data class UnexpectedSdkResponse(

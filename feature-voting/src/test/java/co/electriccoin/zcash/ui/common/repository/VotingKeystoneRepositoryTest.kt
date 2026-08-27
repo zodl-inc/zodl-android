@@ -611,6 +611,8 @@ class VotingKeystoneRepositoryTest {
         ) = unsupported()
 
         override suspend fun getRoundIdsRequiringShareTracking(accountUuid: String): List<String> = unsupported()
+
+        override suspend fun getRoundIdsWithPendingKeystoneRequest(accountUuid: String): List<String> = unsupported()
     }
 
     private data class StoredSignature(

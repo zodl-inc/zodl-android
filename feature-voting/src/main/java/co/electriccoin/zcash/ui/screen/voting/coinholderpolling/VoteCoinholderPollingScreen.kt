@@ -24,10 +24,14 @@ fun VoteCoinholderPollingScreen() {
     val state by vm.state.collectAsStateWithLifecycle()
     LceRenderer(state = state) {
         BackHandler { it.onBack() }
-        if (state.isLoading && it.activeRounds == null && it.pastRounds == null) {
+        if (it.isInitialLoading) {
             VoteCoinholderPollingLoadingView(it)
         } else {
-            VoteCoinholderPollingView(it)
+            // Cache-and-fresh (MOB-1808): rounds render immediately from the repository cache
+            // while a refresh runs in the background (see VoteCoinholderPollingVM's `rounds`
+            // derivation). The pull-to-refresh indicator (wired inside VoteCoinholderPollingView,
+            // below its own top bar) surfaces that background refresh instead of a silent wait.
+            VoteCoinholderPollingView(it, isRefreshing = state.isLoading)
         }
     }
 }

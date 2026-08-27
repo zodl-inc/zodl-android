@@ -32,7 +32,7 @@ sealed class VoteSubmissionStatus {
     ) : VoteSubmissionStatus()
 
     data class SubmissionFailed(
-        val error: String?,
+        val error: StringResource?,
         val defaultError: StringResource? = null,
     ) : VoteSubmissionStatus()
 }
