@@ -1,5 +1,7 @@
 package co.electriccoin.zcash.ui.screen.voting.votingerror
 
+import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
+import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import java.util.Locale
@@ -33,6 +35,52 @@ object VotingErrorMapper {
             )
         }
         return toUserFriendlyMessage(rawMessage)
+    }
+
+    /**
+     * Maps a voting failure to a user-facing message. A
+     * [VotingSubmissionRecoverableException] is matched on its typed [VotingErrors]
+     * subtype; any other throwable falls back to substring matching on its message.
+     */
+    fun toUserFriendlyMessage(throwable: Throwable): StringResource {
+        val failure =
+            (throwable as? VotingSubmissionRecoverableException)?.failure
+                ?: return toUserFriendlyMessage(throwable.message.orEmpty())
+        return when (failure) {
+            is VotingErrors.ConflictingProposalSelection -> {
+                stringRes(UiR.string.coinVote_store_userError_conflictingSelection)
+            }
+
+            is VotingErrors.RecoveredVoteCommitmentMismatch -> {
+                stringRes(UiR.string.coinVote_store_userError_recoveredVoteMismatch)
+            }
+
+            is VotingErrors.RecoveredVoteVerificationUnavailable -> {
+                stringRes(UiR.string.coinVote_store_userError_recoveredVoteUnverified)
+            }
+
+            is VotingErrors.MissingBundleCount,
+            is VotingErrors.MissingPreparedRecovery,
+            is VotingErrors.MissingHotkeySeed -> {
+                stringRes(UiR.string.coinVote_store_userError_roundNotPrepared)
+            }
+
+            is VotingErrors.TxConfirmationTimedOut -> {
+                stringRes(UiR.string.coinVote_store_userError_commitmentTreeNotGrown)
+            }
+
+            // The remaining variants read correctly through the substring table
+            // on their stable userMessage.
+            is VotingErrors.NoSelectedAccount,
+            is VotingErrors.Ineligible,
+            is VotingErrors.WalletSyncing,
+            is VotingErrors.MissingVotingServerUrl,
+            is VotingErrors.VoteTreeSyncFailed,
+            is VotingErrors.MissingCachedCommitment,
+            is VotingErrors.UnexpectedSdkResponse -> {
+                toUserFriendlyMessage(failure.userMessage)
+            }
+        }
     }
 
     fun toUserFriendlyMessage(rawMessage: String): StringResource {
