@@ -575,12 +575,40 @@ class KtorVotingApiProviderTest {
             provider.invalidateConfigCache()
             provider.fetchServiceConfig()
 
-            // Regression pin for the fallthrough bug an earlier review caught: getResolvedConfigWithTtl()'s
-            // expiry fallthrough used to call into getResolvedConfig(forceRefresh = false), whose own
-            // cache check had no age awareness at all, so an invalidated-but-source-matching entry could
-            // still be silently re-served forever. resolveConfigCached() now folds both the TTL and
-            // non-TTL reads into one mutex-guarded check, so invalidation always forces a real refetch
-            // here too, not just on the fetchAllRounds() path already covered above.
+            // NOTE (Milan's #2483 round-2 review): this pins invalidation-forces-refetch on the
+            // TTL path specifically (mirrors invalidateConfigCacheForcesRefetch above, which only
+            // covers the non-TTL fetchAllRounds() path) - it does NOT pin the TTL-expiry
+            // fallthrough itself. invalidateConfigCache() nulls cachedResolvedConfigFetchedAtMs
+            // outright, which exercises resolveConfigCached()'s cache-MISS branch (fetchedAtMs ==
+            // null); the old buggy code (getResolvedConfigWithTtl() falling through to
+            // getResolvedConfig(forceRefresh = false) with no age check at all) would also have
+            // passed this test, since a null fetchedAtMs was never the bug - a genuinely EXPIRED
+            // but still-present entry was. See
+            // fetchServiceConfigRefetchesAfterTtlExpiry below for the real expiry pin.
+            assertEquals(2, requestLog.count { path -> path == "/static-voting-config.json" })
+            assertEquals(2, requestLog.count { path -> path == "/dynamic-voting-config.json" })
+        }
+
+    @Test
+    fun fetchServiceConfigRefetchesAfterTtlExpiry() =
+        runBlocking {
+            val requestLog = mutableListOf<String>()
+            val provider =
+                multiEndpointProvider(
+                    requestLog = requestLog,
+                    configCacheTtlMillis = SHORT_CONFIG_CACHE_TTL_MILLIS
+                )
+
+            provider.fetchServiceConfig()
+            delay(SHORT_CONFIG_CACHE_TTL_MILLIS * 2)
+            provider.fetchServiceConfig()
+
+            // The real regression pin for the fallthrough bug an earlier review caught: unlike
+            // invalidateConfigCacheForcesRefetchOnTheTtlPath above (cache-miss branch), this
+            // entry is genuinely still PRESENT and source-matching when the TTL check runs - only
+            // its age has crossed configCacheTtlMillis. getResolvedConfigWithTtl()'s old
+            // fallthrough into getResolvedConfig(forceRefresh = false) had no age awareness at
+            // all, so this exact scenario used to silently re-serve the stale entry forever.
             assertEquals(2, requestLog.count { path -> path == "/static-voting-config.json" })
             assertEquals(2, requestLog.count { path -> path == "/dynamic-voting-config.json" })
         }
@@ -959,7 +987,8 @@ class KtorVotingApiProviderTest {
 
     private fun multiEndpointProvider(
         requestLog: MutableList<String> = mutableListOf(),
-        timeoutCapabilities: MutableList<Pair<String, Long?>> = mutableListOf()
+        timeoutCapabilities: MutableList<Pair<String, Long?>> = mutableListOf(),
+        configCacheTtlMillis: Long? = null
     ): KtorVotingApiProvider =
         KtorVotingApiProvider(
             httpClientProvider =
@@ -1013,7 +1042,8 @@ class KtorVotingApiProviderTest {
                 },
             configurationRepository = TestConfigurationRepository(),
             votingChainConfigRepository = TestVotingChainConfigRepository(),
-            votingCryptoClient = unusedVotingCryptoClient()
+            votingCryptoClient = unusedVotingCryptoClient(),
+            configCacheTtlMillis = configCacheTtlMillis ?: DEFAULT_TEST_CONFIG_CACHE_TTL_MILLIS
         )
 
     private class SwitchableVotingChainConfigRepository(
@@ -1229,6 +1259,12 @@ class KtorVotingApiProviderTest {
         const val ROUNDS_TEST_PATH = "/shielded-vote/v1/rounds"
         const val TEST_TIMEOUT_MILLIS = 100L
         const val CANCELLATION_DELAY_MILLIS = 50L
+
+        // KtorVotingApiProvider's own default (CONFIG_CACHE_TTL_MS, VotingApiProvider.kt) is
+        // file-private there too, same reasoning as SEMAPHORE_CAP below — this file's real
+        // production-equivalent default for tests that don't care about TTL expiry timing.
+        const val DEFAULT_TEST_CONFIG_CACHE_TTL_MILLIS = 600_000L
+        const val SHORT_CONFIG_CACHE_TTL_MILLIS = 20L
         const val CLIENT_RETRY_MAX_RETRIES = 4
 
         // MAX_CONCURRENT_SHARE_DELEGATIONS in VotingApiProvider.kt is 16 and file-private (a

@@ -165,6 +165,15 @@ class KtorVotingApiProvider(
      * never pass an override.
      */
     private val shareRequestTimeoutMillis: Long = SHARE_REQUEST_TIMEOUT_MILLIS,
+    /**
+     * TTL for the resolved-config cache (MOB-1808), defaulting to [CONFIG_CACHE_TTL_MS].
+     * Overridable only so tests can inject a short value to actually exercise the expiry
+     * fallthrough branch of [resolveConfigCached] (a real elapsed-time wait past a tiny TTL,
+     * as opposed to [invalidateConfigCache]'s null-out, which only exercises the cache-miss
+     * branch and cannot distinguish "never cached" from "expired") — mirrors
+     * [configRequestTimeoutMillis] above; production callers never pass an override.
+     */
+    private val configCacheTtlMillis: Long = CONFIG_CACHE_TTL_MS,
 ) : VotingApiProvider {
     private var cachedResolvedConfig: ResolvedVotingConfig? = null
     private var cachedResolvedConfigFetchedAtMs: Long? = null
@@ -566,7 +575,7 @@ class KtorVotingApiProvider(
             val fetchedAtMs = cachedResolvedConfigFetchedAtMs
             val sourcesMatch = cached != null && cached.sources == sources
             val withinTtl =
-                !useTtl || (fetchedAtMs != null && System.currentTimeMillis() - fetchedAtMs < CONFIG_CACHE_TTL_MS)
+                !useTtl || (fetchedAtMs != null && System.currentTimeMillis() - fetchedAtMs < configCacheTtlMillis)
             if (!forceRefresh && sourcesMatch && withinTtl) {
                 cached
             } else {

@@ -585,6 +585,26 @@ class VoteCoinholderPollingVM(
         }
         configIssue = nextConfigIssue
 
+        // MOB-1808 review (round 2): swallowing every config-leg failure into configIssue and
+        // returning successfully is only safe when cached rounds are still visible — the
+        // cache-and-fresh pattern (line ~175 above) keeps showing those while configIssue sits
+        // quietly behind them, and the dedicated configErrorSheet still catches a real config
+        // problem when the user taps an ACTIVE card. With an EMPTY rounds repo (first-ever
+        // screen entry, or right after a config-source switch's hard
+        // clearLoadedVotingStateForServiceConfigRefresh()), there is no cached content to fall
+        // back to and no ACTIVE card to tap — silently completing here produced
+        // roundsLceState = Success -> emptyList() and the misleading "there are no polls"
+        // noRoundsSheet instead of a real error+retry state, for something as ordinary as being
+        // offline. Rethrow so roundsLce.execute()'s catch (MutableLce.kt) routes it through the
+        // normal LCE failure path instead, which withLce (below) turns into the proper
+        // error+retry state via errorStateMapper.
+        if (nextConfigIssue != null &&
+            votingApiRepository.snapshot.value.rounds
+                .isEmpty()
+        ) {
+            throw nextConfigIssue
+        }
+
         selectedAccountUuid.value?.let { accountUuid ->
             refreshRecoveryVoteCounts(votingApiRepository.snapshot.value.rounds, accountUuid)
         } ?: run {
