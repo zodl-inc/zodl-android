@@ -762,15 +762,14 @@ class SubmitVotesUseCase(
         val latestRecovery =
             votingRecoveryRepository.get(context.accountUuidString, roundId)
                 ?: context.recovery
+        // A locked proposal conflicts only when the request supplies a different
+        // selection for it. A request that omits a locked proposal leaves that
+        // proposal untouched — omission is not a change of choice.
         val conflictingProposalId =
             latestRecovery.proposalSelections.entries
                 .firstOrNull { (proposalId, lockedSelection) ->
                     val requestedSelection = proposalSelections[proposalId]
-                    if (proposalId in latestRecovery.submittedProposalIds) {
-                        requestedSelection != null && requestedSelection != lockedSelection
-                    } else {
-                        requestedSelection != lockedSelection
-                    }
+                    requestedSelection != null && requestedSelection != lockedSelection
                 }?.key
         if (conflictingProposalId != null) {
             throw VotingSubmissionRecoverableException(

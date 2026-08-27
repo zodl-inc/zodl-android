@@ -188,6 +188,26 @@ class SubmitVotesUseCaseRecoveryTest {
         }
 
     @Test
+    fun retryOmittingLockedUnsubmittedProposalDoesNotConflict() =
+        runTest {
+            val fixture = CastVoteRecoveryFixture(keystoneAccount(), proposalCount = 2)
+
+            assertFailsWith<CastVoteResponseLost> {
+                fixture.newUseCase()(ROUND_ID, mapOf(1 to 0, 2 to 0))
+            }
+
+            val result = fixture.newUseCase()(ROUND_ID, mapOf(2 to 0))
+
+            assertEquals(1, result.submittedProposalCount)
+            assertEquals(2, fixture.submittedBundles.size)
+            assertEquals(listOf(ORIGINAL_CAST_TX_HASH), fixture.storedVoteHashes)
+            assertEquals(
+                VotingProposalSelection(choiceId = 0, numOptions = 2),
+                fixture.recovery.proposalSelections[1]
+            )
+        }
+
+    @Test
     fun spentNullifierHashMustMatchCurrentVoteCommitmentLeaves() =
         runTest {
             val fixture =
@@ -216,7 +236,8 @@ class SubmitVotesUseCaseRecoveryTest {
 
     private class CastVoteRecoveryFixture(
         private val selectedAccount: KeystoneAccount,
-        private val confirmedChoice: Int = 0
+        private val confirmedChoice: Int = 0,
+        private val proposalCount: Int = 1
     ) {
         val crypto = mockk<VotingCryptoClient>(relaxed = true)
         val api = mockk<VotingApiProvider>(relaxed = true)
@@ -248,7 +269,7 @@ class SubmitVotesUseCaseRecoveryTest {
         private val getSelectedWalletAccount = mockk<GetSelectedWalletAccountUseCase>()
         private val pirSnapshotResolver = mockk<PirSnapshotResolver>()
         private val hotkeySeedProvider = mockk<VotingHotkeySeedProvider>()
-        private val session = votingSession()
+        private val session = votingSession(proposalCount)
         private var submissionAttempt = 0
 
         init {
@@ -285,8 +306,8 @@ class SubmitVotesUseCaseRecoveryTest {
             coEvery { recoveryRepository.storeSingleShareMode(accountUuid, ROUND_ID, any()) } answers {
                 recovery = recovery.copy(singleShareMode = thirdArg())
             }
-            coEvery { recoveryRepository.markProposalSubmitted(accountUuid, ROUND_ID, 1) } answers {
-                recovery = recovery.copy(submittedProposalIds = recovery.submittedProposalIds + 1)
+            coEvery { recoveryRepository.markProposalSubmitted(accountUuid, ROUND_ID, any()) } answers {
+                recovery = recovery.copy(submittedProposalIds = recovery.submittedProposalIds + thirdArg<Int>())
             }
             coEvery { hotkeySeedProvider.get(accountUuid) } returns ByteArray(32) { 9 }
 
@@ -695,7 +716,7 @@ class SubmitVotesUseCaseRecoveryTest {
             leavesBase64 = leaves.map { Base64.getEncoder().encodeToString(it) }
         )
 
-        fun votingSession() =
+        fun votingSession(proposalCount: Int = 1) =
             VotingSession(
                 voteRoundId = ROUND_ID.chunked(2).map { it.toInt(16).toByte() }.toByteArray(),
                 snapshotHeight = 3_459_350,
@@ -714,14 +735,14 @@ class SubmitVotesUseCaseRecoveryTest {
                 description = "Round",
                 discussionUrl = null,
                 proposals =
-                    listOf(
+                    (1..proposalCount).map { proposalId ->
                         Proposal(
-                            id = 1,
-                            title = "Proposal",
-                            description = "Proposal",
+                            id = proposalId,
+                            title = "Proposal $proposalId",
+                            description = "Proposal $proposalId",
                             options = listOf(VoteOption(0, "Yes"), VoteOption(1, "No"))
                         )
-                    ),
+                    },
                 status = SessionStatus.ACTIVE,
                 createdAtHeight = 1
             )
