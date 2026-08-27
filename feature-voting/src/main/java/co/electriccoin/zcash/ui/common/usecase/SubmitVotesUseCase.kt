@@ -48,6 +48,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
 import java.time.Instant
+import java.util.Base64
 
 class VotingAuthorizationException(
     cause: Exception
