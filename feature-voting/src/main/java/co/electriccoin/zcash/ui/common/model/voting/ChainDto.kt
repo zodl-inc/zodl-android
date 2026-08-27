@@ -33,6 +33,47 @@ data class ChainTxDto(
 
 @Serializable
 @JsonIgnoreUnknownKeys
+data class ChainCommitmentTreeLatestResponse(
+    val tree: ChainCommitmentTreeLatestDto
+)
+
+@Serializable
+@JsonIgnoreUnknownKeys
+data class ChainCommitmentTreeLatestDto(
+    val height: Long = 0,
+    @SerialName("next_index") val nextIndex: Long = 0,
+)
+
+@Serializable
+@JsonIgnoreUnknownKeys
+data class ChainCommitmentTreeLeavesResponse(
+    val blocks: List<ChainCommitmentTreeLeafBlockDto> = emptyList(),
+    @SerialName("next_from_height") val nextFromHeight: Long = 0
+) {
+    fun toModel() =
+        CommitmentTreeLeafPage(
+            blocks = blocks.map(ChainCommitmentTreeLeafBlockDto::toModel),
+            nextFromHeight = nextFromHeight
+        )
+}
+
+@Serializable
+@JsonIgnoreUnknownKeys
+data class ChainCommitmentTreeLeafBlockDto(
+    val height: Long,
+    @SerialName("start_index") val startIndex: Long = 0,
+    val leaves: List<String> = emptyList(),
+) {
+    fun toModel() =
+        CommitmentTreeLeafBlock(
+            height = height,
+            startIndex = startIndex,
+            leavesBase64 = leaves
+        )
+}
+
+@Serializable
+@JsonIgnoreUnknownKeys
 data class ChainRoundDto(
     @SerialName("vote_round_id") val voteRoundId: String,
     @SerialName("title") val title: String = "",
@@ -52,6 +93,7 @@ data class ChainRoundDto(
     @SerialName("nullifier_imt_root") val nullifierImtRoot: String = "",
     @SerialName("creator") val creator: String = "",
     @SerialName("discussion_url") val discussionUrl: String? = null,
+    // Cosmos vote-chain height where this round record was created, distinct from snapshotHeight.
     @SerialName("created_at_height") val createdAtHeight: Long = 0,
 ) {
     fun toVotingRound(): VotingRound {

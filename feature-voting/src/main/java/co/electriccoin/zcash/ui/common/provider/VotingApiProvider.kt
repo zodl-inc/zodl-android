@@ -4,8 +4,12 @@ import android.util.Log
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.model.voting.CastVoteSignature
 import co.electriccoin.zcash.ui.common.model.voting.ChainActiveRoundResponse
+import co.electriccoin.zcash.ui.common.model.voting.ChainCommitmentTreeLatestResponse
+import co.electriccoin.zcash.ui.common.model.voting.ChainCommitmentTreeLeavesResponse
 import co.electriccoin.zcash.ui.common.model.voting.ChainRoundsResponse
 import co.electriccoin.zcash.ui.common.model.voting.ChainTallyResultsResponse
+import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLatest
+import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLeafPage
 import co.electriccoin.zcash.ui.common.model.voting.DelegatedShareInfo
 import co.electriccoin.zcash.ui.common.model.voting.DelegationRegistration
 import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
@@ -126,6 +130,14 @@ interface VotingApiProvider {
     ): List<String>
 
     suspend fun fetchTxConfirmation(txHash: String): TxConfirmation?
+
+    suspend fun fetchCommitmentTreeLatest(roundIdHex: String): CommitmentTreeLatest
+
+    suspend fun fetchCommitmentTreeLeafPage(
+        roundIdHex: String,
+        fromHeight: Long,
+        toHeight: Long
+    ): CommitmentTreeLeafPage
 }
 
 class KtorVotingApiProvider(
@@ -404,6 +416,31 @@ class KtorVotingApiProvider(
                 null
             }
         }
+
+    override suspend fun fetchCommitmentTreeLatest(roundIdHex: String): CommitmentTreeLatest {
+        val path = commitmentTreeLatestPath(roundIdHex)
+        return executeWithVoteServerFailover(path) { baseUrl ->
+            val tree = get("$baseUrl$path").body<ChainCommitmentTreeLatestResponse>().tree
+            require(tree.height >= 0) { "Commitment tree height must be non-negative" }
+            require(tree.nextIndex >= 0) { "Commitment tree next_index must be non-negative" }
+            CommitmentTreeLatest(height = tree.height, nextIndex = tree.nextIndex)
+        }
+    }
+
+    override suspend fun fetchCommitmentTreeLeafPage(
+        roundIdHex: String,
+        fromHeight: Long,
+        toHeight: Long
+    ): CommitmentTreeLeafPage {
+        require(fromHeight >= 0) { "fromHeight must be non-negative" }
+        require(toHeight >= fromHeight) { "toHeight must be at least fromHeight" }
+        val path = commitmentTreeLeavesPath(roundIdHex, fromHeight, toHeight)
+        return executeWithVoteServerFailover(path) { baseUrl ->
+            get("$baseUrl$path")
+                .body<ChainCommitmentTreeLeavesResponse>()
+                .toModel()
+        }
+    }
 
     private suspend fun getResolvedConfig(forceRefresh: Boolean = false): ResolvedVotingConfig =
         configMutex.withLock {
@@ -1048,7 +1085,7 @@ private fun VoteCommitmentBundle.toApiBody(signature: CastVoteSignature): String
         .put("vote_auth_sig", signature.voteAuthSig.toBase64String())
         .toString()
 
-private fun String.toTxResult(): TxResult {
+internal fun String.toTxResult(): TxResult {
     val json = JSONObject(this)
     return TxResult(
         txHash = json.optString("tx_hash"),
@@ -1057,7 +1094,7 @@ private fun String.toTxResult(): TxResult {
     )
 }
 
-private fun String.toTxConfirmation(): TxConfirmation {
+internal fun String.toTxConfirmation(): TxConfirmation {
     val json = JSONObject(this)
     val events = json.optJSONArray("events")
     return TxConfirmation(
@@ -1119,6 +1156,16 @@ private fun tallyResultsPath(roundIdHex: String): String =
 
 private fun txConfirmationPath(txHash: String): String =
     "/shielded-vote/v1/tx/$txHash"
+
+internal fun commitmentTreeLatestPath(roundIdHex: String): String =
+    "/shielded-vote/v1/commitment-tree/$roundIdHex/latest"
+
+internal fun commitmentTreeLeavesPath(
+    roundIdHex: String,
+    fromHeight: Long,
+    toHeight: Long
+): String =
+    "/shielded-vote/v1/commitment-tree/$roundIdHex/leaves?from_height=$fromHeight&to_height=$toHeight"
 
 internal fun shouldTreatEndorsedRoundsStatusAsEmpty(status: HttpStatusCode): Boolean =
     status == HttpStatusCode.BadRequest || status == HttpStatusCode.NotFound

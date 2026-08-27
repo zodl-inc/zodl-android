@@ -29,6 +29,7 @@ data class VotingSession(
     val discussionUrl: String?,
     val proposals: List<Proposal>,
     val status: SessionStatus,
+    // Cosmos vote-chain height where the round was created, not the Zcash snapshot height.
     val createdAtHeight: Long
 ) {
     override fun equals(other: Any?): Boolean {

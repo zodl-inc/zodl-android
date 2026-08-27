@@ -1,6 +1,10 @@
 package co.electriccoin.zcash.ui.common.provider
 
 import co.electriccoin.zcash.configuration.model.map.Configuration
+import co.electriccoin.zcash.ui.common.model.voting.ChainCommitmentTreeLatestResponse
+import co.electriccoin.zcash.ui.common.model.voting.ChainCommitmentTreeLeavesResponse
+import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLatest
+import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLeafPage
 import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
 import co.electriccoin.zcash.ui.common.model.voting.VotingConfigException
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
@@ -25,6 +29,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
 import java.lang.reflect.Proxy
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -32,6 +37,162 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 
 class KtorVotingApiProviderTest {
+    @Test
+    fun commitmentTreePathsAreRoundScoped() {
+        assertEquals(
+            "/shielded-vote/v1/commitment-tree/round-id/latest",
+            commitmentTreeLatestPath("round-id")
+        )
+        assertEquals(
+            "/shielded-vote/v1/commitment-tree/round-id/leaves?from_height=11&to_height=20",
+            commitmentTreeLeavesPath("round-id", fromHeight = 11, toHeight = 20)
+        )
+    }
+
+    @Test
+    fun commitmentTreeResponsesParseLatestHeightAndAbsoluteIndices() {
+        val latest =
+            Json.decodeFromString<ChainCommitmentTreeLatestResponse>(
+                """{"tree":{"height":123,"next_index":2,"root":"ignored"}}"""
+            )
+        val leaves =
+            Json.decodeFromString<ChainCommitmentTreeLeavesResponse>(
+                """
+                {
+                  "blocks": [
+                    {"height":120,"leaves":["AQ=="],"root":"ignored"},
+                    {"height":123,"start_index":1,"leaves":["Ag=="],"root":"ignored"}
+                  ],
+                  "next_from_height": 124
+                }
+                """.trimIndent()
+            )
+
+        assertEquals(123, latest.tree.height)
+        assertEquals(2, latest.tree.nextIndex)
+        assertEquals(0, leaves.blocks[0].startIndex)
+        assertEquals(1, leaves.blocks[1].startIndex)
+        assertEquals(listOf("Ag=="), leaves.blocks[1].toModel().leavesBase64)
+        assertEquals(124, leaves.toModel().nextFromHeight)
+    }
+
+    @Test
+    fun emptyCommitmentTreeDefaultsOmittedProtoFieldsToZero() {
+        val latest =
+            Json.decodeFromString<ChainCommitmentTreeLatestResponse>(
+                """{"tree":{}}"""
+            )
+
+        assertEquals(0, latest.tree.height)
+        assertEquals(0, latest.tree.nextIndex)
+    }
+
+    @Test
+    fun commitmentTreeProviderSendsCursorQueryParameters() =
+        runBlocking {
+            val requests = mutableListOf<String>()
+            val provider =
+                newProvider(
+                    requests = requests,
+                    responseOverrides =
+                        mapOf(
+                            "/dynamic-voting-config.json" to TestResponse(dynamicVotingConfigJson()),
+                            "/shielded-vote/v1/commitment-tree/round-id/latest" to
+                                TestResponse("""{"tree":{"height":20,"next_index":2}}"""),
+                            "/shielded-vote/v1/commitment-tree/round-id/leaves?from_height=11&to_height=20" to
+                                TestResponse("""{"blocks":[],"next_from_height":0}""")
+                        )
+                )
+
+            assertEquals(
+                CommitmentTreeLatest(height = 20, nextIndex = 2),
+                provider.fetchCommitmentTreeLatest("round-id")
+            )
+            assertEquals(
+                CommitmentTreeLeafPage(blocks = emptyList(), nextFromHeight = 0),
+                provider.fetchCommitmentTreeLeafPage("round-id", fromHeight = 11, toHeight = 20)
+            )
+            assertEquals(
+                listOf(
+                    "/static-voting-config.json",
+                    "/dynamic-voting-config.json",
+                    "/shielded-vote/v1/commitment-tree/round-id/latest",
+                    "/shielded-vote/v1/commitment-tree/round-id/leaves?from_height=11&to_height=20"
+                ),
+                requests
+            )
+        }
+
+    @Test
+    fun rejectedTransactionParserPreservesHashCodeAndLog() {
+        val result =
+            """
+            {
+              "tx_hash": "duplicate-tx",
+              "code": 1,
+              "log": "nullifier already spent: abc123"
+            }
+            """.trimIndent().toTxResult()
+
+        assertEquals("duplicate-tx", result.txHash)
+        assertEquals(1, result.code)
+        assertEquals("nullifier already spent: abc123", result.log)
+    }
+
+    @Test
+    fun rejectedTransactionParserRepresentsMissingHashAsEmpty() {
+        val result =
+            """
+            {
+              "code": 1,
+              "log": "nullifier already spent: abc123"
+            }
+            """.trimIndent().toTxResult()
+
+        assertEquals("", result.txHash)
+        assertEquals(1, result.code)
+    }
+
+    @Test
+    fun transactionConfirmationParserPreservesSuccessfulEvents() {
+        val confirmation =
+            """
+            {
+              "height": "12",
+              "code": 0,
+              "log": "",
+              "events": [
+                {
+                  "type": "delegate_vote",
+                  "attributes": [
+                    {"key": "leaf_index", "value": "7"}
+                  ]
+                }
+              ]
+            }
+            """.trimIndent().toTxConfirmation()
+
+        assertEquals(12, confirmation.height)
+        assertEquals(0, confirmation.code)
+        assertEquals("7", confirmation.event("delegate_vote")?.attribute("leaf_index"))
+    }
+
+    @Test
+    fun transactionConfirmationParserPreservesRejectedStatus() {
+        val confirmation =
+            """
+            {
+              "height": 12,
+              "code": 2,
+              "log": "transaction failed",
+              "events": []
+            }
+            """.trimIndent().toTxConfirmation()
+
+        assertEquals(2, confirmation.code)
+        assertEquals("transaction failed", confirmation.log)
+    }
+
     @Test
     fun validateConfigSourceOnlyFetchesStaticConfig() =
         runBlocking {
@@ -636,10 +797,17 @@ class KtorVotingApiProviderTest {
     private fun newProvider(
         requests: MutableList<String>,
         supportsKtorTimeouts: Boolean = true,
-        requestTimeoutCapabilities: MutableList<Boolean> = mutableListOf()
+        requestTimeoutCapabilities: MutableList<Boolean> = mutableListOf(),
+        responseOverrides: Map<String, TestResponse> = emptyMap()
     ) =
         KtorVotingApiProvider(
-            httpClientProvider = TestHttpClientProvider(requests, supportsKtorTimeouts, requestTimeoutCapabilities),
+            httpClientProvider =
+                TestHttpClientProvider(
+                    requests,
+                    supportsKtorTimeouts,
+                    requestTimeoutCapabilities,
+                    responseOverrides
+                ),
             configurationRepository = TestConfigurationRepository(),
             votingChainConfigRepository = TestVotingChainConfigRepository(),
             votingCryptoClient = unusedVotingCryptoClient()
@@ -658,7 +826,8 @@ class KtorVotingApiProviderTest {
     private class TestHttpClientProvider(
         private val requests: MutableList<String>,
         private val supportsKtorTimeouts: Boolean,
-        private val requestTimeoutCapabilities: MutableList<Boolean>
+        private val requestTimeoutCapabilities: MutableList<Boolean>,
+        private val responseOverrides: Map<String, TestResponse>
     ) : HttpClientProvider {
         override suspend fun supportsKtorTimeouts(): Boolean = supportsKtorTimeouts
 
@@ -667,8 +836,21 @@ class KtorVotingApiProviderTest {
         override suspend fun create(): HttpClient =
             HttpClient(
                 MockEngine { request ->
-                    requests += request.url.encodedPath
+                    val requestTarget =
+                        request.url.encodedPath +
+                            request.url.encodedQuery
+                                .takeIf(String::isNotEmpty)
+                                ?.let { query -> "?$query" }
+                                .orEmpty()
+                    requests += requestTarget
                     requestTimeoutCapabilities += (request.getCapabilityOrNull(HttpTimeoutCapability) != null)
+                    responseOverrides[requestTarget]?.let { response ->
+                        return@MockEngine respond(
+                            content = response.content,
+                            status = response.status,
+                            headers = headersOf(HttpHeaders.ContentType, "application/json")
+                        )
+                    }
                     when (request.url.encodedPath) {
                         "/static-voting-config.json" -> {
                             respond(
@@ -700,6 +882,8 @@ class KtorVotingApiProviderTest {
                 }
             ) {
                 expectSuccess = true
+                // Mirrors the production HttpClientProvider's content negotiation.
+                install(ContentNegotiation) { json() }
             }
     }
 
@@ -736,6 +920,11 @@ class KtorVotingApiProviderTest {
                 expectSuccess = true
             }
     }
+
+    private data class TestResponse(
+        val content: String,
+        val status: HttpStatusCode = HttpStatusCode.OK
+    )
 
     private class TestConfigurationRepository : ConfigurationRepository {
         override val configurationFlow: StateFlow<Configuration?> = MutableStateFlow(null)
@@ -834,6 +1023,23 @@ private fun validDynamicServiceConfigJson(): String =
         "vote_protocol": "v0",
         "tally": "v0",
         "vote_server": "v1"
+      },
+      "rounds": {}
+    }
+    """.trimIndent()
+
+private fun dynamicVotingConfigJson(): String =
+    """
+    {
+      "config_version": 1,
+      "vote_servers": [{"url":"https://vote.example.com","label":"vote"}],
+      "pir_endpoints": [{"url":"https://pir.example.com","label":"pir"}],
+      "pir_layout": {"pir_depth":1,"tier0_layers":1,"tier1_layers":1,"poly_len":4096},
+      "supported_versions": {
+        "pir":["v0"],
+        "vote_protocol":"v0",
+        "tally":"v0",
+        "vote_server":"v1"
       },
       "rounds": {}
     }
