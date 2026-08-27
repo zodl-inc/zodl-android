@@ -16,9 +16,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,8 +57,12 @@ import co.electriccoin.zcash.ui.screen.voting.VoteTrustIndicator
 import co.electriccoin.zcash.ui.screen.voting.component.VoteAppBar
 import co.electriccoin.zcash.ui.screen.voting.component.VoteTrustIndicatorView
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
+fun VoteCoinholderPollingView(
+    state: VoteCoinholderPollingState,
+    isRefreshing: Boolean = false,
+) {
     ZashiConfirmationBottomSheet(state = state.configErrorSheet)
     ZashiConfirmationBottomSheet(state = state.unverifiedPollWarningSheet)
     ZashiConfirmationBottomSheet(state = state.noRoundsSheet)
@@ -95,30 +103,55 @@ fun VoteCoinholderPollingView(state: VoteCoinholderPollingState) {
                         showDivider = false,
                     )
                 } else {
-                    LazyColumn(
+                    // Pull-to-refresh indicator is placed below the (internal) top bar above,
+                    // not around the whole scaffold — otherwise it renders over the toolbar title
+                    // instead of over the round list it actually refreshes. The content Box itself
+                    // still starts at y=0 (frosted-header effect: the list scrolls under the
+                    // transparent toolbar), so the default top-aligned indicator needs an explicit
+                    // offset by the same `padding.calculateTopPadding()` the list content uses,
+                    // or it renders behind/under the toolbar instead of below it.
+                    val pullToRefreshState = rememberPullToRefreshState()
+                    PullToRefreshBox(
+                        isRefreshing = isRefreshing,
+                        onRefresh = state.onRefresh,
+                        state = pullToRefreshState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding =
-                            PaddingValues(
-                                start = ZashiDimensions.Spacing.spacing3xl,
-                                top = padding.calculateTopPadding() + ZashiDimensions.Spacing.spacingLg,
-                                end = ZashiDimensions.Spacing.spacing3xl,
-                                bottom = padding.calculateBottomPadding() + ZashiDimensions.Spacing.spacing3xl
-                            ),
-                        verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing4xl)
+                        indicator = {
+                            PullToRefreshDefaults.Indicator(
+                                state = pullToRefreshState,
+                                isRefreshing = isRefreshing,
+                                modifier =
+                                    Modifier
+                                        .align(Alignment.TopCenter)
+                                        .padding(top = padding.calculateTopPadding()),
+                            )
+                        },
                     ) {
-                        items(
-                            activeRounds,
-                            key = { it.roundId },
-                            contentType = { "pollcard" }
-                        ) { round ->
-                            PollCard(round)
-                        }
-                        items(
-                            pastRounds,
-                            key = { it.roundId },
-                            contentType = { "pollcard" }
-                        ) { round ->
-                            PollCard(round)
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding =
+                                PaddingValues(
+                                    start = ZashiDimensions.Spacing.spacing3xl,
+                                    top = padding.calculateTopPadding() + ZashiDimensions.Spacing.spacingLg,
+                                    end = ZashiDimensions.Spacing.spacing3xl,
+                                    bottom = padding.calculateBottomPadding() + ZashiDimensions.Spacing.spacing3xl
+                                ),
+                            verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing4xl)
+                        ) {
+                            items(
+                                activeRounds,
+                                key = { it.roundId },
+                                contentType = { "pollcard" }
+                            ) { round ->
+                                PollCard(round)
+                            }
+                            items(
+                                pastRounds,
+                                key = { it.roundId },
+                                contentType = { "pollcard" }
+                            ) { round ->
+                                PollCard(round)
+                            }
                         }
                     }
                 }
