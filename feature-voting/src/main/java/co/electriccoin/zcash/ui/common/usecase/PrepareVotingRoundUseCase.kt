@@ -594,9 +594,10 @@ internal suspend fun existingRoundRecoveryAction(
         } catch (exception: CancellationException) {
             throw exception
         } catch (_: Exception) {
-            return ExistingRoundRecoveryAction.FAIL_CLOSED
+            null
         }
     return when {
+        dbBundleCount == null -> ExistingRoundRecoveryAction.FAIL_CLOSED
         dbBundleCount > 0 -> ExistingRoundRecoveryAction.RESUME
         dbBundleCount == 0 -> ExistingRoundRecoveryAction.REINITIALIZE
         else -> ExistingRoundRecoveryAction.FAIL_CLOSED

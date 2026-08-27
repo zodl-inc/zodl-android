@@ -369,6 +369,34 @@ class SubmitVotesUseCaseProgressTest {
         }
 
     @Test
+    fun wrongLengthVanCommitmentLeafIsRejectedAsMalformed() =
+        runTest {
+            val failure =
+                assertFailsWith<IllegalArgumentException> {
+                    findVanCommitmentPosition(
+                        roundId = "round",
+                        expectedVanCmx = ByteArray(32) { 5 },
+                        recoveryDelayMillis = 0,
+                        fetchLatest = { CommitmentTreeLatest(height = 100, nextIndex = 1) },
+                        fetchLeafPage = { _, _, _ ->
+                            leafPage(
+                                blocks =
+                                    listOf(
+                                        leafBlock(
+                                            height = 100,
+                                            startIndex = 0,
+                                            leaves = listOf(ByteArray(16) { 5 })
+                                        )
+                                    )
+                            )
+                        }
+                    )
+                }
+
+            assertEquals("Malformed commitment leaf", failure.message)
+        }
+
+    @Test
     fun acceptedVotingTransactionDoesNotPollForRecovery() =
         runTest {
             var fetchCount = 0

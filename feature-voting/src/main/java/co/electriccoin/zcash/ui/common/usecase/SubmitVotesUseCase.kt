@@ -5,8 +5,6 @@ import cash.z.ecc.android.sdk.ext.toHex
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.voting.CastVoteSignature
-import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLatest
-import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLeafPage
 import co.electriccoin.zcash.ui.common.model.voting.DelegatedShareInfo
 import co.electriccoin.zcash.ui.common.model.voting.DelegationPhase
 import co.electriccoin.zcash.ui.common.model.voting.SharePayload
@@ -50,7 +48,6 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
 import java.time.Instant
-import java.util.Base64
 
 class VotingAuthorizationException(
     cause: Exception
@@ -508,7 +505,6 @@ class SubmitVotesUseCase(
         }
     }
 
-    @Suppress("LongMethod")
     private suspend fun submitSingleDelegationBundle(
         context: VotingSubmitContext,
         dbHandle: Long,
@@ -523,40 +519,15 @@ class SubmitVotesUseCase(
             )
         )
 
-        val cachedDelegationTxHash =
-            votingCryptoClient.getDelegationTxHash(
+        val cachedVanPosition = probeCachedDelegationVanPosition(dbHandle, roundId, bundleIndex)
+        if (cachedVanPosition != null) {
+            votingCryptoClient.storeVanPosition(
                 dbHandle = dbHandle,
                 roundId = roundId,
-                bundleIndex = bundleIndex
+                bundleIndex = bundleIndex,
+                position = cachedVanPosition
             )
-        if (cachedDelegationTxHash is VotingTxHashLookup.Present) {
-            // Fast-path probe: mirrors iOS `recoverDelegationVanPosition` with
-            // `confirmationTimeout: 0`. A cached hash that hasn't propagated yet
-            // (or that landed on-chain with a non-zero code) must NOT block this
-            // flow for 90s — return null and fall through to fresh delegation.
-            val confirmation =
-                awaitTxConfirmation(
-                    txHash = cachedDelegationTxHash.txHash,
-                    maxAttempts = 1
-                )
-            val vanPosition =
-                confirmation
-                    ?.takeIf { it.code == 0 }
-                    ?.event("delegate_vote")
-                    ?.attribute("leaf_index")
-                    ?.toIntOrNull()
-            if (vanPosition != null) {
-                votingCryptoClient.storeVanPosition(
-                    dbHandle = dbHandle,
-                    roundId = roundId,
-                    bundleIndex = bundleIndex,
-                    position = vanPosition
-                )
-                return
-            }
-            // No usable cached confirmation (not yet propagated, failed on-chain,
-            // or missing leaf_index) — fall through and re-run delegation from
-            // scratch for this bundle.
+            return
         }
 
         // A resumed round may already have this specific bundle CONFIRMED — nothing left to do.
@@ -584,8 +555,68 @@ class SubmitVotesUseCase(
             phase = VotingRecoveryPhase.DELEGATION_PROVED
         )
 
-        val submissionResolution =
-            runVotingAuthorizationStep(context.isKeystone) {
+        when (val submissionResolution = resolveDelegationSubmission(context, dbHandle, bundleIndex)) {
+            is DelegationSubmissionResolution.ConfirmedVan -> {
+                submissionResolution.txHash?.let { txHash ->
+                    votingCryptoClient.storeDelegationTxHash(
+                        dbHandle = dbHandle,
+                        roundId = roundId,
+                        bundleIndex = bundleIndex,
+                        txHash = txHash
+                    )
+                }
+                votingCryptoClient.storeVanPosition(
+                    dbHandle = dbHandle,
+                    roundId = roundId,
+                    bundleIndex = bundleIndex,
+                    position = submissionResolution.position
+                )
+            }
+
+            is DelegationSubmissionResolution.AcceptedTransaction -> {
+                storeConfirmedDelegation(
+                    context = context,
+                    dbHandle = dbHandle,
+                    bundleIndex = bundleIndex,
+                    acceptedTransaction = submissionResolution.transaction
+                )
+            }
+        }
+    }
+
+    /**
+     * Fast-path probe for an already-cached delegation transaction hash: mirrors iOS
+     * `recoverDelegationVanPosition` with `confirmationTimeout: 0`. Returns the confirmed
+     * VAN position, or null when the cached hash has no usable confirmation yet (not
+     * propagated, failed on-chain, or missing leaf_index) so the caller re-runs the
+     * delegation from scratch for this bundle without blocking on the 90s poll budget.
+     */
+    private suspend fun probeCachedDelegationVanPosition(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int
+    ): Int? {
+        val cachedDelegationTxHash =
+            votingCryptoClient.getDelegationTxHash(
+                dbHandle = dbHandle,
+                roundId = roundId,
+                bundleIndex = bundleIndex
+            ) as? VotingTxHashLookup.Present ?: return null
+        return awaitTxConfirmation(txHash = cachedDelegationTxHash.txHash, maxAttempts = 1)
+            ?.takeIf { it.code == 0 }
+            ?.event("delegate_vote")
+            ?.attribute("leaf_index")
+            ?.toIntOrNull()
+    }
+
+    @Suppress("LongMethod")
+    private suspend fun resolveDelegationSubmission(
+        context: VotingSubmitContext,
+        dbHandle: Long,
+        bundleIndex: Int
+    ): DelegationSubmissionResolution {
+        val roundId = context.roundId
+        return runVotingAuthorizationStep(context.isKeystone) {
                 val submission =
                     if (context.isKeystone) {
                         val keystoneSignature =
@@ -660,25 +691,15 @@ class SubmitVotesUseCase(
                     }
                 )
             }
-        if (submissionResolution is DelegationSubmissionResolution.ConfirmedVan) {
-            submissionResolution.txHash?.let { txHash ->
-                votingCryptoClient.storeDelegationTxHash(
-                    dbHandle = dbHandle,
-                    roundId = roundId,
-                    bundleIndex = bundleIndex,
-                    txHash = txHash
-                )
-            }
-            votingCryptoClient.storeVanPosition(
-                dbHandle = dbHandle,
-                roundId = roundId,
-                bundleIndex = bundleIndex,
-                position = submissionResolution.position
-            )
-            return
-        }
-        val acceptedTransaction =
-            (submissionResolution as DelegationSubmissionResolution.AcceptedTransaction).transaction
+    }
+
+    private suspend fun storeConfirmedDelegation(
+        context: VotingSubmitContext,
+        dbHandle: Long,
+        bundleIndex: Int,
+        acceptedTransaction: AcceptedVotingTransaction
+    ) {
+        val roundId = context.roundId
         votingCryptoClient.storeDelegationTxHash(
             dbHandle = dbHandle,
             roundId = roundId,
@@ -743,50 +764,6 @@ class SubmitVotesUseCase(
         onProgress: (VotingSubmissionProgress) -> Unit
     ): Int {
         val roundId = context.roundId
-        val proposalSelections =
-            context.sortedChoices
-                .mapNotNull { (proposalId, choiceId) ->
-                    val proposal =
-                        context.session.proposals.firstOrNull { it.id == proposalId }
-                            ?: error("Unknown proposal id $proposalId for round $roundId")
-                    if (proposal.options.none { option -> option.id == choiceId }) {
-                        null
-                    } else {
-                        proposalId to
-                            VotingProposalSelection(
-                                choiceId = choiceId,
-                                numOptions = proposal.options.size
-                            )
-                    }
-                }.toMap()
-        val latestRecovery =
-            votingRecoveryRepository.get(context.accountUuidString, roundId)
-                ?: context.recovery
-        val conflictingProposalId =
-            latestRecovery.proposalSelections.entries
-                .firstOrNull { (proposalId, lockedSelection) ->
-                    val requestedSelection = proposalSelections[proposalId]
-                    if (proposalId in latestRecovery.submittedProposalIds) {
-                        requestedSelection != null && requestedSelection != lockedSelection
-                    } else {
-                        requestedSelection != lockedSelection
-                    }
-                }?.key
-        if (conflictingProposalId != null) {
-            throw VotingSubmissionRecoverableException(
-                VotingErrors.ConflictingProposalSelection(
-                    roundId = roundId,
-                    proposalId = conflictingProposalId
-                )
-            )
-        }
-        if (proposalSelections.isNotEmpty()) {
-            votingRecoveryRepository.storeProposalSelections(
-                accountUuid = context.accountUuidString,
-                roundId = roundId,
-                proposalSelections = proposalSelections
-            )
-        }
         votingRecoveryRepository.storeSingleShareMode(
             accountUuid = context.accountUuidString,
             roundId = roundId,
@@ -806,6 +783,17 @@ class SubmitVotesUseCase(
             val proposal =
                 context.session.proposals.firstOrNull { it.id == proposalId }
                     ?: error("Unknown proposal id $proposalId for round $roundId")
+            // Null when the requested choice no longer matches a known option;
+            // such a request neither locks a selection nor conflicts with one.
+            val requestedSelection =
+                proposal.options
+                    .firstOrNull { option -> option.id == choiceId }
+                    ?.let {
+                        VotingProposalSelection(
+                            choiceId = choiceId,
+                            numOptions = proposal.options.size
+                        )
+                    }
             val progressBase = proposalIndex + 1
 
             fun emitSubmittingProgress(
@@ -840,14 +828,15 @@ class SubmitVotesUseCase(
                         progress = progressBase.toFloat() / context.totalChoices.coerceAtLeast(1)
                     )
                 )
-                markProposalSubmissionComplete(context.accountUuidString, roundId, proposalId)
+                markProposalSubmissionComplete(context.accountUuidString, roundId, proposalId, requestedSelection)
                 processedProposalCount++
                 return@forEachIndexed
             }
 
-            require(proposal.options.any { option -> option.id == choiceId }) {
-                "Unknown vote option $choiceId for proposal $proposalId"
-            }
+            val selection =
+                requireNotNull(requestedSelection) {
+                    "Unknown vote option $choiceId for proposal $proposalId"
+                }
 
             repeat(bundleCount) { bundleIndex ->
                 if (bundleIndex in submittedBundles) {
@@ -862,6 +851,7 @@ class SubmitVotesUseCase(
                         dbHandle = dbHandle,
                         bundleIndex = bundleIndex,
                         proposalId = proposalId,
+                        requestedSelection = selection,
                         delegatedShareIndicesByTarget = delegatedShareIndicesByTarget
                     )
                 ) {
@@ -886,7 +876,7 @@ class SubmitVotesUseCase(
                 emitSubmittingProgress(bundleIndex, 1.0)
             }
 
-            markProposalSubmissionComplete(context.accountUuidString, roundId, proposalId)
+            markProposalSubmissionComplete(context.accountUuidString, roundId, proposalId, selection)
             processedProposalCount++
         }
         return processedProposalCount
@@ -923,6 +913,7 @@ class SubmitVotesUseCase(
         dbHandle: Long,
         bundleIndex: Int,
         proposalId: Int,
+        requestedSelection: VotingProposalSelection,
         delegatedShareIndicesByTarget: MutableMap<ShareDelegationTarget, MutableSet<Int>>
     ): Boolean {
         val roundId = context.roundId
@@ -933,6 +924,15 @@ class SubmitVotesUseCase(
                 bundleIndex = bundleIndex,
                 proposalId = proposalId
             ) ?: return false
+
+        // Reusing the cached transaction re-binds this proposal to its previously
+        // broadcast choice; revalidate the request against the selection lock
+        // before recording any positions.
+        votingRecoveryRepository.storeProposalSelections(
+            accountUuid = context.accountUuidString,
+            roundId = roundId,
+            proposalSelections = mapOf(proposalId to requestedSelection)
+        )
 
         val confirmation = cachedConfirmation.confirmation
         val (confirmedVanPosition, vcTreePosition) = confirmation.castVoteLeafPositions()
@@ -1032,6 +1032,22 @@ class SubmitVotesUseCase(
                 )
             }
         val vanWitness = vanWitnessJson.toVanWitnessSummary()
+        // Lock the choice at the first step that binds it to durable state:
+        // buildVoteCommitment persists the commitment, and the submit below can
+        // land on chain even when its response is lost. A failure before this
+        // point leaves the selection free to change on retry.
+        votingRecoveryRepository.storeProposalSelections(
+            accountUuid = context.accountUuidString,
+            roundId = roundId,
+            proposalSelections =
+                mapOf(
+                    proposalId to
+                        VotingProposalSelection(
+                            choiceId = choiceId,
+                            numOptions = numOptions
+                        )
+                )
+        )
         val commitment =
             traceVotingStep(
                 roundId = roundId,
@@ -1146,25 +1162,16 @@ class SubmitVotesUseCase(
         confirmation: TxConfirmation
     ) {
         val (confirmedVanPosition, confirmedVoteCommitmentPosition) = confirmation.castVoteLeafPositions()
-        val startHeight = context.session.createdAtHeight.coerceAtLeast(0)
-        val actualVanPosition =
-            findVanCommitmentPosition(
-                roundId = context.roundId,
-                startHeight = startHeight,
+        val (actualVanPosition, actualVoteCommitmentPosition) =
+            scanRecoveredCastVoteLeafPositions(
+                context = context,
+                bundleIndex = bundleIndex,
+                proposalId = proposalId,
                 expectedVanCmx = expectedVanCmx,
-                fetchLatest = votingApiProvider::fetchCommitmentTreeLatest,
-                fetchLeafPage = votingApiProvider::fetchCommitmentTreeLeafPage
+                expectedVoteCommitment = expectedVoteCommitment
             )
-        val actualVoteCommitmentPosition =
-            findVanCommitmentPosition(
-                roundId = context.roundId,
-                startHeight = startHeight,
-                expectedVanCmx = expectedVoteCommitment,
-                fetchLatest = votingApiProvider::fetchCommitmentTreeLatest,
-                fetchLeafPage = votingApiProvider::fetchCommitmentTreeLeafPage
-            )?.toLong()
         if (
-            actualVanPosition != confirmedVanPosition ||
+            actualVanPosition != confirmedVanPosition.toLong() ||
             actualVoteCommitmentPosition != confirmedVoteCommitmentPosition
         ) {
             throw VotingSubmissionRecoverableException(
@@ -1177,11 +1184,60 @@ class SubmitVotesUseCase(
         }
     }
 
+    /**
+     * Resolves the positions of the recovered cast-vote's two leaves from one
+     * paginated tree scan — both leaves live in the same round tree. A scan that
+     * cannot be completed proves nothing: it surfaces as the retryable
+     * [VotingErrors.RecoveredVoteVerificationUnavailable], never as a verified
+     * mismatch and never as a raw scan-invariant exception.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun scanRecoveredCastVoteLeafPositions(
+        context: VotingSubmitContext,
+        bundleIndex: Int,
+        proposalId: Int,
+        expectedVanCmx: ByteArray,
+        expectedVoteCommitment: ByteArray
+    ): Pair<Long?, Long?> =
+        try {
+            val positions =
+                findCommitmentLeafPositions(
+                    roundId = context.roundId,
+                    startHeight = context.session.createdAtHeight.coerceAtLeast(0),
+                    expectedLeaves = listOf(expectedVanCmx, expectedVoteCommitment),
+                    fetchLatest = votingApiProvider::fetchCommitmentTreeLatest,
+                    fetchLeafPage = votingApiProvider::fetchCommitmentTreeLeafPage
+                )
+            positions[0] to positions[1]
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            throw VotingSubmissionRecoverableException(
+                VotingErrors.RecoveredVoteVerificationUnavailable(
+                    roundId = context.roundId,
+                    bundleIndex = bundleIndex,
+                    proposalId = proposalId
+                ),
+                exception
+            )
+        }
+
     private suspend fun markProposalSubmissionComplete(
         accountUuid: String,
         roundId: String,
-        proposalId: Int
+        proposalId: Int,
+        requestedSelection: VotingProposalSelection?
     ) {
+        // Completing a proposal revalidates its selection lock, so a request
+        // that changes a previously broadcast choice can never silently count
+        // the old vote as this submission.
+        if (requestedSelection != null) {
+            votingRecoveryRepository.storeProposalSelections(
+                accountUuid = accountUuid,
+                roundId = roundId,
+                proposalSelections = mapOf(proposalId to requestedSelection)
+            )
+        }
         // Recovery is durable and written first; if the process dies before the
         // in-memory session store is pruned, the next launch replays this state.
         votingRecoveryRepository.markProposalSubmitted(
@@ -1494,6 +1550,7 @@ internal suspend fun reconcileVotingTransactionResult(
     throw IllegalStateException(result.log.ifEmpty { rejectionMessage })
 }
 
+@Suppress("TooGenericExceptionCaught")
 internal suspend fun reconcileDelegationTransactionResult(
     result: TxResult,
     bundleIndex: Int,
@@ -1522,126 +1579,36 @@ internal suspend fun reconcileDelegationTransactionResult(
             null
         }
 
-    acceptedTransaction?.let { accepted ->
-        val confirmation =
-            checkNotNull(accepted.confirmation) {
-                "Spent-nullifier hash recovery must include a confirmation"
-            }
-        try {
-            confirmation.delegateVoteVanPosition(bundleIndex)
-            return DelegationSubmissionResolution.AcceptedTransaction(accepted)
-        } catch (exception: CancellationException) {
-            throw exception
-        } catch (leafException: Exception) {
-            val vanPosition = findVanPosition() ?: throw leafException
-            return DelegationSubmissionResolution.ConfirmedVan(
-                position = vanPosition,
-                txHash = accepted.txHash
-            )
-        }
+    return if (acceptedTransaction != null) {
+        resolveRecoveredDelegation(acceptedTransaction, bundleIndex, findVanPosition)
+    } else {
+        val vanPosition = findVanPosition() ?: throw hashFailure ?: IllegalStateException(rejectionMessage)
+        DelegationSubmissionResolution.ConfirmedVan(vanPosition)
     }
-
-    val vanPosition = findVanPosition() ?: throw hashFailure ?: IllegalStateException(rejectionMessage)
-    return DelegationSubmissionResolution.ConfirmedVan(vanPosition)
 }
 
-internal suspend fun findVanCommitmentPosition(
-    roundId: String,
-    startHeight: Long = 0,
-    expectedVanCmx: ByteArray,
-    maxRecoveryAttempts: Int = SPENT_NULLIFIER_RECOVERY_ATTEMPTS,
-    recoveryDelayMillis: Long = SPENT_NULLIFIER_RECOVERY_POLL_MS,
-    maxPagesPerAttempt: Int = COMMITMENT_TREE_MAX_PAGES,
-    fetchLatest: suspend (String) -> CommitmentTreeLatest,
-    fetchLeafPage: suspend (String, Long, Long) -> CommitmentTreeLeafPage
-): Int? {
-    require(roundId.isNotBlank()) { "roundId must not be blank" }
-    require(startHeight >= 0) { "startHeight must be non-negative" }
-    require(expectedVanCmx.size == COMMITMENT_BYTES) {
-        "expectedVanCmx must be $COMMITMENT_BYTES bytes"
+@Suppress("TooGenericExceptionCaught")
+private suspend fun resolveRecoveredDelegation(
+    accepted: AcceptedVotingTransaction,
+    bundleIndex: Int,
+    findVanPosition: suspend () -> Int?
+): DelegationSubmissionResolution {
+    val confirmation =
+        checkNotNull(accepted.confirmation) {
+            "Spent-nullifier hash recovery must include a confirmation"
+        }
+    return try {
+        confirmation.delegateVoteVanPosition(bundleIndex)
+        DelegationSubmissionResolution.AcceptedTransaction(accepted)
+    } catch (exception: CancellationException) {
+        throw exception
+    } catch (leafException: Exception) {
+        val vanPosition = findVanPosition() ?: throw leafException
+        DelegationSubmissionResolution.ConfirmedVan(
+            position = vanPosition,
+            txHash = accepted.txHash
+        )
     }
-    require(maxRecoveryAttempts >= 1) { "maxRecoveryAttempts must be >= 1" }
-    require(recoveryDelayMillis >= 0) { "recoveryDelayMillis must be non-negative" }
-    require(maxPagesPerAttempt >= 1) { "maxPagesPerAttempt must be >= 1" }
-
-    repeat(maxRecoveryAttempts) { attempt ->
-        val latest = fetchLatest(roundId)
-        require(latest.height >= 0) { "Commitment tree height must be non-negative" }
-        require(latest.nextIndex >= 0) { "Commitment tree next_index must be non-negative" }
-        val scanStartHeight = startHeight.takeIf { it <= latest.height } ?: 0L
-        val matches = mutableSetOf<Long>()
-        var previousNextIndex: Long? = null
-        var previousBlockHeight: Long? = null
-        var pageStart = scanStartHeight
-        var pageCount = 0
-        do {
-            check(pageCount < maxPagesPerAttempt) {
-                "Commitment tree pagination exceeded $maxPagesPerAttempt pages"
-            }
-            pageCount += 1
-            val page = fetchLeafPage(roundId, pageStart, latest.height)
-            page.blocks.forEach { block ->
-                require(block.height in pageStart..latest.height) {
-                    "Commitment leaf block ${block.height} is outside requested range $pageStart..${latest.height}"
-                }
-                require(previousBlockHeight == null || block.height > previousBlockHeight) {
-                    "Commitment leaf block heights must be strictly increasing"
-                }
-                require(block.startIndex >= 0) { "Commitment leaf start_index must be non-negative" }
-                if (previousNextIndex == null) {
-                    require(block.startIndex == 0L) {
-                        "First commitment leaf block must start at index 0"
-                    }
-                }
-                previousNextIndex?.let { expectedStartIndex ->
-                    require(block.startIndex == expectedStartIndex) {
-                        "Commitment leaf start_index ${block.startIndex} does not continue at $expectedStartIndex"
-                    }
-                }
-                block.leavesBase64.forEachIndexed { leafOffset, encodedLeaf ->
-                    val leaf =
-                        runCatching { Base64.getDecoder().decode(encodedLeaf) }
-                            .getOrElse { throw IllegalArgumentException("Malformed commitment leaf", it) }
-                    require(leaf.size == COMMITMENT_BYTES) {
-                        "Commitment leaf must be $COMMITMENT_BYTES bytes"
-                    }
-                    if (leaf.contentEquals(expectedVanCmx)) {
-                        matches += Math.addExact(block.startIndex, leafOffset.toLong())
-                    }
-                }
-                previousNextIndex = Math.addExact(block.startIndex, block.leavesBase64.size.toLong())
-                previousBlockHeight = block.height
-            }
-            val nextFromHeight = page.nextFromHeight
-            require(nextFromHeight == 0L || nextFromHeight > pageStart) {
-                "Commitment tree next_from_height must advance or be zero"
-            }
-            require(nextFromHeight == 0L || nextFromHeight <= latest.height) {
-                "Commitment tree next_from_height exceeds latest height"
-            }
-            if (nextFromHeight != 0L && page.blocks.isNotEmpty()) {
-                require(nextFromHeight > page.blocks.last().height) {
-                    "Commitment tree next_from_height must follow the last returned block"
-                }
-            }
-            pageStart = nextFromHeight
-        } while (pageStart != 0L)
-
-        val scannedNextIndex = previousNextIndex ?: 0L
-        require(scannedNextIndex == latest.nextIndex) {
-            "Commitment tree scan ended at index $scannedNextIndex, expected ${latest.nextIndex}"
-        }
-
-        require(matches.size <= 1) { "Persisted VAN commitment appears more than once in the round tree" }
-        matches.singleOrNull()?.let { position ->
-            require(position <= Int.MAX_VALUE) { "VAN position exceeds supported range: $position" }
-            return position.toInt()
-        }
-        if (attempt + 1 < maxRecoveryAttempts) {
-            delay(recoveryDelayMillis)
-        }
-    }
-    return null
 }
 
 private fun String.isSpentNullifierRejection(): Boolean =
@@ -1672,17 +1639,11 @@ internal fun TxConfirmation.castVoteLeafPositions(): Pair<Int, Long> {
             ?.attribute("leaf_index")
             ?: throw unexpectedSdkResponse("Missing cast_vote leaf_index")
     val leafParts = rawLeafIndex.split(',')
-    if (leafParts.size != 2) {
+    val vanPosition = leafParts.getOrNull(0)?.trim()?.toIntOrNull()
+    val voteCommitmentPosition = leafParts.getOrNull(1)?.trim()?.toLongOrNull()
+    if (leafParts.size != 2 || vanPosition == null || voteCommitmentPosition == null) {
         throw unexpectedSdkResponse("Malformed cast_vote leaf_index: $rawLeafIndex")
     }
-
-    val vanPosition =
-        leafParts[0].trim().toIntOrNull()
-            ?: throw unexpectedSdkResponse("Malformed VAN leaf position: ${leafParts[0]}")
-    val voteCommitmentPosition =
-        leafParts[1].trim().toLongOrNull()
-            ?: throw unexpectedSdkResponse("Malformed vote commitment leaf position: ${leafParts[1]}")
-
     return vanPosition to voteCommitmentPosition
 }
 
@@ -1710,7 +1671,5 @@ internal fun calculateSubmittingBundleProgress(
     return (completedBundles / bundleTotal).toFloat().coerceIn(0f, 1f)
 }
 
-private const val SPENT_NULLIFIER_RECOVERY_ATTEMPTS = 3
-private const val SPENT_NULLIFIER_RECOVERY_POLL_MS = 1_000L
-private const val COMMITMENT_BYTES = 32
-private const val COMMITMENT_TREE_MAX_PAGES = 128
+internal const val SPENT_NULLIFIER_RECOVERY_ATTEMPTS = 3
+internal const val SPENT_NULLIFIER_RECOVERY_POLL_MS = 1_000L

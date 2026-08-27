@@ -188,6 +188,113 @@ class SubmitVotesUseCaseRecoveryTest {
         }
 
     @Test
+    fun retryOmittingLockedUnsubmittedProposalDoesNotConflict() =
+        runTest {
+            val fixture = CastVoteRecoveryFixture(keystoneAccount(), proposalCount = 2)
+
+            assertFailsWith<CastVoteResponseLost> {
+                fixture.newUseCase()(ROUND_ID, mapOf(1 to 0, 2 to 0))
+            }
+
+            val result = fixture.newUseCase()(ROUND_ID, mapOf(2 to 0))
+
+            assertEquals(1, result.submittedProposalCount)
+            assertEquals(2, fixture.submittedBundles.size)
+            assertEquals(listOf(ORIGINAL_CAST_TX_HASH), fixture.storedVoteHashes)
+            assertEquals(
+                VotingProposalSelection(choiceId = 0, numOptions = 2),
+                fixture.recovery.proposalSelections[1]
+            )
+        }
+
+    @Test
+    fun recoveredCastVoteVerificationScansTreeOnce() =
+        runTest {
+            val fixture = CastVoteRecoveryFixture(keystoneAccount())
+
+            assertFailsWith<CastVoteResponseLost> {
+                fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
+            }
+
+            val result = fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
+
+            assertEquals(1, result.submittedProposalCount)
+            assertEquals(1, fixture.latestFetches)
+            assertEquals(1, fixture.leafPageFetches)
+        }
+
+    @Test
+    fun unverifiableRecoveredCastVoteSurfacesTypedRetryableError() =
+        runTest {
+            val fixture =
+                CastVoteRecoveryFixture(
+                    selectedAccount = keystoneAccount(),
+                    latestNextIndexOverride = 14
+                )
+
+            assertFailsWith<CastVoteResponseLost> {
+                fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
+            }
+
+            val failure =
+                assertFailsWith<VotingSubmissionRecoverableException> {
+                    fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
+                }
+
+            assertIs<VotingErrors.RecoveredVoteVerificationUnavailable>(failure.failure)
+            assertEquals(emptyList(), fixture.storedVoteHashes)
+            assertEquals(emptyList(), fixture.storedVanPositions)
+        }
+
+    @Test
+    fun changedChoiceCannotReuseCachedConfirmedVote() =
+        runTest {
+            val fixture =
+                CastVoteRecoveryFixture(
+                    selectedAccount = keystoneAccount(),
+                    cachedVoteTxHash = ORIGINAL_CAST_TX_HASH,
+                    initialSelections = mapOf(1 to VotingProposalSelection(choiceId = 0, numOptions = 2))
+                )
+
+            val failure =
+                assertFailsWith<VotingSubmissionRecoverableException> {
+                    fixture.newUseCase()(ROUND_ID, mapOf(1 to 1))
+                }
+
+            assertIs<VotingErrors.ConflictingProposalSelection>(failure.failure)
+            assertEquals(emptyList(), fixture.storedVoteHashes)
+            assertEquals(emptyList(), fixture.storedVanPositions)
+            assertEquals(emptyList(), fixture.recordedVcPositions)
+            assertEquals(
+                VotingProposalSelection(choiceId = 0, numOptions = 2),
+                fixture.recovery.proposalSelections[1]
+            )
+        }
+
+    @Test
+    fun preBroadcastFailureLeavesSelectionUnlockedForRetry() =
+        runTest {
+            val fixture = CastVoteRecoveryFixture(keystoneAccount(), failFirstTreeSync = true)
+
+            val failure =
+                assertFailsWith<VotingSubmissionRecoverableException> {
+                    fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
+                }
+
+            assertIs<VotingErrors.VoteTreeSyncFailed>(failure.failure)
+            assertEquals(emptyMap<Int, VotingProposalSelection>(), fixture.recovery.proposalSelections)
+
+            assertFailsWith<CastVoteResponseLost> {
+                fixture.newUseCase()(ROUND_ID, mapOf(1 to 1))
+            }
+
+            assertEquals(
+                VotingProposalSelection(choiceId = 1, numOptions = 2),
+                fixture.recovery.proposalSelections[1]
+            )
+        }
+
+    @Test
     fun spentNullifierHashMustMatchCurrentVoteCommitmentLeaves() =
         runTest {
             val fixture =
@@ -216,7 +323,12 @@ class SubmitVotesUseCaseRecoveryTest {
 
     private class CastVoteRecoveryFixture(
         private val selectedAccount: KeystoneAccount,
-        private val confirmedChoice: Int = 0
+        private val confirmedChoice: Int = 0,
+        private val proposalCount: Int = 1,
+        private val failFirstTreeSync: Boolean = false,
+        private val cachedVoteTxHash: String? = null,
+        private val initialSelections: Map<Int, VotingProposalSelection> = emptyMap(),
+        private val latestNextIndexOverride: Long? = null
     ) {
         val crypto = mockk<VotingCryptoClient>(relaxed = true)
         val api = mockk<VotingApiProvider>(relaxed = true)
@@ -228,6 +340,8 @@ class SubmitVotesUseCaseRecoveryTest {
         val recordedShares = mutableListOf<Int>()
         val confirmationLookups = mutableListOf<String>()
         var closeDbCalls = 0
+        var latestFetches = 0
+        var leafPageFetches = 0
 
         private val accountUuid = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
         var recovery =
@@ -238,7 +352,8 @@ class SubmitVotesUseCaseRecoveryTest {
                 bundleCount = 1,
                 eligibleWeight = 1,
                 bundleWeights = listOf(1),
-                hotkeyAddress = "hotkey"
+                hotkeyAddress = "hotkey",
+                proposalSelections = initialSelections
             )
 
         private val recoveryRepository = mockk<VotingRecoveryRepository>(relaxed = true)
@@ -248,7 +363,7 @@ class SubmitVotesUseCaseRecoveryTest {
         private val getSelectedWalletAccount = mockk<GetSelectedWalletAccountUseCase>()
         private val pirSnapshotResolver = mockk<PirSnapshotResolver>()
         private val hotkeySeedProvider = mockk<VotingHotkeySeedProvider>()
-        private val session = votingSession()
+        private val session = votingSession(proposalCount)
         private var submissionAttempt = 0
 
         init {
@@ -275,18 +390,28 @@ class SubmitVotesUseCaseRecoveryTest {
                 recovery = recovery.copy(phase = thirdArg())
             }
             coEvery { recoveryRepository.storeProposalSelections(accountUuid, ROUND_ID, any()) } answers {
-                recovery =
-                    recovery.copy(
-                        proposalSelections =
-                            recovery.proposalSelections +
-                                thirdArg<Map<Int, VotingProposalSelection>>()
+                // Mirrors VotingRecoveryRepositoryImpl's selection-lock contract.
+                val supplied = thirdArg<Map<Int, VotingProposalSelection>>()
+                val conflictingProposalId =
+                    supplied.entries
+                        .firstOrNull { (proposalId, selection) ->
+                            recovery.proposalSelections[proposalId]?.let { it != selection } == true
+                        }?.key
+                if (conflictingProposalId != null) {
+                    throw VotingSubmissionRecoverableException(
+                        VotingErrors.ConflictingProposalSelection(
+                            roundId = ROUND_ID,
+                            proposalId = conflictingProposalId
+                        )
                     )
+                }
+                recovery = recovery.copy(proposalSelections = recovery.proposalSelections + supplied)
             }
             coEvery { recoveryRepository.storeSingleShareMode(accountUuid, ROUND_ID, any()) } answers {
                 recovery = recovery.copy(singleShareMode = thirdArg())
             }
-            coEvery { recoveryRepository.markProposalSubmitted(accountUuid, ROUND_ID, 1) } answers {
-                recovery = recovery.copy(submittedProposalIds = recovery.submittedProposalIds + 1)
+            coEvery { recoveryRepository.markProposalSubmitted(accountUuid, ROUND_ID, any()) } answers {
+                recovery = recovery.copy(submittedProposalIds = recovery.submittedProposalIds + thirdArg<Int>())
             }
             coEvery { hotkeySeedProvider.get(accountUuid) } returns ByteArray(32) { 9 }
 
@@ -295,8 +420,13 @@ class SubmitVotesUseCaseRecoveryTest {
             coEvery { crypto.closeVotingDb(any()) } answers { closeDbCalls += 1 }
             coEvery { crypto.getVotes(any(), any()) } returns emptyList()
             coEvery { crypto.getShareDelegations(any(), any()) } returns emptyList()
-            coEvery { crypto.getVoteTxHash(any(), any(), any(), any()) } returns VotingTxHashLookup.NotFound
-            coEvery { crypto.syncVoteTree(any(), any(), any()) } returns 10
+            coEvery { crypto.getVoteTxHash(any(), any(), any(), any()) } returns
+                (cachedVoteTxHash?.let(VotingTxHashLookup::Present) ?: VotingTxHashLookup.NotFound)
+            var treeSyncCalls = 0
+            coEvery { crypto.syncVoteTree(any(), any(), any()) } answers {
+                treeSyncCalls += 1
+                if (failFirstTreeSync && treeSyncCalls == 1) -1L else 10L
+            }
             coEvery { crypto.generateVanWitnessJson(any(), any(), any(), any()) } returns
                 """{"position":7,"anchor_height":10}"""
             coEvery {
@@ -371,8 +501,12 @@ class SubmitVotesUseCaseRecoveryTest {
                     leaves[7] = confirmedCommitment.voteAuthorityNoteNew
                     leaves[12] = confirmedCommitment.voteCommitment
                 }
-            coEvery { api.fetchCommitmentTreeLatest(ROUND_ID) } returns CommitmentTreeLatest(20, 13)
-            coEvery { api.fetchCommitmentTreeLeafPage(ROUND_ID, 1, 20) } returns
+            coEvery { api.fetchCommitmentTreeLatest(ROUND_ID) } answers {
+                latestFetches += 1
+                CommitmentTreeLatest(20, latestNextIndexOverride ?: 13)
+            }
+            coEvery { api.fetchCommitmentTreeLeafPage(ROUND_ID, 1, 20) } answers {
+                leafPageFetches += 1
                 CommitmentTreeLeafPage(
                     blocks =
                         listOf(
@@ -384,6 +518,7 @@ class SubmitVotesUseCaseRecoveryTest {
                         ),
                     nextFromHeight = 0
                 )
+            }
             coEvery { api.delegateShares(any()) } returns
                 listOf(DelegatedShareInfo(shareIndex = 0, proposalId = 1, acceptedByServers = listOf("https://helper")))
         }
@@ -695,7 +830,7 @@ class SubmitVotesUseCaseRecoveryTest {
             leavesBase64 = leaves.map { Base64.getEncoder().encodeToString(it) }
         )
 
-        fun votingSession() =
+        fun votingSession(proposalCount: Int = 1) =
             VotingSession(
                 voteRoundId = ROUND_ID.chunked(2).map { it.toInt(16).toByte() }.toByteArray(),
                 snapshotHeight = 3_459_350,
@@ -714,14 +849,14 @@ class SubmitVotesUseCaseRecoveryTest {
                 description = "Round",
                 discussionUrl = null,
                 proposals =
-                    listOf(
+                    (1..proposalCount).map { proposalId ->
                         Proposal(
-                            id = 1,
-                            title = "Proposal",
-                            description = "Proposal",
+                            id = proposalId,
+                            title = "Proposal $proposalId",
+                            description = "Proposal $proposalId",
                             options = listOf(VoteOption(0, "Yes"), VoteOption(1, "No"))
                         )
-                    ),
+                    },
                 status = SessionStatus.ACTIVE,
                 createdAtHeight = 1
             )

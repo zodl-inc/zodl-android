@@ -126,6 +126,21 @@ sealed interface VotingErrors {
     }
 
     /**
+     * The commitment-tree scan that verifies a recovered transaction could not be completed,
+     * so the recovered transaction is neither confirmed nor ruled out. Retryable: the next
+     * attempt repeats the verification.
+     */
+    data class RecoveredVoteVerificationUnavailable(
+        val roundId: String,
+        val bundleIndex: Int,
+        val proposalId: Int
+    ) : VotingErrors {
+        override val userMessage =
+            "Could not verify the recovered transaction for round $roundId " +
+                "bundle $bundleIndex proposal $proposalId"
+    }
+
+    /**
      * A successful SDK or vote-server response was missing required structured data.
      */
     data class UnexpectedSdkResponse(
