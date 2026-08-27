@@ -539,24 +539,48 @@ class VoteCoinholderPollingVM(
             votingApiProvider.invalidateConfigCache()
         }
 
-        refreshVotingRounds()
         var nextConfigIssue: VotingConfigException? = null
-        runCatching {
-            // MOB-1808: this used to be RefreshActiveVotingSessionUseCase, which — despite its
-            // name — fetches the service config AND the entire round list, redundantly re-doing
-            // the fetchAllRounds() that refreshVotingRounds() (above) just did. Its only real job
-            // here is to re-probe fetchServiceConfig() so a VotingConfigException surfaces as
-            // configIssue below; RefreshVotingServiceConfigUseCase does just that, without the
-            // second round-list fetch (confirmed live: this was doubling every /rounds request
-            // during the CHP screen's auto-refresh). RefreshActiveVotingSessionUseCase itself is
-            // unchanged and still used as-is by VotingHomeHooksImpl, which genuinely wants its
-            // round-list side effect for pending-Keystone-request recovery.
-            refreshVotingServiceConfig()
-        }.onFailure { throwable ->
-            if (throwable is VotingConfigException) {
-                nextConfigIssue = throwable
-            } else {
-                Log.w(TAG, "Voting service config refresh failed", throwable)
+        try {
+            // refreshVotingRounds() -> RefreshVotingRoundsUseCase calls fetchServiceConfig()
+            // before fetchAllRounds(), and fetchServiceConfig() is the ONLY source of
+            // VotingConfigException on this path: it never touches round authentication
+            // (that lives in the unrelated fetchActiveVotingSession()), and fetchAllRounds()
+            // swallows per-round auth failures internally via authenticateVotingSessionOrNull
+            // rather than propagating them. So catching VotingConfigException specifically
+            // here cannot accidentally absorb a real round-fetch/auth failure — only a genuine
+            // config problem lands here, and everything else still falls through to the
+            // caller's normal LCE error handling. A non-VotingConfigException failure here
+            // means a real round-fetch failure, which must still fail this whole refresh —
+            // rethrow unconditionally instead of swallowing it.
+            refreshVotingRounds()
+        } catch (exception: VotingConfigException) {
+            nextConfigIssue = exception
+        }
+        if (nextConfigIssue == null) {
+            runCatching {
+                // MOB-1808: this used to be RefreshActiveVotingSessionUseCase, which — despite
+                // its name — fetches the service config AND the entire round list, redundantly
+                // re-doing the fetchAllRounds() refreshVotingRounds() (above) just did. Its only
+                // non-redundant job is storing the resolved VotingConfigSnapshot into
+                // votingConfigRepository (refreshVotingRounds() above never does this — it just
+                // resolves+caches the config for its own internal use); RefreshVotingServiceConfigUseCase
+                // does just that store, without the second round-list fetch (confirmed live:
+                // the old call was doubling every /rounds request during the CHP screen's
+                // auto-refresh). This call is NOT the configIssue error-surfacing site anymore —
+                // it only runs once refreshVotingRounds() above has already proven the config
+                // resolves cleanly, so with the TTL cache (bumped to 10min) this is a guaranteed
+                // cache hit in practice; the try/catch above is the real error path now (Milan's
+                // #2483 review: the old ordering made this probe's error-surfacing dead code).
+                // RefreshActiveVotingSessionUseCase itself is unchanged and still used as-is by
+                // VotingHomeHooksImpl, which genuinely wants its round-list side effect for
+                // pending-Keystone-request recovery.
+                refreshVotingServiceConfig()
+            }.onFailure { throwable ->
+                if (throwable is VotingConfigException) {
+                    nextConfigIssue = throwable
+                } else {
+                    Log.w(TAG, "Voting service config refresh failed", throwable)
+                }
             }
         }
         configIssue = nextConfigIssue

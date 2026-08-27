@@ -157,6 +157,14 @@ class KtorVotingApiProvider(
      * timeout mechanisms share.
      */
     private val configRequestTimeoutMillis: Long = StaticVotingConfig.CONFIG_REQUEST_TIMEOUT_MS,
+    /**
+     * Per-attempt timeout for [postShare] (MOB-1808), defaulting to
+     * [SHARE_REQUEST_TIMEOUT_MILLIS]. Overridable only so tests can inject a short value when
+     * exercising the app-side [withTorRequestTimeoutFallback] path for share posting, mirroring
+     * [configRequestTimeoutMillis] above — production callers (DI, see `featureVotingModule`)
+     * never pass an override.
+     */
+    private val shareRequestTimeoutMillis: Long = SHARE_REQUEST_TIMEOUT_MILLIS,
 ) : VotingApiProvider {
     private var cachedResolvedConfig: ResolvedVotingConfig? = null
     private var cachedResolvedConfigFetchedAtMs: Long? = null
@@ -871,7 +879,7 @@ class KtorVotingApiProvider(
             // supportsKtorTimeouts is false. Wrapping in withTorRequestTimeoutFallback fails this
             // one attempt fast instead of stalling the whole delegateShares() batch (awaitAll())
             // on its slowest share.
-            withTorRequestTimeoutFallback(supportsKtorTimeouts, SHARE_REQUEST_TIMEOUT_MILLIS) {
+            withTorRequestTimeoutFallback(supportsKtorTimeouts, shareRequestTimeoutMillis) {
                 post("$serverUrl/shielded-vote/v1/shares") {
                     setBody(TextContent(body, ContentType.Application.Json))
                     helperRequestTimeout(supportsKtorTimeouts)
