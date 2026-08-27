@@ -779,13 +779,6 @@ class SubmitVotesUseCase(
                 )
             )
         }
-        if (proposalSelections.isNotEmpty()) {
-            votingRecoveryRepository.storeProposalSelections(
-                accountUuid = context.accountUuidString,
-                roundId = roundId,
-                proposalSelections = proposalSelections
-            )
-        }
         votingRecoveryRepository.storeSingleShareMode(
             accountUuid = context.accountUuidString,
             roundId = roundId,
@@ -1031,6 +1024,22 @@ class SubmitVotesUseCase(
                 )
             }
         val vanWitness = vanWitnessJson.toVanWitnessSummary()
+        // Lock the choice at the first step that binds it to durable state:
+        // buildVoteCommitment persists the commitment, and the submit below can
+        // land on chain even when its response is lost. A failure before this
+        // point leaves the selection free to change on retry.
+        votingRecoveryRepository.storeProposalSelections(
+            accountUuid = context.accountUuidString,
+            roundId = roundId,
+            proposalSelections =
+                mapOf(
+                    proposalId to
+                        VotingProposalSelection(
+                            choiceId = choiceId,
+                            numOptions = numOptions
+                        )
+                )
+        )
         val commitment =
             traceVotingStep(
                 roundId = roundId,

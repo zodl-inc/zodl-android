@@ -208,6 +208,29 @@ class SubmitVotesUseCaseRecoveryTest {
         }
 
     @Test
+    fun preBroadcastFailureLeavesSelectionUnlockedForRetry() =
+        runTest {
+            val fixture = CastVoteRecoveryFixture(keystoneAccount(), failFirstTreeSync = true)
+
+            val failure =
+                assertFailsWith<VotingSubmissionRecoverableException> {
+                    fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
+                }
+
+            assertIs<VotingErrors.VoteTreeSyncFailed>(failure.failure)
+            assertEquals(emptyMap<Int, VotingProposalSelection>(), fixture.recovery.proposalSelections)
+
+            assertFailsWith<CastVoteResponseLost> {
+                fixture.newUseCase()(ROUND_ID, mapOf(1 to 1))
+            }
+
+            assertEquals(
+                VotingProposalSelection(choiceId = 1, numOptions = 2),
+                fixture.recovery.proposalSelections[1]
+            )
+        }
+
+    @Test
     fun spentNullifierHashMustMatchCurrentVoteCommitmentLeaves() =
         runTest {
             val fixture =
@@ -237,7 +260,8 @@ class SubmitVotesUseCaseRecoveryTest {
     private class CastVoteRecoveryFixture(
         private val selectedAccount: KeystoneAccount,
         private val confirmedChoice: Int = 0,
-        private val proposalCount: Int = 1
+        private val proposalCount: Int = 1,
+        private val failFirstTreeSync: Boolean = false
     ) {
         val crypto = mockk<VotingCryptoClient>(relaxed = true)
         val api = mockk<VotingApiProvider>(relaxed = true)
@@ -317,7 +341,11 @@ class SubmitVotesUseCaseRecoveryTest {
             coEvery { crypto.getVotes(any(), any()) } returns emptyList()
             coEvery { crypto.getShareDelegations(any(), any()) } returns emptyList()
             coEvery { crypto.getVoteTxHash(any(), any(), any(), any()) } returns VotingTxHashLookup.NotFound
-            coEvery { crypto.syncVoteTree(any(), any(), any()) } returns 10
+            var treeSyncCalls = 0
+            coEvery { crypto.syncVoteTree(any(), any(), any()) } answers {
+                treeSyncCalls += 1
+                if (failFirstTreeSync && treeSyncCalls == 1) -1L else 10L
+            }
             coEvery { crypto.generateVanWitnessJson(any(), any(), any(), any()) } returns
                 """{"position":7,"anchor_height":10}"""
             coEvery {
