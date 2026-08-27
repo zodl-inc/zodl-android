@@ -530,11 +530,12 @@ class VoteCoinholderPollingVM(
             // Mirror iOS `prepareForServiceConfigRefresh` (VotingStore+Session.swift:644-647):
             // every flow entry / user-driven refresh drops the cached resolved config so
             // downstream callers (authenticateVotingSession, configuredVoteServerUrls,
-            // delegateShares) cannot serve a stale config across flow openings. Auto-refresh
-            // polls (resetVisibleConfigError = false here) deliberately leave the cache intact —
-            // fetchServiceConfig() no longer force-refreshes on every call (MOB-1808: it now
-            // reuses a source-matching cache entry up to CONFIG_CACHE_TTL_MS old), so the
-            // periodic tick simply rides that TTL instead of forcing a fresh config every 5s.
+            // delegateShares) cannot serve a stale config across flow openings. All three
+            // remaining callers (onScreenEntered, refreshVotingData, refreshVotingDataForConfigChange)
+            // pass resetVisibleConfigError = true, so this always runs now — MOB-1808 removed the
+            // periodic auto-refresh tick that used to call this with resetVisibleConfigError =
+            // false to deliberately skip invalidation and ride fetchServiceConfig()'s
+            // CONFIG_CACHE_TTL_MS cache instead; the screen no longer has a background caller.
             votingApiProvider.invalidateConfigCache()
         }
 
