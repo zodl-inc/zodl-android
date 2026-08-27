@@ -555,8 +555,10 @@ class VoteCoinholderPollingVM(
             // every flow entry / user-driven refresh drops the cached resolved config so
             // downstream callers (authenticateVotingSession, configuredVoteServerUrls,
             // delegateShares) cannot serve a stale config across flow openings. Auto-refresh
-            // polls leave the cache intact since they already force-refresh via
-            // RefreshVotingRoundsUseCase -> fetchServiceConfig.
+            // polls (resetVisibleConfigError = false here) deliberately leave the cache intact —
+            // fetchServiceConfig() no longer force-refreshes on every call (MOB-1808: it now
+            // reuses a source-matching cache entry up to CONFIG_CACHE_TTL_MS old), so the
+            // periodic tick simply rides that TTL instead of forcing a fresh config every 5s.
             votingApiProvider.invalidateConfigCache()
         }
 

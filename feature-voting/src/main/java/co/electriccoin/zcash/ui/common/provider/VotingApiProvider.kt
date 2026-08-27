@@ -191,10 +191,12 @@ class KtorVotingApiProvider(
     // still forces a real refetch) but forceRefresh=true bypassed it entirely regardless of age.
     // Switching to TTL-bounded reuse (getResolvedConfigWithTtl) keeps every one of those loops
     // fed from one shared fetch instead of each paying its own round trip, while still bounding
-    // how stale the served config can get. Callers that need a guaranteed-fresh fetch (e.g. a
-    // config-source change, or the submit flow, which already calls invalidateConfigCache()
-    // explicitly before it enters) go through that explicit invalidation instead of relying on
-    // this method to force one.
+    // how stale the served config can get. A guaranteed-fresh fetch still goes through the
+    // explicit invalidateConfigCache() path instead of relying on this method to force one — its
+    // sole caller today is VoteCoinholderPollingVM's refreshVotingDataInternal(), invoked on
+    // screen entry, pull-to-refresh, and a config-source change, so the submit flow's own config
+    // reads are only as fresh as whatever that screen-level invalidation + this TTL last left
+    // cached, not independently guaranteed fresh by the submit flow itself.
     override suspend fun fetchServiceConfig(): VotingServiceConfig =
         getResolvedConfigWithTtl().serviceConfig
 
@@ -522,10 +524,40 @@ class KtorVotingApiProvider(
     }
 
     private suspend fun getResolvedConfig(forceRefresh: Boolean = false): ResolvedVotingConfig =
+        resolveConfigCached(useTtl = false, forceRefresh = forceRefresh)
+
+    /**
+     * Like [getResolvedConfig] but additionally requires a source-matching cache entry to be
+     * younger than [CONFIG_CACHE_TTL_MS] to be reused — used by [fetchServiceConfig], the entry
+     * point several independent polling loops call on their own short cadence (see that call
+     * site's comment for why this matters). A cache miss, a source change, or an expired entry
+     * all fall through to a real fetch.
+     */
+    private suspend fun getResolvedConfigWithTtl(): ResolvedVotingConfig =
+        resolveConfigCached(useTtl = true, forceRefresh = false)
+
+    /**
+     * Single mutex-guarded decision point shared by [getResolvedConfig] and
+     * [getResolvedConfigWithTtl] — folding both into one critical section (rather than the TTL
+     * variant checking freshness outside the lock and then calling the non-TTL variant, which is
+     * what an earlier version of this code did) closes two problems at once: (1) it avoids two
+     * callers racing to independently decide "expired" and both firing a real fetch, and (2) it
+     * avoids the non-TTL variant's own cache check — source-match only, no age check — silently
+     * re-serving a [useTtl]-expired entry right back out because from *its* perspective the cache
+     * looked perfectly valid.
+     */
+    private suspend fun resolveConfigCached(
+        useTtl: Boolean,
+        forceRefresh: Boolean
+    ): ResolvedVotingConfig =
         configMutex.withLock {
             val sources = resolveConfigSources()
             val cached = cachedResolvedConfig
-            if (!forceRefresh && cached?.sources == sources) {
+            val fetchedAtMs = cachedResolvedConfigFetchedAtMs
+            val sourcesMatch = cached != null && cached.sources == sources
+            val withinTtl =
+                !useTtl || (fetchedAtMs != null && System.currentTimeMillis() - fetchedAtMs < CONFIG_CACHE_TTL_MS)
+            if (!forceRefresh && sourcesMatch && withinTtl) {
                 cached
             } else {
                 fetchTrustedConfig(sources).also { resolved ->
@@ -534,30 +566,6 @@ class KtorVotingApiProvider(
                 }
             }
         }
-
-    /**
-     * Like [getResolvedConfig] but additionally reuses a source-matching cache entry younger
-     * than [CONFIG_CACHE_TTL_MS] instead of always trusting whatever [getResolvedConfig] would
-     * otherwise decide — used by [fetchServiceConfig], the entry point several independent
-     * polling loops call on their own short cadence (see the call site's comment for why this
-     * matters). A cache miss, a source change, or an expired entry falls through to a real fetch
-     * exactly like [getResolvedConfig] would.
-     */
-    private suspend fun getResolvedConfigWithTtl(): ResolvedVotingConfig {
-        val sources = resolveConfigSources()
-        configMutex.withLock {
-            val cached = cachedResolvedConfig
-            val fetchedAtMs = cachedResolvedConfigFetchedAtMs
-            if (cached != null &&
-                fetchedAtMs != null &&
-                cached.sources == sources &&
-                System.currentTimeMillis() - fetchedAtMs < CONFIG_CACHE_TTL_MS
-            ) {
-                return cached
-            }
-        }
-        return getResolvedConfig()
-    }
 
     private suspend fun resolveConfigSources(): List<PinnedConfigSource> {
         val selectedPinnedSource = votingChainConfigRepository.get().selectedPinnedSource
