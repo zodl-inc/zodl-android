@@ -65,8 +65,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.json.Json
 import org.json.JSONObject
 import java.net.URI
 import java.util.UUID
@@ -422,11 +420,7 @@ class KtorVotingApiProvider(
     override suspend fun fetchCommitmentTreeLatest(roundIdHex: String): CommitmentTreeLatest {
         val path = commitmentTreeLatestPath(roundIdHex)
         return executeWithVoteServerFailover(path) { baseUrl ->
-            val tree =
-                commitmentTreeJson
-                    .decodeFromString<ChainCommitmentTreeLatestResponse>(
-                        get("$baseUrl$path").bodyAsText()
-                    ).tree
+            val tree = get("$baseUrl$path").body<ChainCommitmentTreeLatestResponse>().tree
             require(tree.height >= 0) { "Commitment tree height must be non-negative" }
             require(tree.nextIndex >= 0) { "Commitment tree next_index must be non-negative" }
             CommitmentTreeLatest(height = tree.height, nextIndex = tree.nextIndex)
@@ -442,10 +436,8 @@ class KtorVotingApiProvider(
         require(toHeight >= fromHeight) { "toHeight must be at least fromHeight" }
         val path = commitmentTreeLeavesPath(roundIdHex, fromHeight, toHeight)
         return executeWithVoteServerFailover(path) { baseUrl ->
-            commitmentTreeJson
-                .decodeFromString<ChainCommitmentTreeLeavesResponse>(
-                    get("$baseUrl$path").bodyAsText()
-                )
+            get("$baseUrl$path")
+                .body<ChainCommitmentTreeLeavesResponse>()
                 .toModel()
         }
     }
@@ -1030,7 +1022,6 @@ private const val RAW_GITHUBUSERCONTENT_HOST = "raw.githubusercontent.com"
 private const val CACHE_BUST_QUERY_PARAM = "zodl_cache_bust"
 private const val TRANSIENT_HTTP_STATUS_MIN = 500
 private const val TRANSIENT_HTTP_STATUS_MAX = 599
-private val commitmentTreeJson = Json { ignoreUnknownKeys = true }
 
 private fun List<String>.normalizeServerUrls(): List<String> =
     map(String::trim)

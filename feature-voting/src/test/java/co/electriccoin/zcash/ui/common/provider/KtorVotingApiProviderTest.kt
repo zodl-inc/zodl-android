@@ -882,6 +882,8 @@ class KtorVotingApiProviderTest {
                 }
             ) {
                 expectSuccess = true
+                // Mirrors the production HttpClientProvider's content negotiation.
+                install(ContentNegotiation) { json() }
             }
     }
 
