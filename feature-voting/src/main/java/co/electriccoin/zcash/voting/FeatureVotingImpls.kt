@@ -66,6 +66,16 @@ import java.time.Instant
  */
 const val VOTING_ENABLED = true
 
+/**
+ * Temporarily disables the Coinholder Polling home-widget prompt (MOB-1805, PR #2472) while its
+ * eligibility check and the unconditional voting-session network refresh it rides along with are
+ * redesigned - see MOB-1814 and the Slack thread linked there. This does NOT touch
+ * [VOTING_ENABLED] or the underlying [RefreshActiveVotingSessionUseCase] call in
+ * [VotingHomeHooksImpl.recoverPendingRouteIfNeeded] - voting itself, and that pre-existing
+ * refresh, are unaffected. Re-enable by flipping this back to `true` once the redesign lands.
+ */
+const val COINHOLDER_HOME_PROMPT_ENABLED = false
+
 class VotingHomeHooksImpl(
     private val votingRecoveryRepository: VotingRecoveryRepository,
     private val votingApiRepository: VotingApiRepository,
@@ -193,7 +203,7 @@ class VotingHomeMessageSourceImpl(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun observeIsCoinholderPollingMessageVisible(): Flow<Boolean> {
-        if (!VOTING_ENABLED) return flowOf(false)
+        if (!VOTING_ENABLED || !COINHOLDER_HOME_PROMPT_ENABLED) return flowOf(false)
 
         val activeScope: Flow<ActiveScope?> =
             combine(
