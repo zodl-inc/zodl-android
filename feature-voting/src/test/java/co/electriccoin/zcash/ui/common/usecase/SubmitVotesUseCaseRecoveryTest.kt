@@ -35,6 +35,7 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
 import co.electriccoin.zcash.ui.common.model.voting.VotingTxHashLookup
 import co.electriccoin.zcash.ui.common.model.voting.VotingVoteCommitment
+import co.electriccoin.zcash.ui.common.model.voting.VotingVoteRecord
 import co.electriccoin.zcash.ui.common.provider.PirSnapshotResolver
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
@@ -188,7 +189,7 @@ class SubmitVotesUseCaseRecoveryTest {
         }
 
     @Test
-    fun retryOmittingLockedUnsubmittedProposalDoesNotConflict() =
+    fun retryOmittingCommitmentBackedProposalRequiresOriginalSelection() =
         runTest {
             val fixture = CastVoteRecoveryFixture(keystoneAccount(), proposalCount = 2)
 
@@ -196,15 +197,36 @@ class SubmitVotesUseCaseRecoveryTest {
                 fixture.newUseCase()(ROUND_ID, mapOf(1 to 0, 2 to 0))
             }
 
-            val result = fixture.newUseCase()(ROUND_ID, mapOf(2 to 0))
+            val failure =
+                assertFailsWith<VotingSubmissionRecoverableException> {
+                    fixture.newUseCase()(ROUND_ID, mapOf(2 to 0))
+                }
 
-            assertEquals(1, result.submittedProposalCount)
-            assertEquals(2, fixture.submittedBundles.size)
-            assertEquals(listOf(ORIGINAL_CAST_TX_HASH), fixture.storedVoteHashes)
+            assertIs<VotingErrors.ConflictingProposalSelection>(failure.failure)
+            assertEquals(1, fixture.submittedBundles.size)
+            assertEquals(emptyList(), fixture.storedVoteHashes)
             assertEquals(
                 VotingProposalSelection(choiceId = 0, numOptions = 2),
                 fixture.recovery.proposalSelections[1]
             )
+        }
+
+    @Test
+    fun retryOmittingSelectionWithoutCommitmentStillProcessesRequestedProposal() =
+        runTest {
+            val fixture =
+                CastVoteRecoveryFixture(
+                    selectedAccount = keystoneAccount(),
+                    proposalCount = 2,
+                    initialSelections = mapOf(1 to VotingProposalSelection(choiceId = 0, numOptions = 2))
+                )
+
+            assertFailsWith<CastVoteResponseLost> {
+                fixture.newUseCase()(ROUND_ID, mapOf(2 to 0))
+            }
+
+            assertEquals(1, fixture.submittedBundles.size)
+            assertEquals(2, fixture.submittedBundles.single().proposalId)
         }
 
     @Test
@@ -339,6 +361,7 @@ class SubmitVotesUseCaseRecoveryTest {
         val recordedVcPositions = mutableListOf<Long>()
         val recordedShares = mutableListOf<Int>()
         val confirmationLookups = mutableListOf<String>()
+        val persistedVotes = mutableListOf<VotingVoteRecord>()
         var closeDbCalls = 0
         var latestFetches = 0
         var leafPageFetches = 0
@@ -418,7 +441,7 @@ class SubmitVotesUseCaseRecoveryTest {
             coEvery { crypto.getWalletNotesJson(any(), any(), any(), any()) } returns "[]"
             coEvery { crypto.openVotingDb(any()) } returns 1
             coEvery { crypto.closeVotingDb(any()) } answers { closeDbCalls += 1 }
-            coEvery { crypto.getVotes(any(), any()) } returns emptyList()
+            coEvery { crypto.getVotes(any(), any()) } answers { persistedVotes.toList() }
             coEvery { crypto.getShareDelegations(any(), any()) } returns emptyList()
             coEvery { crypto.getVoteTxHash(any(), any(), any(), any()) } returns
                 (cachedVoteTxHash?.let(VotingTxHashLookup::Present) ?: VotingTxHashLookup.NotFound)
@@ -445,9 +468,31 @@ class SubmitVotesUseCaseRecoveryTest {
                     any()
                 )
             } answers {
-                castVoteCommitment(choice = arg(5))
+                val bundleIndex = arg<Int>(2)
+                val proposalId = arg<Int>(4)
+                val choice = arg<Int>(5)
+                persistedVotes.removeAll { vote ->
+                    vote.bundleIndex == bundleIndex && vote.proposalId == proposalId
+                }
+                persistedVotes +=
+                    VotingVoteRecord(
+                        proposalId = proposalId,
+                        bundleIndex = bundleIndex,
+                        choice = choice,
+                        submitted = false
+                    )
+                castVoteCommitment(proposalId = proposalId, choice = choice)
             }
             coEvery { crypto.storeVoteTxHash(any(), any(), any(), any(), any()) } answers {
+                val bundleIndex = thirdArg<Int>()
+                val proposalId = arg<Int>(3)
+                persistedVotes.replaceAll { vote ->
+                    if (vote.bundleIndex == bundleIndex && vote.proposalId == proposalId) {
+                        vote.copy(submitted = true)
+                    } else {
+                        vote
+                    }
+                }
                 storedVoteHashes += arg<String>(4)
             }
             coEvery { crypto.storeVanPosition(any(), any(), any(), any()) } answers {
@@ -495,7 +540,7 @@ class SubmitVotesUseCaseRecoveryTest {
                         )
                 )
             }
-            val confirmedCommitment = castVoteCommitment(confirmedChoice)
+            val confirmedCommitment = castVoteCommitment(proposalId = 1, choice = confirmedChoice)
             val confirmedLeaves =
                 MutableList(13) { ByteArray(32) }.also { leaves ->
                     leaves[7] = confirmedCommitment.voteAuthorityNoteNew
@@ -769,16 +814,27 @@ class SubmitVotesUseCaseRecoveryTest {
                 voteRoundId = ROUND_ID
             )
 
-        fun castVoteCommitment(choice: Int): VotingVoteCommitment {
+        fun castVoteCommitment(
+            proposalId: Int,
+            choice: Int
+        ): VotingVoteCommitment {
             val vanNullifier = ByteArray(32).also { it[0] = 1 }
-            val voteAuthorityNoteNew = ByteArray(32).also { it[0] = (0x20 + choice).toByte() }
-            val voteCommitment = ByteArray(32).also { it[0] = (0x30 + choice).toByte() }
+            val voteAuthorityNoteNew =
+                ByteArray(32).also {
+                    it[0] = (0x20 + proposalId).toByte()
+                    it[1] = choice.toByte()
+                }
+            val voteCommitment =
+                ByteArray(32).also {
+                    it[0] = (0x30 + proposalId).toByte()
+                    it[1] = choice.toByte()
+                }
             return VotingVoteCommitment(
                 vanNullifier = vanNullifier,
                 voteAuthorityNoteNew = voteAuthorityNoteNew,
                 voteCommitment = voteCommitment,
                 rVpk = byteArrayOf(4),
-                voteAuthSig = byteArrayOf((0x50 + choice).toByte()),
+                voteAuthSig = byteArrayOf((0x50 + proposalId + choice).toByte()),
                 anchorHeight = 10,
                 encSharesJson = """[{"c1":"06","c2":"07","share_index":0}]""",
                 rawBundleJson =
@@ -787,7 +843,7 @@ class SubmitVotesUseCaseRecoveryTest {
                       "van_nullifier":"${vanNullifier.toHexString()}",
                       "vote_authority_note_new":"${voteAuthorityNoteNew.toHexString()}",
                       "vote_commitment":"${voteCommitment.toHexString()}",
-                      "proposal_id":1,
+                      "proposal_id":$proposalId,
                       "proof":"04",
                       "enc_shares":[{"c1":"06","c2":"07","share_index":0}],
                       "anchor_height":10,

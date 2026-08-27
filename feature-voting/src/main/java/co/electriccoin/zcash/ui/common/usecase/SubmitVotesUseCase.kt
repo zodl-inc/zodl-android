@@ -233,12 +233,18 @@ class SubmitVotesUseCase(
                         ?: throw VotingSubmissionRecoverableException(
                             VotingErrors.MissingBundleCount(roundId)
                         )
+                val persistedVotes =
+                    votingCryptoClient.getVotes(
+                        dbHandle = dbHandle,
+                        roundId = roundId
+                    )
+                requireCommitmentBackedRetriesIncluded(
+                    context = context,
+                    committedProposalIds = persistedVotes.mapTo(mutableSetOf()) { vote -> vote.proposalId }
+                )
                 val submittedBundleIndicesByProposal =
-                    votingCryptoClient
-                        .getVotes(
-                            dbHandle = dbHandle,
-                            roundId = roundId
-                        ).filter { vote ->
+                    persistedVotes
+                        .filter { vote ->
                             vote.submitted
                         }.groupBy { vote ->
                             vote.proposalId
@@ -337,6 +343,31 @@ class SubmitVotesUseCase(
         phase != VotingRecoveryPhase.DELEGATION_SUBMITTED &&
             phase != VotingRecoveryPhase.VOTES_SUBMITTED &&
             phase != VotingRecoveryPhase.SHARES_SUBMITTED
+
+    /**
+     * A persisted vote record means commitment construction completed and its POST may have
+     * reached the chain. Until the proposal is durably complete, retries must include it so its
+     * resulting VAN is reconciled before a later proposal attempts to spend the same input VAN.
+     */
+    private fun requireCommitmentBackedRetriesIncluded(
+        context: VotingSubmitContext,
+        committedProposalIds: Set<Int>
+    ) {
+        val omittedProposalId =
+            committedProposalIds
+                .asSequence()
+                .filterNot(context.recovery.submittedProposalIds::contains)
+                .filterNot(context.sortedChoices::containsKey)
+                .minOrNull()
+        if (omittedProposalId != null) {
+            throw VotingSubmissionRecoverableException(
+                VotingErrors.ConflictingProposalSelection(
+                    roundId = context.roundId,
+                    proposalId = omittedProposalId
+                )
+            )
+        }
+    }
 
     private suspend fun submitDelegationBundles(
         context: VotingSubmitContext,
