@@ -16,6 +16,10 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - Coinholder Polling's poll list no longer refreshes itself in the background while you're just browsing it; it now updates when you open the screen, return to it, or pull to refresh.
 - Vote submission is faster and more reliable over Tor: a slow or unresponsive vote-helper server no longer stalls the whole submission.
 
+### Fixed:
+
+- Coinholder Polling's poll list and proposal loading no longer hang indefinitely when a vote server is unreachable over Tor; a slow or dropped connection now fails over to the next server within a bounded time.
+
 ## [3.10.1 (2512)] - 2026-08-25
 
 ### Added:

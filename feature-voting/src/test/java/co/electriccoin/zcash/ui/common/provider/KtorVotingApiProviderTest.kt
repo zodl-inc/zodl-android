@@ -447,6 +447,73 @@ class KtorVotingApiProviderTest {
 
     // endregion
 
+    // region vote-server failover timeout (MOB-1811)
+
+    @Test
+    fun fetchAllRoundsAppSideTimeoutFallbackFiresWhenVoteServerHangsUnderTor() =
+        runBlocking {
+            val requests = mutableListOf<String>()
+            val provider =
+                KtorVotingApiProvider(
+                    httpClientProvider =
+                        object : HttpClientProvider {
+                            override suspend fun supportsKtorTimeouts(): Boolean = false
+
+                            override suspend fun createTor(): HttpClient = create()
+
+                            override suspend fun create(): HttpClient =
+                                HttpClient(
+                                    MockEngine { request ->
+                                        val path = request.url.encodedPath
+                                        requests += path
+                                        when (path) {
+                                            "/static-voting-config.json" -> {
+                                                respond(
+                                                    content = staticConfigJson(dynamicConfigUrl = DYNAMIC_CONFIG_URL),
+                                                    status = HttpStatusCode.OK,
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                )
+                                            }
+
+                                            "/dynamic-voting-config.json" -> {
+                                                respond(
+                                                    content = validDynamicServiceConfigJson(),
+                                                    status = HttpStatusCode.OK,
+                                                    headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                                )
+                                            }
+
+                                            // Simulates a vote server dropping (not refusing) the
+                                            // Tor connection - the exact MOB-1811 symptom.
+                                            ROUNDS_TEST_PATH -> {
+                                                awaitCancellation()
+                                            }
+
+                                            else -> {
+                                                respond(content = "not found", status = HttpStatusCode.NotFound)
+                                            }
+                                        }
+                                    }
+                                ) { expectSuccess = true }
+                        },
+                    configurationRepository = TestConfigurationRepository(),
+                    votingChainConfigRepository = TestVotingChainConfigRepository(),
+                    votingCryptoClient = unusedVotingCryptoClient(),
+                    voteServerFailoverTimeoutMillis = TEST_TIMEOUT_MILLIS
+                )
+
+            assertFailsWith<VotingServerFailoverException> {
+                provider.fetchAllRounds()
+            }
+
+            assertEquals(
+                listOf("/static-voting-config.json", "/dynamic-voting-config.json", ROUNDS_TEST_PATH),
+                requests
+            )
+        }
+
+    // endregion
+
     // region memoization (MOB-1809)
 
     @Test
