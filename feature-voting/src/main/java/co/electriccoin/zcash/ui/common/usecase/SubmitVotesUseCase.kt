@@ -638,7 +638,7 @@ class SubmitVotesUseCase(
             ?.takeIf { it.code == 0 }
             ?.event("delegate_vote")
             ?.attribute("leaf_index")
-            ?.toIntOrNull()
+            ?.recoverLeafIndexOrNull()
     }
 
     @Suppress("LongMethod")
@@ -1668,22 +1668,28 @@ internal fun TxConfirmation.delegateVoteVanPosition(bundleIndex: Int): Int {
             ?.attribute("leaf_index")
             ?: throw unexpectedSdkResponse("Missing delegate_vote leaf_index for bundle $bundleIndex")
 
-    val normalizedLeafIndex = rawLeafIndex.trim()
-    normalizedLeafIndex.toIntOrNull()?.let { return it }
+    return rawLeafIndex.recoverLeafIndexOrNull()
+        ?: throw unexpectedSdkResponse(
+            "Malformed delegate_vote leaf_index for bundle $bundleIndex: $rawLeafIndex"
+        )
+}
 
-    // Some compatibility clients opportunistically Base64-decode CometBFT event text.
-    // Re-encoding a resulting non-ASCII value restores the original decimal position.
-    if (normalizedLeafIndex.any { character -> character.code > ASCII_MAX_CODE_POINT }) {
-        Base64
-            .getEncoder()
-            .encodeToString(normalizedLeafIndex.toByteArray(Charsets.UTF_8))
-            .toIntOrNull()
-            ?.let { return it }
-    }
+/**
+ * Some compatibility clients opportunistically Base64-decode CometBFT event text before we see
+ * it. A plain decimal position parses immediately; otherwise, if the text contains a byte that
+ * can't be plain ASCII decimal, re-encoding it as Base64 restores the original decimal position.
+ * Returns null if neither interpretation yields a valid position - shared by every `leaf_index`
+ * reader so a fix here covers all of them, not just whichever call site reproduced the bug.
+ */
+internal fun String.recoverLeafIndexOrNull(): Int? {
+    val normalized = trim()
+    val plainDecimal = normalized.toIntOrNull()
+    if (plainDecimal != null) return plainDecimal
 
-    throw unexpectedSdkResponse(
-        "Malformed delegate_vote leaf_index for bundle $bundleIndex: $rawLeafIndex"
-    )
+    return normalized
+        .takeIf { it.any { character -> character.code > ASCII_MAX_CODE_POINT } }
+        ?.let { nonAscii -> Base64.getEncoder().encodeToString(nonAscii.toByteArray(Charsets.UTF_8)) }
+        ?.toIntOrNull()
 }
 
 internal fun TxConfirmation.castVoteLeafPositions(): Pair<Int, Long> {
@@ -1691,6 +1697,12 @@ internal fun TxConfirmation.castVoteLeafPositions(): Pair<Int, Long> {
         event("cast_vote")
             ?.attribute("leaf_index")
             ?: throw unexpectedSdkResponse("Missing cast_vote leaf_index")
+    // Unlike delegate_vote's single leaf_index, this one is "van,commitment" - a comma is never
+    // part of the Base64 alphabet, so if this text were ever opportunistically Base64-decoded
+    // upstream (see recoverLeafIndexOrNull), splitting on ',' would fail here and we'd throw
+    // below rather than silently mis-parse a corrupted value. No recovery attempt is needed as
+    // long as that assumption about the upstream decode holds; see
+    // castVoteLeafPositionsRejectsCorruptedLeafIndexInsteadOfMisparsing for the guard test.
     val leafParts = rawLeafIndex.split(',')
     val vanPosition = leafParts.getOrNull(0)?.trim()?.toIntOrNull()
     val voteCommitmentPosition = leafParts.getOrNull(1)?.trim()?.toLongOrNull()

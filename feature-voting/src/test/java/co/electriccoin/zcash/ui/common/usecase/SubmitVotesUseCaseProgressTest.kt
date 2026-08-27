@@ -652,6 +652,67 @@ class SubmitVotesUseCaseProgressTest {
     }
 
     @Test
+    fun recoverLeafIndexOrNullParsesPlainDecimal() {
+        assertEquals(42, "42".recoverLeafIndexOrNull())
+    }
+
+    @Test
+    fun recoverLeafIndexOrNullTrimsWhitespaceBeforeParsing() {
+        assertEquals(42, "  42\n".recoverLeafIndexOrNull())
+    }
+
+    @Test
+    fun recoverLeafIndexOrNullRecoversBase64DecodedValue() {
+        val decoded = String(Base64.getDecoder().decode("3753"), Charsets.UTF_8)
+
+        assertEquals(3753, decoded.recoverLeafIndexOrNull())
+    }
+
+    @Test
+    fun recoverLeafIndexOrNullReturnsNullForNonRecoverableNonAsciiInput() {
+        // Non-ASCII text that doesn't re-encode to a valid decimal position must fail closed
+        // rather than silently propagate a wrong leaf index.
+        assertNull("ÿþ not a position".recoverLeafIndexOrNull())
+    }
+
+    @Test
+    fun recoverLeafIndexOrNullReturnsNullForBlankInput() {
+        assertNull("".recoverLeafIndexOrNull())
+    }
+
+    @Test
+    fun castVoteLeafPositionsRejectsCorruptedLeafIndexInsteadOfMisparsing() {
+        // Guards the safety assumption documented on castVoteLeafPositions: "7,12" is not
+        // itself valid Base64 (',' is outside the alphabet), which is exactly why an upstream
+        // opportunistic Base64-decode of this attribute is expected to fail and fall back to
+        // the original ASCII rather than silently corrupt it. This test instead covers the
+        // residual case: if a fully non-ASCII, comma-free payload ever reached this parser
+        // regardless, it must fail closed rather than silently produce a wrong (van, commitment)
+        // pair - there is no recovery path here the way there is for delegate_vote's leaf_index.
+        val corrupted = "ÿþ not a valid pair"
+        val confirmation =
+            TxConfirmation(
+                height = 1,
+                code = 0,
+                events =
+                    listOf(
+                        TxEvent(
+                            type = "cast_vote",
+                            attributes = listOf(TxEventAttribute(key = "leaf_index", value = corrupted))
+                        )
+                    )
+            )
+
+        val exception =
+            assertFailsWith<VotingSubmissionRecoverableException> {
+                confirmation.castVoteLeafPositions()
+            }
+
+        val failure = assertIs<VotingErrors.UnexpectedSdkResponse>(exception.failure)
+        assertEquals("Malformed cast_vote leaf_index: $corrupted", failure.userMessage)
+    }
+
+    @Test
     fun castVoteLeafPositionsParseRecoveredConfirmation() {
         val confirmation =
             TxConfirmation(

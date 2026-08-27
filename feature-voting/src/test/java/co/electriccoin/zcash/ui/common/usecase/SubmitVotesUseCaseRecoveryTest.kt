@@ -111,6 +111,42 @@ class SubmitVotesUseCaseRecoveryTest {
         }
 
     @Test
+    fun resumedRoundRecoversCorruptedCachedDelegationLeafIndexWithoutResubmitting() =
+        runTest {
+            val fixture = RecoveryFixture(keystoneAccount())
+            val corruptedLeafIndex =
+                String(
+                    Base64.getDecoder().decode("3753"),
+                    Charsets.UTF_8
+                )
+            coEvery { fixture.crypto.getDelegationTxHash(any(), any(), 0) } returns
+                VotingTxHashLookup.Present("cached-delegation-tx")
+            coEvery { fixture.api.fetchTxConfirmation("cached-delegation-tx") } returns
+                TxConfirmation(
+                    height = 5,
+                    code = 0,
+                    events =
+                        listOf(
+                            TxEvent(
+                                type = "delegate_vote",
+                                attributes = listOf(TxEventAttribute("leaf_index", corruptedLeafIndex))
+                            )
+                        )
+                )
+
+            // Bundle 0's delegation is already confirmed on-chain with a Base64-mangled
+            // leaf_index (the same corruption class fixed in delegateVoteVanPosition). The
+            // cached-hash fast-path probe must recover it directly instead of treating it as
+            // unconfirmed and paying for a full rebuild-and-resubmit cycle.
+            assertFailsWith<FirstRunInterrupted> {
+                fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
+            }
+
+            assertEquals(listOf(StoredVanPosition(bundleIndex = 0, position = 3753)), fixture.storedVanPositions)
+            assertEquals(0, fixture.submissionCounts.getValue(0))
+        }
+
+    @Test
     fun unclassifiedDelegationTransportFailureFallsBackToVanLookup() =
         runTest {
             val fixture =
