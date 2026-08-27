@@ -242,6 +242,16 @@ class KtorVotingApiProvider(
         }
     }
 
+    // MOB-1811: these two writes go through the same withVoteServerFailover bound as every read,
+    // so a Tor-slow-but-alive server now gets its payload re-POSTed to the next server after
+    // voteServerFailoverTimeoutMillis instead of hanging indefinitely. Accepted trade-off, not a
+    // new hazard: the body is re-posted byte-identical, so at most one of the two attempts can
+    // land on-chain (the second is a spent-nullifier rejection) — this ambiguity already existed
+    // via 5xx/IOException failover before this fix, the timeout only makes it more likely under a
+    // dropping (not refusing) Tor connection. The #2481 reconcile/VAN-probe recovery machinery
+    // covers exactly this case. Follow-up idea (not implemented here): probe fetchTxConfirmation
+    // for the previous attempt's VAN before re-posting specifically after a timeout, to shrink the
+    // "transaction failed" UX window rather than only rely on the recovery re-run.
     override suspend fun submitDelegation(registration: DelegationRegistration): TxResult =
         executeWithVoteServerFailover(DELEGATE_VOTE_PATH) { baseUrl ->
             postTxResult(

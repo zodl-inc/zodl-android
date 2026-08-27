@@ -7,6 +7,10 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Fixed:
+
+- Coinholder Polling's poll list and proposal loading no longer hang indefinitely when a vote server is unreachable over Tor; a slow or dropped connection now fails over to the next server within a bounded time.
+
 ## [3.10.1 (2512)] - 2026-08-25
 
 ### Added:
