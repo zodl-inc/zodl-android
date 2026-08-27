@@ -29,8 +29,8 @@ import co.electriccoin.zcash.ui.common.repository.effectiveChoices
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
-import co.electriccoin.zcash.ui.common.usecase.RefreshActiveVotingSessionUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshVotingRoundsUseCase
+import co.electriccoin.zcash.ui.common.usecase.RefreshVotingServiceConfigUseCase
 import co.electriccoin.zcash.ui.common.usecase.TrackVotingSharesUseCase
 import co.electriccoin.zcash.ui.common.usecase.VotingShareTrackingResult
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -64,7 +64,7 @@ import java.time.format.DateTimeFormatter
 
 @Suppress("LargeClass")
 class VoteCoinholderPollingVM(
-    private val refreshActiveVotingSession: RefreshActiveVotingSessionUseCase,
+    private val refreshVotingServiceConfig: RefreshVotingServiceConfigUseCase,
     private val refreshVotingRounds: RefreshVotingRoundsUseCase,
     private val configurationRepository: ConfigurationRepository,
     private val votingChainConfigRepository: VotingChainConfigRepository,
@@ -565,12 +565,21 @@ class VoteCoinholderPollingVM(
         refreshVotingRounds()
         var nextConfigIssue: VotingConfigException? = null
         runCatching {
-            refreshActiveVotingSession()
+            // MOB-1808: this used to be RefreshActiveVotingSessionUseCase, which — despite its
+            // name — fetches the service config AND the entire round list, redundantly re-doing
+            // the fetchAllRounds() that refreshVotingRounds() (above) just did. Its only real job
+            // here is to re-probe fetchServiceConfig() so a VotingConfigException surfaces as
+            // configIssue below; RefreshVotingServiceConfigUseCase does just that, without the
+            // second round-list fetch (confirmed live: this was doubling every /rounds request
+            // during the CHP screen's auto-refresh). RefreshActiveVotingSessionUseCase itself is
+            // unchanged and still used as-is by VotingHomeHooksImpl, which genuinely wants its
+            // round-list side effect for pending-Keystone-request recovery.
+            refreshVotingServiceConfig()
         }.onFailure { throwable ->
             if (throwable is VotingConfigException) {
                 nextConfigIssue = throwable
             } else {
-                Log.w(TAG, "Active round refresh failed", throwable)
+                Log.w(TAG, "Voting service config refresh failed", throwable)
             }
         }
         configIssue = nextConfigIssue
