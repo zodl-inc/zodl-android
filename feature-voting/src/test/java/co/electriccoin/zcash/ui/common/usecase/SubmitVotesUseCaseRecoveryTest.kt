@@ -642,30 +642,10 @@ class SubmitVotesUseCaseRecoveryTest {
             }
             coEvery { api.fetchTxConfirmation(ORIGINAL_CAST_TX_HASH) } answers {
                 confirmationLookups += ORIGINAL_CAST_TX_HASH
-                TxConfirmation(
-                    height = 20,
-                    code = 0,
-                    events =
-                        listOf(
-                            TxEvent(
-                                type = "cast_vote",
-                                attributes = listOf(TxEventAttribute("leaf_index", "7,12"))
-                            )
-                        )
-                )
+                castVoteConfirmation()
             }
             coEvery { api.fetchTxConfirmation(match { txHash -> txHash.startsWith("accepted-") }) } returns
-                TxConfirmation(
-                    height = 20,
-                    code = 0,
-                    events =
-                        listOf(
-                            TxEvent(
-                                type = "cast_vote",
-                                attributes = listOf(TxEventAttribute("leaf_index", "7,12"))
-                            )
-                        )
-                )
+                castVoteConfirmation()
             val confirmedCommitment = castVoteCommitment(proposalId = 1, choice = confirmedChoice)
             val confirmedLeaves =
                 MutableList(13) { ByteArray(32) }.also { leaves ->
@@ -993,6 +973,19 @@ class SubmitVotesUseCaseRecoveryTest {
         }
 
         fun ByteArray.toHexString() = joinToString(separator = "") { byte -> "%02x".format(byte) }
+
+        fun castVoteConfirmation() =
+            TxConfirmation(
+                height = 20,
+                code = 0,
+                events =
+                    listOf(
+                        TxEvent(
+                            type = "cast_vote",
+                            attributes = listOf(TxEventAttribute("leaf_index", "7,12"))
+                        )
+                    )
+            )
 
         fun sharePayloadsJson(proposalId: Int = 1) =
             """

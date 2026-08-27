@@ -239,9 +239,8 @@ class SubmitVotesUseCase(
                         roundId = roundId
                     )
                 val unresolvedCommittedProposalIds =
-                    persistedVotes
-                        .mapTo(mutableSetOf()) { vote -> vote.proposalId }
-                        .apply { removeAll(context.recovery.submittedProposalIds) }
+                    persistedVotes.mapTo(mutableSetOf()) { vote -> vote.proposalId } -
+                        context.recovery.submittedProposalIds
                 requireCommitmentBackedRetriesIncluded(
                     context = context,
                     unresolvedCommittedProposalIds = unresolvedCommittedProposalIds
@@ -359,10 +358,7 @@ class SubmitVotesUseCase(
         unresolvedCommittedProposalIds: Set<Int>
     ) {
         val omittedProposalId =
-            unresolvedCommittedProposalIds
-                .asSequence()
-                .filterNot(context.sortedChoices::containsKey)
-                .minOrNull()
+            (unresolvedCommittedProposalIds - context.sortedChoices.keys).minOrNull()
         if (omittedProposalId != null) {
             throw VotingSubmissionRecoverableException(
                 VotingErrors.OmittedCommittedProposal(
@@ -815,9 +811,11 @@ class SubmitVotesUseCase(
         // path below) counts as submitted — the user's previous attempt already
         // succeeded for that proposal.
         var processedProposalCount = 0
+        // Unresolved commitments first; the stable sort keeps ascending proposal
+        // order within each group.
         val orderedChoices =
             context.sortedChoices.entries.sortedBy { entry ->
-                if (entry.key in unresolvedCommittedProposalIds) 0 else 1
+                entry.key !in unresolvedCommittedProposalIds
             }
         orderedChoices.forEachIndexed { proposalIndex, (proposalId, choiceId) ->
             val proposal =
