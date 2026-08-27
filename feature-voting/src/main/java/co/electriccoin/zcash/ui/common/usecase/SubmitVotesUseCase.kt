@@ -1148,23 +1148,17 @@ class SubmitVotesUseCase(
         // never as a raw scan-invariant exception.
         val (actualVanPosition, actualVoteCommitmentPosition) =
             try {
-                val vanPosition =
-                    findVanCommitmentPosition(
+                // Both leaves live in the same round tree, so one paginated scan
+                // resolves them together.
+                val positions =
+                    findCommitmentLeafPositions(
                         roundId = context.roundId,
                         startHeight = startHeight,
-                        expectedVanCmx = expectedVanCmx,
+                        expectedLeaves = listOf(expectedVanCmx, expectedVoteCommitment),
                         fetchLatest = votingApiProvider::fetchCommitmentTreeLatest,
                         fetchLeafPage = votingApiProvider::fetchCommitmentTreeLeafPage
                     )
-                val voteCommitmentPosition =
-                    findVanCommitmentPosition(
-                        roundId = context.roundId,
-                        startHeight = startHeight,
-                        expectedVanCmx = expectedVoteCommitment,
-                        fetchLatest = votingApiProvider::fetchCommitmentTreeLatest,
-                        fetchLeafPage = votingApiProvider::fetchCommitmentTreeLeafPage
-                    )?.toLong()
-                vanPosition to voteCommitmentPosition
+                positions[0] to positions[1]
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
@@ -1178,7 +1172,7 @@ class SubmitVotesUseCase(
                 )
             }
         if (
-            actualVanPosition != confirmedVanPosition ||
+            actualVanPosition != confirmedVanPosition.toLong() ||
             actualVoteCommitmentPosition != confirmedVoteCommitmentPosition
         ) {
             throw VotingSubmissionRecoverableException(
@@ -1580,21 +1574,56 @@ internal suspend fun findVanCommitmentPosition(
     fetchLatest: suspend (String) -> CommitmentTreeLatest,
     fetchLeafPage: suspend (String, Long, Long) -> CommitmentTreeLeafPage
 ): Int? {
+    val position =
+        findCommitmentLeafPositions(
+            roundId = roundId,
+            startHeight = startHeight,
+            expectedLeaves = listOf(expectedVanCmx),
+            maxRecoveryAttempts = maxRecoveryAttempts,
+            recoveryDelayMillis = recoveryDelayMillis,
+            maxPagesPerAttempt = maxPagesPerAttempt,
+            fetchLatest = fetchLatest,
+            fetchLeafPage = fetchLeafPage
+        ).single() ?: return null
+    require(position <= Int.MAX_VALUE) { "VAN position exceeds supported range: $position" }
+    return position.toInt()
+}
+
+/**
+ * Scans the round's commitment tree for the positions of [expectedLeaves] in a single
+ * paginated pass per attempt. Returns one position per requested leaf, in request order,
+ * with null for a leaf that is absent from the fully scanned tree. The scan is retried
+ * until every leaf is found or the attempt budget is exhausted.
+ */
+internal suspend fun findCommitmentLeafPositions(
+    roundId: String,
+    startHeight: Long = 0,
+    expectedLeaves: List<ByteArray>,
+    maxRecoveryAttempts: Int = SPENT_NULLIFIER_RECOVERY_ATTEMPTS,
+    recoveryDelayMillis: Long = SPENT_NULLIFIER_RECOVERY_POLL_MS,
+    maxPagesPerAttempt: Int = COMMITMENT_TREE_MAX_PAGES,
+    fetchLatest: suspend (String) -> CommitmentTreeLatest,
+    fetchLeafPage: suspend (String, Long, Long) -> CommitmentTreeLeafPage
+): List<Long?> {
     require(roundId.isNotBlank()) { "roundId must not be blank" }
     require(startHeight >= 0) { "startHeight must be non-negative" }
-    require(expectedVanCmx.size == COMMITMENT_BYTES) {
-        "expectedVanCmx must be $COMMITMENT_BYTES bytes"
+    require(expectedLeaves.isNotEmpty()) { "expectedLeaves must not be empty" }
+    expectedLeaves.forEach { expectedLeaf ->
+        require(expectedLeaf.size == COMMITMENT_BYTES) {
+            "Expected commitment leaves must be $COMMITMENT_BYTES bytes"
+        }
     }
     require(maxRecoveryAttempts >= 1) { "maxRecoveryAttempts must be >= 1" }
     require(recoveryDelayMillis >= 0) { "recoveryDelayMillis must be non-negative" }
     require(maxPagesPerAttempt >= 1) { "maxPagesPerAttempt must be >= 1" }
 
+    var lastPositions: List<Long?> = List(expectedLeaves.size) { null }
     repeat(maxRecoveryAttempts) { attempt ->
         val latest = fetchLatest(roundId)
         require(latest.height >= 0) { "Commitment tree height must be non-negative" }
         require(latest.nextIndex >= 0) { "Commitment tree next_index must be non-negative" }
         val scanStartHeight = startHeight.takeIf { it <= latest.height } ?: 0L
-        val matches = mutableSetOf<Long>()
+        val matches = List(expectedLeaves.size) { mutableSetOf<Long>() }
         var previousNextIndex: Long? = null
         var previousBlockHeight: Long? = null
         var pageStart = scanStartHeight
@@ -1632,8 +1661,10 @@ internal suspend fun findVanCommitmentPosition(
                                 }
                             }
                         }.getOrElse { throw IllegalArgumentException("Malformed commitment leaf", it) }
-                    if (leaf.contentEquals(expectedVanCmx)) {
-                        matches += Math.addExact(block.startIndex, leafOffset.toLong())
+                    expectedLeaves.forEachIndexed { targetIndex, expectedLeaf ->
+                        if (leaf.contentEquals(expectedLeaf)) {
+                            matches[targetIndex] += Math.addExact(block.startIndex, leafOffset.toLong())
+                        }
                     }
                 }
                 previousNextIndex = Math.addExact(block.startIndex, block.leavesBase64.size.toLong())
@@ -1659,16 +1690,21 @@ internal suspend fun findVanCommitmentPosition(
             "Commitment tree scan ended at index $scannedNextIndex, expected ${latest.nextIndex}"
         }
 
-        require(matches.size <= 1) { "Persisted VAN commitment appears more than once in the round tree" }
-        matches.singleOrNull()?.let { position ->
-            require(position <= Int.MAX_VALUE) { "VAN position exceeds supported range: $position" }
-            return position.toInt()
+        matches.forEach { positions ->
+            require(positions.size <= 1) {
+                "Requested commitment leaf appears more than once in the round tree"
+            }
         }
+        val positions = matches.map { it.singleOrNull() }
+        if (positions.all { position -> position != null }) {
+            return positions
+        }
+        lastPositions = positions
         if (attempt + 1 < maxRecoveryAttempts) {
             delay(recoveryDelayMillis)
         }
     }
-    return null
+    return lastPositions
 }
 
 private fun String.isSpentNullifierRejection(): Boolean =

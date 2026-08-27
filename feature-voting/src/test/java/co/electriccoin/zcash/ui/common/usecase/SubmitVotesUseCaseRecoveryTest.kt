@@ -208,6 +208,22 @@ class SubmitVotesUseCaseRecoveryTest {
         }
 
     @Test
+    fun recoveredCastVoteVerificationScansTreeOnce() =
+        runTest {
+            val fixture = CastVoteRecoveryFixture(keystoneAccount())
+
+            assertFailsWith<CastVoteResponseLost> {
+                fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
+            }
+
+            val result = fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
+
+            assertEquals(1, result.submittedProposalCount)
+            assertEquals(1, fixture.latestFetches)
+            assertEquals(1, fixture.leafPageFetches)
+        }
+
+    @Test
     fun unverifiableRecoveredCastVoteSurfacesTypedRetryableError() =
         runTest {
             val fixture =
@@ -324,6 +340,8 @@ class SubmitVotesUseCaseRecoveryTest {
         val recordedShares = mutableListOf<Int>()
         val confirmationLookups = mutableListOf<String>()
         var closeDbCalls = 0
+        var latestFetches = 0
+        var leafPageFetches = 0
 
         private val accountUuid = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
         var recovery =
@@ -483,9 +501,12 @@ class SubmitVotesUseCaseRecoveryTest {
                     leaves[7] = confirmedCommitment.voteAuthorityNoteNew
                     leaves[12] = confirmedCommitment.voteCommitment
                 }
-            coEvery { api.fetchCommitmentTreeLatest(ROUND_ID) } returns
+            coEvery { api.fetchCommitmentTreeLatest(ROUND_ID) } answers {
+                latestFetches += 1
                 CommitmentTreeLatest(20, latestNextIndexOverride ?: 13)
-            coEvery { api.fetchCommitmentTreeLeafPage(ROUND_ID, 1, 20) } returns
+            }
+            coEvery { api.fetchCommitmentTreeLeafPage(ROUND_ID, 1, 20) } answers {
+                leafPageFetches += 1
                 CommitmentTreeLeafPage(
                     blocks =
                         listOf(
@@ -497,6 +518,7 @@ class SubmitVotesUseCaseRecoveryTest {
                         ),
                     nextFromHeight = 0
                 )
+            }
             coEvery { api.delegateShares(any()) } returns
                 listOf(DelegatedShareInfo(shareIndex = 0, proposalId = 1, acceptedByServers = listOf("https://helper")))
         }
