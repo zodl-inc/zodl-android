@@ -7,9 +7,20 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+
 ### Added:
 
 - We added a Wallet Status Widget prompt for Coinholder Polling, so you can jump straight into an active poll you haven't voted in yet.
+
+## [3.10.1 (2512)] - 2026-08-25
+
+### Added:
+
+- We added a home screen banner and follow-up screen for a small amount of ZEC that can be left in Orchard after migrating to Ironwood, so you can choose whether to lock it or move it.
+
+### Fixed:
+
+- We fixed migrating with a Keystone wallet, so migrations are now split into signing rounds correctly.
 
 ### Fixed:
 
