@@ -77,6 +77,16 @@ class WalletViewModel(
                 initialValue = false
             )
 
+    // MOB-1397 review, follow-up not addressed here (lower-priority, needs a larger restructure
+    // than this fix-up's scope):
+    // 1. This recovery is anchored to an activity-scoped ViewModel, so a mismatch hit by
+    //    background synchronizer use won't auto-recover until the UI is next opened. The
+    //    provider/repository layer (e.g. SynchronizerProvider itself) would be a more robust
+    //    home for this collector so it runs regardless of UI lifecycle.
+    // 2. If the wallet is concurrently nulled out (Reset Zashi races this), deleteSdkDataFlow()
+    //    may never emit and RecoverFromSeedMismatchUseCase's `.first()` suspends forever. Not
+    //    observed in practice, but worth guarding (e.g. a timeout or cooperating with the reset
+    //    flow) in a follow-up.
     init {
         viewModelScope.launch {
             isSeedMismatch

@@ -106,6 +106,7 @@ import co.electriccoin.zcash.ui.common.usecase.ParseKeystoneUrToZashiAccountsUse
 import co.electriccoin.zcash.ui.common.usecase.PersistServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.PrefillSendUseCase
 import co.electriccoin.zcash.ui.common.usecase.ProcessSwapTransactionUseCase
+import co.electriccoin.zcash.ui.common.usecase.RecoverFromSeedMismatchUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshFastestServersUseCase
 import co.electriccoin.zcash.ui.common.usecase.RemindWalletBackupLaterUseCase
 import co.electriccoin.zcash.ui.common.usecase.RequestSwapQuoteUseCase
@@ -144,7 +145,6 @@ import co.electriccoin.zcash.ui.common.usecase.Zip321BuildUriUseCase
 import co.electriccoin.zcash.ui.common.usecase.Zip321ParseUriValidationUseCase
 import co.electriccoin.zcash.ui.screen.advancedsettings.debug.SimulateSeedNotRelevantUseCase
 import co.electriccoin.zcash.ui.screen.advancedsettings.debug.db.ExecuteDebugDBQueryUseCase
-import co.electriccoin.zcash.ui.common.usecase.RecoverFromSeedMismatchUseCase
 import co.electriccoin.zcash.ui.screen.deletewallet.ResetZashiUseCase
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import org.koin.core.module.dsl.factoryOf
