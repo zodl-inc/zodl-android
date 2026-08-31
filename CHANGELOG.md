@@ -7,6 +7,10 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Changed:
+
+- The seed backup prompt now always takes priority over the migration banner and any sync/connectivity error banner once your wallet has received a balance and you haven't backed up your recovery phrase yet, so it can no longer be hidden behind other home screen messages for days.
+
 ## [3.11.0 (2653)] - 2026-09-08
 
 ### Added:
