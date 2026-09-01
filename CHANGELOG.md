@@ -11,8 +11,9 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 - Buttons, rows, and other interactive elements now respond to touch with a subtle expressive press animation.
 - Screens and sheets across the app now use frosted-glass headers and footers, with content scrolling beneath them.
-- Theme setting in Advanced Settings with an optional pure-black (OLED) dark theme.
-- The in-app browser now matches the app theme, including the pure-black (OLED) theme.
+- App Theme setting in Settings, letting you choose System, Light, or Dark — with a bottom sheet to pick
+  Classic Dark or Pure Black (OLED) whenever a dark appearance applies.
+- The in-app browser now matches the app theme, including the Pure Black theme.
 
 ### Changed:
 
