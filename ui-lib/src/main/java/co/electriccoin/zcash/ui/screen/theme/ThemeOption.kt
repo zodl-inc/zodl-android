@@ -25,6 +25,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import co.electriccoin.zcash.ui.design.component.ZashiRadioIndicator
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 
@@ -112,28 +113,34 @@ private fun ThemeRadioIndicator(
     isChecked: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier =
-            modifier
-                .size(RADIO_SIZE)
-                .clip(CircleShape)
-                .then(
-                    if (isChecked) {
-                        Modifier.background(ZashiColors.Text.textPrimary)
-                    } else {
-                        Modifier.border(UNCHECKED_RADIO_STROKE_WIDTH, ZashiColors.Checkboxes.boxOffStroke, CircleShape)
-                    }
-                ),
-        contentAlignment = Alignment.Center
-    ) {
-        if (isChecked) {
+    ZashiRadioIndicator(
+        isChecked = isChecked,
+        checkedContent = {
             Box(
                 modifier =
-                    Modifier
-                        .size(RADIO_DOT_SIZE)
+                    modifier
+                        .size(RADIO_SIZE)
                         .clip(CircleShape)
-                        .background(ZashiColors.Surfaces.bgPrimary)
+                        .background(ZashiColors.Text.textPrimary),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier =
+                        Modifier
+                            .size(RADIO_DOT_SIZE)
+                            .clip(CircleShape)
+                            .background(ZashiColors.Surfaces.bgPrimary)
+                )
+            }
+        },
+        uncheckedContent = {
+            Box(
+                modifier =
+                    modifier
+                        .size(RADIO_SIZE)
+                        .clip(CircleShape)
+                        .border(UNCHECKED_RADIO_STROKE_WIDTH, ZashiColors.Checkboxes.boxOffStroke, CircleShape)
             )
         }
-    }
+    )
 }
