@@ -48,7 +48,7 @@ import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.exchangerate.settings.Option
+import co.electriccoin.zcash.ui.screen.theme.ThemeOption
 
 private val CONTENT_TOP_SPACING = 28.dp
 
@@ -129,7 +129,7 @@ internal fun ThemeSettingsView(state: ThemeSettingsState) {
                     if (index > 0) {
                         Spacer(modifier = Modifier.height(12.dp))
                     }
-                    Option(
+                    ThemeOption(
                         modifier = Modifier.fillMaxWidth(),
                         isChecked = option.isChecked,
                         title = stringResource(option.mode.titleRes),

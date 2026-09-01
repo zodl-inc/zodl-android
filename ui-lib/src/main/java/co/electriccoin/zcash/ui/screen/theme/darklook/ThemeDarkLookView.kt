@@ -24,7 +24,7 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.exchangerate.settings.Option
+import co.electriccoin.zcash.ui.screen.theme.ThemeOption
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,7 +74,7 @@ private fun BottomSheetContent(
             if (index > 0) {
                 Spacer(12.dp)
             }
-            Option(
+            ThemeOption(
                 modifier = Modifier.fillMaxWidth(),
                 isChecked = option.isChecked,
                 title = stringResource(option.titleRes),
