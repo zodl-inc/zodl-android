@@ -12,7 +12,7 @@ internal val OledZashiColorsInternal =
                 bgTertiary = Shark.`900`,
                 bgQuaternary = Shark.`800`,
                 strokePrimary = Shark.`800`,
-                strokeSecondary = Shark.`900`,
+                strokeSecondary = Shark.`800`,
                 bgHide = Base.Black,
                 divider = Shark.`950`
             ),
