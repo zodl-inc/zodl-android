@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.error
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,6 +12,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -21,8 +27,11 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiCardButton
+import co.electriccoin.zcash.ui.design.component.ZashiFrostedSheetHeader
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.rememberScreenModalBottomSheetState
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -38,6 +47,7 @@ fun SyncErrorView(
     ZashiScreenModalBottomSheet(
         state = state,
         sheetState = sheetState,
+        dragHandle = null,
         content = { state, contentPadding ->
             SyncErrorContent(
                 state = state,
@@ -54,54 +64,72 @@ fun SyncErrorContent(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier =
-            modifier
-                .verticalScroll(rememberScrollState())
-                .padding(
-                    start = 24.dp,
-                    end = 24.dp,
-                    bottom = contentPadding.calculateBottomPadding()
-                ),
-    ) {
-        Image(
-            painter = painterResource(R.drawable.ic_swap_quote_error),
-            contentDescription = null,
-        )
-        Spacer(12.dp)
-        Text(
-            text = stringResource(co.electriccoin.zcash.ui.design.R.string.coinVote_error_title),
-            color = ZashiColors.Text.textPrimary,
-            style = ZashiTypography.header6,
-            fontWeight = FontWeight.SemiBold
-        )
-        Spacer(12.dp)
-        Text(
-            text = stringResource(R.string.sync_error_message),
-            color = ZashiColors.Text.textTertiary,
-            style = ZashiTypography.textSm
-        )
-        Spacer(24.dp)
-        ZashiCardButton(
-            modifier = Modifier.fillMaxWidth(),
-            state = state.tryAgain
-        )
-        Spacer(8.dp)
-        ZashiCardButton(
-            modifier = Modifier.fillMaxWidth(),
-            state = state.switchServer
-        )
-        state.disableTor?.let { disableTorButton ->
+    val hazeState = rememberZashiFrostState()
+    var headerHeight by remember { mutableStateOf(0.dp) }
+    Box(modifier = modifier) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .zashiFrostSource(hazeState)
+                    .verticalScroll(rememberScrollState())
+                    .padding(
+                        start = 24.dp,
+                        end = 24.dp,
+                        top = headerHeight,
+                        bottom = contentPadding.calculateBottomPadding()
+                    ),
+        ) {
+            Text(
+                text = stringResource(R.string.sync_error_message),
+                color = ZashiColors.Text.textTertiary,
+                style = ZashiTypography.textSm
+            )
+            Spacer(24.dp)
+            ZashiCardButton(
+                modifier = Modifier.fillMaxWidth(),
+                state = state.tryAgain
+            )
             Spacer(8.dp)
             ZashiCardButton(
                 modifier = Modifier.fillMaxWidth(),
-                state = disableTorButton
+                state = state.switchServer
+            )
+            state.disableTor?.let { disableTorButton ->
+                Spacer(8.dp)
+                ZashiCardButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    state = disableTorButton
+                )
+            }
+            Spacer(28.dp)
+            ZashiButton(
+                modifier = Modifier.fillMaxWidth(),
+                state = state.support
             )
         }
-        Spacer(28.dp)
-        ZashiButton(
-            modifier = Modifier.fillMaxWidth(),
-            state = state.support
+
+        ZashiFrostedSheetHeader(
+            hazeState = hazeState,
+            modifier = Modifier.align(Alignment.TopCenter),
+            onHeightChanged = { headerHeight = it },
+            title = {
+                Column(
+                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp)
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_swap_quote_error),
+                        contentDescription = null,
+                    )
+                    Spacer(12.dp)
+                    Text(
+                        text = stringResource(co.electriccoin.zcash.ui.design.R.string.coinVote_error_title),
+                        color = ZashiColors.Text.textPrimary,
+                        style = ZashiTypography.header6,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
         )
     }
 }

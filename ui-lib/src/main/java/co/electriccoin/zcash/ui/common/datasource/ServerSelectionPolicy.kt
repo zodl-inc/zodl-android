@@ -18,3 +18,13 @@ internal fun resolveIsServerSelectionAutomatic(
     currentEndpoint: LightWalletEndpoint?,
     knownEndpoints: List<LightWalletEndpoint>
 ): Boolean = isAutomaticPreference ?: (currentEndpoint == null || currentEndpoint in knownEndpoints)
+
+/**
+ * Whether [endpoint] is a custom, non-bundled endpoint rather than one of [knownEndpoints]. Shared by
+ * [co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository] and
+ * [co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerVM] so they can never disagree.
+ */
+internal fun resolveIsEndpointCustom(
+    endpoint: LightWalletEndpoint,
+    knownEndpoints: List<LightWalletEndpoint>
+): Boolean = endpoint !in knownEndpoints

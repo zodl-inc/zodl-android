@@ -39,8 +39,10 @@ import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.PressMorphDefaults
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.pressMorph
 import co.electriccoin.zcash.ui.design.util.stringRes
 
 @Suppress("LongParameterList", "LongMethod")
@@ -56,14 +58,17 @@ fun ZashiRadioButton(
 ) {
     val haptic = LocalHapticFeedback.current
 
+    val interactionSource = remember { MutableInteractionSource() }
+
     Row(
         modifier =
             modifier
+                .pressMorph(interactionSource, PressMorphDefaults.PRESSED_SCALE_SUBTLE)
                 .clip(RoundedCornerShape(12.dp))
                 .clickable(
                     enabled = state.isEnabled,
                     indication = if (isRippleEnabled) ripple() else null,
-                    interactionSource = remember { MutableInteractionSource() },
+                    interactionSource = interactionSource,
                     onClick =
                         if (state.hapticFeedbackType != null) {
                             {

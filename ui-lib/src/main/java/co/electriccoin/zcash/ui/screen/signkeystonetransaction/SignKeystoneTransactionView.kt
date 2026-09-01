@@ -7,11 +7,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
@@ -42,6 +45,10 @@ import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.listitem.BaseListItem
 import co.electriccoin.zcash.ui.design.component.listitem.ZashiListItemDefaults
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -57,28 +64,49 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun SignKeystoneTransactionView(state: SignKeystoneTransactionState) {
     DisableScreenTimeout()
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
                 title = state.barTitle.getValue(),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    ),
                 navigationAction = {
                     ZashiTopAppBarBackNavigation(onBack = state.onBack)
                 }
             )
+        },
+        bottomBar = {
+            BottomSection(
+                state = state,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedFooter(hazeState)
+                        .padding(horizontal = ZashiDimensions.Spacing.spacing3xl)
+                        .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
+                        .padding(bottom = ZashiDimensions.Spacing.spacingMd)
+            )
         }
     ) {
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .scaffoldPadding(it)
+                    .zashiFrostSource(hazeState)
         ) {
             Column(
                 modifier =
                     Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
+                        .fillMaxSize()
                         .verticalScroll(rememberScrollState())
+                        .scaffoldPadding(it)
                         .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
             ) {
                 ZashiAccountInfoListItem(
@@ -107,14 +135,6 @@ fun SignKeystoneTransactionView(state: SignKeystoneTransactionState) {
                 )
                 Spacer(Modifier.height(32.dp))
             }
-            BottomSection(
-                state = state,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
-                        .padding(bottom = ZashiDimensions.Spacing.spacingMd)
-            )
         }
     }
 }
@@ -216,6 +236,7 @@ private fun BottomSection(
             modifier = Modifier.fillMaxWidth(),
             state = state.positiveButton
         )
+        Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
     }
 }
 

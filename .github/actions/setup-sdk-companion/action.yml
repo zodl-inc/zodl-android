@@ -1,7 +1,7 @@
 name: 'Companion SDK Build (commit-pinned)'
 description: >-
   If SDK_COMMIT_PIN is set in gradle.properties, checks out that exact commit of
-  zcash/zcash-android-wallet-sdk, installs its Rust/NDK toolchain, and points Gradle's
+  zodl-inc/zodl-android-wallet-sdk, installs its Rust/NDK toolchain, and points Gradle's
   composite build at it via ORG_GRADLE_PROJECT_SDK_INCLUDED_BUILD_PATH — so a co-developed
   app PR can build/lint/test against unreleased SDK changes without waiting on a Maven
   publish. Supported on main, maint/* branches, and branches targeting either. No-ops (does
@@ -30,7 +30,7 @@ runs:
       if: steps.pin.outputs.commit != ''
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       with:
-        repository: zcash/zcash-android-wallet-sdk
+        repository: zodl-inc/zodl-android-wallet-sdk
         ref: ${{ steps.pin.outputs.commit }}
         path: .sdk-companion
         fetch-depth: 1
@@ -86,4 +86,4 @@ runs:
         # since this env var reaches only the companion build's tooling classpath
         # resolution, not the app's own dependency locking (if any).
         echo "ORG_GRADLE_PROJECT_ZCASH_IS_DEPENDENCY_LOCKING_ENABLED=false" >> "$GITHUB_ENV"
-        echo "::notice::Building against zcash-android-wallet-sdk@${{ steps.pin.outputs.commit }} (SDK_COMMIT_PIN), not the published Maven artifact."
+        echo "::notice::Building against zodl-android-wallet-sdk@${{ steps.pin.outputs.commit }} (SDK_COMMIT_PIN), not the published Maven artifact."

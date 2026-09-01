@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.transactionfilters
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -18,6 +19,11 @@ import androidx.compose.material3.SheetState
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -29,9 +35,12 @@ import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiChipButton
 import co.electriccoin.zcash.ui.design.component.ZashiChipButtonDefaults
+import co.electriccoin.zcash.ui.design.component.ZashiFrostedSheetHeader
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.rememberModalBottomSheetState
 import co.electriccoin.zcash.ui.design.component.rememberScreenModalBottomSheetState
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -47,6 +56,7 @@ internal fun TransactionFiltersView(
     ZashiScreenModalBottomSheet(
         state = state,
         sheetState = sheetState,
+        dragHandle = null,
         content = { state, contentPadding ->
             BottomSheetContent(
                 state = state,
@@ -63,84 +73,98 @@ private fun BottomSheetContent(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier =
-            modifier
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = contentPadding.calculateBottomPadding())
-    ) {
-        Text(
-            modifier = Modifier.padding(horizontal = 24.dp),
-            text = stringResource(R.string.filter_title),
-            style = ZashiTypography.textXl,
-            fontWeight = FontWeight.SemiBold,
-            color = ZashiColors.Text.textPrimary
-        )
+    val hazeState = rememberZashiFrostState()
+    var headerHeight by remember { mutableStateOf(0.dp) }
+    Box(modifier = modifier) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .zashiFrostSource(hazeState)
+                    .verticalScroll(rememberScrollState())
+                    .padding(
+                        top = headerHeight,
+                        bottom = contentPadding.calculateBottomPadding()
+                    )
+        ) {
+            if (state == null) {
+                CircularScreenProgressIndicator()
+            } else {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    state.filters.forEach { filter ->
+                        ZashiChipButton(
+                            state =
+                                ChipButtonState(
+                                    endIcon = if (filter.isSelected) R.drawable.ic_close_small else null,
+                                    onClick = filter.onClick,
+                                    text = filter.text,
+                                ),
+                            shape = CircleShape,
+                            border =
+                                BorderStroke(1.dp, ZashiColors.Btns.Secondary.btnSecondaryBorder)
+                                    .takeIf { filter.isSelected },
+                            color =
+                                if (filter.isSelected) {
+                                    ZashiColors.Btns.Secondary.btnSecondaryBg
+                                } else {
+                                    ZashiChipButtonDefaults.color
+                                },
+                            contentPadding =
+                                if (filter.isSelected) {
+                                    PaddingValues(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp)
+                                } else {
+                                    PaddingValues(horizontal = 16.dp, vertical = 10.dp)
+                                },
+                            endIconSpacer = 10.dp
+                        )
+                    }
+                }
 
-        Spacer(Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-        if (state == null) {
-            CircularScreenProgressIndicator()
-        } else {
-            FlowRow(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                state.filters.forEach { filter ->
-                    ZashiChipButton(
-                        state =
-                            ChipButtonState(
-                                endIcon = if (filter.isSelected) R.drawable.ic_close_small else null,
-                                onClick = filter.onClick,
-                                text = filter.text,
-                            ),
-                        shape = CircleShape,
-                        border =
-                            BorderStroke(1.dp, ZashiColors.Btns.Secondary.btnSecondaryBorder)
-                                .takeIf { filter.isSelected },
-                        color =
-                            if (filter.isSelected) {
-                                ZashiColors.Btns.Secondary.btnSecondaryBg
-                            } else {
-                                ZashiChipButtonDefaults.color
-                            },
-                        contentPadding =
-                            if (filter.isSelected) {
-                                PaddingValues(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 10.dp)
-                            } else {
-                                PaddingValues(horizontal = 16.dp, vertical = 10.dp)
-                            },
-                        endIconSpacer = 10.dp
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ZashiButton(
+                        state = state.secondaryButton,
+                        modifier = Modifier.weight(1f),
+                        defaultPrimaryColors =
+                            ZashiButtonDefaults.secondaryColors(
+                                borderColor = ZashiColors.Btns.Secondary.btnSecondaryBorder
+                            )
+                    )
+
+                    ZashiButton(
+                        state = state.primaryButton,
+                        modifier = Modifier.weight(1f),
+                        defaultPrimaryColors = ZashiButtonDefaults.primaryColors()
                     )
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                ZashiButton(
-                    state = state.secondaryButton,
-                    modifier = Modifier.weight(1f),
-                    defaultPrimaryColors =
-                        ZashiButtonDefaults.secondaryColors(
-                            borderColor = ZashiColors.Btns.Secondary.btnSecondaryBorder
-                        )
-                )
-
-                ZashiButton(
-                    state = state.primaryButton,
-                    modifier = Modifier.weight(1f),
-                    defaultPrimaryColors = ZashiButtonDefaults.primaryColors()
+        ZashiFrostedSheetHeader(
+            hazeState = hazeState,
+            modifier = Modifier.align(Alignment.TopCenter),
+            onHeightChanged = { headerHeight = it },
+            title = {
+                Text(
+                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+                    text = stringResource(R.string.filter_title),
+                    style = ZashiTypography.textXl,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ZashiColors.Text.textPrimary
                 )
             }
-        }
+        )
     }
 }
 

@@ -227,6 +227,8 @@ private fun createViewModel(
 
             override suspend fun isServerAutomatic() = false
 
+            override suspend fun isServerCustom() = false
+
             override fun init() = Unit
         }
     return ChooseServerVM(

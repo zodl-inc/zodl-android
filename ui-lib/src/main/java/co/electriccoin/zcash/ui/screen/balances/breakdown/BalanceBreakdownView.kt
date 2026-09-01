@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.balances.breakdown
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -22,8 +28,11 @@ import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.StyledBalance
 import co.electriccoin.zcash.ui.design.component.StyledBalanceDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiButton
+import co.electriccoin.zcash.ui.design.component.ZashiFrostedSheetHeader
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.rememberScreenModalBottomSheetState
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.balances.LocalBalancesAvailable
@@ -42,6 +51,7 @@ fun BalanceBreakdownView(
     ZashiScreenModalBottomSheet(
         state = state,
         sheetState = sheetState,
+        dragHandle = null,
         content = { state, contentPadding ->
             BottomSheetContent(state, contentPadding, modifier = Modifier.weight(1f, false))
         },
@@ -54,51 +64,68 @@ private fun BottomSheetContent(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier =
-            modifier
-                .verticalScroll(rememberScrollState())
-                .padding(
-                    start = 24.dp,
-                    end = 24.dp,
-                    bottom = contentPadding.calculateBottomPadding()
-                )
-    ) {
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = state.title.getValue(),
-            color = ZashiColors.Text.textPrimary,
-            style = ZashiTypography.textXl,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Spacer(4.dp)
-        Text(
-            modifier = Modifier.fillMaxWidth(),
-            text = state.subtitle.getValue(),
-            color = ZashiColors.Text.textTertiary,
-            style = ZashiTypography.textSm,
-        )
-        Spacer(24.dp)
-        BalanceCard(state.total, modifier = Modifier.fillMaxWidth())
-        Spacer(8.dp)
-        state.pools.chunked(2).forEachIndexed { index, row ->
-            if (index != 0) {
-                Spacer(8.dp)
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { pool ->
-                    BalanceCard(pool, modifier = Modifier.weight(1f))
+    val hazeState = rememberZashiFrostState()
+    var headerHeight by remember { mutableStateOf(0.dp) }
+    Box(modifier = modifier) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .zashiFrostSource(hazeState)
+                    .verticalScroll(rememberScrollState())
+                    .padding(
+                        start = 24.dp,
+                        end = 24.dp,
+                        top = headerHeight,
+                        bottom = contentPadding.calculateBottomPadding()
+                    )
+        ) {
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = state.subtitle.getValue(),
+                color = ZashiColors.Text.textTertiary,
+                style = ZashiTypography.textSm,
+            )
+            Spacer(24.dp)
+            BalanceCard(state.total, modifier = Modifier.fillMaxWidth())
+            Spacer(8.dp)
+            state.pools.chunked(2).forEachIndexed { index, row ->
+                if (index != 0) {
+                    Spacer(8.dp)
                 }
-                // Keep single-item rows left-aligned with a matching empty cell.
-                if (row.size == 1) {
-                    Spacer(1f)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { pool ->
+                        BalanceCard(pool, modifier = Modifier.weight(1f))
+                    }
+                    // Keep single-item rows left-aligned with a matching empty cell.
+                    if (row.size == 1) {
+                        Spacer(1f)
+                    }
                 }
             }
+            Spacer(32.dp)
+            ZashiButton(
+                modifier = Modifier.fillMaxWidth(),
+                state = state.positive
+            )
         }
-        Spacer(32.dp)
-        ZashiButton(
-            modifier = Modifier.fillMaxWidth(),
-            state = state.positive
+
+        ZashiFrostedSheetHeader(
+            hazeState = hazeState,
+            modifier = Modifier.align(Alignment.TopCenter),
+            onHeightChanged = { headerHeight = it },
+            title = {
+                Text(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(start = 24.dp, end = 24.dp, bottom = 4.dp),
+                    text = state.title.getValue(),
+                    color = ZashiColors.Text.textPrimary,
+                    style = ZashiTypography.textXl,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
         )
     }
 }

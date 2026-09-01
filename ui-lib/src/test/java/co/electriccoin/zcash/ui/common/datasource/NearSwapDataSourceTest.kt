@@ -78,6 +78,26 @@ class NearSwapDataSourceTest {
         }
 
     @Test
+    fun getSupportedTokensKeepsDistinctContractAddressesWithMatchingSymbolChainAndDecimals() =
+        runBlocking {
+            // Regression test: native vs. bridged USDC on the same chain share symbol, blockchain,
+            // and decimals, but are genuinely different tokens once contractAddress is populated --
+            // the dedup key must not collapse them into one (MOB-1751 review finding).
+            coEvery { nearApiProvider.getSupportedTokens() } returns
+                listOf(
+                    token(assetId = "u1", symbol = "usdc", blockchain = "base", decimals = 6, price = "1")
+                        .copy(contractAddress = "0xnative"),
+                    token(assetId = "u2", symbol = "usdc", blockchain = "base", decimals = 6, price = "1")
+                        .copy(contractAddress = "0xbridged"),
+                )
+
+            val result = dataSource.getSupportedTokens()
+
+            assertEquals(2, result.size)
+            assertEquals(setOf("0xnative", "0xbridged"), result.map { it.contractAddress }.toSet())
+        }
+
+    @Test
     fun requestQuoteBuildsNormalizedRequest() =
         runBlocking {
             val request = slot<QuoteRequest>()

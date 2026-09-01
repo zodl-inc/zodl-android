@@ -51,12 +51,14 @@ import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
 import co.electriccoin.zcash.ui.design.component.listitem.ListItemState
 import co.electriccoin.zcash.ui.design.component.listitem.ZashiListItem
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.scaffoldScrollPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.common.CommonEmptyScreen
 import co.electriccoin.zcash.ui.screen.home.common.CommonErrorScreen
@@ -70,10 +72,30 @@ fun SwapAssetPickerView(state: SwapAssetPickerState?) {
         state = state,
         dragHandle = null,
         content = { innerState, _ ->
+            val hazeState = rememberZashiFrostState()
             TransparentBgScaffold(
                 modifier = Modifier.fillMaxSize(),
                 topBar = {
-                    TopAppBar(innerState, windowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp))
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .zashiFrostedHeader(
+                                    hazeState = hazeState,
+                                    frostColor = ZashiModalBottomSheetDefaults.ContainerColor,
+                                    fallbackColor = ZashiModalBottomSheetDefaults.ContainerColor
+                                )
+                    ) {
+                        TopAppBar(innerState, windowInsets = WindowInsets(0.dp, 0.dp, 0.dp, 0.dp))
+
+                        SearchTextField(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp),
+                            innerState = innerState
+                        )
+                    }
                 }
             ) { padding ->
                 val kbController = LocalSoftwareKeyboardController.current
@@ -96,31 +118,20 @@ fun SwapAssetPickerView(state: SwapAssetPickerState?) {
                     }
                 }
 
-                Column(
+                Box(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .scaffoldScrollPadding(
-                                paddingValues = padding,
-                                top = padding.calculateTopPadding(),
-                                bottom = 0.dp,
-                                start = 0.dp,
-                                end = 0.dp,
-                            )
+                            .zashiFrostSource(hazeState)
                 ) {
-                    SearchTextField(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 24.dp),
-                        innerState = innerState
-                    )
-
                     when (innerState.data) {
                         is SwapAssetPickerDataState.Error -> {
                             CommonErrorScreen(
                                 state = innerState.data,
-                                modifier = Modifier.fillMaxSize()
+                                modifier =
+                                    Modifier
+                                        .fillMaxSize()
+                                        .padding(top = padding.calculateTopPadding())
                             )
                         }
 
@@ -130,17 +141,22 @@ fun SwapAssetPickerView(state: SwapAssetPickerState?) {
                                 modifier =
                                     Modifier
                                         .fillMaxSize()
-                                        .padding(top = 20.dp),
+                                        .padding(top = padding.calculateTopPadding() + 20.dp),
                                 contentPaddingValues = PaddingValues(24.dp, 12.dp),
                             )
                         }
 
                         is SwapAssetPickerDataState.Success -> {
                             if (innerState.data.items.isEmpty()) {
-                                CommonEmptyScreen(modifier = Modifier.fillMaxSize())
+                                CommonEmptyScreen(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxSize()
+                                            .padding(top = padding.calculateTopPadding())
+                                )
                             } else {
                                 Success(
-                                    modifier = Modifier.weight(1f),
+                                    modifier = Modifier.fillMaxSize(),
                                     state = innerState.data,
                                     lazyListState = lazyListState,
                                     contentPadding = padding
@@ -164,7 +180,11 @@ private fun Success(
     LazyColumn(
         modifier = modifier,
         state = lazyListState,
-        contentPadding = PaddingValues(top = 20.dp, bottom = contentPadding.calculateBottomPadding()),
+        contentPadding =
+            PaddingValues(
+                top = contentPadding.calculateTopPadding() + 20.dp,
+                bottom = contentPadding.calculateBottomPadding()
+            ),
     ) {
         itemsIndexed(
             items = state.items,
@@ -257,7 +277,10 @@ private fun TopAppBar(
                 modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
             )
         },
-        colors = ZcashTheme.colors.topAppBarColors.copyColors(containerColor = Color.Transparent),
+        colors =
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
         windowInsets = windowInsets
     )
 }

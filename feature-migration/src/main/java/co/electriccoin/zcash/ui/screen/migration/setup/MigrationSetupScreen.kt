@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -50,6 +51,9 @@ import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -78,83 +82,99 @@ fun MigrationSetupScreen() {
 
 @Composable
 fun MigrationSetupView(state: MigrationSetupState) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    ),
                 navigationAction = { ZashiTopAppBarBackNavigation(onBack = state.onBack) },
             )
         }
     ) { padding ->
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .scaffoldPadding(padding),
+                    .zashiFrostSource(hazeState)
         ) {
-            WalletHeaderIcons(
-                state =
-                    WalletHeaderIconsState(
-                        isKeystone = state.isKeystone,
-                        badgeIcon = R.drawable.ic_migration_coins_swap,
-                    )
-            )
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = stringRes(DesignR.string.migrationSetup_title).getValue(),
-                style = ZashiTypography.header6,
-                fontWeight = FontWeight.SemiBold,
-                color = ZashiColors.Text.textPrimary,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text =
-                    buildMigrationBodyText(
-                        zecAmount = state.orchardBalance.getValue(),
-                        fiatAmount = state.fiatBalance?.getValue(),
-                        emphasisColor = ZashiColors.Text.textPrimary,
-                    ),
-                style = ZashiTypography.textSm,
-                color = ZashiColors.Text.textTertiary,
-            )
-            Text(
-                text = stringRes(DesignR.string.migrationSetup_findOutMore).getValue(),
-                style = ZashiTypography.textSm.copy(textDecoration = TextDecoration.Underline),
-                fontWeight = FontWeight.Medium,
-                color = ZashiColors.Text.textPrimary,
-                modifier = Modifier.clickable(onClick = state.onFindOutMore),
-            )
-            Spacer(Modifier.height(24.dp))
-            MigrationModeSelector(
-                selected = state.mode,
-                onSelect = state.onModeChange,
-            )
-            Spacer(Modifier.height(20.dp))
-            Spacer(Modifier.weight(1f))
-            when (state.mode) {
-                MigrationMode.IMMEDIATE -> {
-                    MigrationDisclaimerRow(
-                        text = stringRes(DesignR.string.migrationSetup_immediateWarning).getValue(),
-                        tint = ZashiColors.Utility.WarningYellow.utilityOrange700,
-                    )
-                }
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .scaffoldPadding(padding),
+            ) {
+                WalletHeaderIcons(
+                    state =
+                        WalletHeaderIconsState(
+                            isKeystone = state.isKeystone,
+                            badgeIcon = R.drawable.ic_migration_coins_swap,
+                        )
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(
+                    text = stringRes(DesignR.string.migrationSetup_title).getValue(),
+                    style = ZashiTypography.header6,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ZashiColors.Text.textPrimary,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text =
+                        buildMigrationBodyText(
+                            zecAmount = state.orchardBalance.getValue(),
+                            fiatAmount = state.fiatBalance?.getValue(),
+                            emphasisColor = ZashiColors.Text.textPrimary,
+                        ),
+                    style = ZashiTypography.textSm,
+                    color = ZashiColors.Text.textTertiary,
+                )
+                Text(
+                    text = stringRes(DesignR.string.migrationSetup_findOutMore).getValue(),
+                    style = ZashiTypography.textSm.copy(textDecoration = TextDecoration.Underline),
+                    fontWeight = FontWeight.Medium,
+                    color = ZashiColors.Text.textPrimary,
+                    modifier = Modifier.clickable(onClick = state.onFindOutMore),
+                )
+                Spacer(Modifier.height(24.dp))
+                MigrationModeSelector(
+                    selected = state.mode,
+                    onSelect = state.onModeChange,
+                )
+                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.weight(1f))
+                when (state.mode) {
+                    MigrationMode.IMMEDIATE -> {
+                        MigrationDisclaimerRow(
+                            text = stringRes(DesignR.string.migrationSetup_immediateWarning).getValue(),
+                            tint = ZashiColors.Utility.WarningYellow.utilityOrange700,
+                        )
+                    }
 
-                MigrationMode.AUTOMATIC -> {
-                    MigrationDisclaimerRow(
-                        text = stringRes(DesignR.string.migrationSetup_automaticWarning).getValue(),
-                        tint = ZashiColors.Text.textTertiary,
-                    )
+                    MigrationMode.AUTOMATIC -> {
+                        MigrationDisclaimerRow(
+                            text = stringRes(DesignR.string.migrationSetup_automaticWarning).getValue(),
+                            tint = ZashiColors.Text.textTertiary,
+                        )
+                    }
                 }
+                Spacer(Modifier.height(20.dp))
+                ZashiButton(
+                    state =
+                        ButtonState(
+                            text = stringRes(DesignR.string.general_next),
+                            onClick = state.onConfirm,
+                        ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
-            Spacer(Modifier.height(20.dp))
-            ZashiButton(
-                state =
-                    ButtonState(
-                        text = stringRes(DesignR.string.general_next),
-                        onClick = state.onConfirm,
-                    ),
-                modifier = Modifier.fillMaxWidth(),
-            )
         }
     }
 }

@@ -56,11 +56,14 @@ import co.electriccoin.zcash.ui.design.component.ZashiSeedTextField
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.rememberSeedTextFieldHandle
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
-import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import java.util.Locale
@@ -83,19 +86,46 @@ fun RestoreSeedView(
         wasKeyboardOpen = isKeyboardOpen
     }
 
+    val hazeState = rememberZashiFrostState()
+
     BlankBgScaffold(
-        topBar = { AppBar(state) },
-        bottomBar = { BottomBar(state, suggestionsState, handle) },
-        content = { padding ->
-            Content(
+        topBar = {
+            AppBar(
                 state = state,
                 modifier =
                     Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .scaffoldPadding(padding),
-                handle = handle
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState)
             )
+        },
+        bottomBar = {
+            BottomBar(
+                state = state,
+                suggestionsState = suggestionsState,
+                handle = handle,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedFooter(hazeState)
+            )
+        },
+        content = { padding ->
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .zashiFrostSource(hazeState)
+            ) {
+                Content(
+                    state = state,
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .scaffoldPadding(padding),
+                    handle = handle
+                )
+            }
         }
     )
 }
@@ -139,9 +169,13 @@ private fun Content(
 }
 
 @Composable
-private fun AppBar(state: RestoreSeedState) {
+private fun AppBar(
+    state: RestoreSeedState,
+    modifier: Modifier = Modifier
+) {
     ZashiSmallTopAppBar(
         title = stringResource(R.string.root_existingWallet_restore),
+        modifier = modifier,
         navigationAction = {
             ZashiTopAppBarBackNavigation(
                 onBack = state.onBack,
@@ -153,10 +187,9 @@ private fun AppBar(state: RestoreSeedState) {
             Spacer(Modifier.width(20.dp))
         },
         colors =
-            ZcashTheme.colors.topAppBarColors orDark
-                ZcashTheme.colors.topAppBarColors.copyColors(
-                    containerColor = Color.Transparent
-                ),
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
     )
 }
 
@@ -202,8 +235,8 @@ private fun BottomBar(
             )
         } else {
             Surface(
-                Modifier.padding(top = 8.dp),
-                color = ZashiColors.Surfaces.bgPrimary
+                modifier.padding(top = 8.dp),
+                color = Color.Transparent
             ) {
                 LazyRow(
                     modifier =

@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.design.component
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -43,6 +44,7 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColorsInternal
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.pressMorph
 import co.electriccoin.zcash.ui.design.util.steppedRotation
 import co.electriccoin.zcash.ui.design.util.stringRes
 
@@ -165,6 +167,8 @@ fun ZashiButton(
 
     val haptic = LocalHapticFeedback.current
 
+    val interactionSource = remember { MutableInteractionSource() }
+
     Button(
         onClick =
             if (state.hapticFeedbackType != null) {
@@ -175,7 +179,8 @@ fun ZashiButton(
             } else {
                 state.onClick
             },
-        modifier = modifier,
+        modifier = modifier.pressMorph(interactionSource),
+        interactionSource = interactionSource,
         shape = shape,
         contentPadding = contentPadding,
         enabled = state.isEnabled,

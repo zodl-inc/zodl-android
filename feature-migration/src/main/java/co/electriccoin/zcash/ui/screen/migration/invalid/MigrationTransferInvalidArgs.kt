@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -30,6 +31,9 @@ import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -60,102 +64,118 @@ fun MigrationTransferInvalidScreen() {
 
 @Composable
 fun MigrationTransferInvalidView(state: MigrationTransferInvalidState) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    ),
                 navigationAction = { ZashiTopAppBarBackNavigation(onBack = state.onBack) },
             )
         }
     ) { padding ->
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .scaffoldPadding(padding),
+                    .zashiFrostSource(hazeState)
         ) {
-            // Same layout for both causes (spec §6.2/§6.3), only the title/body/first step differ:
-            // PLAN_UPDATE (§6.2) explains notes spent outside the migration flow invalidated the
-            // plan; TRANSFER_EXPIRED (§6.3) explains transfer(s) expired without executing (the app
-            // wasn't opened in time), naming the specific affected range.
-            val (title, body, firstStep) =
-                when (state.kind) {
-                    MigrationAttentionKind.PLAN_UPDATE -> {
-                        Triple(
-                            stringRes(DesignR.string.migrationTransferInvalid_planUpdateTitle).getValue(),
-                            stringRes(DesignR.string.migrationTransferInvalid_planUpdateBody).getValue(),
-                            stringRes(DesignR.string.migrationTransferInvalid_planUpdateFirstStep).getValue(),
-                        )
-                    }
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .scaffoldPadding(padding),
+            ) {
+                // Same layout for both causes (spec §6.2/§6.3), only the title/body/first step differ:
+                // PLAN_UPDATE (§6.2) explains notes spent outside the migration flow invalidated the
+                // plan; TRANSFER_EXPIRED (§6.3) explains transfer(s) expired without executing (the app
+                // wasn't opened in time), naming the specific affected range.
+                val (title, body, firstStep) =
+                    when (state.kind) {
+                        MigrationAttentionKind.PLAN_UPDATE -> {
+                            Triple(
+                                stringRes(DesignR.string.migrationTransferInvalid_planUpdateTitle).getValue(),
+                                stringRes(DesignR.string.migrationTransferInvalid_planUpdateBody).getValue(),
+                                stringRes(DesignR.string.migrationTransferInvalid_planUpdateFirstStep).getValue(),
+                            )
+                        }
 
-                    MigrationAttentionKind.TRANSFER_EXPIRED -> {
-                        val isPlural = state.remainingCount > 1
-                        Triple(
-                            stringRes(DesignR.string.migrationTransferInvalid_transferExpiredTitle).getValue(),
-                            stringRes(
-                                if (isPlural) {
-                                    DesignR.string.migrationTransferInvalid_transferExpiredBodyPlural
-                                } else {
-                                    DesignR.string.migrationTransferInvalid_transferExpiredBodySingular
-                                },
-                                state.invalidRange.getValue()
-                            ).getValue(),
-                            stringRes(
-                                if (isPlural) {
-                                    DesignR.string.migrationTransferInvalid_expiredStepLabelPlural
-                                } else {
-                                    DesignR.string.migrationTransferInvalid_expiredStepLabelSingular
-                                }
-                            ).getValue(),
-                        )
+                        MigrationAttentionKind.TRANSFER_EXPIRED -> {
+                            val isPlural = state.remainingCount > 1
+                            Triple(
+                                stringRes(DesignR.string.migrationTransferInvalid_transferExpiredTitle).getValue(),
+                                stringRes(
+                                    if (isPlural) {
+                                        DesignR.string.migrationTransferInvalid_transferExpiredBodyPlural
+                                    } else {
+                                        DesignR.string.migrationTransferInvalid_transferExpiredBodySingular
+                                    },
+                                    state.invalidRange.getValue()
+                                ).getValue(),
+                                stringRes(
+                                    if (isPlural) {
+                                        DesignR.string.migrationTransferInvalid_expiredStepLabelPlural
+                                    } else {
+                                        DesignR.string.migrationTransferInvalid_expiredStepLabelSingular
+                                    }
+                                ).getValue(),
+                            )
+                        }
                     }
-                }
-            Text(
-                text = title,
-                style = ZashiTypography.header6,
-                fontWeight = FontWeight.SemiBold,
-                color = ZashiColors.Text.textPrimary,
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = body,
-                style = ZashiTypography.textSm,
-                color = ZashiColors.Text.textTertiary,
-            )
-            Spacer(Modifier.height(24.dp))
-            Text(
-                text = stringRes(DesignR.string.migrationTransferInvalid_whatHappensNextTitle).getValue(),
-                style = ZashiTypography.textSm,
-                fontWeight = FontWeight.SemiBold,
-                color = ZashiColors.Text.textPrimary,
-            )
-            Spacer(Modifier.height(12.dp))
-            WhatHappensNextItem(
-                number = 1,
-                text = firstStep,
-            )
-            WhatHappensNextItem(
-                number = 2,
-                text = stringRes(DesignR.string.migrationTransferInvalid_remainingBalanceReproposed).getValue(),
-            )
-            WhatHappensNextItem(
-                number = 3,
-                text =
-                    stringRes(
-                        DesignR.string.migrationTransferInvalid_transfersDoneProgress,
-                        state.completedCount,
-                        state.totalCount
-                    ).getValue(),
-            )
-            Spacer(Modifier.weight(1f))
-            ZashiButton(
-                state =
-                    ButtonState(
-                        text = stringRes(DesignR.string.migration_common_continue),
-                        onClick = state.onContinue
-                    ),
-                modifier = Modifier.fillMaxWidth(),
-            )
+                Text(
+                    text = title,
+                    style = ZashiTypography.header6,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ZashiColors.Text.textPrimary,
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = body,
+                    style = ZashiTypography.textSm,
+                    color = ZashiColors.Text.textTertiary,
+                )
+                Spacer(Modifier.height(24.dp))
+                Text(
+                    text = stringRes(DesignR.string.migrationTransferInvalid_whatHappensNextTitle).getValue(),
+                    style = ZashiTypography.textSm,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ZashiColors.Text.textPrimary,
+                )
+                Spacer(Modifier.height(12.dp))
+                WhatHappensNextItem(
+                    number = 1,
+                    text = firstStep,
+                )
+                WhatHappensNextItem(
+                    number = 2,
+                    text = stringRes(DesignR.string.migrationTransferInvalid_remainingBalanceReproposed).getValue(),
+                )
+                WhatHappensNextItem(
+                    number = 3,
+                    text =
+                        stringRes(
+                            DesignR.string.migrationTransferInvalid_transfersDoneProgress,
+                            state.completedCount,
+                            state.totalCount
+                        ).getValue(),
+                )
+                Spacer(Modifier.weight(1f))
+                ZashiButton(
+                    state =
+                        ButtonState(
+                            text = stringRes(DesignR.string.migration_common_continue),
+                            onClick = state.onContinue
+                        ),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 }

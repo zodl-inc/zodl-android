@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.swap.slippage
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,16 +29,19 @@ import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiCard
 import co.electriccoin.zcash.ui.design.component.ZashiDisclaimer
 import co.electriccoin.zcash.ui.design.component.ZashiDisclaimerState
+import co.electriccoin.zcash.ui.design.component.ZashiModalBottomSheetDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.asScaffoldPaddingValues
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.styledStringResource
 import co.electriccoin.zcash.ui.screen.swap.slippage.SwapSlippageInfoState.Mode.HIGH
@@ -51,44 +55,64 @@ fun SwapSlippageView(state: SwapSlippageState?) {
         state = state,
         dragHandle = null,
         content = { innerState, _ ->
+            val hazeState = rememberZashiFrostState()
             TransparentBgScaffold(
                 modifier = Modifier.fillMaxSize(),
-                topBar = { TopAppBar(innerState) }
+                topBar = {
+                    TopAppBar(
+                        innerState = innerState,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .zashiFrostedHeader(
+                                    hazeState = hazeState,
+                                    frostColor = ZashiModalBottomSheetDefaults.ContainerColor,
+                                    fallbackColor = ZashiModalBottomSheetDefaults.ContainerColor
+                                )
+                    )
+                }
             ) { padding ->
-                Column(
+                Box(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(padding.asScaffoldPaddingValues())
+                            .zashiFrostSource(hazeState)
                 ) {
-                    Text(
-                        text = stringResource(R.string.swapAndPay_slippage),
-                        style = ZashiTypography.header6,
-                        fontWeight = FontWeight.SemiBold,
-                        color = ZashiColors.Text.textPrimary
-                    )
-                    Spacer(8.dp)
-                    Text(
-                        text = stringResource(R.string.swapAndPay_slippageDesc),
-                        style = ZashiTypography.textSm,
-                        color = ZashiColors.Text.textTertiary
-                    )
-                    Spacer(24.dp)
-                    SlippagePicker(state = innerState.picker)
-                    if (innerState.info != null) {
-                        Spacer(20.dp)
-                        SlippageInfoCard(innerState.info)
+                    Column(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
+                                .padding(padding.asScaffoldPaddingValues())
+                    ) {
+                        Text(
+                            text = stringResource(R.string.swapAndPay_slippage),
+                            style = ZashiTypography.header6,
+                            fontWeight = FontWeight.SemiBold,
+                            color = ZashiColors.Text.textPrimary
+                        )
+                        Spacer(8.dp)
+                        Text(
+                            text = stringResource(R.string.swapAndPay_slippageDesc),
+                            style = ZashiTypography.textSm,
+                            color = ZashiColors.Text.textTertiary
+                        )
+                        Spacer(24.dp)
+                        SlippagePicker(state = innerState.picker)
+                        if (innerState.info != null) {
+                            Spacer(20.dp)
+                            SlippageInfoCard(innerState.info)
+                        }
+                        Spacer(1f)
+                        innerState.warning?.let {
+                            ZashiDisclaimer(state = it)
+                        }
+                        Spacer(24.dp)
+                        ZashiButton(
+                            modifier = Modifier.fillMaxWidth(),
+                            state = innerState.primary
+                        )
                     }
-                    Spacer(1f)
-                    innerState.warning?.let {
-                        ZashiDisclaimer(state = it)
-                    }
-                    Spacer(24.dp)
-                    ZashiButton(
-                        modifier = Modifier.fillMaxWidth(),
-                        state = innerState.primary
-                    )
                 }
             }
         },
@@ -118,15 +142,22 @@ private fun SlippageInfoCard(state: SwapSlippageInfoState) {
 }
 
 @Composable
-private fun TopAppBar(innerState: SwapSlippageState) {
+private fun TopAppBar(
+    innerState: SwapSlippageState,
+    modifier: Modifier = Modifier
+) {
     ZashiSmallTopAppBar(
+        modifier = modifier,
         navigationAction = {
             ZashiTopAppBarCloseNavigation(
                 onBack = innerState.onBack,
                 modifier = Modifier.testTag(ZashiTopAppBarTags.BACK)
             )
         },
-        colors = ZcashTheme.colors.topAppBarColors.copyColors(containerColor = Color.Transparent),
+        colors =
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
     )
 }
 

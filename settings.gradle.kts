@@ -188,6 +188,7 @@ dependencyResolutionManagement {
             val keystoneVersion = extra["KEYSTONE_VERSION"].toString()
             val shimmerVersion = extra["SHIMMER_VERSION"].toString()
             val ktorVersion = extra["KTOR_VERSION"].toString()
+            val hazeVersion = extra["HAZE_VERSION"].toString()
 
             // Standalone versions
             version("flank", flankVersion)
@@ -258,6 +259,7 @@ dependencyResolutionManagement {
             library("flexa-spend", "co.flexa:spend:$flexaVersion")
             library("keystone", "com.github.KeystoneHQ:keystone-sdk-android:$keystoneVersion")
             library("compose-shimmer", "com.valentinilk.shimmer:compose-shimmer:$shimmerVersion")
+            library("haze", "dev.chrisbanes.haze:haze:$hazeVersion")
             library("ktor-bom", "io.ktor:ktor-bom:$ktorVersion")
             library("ktor-core", "io.ktor" ,"ktor-client-core").withoutVersion()
             library("ktor-okhttp", "io.ktor" ,"ktor-client-okhttp").withoutVersion()

@@ -2,10 +2,12 @@ package co.electriccoin.zcash.ui.screen.voting.proposaldetail
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -19,6 +21,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -33,6 +36,10 @@ import co.electriccoin.zcash.ui.design.component.VerticalSpacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiHorizontalDivider
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -55,27 +62,58 @@ fun VoteProposalDetailView(state: VoteProposalDetailState) {
     val isDescriptionExpanded = remember { mutableStateOf(false) }
     val isDescriptionOverflowing = remember { mutableStateOf(false) }
 
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             VoteAppBar(
                 title = state.positionLabel.getValue(),
                 onBack = state.onBack,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
                 useCloseNavigation = true,
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    )
             )
         },
+        bottomBar = {
+            if (!state.isLocked) {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .zashiFrostedFooter(hazeState)
+                            .navigationBarsPadding()
+                            .padding(
+                                start = ZashiDimensions.Spacing.spacing3xl,
+                                end = ZashiDimensions.Spacing.spacing3xl,
+                                bottom = ZashiDimensions.Spacing.spacing3xl
+                            )
+                ) {
+                    if (state.forumUrl != null) {
+                        ForumLinkRow(onClick = state.onForumClick)
+                        VerticalSpacer(16.dp)
+                    }
+                    NavigationButtons(state = state)
+                }
+            }
+        },
         content = { padding ->
-            Column(
+            Box(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .scaffoldPadding(padding)
+                        .zashiFrostSource(hazeState)
             ) {
                 Column(
                     modifier =
                         Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
+                            .fillMaxSize()
                             .verticalScroll(rememberScrollState())
+                            .scaffoldPadding(padding)
                 ) {
                     Text(
                         text = state.title.getValue(),
@@ -111,14 +149,6 @@ fun VoteProposalDetailView(state: VoteProposalDetailState) {
 
                     VerticalSpacer(24.dp)
                     VoteOptions(options = state.options)
-                }
-
-                if (!state.isLocked) {
-                    if (state.forumUrl != null) {
-                        ForumLinkRow(onClick = state.onForumClick)
-                        VerticalSpacer(16.dp)
-                    }
-                    NavigationButtons(state = state)
                 }
             }
         }

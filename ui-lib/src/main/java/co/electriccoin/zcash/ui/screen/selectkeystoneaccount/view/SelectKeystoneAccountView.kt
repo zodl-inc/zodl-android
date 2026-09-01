@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.selectkeystoneaccount.view
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +30,9 @@ import co.electriccoin.zcash.ui.design.component.listitem.checkbox.ZashiCheckbox
 import co.electriccoin.zcash.ui.design.component.listitem.checkbox.ZashiExpandedCheckboxListItem
 import co.electriccoin.zcash.ui.design.component.listitem.checkbox.ZashiExpandedCheckboxListItemState
 import co.electriccoin.zcash.ui.design.component.listitem.checkbox.ZashiExpandedCheckboxRowState
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -41,27 +46,43 @@ import co.electriccoin.zcash.ui.screen.selectkeystoneaccount.model.SelectKeyston
 
 @Composable
 fun SelectKeystoneAccountView(state: SelectKeystoneAccountState) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
                 navigationAction = {
                     ZashiTopAppBarCloseNavigation(state.onBackClick)
-                }
+                },
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    ),
             )
         }
     ) {
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .scaffoldScrollPadding(it)
+                    .zashiFrostSource(hazeState)
         ) {
-            HeaderSection(state = state, modifier = Modifier.padding(horizontal = 24.dp))
-            Spacer(Modifier.height(48.dp))
-            Content(state)
-            Spacer(Modifier.weight(1f))
-            BottomSection(state = state, modifier = Modifier.padding(horizontal = 24.dp))
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .scaffoldScrollPadding(it)
+            ) {
+                HeaderSection(state = state, modifier = Modifier.padding(horizontal = 24.dp))
+                Spacer(Modifier.height(48.dp))
+                Content(state)
+                Spacer(Modifier.weight(1f))
+                BottomSection(state = state, modifier = Modifier.padding(horizontal = 24.dp))
+            }
         }
     }
 }

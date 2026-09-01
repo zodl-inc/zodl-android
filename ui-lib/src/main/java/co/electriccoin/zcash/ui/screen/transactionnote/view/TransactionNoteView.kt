@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.transactionnote.view
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -17,8 +18,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -28,10 +32,13 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.TextFieldState
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
+import co.electriccoin.zcash.ui.design.component.ZashiFrostedSheetHeader
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiTextField
 import co.electriccoin.zcash.ui.design.component.rememberModalBottomSheetState
 import co.electriccoin.zcash.ui.design.component.rememberScreenModalBottomSheetState
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -52,6 +59,7 @@ internal fun TransactionNoteView(
     ZashiScreenModalBottomSheet(
         state = state,
         sheetState = sheetState,
+        dragHandle = null,
         content = { state, contentPadding ->
             val focusRequester = remember { FocusRequester() }
             BottomSheetContent(
@@ -76,79 +84,93 @@ private fun BottomSheetContent(
     focusRequester: FocusRequester,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier =
-            modifier
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = contentPadding.calculateBottomPadding())
-    ) {
-        Text(
-            modifier = Modifier.padding(horizontal = 24.dp),
-            text = state.title.getValue(),
-            style = ZashiTypography.textXl,
-            fontWeight = FontWeight.SemiBold,
-            color = ZashiColors.Text.textPrimary
-        )
-
-        Spacer(Modifier.height(28.dp))
-
-        ZashiTextField(
+    val hazeState = rememberZashiFrostState()
+    var headerHeight by remember { mutableStateOf(0.dp) }
+    Box(modifier = modifier) {
+        Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .focusRequester(focusRequester),
-            state = state.note,
-            minLines = 4,
-            placeholder = {
-                Text(
-                    text = "Write an optional note to describe this transaction...",
-                    style = ZashiTypography.textMd,
-                    color = ZashiColors.Inputs.Default.text
-                )
-            }
-        )
-
-        Spacer(Modifier.height(6.dp))
-        Text(
-            modifier = Modifier.padding(horizontal = 24.dp),
-            text = state.noteCharacters.getValue(),
-            style = ZashiTypography.textSm,
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .zashiFrostSource(hazeState)
+                    .verticalScroll(rememberScrollState())
+                    .padding(
+                        top = headerHeight,
+                        bottom = contentPadding.calculateBottomPadding()
+                    )
         ) {
-            state.negative?.let {
-                ZashiButton(
-                    state = it,
-                    modifier = Modifier.weight(1f),
-                    defaultPrimaryColors = ZashiButtonDefaults.destructive1Colors()
-                )
-            }
+            ZashiTextField(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                        .focusRequester(focusRequester),
+                state = state.note,
+                minLines = 4,
+                placeholder = {
+                    Text(
+                        text = "Write an optional note to describe this transaction...",
+                        style = ZashiTypography.textMd,
+                        color = ZashiColors.Inputs.Default.text
+                    )
+                }
+            )
 
-            state.secondaryButton?.let {
-                ZashiButton(
-                    state = it,
-                    modifier = Modifier.weight(1f),
-                    defaultPrimaryColors = ZashiButtonDefaults.tertiaryColors()
-                )
-            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                modifier = Modifier.padding(horizontal = 24.dp),
+                text = state.noteCharacters.getValue(),
+                style = ZashiTypography.textSm,
+            )
 
-            state.primaryButton?.let {
-                ZashiButton(
-                    state = it,
-                    modifier = Modifier.weight(1f),
-                    defaultPrimaryColors = ZashiButtonDefaults.primaryColors()
-                )
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                state.negative?.let {
+                    ZashiButton(
+                        state = it,
+                        modifier = Modifier.weight(1f),
+                        defaultPrimaryColors = ZashiButtonDefaults.destructive1Colors()
+                    )
+                }
+
+                state.secondaryButton?.let {
+                    ZashiButton(
+                        state = it,
+                        modifier = Modifier.weight(1f),
+                        defaultPrimaryColors = ZashiButtonDefaults.tertiaryColors()
+                    )
+                }
+
+                state.primaryButton?.let {
+                    ZashiButton(
+                        state = it,
+                        modifier = Modifier.weight(1f),
+                        defaultPrimaryColors = ZashiButtonDefaults.primaryColors()
+                    )
+                }
             }
         }
+
+        ZashiFrostedSheetHeader(
+            hazeState = hazeState,
+            modifier = Modifier.align(Alignment.TopCenter),
+            onHeightChanged = { headerHeight = it },
+            title = {
+                Text(
+                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 28.dp),
+                    text = state.title.getValue(),
+                    style = ZashiTypography.textXl,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ZashiColors.Text.textPrimary
+                )
+            }
+        )
     }
 }
 

@@ -7,6 +7,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,8 +34,10 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.PressMorphDefaults
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.pressMorph
 import co.electriccoin.zcash.ui.design.util.stringRes
 
 @Composable
@@ -69,12 +73,18 @@ fun ZashiCheckbox(
     contentPadding: PaddingValues = ZashiCheckboxDefaults.contentPadding,
     textStyles: CheckboxTextStyles = ZashiCheckboxDefaults.textStyles()
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+
     Row(
         modifier =
             modifier
+                .pressMorph(interactionSource, PressMorphDefaults.PRESSED_SCALE_SUBTLE)
                 .clip(RoundedCornerShape(8.dp))
-                .clickable(onClick = state.onClick)
-                .padding(contentPadding)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = ripple(),
+                    onClick = state.onClick
+                ).padding(contentPadding)
     ) {
         ZashiCheckboxIndicator(state.isChecked)
 

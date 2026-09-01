@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.resync.confirm
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,31 +25,49 @@ import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
-import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.withStyle
 
 @Composable
 fun ResyncConfirmView(state: ResyncConfirmState) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
-        topBar = { AppBar(state) },
-        bottomBar = {},
-        content = { padding ->
-            Content(
+        topBar = {
+            AppBar(
                 state = state,
                 modifier =
                     Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .scaffoldPadding(padding)
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState)
             )
+        },
+        bottomBar = {},
+        content = { padding ->
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .zashiFrostSource(hazeState)
+            ) {
+                Content(
+                    state = state,
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .scaffoldPadding(padding)
+                )
+            }
         }
     )
 }
@@ -108,8 +127,12 @@ private fun Content(
 }
 
 @Composable
-private fun AppBar(state: ResyncConfirmState) {
+private fun AppBar(
+    state: ResyncConfirmState,
+    modifier: Modifier = Modifier
+) {
     ZashiSmallTopAppBar(
+        modifier = modifier,
         title = state.title.getValue(),
         navigationAction = {
             ZashiTopAppBarBackNavigation(
@@ -118,10 +141,9 @@ private fun AppBar(state: ResyncConfirmState) {
             )
         },
         colors =
-            ZcashTheme.colors.topAppBarColors orDark
-                ZcashTheme.colors.topAppBarColors.copyColors(
-                    containerColor = Color.Transparent
-                ),
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
     )
 }
 

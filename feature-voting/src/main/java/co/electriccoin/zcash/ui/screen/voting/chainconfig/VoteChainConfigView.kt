@@ -32,7 +32,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -55,9 +58,14 @@ import co.electriccoin.zcash.ui.design.component.RadioButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
+import co.electriccoin.zcash.ui.design.component.ZashiFrostedSheetHeader
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiTextField
 import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -79,7 +87,8 @@ fun VoteChainConfigView(state: VoteChainConfigState?) {
     ZashiConfirmationBottomSheet(state = state.errorSheet)
     state.editor?.let { editor ->
         ZashiScreenModalBottomSheet(
-            onDismissRequest = editor.cancelButton.onClick
+            onDismissRequest = editor.cancelButton.onClick,
+            dragHandle = null
         ) { contentPadding ->
             EditorSheet(
                 state = editor,
@@ -87,51 +96,70 @@ fun VoteChainConfigView(state: VoteChainConfigState?) {
             )
         }
     }
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             VoteAppBar(
                 title = stringResource(R.string.coinVote_configSettings_screenTitle),
                 onBack = state.onBack,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    )
             )
         },
         bottomBar = {
             if (state.editor == null) {
-                BottomActions(state)
+                BottomActions(
+                    state = state,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .zashiFrostedFooter(hazeState)
+                )
             }
         },
         content = { padding ->
-            LazyColumn(
+            Box(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(top = padding.calculateTopPadding()),
-                contentPadding =
-                    PaddingValues(
-                        start = ZashiDimensions.Spacing.spacing3xl,
-                        top = ZashiDimensions.Spacing.spacingLg,
-                        end = ZashiDimensions.Spacing.spacing3xl,
-                        bottom = padding.calculateBottomPadding() + ZashiDimensions.Spacing.spacing3xl
-                    ),
-                verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing3xl)
+                        .zashiFrostSource(hazeState)
             ) {
-                item(key = "intro") {
-                    Intro()
-                }
-                item(key = "chains") {
-                    Column(verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacingMd)) {
-                        state.chains.forEach { item ->
-                            ChainItem(item)
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding =
+                        PaddingValues(
+                            start = ZashiDimensions.Spacing.spacing3xl,
+                            top = padding.calculateTopPadding() + ZashiDimensions.Spacing.spacingLg,
+                            end = ZashiDimensions.Spacing.spacing3xl,
+                            bottom = padding.calculateBottomPadding() + ZashiDimensions.Spacing.spacing3xl
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacing3xl)
+                ) {
+                    item(key = "intro") {
+                        Intro()
+                    }
+                    item(key = "chains") {
+                        Column(verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacingMd)) {
+                            state.chains.forEach { item ->
+                                ChainItem(item)
+                            }
                         }
                     }
-                }
-                if (state.chains.size == 1) {
-                    item(key = "empty_custom") {
-                        Text(
-                            text = stringResource(R.string.vote_chain_config_custom_empty),
-                            style = ZashiTypography.textSm,
-                            color = ZashiColors.Text.textTertiary,
-                            modifier = Modifier.padding(horizontal = 4.dp)
-                        )
+                    if (state.chains.size == 1) {
+                        item(key = "empty_custom") {
+                            Text(
+                                text = stringResource(R.string.vote_chain_config_custom_empty),
+                                style = ZashiTypography.textSm,
+                                color = ZashiColors.Text.textTertiary,
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -296,12 +324,13 @@ private fun RadioIndicator(
 }
 
 @Composable
-private fun BottomActions(state: VoteChainConfigState) {
+private fun BottomActions(
+    state: VoteChainConfigState,
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier =
-            Modifier
-                .fillMaxWidth()
-                .background(ZashiColors.Surfaces.bgPrimary)
+            modifier
                 .navigationBarsPadding()
                 .padding(
                     start = ZashiDimensions.Spacing.spacing3xl,
@@ -378,109 +407,125 @@ private fun EditorSheet(
 ) {
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val hazeState = rememberZashiFrostState()
+    var headerHeight by remember { mutableStateOf(0.dp) }
 
-    Column(
-        modifier =
-            Modifier
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = contentPadding.calculateBottomPadding())
-    ) {
-        SheetHeader(state)
-
+    Box {
         Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = ZashiDimensions.Spacing.spacing3xl)
+                    .zashiFrostSource(hazeState)
+                    .verticalScroll(rememberScrollState())
+                    .padding(
+                        top = headerHeight,
+                        bottom = contentPadding.calculateBottomPadding()
+                    )
         ) {
-            Text(
-                text = state.title.getValue(),
-                style = ZashiTypography.header6,
-                fontWeight = FontWeight.SemiBold,
-                color = ZashiColors.Text.textPrimary
-            )
-            Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingMd))
-            Text(
-                text = state.description.getValue(),
-                style = ZashiTypography.textSm,
-                color = ZashiColors.Text.textPrimary
-            )
-            Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing3xl))
-            FieldLabel(text = stringResource(R.string.coinVote_configSettings_titleField))
-            Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingMd))
-            ZashiTextField(
-                state = state.name,
-                singleLine = true,
+            Column(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .focusRequester(focusRequester),
-                innerModifier = ZashiTextFieldDefaults.innerModifier.height(46.dp),
-                colors = sheetTextFieldColors(isFocusedByDefault = true)
-            )
-            Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
-            FieldLabel(text = stringResource(R.string.coinVote_configSettings_urlField))
-            Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingMd))
-            ZashiTextField(
-                state = state.url,
-                placeholder = {
-                    Text(
-                        text = stringResource(R.string.coinVote_configSettings_urlPlaceholder),
-                        style = ZashiTypography.textMd,
-                        color = ZashiColors.Text.textTertiary
-                    )
-                },
-                trailingIcon =
-                    if (state.showsUrlCopyButton) {
-                        {
-                            IconButton(
-                                onClick = state.onUrlCopyClick,
-                                enabled = state.url.isEnabled,
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_copy),
-                                    contentDescription =
-                                        stringResource(co.electriccoin.zcash.ui.design.R.string.receive_copy),
-                                    tint = ZashiColors.Text.textTertiary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                    } else {
-                        null
-                    },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-                singleLine = true,
-                modifier =
-                    Modifier
-                        .fillMaxWidth(),
-                innerModifier = ZashiTextFieldDefaults.innerModifier.height(46.dp),
-                colors = sheetTextFieldColors(isFocusedByDefault = false)
-            )
-            Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing3xl))
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacingLg)
+                        .padding(horizontal = ZashiDimensions.Spacing.spacing3xl)
             ) {
-                state.deleteButton?.let { deleteButton ->
+                Text(
+                    text = state.title.getValue(),
+                    style = ZashiTypography.header6,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ZashiColors.Text.textPrimary
+                )
+                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingMd))
+                Text(
+                    text = state.description.getValue(),
+                    style = ZashiTypography.textSm,
+                    color = ZashiColors.Text.textPrimary
+                )
+                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing3xl))
+                FieldLabel(text = stringResource(R.string.coinVote_configSettings_titleField))
+                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingMd))
+                ZashiTextField(
+                    state = state.name,
+                    singleLine = true,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .focusRequester(focusRequester),
+                    innerModifier = ZashiTextFieldDefaults.innerModifier.height(46.dp),
+                    colors = sheetTextFieldColors(isFocusedByDefault = true)
+                )
+                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingXl))
+                FieldLabel(text = stringResource(R.string.coinVote_configSettings_urlField))
+                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacingMd))
+                ZashiTextField(
+                    state = state.url,
+                    placeholder = {
+                        Text(
+                            text = stringResource(R.string.coinVote_configSettings_urlPlaceholder),
+                            style = ZashiTypography.textMd,
+                            color = ZashiColors.Text.textTertiary
+                        )
+                    },
+                    trailingIcon =
+                        if (state.showsUrlCopyButton) {
+                            {
+                                IconButton(
+                                    onClick = state.onUrlCopyClick,
+                                    enabled = state.url.isEnabled,
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_copy),
+                                        contentDescription =
+                                            stringResource(co.electriccoin.zcash.ui.design.R.string.receive_copy),
+                                        tint = ZashiColors.Text.textTertiary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        } else {
+                            null
+                        },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                    singleLine = true,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth(),
+                    innerModifier = ZashiTextFieldDefaults.innerModifier.height(46.dp),
+                    colors = sheetTextFieldColors(isFocusedByDefault = false)
+                )
+                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing3xl))
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(ZashiDimensions.Spacing.spacingLg)
+                ) {
+                    state.deleteButton?.let { deleteButton ->
+                        ZashiButton(
+                            state = deleteButton,
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                        )
+                    }
                     ZashiButton(
-                        state = deleteButton,
+                        state = state.saveButton,
                         modifier =
                             Modifier
                                 .fillMaxWidth()
                                 .height(48.dp)
                     )
                 }
-                ZashiButton(
-                    state = state.saveButton,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                )
             }
         }
+
+        ZashiFrostedSheetHeader(
+            hazeState = hazeState,
+            modifier = Modifier.align(Alignment.TopCenter),
+            onHeightChanged = { headerHeight = it },
+            title = {
+                SheetHeader(state)
+            }
+        )
     }
 
     LaunchedEffect(Unit) {
