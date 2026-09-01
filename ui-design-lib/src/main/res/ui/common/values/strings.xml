@@ -742,6 +742,11 @@
         code: <xliff:g example="123" id="code">%3$d</xliff:g>,
         description: <xliff:g example="Network unreachable" id="desc">%4$s</xliff:g>
     </string>
+    <string name="send_confirmation_report_status_presubmission_failure" formatted="true">Failure before transaction
+        submission (no gRPC call was made):
+        <xliff:g example="IOException" id="type">%1$s</xliff:g>:
+        <xliff:g example="Failed to download Sapling parameters" id="detail">%2$s</xliff:g>
+    </string>
     <string name="send_confirmation_multiple_trx_failure_report_unable_open_email">Unable to launch email app.</string>
     <string name="send_confirmation_multiple_trx_failure_copy_tag">Transaction IDs</string>
     <string name="swapAndPay_successSwapInfo">You successfully initiated a swap.\nFollow its status on the transaction screen.</string>

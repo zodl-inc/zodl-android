@@ -19,6 +19,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ### Fixed:
 
 - Coinholder Polling's poll list and proposal loading no longer hang indefinitely when a vote server is unreachable over Tor; a slow or dropped connection now fails over to the next server within a bounded time.
+- Support/error reports for a failed transaction no longer claim a fake `gRPC: false, code: -1` status when the failure actually happened before submission (e.g. a Sapling parameter download failure); such reports now correctly identify the real exception instead.
 
 ## [3.10.1 (2512)] - 2026-08-25
 

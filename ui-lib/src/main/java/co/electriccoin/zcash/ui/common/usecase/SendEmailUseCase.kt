@@ -87,8 +87,15 @@ class SendEmailUseCase(
 
     /**
      * Sends a support email for failed transaction submission.
+     *
+     * `index=0, grpcError=false` here are not placeholders: [SubmitResult.Failure] is only ever
+     * constructed (see `List<TransactionSubmitResult>.toSubmitResult()`) from a real, non-gRPC
+     * mempool rejection reported by the server, so `grpcError` genuinely is `false` and
+     * [submitResult.code] is the real status code. Contrast with [SubmitResult.Error] below, which
+     * never reached the server at all and must not be reported this way (MOB-1744).
      */
     operator fun invoke(submitResult: SubmitResult.Failure) {
+        val status = submitFailureReportStatus(submitResult)
         sendSupportEmail(
             subject = context.getString(R.string.app_name),
             messageBody =
@@ -104,10 +111,10 @@ class SendEmailUseCase(
                             appendLine(
                                 context.getString(
                                     R.string.send_confirmation_multiple_report_status_failure,
-                                    0,
-                                    false.toString(),
-                                    submitResult.code,
-                                    submitResult.description,
+                                    status.index,
+                                    status.grpcError.toString(),
+                                    status.code,
+                                    status.description,
                                 )
                             )
                         }
@@ -137,28 +144,29 @@ class SendEmailUseCase(
     }
 
     /**
-     * Sends a support email for transaction submission error.
+     * Sends a support email for a pre-submission transaction error.
+     *
+     * [SubmitResult.Error] is only ever constructed (see `ZashiProposalRepository.submit()` and
+     * `KeystoneProposalRepository.submit()`) from an exception caught before or during transaction
+     * creation -- e.g. a missing proposal/PCZT, or a failure thrown while proving/signing such as a
+     * Sapling parameter download timeout -- never from an actual gRPC/mempool response. It used to
+     * be reported with a hardcoded fake `gRPC: false, code: -1` status, which misled support into
+     * thinking a real protocol status was involved when gRPC was never reached (MOB-1744). Report it
+     * as a distinct pre-submission category instead, carrying the real exception type and detail.
      */
-    @Suppress("MagicNumber")
     operator fun invoke(submitResult: SubmitResult.Error) {
+        val detail = submitErrorPreSubmissionDetail(submitResult.cause)
         sendSupportEmail(
             subject = context.getString(R.string.app_name),
             messageBody =
                 EmailUtil.formatMessage(
-                    body = "Error submitting transaction",
+                    body = "Error before transaction submission (no gRPC call was made)",
                     supportInfo =
-                        buildString {
-                            appendLine(context.getString(R.string.send_confirmation_multiple_report_statuses))
-                            appendLine(
-                                context.getString(
-                                    R.string.send_confirmation_multiple_report_status_failure,
-                                    0,
-                                    false.toString(),
-                                    -1,
-                                    submitResult.cause.stackTraceToLimitedString(250),
-                                )
-                            )
-                        }
+                        context.getString(
+                            R.string.send_confirmation_report_status_presubmission_failure,
+                            detail.exceptionType,
+                            detail.description,
+                        )
                 )
         )
     }
@@ -253,3 +261,44 @@ internal fun buildGrpcFailureEmailBody(reportDescription: String?): String =
                 appendLine(it)
             }
     }
+
+/**
+ * The report line for a [SubmitResult.Failure]: `index`/`grpcError` are constant because this
+ * subtype always represents a single, real, non-gRPC mempool rejection (see the KDoc on the
+ * `SubmitResult.Failure` overload above) -- [code] and [description] are the real values reported
+ * by the server, never hardcoded.
+ */
+internal data class SubmitFailureReportStatus(
+    val index: Int,
+    val grpcError: Boolean,
+    val code: Int,
+    val description: String
+)
+
+private const val SUBMIT_FAILURE_REPORT_INDEX = 0
+
+internal fun submitFailureReportStatus(submitResult: SubmitResult.Failure): SubmitFailureReportStatus =
+    SubmitFailureReportStatus(
+        index = SUBMIT_FAILURE_REPORT_INDEX,
+        grpcError = false,
+        code = submitResult.code,
+        description = submitResult.description ?: "Unknown error"
+    )
+
+/**
+ * The real exception type and detail behind a [SubmitResult.Error] -- a failure that happened
+ * before any gRPC call was made. Kept separate from the gRPC-status reporting above so a
+ * pre-submission failure is never rendered with a fake gRPC status (MOB-1744).
+ */
+internal data class SubmitErrorPreSubmissionDetail(
+    val exceptionType: String,
+    val description: String
+)
+
+private const val PRE_SUBMISSION_STACK_TRACE_LIMIT = 250
+
+internal fun submitErrorPreSubmissionDetail(cause: Exception): SubmitErrorPreSubmissionDetail =
+    SubmitErrorPreSubmissionDetail(
+        exceptionType = cause::class.java.simpleName.ifEmpty { cause::class.java.name },
+        description = cause.stackTraceToLimitedString(PRE_SUBMISSION_STACK_TRACE_LIMIT) ?: "Unknown error"
+    )
