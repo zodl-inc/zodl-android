@@ -1,14 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="settings_theme">Theme</string>
+    <string name="settings_theme">App Theme</string>
     <string name="theme_settings_title">Theme</string>
-    <string name="theme_settings_subtitle">Choose how Zashi looks. Pure black backgrounds boost contrast and save power on OLED displays.</string>
+    <string name="theme_settings_subtitle">Choose how Zodl looks. Pure black backgrounds boost contrast and save power on OLED displays.</string>
     <string name="theme_settings_option_system">System</string>
-    <string name="theme_settings_option_system_desc">Follow your device\'s display setting.</string>
+    <string name="theme_settings_option_system_desc">Follow your device\'s display settings.</string>
     <string name="theme_settings_option_light">Light</string>
-    <string name="theme_settings_option_light_desc">Zashi\'s standard light look.</string>
-    <string name="theme_settings_option_classic">Classic dark</string>
-    <string name="theme_settings_option_classic_desc">Zashi\'s standard dark look with soft charcoal backgrounds.</string>
-    <string name="theme_settings_option_oled">Pure black</string>
+    <string name="theme_settings_option_light_desc">Zodl\'s standard light look.</string>
+    <string name="theme_settings_option_dark">Dark</string>
+    <string name="theme_settings_option_dark_desc">Select Classic Dark or Pure Black.</string>
+    <string name="theme_settings_option_classic">Classic Dark</string>
+    <string name="theme_settings_option_classic_desc">Zodl\'s standard dark look.</string>
+    <string name="theme_settings_option_oled">Pure Black</string>
     <string name="theme_settings_option_oled_desc">True black backgrounds designed for OLED displays.</string>
+    <string name="theme_settings_darklook_title">When your device is dark</string>
+    <string name="theme_settings_darklook_subtitle">Pick which dark look Zodl should use for a dark appearance.</string>
 </resources>
