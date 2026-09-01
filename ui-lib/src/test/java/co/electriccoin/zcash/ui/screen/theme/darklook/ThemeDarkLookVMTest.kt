@@ -1,4 +1,4 @@
-package co.electriccoin.zcash.ui.screen.theme.settings
+package co.electriccoin.zcash.ui.screen.theme.darklook
 
 import androidx.navigation.NavBackStackEntry
 import co.electriccoin.zcash.ui.BaseNavigationCommand
@@ -9,7 +9,6 @@ import co.electriccoin.zcash.ui.common.provider.IsOledEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.usecase.SetAppearanceModeUseCase
 import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.screen.more.MoreArgs
-import co.electriccoin.zcash.ui.screen.theme.darklook.ThemeDarkLookArgs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -28,17 +27,15 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * The Theme settings screen (MOB-1740): the stored appearance mode (System/Light/Dark) decides which radio
- * option is checked. Tapping Light selects it locally, enabling Save. Tapping System or Dark doesn't touch
- * the local selection - it opens the dark-look bottom sheet instead, which owns persisting the mode plus the
- * chosen dark look (Classic Dark/Pure Black) and navigates all the way back to the Settings list.
+ * The dark-look bottom sheet (MOB-1740): opened with the [AppearanceMode] the user tapped on the Theme
+ * screen (System or Dark), it lets them pick Classic Dark or Pure Black for whenever that mode renders
+ * dark, then persists both together and navigates all the way back to the Settings list.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-class ThemeSettingsVMTest {
+class ThemeDarkLookVMTest {
     private lateinit var dispatcher: TestDispatcher
 
     @BeforeTest
@@ -53,130 +50,99 @@ class ThemeSettingsVMTest {
     }
 
     @Test
-    fun neverChosenSelectsSystemWithSaveDisabled() =
+    fun neverChosenPreselectsClassicDark() =
         runTest(dispatcher) {
-            val vm = startedVm(modeProvider = FakeAppearanceModeStorageProvider(stored = null))
+            val vm = startedVm(oledProvider = FakeIsOledEnabledStorageProvider(stored = null))
 
-            val state = requireNotNull(vm.state.value)
-            assertSingleSelection(state, AppearanceMode.SYSTEM)
-            assertFalse(state.saveButton.isEnabled)
+            assertSingleSelection(requireNotNull(vm.state.value), isOledEnabled = false)
         }
 
     @Test
-    fun storedModeIsReflectedInSelection() =
+    fun storedOledChoiceIsReflectedInSelection() =
         runTest(dispatcher) {
-            val vm = startedVm(modeProvider = FakeAppearanceModeStorageProvider(stored = AppearanceMode.DARK))
+            val vm = startedVm(oledProvider = FakeIsOledEnabledStorageProvider(stored = true))
 
-            val state = requireNotNull(vm.state.value)
-            assertSingleSelection(state, AppearanceMode.DARK)
-            assertFalse(state.saveButton.isEnabled)
+            assertSingleSelection(requireNotNull(vm.state.value), isOledEnabled = true)
         }
 
     @Test
-    fun tappingLightSelectsItLocallyAndEnablesSave() =
+    fun tappingPureBlackSelectsItLocally() =
         runTest(dispatcher) {
-            val vm = startedVm(modeProvider = FakeAppearanceModeStorageProvider(stored = AppearanceMode.SYSTEM))
+            val vm = startedVm(oledProvider = FakeIsOledEnabledStorageProvider(stored = false))
 
-            optionFor(requireNotNull(vm.state.value), AppearanceMode.LIGHT).onClick()
+            optionFor(requireNotNull(vm.state.value), isOledEnabled = true).onClick()
             advanceUntilIdle()
 
-            val state = requireNotNull(vm.state.value)
-            assertSingleSelection(state, AppearanceMode.LIGHT)
-            assertTrue(state.saveButton.isEnabled)
+            assertSingleSelection(requireNotNull(vm.state.value), isOledEnabled = true)
         }
 
     @Test
-    fun tappingSystemForwardsToDarkLookSheetWithoutChangingSelection() =
+    fun savingPersistsArgsModeAndSelectedOledChoiceAndNavigatesToSettingsList() =
         runTest(dispatcher) {
+            val modeProvider = FakeAppearanceModeStorageProvider(stored = AppearanceMode.LIGHT)
+            val oledProvider = FakeIsOledEnabledStorageProvider(stored = false)
             val router = FakeNavigationRouter()
             val vm =
                 startedVm(
-                    modeProvider = FakeAppearanceModeStorageProvider(stored = AppearanceMode.LIGHT),
+                    args = ThemeDarkLookArgs(AppearanceMode.DARK),
+                    modeProvider = modeProvider,
+                    oledProvider = oledProvider,
                     router = router
                 )
 
-            optionFor(requireNotNull(vm.state.value), AppearanceMode.SYSTEM).onClick()
-            advanceUntilIdle()
-
-            assertEquals(ThemeDarkLookArgs(AppearanceMode.SYSTEM), router.forwardedRoutes.single())
-            assertSingleSelection(requireNotNull(vm.state.value), AppearanceMode.LIGHT)
-        }
-
-    @Test
-    fun tappingDarkForwardsToDarkLookSheetWithoutChangingSelection() =
-        runTest(dispatcher) {
-            val router = FakeNavigationRouter()
-            val vm =
-                startedVm(
-                    modeProvider = FakeAppearanceModeStorageProvider(stored = AppearanceMode.LIGHT),
-                    router = router
-                )
-
-            optionFor(requireNotNull(vm.state.value), AppearanceMode.DARK).onClick()
-            advanceUntilIdle()
-
-            assertEquals(ThemeDarkLookArgs(AppearanceMode.DARK), router.forwardedRoutes.single())
-            assertSingleSelection(requireNotNull(vm.state.value), AppearanceMode.LIGHT)
-        }
-
-    @Test
-    fun savingPersistsLightModeAndNavigatesToSettingsList() =
-        runTest(dispatcher) {
-            val modeProvider = FakeAppearanceModeStorageProvider(stored = null)
-            val oledProvider = FakeIsOledEnabledStorageProvider(stored = true)
-            val router = FakeNavigationRouter()
-            val vm = startedVm(modeProvider = modeProvider, oledProvider = oledProvider, router = router)
-
-            optionFor(requireNotNull(vm.state.value), AppearanceMode.LIGHT).onClick()
+            optionFor(requireNotNull(vm.state.value), isOledEnabled = true).onClick()
             advanceUntilIdle()
             requireNotNull(vm.state.value).saveButton.onClick()
             advanceUntilIdle()
 
-            assertEquals(AppearanceMode.LIGHT, modeProvider.stored)
-            assertEquals(false, oledProvider.stored)
+            assertEquals(AppearanceMode.DARK, modeProvider.stored)
+            assertEquals(true, oledProvider.stored)
             assertEquals(MoreArgs::class, router.backToRoute)
         }
 
     @Test
     fun backDismissesWithoutChangingAnything() =
         runTest(dispatcher) {
-            val modeProvider = FakeAppearanceModeStorageProvider(stored = null)
+            val oledProvider = FakeIsOledEnabledStorageProvider(stored = false)
             val router = FakeNavigationRouter()
-            val vm = startedVm(modeProvider = modeProvider, router = router)
+            val vm = startedVm(oledProvider = oledProvider, router = router)
 
             requireNotNull(vm.state.value).onBack()
 
             assertEquals(1, router.backCount)
-            assertNull(modeProvider.stored)
+            assertFalse(oledProvider.stored ?: false)
         }
 
     private fun assertSingleSelection(
-        state: ThemeSettingsState,
-        expected: AppearanceMode
+        state: ThemeDarkLookState,
+        isOledEnabled: Boolean
     ) {
         state.options.forEach { option ->
             assertEquals(
-                option.mode == expected,
+                option.isOledEnabled == isOledEnabled,
                 option.isChecked,
-                "unexpected checked state for ${option.mode}"
+                "unexpected checked state for isOledEnabled=${option.isOledEnabled}"
             )
         }
+        assertTrue(state.saveButton.isEnabled)
     }
 
     private fun optionFor(
-        state: ThemeSettingsState,
-        mode: AppearanceMode
-    ) = state.options.first { it.mode == mode }
+        state: ThemeDarkLookState,
+        isOledEnabled: Boolean
+    ) = state.options.first { it.isOledEnabled == isOledEnabled }
 
     private fun TestScope.startedVm(
+        args: ThemeDarkLookArgs = ThemeDarkLookArgs(AppearanceMode.SYSTEM),
         modeProvider: FakeAppearanceModeStorageProvider = FakeAppearanceModeStorageProvider(stored = null),
         oledProvider: FakeIsOledEnabledStorageProvider = FakeIsOledEnabledStorageProvider(stored = null),
         router: FakeNavigationRouter = FakeNavigationRouter(),
-    ): ThemeSettingsVM {
+    ): ThemeDarkLookVM {
         val vm =
-            ThemeSettingsVM(
+            ThemeDarkLookVM(
+                args = args,
                 navigationRouter = router,
-                appearanceModeStorageProvider = modeProvider,
+                isOledEnabledStorageProvider = oledProvider,
                 setAppearanceMode = SetAppearanceModeUseCase(router, modeProvider, oledProvider)
             )
         backgroundScope.launch { vm.state.collect { } }
@@ -228,11 +194,8 @@ private class FakeNavigationRouter : NavigationRouter {
         private set
     var backToRoute: KClass<*>? = null
         private set
-    val forwardedRoutes = mutableListOf<Any>()
 
-    override fun forward(vararg routes: Any) {
-        forwardedRoutes.addAll(routes)
-    }
+    override fun forward(vararg routes: Any) = Unit
 
     override fun replace(vararg routes: Any) = Unit
 
