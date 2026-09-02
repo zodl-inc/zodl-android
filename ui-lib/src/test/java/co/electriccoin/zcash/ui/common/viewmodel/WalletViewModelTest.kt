@@ -57,7 +57,7 @@ class WalletViewModelTest {
     // MOB-1620: gated on MIGRATION_DUST_THRESHOLD_ZATOSHI rather than a bare `> 0L`, so a
     // dust-only residual (e.g. left over after a re-import resets the locally-tracked
     // isIronwoodAnnouncementShown flag) never re-triggers the full-screen announcement.
-    private fun vm(orchardZatoshi: Long): WalletViewModel {
+    private fun vm(orchardZatoshi: Long = 0L): WalletViewModel {
         val synchronizer =
             mockk<Synchronizer> {
                 every { network } returns ZcashNetwork.Mainnet

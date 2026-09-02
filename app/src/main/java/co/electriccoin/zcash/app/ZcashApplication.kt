@@ -26,6 +26,7 @@ import co.electriccoin.zcash.ui.common.repository.FlexaRepository
 import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepository
 import co.electriccoin.zcash.ui.common.repository.WalletRepository
 import co.electriccoin.zcash.ui.common.repository.WalletSnapshotRepository
+import co.electriccoin.zcash.ui.common.usecase.ObserveSeedMismatchUseCase
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.voting.di.featureVotingModule
@@ -52,6 +53,7 @@ class ZcashApplication : CoroutineApplication() {
     private val synchronizerProvider: SynchronizerProvider by inject()
     private val navigateToError: NavigateToErrorUseCase by inject()
     private val migrationNotifier: MigrationNotifier by inject()
+    private val observeSeedMismatch: ObserveSeedMismatchUseCase by inject()
 
     override fun onCreate() {
         super.onCreate()
@@ -93,6 +95,7 @@ class ZcashApplication : CoroutineApplication() {
         automaticServerRepository.init()
         walletRepository.init()
         observeSynchronizerError()
+        applicationScope.launch { observeSeedMismatch() }
     }
 
     /**
