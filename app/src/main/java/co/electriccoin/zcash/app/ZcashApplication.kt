@@ -53,7 +53,7 @@ class ZcashApplication : CoroutineApplication() {
     private val synchronizerProvider: SynchronizerProvider by inject()
     private val navigateToError: NavigateToErrorUseCase by inject()
     private val migrationNotifier: MigrationNotifier by inject()
-    private val observeSeedMismatchUseCase: ObserveSeedMismatchUseCase by inject()
+    private val observeSeedMismatch: ObserveSeedMismatchUseCase by inject()
 
     override fun onCreate() {
         super.onCreate()
@@ -95,7 +95,7 @@ class ZcashApplication : CoroutineApplication() {
         automaticServerRepository.init()
         walletRepository.init()
         observeSynchronizerError()
-        observeSeedMismatch()
+        applicationScope.launch { observeSeedMismatch() }
     }
 
     /**
@@ -121,10 +121,6 @@ class ZcashApplication : CoroutineApplication() {
                     }
                 }
         }
-    }
-
-    private fun observeSeedMismatch() {
-        applicationScope.launch { observeSeedMismatchUseCase() }
     }
 
     private fun configureLogging() {
