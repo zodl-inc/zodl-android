@@ -2,8 +2,6 @@ package co.electriccoin.zcash.ui.common.provider
 
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.WalletCoordinator
-import cash.z.ecc.android.sdk.model.AccountBalance
-import cash.z.ecc.android.sdk.model.AccountUuid
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.migration.MigrationSyncedHook
 import co.electriccoin.zcash.ui.common.model.SynchronizerError
@@ -23,7 +21,6 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
@@ -35,20 +32,6 @@ interface SynchronizerProvider {
     val error: StateFlow<SynchronizerError?>
 
     val synchronizer: StateFlow<Synchronizer?>
-
-    /**
-     * MOB-1664: [Synchronizer.walletBalances] is per-synchronizer-instance state that resets to
-     * `null` every time the synchronizer is rebuilt (e.g. an automatic server switch tears down
-     * and reconstructs the whole engine), which would otherwise flash every balance display
-     * (top-line, per-pool breakdown) to 0.000 for the few seconds the new instance takes to
-     * re-establish itself. Retained across that gap via [retainWhileWalletExists] (MOB-1723), so
-     * consumers never observe a spurious drop to zero, while the value clears as soon as the
-     * wallet is removed. Central here (rather than patched into
-     * each consumer) since [AccountDataSource], [co.electriccoin.zcash.ui.common.usecase.GetBalancePoolsUseCase],
-     * [co.electriccoin.zcash.ui.common.usecase.GetOrchardBalanceUseCase] and
-     * [co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel] all read this independently.
-     */
-    val walletBalances: Flow<Map<AccountUuid, AccountBalance>?>
 
     /**
      * Get synchronizer and wait for it to be ready.
@@ -108,11 +91,6 @@ class SynchronizerProviderImpl(
                 started = SharingStarted.Lazily,
                 initialValue = walletCoordinator.synchronizer.value
             )
-
-    override val walletBalances: Flow<Map<AccountUuid, AccountBalance>?> =
-        synchronizer
-            .flatMapLatest { it?.walletBalances ?: flowOf(null) }
-            .retainWhileWalletExists(persistableWalletProvider)
 
     init {
         scope.launch {
@@ -189,6 +167,10 @@ class SynchronizerProviderImpl(
  * as the wallet is removed, so a deleted wallet's state is never shown. This retains plain data
  * only — never the Synchronizer instance itself, whose close() cancels its coroutineScope and
  * disposes its clients, making a retained instance a dead object with silently-frozen flows.
+ *
+ * MOB-1664 is the balance-flash precedent this generalizes: [Synchronizer.walletBalances] resets
+ * to `null` on every rebuild, which used to flash balance displays to 0.000 for the few seconds a
+ * new instance takes to re-establish itself.
  */
 internal fun <T : Any> Flow<T?>.retainWhileWalletExists(
     persistableWalletProvider: PersistableWalletProvider

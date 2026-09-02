@@ -5,8 +5,6 @@ import cash.z.ecc.android.sdk.fixture.AccountFixture
 import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
 import cash.z.ecc.android.sdk.fixture.WalletBalanceFixture
 import cash.z.ecc.android.sdk.model.Account
-import cash.z.ecc.android.sdk.model.AccountBalance
-import cash.z.ecc.android.sdk.model.AccountUuid
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.Pczt
 import cash.z.ecc.android.sdk.model.WalletAddress
@@ -715,7 +713,6 @@ class VotingKeystoneRepositoryTest {
     ) : SynchronizerProvider {
         override val error: StateFlow<SynchronizerError?> = MutableStateFlow(null)
         override val synchronizer: StateFlow<Synchronizer?> = MutableStateFlow(null)
-        override val walletBalances: Flow<Map<AccountUuid, AccountBalance>?> = flowOf(null)
 
         private val fakeSynchronizer: Synchronizer =
             mockk<Synchronizer>(relaxed = true).also { every { it.network } returns ZcashNetwork.Mainnet }

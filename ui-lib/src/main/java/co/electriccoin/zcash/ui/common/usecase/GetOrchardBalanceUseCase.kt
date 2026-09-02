@@ -3,14 +3,16 @@ package co.electriccoin.zcash.ui.common.usecase
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.sdk.extension.ZERO
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
+import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
+import co.electriccoin.zcash.ui.common.provider.retainWhileWalletExists
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 
 /**
  * The real, spendable Orchard balance for the currently selected wallet account — the balance
@@ -26,24 +28,25 @@ import kotlinx.coroutines.flow.map
 class GetOrchardBalanceUseCase(
     private val synchronizerProvider: SynchronizerProvider,
     private val accountDataSource: AccountDataSource,
+    private val persistableWalletProvider: PersistableWalletProvider,
 ) {
     suspend operator fun invoke(): Zatoshi {
-        synchronizerProvider.getSynchronizer()
+        val synchronizer = synchronizerProvider.getSynchronizer()
         val account = accountDataSource.getSelectedAccount()
-        val balances = synchronizerProvider.walletBalances.filterNotNull().first()
+        val balances = synchronizer.walletBalances.filterNotNull().first()
         return balances[account.sdkAccount.accountUuid]?.orchard?.available ?: Zatoshi.ZERO
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun observe(): Flow<Zatoshi?> =
-        accountDataSource.selectedAccount
-            .flatMapLatest { account ->
-                if (account == null) {
-                    flowOf(null)
-                } else {
-                    synchronizerProvider.walletBalances.map { balances ->
-                        balances?.get(account.sdkAccount.accountUuid)?.orchard?.available
-                    }
-                }
+        combine(
+            accountDataSource.selectedAccount,
+            synchronizerProvider.synchronizer.flatMapLatest { it?.walletBalances ?: flowOf(null) },
+        ) { account, balances ->
+            if (account == null || balances == null) {
+                null
+            } else {
+                balances[account.sdkAccount.accountUuid]?.orchard?.available
             }
+        }.retainWhileWalletExists(persistableWalletProvider)
 }

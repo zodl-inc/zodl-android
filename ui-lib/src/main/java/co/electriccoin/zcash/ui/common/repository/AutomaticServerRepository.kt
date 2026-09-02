@@ -7,6 +7,7 @@ import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvid
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
+import co.electriccoin.zcash.ui.common.provider.retainWhileWalletExists
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -51,6 +52,12 @@ class AutomaticServerRepositoryImpl(
                 keystoneProposalRepository.submitState.value != null
 
     @OptIn(ExperimentalCoroutinesApi::class)
+    private val walletBalances =
+        synchronizerProvider.synchronizer
+            .flatMapLatest { it?.walletBalances ?: flowOf(null) }
+            .retainWhileWalletExists(persistableWalletProvider)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
     override val isServerAutomatic: Flow<Boolean> =
         isServerSelectionAutomaticProvider
             .observe()
@@ -91,7 +98,7 @@ class AutomaticServerRepositoryImpl(
                 if (isAutomatic) {
                     combine(
                         walletRepository.fastestEndpoints,
-                        synchronizerProvider.walletBalances,
+                        walletBalances,
                         ::resolveAutomaticServerCandidate,
                     ).filterNotNull().distinctUntilChanged()
                 } else {

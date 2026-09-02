@@ -3,12 +3,14 @@ package co.electriccoin.zcash.ui.common.usecase
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.sdk.extension.ZERO
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
+import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
+import co.electriccoin.zcash.ui.common.provider.retainWhileWalletExists
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 
 /**
  * Observes the balance of the selected account broken down per Zcash pool.
@@ -39,33 +41,34 @@ import kotlinx.coroutines.flow.map
 class GetBalancePoolsUseCase(
     private val synchronizerProvider: SynchronizerProvider,
     private val accountDataSource: AccountDataSource,
+    private val persistableWalletProvider: PersistableWalletProvider,
 ) {
     @OptIn(ExperimentalCoroutinesApi::class)
     fun observe(): Flow<BalancePools?> =
-        accountDataSource.selectedAccount
-            .flatMapLatest { account ->
-                if (account == null) {
-                    flowOf(null)
-                } else {
-                    synchronizerProvider.walletBalances.map { balances ->
-                        val balance = balances?.get(account.sdkAccount.accountUuid)
-                        val orchard =
-                            (balance?.orchard?.total ?: Zatoshi.ZERO) + (balance?.orchard?.locked ?: Zatoshi.ZERO)
-                        val sapling =
-                            (balance?.sapling?.total ?: Zatoshi.ZERO) + (balance?.sapling?.locked ?: Zatoshi.ZERO)
-                        val ironwood =
-                            (balance?.ironwood?.total ?: Zatoshi.ZERO) + (balance?.ironwood?.locked ?: Zatoshi.ZERO)
-                        val transparent = balance?.unshielded ?: Zatoshi.ZERO
-                        BalancePools(
-                            total = orchard + sapling + transparent + ironwood,
-                            orchard = orchard,
-                            sapling = sapling,
-                            transparent = transparent,
-                            ironwood = ironwood,
-                        )
-                    }
-                }
+        combine(
+            accountDataSource.selectedAccount,
+            synchronizerProvider.synchronizer.flatMapLatest { it?.walletBalances ?: flowOf(null) },
+        ) { account, balances ->
+            if (account == null || balances == null) {
+                null
+            } else {
+                val balance = balances[account.sdkAccount.accountUuid]
+                val orchard =
+                    (balance?.orchard?.total ?: Zatoshi.ZERO) + (balance?.orchard?.locked ?: Zatoshi.ZERO)
+                val sapling =
+                    (balance?.sapling?.total ?: Zatoshi.ZERO) + (balance?.sapling?.locked ?: Zatoshi.ZERO)
+                val ironwood =
+                    (balance?.ironwood?.total ?: Zatoshi.ZERO) + (balance?.ironwood?.locked ?: Zatoshi.ZERO)
+                val transparent = balance?.unshielded ?: Zatoshi.ZERO
+                BalancePools(
+                    total = orchard + sapling + transparent + ironwood,
+                    orchard = orchard,
+                    sapling = sapling,
+                    transparent = transparent,
+                    ironwood = ironwood,
+                )
             }
+        }.retainWhileWalletExists(persistableWalletProvider)
 }
 
 data class BalancePools(

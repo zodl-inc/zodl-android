@@ -10,6 +10,7 @@ import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -31,6 +32,8 @@ class AutomaticServerRepositoryTest {
     private val persistableWalletProvider = mockk<PersistableWalletProvider>(relaxed = true)
     private val lightWalletEndpointProvider =
         mockk<LightWalletEndpointProvider>(relaxed = true) { every { getEndpoints() } returns known }
+    private val synchronizerProvider =
+        mockk<SynchronizerProvider>(relaxed = true) { every { synchronizer } returns MutableStateFlow(null) }
 
     private val repository =
         AutomaticServerRepositoryImpl(
@@ -38,7 +41,7 @@ class AutomaticServerRepositoryTest {
             zashiProposalRepository = mockk(relaxed = true),
             keystoneProposalRepository = mockk(relaxed = true),
             applicationStateProvider = mockk(relaxed = true),
-            synchronizerProvider = mockk<SynchronizerProvider>(relaxed = true),
+            synchronizerProvider = synchronizerProvider,
             persistableWalletProvider = persistableWalletProvider,
             lightWalletEndpointProvider = lightWalletEndpointProvider,
             isServerSelectionAutomaticProvider = isAutomaticProvider
