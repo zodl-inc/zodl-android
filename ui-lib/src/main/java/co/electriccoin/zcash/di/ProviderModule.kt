@@ -65,8 +65,6 @@ import co.electriccoin.zcash.ui.common.provider.WalletBackupRemindMeTimestampSto
 import co.electriccoin.zcash.ui.common.provider.WalletBackupRemindMeTimestampStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.WalletRestoringStateProvider
 import co.electriccoin.zcash.ui.common.provider.WalletRestoringStateProviderImpl
-import co.electriccoin.zcash.ui.common.usecase.RecoverFromSeedMismatchUseCase
-import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.dsl.bind
@@ -88,8 +86,6 @@ val providerModule =
                 persistableWalletProvider = get(),
                 // lazy {} breaks the AccountDataSource -> SynchronizerProvider resolution cycle
                 migrationSyncedHook = lazy { get() },
-                recoverFromSeedMismatch = get(),
-                navigateToErrorUseCase = get(),
             )
         } bind SynchronizerProvider::class
         singleOf(::ApplicationStateProviderImpl) bind ApplicationStateProvider::class
