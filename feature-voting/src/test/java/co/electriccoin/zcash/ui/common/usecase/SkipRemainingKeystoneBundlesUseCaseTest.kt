@@ -6,7 +6,6 @@ import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
 import cash.z.ecc.android.sdk.fixture.WalletBalanceFixture
 import cash.z.ecc.android.sdk.model.Account
 import cash.z.ecc.android.sdk.model.BlockHeight
-import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
@@ -140,14 +139,13 @@ class SkipRemainingKeystoneBundlesUseCaseTest {
         votingRecoveryRepository = recoveryRepository.repository
     )
 
-    private suspend fun keystoneAccount(): KeystoneAccount =
+    private fun keystoneAccount(): KeystoneAccount =
         KeystoneAccount(
             sdkAccount = AccountFixture.new(),
-            unifiedAddress = WalletAddressFixture.unified(),
-            unifiedBalance = WalletBalanceFixture.newLong(),
+            unifiedAddress = WalletAddressFixture.UNIFIED_ADDRESS_STRING,
             orchardBalance = WalletBalanceFixture.newLong(),
             ironwoodBalance = WalletBalanceFixture.newLong(0, 0, 0),
-            transparentAddress = WalletAddressFixture.transparent(),
+            transparentAddress = WalletAddressFixture.TRANSPARENT_ADDRESS_STRING,
             transparentBalance = Zatoshi(0),
             isSelected = true
         )
@@ -201,7 +199,7 @@ private class FakeAccountDataSource(
         birthday: BlockHeight?
     ): Account = unsupported()
 
-    override suspend fun requestNextShieldedAddress(): WalletAddress.Unified = unsupported()
+    override suspend fun requestNextShieldedAddress(): String = unsupported()
 
     override suspend fun deleteAccount(account: WalletAccount) = unsupported()
 }

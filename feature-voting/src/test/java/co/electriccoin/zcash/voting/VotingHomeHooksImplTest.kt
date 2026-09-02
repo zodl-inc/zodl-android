@@ -173,14 +173,13 @@ class VotingHomeHooksImplTest {
             coVerify(exactly = 1) { refreshActiveVotingSession() }
         }
 
-    private suspend fun keystoneAccount(): KeystoneAccount =
+    private fun keystoneAccount(): KeystoneAccount =
         KeystoneAccount(
             sdkAccount = AccountFixture.new(),
-            unifiedAddress = WalletAddressFixture.unified(),
-            unifiedBalance = WalletBalanceFixture.newLong(),
+            unifiedAddress = WalletAddressFixture.UNIFIED_ADDRESS_STRING,
             orchardBalance = WalletBalanceFixture.newLong(),
             ironwoodBalance = WalletBalanceFixture.newLong(0, 0, 0),
-            transparentAddress = WalletAddressFixture.transparent(),
+            transparentAddress = WalletAddressFixture.TRANSPARENT_ADDRESS_STRING,
             transparentBalance = Zatoshi(0),
             isSelected = true
         )

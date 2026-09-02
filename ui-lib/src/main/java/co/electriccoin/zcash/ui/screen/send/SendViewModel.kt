@@ -57,7 +57,7 @@ class SendViewModel(
                         flow {
                             val exists =
                                 contact != null ||
-                                    accounts.any { it.unifiedAddress.address == recipientAddressState.address }
+                                    accounts.any { it.unifiedAddress == recipientAddressState.address }
                             val isValid = recipientAddressState.type?.isNotValid == false
                             val mode =
                                 if (isValid) {

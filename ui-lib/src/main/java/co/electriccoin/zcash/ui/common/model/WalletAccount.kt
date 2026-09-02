@@ -2,7 +2,6 @@ package co.electriccoin.zcash.ui.common.model
 
 import androidx.annotation.DrawableRes
 import cash.z.ecc.android.sdk.model.Account
-import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.android.sdk.model.WalletBalance
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.Zip32AccountIndex
@@ -13,18 +12,20 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 sealed interface WalletAccount : Comparable<WalletAccount> {
     val sdkAccount: Account
 
-    val unifiedAddress: WalletAddress.Unified
-    val transparentAddress: WalletAddress.Transparent
-    val saplingAddress: WalletAddress.Sapling?
+    val unifiedAddress: String
+    val transparentAddress: String
+    val saplingAddress: String?
 
     /**
      * TODO [#26]: technical debt, aggregates ORCHARD + IRONWOOD, sync with iOS
      *
-     * Folds Orchard + Ironwood together (see observeUnified in AccountDataSource). Callers that
-     * need the Orchard-only balance should use [orchardBalance] or GetOrchardBalanceUseCase, not
-     * this field. Null while the balance snapshot has not loaded yet.
+     * Folds Orchard + Ironwood together. Callers that need the Orchard-only balance should use
+     * [orchardBalance] or GetOrchardBalanceUseCase, not this field. Null while either contributing
+     * balance has not loaded yet — both pools come from the same `AccountBalance` entry, so their
+     * nullity coincides.
      */
     val unifiedBalance: WalletBalance?
+        get() = orchardBalance?.let { orchard -> ironwoodBalance?.let { ironwood -> orchard + ironwood } }
 
     /**
      * The Orchard-only balance, null while the balance snapshot has not loaded yet.
@@ -114,13 +115,12 @@ sealed interface WalletAccount : Comparable<WalletAccount> {
 
 data class ZashiAccount(
     override val sdkAccount: Account,
-    override val unifiedAddress: WalletAddress.Unified,
-    override val unifiedBalance: WalletBalance?,
+    override val unifiedAddress: String,
+    override val transparentAddress: String,
+    override val saplingAddress: String,
     override val orchardBalance: WalletBalance?,
-    override val saplingAddress: WalletAddress.Sapling,
     override val saplingBalance: WalletBalance?,
     override val ironwoodBalance: WalletBalance?,
-    override val transparentAddress: WalletAddress.Transparent,
     override val transparentBalance: Zatoshi?,
     override val isSelected: Boolean,
 ) : WalletAccount {
@@ -173,11 +173,10 @@ data class ZashiAccount(
 
 data class KeystoneAccount(
     override val sdkAccount: Account,
-    override val unifiedAddress: WalletAddress.Unified,
-    override val unifiedBalance: WalletBalance?,
+    override val unifiedAddress: String,
+    override val transparentAddress: String,
     override val orchardBalance: WalletBalance?,
     override val ironwoodBalance: WalletBalance?,
-    override val transparentAddress: WalletAddress.Transparent,
     override val transparentBalance: Zatoshi?,
     override val isSelected: Boolean,
 ) : WalletAccount {
@@ -187,7 +186,7 @@ data class KeystoneAccount(
     override val name: StringResource
         get() = stringRes(co.electriccoin.zcash.ui.R.string.accounts_keystone)
 
-    override val saplingAddress: WalletAddress.Sapling? = null
+    override val saplingAddress: String? = null
 
     override val saplingBalance: WalletBalance? = null
 
@@ -219,6 +218,19 @@ data class KeystoneAccount(
             is ZashiAccount -> -1
         }
 }
+
+/**
+ * Folds two balances together, e.g. to derive [WalletAccount.unifiedBalance] from Orchard +
+ * Ironwood. Includes [WalletBalance.locked] — unlike a naive total-only sum, the folded value
+ * doesn't silently drop it.
+ */
+private operator fun WalletBalance.plus(other: WalletBalance) =
+    WalletBalance(
+        available = available + other.available,
+        changePending = changePending + other.changePending,
+        valuePending = valuePending + other.valuePending,
+        locked = locked + other.locked,
+    )
 
 /**
  * The single spendability primitive the whole app validates against, so a typing-time check and the

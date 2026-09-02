@@ -133,7 +133,7 @@ class SignKeystoneVotingVM(
                         ZashiAccountInfoListItemState(
                             icon = wallet.icon,
                             title = wallet.name,
-                            subtitle = stringRes("${wallet.unifiedAddress.address.take(ADDRESS_MAX_LENGTH)}...")
+                            subtitle = stringRes("${wallet.unifiedAddress.take(ADDRESS_MAX_LENGTH)}...")
                         ),
                     badgeText = stringRes(R.string.keystone_signWith_hardware),
                     qrData = qrData,

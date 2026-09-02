@@ -1078,14 +1078,13 @@ class SubmitVotesUseCaseRecoveryTest {
                 createdAtHeight = 1
             )
 
-        suspend fun keystoneAccount() =
+        fun keystoneAccount() =
             KeystoneAccount(
                 sdkAccount = AccountFixture.new(),
-                unifiedAddress = WalletAddressFixture.unified(),
-                unifiedBalance = WalletBalanceFixture.newLong(),
+                unifiedAddress = WalletAddressFixture.UNIFIED_ADDRESS_STRING,
                 orchardBalance = WalletBalanceFixture.newLong(),
                 ironwoodBalance = WalletBalanceFixture.newLong(0, 0, 0),
-                transparentAddress = WalletAddressFixture.transparent(),
+                transparentAddress = WalletAddressFixture.TRANSPARENT_ADDRESS_STRING,
                 transparentBalance = Zatoshi(0),
                 isSelected = true
             )

@@ -45,14 +45,14 @@ class ReceiveVM(
                     listOfNotNull(
                         createAddressState(
                             account = account,
-                            address = account.unifiedAddress.address,
+                            address = account.unifiedAddress,
                             type = Unified,
                             isExpanded = expandedIndex == 0,
                             onClick = { onAddressClick(0) }
                         ),
                         createAddressState(
                             account = account,
-                            address = account.transparentAddress.address,
+                            address = account.transparentAddress,
                             type = Transparent,
                             isExpanded = expandedIndex == 1,
                             onClick = { onAddressClick(1) }

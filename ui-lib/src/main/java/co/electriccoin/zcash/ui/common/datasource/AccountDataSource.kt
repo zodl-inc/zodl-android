@@ -3,15 +3,13 @@ package co.electriccoin.zcash.ui.common.datasource
 import android.content.Context
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.model.Account
+import cash.z.ecc.android.sdk.model.AccountBalance
 import cash.z.ecc.android.sdk.model.AccountImportSetup
 import cash.z.ecc.android.sdk.model.AccountPurpose
 import cash.z.ecc.android.sdk.model.AccountUuid
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.UnifiedAddressRequest
 import cash.z.ecc.android.sdk.model.UnifiedFullViewingKey
-import cash.z.ecc.android.sdk.model.WalletAddress
-import cash.z.ecc.android.sdk.model.WalletBalance
-import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.Zip32AccountIndex
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
@@ -77,7 +75,7 @@ interface AccountDataSource {
         birthday: BlockHeight? = null
     ): Account
 
-    suspend fun requestNextShieldedAddress(): WalletAddress.Unified
+    suspend fun requestNextShieldedAddress(): String
 
     suspend fun deleteAccount(account: WalletAccount)
 }
@@ -111,71 +109,41 @@ class AccountDataSourceImpl(
                     ?.flatMapLatest { allSdkAccounts ->
                         allSdkAccounts
                             .map { sdkAccount ->
-                                val unifiedAndTransparent =
-                                    combine(
-                                        observeUnifiedAddress(synchronizer, sdkAccount),
-                                        observeUnifiedBalance(synchronizer, sdkAccount),
-                                        observeOrchardBalance(synchronizer, sdkAccount),
-                                        observeTransparentAddress(synchronizer, sdkAccount),
-                                        observeTransparentBalance(synchronizer, sdkAccount),
-                                    ) {
-                                        unifiedAddress,
-                                        unifiedBalance,
-                                        orchardBalance,
-                                        transparentAddress,
-                                        transparentBalance,
-                                        ->
-                                        UnifiedAndTransparentSnapshot(
+                                combine(
+                                    observeAccountBalance(synchronizer, sdkAccount),
+                                    observeUnifiedAddress(synchronizer, sdkAccount),
+                                    observeTransparentAddress(synchronizer, sdkAccount),
+                                    observeSaplingAddress(synchronizer, sdkAccount),
+                                    observeIsSelected(sdkAccount, allSdkAccounts),
+                                ) {
+                                    balance,
+                                    unifiedAddress,
+                                    transparentAddress,
+                                    saplingAddress,
+                                    isSelected,
+                                    ->
+                                    if (isKeystoneAccount(sdkAccount)) {
+                                        KeystoneAccount(
+                                            sdkAccount = sdkAccount,
                                             unifiedAddress = unifiedAddress,
-                                            unifiedBalance = unifiedBalance,
-                                            orchardBalance = orchardBalance,
                                             transparentAddress = transparentAddress,
-                                            transparentBalance = transparentBalance,
-                                        )
-                                    }
-                                val saplingAndSelection =
-                                    combine(
-                                        observeSaplingAddress(synchronizer, sdkAccount),
-                                        observeSaplingBalance(synchronizer, sdkAccount),
-                                        observeIronwoodBalance(synchronizer, sdkAccount),
-                                        observeIsSelected(sdkAccount, allSdkAccounts),
-                                    ) { saplingAddress, saplingBalance, ironwoodBalance, isSelected ->
-                                        SaplingAndSelectionSnapshot(
-                                            saplingAddress = saplingAddress,
-                                            saplingBalance = saplingBalance,
-                                            ironwoodBalance = ironwoodBalance,
+                                            orchardBalance = balance?.orchard,
+                                            ironwoodBalance = balance?.ironwood,
+                                            transparentBalance = balance?.unshielded,
                                             isSelected = isSelected,
                                         )
-                                    }
-                                combine(unifiedAndTransparent, saplingAndSelection) { primary, secondary ->
-                                    when (sdkAccount.keySource?.lowercase()) {
-                                        KEYSTONE_KEYSOURCE -> {
-                                            KeystoneAccount(
-                                                sdkAccount = sdkAccount,
-                                                unifiedAddress = primary.unifiedAddress,
-                                                unifiedBalance = primary.unifiedBalance,
-                                                orchardBalance = primary.orchardBalance,
-                                                ironwoodBalance = secondary.ironwoodBalance,
-                                                transparentAddress = primary.transparentAddress,
-                                                transparentBalance = primary.transparentBalance,
-                                                isSelected = secondary.isSelected,
-                                            )
-                                        }
-
-                                        else -> {
-                                            ZashiAccount(
-                                                sdkAccount = sdkAccount,
-                                                unifiedAddress = primary.unifiedAddress,
-                                                unifiedBalance = primary.unifiedBalance,
-                                                orchardBalance = primary.orchardBalance,
-                                                saplingAddress = secondary.saplingAddress!!,
-                                                saplingBalance = secondary.saplingBalance,
-                                                ironwoodBalance = secondary.ironwoodBalance,
-                                                transparentAddress = primary.transparentAddress,
-                                                transparentBalance = primary.transparentBalance,
-                                                isSelected = secondary.isSelected,
-                                            )
-                                        }
+                                    } else {
+                                        ZashiAccount(
+                                            sdkAccount = sdkAccount,
+                                            unifiedAddress = unifiedAddress,
+                                            transparentAddress = transparentAddress,
+                                            saplingAddress = saplingAddress!!,
+                                            orchardBalance = balance?.orchard,
+                                            saplingBalance = balance?.sapling,
+                                            ironwoodBalance = balance?.ironwood,
+                                            transparentBalance = balance?.unshielded,
+                                            isSelected = isSelected,
+                                        )
                                     }
                                 }
                             }.combineToFlow()
@@ -240,20 +208,20 @@ class AccountDataSourceImpl(
         }
 
     @Suppress("TooGenericExceptionCaught")
-    override suspend fun requestNextShieldedAddress(): WalletAddress.Unified {
-        var result: WalletAddress.Unified? = null
+    override suspend fun requestNextShieldedAddress(): String {
+        var result: String? = null
         scope
             .launch {
                 val accountUuid = getSelectedAccount().sdkAccount.accountUuid
                 log("requestNextShieldedAddress for $accountUuid")
-                val responseChannel = Channel<WalletAddress.Unified>(1)
+                val responseChannel = Channel<String>(1)
                 requestNextShieldedAddressChannel.emit(AddressRequest(accountUuid, responseChannel))
                 try {
                     val address = withTimeoutOrNull(ADDRESS_REQUEST_TIMEOUT) { responseChannel.receive() }
                     if (address == null) {
                         log("timed out waiting for address for $accountUuid")
                     } else {
-                        log("received address ${address.address} for $accountUuid")
+                        log("received address $address for $accountUuid")
                     }
                     result = address
                 } catch (e: Exception) {
@@ -261,7 +229,7 @@ class AccountDataSourceImpl(
                 }
             }.join()
         return (result ?: getSelectedAccount().unifiedAddress).also {
-            log("returning address ${it.address}")
+            log("returning address $it")
         }
     }
 
@@ -284,34 +252,34 @@ class AccountDataSourceImpl(
             }
         }
 
+    private fun isKeystoneAccount(sdkAccount: Account) = sdkAccount.keySource?.lowercase() == KEYSTONE_KEYSOURCE
+
     private fun observeIsSelected(sdkAccount: Account, allAccounts: List<Account>) =
         selectedAccountUUIDProvider
             .uuid
             .map { uuid ->
-                when (sdkAccount.keySource?.lowercase()) {
-                    KEYSTONE_KEYSOURCE -> sdkAccount.accountUuid == uuid || allAccounts.size == 1
-                    else -> uuid == null || sdkAccount.accountUuid == uuid || allAccounts.size == 1
+                if (isKeystoneAccount(sdkAccount)) {
+                    sdkAccount.accountUuid == uuid || allAccounts.size == 1
+                } else {
+                    uuid == null || sdkAccount.accountUuid == uuid || allAccounts.size == 1
                 }
             }
 
     @Suppress("TooGenericExceptionCaught")
-    private fun observeUnifiedAddress(synchronizer: Synchronizer, sdkAccount: Account): Flow<WalletAddress.Unified> {
-        suspend fun rotateAddress(): WalletAddress.Unified {
+    private fun observeUnifiedAddress(synchronizer: Synchronizer, sdkAccount: Account): Flow<String> {
+        suspend fun rotateAddress(): String {
             log("deriving unified address for ${sdkAccount.accountUuid}")
 
             val addressRequest =
-                if (sdkAccount.keySource?.lowercase() == KEYSTONE_KEYSOURCE) {
+                if (isKeystoneAccount(sdkAccount)) {
                     UnifiedAddressRequest.Orchard
                 } else {
                     UnifiedAddressRequest.shielded
                 }
 
-            val address =
-                WalletAddress
-                    .Unified
-                    .new(synchronizer.getCustomUnifiedAddress(sdkAccount, addressRequest))
+            val address = synchronizer.getCustomUnifiedAddress(sdkAccount, addressRequest)
 
-            log("derived address ${address.address} for ${sdkAccount.accountUuid}")
+            log("derived address $address for ${sdkAccount.accountUuid}")
 
             return address
         }
@@ -354,98 +322,37 @@ class AccountDataSourceImpl(
     }
 
     /**
-     * Folds Orchard + Ironwood together — see [WalletAccount.unifiedBalance].
+     * The account's full balance snapshot, or null while the synchronizer hasn't reported one yet
+     * — see [allAccounts]'s kdoc for the null-propagation contract this feeds.
      */
-    private fun observeUnifiedBalance(synchronizer: Synchronizer, sdkAccount: Account): Flow<WalletBalance?> =
+    private fun observeAccountBalance(synchronizer: Synchronizer, sdkAccount: Account): Flow<AccountBalance?> =
         synchronizer.walletBalances
-            .map { balances ->
-                balances?.get(sdkAccount.accountUuid)?.let { balance -> balance.orchard + balance.ironwood }
-            }
+            .map { balances -> balances?.get(sdkAccount.accountUuid) }
 
-    private fun observeOrchardBalance(synchronizer: Synchronizer, sdkAccount: Account): Flow<WalletBalance?> =
-        synchronizer.walletBalances
-            .map { balances ->
-                balances?.get(sdkAccount.accountUuid)?.orchard
-            }
-
-    private fun observeTransparentAddress(
-        synchronizer: Synchronizer,
-        sdkAccount: Account
-    ): Flow<WalletAddress.Transparent> =
+    private fun observeTransparentAddress(synchronizer: Synchronizer, sdkAccount: Account): Flow<String> =
         flow {
-            emit(WalletAddress.Transparent.new(synchronizer.getTransparentAddress(sdkAccount)))
+            emit(synchronizer.getTransparentAddress(sdkAccount))
         }.retryWhen { _, attempt ->
             delay(attempt.coerceAtMost(RETRY_DELAY).seconds)
             true
         }
 
-    private fun observeTransparentBalance(synchronizer: Synchronizer, sdkAccount: Account): Flow<Zatoshi?> =
-        synchronizer.walletBalances
-            .map { balances ->
-                balances?.get(sdkAccount.accountUuid)?.unshielded
-            }
-
-    private fun observeSaplingAddress(
-        synchronizer: Synchronizer,
-        sdkAccount: Account
-    ): Flow<WalletAddress.Sapling?> =
-        if (sdkAccount.keySource == KEYSTONE_KEYSOURCE) {
+    private fun observeSaplingAddress(synchronizer: Synchronizer, sdkAccount: Account): Flow<String?> =
+        if (isKeystoneAccount(sdkAccount)) {
             flowOf(null)
         } else {
             flow {
-                emit(WalletAddress.Sapling.new(synchronizer.getSaplingAddress(sdkAccount)))
+                emit(synchronizer.getSaplingAddress(sdkAccount))
             }.retryWhen { _, attempt ->
                 delay(attempt.coerceAtMost(RETRY_DELAY).seconds)
                 true
             }
         }
-
-    private fun observeSaplingBalance(synchronizer: Synchronizer, sdkAccount: Account): Flow<WalletBalance?> =
-        if (sdkAccount.keySource == KEYSTONE_KEYSOURCE) {
-            flowOf(null)
-        } else {
-            synchronizer.walletBalances
-                .map { balances ->
-                    balances?.get(sdkAccount.accountUuid)?.sapling
-                }
-        }
-
-    /**
-     * Ironwood shares the same unified address as Orchard (no address of its own to observe) —
-     * just its balance.
-     */
-    private fun observeIronwoodBalance(synchronizer: Synchronizer, sdkAccount: Account): Flow<WalletBalance?> =
-        synchronizer.walletBalances
-            .map { balances ->
-                balances?.get(sdkAccount.accountUuid)?.ironwood
-            }
-
-    private operator fun WalletBalance.plus(other: WalletBalance) =
-        WalletBalance(
-            available = available + other.available,
-            changePending = changePending + other.changePending,
-            valuePending = valuePending + other.valuePending
-        )
 }
 
 private data class AddressRequest(
     val accountUuid: AccountUuid,
-    val responseChannel: Channel<WalletAddress.Unified>
-)
-
-private data class UnifiedAndTransparentSnapshot(
-    val unifiedAddress: WalletAddress.Unified,
-    val unifiedBalance: WalletBalance?,
-    val orchardBalance: WalletBalance?,
-    val transparentAddress: WalletAddress.Transparent,
-    val transparentBalance: Zatoshi?,
-)
-
-private data class SaplingAndSelectionSnapshot(
-    val saplingAddress: WalletAddress.Sapling?,
-    val saplingBalance: WalletBalance?,
-    val ironwoodBalance: WalletBalance?,
-    val isSelected: Boolean,
+    val responseChannel: Channel<String>
 )
 
 private const val RETRY_DELAY = 3L
