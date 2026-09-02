@@ -38,7 +38,7 @@ class GetOrchardBalanceUseCase(
     @OptIn(ExperimentalCoroutinesApi::class)
     fun observe(): Flow<Zatoshi?> =
         combine(
-            synchronizerProvider.synchronizer,
+            synchronizerProvider.retainedSynchronizer,
             accountDataSource.selectedAccount
         ) { synchronizer, account ->
             synchronizer to account

@@ -715,6 +715,7 @@ class VotingKeystoneRepositoryTest {
     ) : SynchronizerProvider {
         override val error: StateFlow<SynchronizerError?> = MutableStateFlow(null)
         override val synchronizer: StateFlow<Synchronizer?> = MutableStateFlow(null)
+        override val retainedSynchronizer = synchronizer
         override val walletBalances: Flow<Map<AccountUuid, AccountBalance>?> = flowOf(null)
 
         private val fakeSynchronizer: Synchronizer =

@@ -26,7 +26,7 @@ class WalletViewModel(
     synchronizerProvider: SynchronizerProvider,
     private val walletRepository: WalletRepository,
 ) : ViewModel() {
-    val synchronizer = synchronizerProvider.synchronizer
+    val synchronizer = synchronizerProvider.retainedSynchronizer
 
     val secretState: StateFlow<SecretState> = walletRepository.secretState
 

@@ -29,7 +29,7 @@ class WalletSnapshotDataSourceImpl(
     @OptIn(ExperimentalCoroutinesApi::class)
     val flow =
         synchronizerProvider
-            .synchronizer
+            .retainedSynchronizer
             .flatMapLatest { synchronizer ->
                 if (synchronizer == null) {
                     flowOf(null)

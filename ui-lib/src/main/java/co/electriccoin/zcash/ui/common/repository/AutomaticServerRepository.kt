@@ -1,18 +1,21 @@
 package co.electriccoin.zcash.ui.common.repository
 
 import co.electriccoin.zcash.ui.common.datasource.resolveIsServerSelectionAutomatic
+import co.electriccoin.zcash.ui.common.model.FastestServersState
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
+import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
@@ -33,6 +36,7 @@ class AutomaticServerRepositoryImpl(
     private val zashiProposalRepository: ZashiProposalRepository,
     private val keystoneProposalRepository: KeystoneProposalRepository,
     private val applicationStateProvider: ApplicationStateProvider,
+    private val synchronizerProvider: SynchronizerProvider,
     private val persistableWalletProvider: PersistableWalletProvider,
     private val lightWalletEndpointProvider: LightWalletEndpointProvider,
     private val isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
@@ -85,13 +89,17 @@ class AutomaticServerRepositoryImpl(
         isServerAutomatic
             .flatMapLatest { isAutomatic ->
                 if (isAutomatic) {
-                    walletRepository.fastestEndpoints
-                        .filter { !it.isLoading }
-                        .mapNotNull { it.servers?.firstOrNull() }
+                    combine(
+                        walletRepository.fastestEndpoints,
+                        synchronizerProvider.walletBalances,
+                        ::resolveAutomaticServerCandidate,
+                    ).filterNotNull().distinctUntilChanged()
                 } else {
                     emptyFlow()
                 }
             }.onEach { fastestServer ->
+                // A different endpoint rebuilds the Synchronizer. The candidate waits for the
+                // first local balance snapshot; UI consumers retain that state through replacement.
                 if (!isAppInTransactionState) {
                     walletRepository.updateWalletEndpoint(fastestServer)
                 }
@@ -106,3 +114,14 @@ class AutomaticServerRepositoryImpl(
             }.launchIn(scope)
     }
 }
+
+internal fun resolveAutomaticServerCandidate(
+    fastestEndpoints: FastestServersState,
+    localBalances: Map<*, *>?,
+) =
+    fastestEndpoints.servers
+        ?.firstOrNull()
+        ?.takeIf {
+            !fastestEndpoints.isLoading &&
+                localBalances != null
+        }

@@ -98,7 +98,7 @@ class AccountDataSourceImpl(
     @OptIn(ExperimentalCoroutinesApi::class)
     override val allAccounts: StateFlow<List<WalletAccount>?> =
         synchronizerProvider
-            .synchronizer
+            .retainedSynchronizer
             .flatMapLatest { synchronizer ->
                 synchronizer
                     ?.accountsFlow

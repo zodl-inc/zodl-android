@@ -44,7 +44,7 @@ class GetBalancePoolsUseCase(
     @OptIn(ExperimentalCoroutinesApi::class)
     fun observe(): Flow<BalancePools?> =
         combine(
-            synchronizerProvider.synchronizer,
+            synchronizerProvider.retainedSynchronizer,
             accountDataSource.selectedAccount
         ) { synchronizer, account ->
             synchronizer to account

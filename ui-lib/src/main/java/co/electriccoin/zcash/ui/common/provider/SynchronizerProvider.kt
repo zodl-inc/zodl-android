@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -34,6 +36,12 @@ interface SynchronizerProvider {
     val error: StateFlow<SynchronizerError?>
 
     val synchronizer: StateFlow<Synchronizer?>
+
+    /**
+     * UI-facing synchronizer state that retains the last instance during a rebuild. It clears when
+     * the wallet is removed and is replaced as soon as the coordinator publishes a new instance.
+     */
+    val retainedSynchronizer: StateFlow<Synchronizer?>
 
     /**
      * MOB-1664: [Synchronizer.walletBalances] is per-synchronizer-instance state that resets to
@@ -106,6 +114,20 @@ class SynchronizerProviderImpl(
                 started = SharingStarted.Lazily,
                 initialValue = walletCoordinator.synchronizer.value
             )
+
+    override val retainedSynchronizer: StateFlow<Synchronizer?> =
+        combine(
+            synchronizer,
+            persistableWalletProvider.persistableWallet.map { it != null }.distinctUntilChanged(),
+        ) { current, hasWallet ->
+            current to hasWallet
+        }.scan(synchronizer.value) { retained, (current, hasWallet) ->
+            resolveRetainedSynchronizer(retained, current, hasWallet)
+        }.stateIn(
+            scope = scope,
+            started = SharingStarted.Eagerly,
+            initialValue = synchronizer.value
+        )
 
     private val lastKnownWalletBalances = MutableStateFlow<Map<AccountUuid, AccountBalance>?>(null)
 
@@ -182,3 +204,14 @@ class SynchronizerProviderImpl(
         return pipeline
     }
 }
+
+internal fun resolveRetainedSynchronizer(
+    retained: Synchronizer?,
+    current: Synchronizer?,
+    hasWallet: Boolean,
+): Synchronizer? =
+    when {
+        !hasWallet -> null
+        current != null -> current
+        else -> retained
+    }
