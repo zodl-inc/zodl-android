@@ -2,8 +2,10 @@ package co.electriccoin.zcash.ui.common.datasource
 
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.common.model.WalletSnapshot
+import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.WalletRestoringStateProvider
+import co.electriccoin.zcash.ui.common.provider.retainWhileWalletExists
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -23,13 +25,14 @@ interface WalletSnapshotDataSource {
 class WalletSnapshotDataSourceImpl(
     synchronizerProvider: SynchronizerProvider,
     walletRestoringStateProvider: WalletRestoringStateProvider,
+    persistableWalletProvider: PersistableWalletProvider,
 ) : WalletSnapshotDataSource {
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val flow =
         synchronizerProvider
-            .retainedSynchronizer
+            .synchronizer
             .flatMapLatest { synchronizer ->
                 if (synchronizer == null) {
                     flowOf(null)
@@ -63,7 +66,8 @@ class WalletSnapshotDataSourceImpl(
                         snapshot.copy(blocksRemaining = blocksRemaining)
                     }
                 }
-            }.stateIn(
+            }.retainWhileWalletExists(persistableWalletProvider)
+            .stateIn(
                 scope = scope,
                 started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
                 initialValue = null

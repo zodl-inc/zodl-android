@@ -38,12 +38,6 @@ interface SynchronizerProvider {
     val synchronizer: StateFlow<Synchronizer?>
 
     /**
-     * UI-facing synchronizer state that retains the last instance during a rebuild. It clears when
-     * the wallet is removed and is replaced as soon as the coordinator publishes a new instance.
-     */
-    val retainedSynchronizer: StateFlow<Synchronizer?>
-
-    /**
      * MOB-1664: [Synchronizer.walletBalances] is per-synchronizer-instance state that resets to
      * `null` every time the synchronizer is rebuilt (e.g. an automatic server switch tears down
      * and reconstructs the whole engine), which would otherwise flash every balance display
@@ -114,20 +108,6 @@ class SynchronizerProviderImpl(
                 started = SharingStarted.Lazily,
                 initialValue = walletCoordinator.synchronizer.value
             )
-
-    override val retainedSynchronizer: StateFlow<Synchronizer?> =
-        combine(
-            synchronizer,
-            persistableWalletProvider.persistableWallet.map { it != null }.distinctUntilChanged(),
-        ) { current, hasWallet ->
-            current to hasWallet
-        }.scan(synchronizer.value) { retained, (current, hasWallet) ->
-            resolveRetainedSynchronizer(retained, current, hasWallet)
-        }.stateIn(
-            scope = scope,
-            started = SharingStarted.Eagerly,
-            initialValue = synchronizer.value
-        )
 
     private val lastKnownWalletBalances = MutableStateFlow<Map<AccountUuid, AccountBalance>?>(null)
 
@@ -205,11 +185,31 @@ class SynchronizerProviderImpl(
     }
 }
 
-internal fun resolveRetainedSynchronizer(
-    retained: Synchronizer?,
-    current: Synchronizer?,
+/**
+ * MOB-1723: retains the last non-null value of UI-facing wallet-derived state across the gap in
+ * which an automatic server switch (or any other rebuild) tears down and reconstructs the
+ * Synchronizer, so screens do not collapse to a loading state mid-rebuild. Clears to null as soon
+ * as the wallet is removed, so a deleted wallet's state is never shown. This retains plain data
+ * only — never the Synchronizer instance itself, whose close() cancels its coroutineScope and
+ * disposes its clients, making a retained instance a dead object with silently-frozen flows.
+ */
+internal fun <T : Any> Flow<T?>.retainWhileWalletExists(
+    persistableWalletProvider: PersistableWalletProvider
+): Flow<T?> =
+    combine(
+        this,
+        persistableWalletProvider.persistableWallet.map { it != null }.distinctUntilChanged(),
+    ) { current, hasWallet ->
+        current to hasWallet
+    }.scan(null as T?) { retained, (current, hasWallet) ->
+        resolveRetained(retained = retained, current = current, hasWallet = hasWallet)
+    }
+
+internal fun <T : Any> resolveRetained(
+    retained: T?,
+    current: T?,
     hasWallet: Boolean,
-): Synchronizer? =
+): T? =
     when {
         !hasWallet -> null
         current != null -> current

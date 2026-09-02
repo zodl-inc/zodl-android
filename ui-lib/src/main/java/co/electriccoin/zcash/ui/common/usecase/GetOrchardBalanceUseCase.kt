@@ -6,7 +6,6 @@ import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -37,18 +36,14 @@ class GetOrchardBalanceUseCase(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun observe(): Flow<Zatoshi?> =
-        combine(
-            synchronizerProvider.retainedSynchronizer,
-            accountDataSource.selectedAccount
-        ) { synchronizer, account ->
-            synchronizer to account
-        }.flatMapLatest { (synchronizer, account) ->
-            if (synchronizer == null || account == null) {
-                flowOf(null)
-            } else {
-                synchronizerProvider.walletBalances.map { balances ->
-                    balances?.get(account.sdkAccount.accountUuid)?.orchard?.available
+        accountDataSource.selectedAccount
+            .flatMapLatest { account ->
+                if (account == null) {
+                    flowOf(null)
+                } else {
+                    synchronizerProvider.walletBalances.map { balances ->
+                        balances?.get(account.sdkAccount.accountUuid)?.orchard?.available
+                    }
                 }
             }
-        }
 }

@@ -13,7 +13,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.model.ZecSend
 import cash.z.ecc.android.sdk.model.toZecString
 import cash.z.ecc.android.sdk.type.AddressType
@@ -23,11 +22,11 @@ import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarVM
 import co.electriccoin.zcash.ui.common.compose.LocalActivity
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.ExchangeRateRepository
 import co.electriccoin.zcash.ui.common.usecase.ObserveClearSendUseCase
 import co.electriccoin.zcash.ui.common.usecase.PrefillSendData
 import co.electriccoin.zcash.ui.common.usecase.PrefillSendUseCase
-import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
 import co.electriccoin.zcash.ui.design.util.StringResource.Companion.NUMBER_FORMAT_LOCALE
@@ -56,8 +55,6 @@ internal fun WrapSend(args: Send) {
 
     val navigationRouter = koinInject<NavigationRouter>()
 
-    val walletViewModel = koinActivityViewModel<WalletViewModel>()
-
     val balanceWidgetVM =
         koinViewModel<BalanceWidgetVM> {
             parametersOf(
@@ -74,8 +71,6 @@ internal fun WrapSend(args: Send) {
     val exchangeRateRepository = koinInject<ExchangeRateRepository>()
 
     val hasCameraFeature = activity.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
-
-    val synchronizer = walletViewModel.synchronizer.collectAsStateWithLifecycle().value
 
     val selectedAccount = accountDataSource.selectedAccount.collectAsStateWithLifecycle(null).value
 
@@ -99,7 +94,6 @@ internal fun WrapSend(args: Send) {
         goBack = { navigationRouter.back() },
         hasCameraFeature = hasCameraFeature,
         sendArguments = args,
-        synchronizer = synchronizer,
         selectedAccount = selectedAccount
     )
 }
@@ -114,12 +108,13 @@ internal fun WrapSend(
     goBack: () -> Unit,
     hasCameraFeature: Boolean,
     sendArguments: Send,
-    synchronizer: Synchronizer?,
     selectedAccount: WalletAccount?,
 ) {
     val scope = rememberCoroutineScope()
 
     val viewModel = koinViewModel<SendViewModel>()
+
+    val synchronizerProvider = koinInject<SynchronizerProvider>()
 
     val sendAddressBookState by viewModel.sendAddressBookState.collectAsStateWithLifecycle()
 
@@ -224,7 +219,7 @@ internal fun WrapSend(
         prefillSend().collect {
             when (it) {
                 is PrefillSendData.All -> {
-                    val type = synchronizer?.validateAddress(it.address.orEmpty())
+                    val type = synchronizerProvider.getSynchronizer().validateAddress(it.address.orEmpty())
                     setSendStage(SendStage.Form)
                     setZecSend(null)
                     viewModel.onRecipientAddressChanged(
@@ -254,7 +249,7 @@ internal fun WrapSend(
                 }
 
                 is PrefillSendData.FromAddressScan -> {
-                    val type = synchronizer?.validateAddress(it.address)
+                    val type = synchronizerProvider.getSynchronizer().validateAddress(it.address)
                     setSendStage(SendStage.Form)
                     setZecSend(null)
                     viewModel.onRecipientAddressChanged(
@@ -284,7 +279,7 @@ internal fun WrapSend(
         }
     }
 
-    if (null == synchronizer || null == selectedAccount) {
+    if (null == selectedAccount) {
         // TODO [#1146]: Consider moving CircularScreenProgressIndicator from Android layer to View layer
         // TODO [#1146]: Improve this by allowing screen composition and updating it after the data is available
         // TODO [#1146]: https://github.com/Electric-Coin-Company/zashi-android/issues/1146
@@ -311,7 +306,7 @@ internal fun WrapSend(
                             address = it,
                             // TODO [#342]: Verify Addresses without Synchronizer
                             // TODO [#342]: https://github.com/zcash/zcash-android-wallet-sdk/issues/342
-                            type = synchronizer.validateAddress(it)
+                            type = synchronizerProvider.getSynchronizer().validateAddress(it)
                         )
                     )
                 }

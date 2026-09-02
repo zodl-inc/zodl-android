@@ -21,8 +21,10 @@ import co.electriccoin.zcash.ui.common.model.TransparentInfo
 import co.electriccoin.zcash.ui.common.model.UnifiedInfo
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SelectedAccountUUIDProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
+import co.electriccoin.zcash.ui.common.provider.retainWhileWalletExists
 import co.electriccoin.zcash.ui.design.util.combineToFlow
 import co.electriccoin.zcash.ui.util.loggableNot
 import kotlinx.coroutines.CancellationException
@@ -88,6 +90,7 @@ interface AccountDataSource {
 class AccountDataSourceImpl(
     private val synchronizerProvider: SynchronizerProvider,
     private val selectedAccountUUIDProvider: SelectedAccountUUIDProvider,
+    private val persistableWalletProvider: PersistableWalletProvider,
     private val context: Context,
 ) : AccountDataSource {
     private val log = loggableNot("AccountDataSource")
@@ -98,7 +101,7 @@ class AccountDataSourceImpl(
     @OptIn(ExperimentalCoroutinesApi::class)
     override val allAccounts: StateFlow<List<WalletAccount>?> =
         synchronizerProvider
-            .retainedSynchronizer
+            .synchronizer
             .flatMapLatest { synchronizer ->
                 synchronizer
                     ?.accountsFlow
@@ -140,6 +143,7 @@ class AccountDataSourceImpl(
                     }
                     ?: flowOf(null)
             }.map { it?.sortedDescending() }
+            .retainWhileWalletExists(persistableWalletProvider)
             .stateIn(
                 scope = scope,
                 started = SharingStarted.Eagerly,
