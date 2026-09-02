@@ -98,6 +98,11 @@ class AccountDataSourceImpl(
 
     private val requestNextShieldedAddressChannel = MutableSharedFlow<AddressRequest>()
 
+    /**
+     * A null balances snapshot from the synchronizer must yield no emission (or null for
+     * [allAccounts] itself), never fabricated zeros — zeros are a truth claim about wallet state,
+     * while null means the data simply is not loaded yet.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
     override val allAccounts: StateFlow<List<WalletAccount>?> =
         synchronizerProvider
@@ -316,9 +321,9 @@ class AccountDataSourceImpl(
 
         val balanceFlow =
             synchronizer.walletBalances
-                .map {
-                    it
-                        ?.get(sdkAccount.accountUuid)
+                .filterNotNull()
+                .map { balances ->
+                    balances[sdkAccount.accountUuid]
                         ?.let { balance -> balance.orchard + balance.ironwood }
                         ?: createEmptyWalletBalance()
                 }
@@ -336,8 +341,8 @@ class AccountDataSourceImpl(
                 delay(attempt.coerceAtMost(RETRY_DELAY).seconds)
                 true
             }
-        return combine(transparentAddress, synchronizer.walletBalances) { address, balances ->
-            val balance = balances?.get(sdkAccount.accountUuid)
+        return combine(transparentAddress, synchronizer.walletBalances.filterNotNull()) { address, balances ->
+            val balance = balances[sdkAccount.accountUuid]
             TransparentInfo(address = address, balance = balance?.unshielded ?: Zatoshi.ZERO)
         }
     }
@@ -353,8 +358,8 @@ class AccountDataSourceImpl(
                     delay(attempt.coerceAtMost(RETRY_DELAY).seconds)
                     true
                 }
-            combine(saplingAddress, synchronizer.walletBalances) { address, balances ->
-                val balance = balances?.get(sdkAccount.accountUuid)
+            combine(saplingAddress, synchronizer.walletBalances.filterNotNull()) { address, balances ->
+                val balance = balances[sdkAccount.accountUuid]
                 SaplingInfo(address = address, balance = balance?.sapling ?: createEmptyWalletBalance())
             }
         }
@@ -362,9 +367,11 @@ class AccountDataSourceImpl(
     // Ironwood shares the same unified address as Orchard (no address of its own to observe) —
     // just its balance.
     private fun observeIronwoodBalance(synchronizer: Synchronizer, sdkAccount: Account): Flow<WalletBalance> =
-        synchronizer.walletBalances.map { balances ->
-            balances?.get(sdkAccount.accountUuid)?.ironwood ?: createEmptyWalletBalance()
-        }
+        synchronizer.walletBalances
+            .filterNotNull()
+            .map { balances ->
+                balances[sdkAccount.accountUuid]?.ironwood ?: createEmptyWalletBalance()
+            }
 
     private fun createEmptyWalletBalance() = WalletBalance(Zatoshi.ZERO, Zatoshi.ZERO, Zatoshi.ZERO)
 

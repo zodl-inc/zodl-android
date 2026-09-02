@@ -91,6 +91,16 @@ class AutomaticServerRepositoryImpl(
         )
     }
 
+    /**
+     * Subscribes to the automatic-server candidate pipeline and the app-foreground signal.
+     *
+     * The candidate flow is intentionally left un-deduplicated: [WalletRepository.updateWalletEndpoint]
+     * already no-ops when the new endpoint matches the persisted one, so a redundant candidate here
+     * is cheap, whereas deduplicating upstream would permanently suppress a candidate that was
+     * skipped while [isAppInTransactionState] and never resurface it on a later emission. A
+     * different endpoint rebuilds the Synchronizer; the candidate waits for the first local balance
+     * snapshot, and UI consumers retain the previous state through the replacement.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun init() {
         isServerAutomatic
@@ -100,13 +110,11 @@ class AutomaticServerRepositoryImpl(
                         walletRepository.fastestEndpoints,
                         walletBalances,
                         ::resolveAutomaticServerCandidate,
-                    ).filterNotNull().distinctUntilChanged()
+                    ).filterNotNull()
                 } else {
                     emptyFlow()
                 }
             }.onEach { fastestServer ->
-                // A different endpoint rebuilds the Synchronizer. The candidate waits for the
-                // first local balance snapshot; UI consumers retain that state through replacement.
                 if (!isAppInTransactionState) {
                     walletRepository.updateWalletEndpoint(fastestServer)
                 }

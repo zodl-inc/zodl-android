@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
@@ -22,11 +23,11 @@ import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarVM
 import co.electriccoin.zcash.ui.common.compose.LocalActivity
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.WalletAccount
-import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.ExchangeRateRepository
 import co.electriccoin.zcash.ui.common.usecase.ObserveClearSendUseCase
 import co.electriccoin.zcash.ui.common.usecase.PrefillSendData
 import co.electriccoin.zcash.ui.common.usecase.PrefillSendUseCase
+import co.electriccoin.zcash.ui.common.usecase.ValidateAddressUseCase
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
 import co.electriccoin.zcash.ui.design.util.StringResource.Companion.NUMBER_FORMAT_LOCALE
@@ -44,6 +45,7 @@ import co.electriccoin.zcash.ui.screen.send.model.MemoState
 import co.electriccoin.zcash.ui.screen.send.model.RecipientAddressState
 import co.electriccoin.zcash.ui.screen.send.model.SendStage
 import co.electriccoin.zcash.ui.screen.send.view.Send
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
@@ -114,7 +116,7 @@ internal fun WrapSend(
 
     val viewModel = koinViewModel<SendViewModel>()
 
-    val synchronizerProvider = koinInject<SynchronizerProvider>()
+    val validateAddress = koinInject<ValidateAddressUseCase>()
 
     val sendAddressBookState by viewModel.sendAddressBookState.collectAsStateWithLifecycle()
 
@@ -219,7 +221,7 @@ internal fun WrapSend(
         prefillSend().collect {
             when (it) {
                 is PrefillSendData.All -> {
-                    val type = synchronizerProvider.getSynchronizer().validateAddress(it.address.orEmpty())
+                    val type = validateAddress(it.address.orEmpty())
                     setSendStage(SendStage.Form)
                     setZecSend(null)
                     viewModel.onRecipientAddressChanged(
@@ -249,7 +251,7 @@ internal fun WrapSend(
                 }
 
                 is PrefillSendData.FromAddressScan -> {
-                    val type = synchronizerProvider.getSynchronizer().validateAddress(it.address)
+                    val type = validateAddress(it.address)
                     setSendStage(SendStage.Form)
                     setZecSend(null)
                     viewModel.onRecipientAddressChanged(
@@ -279,6 +281,8 @@ internal fun WrapSend(
         }
     }
 
+    val recipientValidationJob = remember { mutableStateOf<Job?>(null) }
+
     if (null == selectedAccount) {
         // TODO [#1146]: Consider moving CircularScreenProgressIndicator from Android layer to View layer
         // TODO [#1146]: Improve this by allowing screen composition and updating it after the data is available
@@ -299,17 +303,19 @@ internal fun WrapSend(
             onQrScannerOpen = goToQrScanner,
             hasCameraFeature = hasCameraFeature,
             recipientAddressState = recipientAddressState,
-            onRecipientAddressChange = {
-                scope.launch {
-                    viewModel.onRecipientAddressChanged(
-                        RecipientAddressState.new(
-                            address = it,
-                            // TODO [#342]: Verify Addresses without Synchronizer
-                            // TODO [#342]: https://github.com/zcash/zcash-android-wallet-sdk/issues/342
-                            type = synchronizerProvider.getSynchronizer().validateAddress(it)
+            onRecipientAddressChange = { newAddress ->
+                recipientValidationJob.value?.cancel()
+                recipientValidationJob.value =
+                    scope.launch {
+                        viewModel.onRecipientAddressChanged(
+                            RecipientAddressState.new(
+                                address = newAddress,
+                                // TODO [#342]: Verify Addresses without Synchronizer
+                                // TODO [#342]: https://github.com/zcash/zcash-android-wallet-sdk/issues/342
+                                type = validateAddress(newAddress)
+                            )
                         )
-                    )
-                }
+                    }
             },
             setAmountState = setAmountState,
             amountState = amountState,
