@@ -6,8 +6,6 @@ import cash.z.ecc.android.sdk.fixture.WalletBalanceFixture
 import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
-import co.electriccoin.zcash.ui.common.model.TransparentInfo
-import co.electriccoin.zcash.ui.common.model.UnifiedInfo
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
@@ -178,17 +176,12 @@ class VotingHomeHooksImplTest {
     private suspend fun keystoneAccount(): KeystoneAccount =
         KeystoneAccount(
             sdkAccount = AccountFixture.new(),
-            unified =
-                UnifiedInfo(
-                    address = WalletAddressFixture.unified(),
-                    balance = WalletBalanceFixture.newLong()
-                ),
+            unifiedAddress = WalletAddressFixture.unified(),
+            unifiedBalance = WalletBalanceFixture.newLong(),
+            orchardBalance = WalletBalanceFixture.newLong(),
             ironwoodBalance = WalletBalanceFixture.newLong(0, 0, 0),
-            transparent =
-                TransparentInfo(
-                    address = WalletAddressFixture.transparent(),
-                    balance = Zatoshi(0)
-                ),
+            transparentAddress = WalletAddressFixture.transparent(),
+            transparentBalance = Zatoshi(0),
             isSelected = true
         )
 

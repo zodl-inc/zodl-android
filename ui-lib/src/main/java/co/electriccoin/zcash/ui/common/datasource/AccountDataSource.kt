@@ -11,12 +11,10 @@ import cash.z.ecc.android.sdk.model.UnifiedAddressRequest
 import cash.z.ecc.android.sdk.model.UnifiedFullViewingKey
 import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.android.sdk.model.WalletBalance
+import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.Zip32AccountIndex
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
-import co.electriccoin.zcash.ui.common.model.SaplingInfo
-import co.electriccoin.zcash.ui.common.model.TransparentInfo
-import co.electriccoin.zcash.ui.common.model.UnifiedInfo
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
@@ -113,32 +111,69 @@ class AccountDataSourceImpl(
                     ?.flatMapLatest { allSdkAccounts ->
                         allSdkAccounts
                             .map { sdkAccount ->
-                                combine(
-                                    observeUnified(synchronizer, sdkAccount),
-                                    observeTransparent(synchronizer, sdkAccount),
-                                    observeSapling(synchronizer, sdkAccount),
-                                    observeIronwoodBalance(synchronizer, sdkAccount),
-                                    observeIsSelected(sdkAccount, allSdkAccounts),
-                                ) { unified, transparent, sapling, ironwoodBalance, isSelected ->
+                                val unifiedAndTransparent =
+                                    combine(
+                                        observeUnifiedAddress(synchronizer, sdkAccount),
+                                        observeUnifiedBalance(synchronizer, sdkAccount),
+                                        observeOrchardBalance(synchronizer, sdkAccount),
+                                        observeTransparentAddress(synchronizer, sdkAccount),
+                                        observeTransparentBalance(synchronizer, sdkAccount),
+                                    ) {
+                                        unifiedAddress,
+                                        unifiedBalance,
+                                        orchardBalance,
+                                        transparentAddress,
+                                        transparentBalance,
+                                        ->
+                                        UnifiedAndTransparentSnapshot(
+                                            unifiedAddress = unifiedAddress,
+                                            unifiedBalance = unifiedBalance,
+                                            orchardBalance = orchardBalance,
+                                            transparentAddress = transparentAddress,
+                                            transparentBalance = transparentBalance,
+                                        )
+                                    }
+                                val saplingAndSelection =
+                                    combine(
+                                        observeSaplingAddress(synchronizer, sdkAccount),
+                                        observeSaplingBalance(synchronizer, sdkAccount),
+                                        observeIronwoodBalance(synchronizer, sdkAccount),
+                                        observeIsSelected(sdkAccount, allSdkAccounts),
+                                    ) { saplingAddress, saplingBalance, ironwoodBalance, isSelected ->
+                                        SaplingAndSelectionSnapshot(
+                                            saplingAddress = saplingAddress,
+                                            saplingBalance = saplingBalance,
+                                            ironwoodBalance = ironwoodBalance,
+                                            isSelected = isSelected,
+                                        )
+                                    }
+                                combine(unifiedAndTransparent, saplingAndSelection) { primary, secondary ->
                                     when (sdkAccount.keySource?.lowercase()) {
                                         KEYSTONE_KEYSOURCE -> {
                                             KeystoneAccount(
                                                 sdkAccount = sdkAccount,
-                                                unified = unified,
-                                                ironwoodBalance = ironwoodBalance,
-                                                transparent = transparent,
-                                                isSelected = isSelected,
+                                                unifiedAddress = primary.unifiedAddress,
+                                                unifiedBalance = primary.unifiedBalance,
+                                                orchardBalance = primary.orchardBalance,
+                                                ironwoodBalance = secondary.ironwoodBalance,
+                                                transparentAddress = primary.transparentAddress,
+                                                transparentBalance = primary.transparentBalance,
+                                                isSelected = secondary.isSelected,
                                             )
                                         }
 
                                         else -> {
                                             ZashiAccount(
                                                 sdkAccount = sdkAccount,
-                                                unified = unified,
-                                                transparent = transparent,
-                                                sapling = sapling!!,
-                                                ironwoodBalance = ironwoodBalance,
-                                                isSelected = isSelected,
+                                                unifiedAddress = primary.unifiedAddress,
+                                                unifiedBalance = primary.unifiedBalance,
+                                                orchardBalance = primary.orchardBalance,
+                                                saplingAddress = secondary.saplingAddress!!,
+                                                saplingBalance = secondary.saplingBalance,
+                                                ironwoodBalance = secondary.ironwoodBalance,
+                                                transparentAddress = primary.transparentAddress,
+                                                transparentBalance = primary.transparentBalance,
+                                                isSelected = secondary.isSelected,
                                             )
                                         }
                                     }
@@ -225,7 +260,7 @@ class AccountDataSourceImpl(
                     log("failed to receive address for $accountUuid", e)
                 }
             }.join()
-        return (result ?: getSelectedAccount().unified.address).also {
+        return (result ?: getSelectedAccount().unifiedAddress).also {
             log("returning address ${it.address}")
         }
     }
@@ -260,7 +295,7 @@ class AccountDataSourceImpl(
             }
 
     @Suppress("TooGenericExceptionCaught")
-    private fun observeUnified(synchronizer: Synchronizer, sdkAccount: Account): Flow<UnifiedInfo> {
+    private fun observeUnifiedAddress(synchronizer: Synchronizer, sdkAccount: Account): Flow<WalletAddress.Unified> {
         suspend fun rotateAddress(): WalletAddress.Unified {
             log("deriving unified address for ${sdkAccount.accountUuid}")
 
@@ -281,83 +316,98 @@ class AccountDataSourceImpl(
             return address
         }
 
-        val addressFlow =
-            channelFlow {
-                send(rotateAddress())
+        return channelFlow {
+            send(rotateAddress())
 
-                launch {
-                    requestNextShieldedAddressChannel
-                        .filter { it.accountUuid == sdkAccount.accountUuid }
-                        .collect {
-                            val address =
-                                try {
-                                    rotateAddress()
-                                } catch (e: CancellationException) {
-                                    throw e
-                                } catch (e: Exception) {
-                                    it.responseChannel.close(e)
-                                    throw e
-                                }
-                            send(address)
+            launch {
+                requestNextShieldedAddressChannel
+                    .filter { it.accountUuid == sdkAccount.accountUuid }
+                    .collect {
+                        val address =
                             try {
-                                it.responseChannel.send(address)
-                                it.responseChannel.close()
-                            } catch (_: ClosedSendChannelException) {
-                                // ignore
+                                rotateAddress()
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                it.responseChannel.close(e)
+                                throw e
                             }
+                        send(address)
+                        try {
+                            it.responseChannel.send(address)
+                            it.responseChannel.close()
+                        } catch (_: ClosedSendChannelException) {
+                            // ignore
                         }
-                }
-
-                awaitClose()
-            }.retryWhen { cause, attempt ->
-                log(
-                    "retrying address derivation for ${sdkAccount.accountUuid}, attempt $attempt",
-                    cause as? Exception
-                )
-                delay(attempt.coerceAtMost(RETRY_DELAY).seconds)
-                true
+                    }
             }
 
-        val balanceFlow =
-            synchronizer.walletBalances
-                .map { balances ->
-                    balances?.get(sdkAccount.accountUuid)?.let { balance -> balance.orchard + balance.ironwood }
-                }
-
-        return combine(addressFlow, balanceFlow) { address, balance ->
-            UnifiedInfo(address = address, balance = balance)
+            awaitClose()
+        }.retryWhen { cause, attempt ->
+            log(
+                "retrying address derivation for ${sdkAccount.accountUuid}, attempt $attempt",
+                cause as? Exception
+            )
+            delay(attempt.coerceAtMost(RETRY_DELAY).seconds)
+            true
         }
     }
 
-    private fun observeTransparent(synchronizer: Synchronizer, sdkAccount: Account): Flow<TransparentInfo> {
-        val transparentAddress =
+    /**
+     * Folds Orchard + Ironwood together — see [WalletAccount.unifiedBalance].
+     */
+    private fun observeUnifiedBalance(synchronizer: Synchronizer, sdkAccount: Account): Flow<WalletBalance?> =
+        synchronizer.walletBalances
+            .map { balances ->
+                balances?.get(sdkAccount.accountUuid)?.let { balance -> balance.orchard + balance.ironwood }
+            }
+
+    private fun observeOrchardBalance(synchronizer: Synchronizer, sdkAccount: Account): Flow<WalletBalance?> =
+        synchronizer.walletBalances
+            .map { balances ->
+                balances?.get(sdkAccount.accountUuid)?.orchard
+            }
+
+    private fun observeTransparentAddress(
+        synchronizer: Synchronizer,
+        sdkAccount: Account
+    ): Flow<WalletAddress.Transparent> =
+        flow {
+            emit(WalletAddress.Transparent.new(synchronizer.getTransparentAddress(sdkAccount)))
+        }.retryWhen { _, attempt ->
+            delay(attempt.coerceAtMost(RETRY_DELAY).seconds)
+            true
+        }
+
+    private fun observeTransparentBalance(synchronizer: Synchronizer, sdkAccount: Account): Flow<Zatoshi?> =
+        synchronizer.walletBalances
+            .map { balances ->
+                balances?.get(sdkAccount.accountUuid)?.unshielded
+            }
+
+    private fun observeSaplingAddress(
+        synchronizer: Synchronizer,
+        sdkAccount: Account
+    ): Flow<WalletAddress.Sapling?> =
+        if (sdkAccount.keySource == KEYSTONE_KEYSOURCE) {
+            flowOf(null)
+        } else {
             flow {
-                emit(WalletAddress.Transparent.new(synchronizer.getTransparentAddress(sdkAccount)))
+                emit(WalletAddress.Sapling.new(synchronizer.getSaplingAddress(sdkAccount)))
             }.retryWhen { _, attempt ->
                 delay(attempt.coerceAtMost(RETRY_DELAY).seconds)
                 true
             }
-        return combine(transparentAddress, synchronizer.walletBalances) { address, balances ->
-            val balance = balances?.get(sdkAccount.accountUuid)
-            TransparentInfo(address = address, balance = balance?.unshielded)
         }
-    }
 
-    private fun observeSapling(synchronizer: Synchronizer, sdkAccount: Account): Flow<SaplingInfo?> =
+    private fun observeSaplingBalance(synchronizer: Synchronizer, sdkAccount: Account): Flow<WalletBalance?> =
         if (sdkAccount.keySource == KEYSTONE_KEYSOURCE) {
             flowOf(null)
         } else {
-            val saplingAddress =
-                flow {
-                    emit(WalletAddress.Sapling.new(synchronizer.getSaplingAddress(sdkAccount)))
-                }.retryWhen { _, attempt ->
-                    delay(attempt.coerceAtMost(RETRY_DELAY).seconds)
-                    true
+            synchronizer.walletBalances
+                .map { balances ->
+                    balances?.get(sdkAccount.accountUuid)?.sapling
                 }
-            combine(saplingAddress, synchronizer.walletBalances) { address, balances ->
-                val balance = balances?.get(sdkAccount.accountUuid)
-                SaplingInfo(address = address, balance = balance?.sapling)
-            }
         }
 
     /**
@@ -383,13 +433,29 @@ private data class AddressRequest(
     val responseChannel: Channel<WalletAddress.Unified>
 )
 
+private data class UnifiedAndTransparentSnapshot(
+    val unifiedAddress: WalletAddress.Unified,
+    val unifiedBalance: WalletBalance?,
+    val orchardBalance: WalletBalance?,
+    val transparentAddress: WalletAddress.Transparent,
+    val transparentBalance: Zatoshi?,
+)
+
+private data class SaplingAndSelectionSnapshot(
+    val saplingAddress: WalletAddress.Sapling?,
+    val saplingBalance: WalletBalance?,
+    val ironwoodBalance: WalletBalance?,
+    val isSelected: Boolean,
+)
+
 private const val RETRY_DELAY = 3L
 
 /**
  * Upper bound on how long [AccountDataSourceImpl.requestNextShieldedAddress] waits for
- * [AccountDataSourceImpl.observeUnified]'s collector to deliver a rotated address. The collector
- * can be unsubscribed during a [kotlinx.coroutines.flow.retryWhen] backoff, so an unbounded wait
- * can hang indefinitely; on timeout the caller falls back to the account's current address.
+ * [AccountDataSourceImpl.observeUnifiedAddress]'s collector to deliver a rotated address. The
+ * collector can be unsubscribed during a [kotlinx.coroutines.flow.retryWhen] backoff, so an
+ * unbounded wait can hang indefinitely; on timeout the caller falls back to the account's current
+ * address.
  */
 private val ADDRESS_REQUEST_TIMEOUT = 15.seconds
 

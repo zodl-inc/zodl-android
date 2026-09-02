@@ -98,9 +98,9 @@ class AccountDataSourceImplTest {
 
             assertEquals(1, accounts.size)
             val zashiAccount = accounts.single() as ZashiAccount
-            assertNull(zashiAccount.unified.balance)
-            assertNull(zashiAccount.transparent.balance)
-            assertNull(zashiAccount.sapling.balance)
+            assertNull(zashiAccount.unifiedBalance)
+            assertNull(zashiAccount.transparentBalance)
+            assertNull(zashiAccount.saplingBalance)
             assertNull(zashiAccount.ironwoodBalance)
             assertNull(zashiAccount.totalBalance)
             assertNull(zashiAccount.totalShieldedBalance)
@@ -126,10 +126,10 @@ class AccountDataSourceImplTest {
 
             assertEquals(1, accounts.size)
             val zashiAccount = accounts.single() as ZashiAccount
-            assertNotNull(zashiAccount.unified.balance)
-            assertEquals(Zatoshi(500_000L), zashiAccount.unified.balance.available)
-            assertEquals(Zatoshi(250_000L), zashiAccount.transparent.balance)
-            assertEquals(Zatoshi(0), zashiAccount.sapling.balance?.available)
+            assertNotNull(zashiAccount.unifiedBalance)
+            assertEquals(Zatoshi(500_000L), zashiAccount.unifiedBalance.available)
+            assertEquals(Zatoshi(250_000L), zashiAccount.transparentBalance)
+            assertEquals(Zatoshi(0), zashiAccount.saplingBalance?.available)
             assertEquals(Zatoshi(0), zashiAccount.ironwoodBalance?.available)
             assertEquals(Zatoshi(750_000L), zashiAccount.totalBalance)
             assertEquals(Zatoshi(500_000L), zashiAccount.spendableShieldedBalance)

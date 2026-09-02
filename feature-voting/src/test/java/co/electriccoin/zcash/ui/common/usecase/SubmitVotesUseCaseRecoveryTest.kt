@@ -7,8 +7,6 @@ import cash.z.ecc.android.sdk.fixture.WalletBalanceFixture
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
-import co.electriccoin.zcash.ui.common.model.TransparentInfo
-import co.electriccoin.zcash.ui.common.model.UnifiedInfo
 import co.electriccoin.zcash.ui.common.model.voting.BundleDelegationPhase
 import co.electriccoin.zcash.ui.common.model.voting.CastVoteSignature
 import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLatest
@@ -1083,17 +1081,12 @@ class SubmitVotesUseCaseRecoveryTest {
         suspend fun keystoneAccount() =
             KeystoneAccount(
                 sdkAccount = AccountFixture.new(),
-                unified =
-                    UnifiedInfo(
-                        address = WalletAddressFixture.unified(),
-                        balance = WalletBalanceFixture.newLong()
-                    ),
+                unifiedAddress = WalletAddressFixture.unified(),
+                unifiedBalance = WalletBalanceFixture.newLong(),
+                orchardBalance = WalletBalanceFixture.newLong(),
                 ironwoodBalance = WalletBalanceFixture.newLong(0, 0, 0),
-                transparent =
-                    TransparentInfo(
-                        address = WalletAddressFixture.transparent(),
-                        balance = Zatoshi(0)
-                    ),
+                transparentAddress = WalletAddressFixture.transparent(),
+                transparentBalance = Zatoshi(0),
                 isSelected = true
             )
     }

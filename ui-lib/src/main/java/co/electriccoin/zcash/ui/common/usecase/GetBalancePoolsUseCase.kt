@@ -1,7 +1,6 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import cash.z.ecc.android.sdk.model.Zatoshi
-import cash.z.ecc.sdk.extension.ZERO
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -17,8 +16,9 @@ import kotlinx.coroutines.flow.flowOf
  *
  * Unlike [AccountDataSource] (which aggregates Orchard + Ironwood into a single unified balance),
  * this reads the raw per-pool balances from the SDK so the UI can present each pool separately.
- * Ironwood reflects whatever the SDK reports; it is [Zatoshi.ZERO] when the pool is empty or not
- * yet reported.
+ * Every field of [cash.z.ecc.android.sdk.model.AccountBalance] is non-null, so once the account's
+ * entry is found in the map there is nothing left to default to zero — a missing entry (map
+ * present but the account not in it yet) is the only "not loaded" case, and it emits null.
  *
  * Each pool's displayed total is `raw.total + raw.locked` — [cash.z.ecc.android.sdk.model.WalletBalance.locked]
  * is real, owned value the wallet currently sees as committed to a transaction proposal or PCZT
@@ -49,25 +49,19 @@ class GetBalancePoolsUseCase(
             accountDataSource.selectedAccount,
             synchronizerProvider.synchronizer.flatMapLatest { it?.walletBalances ?: flowOf(null) },
         ) { account, balances ->
-            if (account == null || balances == null) {
-                null
-            } else {
-                val balance = balances[account.sdkAccount.accountUuid]
-                val orchard =
-                    (balance?.orchard?.total ?: Zatoshi.ZERO) + (balance?.orchard?.locked ?: Zatoshi.ZERO)
-                val sapling =
-                    (balance?.sapling?.total ?: Zatoshi.ZERO) + (balance?.sapling?.locked ?: Zatoshi.ZERO)
-                val ironwood =
-                    (balance?.ironwood?.total ?: Zatoshi.ZERO) + (balance?.ironwood?.locked ?: Zatoshi.ZERO)
-                val transparent = balance?.unshielded ?: Zatoshi.ZERO
-                BalancePools(
-                    total = orchard + sapling + transparent + ironwood,
-                    orchard = orchard,
-                    sapling = sapling,
-                    transparent = transparent,
-                    ironwood = ironwood,
-                )
-            }
+            if (account == null || balances == null) return@combine null
+            val balance = balances[account.sdkAccount.accountUuid] ?: return@combine null
+            val orchard = balance.orchard.total + balance.orchard.locked
+            val sapling = balance.sapling.total + balance.sapling.locked
+            val ironwood = balance.ironwood.total + balance.ironwood.locked
+            val transparent = balance.unshielded
+            BalancePools(
+                total = orchard + sapling + transparent + ironwood,
+                orchard = orchard,
+                sapling = sapling,
+                transparent = transparent,
+                ironwood = ironwood,
+            )
         }.retainWhileWalletExists(persistableWalletProvider)
 }
 

@@ -102,7 +102,7 @@ class GetHomeMessageUseCase(
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeShieldFundsMessage() =
         accountDataSource.selectedAccount.flatMapLatest { account ->
-            val transparentBalance = account?.transparent?.balance
+            val transparentBalance = account?.transparentBalance
             when {
                 account == null || transparentBalance == null -> {
                     flowOf(null)

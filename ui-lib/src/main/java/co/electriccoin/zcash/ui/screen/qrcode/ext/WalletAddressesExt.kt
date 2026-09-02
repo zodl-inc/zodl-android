@@ -5,7 +5,7 @@ import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressType
 
 internal fun WalletAccount.fromReceiveAddressType(receiveAddressType: ReceiveAddressType) =
     when (receiveAddressType) {
-        ReceiveAddressType.Unified -> this.unified.address
-        ReceiveAddressType.Sapling -> this.sapling?.address
-        ReceiveAddressType.Transparent -> this.transparent.address
+        ReceiveAddressType.Unified -> this.unifiedAddress
+        ReceiveAddressType.Sapling -> this.saplingAddress
+        ReceiveAddressType.Transparent -> this.transparentAddress
     }

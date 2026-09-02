@@ -194,5 +194,5 @@ private fun WalletAccount.loadedBalancesOrNull(): LoadedAccountBalances? =
         pendingShieldedBalance = pendingShieldedBalance ?: return null,
         isShieldedPending = isShieldedPending ?: return null,
         isShieldingAvailable = isShieldingAvailable ?: return null,
-        transparentBalance = transparent.balance ?: return null,
+        transparentBalance = this.transparentBalance ?: return null,
     )

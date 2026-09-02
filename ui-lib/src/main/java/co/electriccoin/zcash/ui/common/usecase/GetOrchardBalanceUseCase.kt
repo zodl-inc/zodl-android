@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.flowOf
  *
  * Reads the raw, un-folded per-pool Orchard balance directly from the synchronizer, mirroring
  * [GetBalancePoolsUseCase]'s pattern. This deliberately avoids
- * `co.electriccoin.zcash.ui.common.model.WalletAccount.unified`: that field folds Orchard +
+ * `co.electriccoin.zcash.ui.common.model.WalletAccount.unifiedBalance`: that field folds Orchard +
  * Ironwood balances together, so once migration completes (real Orchard = 0) it would keep
  * reporting the full post-migration total as "still Orchard" — which is exactly the bug that made
  * the home screen's "Migration required" banner stick around forever after a full migration.

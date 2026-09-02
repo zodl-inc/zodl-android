@@ -37,6 +37,6 @@ class ObserveABContactPickedUseCase(
 
     fun onWalletAccountPicked(account: WalletAccount) =
         scope.launch {
-            bus.emit(account.unified.address.address)
+            bus.emit(account.unifiedAddress.address)
         }
 }

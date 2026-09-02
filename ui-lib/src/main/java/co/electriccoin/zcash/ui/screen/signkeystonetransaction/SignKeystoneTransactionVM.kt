@@ -85,9 +85,9 @@ class SignKeystoneTransactionVM(
                         title = wallet.name,
                         subtitle =
                             if (proposal is ShieldTransactionProposal) {
-                                stringRes("${wallet.transparent.address.address.take(ADDRESS_MAX_LENGTH)}...")
+                                stringRes("${wallet.transparentAddress.address.take(ADDRESS_MAX_LENGTH)}...")
                             } else {
-                                stringRes("${wallet.unified.address.address.take(ADDRESS_MAX_LENGTH)}...")
+                                stringRes("${wallet.unifiedAddress.address.take(ADDRESS_MAX_LENGTH)}...")
                             }
                     ),
                 badgeText = stringRes(R.string.keystone_signWith_hardware),
