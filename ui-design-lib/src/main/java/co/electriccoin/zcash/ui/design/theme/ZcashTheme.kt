@@ -70,24 +70,7 @@ fun ZcashTheme(
             appearanceMode == AppearanceMode.DARK ||
             (appearanceMode == AppearanceMode.SYSTEM && isSystemInDarkTheme())
     val useOledDark = useDarkMode && isOledEnabled
-    val baseColors =
-        when {
-            useOledDark -> OledColorPalette
-            useDarkMode -> DarkColorPalette
-            else -> LightColorPalette
-        }
-    val extendedColors =
-        when {
-            useOledDark -> OledExtendedColorPalette
-            useDarkMode -> DarkExtendedColorPalette
-            else -> LightExtendedColorPalette
-        }
-    val zashiColors =
-        when {
-            useOledDark -> OledZashiColorsInternal
-            useDarkMode -> DarkZashiColorsInternal
-            else -> LightZashiColorsInternal
-        }
+    val (baseColors, extendedColors, zashiColors) = themePalettes(useDarkMode, useOledDark)
 
     ZcashSystemBarTheme(useDarkMode, useOledDark)
 
@@ -145,6 +128,20 @@ fun ZcashTheme(
             }
         }
     }
+}
+
+/**
+ * Resolves the three parallel palette families (Material color scheme, extended colors, Zashi
+ * colors) for the light / dark / pure-black-OLED variants in one place, so the selections can
+ * never drift apart.
+ */
+private fun themePalettes(
+    useDarkMode: Boolean,
+    useOledDark: Boolean,
+) = when {
+    useOledDark -> Triple(OledColorPalette, OledExtendedColorPalette, OledZashiColorsInternal)
+    useDarkMode -> Triple(DarkColorPalette, DarkExtendedColorPalette, DarkZashiColorsInternal)
+    else -> Triple(LightColorPalette, LightExtendedColorPalette, LightZashiColorsInternal)
 }
 
 @Composable
