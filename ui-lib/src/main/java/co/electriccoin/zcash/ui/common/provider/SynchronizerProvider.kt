@@ -7,6 +7,11 @@ import cash.z.ecc.android.sdk.model.AccountUuid
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.migration.MigrationSyncedHook
 import co.electriccoin.zcash.ui.common.model.SynchronizerError
+import co.electriccoin.zcash.ui.common.usecase.RecoverFromSeedMismatchUseCase
+import co.electriccoin.zcash.ui.common.usecase.SeedMismatchRecoveryException
+import co.electriccoin.zcash.ui.screen.error.ErrorArgs
+import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -19,6 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -74,6 +80,8 @@ class SynchronizerProviderImpl(
     // crashes startup with a StackOverflowError (caught on-emulator 2026-07-28). Resolved at
     // first hook fire instead, when the graph is fully built.
     private val migrationSyncedHook: Lazy<MigrationSyncedHook>,
+    private val recoverFromSeedMismatch: RecoverFromSeedMismatchUseCase,
+    private val navigateToErrorUseCase: NavigateToErrorUseCase,
 ) : SynchronizerProvider {
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
@@ -130,6 +138,47 @@ class SynchronizerProviderImpl(
                             .onFailure { Twig.warn { "MIGRATION_DIAG foreground SYNCED hook: ${it.message}" } }
                     }
                 }
+        }
+        startSeedMismatchRecoveryCollector()
+    }
+
+    /**
+     * MOB-1397: auto-triggers [RecoverFromSeedMismatchUseCase] the moment
+     * [WalletCoordinator.isSeedMismatch] flips to `true`, with no user interaction required.
+     *
+     * Lives here — on [scope], which is scoped to this singleton provider — rather than on an
+     * activity-scoped ViewModel (where this collector previously lived), for three reasons:
+     * 1. UI-lifecycle independence: a mismatch hit by background synchronizer use (e.g. a
+     *    [co.electriccoin.zcash.ui.common.migration.MigrationWorker] run) recovers immediately
+     *    instead of waiting for the UI to next be opened.
+     * 2. Exactly one collector: an activity-scoped ViewModel can end up constructed more than
+     *    once in the same process (observed: [co.electriccoin.zcash.ui.common.viewmodel.AuthenticationViewModel]
+     *    constructor-injecting [co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel] creates
+     *    a second, never-cleared instance), which would fan out into duplicate concurrent
+     *    destructive erases against the same wallet. This provider is a Koin single, so there is
+     *    only ever one collector.
+     * 3. It naturally covers [co.electriccoin.zcash.ui.common.migration.MigrationWorker]'s
+     *    background-only synchronizer use, which never has a ViewModel around to react at all.
+     */
+    private fun startSeedMismatchRecoveryCollector() {
+        scope.launch {
+            walletCoordinator.isSeedMismatch
+                .filter { it }
+                .collect { runRecovery() }
+        }
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun runRecovery() {
+        try {
+            recoverFromSeedMismatch()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: SeedMismatchRecoveryException) {
+            Twig.error(e) { "Auto-recovery from seed mismatch failed (terminal, retries exhausted)" }
+            navigateToErrorUseCase(ErrorArgs.General(e))
+        } catch (e: Exception) {
+            Twig.error(e) { "Auto-recovery from seed mismatch failed" }
         }
     }
 

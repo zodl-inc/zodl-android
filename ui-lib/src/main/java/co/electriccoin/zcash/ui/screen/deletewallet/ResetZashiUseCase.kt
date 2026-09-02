@@ -17,7 +17,9 @@ import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepository
 import co.electriccoin.zcash.ui.common.repository.MetadataRepository
 import co.electriccoin.zcash.ui.design.util.stringRes
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.internal.closeQuietly
+import kotlin.time.Duration.Companion.seconds
 
 class ResetZashiUseCase(
     private val walletCoordinator: WalletCoordinator,
@@ -64,8 +66,16 @@ class ResetZashiUseCase(
         )
     }
 
+    /**
+     * Waits for a synchronizer to close, bounded by [CLOSE_SYNCHRONIZER_TIMEOUT]. A latched seed
+     * mismatch ([WalletCoordinator.isSeedMismatch]) keeps [SynchronizerProvider.getSynchronizer]'s
+     * underlying flow null forever, which would otherwise hang this step indefinitely after
+     * [deleteLocalFiles] already ran. When no synchronizer materializes in time, this is a no-op —
+     * [clearSDK]'s lockout-aware erase still handles teardown of any lingering SDK state.
+     */
     private suspend fun closeSynchronizer() {
-        (synchronizerProvider.getSynchronizer() as CloseableSynchronizer).closeQuietly()
+        withTimeoutOrNull(CLOSE_SYNCHRONIZER_TIMEOUT) { synchronizerProvider.getSynchronizer() }
+            ?.let { (it as CloseableSynchronizer).closeQuietly() }
     }
 
     private fun deleteLocalFiles(keepFiles: Boolean) {
@@ -86,5 +96,9 @@ class ResetZashiUseCase(
 
     private fun clearInMemoryData() {
         homeMessageCacheRepository.reset()
+    }
+
+    companion object {
+        private val CLOSE_SYNCHRONIZER_TIMEOUT = 5.seconds
     }
 }

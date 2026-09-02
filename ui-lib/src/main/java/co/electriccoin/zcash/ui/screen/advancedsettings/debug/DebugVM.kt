@@ -30,9 +30,11 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-// MOB-1397 added a debug action (Simulate SeedNotRelevant), pushing this debug-only menu's
-// ViewModel past detekt's function-count threshold; it's a flat list of independent
-// debug actions rather than genuinely complex, so suppressing here is preferable to splitting it.
+/**
+ * MOB-1397 added a debug action (Simulate SeedNotRelevant), pushing this debug-only menu's
+ * ViewModel past detekt's function-count threshold; it's a flat list of independent debug actions
+ * rather than genuinely complex, so suppressing here is preferable to splitting it.
+ */
 @Suppress("TooManyFunctions")
 class DebugVM(
     private val copyToClipboardUseCase: CopyToClipboardUseCase,
@@ -225,11 +227,13 @@ class DebugVM(
             )
         }
 
-    // MOB-1397 review: this irreversibly overwrites the real stored seed with random entropy and
-    // then kills the process — a tester with a funded debug wallet loses it unless they backed it
-    // up first. Gate it behind an explicit confirmation so a stray tap can't destroy a funded
-    // debug wallet by accident. (Dismiss/confirm are inline lambdas rather than named private
-    // functions to stay under this class's function-count budget.)
+    /**
+     * MOB-1397 review: this irreversibly overwrites the real stored seed with random entropy and
+     * then kills the process — a tester with a funded debug wallet loses it unless they backed it
+     * up first. Gate it behind an explicit confirmation so a stray tap can't destroy a funded
+     * debug wallet by accident. (Dismiss/confirm are inline lambdas rather than named private
+     * functions to stay under this class's function-count budget.)
+     */
     private fun onSimulateSeedNotRelevantClick() {
         confirmationDialog.value =
             ZashiConfirmationState.destructive(

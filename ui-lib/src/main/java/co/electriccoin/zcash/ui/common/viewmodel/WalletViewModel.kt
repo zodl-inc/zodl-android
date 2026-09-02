@@ -5,21 +5,17 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.SeedPhrase
 import cash.z.ecc.android.sdk.model.ZcashNetwork
-import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.model.migration.MIGRATION_DUST_THRESHOLD_ZATOSHI
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.WalletRepository
-import co.electriccoin.zcash.ui.common.usecase.RecoverFromSeedMismatchUseCase
 import co.electriccoin.zcash.ui.screen.ironwood.IronwoodActivation
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
 
 // To make this more multiplatform compatible, we need to remove the dependency on Context
@@ -29,11 +25,8 @@ import kotlin.time.Duration.Companion.seconds
 class WalletViewModel(
     synchronizerProvider: SynchronizerProvider,
     private val walletRepository: WalletRepository,
-    private val recoverFromSeedMismatch: RecoverFromSeedMismatchUseCase,
 ) : ViewModel() {
     val synchronizer = synchronizerProvider.synchronizer
-
-    val isSeedMismatch: StateFlow<Boolean> = synchronizerProvider.isSeedMismatch
 
     val secretState: StateFlow<SecretState> = walletRepository.secretState
 
@@ -76,27 +69,6 @@ class WalletViewModel(
                 started = SharingStarted.WhileSubscribed(5.seconds.inWholeMilliseconds),
                 initialValue = false
             )
-
-    // MOB-1397 review, follow-up not addressed here (lower-priority, needs a larger restructure
-    // than this fix-up's scope):
-    // 1. This recovery is anchored to an activity-scoped ViewModel, so a mismatch hit by
-    //    background synchronizer use won't auto-recover until the UI is next opened. The
-    //    provider/repository layer (e.g. SynchronizerProvider itself) would be a more robust
-    //    home for this collector so it runs regardless of UI lifecycle.
-    // 2. If the wallet is concurrently nulled out (Reset Zashi races this), deleteSdkDataFlow()
-    //    may never emit and RecoverFromSeedMismatchUseCase's `.first()` suspends forever. Not
-    //    observed in practice, but worth guarding (e.g. a timeout or cooperating with the reset
-    //    flow) in a follow-up.
-    init {
-        viewModelScope.launch {
-            isSeedMismatch
-                .filter { it }
-                .collect {
-                    runCatching { recoverFromSeedMismatch() }
-                        .onFailure { Twig.error(it) { "Auto-recovery from seed mismatch failed" } }
-                }
-        }
-    }
 
     fun createNewWallet() {
         walletRepository.createNewWallet()

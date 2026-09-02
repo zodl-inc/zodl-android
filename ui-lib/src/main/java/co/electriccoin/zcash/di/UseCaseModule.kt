@@ -293,7 +293,7 @@ val useCaseModule =
         factoryOf(::CreateIncreaseEphemeralGapLimitProposalUseCase)
         factoryOf(::ResetZashiUseCase)
         factoryOf(::GetPreselectedSwapAssetUseCase)
-        factoryOf(::RecoverFromSeedMismatchUseCase)
+        singleOf(::RecoverFromSeedMismatchUseCase)
         factoryOf(::GetSwapStatusUseCase)
         factoryOf(::ExecuteDebugDBQueryUseCase)
         factoryOf(::SimulateSeedNotRelevantUseCase)
