@@ -963,6 +963,13 @@
     <string name="reportSwap_msg">Tapping the button below will send details about this swap (like the deposit address and target asset) to the Zodl support team so they can help resolve your issue. The transaction info is included automatically.</string>
     <string name="transaction_detail_support_email_subject">Swap Transaction Issue</string>
     <string name="transaction_detail_support_email_body">Please describe your issue here:\n\n\n\nSwap Details:\nDeposit Address: %1$s\nSource Asset: %2$s\nTarget Asset: %3$s</string>
+    <string name="swap_mismatch_title">Swap details didn\’t match</string>
+    <string name="swap_mismatch_msg_1">We received a quote back from the swap provider, however, it didn\’t match some details you provided. We make this check to ensure your swap is what you expect.</string>
+    <string name="swap_mismatch_msg_2">We\’d appreciate you reporting this to us so we can investigate it with the swap provider.</string>
+    <string name="swap_mismatch_msg_3">Reported or not, you can also try again. If the details match, you won\’t see this screen and you\’ll be able to proceed.</string>
+    <string name="swap_mismatch_goBack">Go back</string>
+    <string name="swap_mismatch_support_email_subject">Zodl Swap: API mismatch</string>
+    <string name="swap_mismatch_support_email_body">Zodl detected the following error in the API response from the swap provider. Providing these details allows us raise it with them to investigate. We won\’t relay your personal details with the swap provider. You can send this as-is, or include a note to us. Thanks in advance.\n\nSwap provider: %1$s\nSwap type: %2$s\nMismatch type: %3$s\nQuote ID: %4$s</string>
     <string name="deposits_info">Deposits may take several minutes to confirm.</string>
     <string name="swapAndPay_status_incompleteDeposit">Incomplete deposit</string>
     <string name="swapAndPay_status_pending">Pending</string>

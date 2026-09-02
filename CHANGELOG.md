@@ -21,6 +21,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - Coinholder Polling's poll list and proposal loading no longer hang indefinitely when a vote server is unreachable over Tor; a slow or dropped connection now fails over to the next server within a bounded time.
 - Support/error reports for a failed transaction no longer claim a fake `gRPC: false, code: -1` status when the failure actually happened before submission (e.g. a Sapling parameter download failure); such reports now correctly identify the real exception instead.
 - Fixed a crash loop some wallets hit at startup when the SDK reported the stored seed as no longer relevant to its database. The app now recovers automatically by clearing the mismatched local data and rescanning, instead of crashing repeatedly.
+- Swap quotes that fail the request-vs-response validation now show a dedicated "Swap details didn't match" sheet with a Report button that pre-fills a support email (MOB-1340).
 
 ## [3.10.1 (2512)] - 2026-08-25
 

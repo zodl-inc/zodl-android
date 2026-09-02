@@ -4,6 +4,7 @@ import android.content.Context
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.SwapAsset
+import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SynchronizerError
 import co.electriccoin.zcash.ui.common.provider.BlockchainProvider
 import co.electriccoin.zcash.ui.design.util.StringResource
@@ -11,6 +12,7 @@ import co.electriccoin.zcash.ui.design.util.getString
 import co.electriccoin.zcash.ui.screen.support.model.SupportInfoType
 import co.electriccoin.zcash.ui.util.EmailUtil
 
+@Suppress("TooManyFunctions")
 class SendEmailUseCase(
     private val context: Context,
     private val getSupport: GetSupportUseCase,
@@ -203,6 +205,38 @@ class SendEmailUseCase(
     }
 
     /**
+     * Sends a support email for a swap quote that failed the request-vs-response validation (MOB-1340).
+     */
+    suspend operator fun invoke(report: SwapQuoteMismatchReport) {
+        sendSupportEmail(
+            subject = context.getString(R.string.swap_mismatch_support_email_subject),
+            messageBody =
+                EmailUtil.formatMessage(
+                    body =
+                        context.getString(
+                            R.string.swap_mismatch_support_email_body,
+                            swapQuoteMismatchProviderLabel(report.provider),
+                            swapQuoteMismatchSwapTypeLabel(report) { chainTicker ->
+                                blockchainProvider.getBlockchain(chainTicker).chainName.getString(context)
+                            },
+                            report.mismatchType.reportLabel,
+                            report.depositAddress ?: UNKNOWN_QUOTE_ID,
+                        ),
+                    supportInfo =
+                        getSupport().toSupportString(
+                            setOf(
+                                SupportInfoType.Time,
+                                SupportInfoType.Os,
+                                SupportInfoType.Device,
+                                SupportInfoType.Environment,
+                                SupportInfoType.Permission
+                            )
+                        )
+                )
+        )
+    }
+
+    /**
      * Internal method to send support email with fallback to text sharing.
      */
     private fun sendSupportEmail(
@@ -302,3 +336,45 @@ internal fun submitErrorPreSubmissionDetail(cause: Exception): SubmitErrorPreSub
         exceptionType = cause::class.java.simpleName.ifEmpty { cause::class.java.name },
         description = cause.stackTraceToLimitedString(PRE_SUBMISSION_STACK_TRACE_LIMIT) ?: "Unknown error"
     )
+
+private const val UNKNOWN_QUOTE_ID = "unknown"
+
+/**
+ * The support-facing name of a swap provider, e.g. the `near` [co.electriccoin.zcash.ui.common.model.SwapQuote]
+ * provider id renders as `NEAR`. English only: it is never shown in the UI.
+ */
+internal fun swapQuoteMismatchProviderLabel(provider: String): String = provider.uppercase()
+
+/**
+ * The support-facing swap-type line of a mismatch report, e.g. `CrossPay - ZEC > USDC (Arbitrum)`.
+ * [chainName] resolves a chain ticker to its display name; the chain is omitted for ZEC, which has
+ * only one. English only: it is never shown in the UI.
+ */
+internal fun swapQuoteMismatchSwapTypeLabel(
+    report: SwapQuoteMismatchReport,
+    chainName: (String) -> String
+): String {
+    val mode =
+        when (report.mode) {
+            SwapMode.EXACT_INPUT -> "Swap"
+            SwapMode.EXACT_OUTPUT -> "CrossPay"
+            SwapMode.FLEX_INPUT -> "Swap into ZEC"
+        }
+    val origin = swapQuoteMismatchAssetLabel(report.originTokenTicker, report.originChainTicker, chainName)
+    val destination =
+        swapQuoteMismatchAssetLabel(report.destinationTokenTicker, report.destinationChainTicker, chainName)
+    return "$mode - $origin > $destination"
+}
+
+private fun swapQuoteMismatchAssetLabel(
+    tokenTicker: String,
+    chainTicker: String,
+    chainName: (String) -> String
+): String =
+    if (tokenTicker.equals(ZEC_TICKER, ignoreCase = true) && chainTicker.equals(ZEC_TICKER, ignoreCase = true)) {
+        tokenTicker.uppercase()
+    } else {
+        "${tokenTicker.uppercase()} (${chainName(chainTicker)})"
+    }
+
+private const val ZEC_TICKER = "zec"

@@ -1,6 +1,8 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import co.electriccoin.zcash.ui.common.model.SubmitResult
+import co.electriccoin.zcash.ui.common.model.SwapMode
+import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
 import java.io.IOException
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -14,6 +16,8 @@ import kotlin.test.assertTrue
  * Also covers MOB-1744: a [SubmitResult.Error] (a failure that happened before any gRPC call was
  * made, e.g. a Sapling parameter download timeout) must be reported as a distinct pre-submission
  * category carrying the real exception type/detail, never as a fake gRPC status.
+ *
+ * And MOB-1340: the support-facing labels of a rejected-swap-quote report.
  */
 class SendEmailUseCaseTest {
     @Test
@@ -125,4 +129,77 @@ class SendEmailUseCaseTest {
         assertEquals("IllegalStateException", illegalStateDetail.exceptionType)
         assertTrue(illegalStateDetail.description.contains("Transaction proposal is null"))
     }
+
+    /**
+     * The swap-type line of a quote-mismatch report follows the design's `CrossPay - ZEC > USDC
+     * (Arbitrum)` shape: the mode's product name, then origin > destination with the chain spelled out
+     * for everything but ZEC.
+     */
+    @Test
+    fun swapMismatchReportNamesTheModeAndBothAssets() {
+        assertEquals(
+            "CrossPay - ZEC > USDC (Arbitrum)",
+            swapQuoteMismatchSwapTypeLabel(
+                report(mode = SwapMode.EXACT_OUTPUT)
+            ) { chainTicker -> chainName(chainTicker) }
+        )
+    }
+
+    @Test
+    fun swapMismatchReportUsesTheModeProductNames() {
+        val label = { mode: SwapMode ->
+            swapQuoteMismatchSwapTypeLabel(report(mode = mode)) { chainTicker -> chainName(chainTicker) }
+        }
+
+        assertTrue(label(SwapMode.EXACT_INPUT).startsWith("Swap - "))
+        assertTrue(label(SwapMode.EXACT_OUTPUT).startsWith("CrossPay - "))
+        assertTrue(label(SwapMode.FLEX_INPUT).startsWith("Swap into ZEC - "))
+    }
+
+    @Test
+    fun swapMismatchReportSpellsOutTheChainOfTheSoldAssetToo() {
+        assertEquals(
+            "Swap into ZEC - USDC (Arbitrum) > ZEC",
+            swapQuoteMismatchSwapTypeLabel(
+                report(
+                    mode = SwapMode.FLEX_INPUT,
+                    originTokenTicker = "usdc",
+                    originChainTicker = "arb",
+                    destinationTokenTicker = "zec",
+                    destinationChainTicker = "zec"
+                )
+            ) { chainTicker -> chainName(chainTicker) }
+        )
+    }
+
+    @Test
+    fun swapMismatchReportUppercasesTheProviderId() {
+        assertEquals("NEAR", swapQuoteMismatchProviderLabel("near"))
+    }
+
+    @Test
+    fun swapMismatchTypesCarryASupportFacingLabel() {
+        assertEquals("Output amount", SwapQuoteMismatchType.OUTPUT_AMOUNT.reportLabel)
+        assertEquals("Recipient address", SwapQuoteMismatchType.RECIPIENT_ADDRESS.reportLabel)
+    }
+
+    private fun chainName(chainTicker: String) = if (chainTicker == "arb") "Arbitrum" else chainTicker
+
+    @Suppress("LongParameterList")
+    private fun report(
+        mode: SwapMode,
+        originTokenTicker: String = "zec",
+        originChainTicker: String = "zec",
+        destinationTokenTicker: String = "usdc",
+        destinationChainTicker: String = "arb"
+    ) = SwapQuoteMismatchReport(
+        provider = "near",
+        mode = mode,
+        originTokenTicker = originTokenTicker,
+        originChainTicker = originChainTicker,
+        destinationTokenTicker = destinationTokenTicker,
+        destinationChainTicker = destinationChainTicker,
+        mismatchType = SwapQuoteMismatchType.OUTPUT_AMOUNT,
+        depositAddress = "deposit-address"
+    )
 }

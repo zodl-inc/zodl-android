@@ -12,10 +12,13 @@ import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapQuote
+import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchException
+import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
 import co.electriccoin.zcash.ui.common.model.SwapQuoteStatus
 import co.electriccoin.zcash.ui.common.model.isZCashAsset
 import co.electriccoin.zcash.ui.common.model.near.requireMatchingAsset
 import co.electriccoin.zcash.ui.common.model.near.requireQuoteMatchesUserAmount
+import co.electriccoin.zcash.ui.common.model.swapAssetMismatchType
 import io.ktor.client.plugins.ResponseException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -220,6 +223,7 @@ class SwapRepositoryImpl(
             scope.launch {
                 quote.update { SwapQuoteData.Loading }
                 val destinationAsset = assets.value.zecAsset ?: return@launch
+                var receivedQuote: SwapQuote? = null
                 try {
                     val result =
                         swapDataSource.requestQuote(
@@ -232,6 +236,7 @@ class SwapRepositoryImpl(
                             slippage = slippage,
                             affiliateAddress = AFFILIATE_ADDRESS
                         )
+                    receivedQuote = result
                     requireQuoteMatchesUserAmount(
                         quoted = result.amountInFormatted,
                         requested = amount,
@@ -250,17 +255,19 @@ class SwapRepositoryImpl(
                     )
                     requireMatchingAddress(
                         name = "refundAddress",
+                        type = SwapQuoteMismatchType.REFUND_ADDRESS,
                         expected = refundAddress,
                         actual = result.refundAddress.address
                     )
                     requireMatchingAddress(
                         name = "destinationAddress",
+                        type = SwapQuoteMismatchType.RECIPIENT_ADDRESS,
                         expected = destinationAddress,
                         actual = result.destinationAddress.address
                     )
                     quote.update { SwapQuoteData.Success(quote = result) }
                 } catch (e: Exception) {
-                    quote.update { SwapQuoteData.Error(FLEX_INPUT, e) }
+                    quote.update { SwapQuoteData.Error(FLEX_INPUT, e.withQuoteId(receivedQuote)) }
                 }
             }
     }
@@ -278,6 +285,7 @@ class SwapRepositoryImpl(
             scope.launch {
                 quote.update { SwapQuoteData.Loading }
                 val originAsset = assets.value.zecAsset ?: return@launch
+                var receivedQuote: SwapQuote? = null
                 try {
                     val result =
                         swapDataSource.requestQuote(
@@ -290,6 +298,7 @@ class SwapRepositoryImpl(
                             slippage = slippage,
                             affiliateAddress = AFFILIATE_ADDRESS
                         )
+                    receivedQuote = result
                     when (mode) {
                         EXACT_INPUT,
                         FLEX_INPUT -> {
@@ -321,17 +330,19 @@ class SwapRepositoryImpl(
                     )
                     requireMatchingAddress(
                         name = "destinationAddress",
+                        type = SwapQuoteMismatchType.RECIPIENT_ADDRESS,
                         expected = address,
                         actual = result.destinationAddress.address
                     )
                     requireMatchingAddress(
                         name = "refundAddress",
+                        type = SwapQuoteMismatchType.REFUND_ADDRESS,
                         expected = refundAddress,
                         actual = result.refundAddress.address
                     )
                     quote.update { SwapQuoteData.Success(quote = result) }
                 } catch (e: Exception) {
-                    quote.update { SwapQuoteData.Error(mode, e) }
+                    quote.update { SwapQuoteData.Error(mode, e.withQuoteId(receivedQuote)) }
                 }
             }
     }
@@ -429,8 +440,12 @@ private fun requireSupportedSelectedAsset(
     actual: SwapAsset
 ) {
     val supported = supportedAssets?.firstOrNull { it.assetId == selectedAsset.assetId }
-    requireNotNull(supported) {
-        "Swap quote asset mismatch: $name=${selectedAsset.assetId} is not a currently-supported swap asset"
+    if (supported == null) {
+        throw SwapQuoteMismatchException(
+            type = swapAssetMismatchType(name),
+            message =
+                "Swap quote asset mismatch: $name=${selectedAsset.assetId} is not a currently-supported swap asset"
+        )
     }
     requireMatchingAsset(
         name = name,
@@ -440,8 +455,24 @@ private fun requireSupportedSelectedAsset(
     )
 }
 
-private fun requireMatchingAddress(name: String, expected: String, actual: String) {
-    require(expected == actual) {
-        "Swap quote address mismatch: expected $name=$expected but quote returned $actual"
+private fun requireMatchingAddress(
+    name: String,
+    type: SwapQuoteMismatchType,
+    expected: String,
+    actual: String
+) {
+    if (expected != actual) {
+        throw SwapQuoteMismatchException(
+            type = type,
+            message = "Swap quote address mismatch: expected $name=$expected but quote returned $actual"
+        )
     }
 }
+
+/**
+ * Attaches the quote's deposit address — the id support can hand the swap provider — to a mismatch
+ * rejection. The quote only exists once the data source returned it, so a mismatch raised before that
+ * (or a plain failure) passes through unchanged.
+ */
+private fun Exception.withQuoteId(receivedQuote: SwapQuote?): Exception =
+    if (this is SwapQuoteMismatchException) withDepositAddress(receivedQuote?.depositAddress?.address) else this

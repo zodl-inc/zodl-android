@@ -1,12 +1,16 @@
 package co.electriccoin.zcash.ui.common.model.near
 
 import co.electriccoin.zcash.ui.common.model.SwapBlockchain
+import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchException
+import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.imageRes
 import java.math.BigDecimal
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertIs
+import kotlin.test.assertNull
 
 /**
  * Unit tests for the pure NEAR swap quote validators introduced for the swap-security hardening
@@ -47,6 +51,35 @@ class NearSwapQuoteValidationTest {
             }
         assertEquals("amountIn", e.field)
         assertEquals(8, e.decimals)
+        assertEquals(SwapQuoteMismatchType.INPUT_AMOUNT, e.type)
+    }
+
+    @Test
+    fun requireConsistent_reportsTheOutputAmountMismatchTypeForAmountOut() {
+        val e =
+            assertFailsWith<SwapAmountInconsistencyException> {
+                requireConsistent(
+                    name = "amountOut",
+                    raw = BigDecimal("100000000"),
+                    formatted = BigDecimal("2"),
+                    decimals = 8
+                )
+            }
+        assertEquals(SwapQuoteMismatchType.OUTPUT_AMOUNT, e.type)
+    }
+
+    @Test
+    fun swapAmountInconsistency_attachesTheDepositAddressOnce() {
+        val e = SwapAmountInconsistencyException(field = "amountIn", decimals = 8, message = "boom")
+        assertNull(e.depositAddress)
+
+        val attached = e.withDepositAddress("deposit-address")
+        assertIs<SwapAmountInconsistencyException>(attached)
+        assertEquals("deposit-address", attached.depositAddress)
+        assertEquals("amountIn", attached.field)
+        assertEquals(8, attached.decimals)
+        assertEquals("boom", attached.message)
+        assertEquals("deposit-address", attached.withDepositAddress("other").depositAddress)
     }
 
     @Test
@@ -69,17 +102,19 @@ class NearSwapQuoteValidationTest {
 
     @Test
     fun requireWithinSlippage_outputFloating_throwsBelowFloor() {
-        assertFailsWith<IllegalArgumentException> {
-            // floor=90, server only guarantees 89
-            requireWithinSlippage(
-                SwapType.EXACT_INPUT,
-                A_THOUSAND,
-                BigDecimal("100"),
-                A_THOUSAND,
-                BigDecimal("89"),
-                BPS_10_PCT
-            )
-        }
+        val e =
+            assertFailsWith<SwapQuoteMismatchException> {
+                // floor=90, server only guarantees 89
+                requireWithinSlippage(
+                    SwapType.EXACT_INPUT,
+                    A_THOUSAND,
+                    BigDecimal("100"),
+                    A_THOUSAND,
+                    BigDecimal("89"),
+                    BPS_10_PCT
+                )
+            }
+        assertEquals(SwapQuoteMismatchType.SLIPPAGE_EXCEEDED, e.type)
     }
 
     @Test
@@ -91,17 +126,19 @@ class NearSwapQuoteValidationTest {
 
     @Test
     fun requireWithinSlippage_inputFloating_throwsAboveCeiling() {
-        assertFailsWith<IllegalArgumentException> {
-            // ceiling=110, server demands at least 111
-            requireWithinSlippage(
-                SwapType.EXACT_OUTPUT,
-                BigDecimal("100"),
-                A_THOUSAND,
-                BigDecimal("111"),
-                A_THOUSAND,
-                BPS_10_PCT
-            )
-        }
+        val e =
+            assertFailsWith<SwapQuoteMismatchException> {
+                // ceiling=110, server demands at least 111
+                requireWithinSlippage(
+                    SwapType.EXACT_OUTPUT,
+                    BigDecimal("100"),
+                    A_THOUSAND,
+                    BigDecimal("111"),
+                    A_THOUSAND,
+                    BPS_10_PCT
+                )
+            }
+        assertEquals(SwapQuoteMismatchType.SLIPPAGE_EXCEEDED, e.type)
     }
 
     @Test
@@ -184,26 +221,30 @@ class NearSwapQuoteValidationTest {
 
     @Test
     fun requireMatchingAsset_throwsOnDifferentToken() {
-        assertFailsWith<IllegalArgumentException> {
-            requireMatchingAsset(
-                name = "originAsset",
-                expectedTokenTicker = "BTC",
-                expectedChainTicker = "Bitcoin",
-                actual = asset(token = "ETH", chain = "Bitcoin")
-            )
-        }
+        val e =
+            assertFailsWith<SwapQuoteMismatchException> {
+                requireMatchingAsset(
+                    name = "originAsset",
+                    expectedTokenTicker = "BTC",
+                    expectedChainTicker = "Bitcoin",
+                    actual = asset(token = "ETH", chain = "Bitcoin")
+                )
+            }
+        assertEquals(SwapQuoteMismatchType.ORIGIN_ASSET, e.type)
     }
 
     @Test
     fun requireMatchingAsset_throwsOnDifferentChain() {
-        assertFailsWith<IllegalArgumentException> {
-            requireMatchingAsset(
-                name = "destinationAsset",
-                expectedTokenTicker = "USDC",
-                expectedChainTicker = "Ethereum",
-                actual = asset(token = "USDC", chain = "Polygon")
-            )
-        }
+        val e =
+            assertFailsWith<SwapQuoteMismatchException> {
+                requireMatchingAsset(
+                    name = "destinationAsset",
+                    expectedTokenTicker = "USDC",
+                    expectedChainTicker = "Ethereum",
+                    actual = asset(token = "USDC", chain = "Polygon")
+                )
+            }
+        assertEquals(SwapQuoteMismatchType.DESTINATION_ASSET, e.type)
     }
 
     // endregion
@@ -241,9 +282,11 @@ class NearSwapQuoteValidationTest {
 
     @Test
     fun requireQuoteMatchesUserAmount_throwsWhenAmountsDiffer() {
-        assertFailsWith<IllegalArgumentException> {
-            requireQuoteMatchesUserAmount(quoted = BigDecimal("2"), requested = BigDecimal("1"), decimals = 8)
-        }
+        val e =
+            assertFailsWith<SwapQuoteMismatchException> {
+                requireQuoteMatchesUserAmount(quoted = BigDecimal("2"), requested = BigDecimal("1"), decimals = 8)
+            }
+        assertEquals(SwapQuoteMismatchType.REQUESTED_AMOUNT, e.type)
     }
 
     // endregion

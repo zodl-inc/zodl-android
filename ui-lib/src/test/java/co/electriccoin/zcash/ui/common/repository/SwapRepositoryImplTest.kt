@@ -10,6 +10,8 @@ import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapAssetTestFixture
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapQuote
+import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchException
+import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
 import co.electriccoin.zcash.ui.common.model.SwapQuoteStatus
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -279,7 +281,7 @@ class SwapRepositoryImplTest {
         runTest {
             val repository = loadedRepository(dataSourceReturning(fakeQuote(amountInFormatted = BigDecimal("999"))))
             repository.requestExactInputQuote(BigDecimal("1"), "destination", "refund", btc, BigDecimal("2"))
-            assertExactInputError(repository)
+            assertExactInputError(repository, SwapQuoteMismatchType.REQUESTED_AMOUNT)
         }
 
     @Test
@@ -287,7 +289,7 @@ class SwapRepositoryImplTest {
         runTest {
             val repository = loadedRepository(dataSourceReturning(fakeQuote(originAsset = btc)))
             repository.requestExactInputQuote(BigDecimal("1"), "destination", "refund", btc, BigDecimal("2"))
-            assertExactInputError(repository)
+            assertExactInputError(repository, SwapQuoteMismatchType.ORIGIN_ASSET)
         }
 
     @Test
@@ -296,7 +298,7 @@ class SwapRepositoryImplTest {
             // sol is not in the loaded supported list ([btc]); the selected destination must still be supported.
             val repository = loadedRepository(dataSourceReturning(fakeQuote(destinationAsset = sol)))
             repository.requestExactInputQuote(BigDecimal("1"), "destination", "refund", sol, BigDecimal("2"))
-            assertExactInputError(repository)
+            assertExactInputError(repository, SwapQuoteMismatchType.DESTINATION_ASSET)
         }
 
     @Test
@@ -305,7 +307,7 @@ class SwapRepositoryImplTest {
             // Selected btc is supported, but the quote echoes btc-on-eth: same ticker, different chain.
             val repository = loadedRepository(dataSourceReturning(fakeQuote(destinationAsset = btcOnEth)))
             repository.requestExactInputQuote(BigDecimal("1"), "destination", "refund", btc, BigDecimal("2"))
-            assertExactInputError(repository)
+            assertExactInputError(repository, SwapQuoteMismatchType.DESTINATION_ASSET)
         }
 
     @Test
@@ -313,7 +315,8 @@ class SwapRepositoryImplTest {
         runTest {
             val repository = loadedRepository(dataSourceReturning(fakeQuote(destinationAddress = "wrong")))
             repository.requestExactInputQuote(BigDecimal("1"), "destination", "refund", btc, BigDecimal("2"))
-            assertExactInputError(repository)
+            val exception = assertExactInputError(repository, SwapQuoteMismatchType.RECIPIENT_ADDRESS)
+            assertEquals("deposit", exception.depositAddress)
         }
 
     @Test
@@ -321,7 +324,7 @@ class SwapRepositoryImplTest {
         runTest {
             val repository = loadedRepository(dataSourceReturning(fakeQuote(refundAddress = "wrong")))
             repository.requestExactInputQuote(BigDecimal("1"), "destination", "refund", btc, BigDecimal("2"))
-            assertExactInputError(repository)
+            assertExactInputError(repository, SwapQuoteMismatchType.REFUND_ADDRESS)
         }
 
     @Test
@@ -333,9 +336,7 @@ class SwapRepositoryImplTest {
                     dataSourceReturning(fakeQuote(mode = SwapMode.EXACT_OUTPUT, amountOutFormatted = BigDecimal("999")))
                 )
             repository.requestExactOutputQuote(BigDecimal("1"), "destination", "refund", btc, BigDecimal("2"))
-            val result = repository.quote.value
-            assertIs<SwapQuoteData.Error>(result)
-            assertEquals(SwapMode.EXACT_OUTPUT, result.mode)
+            assertMismatch(repository, SwapMode.EXACT_OUTPUT, SwapQuoteMismatchType.REQUESTED_AMOUNT)
         }
 
     @Test
@@ -343,7 +344,7 @@ class SwapRepositoryImplTest {
         runTest {
             val repository = loadedRepository(dataSourceReturning(flexQuote(amountInFormatted = BigDecimal("999"))))
             repository.requestFlexInputIntoZec(BigDecimal("2"), "refund", "destination", btc, BigDecimal("2"))
-            assertFlexError(repository)
+            assertFlexError(repository, SwapQuoteMismatchType.REQUESTED_AMOUNT)
         }
 
     @Test
@@ -351,7 +352,7 @@ class SwapRepositoryImplTest {
         runTest {
             val repository = loadedRepository(dataSourceReturning(flexQuote(destinationAsset = btc)))
             repository.requestFlexInputIntoZec(BigDecimal("2"), "refund", "destination", btc, BigDecimal("2"))
-            assertFlexError(repository)
+            assertFlexError(repository, SwapQuoteMismatchType.DESTINATION_ASSET)
         }
 
     @Test
@@ -359,7 +360,7 @@ class SwapRepositoryImplTest {
         runTest {
             val repository = loadedRepository(dataSourceReturning(flexQuote(originAsset = sol)))
             repository.requestFlexInputIntoZec(BigDecimal("2"), "refund", "destination", sol, BigDecimal("2"))
-            assertFlexError(repository)
+            assertFlexError(repository, SwapQuoteMismatchType.ORIGIN_ASSET)
         }
 
     @Test
@@ -367,7 +368,32 @@ class SwapRepositoryImplTest {
         runTest {
             val repository = loadedRepository(dataSourceReturning(flexQuote(refundAddress = "wrong")))
             repository.requestFlexInputIntoZec(BigDecimal("2"), "refund", "destination", btc, BigDecimal("2"))
-            assertFlexError(repository)
+            assertFlexError(repository, SwapQuoteMismatchType.REFUND_ADDRESS)
+        }
+
+    /**
+     * The data source already attached the address from the raw response; the repository must not
+     * overwrite it (there is no quote to take one from in this case anyway).
+     */
+    @Test
+    fun quoteMismatchFromTheDataSourceKeepsItsOwnDepositAddress() =
+        runTest {
+            val dataSource =
+                mockk<SwapDataSource> {
+                    coEvery { getSupportedTokens() } returns listOf(zec, btc)
+                    coEvery { requestQuote(any(), any(), any(), any(), any(), any(), any(), any()) } throws
+                        SwapQuoteMismatchException(
+                            type = SwapQuoteMismatchType.SWAP_TYPE,
+                            message = "boom",
+                            depositAddress = "from-response"
+                        )
+                }
+            val repository = loadedRepository(dataSource)
+
+            repository.requestExactInputQuote(BigDecimal("1"), "destination", "refund", btc, BigDecimal("2"))
+
+            val exception = assertExactInputError(repository, SwapQuoteMismatchType.SWAP_TYPE)
+            assertEquals("from-response", exception.depositAddress)
         }
 
     // endregion
@@ -600,16 +626,32 @@ class SwapRepositoryImplTest {
             destinationAddress = destinationAddress
         )
 
-    private fun assertExactInputError(repository: SwapRepositoryImpl) {
-        val result = repository.quote.value
-        assertIs<SwapQuoteData.Error>(result)
-        assertEquals(SwapMode.EXACT_INPUT, result.mode)
-    }
+    private fun assertExactInputError(
+        repository: SwapRepositoryImpl,
+        type: SwapQuoteMismatchType
+    ): SwapQuoteMismatchException = assertMismatch(repository, SwapMode.EXACT_INPUT, type)
 
-    private fun assertFlexError(repository: SwapRepositoryImpl) {
+    private fun assertFlexError(
+        repository: SwapRepositoryImpl,
+        type: SwapQuoteMismatchType
+    ): SwapQuoteMismatchException = assertMismatch(repository, SwapMode.FLEX_INPUT, type)
+
+    /**
+     * A rejected quote is stored as an error carrying the request's own mode and a typed mismatch, so the
+     * use case can route it to the mismatch sheet and the report email can name the failed check.
+     */
+    private fun assertMismatch(
+        repository: SwapRepositoryImpl,
+        mode: SwapMode,
+        type: SwapQuoteMismatchType
+    ): SwapQuoteMismatchException {
         val result = repository.quote.value
         assertIs<SwapQuoteData.Error>(result)
-        assertEquals(SwapMode.FLEX_INPUT, result.mode)
+        assertEquals(mode, result.mode)
+        val exception = result.exception
+        assertIs<SwapQuoteMismatchException>(exception)
+        assertEquals(type, exception.type)
+        return exception
     }
 
     private fun dataSourceReturning(quote: SwapQuote) =

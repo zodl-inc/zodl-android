@@ -7,6 +7,8 @@ import co.electriccoin.zcash.ui.common.model.SwapAddress
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapQuote
+import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchException
+import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
 import co.electriccoin.zcash.ui.common.model.SwapQuoteStatus
 import co.electriccoin.zcash.ui.common.model.ZcashShieldedSwapAddress
 import co.electriccoin.zcash.ui.common.model.ZcashSwapAddress
@@ -120,11 +122,52 @@ class NearSwapDataSource(
                 referral = "zodl"
             )
 
+        val response =
+            try {
+                nearApiProvider.requestQuote(request)
+            } catch (e: ResponseWithNearErrorException) {
+                when {
+                    e.error.message.contains("Amount is too low for bridge, try at least", true) -> {
+                        val errorAmount =
+                            e.error.message
+                                .split(" ")
+                                .lastOrNull()
+                                ?.toBigDecimalOrNull() ?: throw e
+                        val errorAsset =
+                            when (swapMode) {
+                                SwapMode.FLEX_INPUT -> originAsset
+                                SwapMode.EXACT_INPUT -> originAsset
+                                SwapMode.EXACT_OUTPUT -> destinationAsset
+                            }
+                        throw QuoteLowAmountException(
+                            asset = errorAsset,
+                            amount = errorAmount,
+                            amountFormatted = errorAmount.movePointLeft(errorAsset.decimals)
+                        )
+                    }
+
+                    e.error.message.contains("No quotes found", true) -> {
+                        throw QuoteLowAmountException(
+                            asset = originAsset,
+                            amount = null,
+                            amountFormatted = null
+                        )
+                    }
+
+                    else -> {
+                        throw e
+                    }
+                }
+            }
+
         return try {
-            val response = nearApiProvider.requestQuote(request)
-            require(response.quoteRequest.swapType == request.swapType) {
-                "Swap quote type mismatch: requested ${request.swapType} " +
-                    "but server returned ${response.quoteRequest.swapType}"
+            if (response.quoteRequest.swapType != request.swapType) {
+                throw SwapQuoteMismatchException(
+                    type = SwapQuoteMismatchType.SWAP_TYPE,
+                    message =
+                        "Swap quote type mismatch: requested ${request.swapType} " +
+                            "but server returned ${response.quoteRequest.swapType}"
+                )
             }
             NearSwapQuote(
                 response = response,
@@ -135,49 +178,9 @@ class NearSwapDataSource(
                 refundAddress = getRefundAddress(response, originAsset),
                 expectedSlippageToleranceBps = slippageToleranceBps,
             )
-        } catch (e: SwapAmountInconsistencyException) {
-            // MOB-1371 monitoring signal: the exact-equality amount-consistency check rejected this quote.
-            // Report a sanitized non-fatal (field + decimals only, never the amounts — see the release
-            // log-redaction hardening) so that a future 1Click change to rounded display values surfaces as
-            // an observable "quotes blocked" signal instead of silent breakage. Keep failing closed: rethrow
-            // so the quote is still rejected.
-            GlobalCrashReporter.reportCaughtException(
-                SwapAmountConsistencyRejectedSignal(field = e.field, decimals = e.decimals)
-            )
-            throw e
-        } catch (e: ResponseWithNearErrorException) {
-            when {
-                e.error.message.contains("Amount is too low for bridge, try at least", true) -> {
-                    val errorAmount =
-                        e.error.message
-                            .split(" ")
-                            .lastOrNull()
-                            ?.toBigDecimalOrNull() ?: throw e
-                    val errorAsset =
-                        when (swapMode) {
-                            SwapMode.FLEX_INPUT -> originAsset
-                            SwapMode.EXACT_INPUT -> originAsset
-                            SwapMode.EXACT_OUTPUT -> destinationAsset
-                        }
-                    throw QuoteLowAmountException(
-                        asset = errorAsset,
-                        amount = errorAmount,
-                        amountFormatted = errorAmount.movePointLeft(errorAsset.decimals)
-                    )
-                }
-
-                e.error.message.contains("No quotes found", true) -> {
-                    throw QuoteLowAmountException(
-                        asset = originAsset,
-                        amount = null,
-                        amountFormatted = null
-                    )
-                }
-
-                else -> {
-                    throw e
-                }
-            }
+        } catch (e: SwapQuoteMismatchException) {
+            GlobalCrashReporter.reportCaughtException(swapQuoteMismatchSignal(e))
+            throw e.withDepositAddress(response.quote.depositAddress)
         }
     }
 
@@ -250,11 +253,23 @@ const val AFFILIATE_ADDRESS = "d78abd5477432c9d9c5e32c4a1a0056cd7b8be6580d3c49e1
 private const val QUOTE_WAITING_TIME = 3000
 
 /**
- * Sanitized non-fatal reported to crash monitoring when the swap amount-consistency check rejects a quote
- * (MOB-1371). Carries only the field name and decimal precision — never the amounts — so it does not leak
- * transaction values to crash reporting.
+ * Sanitized non-fatal reported to crash monitoring when a request-vs-response check rejects a quote
+ * (MOB-1371, MOB-1340). Carries only the mismatch type — plus the field name and decimal precision for the
+ * amount-consistency case — never the amounts (see the release log-redaction hardening), so it does not
+ * leak transaction values to crash reporting.
+ *
+ * Reporting it means a future 1Click change surfaces as an observable "quotes blocked" signal instead of
+ * silent breakage for users. The rejection itself still fails closed: the caller rethrows, with the quote's
+ * deposit address attached from the raw response — the only place it exists when [NearSwapQuote]'s own
+ * validation throws.
  */
-private class SwapAmountConsistencyRejectedSignal(
-    field: String,
-    decimals: Int
-) : Exception("Swap amount-consistency check rejected a quote (field=$field, decimals=$decimals)")
+private fun swapQuoteMismatchSignal(e: SwapQuoteMismatchException): Exception =
+    if (e is SwapAmountInconsistencyException) {
+        SwapQuoteMismatchRejectedSignal("type=${e.type}, field=${e.field}, decimals=${e.decimals}")
+    } else {
+        SwapQuoteMismatchRejectedSignal("type=${e.type}")
+    }
+
+private class SwapQuoteMismatchRejectedSignal(
+    detail: String
+) : Exception("Swap quote validation rejected a quote ($detail)")

@@ -894,6 +894,13 @@
     <string name="reportSwap_msg">Al tocar el botón de abajo, se enviarán detalles de este swap (como la dirección de depósito y el activo destino) al equipo de soporte de Zodl para que puedan ayudarte a resolver tu problema. La información de la transacción se incluye automáticamente.</string>
     <string name="transaction_detail_support_email_subject">Problema con transacción de swap</string>
     <string name="transaction_detail_support_email_body">Por favor describe tu problema aquí:\n\n\n\nDetalles del swap:\nDirección de depósito: %1$s\nActivo de origen: %2$s\nActivo destino: %3$s</string>
+    <string name="swap_mismatch_title">Los detalles del swap no coincidieron</string>
+    <string name="swap_mismatch_msg_1">Recibimos una cotización del proveedor de swap, pero no coincidió con algunos de los detalles que proporcionaste. Hacemos esta comprobación para asegurarnos de que tu swap sea el que esperas.</string>
+    <string name="swap_mismatch_msg_2">Te agradeceríamos que nos lo reportaras para que podamos investigarlo con el proveedor de swap.</string>
+    <string name="swap_mismatch_msg_3">Lo reportes o no, también puedes intentarlo de nuevo. Si los detalles coinciden, no verás esta pantalla y podrás continuar.</string>
+    <string name="swap_mismatch_goBack">Volver</string>
+    <string name="swap_mismatch_support_email_subject">Zodl Swap: discrepancia en la API</string>
+    <string name="swap_mismatch_support_email_body">Zodl detectó el siguiente error en la respuesta de la API del proveedor de swap. Proporcionar estos detalles nos permite plantearlo con ellos para investigarlo. No compartiremos tus datos personales con el proveedor de swap. Puedes enviarlo tal cual o incluir una nota para nosotros. Gracias de antemano.\n\nProveedor de swap: %1$s\nTipo de swap: %2$s\nTipo de discrepancia: %3$s\nID de cotización: %4$s</string>
     <string name="deposits_info">Los depósitos pueden tardar varios minutos en confirmarse.</string>
     <string name="swapAndPay_status_incompleteDeposit">Depósito incompleto</string>
     <string name="swapAndPay_status_pending">Pendiente</string>
