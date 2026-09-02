@@ -374,16 +374,17 @@ internal interface InternalState {
     val swapDirection: SwapDirection
     val isEphemeralAddressLocked: Boolean
 
-    val totalSpendableBalance: Zatoshi
+    val totalSpendableBalance: Zatoshi?
         get() = account.totalSpendableBalance
 
     /**
      * Delegates to the shared [co.electriccoin.zcash.ui.common.model.canSpend] primitive — the same
      * one the pre-quote check in
      * [co.electriccoin.zcash.ui.common.usecase.RequestSwapQuoteUseCase.requestExactInput] validates
-     * against. Re-evaluated whenever the selected account emits a new balance.
+     * against. Re-evaluated whenever the selected account emits a new balance. Null while the
+     * balance has not loaded yet.
      */
-    fun canSpend(amount: Zatoshi): Boolean = account.canSpend(amount)
+    fun canSpend(amount: Zatoshi): Boolean? = account.canSpend(amount)
 }
 
 internal data class InternalStateImpl(

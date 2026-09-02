@@ -11,9 +11,7 @@ import cash.z.ecc.android.sdk.model.UnifiedAddressRequest
 import cash.z.ecc.android.sdk.model.UnifiedFullViewingKey
 import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.android.sdk.model.WalletBalance
-import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.Zip32AccountIndex
-import cash.z.ecc.sdk.extension.ZERO
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.SaplingInfo
@@ -99,9 +97,10 @@ class AccountDataSourceImpl(
     private val requestNextShieldedAddressChannel = MutableSharedFlow<AddressRequest>()
 
     /**
-     * A null balances snapshot from the synchronizer must yield no emission (or null for
-     * [allAccounts] itself), never fabricated zeros — zeros are a truth claim about wallet state,
-     * while null means the data simply is not loaded yet.
+     * A null balances snapshot from the synchronizer propagates as null all the way through each
+     * account's balance fields (never suppressed, never defaulted to zero) — a fresh wallet's
+     * accounts are visible immediately, with their balances arriving once the synchronizer reports
+     * them. Zero is only ever a real reported value, never a stand-in for "not loaded yet".
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     override val allAccounts: StateFlow<List<WalletAccount>?> =
@@ -321,11 +320,8 @@ class AccountDataSourceImpl(
 
         val balanceFlow =
             synchronizer.walletBalances
-                .filterNotNull()
                 .map { balances ->
-                    balances[sdkAccount.accountUuid]
-                        ?.let { balance -> balance.orchard + balance.ironwood }
-                        ?: createEmptyWalletBalance()
+                    balances?.get(sdkAccount.accountUuid)?.let { balance -> balance.orchard + balance.ironwood }
                 }
 
         return combine(addressFlow, balanceFlow) { address, balance ->
@@ -341,9 +337,9 @@ class AccountDataSourceImpl(
                 delay(attempt.coerceAtMost(RETRY_DELAY).seconds)
                 true
             }
-        return combine(transparentAddress, synchronizer.walletBalances.filterNotNull()) { address, balances ->
-            val balance = balances[sdkAccount.accountUuid]
-            TransparentInfo(address = address, balance = balance?.unshielded ?: Zatoshi.ZERO)
+        return combine(transparentAddress, synchronizer.walletBalances) { address, balances ->
+            val balance = balances?.get(sdkAccount.accountUuid)
+            TransparentInfo(address = address, balance = balance?.unshielded)
         }
     }
 
@@ -358,22 +354,21 @@ class AccountDataSourceImpl(
                     delay(attempt.coerceAtMost(RETRY_DELAY).seconds)
                     true
                 }
-            combine(saplingAddress, synchronizer.walletBalances.filterNotNull()) { address, balances ->
-                val balance = balances[sdkAccount.accountUuid]
-                SaplingInfo(address = address, balance = balance?.sapling ?: createEmptyWalletBalance())
+            combine(saplingAddress, synchronizer.walletBalances) { address, balances ->
+                val balance = balances?.get(sdkAccount.accountUuid)
+                SaplingInfo(address = address, balance = balance?.sapling)
             }
         }
 
-    // Ironwood shares the same unified address as Orchard (no address of its own to observe) —
-    // just its balance.
-    private fun observeIronwoodBalance(synchronizer: Synchronizer, sdkAccount: Account): Flow<WalletBalance> =
+    /**
+     * Ironwood shares the same unified address as Orchard (no address of its own to observe) —
+     * just its balance.
+     */
+    private fun observeIronwoodBalance(synchronizer: Synchronizer, sdkAccount: Account): Flow<WalletBalance?> =
         synchronizer.walletBalances
-            .filterNotNull()
             .map { balances ->
-                balances[sdkAccount.accountUuid]?.ironwood ?: createEmptyWalletBalance()
+                balances?.get(sdkAccount.accountUuid)?.ironwood
             }
-
-    private fun createEmptyWalletBalance() = WalletBalance(Zatoshi.ZERO, Zatoshi.ZERO, Zatoshi.ZERO)
 
     private operator fun WalletBalance.plus(other: WalletBalance) =
         WalletBalance(

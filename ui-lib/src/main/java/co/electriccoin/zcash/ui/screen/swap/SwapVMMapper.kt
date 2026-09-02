@@ -161,7 +161,7 @@ internal class SwapVMMapper {
             error =
                 when (state.swapDirection) {
                     SWAP_FROM_ZEC -> {
-                        if (originAmount != null && !state.canSpend(originAmount.convertZecToZatoshi())) {
+                        if (originAmount != null && state.canSpend(originAmount.convertZecToZatoshi()) == false) {
                             stringRes(R.string.send_error_insufficientFunds)
                         } else {
                             null
@@ -271,51 +271,51 @@ internal class SwapVMMapper {
         )
     }
 
+    @Suppress("CyclomaticComplexMethod", "ReturnCount")
     private fun createMaxState(
         state: SwapInternalState,
         onBalanceButtonClick: () -> Unit
     ): ButtonState {
-        val account =
-            state.account ?: return ButtonState(
+        val loadingState =
+            ButtonState(
                 text = stringRes(R.string.balance_availableTitle),
                 isLoading = true,
                 onClick = onBalanceButtonClick
             )
 
+        val account = state.account ?: return loadingState
+        val totalBalance = account.totalBalance ?: return loadingState
+        val spendableShieldedBalance = account.spendableShieldedBalance ?: return loadingState
+        val isShieldedPending = account.isShieldedPending ?: return loadingState
+        val totalShieldedBalance = account.totalShieldedBalance ?: return loadingState
+        val totalTransparentBalance = account.totalTransparentBalance ?: return loadingState
+
         return when {
-            account.totalBalance > account.spendableShieldedBalance &&
-                account.isShieldedPending &&
-                account.totalShieldedBalance > Zatoshi(0) &&
-                account.spendableShieldedBalance == Zatoshi(0) -> {
-                ButtonState(
-                    text = stringRes(R.string.balance_availableTitle),
-                    isLoading = true,
-                    onClick = onBalanceButtonClick
-                )
+            totalBalance > spendableShieldedBalance &&
+                isShieldedPending &&
+                totalShieldedBalance > Zatoshi(0) &&
+                spendableShieldedBalance == Zatoshi(0) -> {
+                loadingState
             }
 
-            account.totalBalance > account.spendableShieldedBalance &&
-                !account.isShieldedPending &&
-                account.totalShieldedBalance > Zatoshi(0) &&
-                account.spendableShieldedBalance == Zatoshi(0) &&
-                account.totalTransparentBalance == Zatoshi(0) -> {
-                ButtonState(
-                    text = stringRes(R.string.balance_availableTitle),
-                    isLoading = true,
-                    onClick = onBalanceButtonClick
-                )
+            totalBalance > spendableShieldedBalance &&
+                !isShieldedPending &&
+                totalShieldedBalance > Zatoshi(0) &&
+                spendableShieldedBalance == Zatoshi(0) &&
+                totalTransparentBalance == Zatoshi(0) -> {
+                loadingState
             }
 
             else -> {
                 val amount =
                     when (state.currencyType) {
                         TOKEN -> {
-                            stringRes(state.totalSpendableBalance, TickerLocation.HIDDEN)
+                            stringRes(spendableShieldedBalance, TickerLocation.HIDDEN)
                         }
 
                         FIAT -> {
                             stringResByDynamicCurrencyNumber(
-                                state.getTotalSpendableFiatBalance(),
+                                state.getTotalSpendableFiatBalance(spendableShieldedBalance),
                                 FiatCurrency.USD.symbol
                             )
                         }
@@ -323,7 +323,6 @@ internal class SwapVMMapper {
 
                 ButtonState(
                     text = stringRes(R.string.swapAndPay_max, amount.asPrivacySensitive()),
-                    // amount = account.spendableShieldedBalance,
                     isLoading = false,
                     onClick = onBalanceButtonClick
                 )
@@ -586,7 +585,7 @@ private data class SwapInternalState(
             SWAP_INTO_ZEC -> swapAssets.zecAsset
         }
 
-    fun getTotalSpendableFiatBalance(): BigDecimal {
+    fun getTotalSpendableFiatBalance(spendableShieldedBalance: Zatoshi): BigDecimal {
         fun Long.convertZatoshiToZecBigDecimal(scale: Int = ZEC_FORMATTER.maximumFractionDigits): BigDecimal =
             BigDecimal(this, MathContext.DECIMAL128)
                 .divide(
@@ -595,7 +594,7 @@ private data class SwapInternalState(
                 ).setScale(scale, ZEC_FORMATTER.roundingMode)
 
         if (swapAssets.zecAsset?.usdPrice == null) return BigDecimal(0)
-        return totalSpendableBalance.value
+        return spendableShieldedBalance.value
             .convertZatoshiToZecBigDecimal()
             .multiply(swapAssets.zecAsset.usdPrice, MathContext.DECIMAL128)
     }
