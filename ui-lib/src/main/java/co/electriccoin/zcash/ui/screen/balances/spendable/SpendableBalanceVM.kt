@@ -8,6 +8,7 @@ import cash.z.ecc.sdk.extension.typicalFee
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
+import co.electriccoin.zcash.ui.common.model.LoadedAccountBalances
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.repository.isPending
 import co.electriccoin.zcash.ui.common.usecase.GetTransactionsUseCase
@@ -55,7 +56,7 @@ class SpendableBalanceVM(
     @Suppress("ReturnCount")
     private fun createState(account: WalletAccount?, transactions: List<ListTransactionData>?): SpendableBalanceState? {
         if (account == null) return null
-        val balances = account.loadedBalancesOrNull() ?: return null
+        val balances = account.loadedBalances ?: return null
         return SpendableBalanceState(
             title = stringRes(R.string.balances_spendableBalance_title),
             message = createMessage(balances, transactions),
@@ -165,34 +166,3 @@ class SpendableBalanceVM(
 
     private fun onShieldClick() = shieldFunds(closeCurrentScreen = true)
 }
-
-/**
- * This account's derived balance figures, bundled once they have all loaded so the state builders
- * above work with plain non-null values instead of each re-deriving (and re-null-checking) the same
- * figures individually.
- */
-private data class LoadedAccountBalances(
-    val isAllShielded: Boolean,
-    val totalBalance: Zatoshi,
-    val totalShieldedBalance: Zatoshi,
-    val spendableShieldedBalance: Zatoshi,
-    val pendingShieldedBalance: Zatoshi,
-    val isShieldedPending: Boolean,
-    val isShieldingAvailable: Boolean,
-    val transparentBalance: Zatoshi,
-)
-
-/**
- * Null while any of this account's balance figures used by this screen has not loaded yet.
- */
-private fun WalletAccount.loadedBalancesOrNull(): LoadedAccountBalances? =
-    LoadedAccountBalances(
-        isAllShielded = isAllShielded ?: return null,
-        totalBalance = totalBalance ?: return null,
-        totalShieldedBalance = totalShieldedBalance ?: return null,
-        spendableShieldedBalance = spendableShieldedBalance ?: return null,
-        pendingShieldedBalance = pendingShieldedBalance ?: return null,
-        isShieldedPending = isShieldedPending ?: return null,
-        isShieldingAvailable = isShieldingAvailable ?: return null,
-        transparentBalance = this.transparentBalance ?: return null,
-    )

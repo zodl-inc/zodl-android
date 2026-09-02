@@ -13,8 +13,9 @@ import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlin.test.Test
@@ -78,23 +79,13 @@ class AccountDataSourceImplTest {
         )
     }
 
-    private suspend fun <T : Any> awaitValue(timeoutMs: Long = 5_000, poll: () -> T?): T =
-        withTimeout(timeoutMs) {
-            var result = poll()
-            while (result == null) {
-                delay(10)
-                result = poll()
-            }
-            result
-        }
-
     @Test
     fun nullBalancesMapEmitsAccountWithNullBalancesRatherThanNoEmissionOrZeros() =
         runBlocking {
             val walletBalances = MutableStateFlow<Map<AccountUuid, AccountBalance>?>(null)
             val dataSource = dataSource(walletBalances)
 
-            val accounts = awaitValue { dataSource.allAccounts.value }
+            val accounts = withTimeout(5_000) { dataSource.allAccounts.filterNotNull().first() }
 
             assertEquals(1, accounts.size)
             val zashiAccount = accounts.single() as ZashiAccount
@@ -122,7 +113,7 @@ class AccountDataSourceImplTest {
                 )
             val dataSource = dataSource(walletBalances)
 
-            val accounts = awaitValue { dataSource.allAccounts.value }
+            val accounts = withTimeout(5_000) { dataSource.allAccounts.filterNotNull().first() }
 
             assertEquals(1, accounts.size)
             val zashiAccount = accounts.single() as ZashiAccount

@@ -76,17 +76,13 @@ class BalanceWidgetVM(
         val isAllShielded = account.isAllShielded ?: return null
         if (isAllShielded) return null
 
-        val totalBalance = account.totalBalance ?: return null
-        val spendableShieldedBalance = account.spendableShieldedBalance ?: return null
-        val isShieldedPending = account.isShieldedPending ?: return null
-        val totalShieldedBalance = account.totalShieldedBalance ?: return null
-        val totalTransparentBalance = account.totalTransparentBalance ?: return null
+        val b = account.loadedBalances ?: return null
 
         return when {
-            totalBalance > spendableShieldedBalance &&
-                isShieldedPending &&
-                totalShieldedBalance > Zatoshi(0) &&
-                spendableShieldedBalance == Zatoshi(0) -> {
+            b.totalBalance > b.spendableShieldedBalance &&
+                b.isShieldedPending &&
+                b.totalShieldedBalance > Zatoshi(0) &&
+                b.spendableShieldedBalance == Zatoshi(0) -> {
                 BalanceButtonState(
                     icon = R.drawable.ic_balances_expand,
                     text = stringRes(R.string.widget_balances_button_spendable),
@@ -95,11 +91,11 @@ class BalanceWidgetVM(
                 )
             }
 
-            totalBalance > spendableShieldedBalance &&
-                !isShieldedPending &&
-                totalShieldedBalance > Zatoshi(0) &&
-                spendableShieldedBalance == Zatoshi(0) &&
-                totalTransparentBalance == Zatoshi(0) -> {
+            b.totalBalance > b.spendableShieldedBalance &&
+                !b.isShieldedPending &&
+                b.totalShieldedBalance > Zatoshi(0) &&
+                b.spendableShieldedBalance == Zatoshi(0) &&
+                b.totalTransparentBalance == Zatoshi(0) -> {
                 BalanceButtonState(
                     icon = R.drawable.ic_balances_expand,
                     text = stringRes(R.string.widget_balances_button_spendable),
@@ -108,11 +104,11 @@ class BalanceWidgetVM(
                 )
             }
 
-            totalBalance > spendableShieldedBalance -> {
+            b.totalBalance > b.spendableShieldedBalance -> {
                 BalanceButtonState(
                     icon = R.drawable.ic_balances_expand,
                     text = stringRes(R.string.widget_balances_button_spendable),
-                    amount = spendableShieldedBalance,
+                    amount = b.spendableShieldedBalance,
                     onClick = ::onBalanceButtonClick
                 )
             }

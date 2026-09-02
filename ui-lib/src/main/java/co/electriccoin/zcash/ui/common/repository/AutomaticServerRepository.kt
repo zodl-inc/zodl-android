@@ -7,6 +7,7 @@ import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvid
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
+import co.electriccoin.zcash.ui.common.provider.rawWalletBalances
 import co.electriccoin.zcash.ui.common.provider.retainWhileWalletExists
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -53,8 +54,8 @@ class AutomaticServerRepositoryImpl(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val walletBalances =
-        synchronizerProvider.synchronizer
-            .flatMapLatest { it?.walletBalances ?: flowOf(null) }
+        synchronizerProvider
+            .rawWalletBalances()
             .retainWhileWalletExists(persistableWalletProvider)
 
     @OptIn(ExperimentalCoroutinesApi::class)

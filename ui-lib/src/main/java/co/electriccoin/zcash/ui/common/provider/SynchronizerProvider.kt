@@ -2,6 +2,8 @@ package co.electriccoin.zcash.ui.common.provider
 
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.WalletCoordinator
+import cash.z.ecc.android.sdk.model.AccountBalance
+import cash.z.ecc.android.sdk.model.AccountUuid
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.migration.MigrationSyncedHook
 import co.electriccoin.zcash.ui.common.model.SynchronizerError
@@ -21,6 +23,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
@@ -171,6 +174,12 @@ class SynchronizerProviderImpl(
  * MOB-1664 is the balance-flash precedent this generalizes: [Synchronizer.walletBalances] resets
  * to `null` on every rebuild, which used to flash balance displays to 0.000 for the few seconds a
  * new instance takes to re-establish itself.
+ *
+ * The retained value lives in this operator's [kotlinx.coroutines.flow.scan] accumulator, which is
+ * per-collection: under [kotlinx.coroutines.flow.stateIn] it must be paired with
+ * [kotlinx.coroutines.flow.SharingStarted.Eagerly], never `WhileSubscribed` — a `WhileSubscribed`
+ * restart tears down that collection and starts a fresh one, discarding the retained value and
+ * re-emitting the seed null.
  */
 internal fun <T : Any> Flow<T?>.retainWhileWalletExists(
     persistableWalletProvider: PersistableWalletProvider
@@ -194,3 +203,13 @@ internal fun <T : Any> resolveRetained(
         current != null -> current
         else -> retained
     }
+
+/**
+ * The raw per-instance wallet balances, keyed by account. Null while the synchronizer is absent or
+ * has not loaded a balance snapshot yet. Retention is the caller's choice — this is the shared seam
+ * every balance-observing use case reads from instead of copying its own
+ * `synchronizer.flatMapLatest { it?.walletBalances ?: flowOf(null) }`.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+internal fun SynchronizerProvider.rawWalletBalances(): Flow<Map<AccountUuid, AccountBalance>?> =
+    synchronizer.flatMapLatest { it?.walletBalances ?: flowOf(null) }

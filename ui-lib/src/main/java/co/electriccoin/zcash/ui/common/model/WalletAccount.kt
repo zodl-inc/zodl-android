@@ -111,7 +111,42 @@ sealed interface WalletAccount : Comparable<WalletAccount> {
      * false.
      */
     fun canSpend(amount: Zatoshi): Boolean? = spendableShieldedBalance?.let { it >= amount }
+
+    /**
+     * This account's [LoadedAccountBalances], bundled once every contributing figure has loaded.
+     * Null while any of them has not loaded yet.
+     */
+    val loadedBalances: LoadedAccountBalances?
+        get() =
+            LoadedAccountBalances(
+                isAllShielded = isAllShielded ?: return null,
+                totalBalance = totalBalance ?: return null,
+                totalShieldedBalance = totalShieldedBalance ?: return null,
+                totalTransparentBalance = totalTransparentBalance ?: return null,
+                spendableShieldedBalance = spendableShieldedBalance ?: return null,
+                pendingShieldedBalance = pendingShieldedBalance ?: return null,
+                isShieldedPending = isShieldedPending ?: return null,
+                isShieldingAvailable = isShieldingAvailable ?: return null,
+                transparentBalance = transparentBalance ?: return null,
+            )
 }
+
+/**
+ * A [WalletAccount]'s derived balance figures, bundled once they have all loaded so callers work
+ * with plain non-null values instead of each re-deriving (and re-null-checking) the same figures
+ * individually.
+ */
+data class LoadedAccountBalances(
+    val isAllShielded: Boolean,
+    val totalBalance: Zatoshi,
+    val totalShieldedBalance: Zatoshi,
+    val totalTransparentBalance: Zatoshi,
+    val spendableShieldedBalance: Zatoshi,
+    val pendingShieldedBalance: Zatoshi,
+    val isShieldedPending: Boolean,
+    val isShieldingAvailable: Boolean,
+    val transparentBalance: Zatoshi,
+)
 
 data class ZashiAccount(
     override val sdkAccount: Account,
@@ -239,11 +274,3 @@ private operator fun WalletBalance.plus(other: WalletBalance) =
  * answers null — not yet known, never coerced to a definitive answer.
  */
 fun WalletAccount?.canSpend(amount: Zatoshi): Boolean? = if (this == null) false else canSpend(amount)
-
-/**
- * The spendable balance a screen may display for a possibly-not-yet-selected account. Null both
- * when no account is available and while the account's spendable balance has not loaded yet — the
- * UI's loading state consumes this, never zero.
- */
-val WalletAccount?.totalSpendableBalance: Zatoshi?
-    get() = this?.spendableShieldedBalance

@@ -283,26 +283,21 @@ internal class SwapVMMapper {
                 onClick = onBalanceButtonClick
             )
 
-        val account = state.account ?: return loadingState
-        val totalBalance = account.totalBalance ?: return loadingState
-        val spendableShieldedBalance = account.spendableShieldedBalance ?: return loadingState
-        val isShieldedPending = account.isShieldedPending ?: return loadingState
-        val totalShieldedBalance = account.totalShieldedBalance ?: return loadingState
-        val totalTransparentBalance = account.totalTransparentBalance ?: return loadingState
+        val b = state.account?.loadedBalances ?: return loadingState
 
         return when {
-            totalBalance > spendableShieldedBalance &&
-                isShieldedPending &&
-                totalShieldedBalance > Zatoshi(0) &&
-                spendableShieldedBalance == Zatoshi(0) -> {
+            b.totalBalance > b.spendableShieldedBalance &&
+                b.isShieldedPending &&
+                b.totalShieldedBalance > Zatoshi(0) &&
+                b.spendableShieldedBalance == Zatoshi(0) -> {
                 loadingState
             }
 
-            totalBalance > spendableShieldedBalance &&
-                !isShieldedPending &&
-                totalShieldedBalance > Zatoshi(0) &&
-                spendableShieldedBalance == Zatoshi(0) &&
-                totalTransparentBalance == Zatoshi(0) -> {
+            b.totalBalance > b.spendableShieldedBalance &&
+                !b.isShieldedPending &&
+                b.totalShieldedBalance > Zatoshi(0) &&
+                b.spendableShieldedBalance == Zatoshi(0) &&
+                b.totalTransparentBalance == Zatoshi(0) -> {
                 loadingState
             }
 
@@ -310,12 +305,12 @@ internal class SwapVMMapper {
                 val amount =
                     when (state.currencyType) {
                         TOKEN -> {
-                            stringRes(spendableShieldedBalance, TickerLocation.HIDDEN)
+                            stringRes(b.spendableShieldedBalance, TickerLocation.HIDDEN)
                         }
 
                         FIAT -> {
                             stringResByDynamicCurrencyNumber(
-                                state.getTotalSpendableFiatBalance(spendableShieldedBalance),
+                                state.getTotalSpendableFiatBalance(b.spendableShieldedBalance),
                                 FiatCurrency.USD.symbol
                             )
                         }

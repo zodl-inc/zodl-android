@@ -4,12 +4,13 @@ import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
+import co.electriccoin.zcash.ui.common.provider.rawWalletBalances
 import co.electriccoin.zcash.ui.common.provider.retainWhileWalletExists
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 
 /**
  * Observes the balance of the selected account broken down per Zcash pool.
@@ -45,24 +46,30 @@ class GetBalancePoolsUseCase(
 ) {
     @OptIn(ExperimentalCoroutinesApi::class)
     fun observe(): Flow<BalancePools?> =
-        combine(
-            accountDataSource.selectedAccount,
-            synchronizerProvider.synchronizer.flatMapLatest { it?.walletBalances ?: flowOf(null) },
-        ) { account, balances ->
-            if (account == null || balances == null) return@combine null
-            val balance = balances[account.sdkAccount.accountUuid] ?: return@combine null
-            val orchard = balance.orchard.total + balance.orchard.locked
-            val sapling = balance.sapling.total + balance.sapling.locked
-            val ironwood = balance.ironwood.total + balance.ironwood.locked
-            val transparent = balance.unshielded
-            BalancePools(
-                total = orchard + sapling + transparent + ironwood,
-                orchard = orchard,
-                sapling = sapling,
-                transparent = transparent,
-                ironwood = ironwood,
-            )
-        }.retainWhileWalletExists(persistableWalletProvider)
+        accountDataSource.selectedAccount
+            .flatMapLatest { account ->
+                if (account == null) {
+                    flowOf(null)
+                } else {
+                    synchronizerProvider
+                        .rawWalletBalances()
+                        .map { balances ->
+                            balances?.get(account.sdkAccount.accountUuid)?.let { balance ->
+                                val orchard = balance.orchard.total + balance.orchard.locked
+                                val sapling = balance.sapling.total + balance.sapling.locked
+                                val ironwood = balance.ironwood.total + balance.ironwood.locked
+                                val transparent = balance.unshielded
+                                BalancePools(
+                                    total = orchard + sapling + transparent + ironwood,
+                                    orchard = orchard,
+                                    sapling = sapling,
+                                    transparent = transparent,
+                                    ironwood = ironwood,
+                                )
+                            }
+                        }.retainWhileWalletExists(persistableWalletProvider)
+                }
+            }
 }
 
 data class BalancePools(
