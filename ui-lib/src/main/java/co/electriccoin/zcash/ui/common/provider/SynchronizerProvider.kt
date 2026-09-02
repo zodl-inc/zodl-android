@@ -25,7 +25,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -42,8 +41,9 @@ interface SynchronizerProvider {
      * `null` every time the synchronizer is rebuilt (e.g. an automatic server switch tears down
      * and reconstructs the whole engine), which would otherwise flash every balance display
      * (top-line, per-pool breakdown) to 0.000 for the few seconds the new instance takes to
-     * re-establish itself. This retains the last known non-null value across that gap so
-     * consumers never observe a spurious drop to zero. Central here (rather than patched into
+     * re-establish itself. Retained across that gap via [retainWhileWalletExists] (MOB-1723), so
+     * consumers never observe a spurious drop to zero, while the value clears as soon as the
+     * wallet is removed. Central here (rather than patched into
      * each consumer) since [AccountDataSource], [co.electriccoin.zcash.ui.common.usecase.GetBalancePoolsUseCase],
      * [co.electriccoin.zcash.ui.common.usecase.GetOrchardBalanceUseCase] and
      * [co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel] all read this independently.
@@ -109,13 +109,10 @@ class SynchronizerProviderImpl(
                 initialValue = walletCoordinator.synchronizer.value
             )
 
-    private val lastKnownWalletBalances = MutableStateFlow<Map<AccountUuid, AccountBalance>?>(null)
-
     override val walletBalances: Flow<Map<AccountUuid, AccountBalance>?> =
         synchronizer
             .flatMapLatest { it?.walletBalances ?: flowOf(null) }
-            .onEach { if (it != null) lastKnownWalletBalances.value = it }
-            .map { it ?: lastKnownWalletBalances.value }
+            .retainWhileWalletExists(persistableWalletProvider)
 
     init {
         scope.launch {
