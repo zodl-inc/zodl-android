@@ -181,15 +181,30 @@ jobs:
           gpg -u sysadmin@zodl.com --armor --digest-algo SHA256 --detach-sign app-zcashmainnet-foss-release.apk
           gpg -u sysadmin@zodl.com --armor --digest-algo SHA256 --detach-sign app-zcashmainnet-foss-release-full-externallibs.apk
           gpg -u sysadmin@zodl.com --armor --digest-algo SHA256 --detach-sign app-zcashmainnet-google-play-store-release-universal.apk
-          gpg --armor --export sysadmin@zodl.com > zodl-gpg-public-key.asc
+          GPG_FINGERPRINT=$(jq -r '.gpgKeyFingerprint' "$GITHUB_WORKSPACE/apk-signatures.json")
+          gpg --armor --export "$GPG_FINGERPRINT" > zodl-gpg-public-key.asc
+          test -s zodl-gpg-public-key.asc || { echo "::error::GPG key $GPG_FINGERPRINT (apk-signatures.json) is not in the CI keyring"; exit 1; }
 
-      - name: Print APK signing certificate fingerprints
+      # Gate, not just a printout: every APK must carry the certificate published
+      # in apk-signatures.json (and README.md), so a rotated or mis-set upload
+      # keystore cannot ship a release whose fingerprint contradicts the docs.
+      - name: Verify APK signing certificate fingerprints
+        shell: bash
         run: |
           cd artifacts/
+          : "${ANDROID_HOME:?ANDROID_HOME must point at the Android SDK}"
           APKSIGNER="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)/apksigner"
+          EXPECTED=$(jq -r '.signingCertificates[0].sha256' "$GITHUB_WORKSPACE/apk-signatures.json")
           for apk in *.apk; do
             echo "=== $apk signing certificate fingerprints ==="
-            "$APKSIGNER" verify --print-certs "$apk"
+            CERTS=$("$APKSIGNER" verify --print-certs "$apk")
+            echo "$CERTS"
+            { echo "### $apk"; echo '```'; echo "$CERTS"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+            ACTUAL=$(echo "$CERTS" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+            if [ "$ACTUAL" != "$EXPECTED" ]; then
+              echo "::error::$apk is signed with certificate $ACTUAL, expected $EXPECTED (apk-signatures.json)"
+              exit 1
+            fi
           done
 
       - name: Upload to Release

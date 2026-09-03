@@ -31,8 +31,13 @@ Or download the latest APK from the [Releases Section](https://github.com/zodl-i
 
 ## APK signing
 
-All release APKs (GitHub Releases, F-Droid, Google Play) are signed with the
-same ZODL release key. You can verify any APK with:
+Every APK you download yourself — the GitHub Releases assets, the
+foss.zodl.com repo, and the f-droid.org build (reproducible, so f-droid.org
+ships our developer-signed APK) — carries the same ZODL release key (the
+"upload key" in CI terms). The Google Play listing goes through Play App
+Signing, so a copy installed from Google Play may carry Google's app-signing
+certificate instead — see `docs/Sideloading.md`. You can verify a downloaded
+APK with:
 
 ```sh
 apksigner verify --print-certs app-zcashmainnet-foss-release.apk
@@ -49,9 +54,15 @@ apksigner verify --print-certs app-zcashmainnet-foss-release.apk
 **Certificate DN:** `C=01, ST=CO, L=Denver, O=Zerocash Electric Coin Company, OU=Core Engineering`
 *(Note: the DN reflects the original key created under the ECC/Zashi name — the signing key has not been rotated as part of the ZODL rebrand. `C=01` is what the certificate actually contains, not a standard ISO-3166 code. The SHA-256 fingerprint above is the canonical identifier for verification.)*
 
+The same values live in [`apk-signatures.json`](apk-signatures.json); the
+release workflow refuses to publish an APK whose certificate does not match
+that file, so the two cannot silently drift apart.
+
 Each GitHub release includes GPG signatures (`.asc` files) for all APKs, signed
 with the ZODL GPG key (fingerprint below). The public key is attached to every
-release as `zodl-gpg-public-key.asc`. You can verify the APK authenticity:
+release as `zodl-gpg-public-key.asc` (releases published before this file was
+added lack it — take it from a newer release). You can verify the APK
+authenticity:
 
 ```sh
 # Download the APK, its signature and the public key from GitHub releases
@@ -71,7 +82,10 @@ gpg --verify app-zcashmainnet-foss-release.apk.asc app-zcashmainnet-foss-release
 - Fingerprint: `0338 34DD 49DE CF9D BB99  34BC 6C93 CA8E 58E2 6AB1`
 - Signing subkey: `1FE9 9324 758F 2967 18B4  5706 7F4B BBBA 23F0 617F` (this is the key id `gpg --verify` prints)
 - Email: `sysadmin@zodl.com`
-- Also published on [keys.openpgp.org](https://keys.openpgp.org/search?q=033834DD49DECF9DBB9934BC6C93CA8E58E26AB1)
+- Also listed on [keys.openpgp.org](https://keys.openpgp.org/search?q=033834DD49DECF9DBB9934BC6C93CA8E58E26AB1)
+  for cross-checking the fingerprint only: the identity there is not verified
+  yet, so `gpg --recv-keys` returns no importable key — import from the
+  release asset as shown above.
 
 ### Obtainium
 
@@ -82,13 +96,18 @@ source URL:
 https://github.com/zodl-inc/zodl-android
 ```
 
-Set **APK filter** to `app-zcashmainnet-foss-release.apk`.
+Set **APK filter** to `app-zcashmainnet-foss-release.apk`. That is the build
+f-droid.org reproduces (no Flexa/CMC integrations); use
+`app-zcashmainnet-foss-release-full-externallibs.apk` instead if you want the
+integrations foss.zodl.com serves — same package, same signing key.
 
 Obtainium does not check certificate fingerprints itself. To verify the
 signature before installing, install
 [Verified Apps](https://github.com/privacyguides/verified-apps-android) and
 enable **Share new apps with "Verified Apps"** in Obtainium's settings, then
-compare the SHA-256 fingerprint it shows against the table above.
+compare the SHA-256 fingerprint it shows against the table above. Zodl is not
+in the Verified Apps database yet, so it reports the app as unknown together
+with its fingerprint; the manual comparison is what verifies it.
 
 # Zodl Support
 
