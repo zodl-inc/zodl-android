@@ -1,22 +1,23 @@
 package co.electriccoin.zcash.ui.screen.crashreporting.view
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -32,9 +33,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.BlankSurface
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -45,39 +50,68 @@ import co.electriccoin.zcash.ui.screen.exchangerate.settings.Option
 
 @Composable
 fun CrashReportingOptIn(state: CrashReportingOptInState) {
-    Scaffold { paddingValues ->
-        Column(
+    val hazeState = rememberZashiFrostState()
+    BlankBgScaffold(
+        topBar = {
+            CloseButtonBar(
+                onBack = state.onBack,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState)
+            )
+        }
+    ) { paddingValues ->
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .scaffoldPadding(paddingValues)
+                    .zashiFrostSource(hazeState)
         ) {
-            Button(
-                contentPadding = PaddingValues(0.dp),
-                modifier = Modifier.size(40.dp),
-                onClick = state.onBack,
-                shape = RoundedCornerShape(12.dp),
-                colors =
-                    ButtonDefaults.buttonColors(
-                        containerColor = ZashiColors.Btns.Tertiary.btnTertiaryBg
-                    )
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_crash_reporting_opt_in_close),
-                    contentDescription = stringResource(R.string.general_close),
-                    colorFilter = ColorFilter.tint(ZashiColors.Btns.Tertiary.btnTertiaryFg)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            CrashReportingOptInContent(state)
+            CrashReportingOptInContent(
+                state = state,
+                modifier = Modifier.scaffoldPadding(paddingValues)
+            )
         }
     }
 }
 
 @Composable
-fun CrashReportingOptInContent(state: CrashReportingOptInState) {
+private fun CloseButtonBar(
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+    ) {
+        Button(
+            contentPadding = PaddingValues(0.dp),
+            modifier =
+                Modifier
+                    .statusBarsPadding()
+                    .padding(start = 24.dp, top = 12.dp, bottom = 16.dp)
+                    .size(40.dp),
+            onClick = onBack,
+            shape = RoundedCornerShape(12.dp),
+            colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = ZashiColors.Btns.Tertiary.btnTertiaryBg
+                )
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.ic_crash_reporting_opt_in_close),
+                contentDescription = stringResource(R.string.general_close),
+                colorFilter = ColorFilter.tint(ZashiColors.Btns.Tertiary.btnTertiaryFg)
+            )
+        }
+    }
+}
+
+@Composable
+fun CrashReportingOptInContent(
+    state: CrashReportingOptInState,
+    modifier: Modifier = Modifier
+) {
     var isOptInSelected by remember(state.isOptedIn) { mutableStateOf(state.isOptedIn) }
 
     val isButtonDisabled by remember(state.isOptedIn) {
@@ -89,8 +123,9 @@ fun CrashReportingOptInContent(state: CrashReportingOptInState) {
     Column(
         modifier =
             Modifier
-                .fillMaxHeight()
+                .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .then(modifier)
     ) {
         Image(
             modifier = Modifier.height(48.dp),

@@ -1,8 +1,10 @@
 package co.electriccoin.zcash.ui.screen.voting.confirmsubmission
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -22,6 +24,10 @@ import co.electriccoin.zcash.ui.design.component.VerticalSpacer
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -43,10 +49,15 @@ fun VoteConfirmSubmissionView(state: VoteConfirmSubmissionState) {
 
     val screenTitle = navTitle(state.status).getValue()
 
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             ZashiSmallTopAppBar(
                 title = screenTitle,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
                 navigationAction = {
                     ZashiTopAppBarBackNavigation(
                         onBack = state.onBack,
@@ -55,25 +66,40 @@ fun VoteConfirmSubmissionView(state: VoteConfirmSubmissionState) {
                     )
                 },
                 colors =
-                    ZcashTheme.colors.topAppBarColors orDark
-                        ZcashTheme.colors.topAppBarColors.copyColors(
-                            containerColor = Color.Transparent
-                        )
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    )
             )
         },
-        content = { padding ->
+        bottomBar = {
             Column(
                 modifier =
                     Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedFooter(hazeState)
+                        .navigationBarsPadding()
+                        .padding(
+                            start = ZashiDimensions.Spacing.spacing3xl,
+                            end = ZashiDimensions.Spacing.spacing3xl,
+                            bottom = ZashiDimensions.Spacing.spacing3xl
+                        )
+            ) {
+                VoteSubmissionBottomSection(state)
+            }
+        },
+        content = { padding ->
+            Box(
+                modifier =
+                    Modifier
                         .fillMaxSize()
-                        .scaffoldPadding(padding)
+                        .zashiFrostSource(hazeState)
             ) {
                 Column(
                     modifier =
                         Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
+                            .fillMaxSize()
                             .verticalScroll(rememberScrollState())
+                            .scaffoldPadding(padding)
                             .padding(horizontal = ZashiDimensions.Spacing.spacingMd)
                 ) {
                     VerticalSpacer(24.dp)
@@ -90,8 +116,6 @@ fun VoteConfirmSubmissionView(state: VoteConfirmSubmissionState) {
                     }
                     VerticalSpacer(24.dp)
                 }
-
-                VoteSubmissionBottomSection(state)
             }
         }
     )

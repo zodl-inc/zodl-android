@@ -136,6 +136,8 @@ data class SharePayload(
     val voteDecision: Int,
     val encShare: EncryptedShare,
     val treePosition: Long,
+    /** Voting round ID as 32 bytes encoded in lowercase hex, as populated by the crate. */
+    val voteRoundId: String,
     val allEncShares: List<EncryptedShare> = emptyList(),
     val shareComms: List<ByteArray> = emptyList(),
     val primaryBlind: ByteArray = ByteArray(0),
@@ -150,6 +152,7 @@ data class SharePayload(
             voteDecision == other.voteDecision &&
             encShare == other.encShare &&
             treePosition == other.treePosition &&
+            voteRoundId == other.voteRoundId &&
             allEncShares.contentListEquals(other.allEncShares, EncryptedShare::equals) &&
             shareComms.contentListEquals(other.shareComms) &&
             primaryBlind.contentEquals(other.primaryBlind) &&
@@ -162,6 +165,7 @@ data class SharePayload(
         result = 31 * result + voteDecision
         result = 31 * result + encShare.hashCode()
         result = 31 * result + treePosition.hashCode()
+        result = 31 * result + voteRoundId.hashCode()
         result = 31 * result + allEncShares.contentListHashCode(EncryptedShare::hashCode)
         result = 31 * result + shareComms.contentListHashCode()
         result = 31 * result + primaryBlind.contentHashCode()

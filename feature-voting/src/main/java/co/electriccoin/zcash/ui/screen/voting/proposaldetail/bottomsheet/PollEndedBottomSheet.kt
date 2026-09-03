@@ -23,6 +23,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.VerticalSpacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
+import co.electriccoin.zcash.ui.design.component.ZashiModalBottomSheetDefaults
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
@@ -41,7 +42,7 @@ fun PollEndedBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheetState,
-        containerColor = ZashiColors.Surfaces.bgPrimary,
+        containerColor = ZashiModalBottomSheetDefaults.ContainerColor,
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,

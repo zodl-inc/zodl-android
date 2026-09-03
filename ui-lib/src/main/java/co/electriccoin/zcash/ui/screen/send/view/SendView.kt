@@ -8,6 +8,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -70,6 +71,9 @@ import co.electriccoin.zcash.ui.design.component.ZashiAutoSizeText
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiTextField
 import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
@@ -78,6 +82,7 @@ import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.StringResource.Companion.NUMBER_FORMAT_LOCALE
 import co.electriccoin.zcash.ui.design.util.getString
 import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.pressMorph
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringResByFiatDisplayName
 import co.electriccoin.zcash.ui.screen.balances.BalanceWidget
@@ -116,31 +121,51 @@ fun Send(
         return
     }
 
+    val hazeState = rememberZashiFrostState()
+
     BlankBgScaffold(topBar = {
-        ZashiTopAppbar(
-            title = null,
-            state = zashiMainTopAppBarState,
-            onBack = onBack
-        )
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .zashiFrostedHeader(hazeState)
+        ) {
+            ZashiTopAppbar(
+                title = null,
+                state = zashiMainTopAppBarState,
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    ),
+                onBack = onBack
+            )
+        }
     }) { paddingValues ->
-        SendMainContent(
-            balanceWidgetState = balanceWidgetState,
-            selectedAccount = selectedAccount,
-            exchangeRateState = exchangeRateState,
-            onBack = onBack,
-            onCreateZecSend = onCreateZecSend,
-            sendStage = sendStage,
-            onQrScannerOpen = onQrScannerOpen,
-            recipientAddressState = recipientAddressState,
-            onRecipientAddressChange = onRecipientAddressChange,
-            hasCameraFeature = hasCameraFeature,
-            amountState = amountState,
-            setAmountState = setAmountState,
-            memoState = memoState,
-            setMemoState = setMemoState,
-            sendState = sendAddressBookState,
-            modifier = Modifier.scaffoldPadding(paddingValues)
-        )
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .zashiFrostSource(hazeState)
+        ) {
+            SendMainContent(
+                balanceWidgetState = balanceWidgetState,
+                selectedAccount = selectedAccount,
+                exchangeRateState = exchangeRateState,
+                onBack = onBack,
+                onCreateZecSend = onCreateZecSend,
+                sendStage = sendStage,
+                onQrScannerOpen = onQrScannerOpen,
+                recipientAddressState = recipientAddressState,
+                onRecipientAddressChange = onRecipientAddressChange,
+                hasCameraFeature = hasCameraFeature,
+                amountState = amountState,
+                setAmountState = setAmountState,
+                memoState = memoState,
+                setMemoState = setMemoState,
+                sendState = sendAddressBookState,
+                modifier = Modifier.scaffoldPadding(paddingValues)
+            )
+        }
     }
 }
 
@@ -464,17 +489,21 @@ fun SendFormAddressTextField(
             suffix =
                 if (hasCameraFeature) {
                     {
+                        val addressBookInteractionSource = remember { MutableInteractionSource() }
+                        val scannerInteractionSource = remember { MutableInteractionSource() }
+
                         Row(
                             verticalAlignment = Alignment.Top
                         ) {
                             Image(
                                 modifier =
                                     Modifier
+                                        .pressMorph(addressBookInteractionSource)
                                         .clickable(
                                             onClick = sendAddressBookState.onButtonClick,
                                             role = Role.Button,
                                             indication = ripple(radius = 4.dp),
-                                            interactionSource = remember { MutableInteractionSource() }
+                                            interactionSource = addressBookInteractionSource
                                         ).testTag(SendTag.SEND_ADDRESS_BOOK_BUTTON),
                                 painter = painterResource(sendAddressBookState.mode.icon),
                                 contentDescription = stringResource(R.string.send_address_book_content_description),
@@ -485,11 +514,12 @@ fun SendFormAddressTextField(
                             Image(
                                 modifier =
                                     Modifier
+                                        .pressMorph(scannerInteractionSource)
                                         .clickable(
                                             onClick = onQrScannerOpen,
                                             role = Role.Button,
                                             indication = ripple(radius = 4.dp),
-                                            interactionSource = remember { MutableInteractionSource() }
+                                            interactionSource = scannerInteractionSource
                                         ).testTag(SendTag.SEND_SCAN_BUTTON),
                                 painter = painterResource(R.drawable.qr_code_icon),
                                 contentDescription = stringResource(R.string.send_scan_content_description),

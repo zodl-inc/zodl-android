@@ -1,7 +1,8 @@
 package co.electriccoin.zcash.ui.screen.transactiondetail
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -37,12 +38,17 @@ import co.electriccoin.zcash.ui.design.component.ZashiIconButton
 import co.electriccoin.zcash.ui.design.component.ZashiInfoText
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
+import co.electriccoin.zcash.ui.design.component.zashiVerticalGradient
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
+import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.TickerLocation.HIDDEN
-import co.electriccoin.zcash.ui.design.util.asScaffoldPaddingValues
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.loadingImageRes
@@ -68,107 +74,131 @@ fun TransactionDetailView(
     state: TransactionDetailState,
     mainAppBarState: ZashiMainTopAppBarState?,
 ) {
+    val hazeState = rememberZashiFrostState()
+    val gradientStartColor = ZashiColors.Surfaces.bgPrimary orDark ZashiColors.Surfaces.bgAdjust
+    val gradientEndColor = ZashiColors.Surfaces.bgPrimary
     GradientBgScaffold(
-        startColor = ZashiColors.Surfaces.bgPrimary orDark ZashiColors.Surfaces.bgAdjust,
-        endColor = ZashiColors.Surfaces.bgPrimary,
+        startColor = gradientStartColor,
+        endColor = gradientEndColor,
         topBar = {
             TransactionDetailTopAppBar(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState, frostColor = Color.Transparent),
                 onBack = state.onBack,
                 bookmarkButton = state.bookmarkButton,
                 appBarState = mainAppBarState,
+            )
+        },
+        bottomBar = {
+            BottomBar(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedFooter(hazeState),
+                state = state
             )
         }
     ) { paddingValues ->
         val scrollState = rememberScrollState()
 
-        Column(
-            modifier = Modifier.fillMaxSize()
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .zashiFrostSource(hazeState)
+                    .background(
+                        zashiVerticalGradient(
+                            startColor = gradientStartColor,
+                            endColor = gradientEndColor
+                        )
+                    )
         ) {
-            TransactionDetailHeader(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .scaffoldPadding(
-                            paddingValues = paddingValues,
-                            bottom = 0.dp,
-                            start = 0.dp,
-                            end = 0.dp
-                        ),
-                state = state.header
-            )
             Column(
                 modifier =
                     Modifier
-                        .weight(1f)
+                        .fillMaxSize()
                         .verticalScroll(scrollState)
-                        .scaffoldPadding(paddingValues, top = 24.dp),
             ) {
-                when (state.info) {
-                    is ReceiveShieldedState -> {
-                        ReceiveShielded(
-                            modifier = Modifier.fillMaxWidth(),
-                            state = state.info
-                        )
-                    }
+                TransactionDetailHeader(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .scaffoldPadding(
+                                paddingValues = paddingValues,
+                                bottom = 0.dp,
+                                start = 0.dp,
+                                end = 0.dp
+                            ),
+                    state = state.header
+                )
+                Column(
+                    modifier = Modifier.scaffoldPadding(paddingValues, top = 24.dp),
+                ) {
+                    when (state.info) {
+                        is ReceiveShieldedState -> {
+                            ReceiveShielded(
+                                modifier = Modifier.fillMaxWidth(),
+                                state = state.info
+                            )
+                        }
 
-                    is ReceiveTransparentState -> {
-                        ReceiveTransparent(
-                            modifier = Modifier.fillMaxWidth(),
-                            state = state.info
-                        )
-                    }
+                        is ReceiveTransparentState -> {
+                            ReceiveTransparent(
+                                modifier = Modifier.fillMaxWidth(),
+                                state = state.info
+                            )
+                        }
 
-                    is SendShieldedState -> {
-                        SendShielded(
-                            modifier = Modifier.fillMaxWidth(),
-                            state = state.info
-                        )
-                    }
+                        is SendShieldedState -> {
+                            SendShielded(
+                                modifier = Modifier.fillMaxWidth(),
+                                state = state.info
+                            )
+                        }
 
-                    is SendTransparentState -> {
-                        SendTransparent(
-                            modifier = Modifier.fillMaxWidth(),
-                            state = state.info
-                        )
-                    }
+                        is SendTransparentState -> {
+                            SendTransparent(
+                                modifier = Modifier.fillMaxWidth(),
+                                state = state.info
+                            )
+                        }
 
-                    is ShieldingState -> {
-                        Shielding(
-                            modifier = Modifier.fillMaxWidth(),
-                            state = state.info
-                        )
-                    }
+                        is ShieldingState -> {
+                            Shielding(
+                                modifier = Modifier.fillMaxWidth(),
+                                state = state.info
+                            )
+                        }
 
-                    is SendSwapState -> {
-                        SendSwap(
-                            modifier = Modifier.fillMaxWidth(),
-                            state = state.info
-                        )
-                    }
+                        is SendSwapState -> {
+                            SendSwap(
+                                modifier = Modifier.fillMaxWidth(),
+                                state = state.info
+                            )
+                        }
 
-                    null -> {
-                        // do nothing
+                        null -> {
+                            // do nothing
+                        }
                     }
                 }
             }
-            BottomBar(
-                scrollState = scrollState,
-                paddingValues = paddingValues,
-                state = state
-            )
         }
     }
 }
 
 @Composable
 private fun BottomBar(
-    scrollState: ScrollState,
-    paddingValues: PaddingValues,
-    state: TransactionDetailState
+    state: TransactionDetailState,
+    modifier: Modifier = Modifier
 ) {
     ZashiBottomBar(
-        isElevated = scrollState.value > 0,
-        contentPadding = paddingValues.asScaffoldPaddingValues(top = 0.dp, bottom = 0.dp)
+        modifier = modifier,
+        isElevated = false,
+        color = Color.Transparent,
+        contentPadding = PaddingValues(horizontal = ZashiDimensions.Spacing.spacing3xl)
     ) {
         state.errorFooter?.let {
             TransactionErrorFooter(it)
@@ -245,8 +275,10 @@ private fun TransactionDetailTopAppBar(
     onBack: () -> Unit,
     bookmarkButton: IconButtonState?,
     appBarState: ZashiMainTopAppBarState?,
+    modifier: Modifier = Modifier,
 ) {
     ZashiSmallTopAppBar(
+        modifier = modifier,
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = onBack)
         },
@@ -261,10 +293,9 @@ private fun TransactionDetailTopAppBar(
             Spacer(Modifier.width(20.dp))
         },
         colors =
-            ZcashTheme.colors.topAppBarColors orDark
-                ZcashTheme.colors.topAppBarColors.copyColors(
-                    containerColor = Color.Transparent
-                ),
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
     )
 }
 

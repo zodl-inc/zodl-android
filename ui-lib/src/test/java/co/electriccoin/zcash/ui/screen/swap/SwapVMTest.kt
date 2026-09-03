@@ -402,6 +402,10 @@ class SwapVMTest {
                 )
             harness.collectState(this)
             harness.onAddressBookClick() // select a contact first, to prove the scan clears it
+            // The default SWAP_INTO_ZEC direction treats a scan as a refund-address scan, which
+            // deliberately does not apply the resolved asset/amount (see onQrCodeScannerClick) --
+            // switch to SWAP_FROM_ZEC, where the scanned address is the actual swap counterparty.
+            harness.onChangeButtonClick()
 
             harness.onQrCodeScannerClick()
 

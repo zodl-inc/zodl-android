@@ -2,7 +2,8 @@
 
 package co.electriccoin.zcash.ui.screen.transactionhistory
 
-import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -21,12 +22,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,13 +37,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiMainTopAppBarState
@@ -52,6 +58,9 @@ import co.electriccoin.zcash.ui.design.component.ZashiIconButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTextField
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -71,72 +80,93 @@ fun ActivityHistoryView(
     search: TextFieldState,
     mainAppBarState: ZashiMainTopAppBarState?,
 ) {
+    val hazeState = rememberZashiFrostState()
+    val lazyListState = rememberLazyListState()
     BlankBgScaffold(
         topBar = {
-            TransactionHistoryAppBar(
-                mainAppBarState = mainAppBarState,
-                state = state,
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(top = paddingValues.calculateTopPadding())
-        ) {
-            Row(
+            Column(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .padding(
-                            start = ZashiDimensions.Spacing.spacing3xl,
-                            end = ZashiDimensions.Spacing.spacing3xl,
-                            top = 8.dp
-                        ),
-                verticalAlignment = Alignment.CenterVertically
+                        .zashiFrostedHeader(hazeState)
             ) {
-                ZashiTextField(
-                    modifier = Modifier.weight(1f),
-                    state = search,
-                    singleLine = true,
-                    maxLines = 1,
-                    prefix = {
-                        Image(
-                            painter = painterResource(R.drawable.ic_transaction_search),
-                            contentDescription = null,
-                            colorFilter = ColorFilter.tint(ZashiColors.Dropdowns.Default.text)
-                        )
-                    },
-                    placeholder = {
-                        Text(
-                            text = stringRes(stringResource(R.string.filter_search)).getValue(),
-                            style = ZashiTypography.textMd,
-                            color = ZashiColors.Inputs.Default.text,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+                TransactionHistoryAppBar(
+                    mainAppBarState = mainAppBarState,
+                    state = state,
                 )
-                Spacer(Modifier.width(8.dp))
-                BadgeIconButton(
-                    state = state.filterButton
-                )
-            }
 
+                Row(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                start = ZashiDimensions.Spacing.spacing3xl,
+                                end = ZashiDimensions.Spacing.spacing3xl,
+                                top = 8.dp
+                            ),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ZashiTextField(
+                        modifier = Modifier.weight(1f),
+                        state = search,
+                        singleLine = true,
+                        maxLines = 1,
+                        prefix = {
+                            Image(
+                                painter = painterResource(R.drawable.ic_transaction_search),
+                                contentDescription = null,
+                                colorFilter = ColorFilter.tint(ZashiColors.Dropdowns.Default.text)
+                            )
+                        },
+                        placeholder = {
+                            Text(
+                                text = stringRes(stringResource(R.string.filter_search)).getValue(),
+                                style = ZashiTypography.textMd,
+                                color = ZashiColors.Inputs.Default.text,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    BadgeIconButton(
+                        state = state.filterButton
+                    )
+                }
+
+                if (state is ActivityHistoryState.Data) {
+                    DockedHeaderItem(
+                        state = state,
+                        lazyListState = lazyListState
+                    )
+                }
+            }
+        }
+    ) { paddingValues ->
+        val listTopPadding = paddingValues.calculateTopPadding()
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .zashiFrostSource(hazeState)
+        ) {
             when (state) {
                 is ActivityHistoryState.Data -> {
                     Data(
                         paddingValues = paddingValues,
+                        topPadding = listTopPadding,
                         state = state,
-                        modifier =
-                            Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
+                        lazyListState = lazyListState,
+                        modifier = Modifier.fillMaxSize()
                     )
                 }
 
                 is ActivityHistoryState.Empty -> {
-                    CommonEmptyScreen(modifier = Modifier.fillMaxSize())
+                    CommonEmptyScreen(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(top = paddingValues.calculateTopPadding())
+                    )
                 }
 
                 is ActivityHistoryState.Loading -> {
@@ -144,7 +174,7 @@ fun ActivityHistoryView(
                         modifier =
                             Modifier
                                 .fillMaxSize()
-                                .padding(top = 20.dp)
+                                .padding(top = paddingValues.calculateTopPadding() + 20.dp)
                     )
                 }
             }
@@ -153,15 +183,15 @@ fun ActivityHistoryView(
 }
 
 @Composable
-@OptIn(ExperimentalFoundationApi::class)
 private fun Data(
     paddingValues: PaddingValues,
+    topPadding: Dp,
     state: ActivityHistoryState.Data,
+    lazyListState: LazyListState,
     modifier: Modifier = Modifier
 ) {
     val kbController = LocalSoftwareKeyboardController.current
     val scope = rememberCoroutineScope()
-    val lazyListState = rememberLazyListState()
 
     LaunchedEffect(lazyListState.isScrollInProgress) {
         if (lazyListState.isScrollInProgress) {
@@ -182,21 +212,33 @@ private fun Data(
     LazyColumn(
         modifier = modifier,
         state = lazyListState,
-        contentPadding = paddingValues.asScaffoldScrollPaddingValues(top = 26.dp),
+        contentPadding = paddingValues.asScaffoldScrollPaddingValues(top = topPadding),
     ) {
         state.items.forEachIndexed { index, item ->
             when (item) {
                 is ActivityHistoryItem.Header -> {
-                    stickyHeader(
+                    item(
                         contentType = item.contentType,
                         key = item.key
                     ) {
+                        val isTouchingFrost by remember {
+                            derivedStateOf {
+                                val info =
+                                    lazyListState.layoutInfo.visibleItemsInfo
+                                        .firstOrNull { it.key == item.key }
+                                info != null && info.offset < 0
+                            }
+                        }
+                        val headerAlpha by animateFloatAsState(
+                            targetValue = if (isTouchingFrost) 0f else 1f,
+                            label = "ActivityHistoryHeaderAlpha"
+                        )
                         HeaderItem(
                             item,
                             modifier =
                                 Modifier
                                     .fillParentMaxWidth()
-                                    .background(ZashiColors.Surfaces.bgPrimary)
+                                    .graphicsLayer { alpha = headerAlpha }
                                     .animateItem()
                         )
                     }
@@ -216,6 +258,50 @@ private fun Data(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * Docked replacement for a sticky header. The Compose foundation pins stuck lazy list items to the
+ * viewport edge, which hides them behind the frosted top bar, so the header of the top-most visible
+ * section is derived from the list state and rendered as the bottom row of the frosted header itself.
+ */
+@Composable
+private fun DockedHeaderItem(
+    state: ActivityHistoryState.Data,
+    lazyListState: LazyListState,
+    modifier: Modifier = Modifier
+) {
+    val currentHeader by remember(state) {
+        derivedStateOf {
+            val visibleCount = (lazyListState.firstVisibleItemIndex + 1).coerceAtMost(state.items.size)
+            state.items
+                .take(visibleCount)
+                .lastOrNull { it is ActivityHistoryItem.Header } as? ActivityHistoryItem.Header
+        }
+    }
+    val isOverlayingHeader by remember(state) {
+        derivedStateOf {
+            val firstVisible = state.items.getOrNull(lazyListState.firstVisibleItemIndex)
+            firstVisible !is ActivityHistoryItem.Header || lazyListState.firstVisibleItemScrollOffset > 0
+        }
+    }
+    val dockedAlpha by animateFloatAsState(
+        targetValue = if (isOverlayingHeader) 1f else 0f,
+        label = "ActivityHistoryDockedHeaderAlpha"
+    )
+
+    currentHeader?.let { header ->
+        Crossfade(
+            modifier = modifier.graphicsLayer { alpha = dockedAlpha },
+            targetState = header,
+            label = "ActivityHistoryDockedHeader"
+        ) {
+            HeaderItem(
+                it,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
@@ -338,6 +424,10 @@ private fun TransactionHistoryAppBar(
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = state.onBack)
         },
+        colors =
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
         hamburgerMenuActions = {
             mainAppBarState?.balanceVisibilityButton?.let {
                 ZashiIconButton(it, modifier = Modifier.size(40.dp))

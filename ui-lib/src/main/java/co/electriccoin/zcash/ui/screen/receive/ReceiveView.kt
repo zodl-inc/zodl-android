@@ -41,6 +41,9 @@ import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
 import co.electriccoin.zcash.ui.design.component.IconButtonState
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiImageButton
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -67,24 +70,43 @@ internal fun ReceiveView(
         }
 
         else -> {
+            val hazeState = rememberZashiFrostState()
             BlankBgScaffold(
                 topBar = {
-                    ZashiTopAppbar(
-                        title = stringRes(R.string.receive_title, CURRENCY_TICKER),
-                        state = appBarState,
-                        showHideBalances = false,
-                        onBack = state.onBack
-                    )
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .zashiFrostedHeader(hazeState)
+                    ) {
+                        ZashiTopAppbar(
+                            title = stringRes(R.string.receive_title, CURRENCY_TICKER),
+                            state = appBarState,
+                            showHideBalances = false,
+                            colors =
+                                ZcashTheme.colors.topAppBarColors.copyColors(
+                                    containerColor = Color.Transparent
+                                ),
+                            onBack = state.onBack
+                        )
+                    }
                 },
             ) { paddingValues ->
-                ReceiveContents(
-                    items = state.items.orEmpty(),
+                Box(
                     modifier =
-                        Modifier.scaffoldScrollPadding(
-                            paddingValues = paddingValues,
-                            top = paddingValues.calculateTopPadding()
-                        ),
-                )
+                        Modifier
+                            .fillMaxSize()
+                            .zashiFrostSource(hazeState)
+                ) {
+                    ReceiveContents(
+                        items = state.items.orEmpty(),
+                        modifier =
+                            Modifier.scaffoldScrollPadding(
+                                paddingValues = paddingValues,
+                                top = paddingValues.calculateTopPadding()
+                            ),
+                    )
+                }
             }
         }
     }
@@ -98,9 +120,10 @@ private fun ReceiveContents(
 ) {
     Column(
         modifier =
-            modifier
+            Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .then(modifier)
                 .padding(all = ZcashTheme.dimens.spacingSmall),
     ) {
         items.forEachIndexed { index, state ->

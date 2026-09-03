@@ -16,6 +16,7 @@ import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
+import co.electriccoin.zcash.ui.design.theme.internal.TopAppBarColors
 import co.electriccoin.zcash.ui.design.util.orDark
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.R as DesignR
@@ -24,11 +25,18 @@ import co.electriccoin.zcash.ui.design.R as DesignR
 fun VoteAppBar(
     title: String,
     onBack: () -> Unit,
+    modifier: Modifier = Modifier,
     useCloseNavigation: Boolean = false,
     onConfigSettings: (() -> Unit)? = null,
+    colors: TopAppBarColors =
+        ZcashTheme.colors.topAppBarColors orDark
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
 ) {
     ZashiSmallTopAppBar(
         title = title,
+        modifier = modifier,
         navigationAction = {
             if (useCloseNavigation) {
                 ZashiTopAppBarCloseNavigation(
@@ -59,10 +67,6 @@ fun VoteAppBar(
             } else {
                 null
             },
-        colors =
-            ZcashTheme.colors.topAppBarColors orDark
-                ZcashTheme.colors.topAppBarColors.copyColors(
-                    containerColor = Color.Transparent
-                )
+        colors = colors
     )
 }

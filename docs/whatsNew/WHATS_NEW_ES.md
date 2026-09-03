@@ -14,6 +14,18 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.9.3 (2393)] - 2026-08-17
+
+### Cambiado:
+
+- Mejoramos varios elementos de la interfaz relacionados con las migraciones de Ironwood.
+- Ya no solicitamos autenticación biométrica antes de que exista una billetera.
+
+### Corregido:
+
+- Corregimos un problema que impedía que algunas billeteras detectaran fondos disponibles después de la migración.
+- Solucionamos problemas que afectaban los saldos, la actividad de transacciones, la migración, la navegación y la estabilidad en dispositivos Android antiguos.
+
 ## [3.9.2 (2370)] - 2026-08-10
 
 ### Cambiado:

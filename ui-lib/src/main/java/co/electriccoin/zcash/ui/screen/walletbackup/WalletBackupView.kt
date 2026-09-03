@@ -15,7 +15,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberTooltipState
@@ -25,6 +24,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -36,6 +36,7 @@ import co.electriccoin.zcash.ui.common.compose.SecureScreen
 import co.electriccoin.zcash.ui.common.compose.ZashiTooltip
 import co.electriccoin.zcash.ui.common.compose.ZashiTooltipBox
 import co.electriccoin.zcash.ui.common.compose.shouldSecureScreen
+import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.IconButtonState
 import co.electriccoin.zcash.ui.design.component.SeedTextState
@@ -47,6 +48,9 @@ import co.electriccoin.zcash.ui.design.component.ZashiSeedText
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.blurCompat
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreenSizes
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -63,17 +67,29 @@ fun WalletBackupView(state: WalletBackupState) {
         SecureScreen()
     }
 
-    Scaffold(
+    val hazeState = rememberZashiFrostState()
+    BlankBgScaffold(
         topBar = {
             SeedRecoveryTopAppBar(
                 state = state,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState)
             )
         }
     ) { paddingValues ->
-        SeedRecoveryMainContent(
-            modifier = Modifier.scaffoldPadding(paddingValues),
-            state = state,
-        )
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .zashiFrostSource(hazeState)
+        ) {
+            SeedRecoveryMainContent(
+                modifier = Modifier.scaffoldPadding(paddingValues),
+                state = state,
+            )
+        }
     }
 }
 
@@ -93,7 +109,11 @@ private fun SeedRecoveryTopAppBar(
         regularActions = {
             ZashiIconButton(state.info)
             Spacer(Modifier.width(20.dp))
-        }
+        },
+        colors =
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
     )
 }
 

@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.pay
 
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.model.CrossPayRequest
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapAssetTestFixture
 import co.electriccoin.zcash.ui.common.model.SwapMode
@@ -233,18 +234,41 @@ class PayVMTest {
     @Test
     fun scanResultAppliesAddressAndAmountAndClearsContact() =
         runTest {
+            val contract = "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+            val recipientAddress = "0x92bF6Fbd794bA41093013Db027400B174aE4b5Cd"
+            val request =
+                CrossPayRequest(
+                    address = recipientAddress,
+                    amount = CrossPayRequest.Amount(BigDecimal("2500000"), isAtomic = true),
+                    assetReference =
+                        CrossPayRequest.AssetReference.Contract(
+                            chain = null,
+                            chainId = "8453",
+                            address = contract
+                        )
+                )
+            val baseUsdc =
+                SwapAssetTestFixture.asset(
+                    tokenTicker = "USDC",
+                    chainTicker = "base",
+                    decimals = 6,
+                    contractAddress = contract
+                )
             val harness =
                 harness(
                     recipient = contactOnChain("btc"),
-                    scanResult = ScanResult(address = "scanned-address", amount = BigDecimal("2.5"))
+                    scanResult =
+                        ScanResult(address = request.address, amount = request.amount?.value, request = request),
+                    assets = SwapAssetTestFixture.assetsData(data = listOf(baseUsdc))
                 )
             harness.collectState(this)
             harness.onAddressBookClick() // select a contact first, to prove the scan clears it
 
             harness.onQrCodeScannerClick()
 
-            assertEquals("scanned-address", harness.capturedState.address)
+            assertEquals(recipientAddress, harness.capturedState.address)
             assertEquals(0, BigDecimal("2.5").compareTo(harness.capturedState.amount.amount))
+            assertEquals(baseUsdc, harness.capturedState.asset)
             assertNull(harness.capturedState.selectedABContact)
             verify { harness.navigationRouter.back() }
         }
@@ -329,7 +353,10 @@ class PayVMTest {
         val navigateToSwapQuoteIfAvailable = mockk<NavigateToSwapQuoteIfAvailableUseCase>(relaxed = true)
         val navigationRouter = mockk<NavigationRouter>(relaxed = true)
         val getSwapAssets =
-            mockk<GetCuratedSwapAssetsUseCase> { every { observe() } returns MutableStateFlow(assets) }
+            mockk<GetCuratedSwapAssetsUseCase> {
+                every { observe() } returns MutableStateFlow(assets)
+                every { this@mockk() } returns assets
+            }
         val getSelectedWalletAccount =
             mockk<GetSelectedWalletAccountUseCase> {
                 every { observe() } returns MutableStateFlow<WalletAccount?>(null)

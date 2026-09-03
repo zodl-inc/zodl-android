@@ -27,6 +27,7 @@ import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapAssetPickerUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapInfoUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapQuoteIfAvailableUseCase
 import co.electriccoin.zcash.ui.common.usecase.RequestSwapQuoteUseCase
+import co.electriccoin.zcash.ui.common.usecase.resolve
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.InnerTextFieldState
 import co.electriccoin.zcash.ui.design.component.NumberTextFieldInnerState
@@ -216,15 +217,44 @@ internal class SwapVM(
             val result = navigateToScanAddress()
             if (result != null) {
                 navigationRouter.back()
+                // In SWAP_INTO_ZEC, the address field being scanned is the refund address for the
+                // *source* asset, not a payment recipient -- it has no bearing on which asset is
+                // being swapped. Skip resolution entirely in that direction rather than computing
+                // and discarding it: resolve() does a curated-assets read plus request parsing,
+                // work this branch never uses.
+                val isRefundAddressScan = internalState.value.swapDirection == SWAP_INTO_ZEC
+                val resolved =
+                    if (isRefundAddressScan) {
+                        null
+                    } else {
+                        result.resolve(getCuratedSwapAssetsUseCase().data.orEmpty(), internalState.value.swapAsset)
+                    }
                 internalState.update {
                     it.copy(
                         selectedContact = null,
-                        addressText = result.address,
+                        addressText = resolved?.address ?: result.address,
+                        swapAsset = resolved?.asset ?: it.swapAsset,
                         amountTextState =
-                            if (result.amount != null) {
-                                NumberTextFieldInnerState.fromAmount(result.amount)
-                            } else {
-                                it.amountTextState
+                            when {
+                                resolved == null -> {
+                                    it.amountTextState
+                                }
+
+                                resolved.amount != null -> {
+                                    NumberTextFieldInnerState.fromAmount(resolved.amount)
+                                }
+
+                                // Only clear a typed amount when the resolved asset actually
+                                // differs from what's already selected -- see the matching
+                                // comment in PayVM.kt's onQrCodeScannerClick.
+                                resolved.isResolvedPaymentRequest &&
+                                    resolved.asset?.assetId != it.swapAsset?.assetId -> {
+                                    NumberTextFieldInnerState()
+                                }
+
+                                else -> {
+                                    it.amountTextState
+                                }
                             }
                     )
                 }

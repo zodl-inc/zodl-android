@@ -56,9 +56,10 @@ internal fun RequestMemoView(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier =
-            modifier
+            Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .then(modifier)
                 .padding(horizontal = ZcashTheme.dimens.spacingLarge),
     ) {
         Spacer(Modifier.height(ZcashTheme.dimens.spacingDefault))

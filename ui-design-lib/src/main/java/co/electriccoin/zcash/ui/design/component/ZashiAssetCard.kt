@@ -31,29 +31,32 @@ import co.electriccoin.zcash.ui.design.util.StringResourceColor
 import co.electriccoin.zcash.ui.design.util.StyledStringStyle
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.imageRes
+import co.electriccoin.zcash.ui.design.util.pressMorph
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.withStyle
 import com.valentinilk.shimmer.shimmer
 
 @Composable
 fun ZashiAssetCard(state: AssetCardState, modifier: Modifier = Modifier) {
+    val interactionSource = remember { MutableInteractionSource() }
+
     Card(
-        modifier = modifier,
+        modifier = modifier.pressMorph(interactionSource),
         onClick = state.onClick.takeIf { state.isEnabled }
     ) {
-        Content(state)
+        Content(state, interactionSource)
     }
 }
 
 @Composable
-private fun Content(state: AssetCardState) {
+private fun Content(state: AssetCardState, interactionSource: MutableInteractionSource) {
     val onClick = state.onClick
     val clickModifier =
         if (onClick != null) {
             Modifier.clickable(
                 onClick = onClick,
                 indication = null,
-                interactionSource = remember { MutableInteractionSource() }
+                interactionSource = interactionSource
             )
         } else {
             Modifier

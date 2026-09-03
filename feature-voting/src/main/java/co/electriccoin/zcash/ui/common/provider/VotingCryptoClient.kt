@@ -36,6 +36,7 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingShareDelegationRecord
 import co.electriccoin.zcash.ui.common.model.voting.VotingTxHashLookup
 import co.electriccoin.zcash.ui.common.model.voting.VotingVoteCommitment
 import co.electriccoin.zcash.ui.common.model.voting.VotingVoteRecord
+import co.electriccoin.zcash.ui.common.model.voting.requireKnownPolyLen
 import co.electriccoin.zcash.ui.common.model.voting.toVoteCommitmentBundle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -842,6 +843,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
                     pirLayout.pirDepth,
                     pirLayout.tier0Layers,
                     pirLayout.tier1Layers,
+                    pirLayout.requireKnownPolyLen().polyLen,
                     notesJson.toVotingNoteInfos()
                 ).toAppModel()
         }
@@ -869,6 +871,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
                     pirLayout.pirDepth,
                     pirLayout.tier0Layers,
                     pirLayout.tier1Layers,
+                    pirLayout.requireKnownPolyLen().polyLen,
                     notesJson.toVotingNoteInfos(),
                     fvkBytes,
                     hotkeySeed,
@@ -1553,6 +1556,7 @@ private fun List<VotingSharePayload>.toSharePayloadsJson(): String =
                 .put("vote_decision", payload.voteDecision)
                 .put("enc_share", payload.encShare.toJson())
                 .put("tree_position", payload.treePosition)
+                .put("vote_round_id", payload.voteRoundId)
                 .put("all_enc_shares", payload.allEncShares.toEncryptedSharesJsonArray())
                 .put("share_comms", payload.shareComms.toHexJsonArray())
                 .put("primary_blind", payload.primaryBlind.toHexString())

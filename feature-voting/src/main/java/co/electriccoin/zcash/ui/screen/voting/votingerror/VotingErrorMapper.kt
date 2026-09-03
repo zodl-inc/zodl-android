@@ -66,6 +66,10 @@ object VotingErrorMapper {
                 stringRes(UiR.string.coinVote_store_userError_pirSnapshotMismatch)
             }
 
+            lower.contains("pir poly_len mismatch") -> {
+                stringRes(UiR.string.coinVote_store_userError_pirSnapshotMismatch)
+            }
+
             lower.contains("pir proof verification failed") -> {
                 stringRes(UiR.string.coinVote_store_userError_pirInvalidProofData)
             }
@@ -73,6 +77,10 @@ object VotingErrorMapper {
             lower.contains("pir server connect failed") ||
                 lower.contains("pir parallel fetch failed") -> {
                 stringRes(UiR.string.coinVote_store_userError_pirUnavailable)
+            }
+
+            lower.contains("unsupported pir layout") -> {
+                stringRes(UiR.string.coinVote_store_userError_pirEndpointsMissing)
             }
 
             lower.contains("no pir endpoints are configured") -> {
@@ -83,7 +91,15 @@ object VotingErrorMapper {
                 stringRes(UiR.string.coinVote_store_userError_commitmentTreeNotGrown)
             }
 
+            lower.contains("is absent from the synced vote tree") -> {
+                stringRes(UiR.string.coinVote_store_userError_commitmentTreeNotGrown)
+            }
+
             lower.contains("invalid commitment tree anchor height") -> {
+                stringRes(UiR.string.coinVote_store_userError_invalidAnchorHeight)
+            }
+
+            lower.contains("does not match its synced vote-tree leaf") -> {
                 stringRes(UiR.string.coinVote_store_userError_invalidAnchorHeight)
             }
 

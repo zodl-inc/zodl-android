@@ -7,6 +7,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -37,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
@@ -69,6 +71,10 @@ import co.electriccoin.zcash.ui.design.component.ZashiRadioButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -86,43 +92,57 @@ fun ChooseServerView(state: ChooseServerState?) {
         return
     }
 
+    val hazeState = rememberZashiFrostState()
+
     BlankBgScaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             ChooseServerTopAppBar(
                 onBack = state.onBack,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState)
             )
         },
         bottomBar = {
             ChooseServerBottomBar(
-                saveButtonState = state.saveButton
+                saveButtonState = state.saveButton,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedFooter(hazeState)
             )
         }
     ) { paddingValues ->
-        LazyColumn(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .padding(bottom = paddingValues.calculateBottomPadding()),
-            contentPadding =
-                PaddingValues(
-                    top = paddingValues.calculateTopPadding() + ZcashTheme.dimens.spacingDefault,
-                    bottom = ZcashTheme.dimens.spacingDefault,
-                )
+                    .zashiFrostSource(hazeState)
         ) {
-            item(
-                key = "connection_mode",
-                contentType = "connection_mode"
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding =
+                    PaddingValues(
+                        top = paddingValues.calculateTopPadding() + ZcashTheme.dimens.spacingDefault,
+                        bottom = paddingValues.calculateBottomPadding() + ZcashTheme.dimens.spacingDefault,
+                    )
             ) {
-                ConnectionModeSection(state.connectionMode)
-            }
-
-            if (state.connectionMode.isManualSelected) {
-                if (state.fastest.servers.isNotEmpty()) {
-                    serverListItems(state.fastest)
+                item(
+                    key = "connection_mode",
+                    contentType = "connection_mode"
+                ) {
+                    ConnectionModeSection(state.connectionMode)
                 }
 
-                serverListItems(state.other)
+                if (state.connectionMode.isManualSelected) {
+                    if (state.fastest.servers.isNotEmpty()) {
+                        serverListItems(state.fastest)
+                    }
+
+                    serverListItems(state.other)
+                }
             }
         }
 
@@ -266,12 +286,12 @@ private fun MultiServerInfoFooter() {
 }
 
 @Composable
-fun ChooseServerBottomBar(saveButtonState: ButtonState) {
+fun ChooseServerBottomBar(
+    saveButtonState: ButtonState,
+    modifier: Modifier = Modifier
+) {
     Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .background(ZashiColors.Surfaces.bgPrimary)
+        modifier = modifier
     ) {
         MultiServerInfoFooter()
         ZashiHorizontalDivider()
@@ -298,15 +318,20 @@ fun ChooseServerBottomBar(saveButtonState: ButtonState) {
 
 @Composable
 private fun ChooseServerTopAppBar(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     ZashiSmallTopAppBar(
         title = stringResource(id = R.string.serverSetup_title),
-        modifier = Modifier.testTag(CHOOSE_SERVER_TOP_APP_BAR),
+        modifier = modifier.testTag(CHOOSE_SERVER_TOP_APP_BAR),
         showTitleLogo = true,
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = onBack)
-        }
+        },
+        colors =
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
     )
 }
 

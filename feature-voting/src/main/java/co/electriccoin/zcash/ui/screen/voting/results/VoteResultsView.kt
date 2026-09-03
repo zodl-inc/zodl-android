@@ -1,12 +1,14 @@
 package co.electriccoin.zcash.ui.screen.voting.results
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,6 +31,10 @@ import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.VerticalSpacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -46,28 +52,56 @@ import co.electriccoin.zcash.ui.screen.voting.component.ZipBadge
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VoteResultsView(state: VoteResultsState) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
             VoteAppBar(
                 title = stringResource(R.string.coinVote_common_screenTitle),
                 onBack = state.onBack,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    )
             )
         },
-        content = { padding ->
+        bottomBar = {
             Column(
                 modifier =
                     Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedFooter(hazeState)
+                        .navigationBarsPadding()
+                        .padding(
+                            start = ZashiDimensions.Spacing.spacing3xl,
+                            end = ZashiDimensions.Spacing.spacing3xl,
+                            bottom = ZashiDimensions.Spacing.spacing3xl
+                        )
+            ) {
+                ZashiButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    state = state.doneButton,
+                )
+            }
+        },
+        content = { padding ->
+            Box(
+                modifier =
+                    Modifier
                         .fillMaxSize()
+                        .zashiFrostSource(hazeState)
             ) {
                 Column(
                     modifier =
                         Modifier
-                            .weight(1f)
-                            .padding(top = padding.calculateTopPadding())
+                            .fillMaxSize()
                             .verticalScroll(rememberScrollState())
                             .scaffoldScrollPadding(
                                 padding,
-                                top = ZashiDimensions.Spacing.spacingLg,
+                                top = padding.calculateTopPadding() + ZashiDimensions.Spacing.spacingLg,
                                 start = ZashiDimensions.Spacing.spacing3xl,
                                 end = ZashiDimensions.Spacing.spacing3xl
                             )
@@ -126,18 +160,6 @@ fun VoteResultsView(state: VoteResultsState) {
 
                     Spacer(24.dp)
                 }
-
-                ZashiButton(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                start = ZashiDimensions.Spacing.spacing3xl,
-                                end = ZashiDimensions.Spacing.spacing3xl,
-                                bottom = padding.calculateBottomPadding() + ZashiDimensions.Spacing.spacing3xl
-                            ),
-                    state = state.doneButton,
-                )
             }
         }
     )

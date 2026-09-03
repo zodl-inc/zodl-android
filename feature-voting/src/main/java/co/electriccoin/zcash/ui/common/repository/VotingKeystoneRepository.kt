@@ -6,6 +6,7 @@ import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.voting.isDelegationSetupOverwrite
+import co.electriccoin.zcash.ui.common.model.voting.requireKnownPolyLen
 import co.electriccoin.zcash.ui.common.model.voting.votingBundleRawWeights
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -268,7 +269,7 @@ class VotingKeystoneRepositoryImpl(
                             roundId = roundId,
                             bundleIndex = bundleIndex,
                             pirEndpoints = sessionContext.serviceConfig.pirEndpoints.map { endpoint -> endpoint.url },
-                            pirLayout = sessionContext.serviceConfig.pirLayout,
+                            pirLayout = sessionContext.serviceConfig.pirLayout.requireKnownPolyLen(),
                             expectedSnapshotHeight = session.snapshotHeight,
                             networkId = networkId,
                             notesJson = allNotesJson
@@ -351,6 +352,7 @@ class VotingKeystoneRepositoryImpl(
         // crate's own submission result.
         pendingRequest.decodeExpectedRk()?.let { rk ->
             persistKeystoneSignatureCrateSide(
+                accountUuid = accountUuid,
                 roundId = roundId,
                 bundleIndex = bundleIndex,
                 keystoneSig = spendAuthSig,
@@ -369,6 +371,7 @@ class VotingKeystoneRepositoryImpl(
     }
 
     private suspend fun persistKeystoneSignatureCrateSide(
+        accountUuid: String,
         roundId: String,
         bundleIndex: Int,
         keystoneSig: ByteArray,
@@ -376,9 +379,11 @@ class VotingKeystoneRepositoryImpl(
         rk: ByteArray
     ) {
         val votingDbPath = resolveVotingDbPath()
+        val networkId = synchronizerProvider.getSynchronizer().network.toVotingNetworkId()
         val dbHandle = votingCryptoClient.openVotingDb(votingDbPath)
         check(dbHandle != 0L) { "Failed to open voting DB at $votingDbPath" }
         try {
+            votingCryptoClient.setWalletId(dbHandle, accountUuid, networkId)
             votingCryptoClient.storeKeystoneSignature(
                 dbHandle = dbHandle,
                 roundId = roundId,

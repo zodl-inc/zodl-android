@@ -13,6 +13,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
+import co.electriccoin.zcash.ui.design.util.PressMorphDefaults
+import co.electriccoin.zcash.ui.design.util.pressMorph
 
 @Composable
 fun SwitchWithLabel(
@@ -26,6 +28,7 @@ fun SwitchWithLabel(
     ConstraintLayout(
         modifier =
             modifier
+                .pressMorph(interactionSource, PressMorphDefaults.PRESSED_SCALE_SUBTLE)
                 .clickable(
                     interactionSource = interactionSource,
                     // disable ripple

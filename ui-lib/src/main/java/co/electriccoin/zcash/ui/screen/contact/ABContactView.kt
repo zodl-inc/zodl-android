@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.contact
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -37,6 +39,9 @@ import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTextField
 import co.electriccoin.zcash.ui.design.component.ZashiTextFieldDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -53,21 +58,36 @@ fun ABContactView(
 ) {
     val addressFocusRequester = remember { FocusRequester() }
     val nameFocusRequester = remember { FocusRequester() }
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
-            ContactTopAppBar(onBack = state.onBack, state = state)
+            ContactTopAppBar(
+                onBack = state.onBack,
+                state = state,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState)
+            )
         }
     ) { paddingValues ->
-        ContactViewInternal(
-            state = state,
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .scaffoldPadding(paddingValues)
-                    .verticalScroll(rememberScrollState()),
-            addressFocusRequester = addressFocusRequester,
-            nameFocusRequester = nameFocusRequester
-        )
+                    .zashiFrostSource(hazeState)
+        ) {
+            ContactViewInternal(
+                state = state,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .scaffoldPadding(paddingValues),
+                addressFocusRequester = addressFocusRequester,
+                nameFocusRequester = nameFocusRequester
+            )
+        }
 
         SideEffect {
             onSideEffect(nameFocusRequester, addressFocusRequester)
@@ -180,11 +200,12 @@ private fun ContactViewInternal(
 @Composable
 private fun ContactTopAppBar(
     onBack: () -> Unit,
-    state: ABContactState
+    state: ABContactState,
+    modifier: Modifier = Modifier
 ) {
     ZashiSmallTopAppBar(
         title = state.title.getValue(),
-        modifier = Modifier.testTag(ABContactTag.TOP_APP_BAR),
+        modifier = modifier.testTag(ABContactTag.TOP_APP_BAR),
         showTitleLogo = true,
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = onBack)
@@ -194,7 +215,11 @@ private fun ContactTopAppBar(
                 ZashiIconButton(it)
                 Spacer(20.dp)
             }
-        }
+        },
+        colors =
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
     )
 }
 

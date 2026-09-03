@@ -40,12 +40,6 @@ fun ZashiConfirmationBottomSheet(state: ZashiConfirmationState?) {
                 RoundedCornerShape(34.dp)
             } else {
                 ZashiModalBottomSheetDefaults.SheetShape
-            },
-        containerColor =
-            if (state?.style == ZashiConfirmationStyle.UNVERIFIED_POLL_WARNING) {
-                ZashiColors.Surfaces.bgSecondary
-            } else {
-                ZashiModalBottomSheetDefaults.ContainerColor
             }
     ) { innerState ->
         ConfirmationContent(

@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.accountlist
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,6 +17,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,6 +34,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.LottieProgress
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
+import co.electriccoin.zcash.ui.design.component.ZashiFrostedSheetHeader
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.listitem.BaseListItem
 import co.electriccoin.zcash.ui.design.component.listitem.ListItemState
@@ -36,6 +42,8 @@ import co.electriccoin.zcash.ui.design.component.listitem.ZashiListItemColors
 import co.electriccoin.zcash.ui.design.component.listitem.ZashiListItemDefaults
 import co.electriccoin.zcash.ui.design.component.listitem.ZashiListItemDesignType
 import co.electriccoin.zcash.ui.design.component.rememberScreenModalBottomSheetState
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -55,6 +63,7 @@ internal fun AccountListView(
     ZashiScreenModalBottomSheet(
         state = state,
         sheetState = sheetState,
+        dragHandle = null,
         content = { state, contentPadding ->
             BottomSheetContent(
                 state = state,
@@ -71,58 +80,74 @@ private fun BottomSheetContent(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier =
-            modifier
-                .verticalScroll(rememberScrollState())
-                .padding(bottom = contentPadding.calculateBottomPadding())
-    ) {
-        Text(
-            modifier = Modifier.padding(horizontal = 24.dp),
-            text = stringResource(co.electriccoin.zcash.ui.R.string.keystone_drawer_title),
-            style = ZashiTypography.textXl,
-            fontWeight = FontWeight.SemiBold,
-            color = ZashiColors.Text.textPrimary
+    val hazeState = rememberZashiFrostState()
+    var headerHeight by remember { mutableStateOf(0.dp) }
+    Box(modifier = modifier) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .zashiFrostSource(hazeState)
+                    .verticalScroll(rememberScrollState())
+                    .padding(
+                        top = headerHeight,
+                        bottom = contentPadding.calculateBottomPadding()
+                    )
+        ) {
+            state.items?.forEachIndexed { index, item ->
+                if (index != 0) {
+                    Spacer(Modifier.height(8.dp))
+                }
+
+                when (item) {
+                    is AccountListItem.Account -> {
+                        ZashiAccountListItem(
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                            state = item.state,
+                        )
+                    }
+
+                    is AccountListItem.Other -> {
+                        ZashiKeystonePromoListItem(item)
+                    }
+                }
+            }
+            if (state.isLoading) {
+                Spacer(Modifier.height(24.dp))
+                LottieProgress(
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+            }
+            if (state.addWalletButton != null) {
+                Spacer(modifier = Modifier.height(32.dp))
+                ZashiButton(
+                    state = state.addWalletButton,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp),
+                    defaultPrimaryColors =
+                        ZashiButtonDefaults.secondaryColors(
+                            borderColor = ZashiColors.Btns.Secondary.btnSecondaryBorder
+                        )
+                )
+            }
+        }
+
+        ZashiFrostedSheetHeader(
+            hazeState = hazeState,
+            modifier = Modifier.align(Alignment.TopCenter),
+            onHeightChanged = { headerHeight = it },
+            title = {
+                Text(
+                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+                    text = stringResource(co.electriccoin.zcash.ui.R.string.keystone_drawer_title),
+                    style = ZashiTypography.textXl,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ZashiColors.Text.textPrimary
+                )
+            }
         )
-        Spacer(Modifier.height(24.dp))
-        state.items?.forEachIndexed { index, item ->
-            if (index != 0) {
-                Spacer(Modifier.height(8.dp))
-            }
-
-            when (item) {
-                is AccountListItem.Account -> {
-                    ZashiAccountListItem(
-                        modifier = Modifier.padding(horizontal = 4.dp),
-                        state = item.state,
-                    )
-                }
-
-                is AccountListItem.Other -> {
-                    ZashiKeystonePromoListItem(item)
-                }
-            }
-        }
-        if (state.isLoading) {
-            Spacer(Modifier.height(24.dp))
-            LottieProgress(
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            )
-        }
-        if (state.addWalletButton != null) {
-            Spacer(modifier = Modifier.height(32.dp))
-            ZashiButton(
-                state = state.addWalletButton,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
-                defaultPrimaryColors =
-                    ZashiButtonDefaults.secondaryColors(
-                        borderColor = ZashiColors.Btns.Secondary.btnSecondaryBorder
-                    )
-            )
-        }
     }
 }
 
@@ -141,7 +166,7 @@ private fun ZashiKeystonePromoListItem(
     contentPadding: PaddingValues = PaddingValues(24.dp),
     colors: ZashiListItemColors =
         ZashiListItemDefaults.primaryColors(
-            backgroundColor = ZashiColors.Surfaces.bgTertiary
+            backgroundColor = ZashiColors.Surfaces.bgPrimary
         ),
     below: @Composable ColumnScope.(Modifier) -> Unit = {
         Image(
@@ -235,7 +260,7 @@ private fun ZashiAccountListItem(
         trailing = null,
         color =
             if (state.isSelected) {
-                ZashiColors.Surfaces.bgSecondary
+                ZashiColors.Surfaces.bgPrimary
             } else {
                 Color.Transparent
             },

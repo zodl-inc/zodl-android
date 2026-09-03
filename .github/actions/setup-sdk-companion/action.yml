@@ -1,11 +1,12 @@
 name: 'Companion SDK Build (commit-pinned)'
 description: >-
   If SDK_COMMIT_PIN is set in gradle.properties, checks out that exact commit of
-  zcash/zcash-android-wallet-sdk, installs its Rust/NDK toolchain, and points Gradle's
+  zodl-inc/zodl-android-wallet-sdk, installs its Rust/NDK toolchain, and points Gradle's
   composite build at it via ORG_GRADLE_PROJECT_SDK_INCLUDED_BUILD_PATH — so a co-developed
   app PR can build/lint/test against unreleased SDK changes without waiting on a Maven
-  publish. No-ops (does nothing) whenever the pin is blank, which is the default, normal
-  case for every branch that isn't actively co-developing against an SDK PR.
+  publish. Supported on main, maint/* branches, and branches targeting either. No-ops (does
+  nothing) whenever the pin is blank, which is the default, normal case for every branch
+  that isn't actively co-developing against an SDK PR.
 outputs:
   active:
     description: "'true' if the companion SDK build was activated this run, else empty."
@@ -20,8 +21,8 @@ runs:
         PIN="$(grep -m1 '^SDK_COMMIT_PIN=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')"
         [ -z "${PIN}" ] || [[ "${PIN}" =~ ^[0-9a-f]{40}$ ]] || { echo '::error::SDK_COMMIT_PIN must be a full 40-char commit sha'; exit 1; }
         TARGET="${{ github.base_ref || github.ref_name }}"
-        if [ -n "${PIN}" ] && [ "${TARGET}" != "main" ]; then
-          echo "::error::SDK_COMMIT_PIN is set to '${PIN}' but this workflow's target branch is '${TARGET}', not main. SDK_COMMIT_PIN is only supported on main and branches targeting main — clear it before merging into maint/release/review branches, which must always build against a real published SDK version." >&2
+        if [ -n "${PIN}" ] && [ "${TARGET}" != "main" ] && [[ "${TARGET}" != maint/* ]]; then
+          echo "::error::SDK_COMMIT_PIN is set to '${PIN}' but this workflow's target branch is '${TARGET}'. SDK_COMMIT_PIN is only supported on main, maint/* branches, and branches targeting them — clear it before merging into release/review branches, which must always build against a real published SDK version." >&2
           exit 1
         fi
         echo "commit=${PIN}" >> "$GITHUB_OUTPUT"
@@ -29,7 +30,7 @@ runs:
       if: steps.pin.outputs.commit != ''
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       with:
-        repository: zcash/zcash-android-wallet-sdk
+        repository: zodl-inc/zodl-android-wallet-sdk
         ref: ${{ steps.pin.outputs.commit }}
         path: .sdk-companion
         fetch-depth: 1
@@ -85,4 +86,4 @@ runs:
         # since this env var reaches only the companion build's tooling classpath
         # resolution, not the app's own dependency locking (if any).
         echo "ORG_GRADLE_PROJECT_ZCASH_IS_DEPENDENCY_LOCKING_ENABLED=false" >> "$GITHUB_ENV"
-        echo "::notice::Building against zcash-android-wallet-sdk@${{ steps.pin.outputs.commit }} (SDK_COMMIT_PIN), not the published Maven artifact."
+        echo "::notice::Building against zodl-android-wallet-sdk@${{ steps.pin.outputs.commit }} (SDK_COMMIT_PIN), not the published Maven artifact."

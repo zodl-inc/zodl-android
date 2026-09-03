@@ -173,7 +173,6 @@ class TrackVotingSharesUseCase(
                             runCatching {
                                 votingApiProvider.resubmitShare(
                                     payload = payload,
-                                    roundIdHex = roundId,
                                     candidateUrls = roundVoteServerUrls,
                                     excludeUrls = delegation.sentToUrls
                                 )

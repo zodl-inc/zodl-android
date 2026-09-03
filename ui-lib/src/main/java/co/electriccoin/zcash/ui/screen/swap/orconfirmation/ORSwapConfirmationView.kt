@@ -49,6 +49,9 @@ import co.electriccoin.zcash.ui.design.component.ZashiIconButton
 import co.electriccoin.zcash.ui.design.component.ZashiQr
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -67,68 +70,84 @@ import co.electriccoin.zcash.ui.design.util.styledStringResource
 
 @Composable
 fun ORSwapConfirmationView(state: ORSwapConfirmationState) {
+    val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
-        topBar = { TopAppBar(state) }
+        topBar = {
+            TopAppBar(
+                state = state,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState)
+            )
+        }
     ) {
-        Column(
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .scaffoldPadding(it)
+                    .zashiFrostSource(hazeState)
         ) {
-            Header(state)
-            Spacer(12.dp)
-            ZashiQr(
-                modifier = Modifier.align(CenterHorizontally),
-                state = QrState(qrData = state.qr),
-                colors =
-                    QrCodeDefaults.colors(
-                        border = Color.Unspecified
-                    )
-            )
-            Surface(
-                modifier = Modifier.align(CenterHorizontally),
-                shape = CircleShape,
-                color = ZashiColors.Surfaces.bgSecondary
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .scaffoldPadding(it)
             ) {
-                Box(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                Header(state)
+                Spacer(12.dp)
+                ZashiQr(
+                    modifier = Modifier.align(CenterHorizontally),
+                    state = QrState(qrData = state.qr),
+                    colors =
+                        QrCodeDefaults.colors(
+                            border = Color.Unspecified
+                        )
+                )
+                Surface(
+                    modifier = Modifier.align(CenterHorizontally),
+                    shape = CircleShape,
+                    color = ZashiColors.Surfaces.bgSecondary
                 ) {
-                    Text(
-                        text = state.address.getValue(),
-                        style = ZashiTypography.textSm,
-                        fontWeight = FontWeight.Medium,
-                        color = ZashiColors.Text.textPrimary
+                    Box(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = state.address.getValue(),
+                            style = ZashiTypography.textSm,
+                            fontWeight = FontWeight.Medium,
+                            color = ZashiColors.Text.textPrimary
+                        )
+                    }
+                }
+                Spacer(12.dp)
+                Row {
+                    BigIconButton(
+                        modifier = Modifier.weight(1f),
+                        state = state.copyButton
+                    )
+                    Spacer(8.dp)
+                    BigIconButton(
+                        modifier = Modifier.weight(1f),
+                        state = state.shareButton
                     )
                 }
-            }
-            Spacer(12.dp)
-            Row {
-                BigIconButton(
-                    modifier = Modifier.weight(1f),
-                    state = state.copyButton
+                Spacer(24.dp)
+                Spacer(1f)
+                Text(
+                    modifier = Modifier.fillMaxWidth(),
+                    text = state.footer.getValue(),
+                    textAlign = TextAlign.Center,
+                    style = ZashiTypography.textSm,
+                    color = ZashiColors.Text.textPrimary
                 )
-                Spacer(8.dp)
-                BigIconButton(
-                    modifier = Modifier.weight(1f),
-                    state = state.shareButton
+                Spacer(20.dp)
+                ZashiButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    state = state.primaryButton
                 )
             }
-            Spacer(24.dp)
-            Spacer(1f)
-            Text(
-                modifier = Modifier.fillMaxWidth(),
-                text = state.footer.getValue(),
-                textAlign = TextAlign.Center,
-                style = ZashiTypography.textSm,
-                color = ZashiColors.Text.textPrimary
-            )
-            Spacer(20.dp)
-            ZashiButton(
-                modifier = Modifier.fillMaxWidth(),
-                state = state.primaryButton
-            )
         }
     }
 }
@@ -262,8 +281,12 @@ private fun Header(state: ORSwapConfirmationState) {
 }
 
 @Composable
-private fun TopAppBar(state: ORSwapConfirmationState) {
+private fun TopAppBar(
+    state: ORSwapConfirmationState,
+    modifier: Modifier = Modifier
+) {
     ZashiSmallTopAppBar(
+        modifier = modifier,
         content = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -288,6 +311,10 @@ private fun TopAppBar(state: ORSwapConfirmationState) {
             ZashiIconButton(state.info)
             Spacer(20.dp)
         },
+        colors =
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
     )
 }
 

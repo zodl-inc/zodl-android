@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -18,7 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,6 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.BlankSurface
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.OverlappingIconsState
@@ -43,6 +44,9 @@ import co.electriccoin.zcash.ui.design.component.ZashiOverlappingIcons
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTextField
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -54,29 +58,47 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 
 @Composable
 fun FeedbackView(state: FeedbackState) {
-    Scaffold(
+    val hazeState = rememberZashiFrostState()
+    BlankBgScaffold(
         topBar = {
             SupportTopAppBar(
                 state = state,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState)
             )
         },
     ) { paddingValues ->
-        SupportMainContent(
-            state = state,
-            modifier = Modifier.scaffoldPadding(paddingValues)
-        )
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .zashiFrostSource(hazeState)
+        ) {
+            SupportMainContent(
+                state = state,
+                modifier = Modifier.scaffoldPadding(paddingValues)
+            )
+        }
     }
 }
 
 @Composable
 private fun SupportTopAppBar(
-    state: FeedbackState
+    state: FeedbackState,
+    modifier: Modifier = Modifier
 ) {
     ZashiSmallTopAppBar(
+        modifier = modifier,
         title = stringResource(id = R.string.support_header),
         navigationAction = {
             ZashiTopAppBarBackNavigation(onBack = state.onBack)
         },
+        colors =
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
     )
 }
 

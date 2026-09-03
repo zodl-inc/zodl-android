@@ -3,7 +3,8 @@ package co.electriccoin.zcash.ui.screen.swap.detail
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
@@ -43,13 +44,18 @@ import co.electriccoin.zcash.ui.design.component.ZashiMessageState
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiSwapQuoteHeader
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
+import co.electriccoin.zcash.ui.design.component.zashiVerticalGradient
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.balances.LocalBalancesAvailable
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
+import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.TickerLocation.HIDDEN
-import co.electriccoin.zcash.ui.design.util.asScaffoldPaddingValues
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.orDark
@@ -75,91 +81,119 @@ fun SwapDetailView(
     state: SwapDetailState,
     appBarState: ZashiMainTopAppBarState?,
 ) {
+    val hazeState = rememberZashiFrostState()
+    val gradientStartColor = ZashiColors.Surfaces.bgPrimary orDark ZashiColors.Surfaces.bgAdjust
+    val gradientEndColor = ZashiColors.Surfaces.bgPrimary
     GradientBgScaffold(
-        startColor = ZashiColors.Surfaces.bgPrimary orDark ZashiColors.Surfaces.bgAdjust,
-        endColor = ZashiColors.Surfaces.bgPrimary,
-        topBar = { TopAppBar(state = state, appBarState = appBarState) }
-    ) { paddingValues ->
-        val scrollState = rememberScrollState()
-
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            TransactionDetailHeader(
+        startColor = gradientStartColor,
+        endColor = gradientEndColor,
+        topBar = {
+            TopAppBar(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .scaffoldPadding(
-                            paddingValues = paddingValues,
-                            bottom = 0.dp,
-                            start = 0.dp,
-                            end = 0.dp
-                        ),
-                state = state.transactionHeader
+                        .zashiFrostedHeader(hazeState, frostColor = Color.Transparent),
+                state = state,
+                appBarState = appBarState
             )
-            var isExpanded by rememberSaveable { mutableStateOf(false) }
+        },
+        bottomBar = {
+            BottomBar(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedFooter(hazeState),
+                state = state
+            )
+        }
+    ) { paddingValues ->
+        val scrollState = rememberScrollState()
+
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .zashiFrostSource(hazeState)
+                    .background(
+                        zashiVerticalGradient(
+                            startColor = gradientStartColor,
+                            endColor = gradientEndColor
+                        )
+                    )
+        ) {
             Column(
                 modifier =
                     Modifier
-                        .weight(1f)
+                        .fillMaxSize()
                         .verticalScroll(scrollState)
-                        .scaffoldPadding(paddingValues, top = 24.dp),
             ) {
-                ZashiSwapQuoteHeader(state.quoteHeader)
-                Spacer(20.dp)
-                TransactionDetailRowHeader(
-                    title = stringRes(R.string.swapToZec_swapDetails),
-                    isExpanded = isExpanded,
-                    onButtonClick = { isExpanded = !isExpanded }
+                TransactionDetailHeader(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .scaffoldPadding(
+                                paddingValues = paddingValues,
+                                bottom = 0.dp,
+                                start = 0.dp,
+                                end = 0.dp
+                            ),
+                    state = state.transactionHeader
                 )
-                Spacer(8.dp)
-                TransactionDetailInfoContainer {
-                    TransactionDetailSwapStatusRow(state = state.status)
-                    AnimatedVisibility(
-                        visible = isExpanded,
-                        enter = expandVertically(expandFrom = Alignment.Top),
-                        exit = shrinkVertically(shrinkTowards = Alignment.Top)
-                    ) {
-                        Column {
-                            ZashiHorizontalDivider()
-                            TransactionDetailInfoRow(state.depositTo)
-                            ZashiHorizontalDivider()
-                            TransactionDetailInfoRow(state.recipient)
-                            ZashiHorizontalDivider()
-                            TransactionDetailInfoRow(state.totalFees)
-                            ZashiHorizontalDivider()
-                            CompositionLocalProvider(LocalBalancesAvailable provides true) {
-                                TransactionDetailInfoRow(state.maxSlippage)
+                var isExpanded by rememberSaveable { mutableStateOf(false) }
+                Column(
+                    modifier = Modifier.scaffoldPadding(paddingValues, top = 24.dp),
+                ) {
+                    ZashiSwapQuoteHeader(state.quoteHeader)
+                    Spacer(20.dp)
+                    TransactionDetailRowHeader(
+                        title = stringRes(R.string.swapToZec_swapDetails),
+                        isExpanded = isExpanded,
+                        onButtonClick = { isExpanded = !isExpanded }
+                    )
+                    Spacer(8.dp)
+                    TransactionDetailInfoContainer {
+                        TransactionDetailSwapStatusRow(state = state.status)
+                        AnimatedVisibility(
+                            visible = isExpanded,
+                            enter = expandVertically(expandFrom = Alignment.Top),
+                            exit = shrinkVertically(shrinkTowards = Alignment.Top)
+                        ) {
+                            Column {
+                                ZashiHorizontalDivider()
+                                TransactionDetailInfoRow(state.depositTo)
+                                ZashiHorizontalDivider()
+                                TransactionDetailInfoRow(state.recipient)
+                                ZashiHorizontalDivider()
+                                TransactionDetailInfoRow(state.totalFees)
+                                ZashiHorizontalDivider()
+                                CompositionLocalProvider(LocalBalancesAvailable provides true) {
+                                    TransactionDetailInfoRow(state.maxSlippage)
+                                }
                             }
                         }
+                        ZashiHorizontalDivider()
+                        TransactionDetailInfoRow(state = state.timestamp)
                     }
-                    ZashiHorizontalDivider()
-                    TransactionDetailInfoRow(state = state.timestamp)
-                }
-                state.message?.let {
-                    Spacer(8.dp)
-                    ZashiMessage(it)
+                    state.message?.let {
+                        Spacer(8.dp)
+                        ZashiMessage(it)
+                    }
                 }
             }
-            BottomBar(
-                scrollState = scrollState,
-                paddingValues = paddingValues,
-                state = state
-            )
         }
     }
 }
 
 @Composable
 private fun BottomBar(
-    scrollState: ScrollState,
-    paddingValues: PaddingValues,
-    state: SwapDetailState
+    state: SwapDetailState,
+    modifier: Modifier = Modifier
 ) {
     ZashiBottomBar(
-        modifier = Modifier.fillMaxWidth(),
-        isElevated = scrollState.value > 0,
-        contentPadding = paddingValues.asScaffoldPaddingValues(top = 0.dp, bottom = 0.dp)
+        modifier = modifier,
+        isElevated = false,
+        color = Color.Transparent,
+        contentPadding = PaddingValues(horizontal = ZashiDimensions.Spacing.spacing3xl)
     ) {
         state.errorFooter?.let {
             TransactionErrorFooter(it)
@@ -183,8 +217,13 @@ private fun BottomBar(
 }
 
 @Composable
-private fun TopAppBar(state: SwapDetailState, appBarState: ZashiMainTopAppBarState?) {
+private fun TopAppBar(
+    state: SwapDetailState,
+    appBarState: ZashiMainTopAppBarState?,
+    modifier: Modifier = Modifier
+) {
     ZashiSmallTopAppBar(
+        modifier = modifier,
         navigationAction = {
             ZashiTopAppBarCloseNavigation(onBack = state.onBack)
         },
@@ -196,10 +235,9 @@ private fun TopAppBar(state: SwapDetailState, appBarState: ZashiMainTopAppBarSta
             Spacer(Modifier.width(20.dp))
         },
         colors =
-            ZcashTheme.colors.topAppBarColors orDark
-                ZcashTheme.colors.topAppBarColors.copyColors(
-                    containerColor = Color.Transparent
-                ),
+            ZcashTheme.colors.topAppBarColors.copyColors(
+                containerColor = Color.Transparent
+            ),
     )
 }
 

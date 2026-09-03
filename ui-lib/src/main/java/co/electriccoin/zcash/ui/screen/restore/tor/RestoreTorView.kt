@@ -26,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
@@ -39,7 +40,10 @@ import co.electriccoin.zcash.ui.design.component.CheckboxState
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
+import co.electriccoin.zcash.ui.design.component.ZashiFrostedSheetHeader
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -53,6 +57,7 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 fun RestoreTorView(state: RestoreTorState?) {
     ZashiScreenModalBottomSheet(
         state = state,
+        dragHandle = null,
         content = { state, contentPadding ->
             Content(
                 modifier = Modifier.weight(1f, false),
@@ -69,44 +74,62 @@ private fun Content(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier =
-            modifier
-                .verticalScroll(rememberScrollState())
-                .padding(
-                    start = 24.dp,
-                    end = 24.dp,
-                    bottom = contentPadding.calculateBottomPadding()
-                )
-    ) {
-        Image(
-            painter = painterResource(R.drawable.ic_restore_tor_info),
-            contentDescription = null
-        )
-        Spacer(12.dp)
-        Text(
-            stringResource(R.string.torSettingsSheet_title),
-            style = ZashiTypography.header6,
-            color = ZashiColors.Text.textPrimary,
-            fontWeight = FontWeight.SemiBold
-        )
-        Spacer(8.dp)
-        Text(
-            stringResource(R.string.torSettingsSheet_msg),
-            style = ZashiTypography.textSm,
-            color = ZashiColors.Text.textTertiary
-        )
-        Spacer(24.dp)
-        Switch(state.checkbox)
-        Spacer(32.dp)
-        ZashiButton(
-            modifier = Modifier.fillMaxWidth(),
-            defaultPrimaryColors = ZashiButtonDefaults.tertiaryColors(),
-            state = state.secondary,
-        )
-        ZashiButton(
-            modifier = Modifier.fillMaxWidth().testTag(RestoreTorTags.RESTORE_BTN),
-            state = state.primary
+    val hazeState = rememberZashiFrostState()
+    var headerHeight by remember { mutableStateOf(0.dp) }
+    Box(modifier = modifier) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .zashiFrostSource(hazeState)
+                    .verticalScroll(rememberScrollState())
+                    .padding(
+                        start = 24.dp,
+                        end = 24.dp,
+                        top = headerHeight,
+                        bottom = contentPadding.calculateBottomPadding()
+                    )
+        ) {
+            Text(
+                stringResource(R.string.torSettingsSheet_msg),
+                style = ZashiTypography.textSm,
+                color = ZashiColors.Text.textTertiary
+            )
+            Spacer(24.dp)
+            Switch(state.checkbox)
+            Spacer(32.dp)
+            ZashiButton(
+                modifier = Modifier.fillMaxWidth(),
+                defaultPrimaryColors = ZashiButtonDefaults.tertiaryColors(),
+                state = state.secondary,
+            )
+            ZashiButton(
+                modifier = Modifier.fillMaxWidth().testTag(RestoreTorTags.RESTORE_BTN),
+                state = state.primary
+            )
+        }
+
+        ZashiFrostedSheetHeader(
+            hazeState = hazeState,
+            modifier = Modifier.align(Alignment.TopCenter),
+            onHeightChanged = { headerHeight = it },
+            title = {
+                Column(
+                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp)
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.ic_restore_tor_info),
+                        contentDescription = null
+                    )
+                    Spacer(12.dp)
+                    Text(
+                        stringResource(R.string.torSettingsSheet_title),
+                        style = ZashiTypography.header6,
+                        color = ZashiColors.Text.textPrimary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
         )
     }
 }

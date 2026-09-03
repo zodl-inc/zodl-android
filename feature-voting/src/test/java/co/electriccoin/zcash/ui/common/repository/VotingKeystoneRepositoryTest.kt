@@ -23,6 +23,7 @@ import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.VoteOption
 import co.electriccoin.zcash.ui.common.model.voting.VotingGovernancePczt
+import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.model.voting.VotingServiceConfig
 import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProvider
@@ -197,7 +198,8 @@ class VotingKeystoneRepositoryTest {
                 )
 
             val votingApiProvider = mockk<VotingApiProvider>(relaxed = true)
-            coEvery { votingApiProvider.fetchServiceConfig() } returns VotingServiceConfig.EMPTY
+            coEvery { votingApiProvider.fetchServiceConfig() } returns
+                VotingServiceConfig.EMPTY.copy(pirLayout = TEST_PIR_LAYOUT)
             coEvery { votingApiProvider.fetchAllRounds() } returns
                 RoundsListResult(
                     rounds = emptyList(),
@@ -632,6 +634,7 @@ class VotingKeystoneRepositoryTest {
         var extractSpendAuthCalls = 0
         val openVotingDbCalls = mutableListOf<String>()
         val closeVotingDbCalls = mutableListOf<Long>()
+        val setWalletIdCalls = mutableListOf<SetWalletIdCall>()
         val storeKeystoneSignatureCalls = mutableListOf<StoreKeystoneSignatureCall>()
 
         val client: VotingCryptoClient =
@@ -660,6 +663,16 @@ class VotingKeystoneRepositoryTest {
                         Unit
                     }
 
+                    "setWalletId" -> {
+                        setWalletIdCalls +=
+                            SetWalletIdCall(
+                                dbHandle = args.valueAt(0),
+                                walletId = args.valueAt(1),
+                                networkId = args.valueAt(2)
+                            )
+                        Unit
+                    }
+
                     "storeKeystoneSignature" -> {
                         storeKeystoneSignatureCalls +=
                             StoreKeystoneSignatureCall(
@@ -680,6 +693,12 @@ class VotingKeystoneRepositoryTest {
             } as VotingCryptoClient
     }
 
+    private data class SetWalletIdCall(
+        val dbHandle: Long,
+        val walletId: String,
+        val networkId: Int
+    )
+
     private data class StoreKeystoneSignatureCall(
         val dbHandle: Long,
         val roundId: String,
@@ -696,7 +715,10 @@ class VotingKeystoneRepositoryTest {
         override val synchronizer: StateFlow<Synchronizer?> = MutableStateFlow(null)
         override val walletBalances: Flow<Map<AccountUuid, AccountBalance>?> = flowOf(null)
 
-        override suspend fun getSynchronizer(): Synchronizer = unsupported()
+        private val fakeSynchronizer: Synchronizer =
+            mockk<Synchronizer>(relaxed = true).also { every { it.network } returns ZcashNetwork.Mainnet }
+
+        override suspend fun getSynchronizer(): Synchronizer = fakeSynchronizer
 
         override suspend fun getSynchronizerOrNull(): Synchronizer? = unsupported()
 
@@ -728,6 +750,7 @@ class VotingKeystoneRepositoryTest {
         val EXPECTED_RK = byteArrayOf(0x30)
         val SIGNED_PCZT_BYTES = byteArrayOf(0x40)
         const val RESET_REBUILD_ROUND_ID_HEX = "aa000000000000000000000000000000000000000000000000000000000000bb"
+        val TEST_PIR_LAYOUT = VotingPirLayout(pirDepth = 1, tier0Layers = 1, tier1Layers = 1, polyLen = 4096)
     }
 }
 

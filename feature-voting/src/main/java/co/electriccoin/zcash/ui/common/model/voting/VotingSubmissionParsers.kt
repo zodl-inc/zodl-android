@@ -61,6 +61,7 @@ fun String.toSharePayloads(): List<SharePayload> {
                     voteDecision = payload.getInt("vote_decision"),
                     encShare = payload.getJSONObject("enc_share").toEncryptedShare(),
                     treePosition = payload.getLong("tree_position"),
+                    voteRoundId = payload.getString("vote_round_id"),
                     allEncShares = payload.optJSONArray("all_enc_shares").toEncryptedShares(),
                     shareComms = payload.optJSONArray("share_comms").toByteArrays(),
                     primaryBlind =

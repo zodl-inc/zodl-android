@@ -1,6 +1,8 @@
 package co.electriccoin.zcash.ui.screen.scan.thirdparty
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +23,10 @@ import co.electriccoin.zcash.ui.design.component.GradientBgScaffold
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
+import co.electriccoin.zcash.ui.design.component.zashiVerticalGradient
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -29,24 +35,44 @@ import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 
 @Composable
 fun ThirdPartyScanView(state: ThirdPartyScanState) {
+    val hazeState = rememberZashiFrostState()
+    val gradientStartColor = ZashiColors.Utility.WarningYellow.utilityOrange100
+    val gradientEndColor = ZashiColors.Surfaces.bgPrimary
     GradientBgScaffold(
-        startColor = ZashiColors.Utility.WarningYellow.utilityOrange100,
-        endColor = ZashiColors.Surfaces.bgPrimary,
+        startColor = gradientStartColor,
+        endColor = gradientEndColor,
         topBar = {
             ZashiSmallTopAppBar(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState, frostColor = Color.Transparent),
                 title = stringResource(R.string.deeplinkWarning_screenTitle),
                 colors = ZcashTheme.colors.topAppBarColors.copyColors(containerColor = Color.Transparent),
             )
         }
     ) { paddingValues ->
-        Content(
-            state = state,
+        Box(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .scaffoldPadding(paddingValues)
-                    .verticalScroll(rememberScrollState())
-        )
+                    .zashiFrostSource(hazeState)
+                    .background(
+                        zashiVerticalGradient(
+                            startColor = gradientStartColor,
+                            endColor = gradientEndColor
+                        )
+                    )
+        ) {
+            Content(
+                state = state,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .scaffoldPadding(paddingValues)
+            )
+        }
     }
 }
 

@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.restore.info
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -16,6 +17,11 @@ import androidx.compose.material3.SheetState
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -27,9 +33,12 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.ZashiButton
+import co.electriccoin.zcash.ui.design.component.ZashiFrostedSheetHeader
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.rememberModalBottomSheetState
 import co.electriccoin.zcash.ui.design.component.rememberScreenModalBottomSheetState
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
@@ -44,6 +53,7 @@ internal fun SeedInfoView(
     ZashiScreenModalBottomSheet(
         state = state,
         sheetState = sheetState,
+        dragHandle = null,
         content = { state, contentPadding ->
             Content(
                 state = state,
@@ -60,48 +70,66 @@ private fun Content(
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier =
-            modifier
-                .verticalScroll(rememberScrollState())
-                .padding(start = 24.dp, end = 24.dp, bottom = contentPadding.calculateBottomPadding())
-    ) {
-        Text(
-            text = stringResource(R.string.restoreWallet_help_title),
-            style = ZashiTypography.header6,
-            fontWeight = FontWeight.SemiBold,
-            color = ZashiColors.Text.textPrimary
-        )
-        Spacer(Modifier.height(12.dp))
-
-        Info(
-            text =
-                buildAnnotatedString {
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = ZashiColors.Text.textPrimary)) {
-                        append(stringResource(id = R.string.restore_dialog_message_1_bold_part))
+    val hazeState = rememberZashiFrostState()
+    var headerHeight by remember { mutableStateOf(0.dp) }
+    Box(modifier = modifier) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .zashiFrostSource(hazeState)
+                    .verticalScroll(rememberScrollState())
+                    .padding(
+                        start = 24.dp,
+                        end = 24.dp,
+                        top = headerHeight,
+                        bottom = contentPadding.calculateBottomPadding()
+                    )
+        ) {
+            Info(
+                text =
+                    buildAnnotatedString {
+                        withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = ZashiColors.Text.textPrimary)) {
+                            append(stringResource(id = R.string.restore_dialog_message_1_bold_part))
+                        }
+                        append(" ")
+                        append(stringResource(R.string.restore_dialog_message_1))
                     }
-                    append(" ")
-                    append(stringResource(R.string.restore_dialog_message_1))
-                }
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Info(
-            text =
-                buildAnnotatedString {
-                    withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = ZashiColors.Text.textPrimary)) {
-                        append(stringResource(id = R.string.restore_dialog_message_2_bold_part))
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Info(
+                text =
+                    buildAnnotatedString {
+                        withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = ZashiColors.Text.textPrimary)) {
+                            append(stringResource(id = R.string.restore_dialog_message_2_bold_part))
+                        }
+                        append(" ")
+                        append(stringResource(R.string.restore_dialog_message_2))
                     }
-                    append(" ")
-                    append(stringResource(R.string.restore_dialog_message_2))
-                }
-        )
+            )
 
-        Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-        ZashiButton(
-            modifier = Modifier.fillMaxWidth(),
-            text = stringResource(co.electriccoin.zcash.ui.design.R.string.restoreInfo_gotIt),
-            onClick = state.onBack
+            ZashiButton(
+                modifier = Modifier.fillMaxWidth(),
+                text = stringResource(co.electriccoin.zcash.ui.design.R.string.restoreInfo_gotIt),
+                onClick = state.onBack
+            )
+        }
+
+        ZashiFrostedSheetHeader(
+            hazeState = hazeState,
+            modifier = Modifier.align(Alignment.TopCenter),
+            onHeightChanged = { headerHeight = it },
+            title = {
+                Text(
+                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp),
+                    text = stringResource(R.string.restoreWallet_help_title),
+                    style = ZashiTypography.header6,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ZashiColors.Text.textPrimary
+                )
+            }
         )
     }
 }

@@ -86,4 +86,9 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.mockk)
     testImplementation("io.ktor:ktor-client-mock")
+    // Plain-JVM org.json: the Android `org.json` classes on this module's unit-test
+    // classpath are stubs (`unitTests.isReturnDefaultValues = true`), so the reference
+    // JVM implementation is needed to exercise `VotingApiProvider`'s `org.json`-built
+    // wire bodies (MOB-1678's SharePostBodyWireContractTest).
+    testImplementation("org.json:json:20260719")
 }
