@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
@@ -140,7 +141,8 @@ class SendEmailUseCaseTest {
         assertEquals(
             "CrossPay - ZEC > USDC (Arbitrum)",
             swapQuoteMismatchSwapTypeLabel(
-                report(mode = SwapMode.EXACT_OUTPUT)
+                report(mode = SwapMode.EXACT_OUTPUT),
+                ::string
             ) { chainTicker -> chainName(chainTicker) }
         )
     }
@@ -148,7 +150,7 @@ class SendEmailUseCaseTest {
     @Test
     fun swapMismatchReportUsesTheModeProductNames() {
         val label = { mode: SwapMode ->
-            swapQuoteMismatchSwapTypeLabel(report(mode = mode)) { chainTicker -> chainName(chainTicker) }
+            swapQuoteMismatchSwapTypeLabel(report(mode = mode), ::string) { chainTicker -> chainName(chainTicker) }
         }
 
         assertTrue(label(SwapMode.EXACT_INPUT).startsWith("Swap - "))
@@ -167,23 +169,47 @@ class SendEmailUseCaseTest {
                     originChainTicker = "arb",
                     destinationTokenTicker = "zec",
                     destinationChainTicker = "zec"
-                )
+                ),
+                ::string
             ) { chainTicker -> chainName(chainTicker) }
         )
     }
 
     @Test
-    fun swapMismatchReportUppercasesTheProviderId() {
-        assertEquals("NEAR", swapQuoteMismatchProviderLabel("near"))
+    fun swapMismatchReportNamesTheKnownProvider() {
+        assertEquals("NEAR", swapQuoteMismatchProviderLabel("near", ::string))
+    }
+
+    @Test
+    fun swapMismatchReportUppercasesAnUnknownProviderId() {
+        assertEquals("SOMESWAP", swapQuoteMismatchProviderLabel("someswap", ::string))
     }
 
     @Test
     fun swapMismatchTypesCarryASupportFacingLabel() {
-        assertEquals("Output amount", SwapQuoteMismatchType.OUTPUT_AMOUNT.reportLabel)
-        assertEquals("Recipient address", SwapQuoteMismatchType.RECIPIENT_ADDRESS.reportLabel)
+        assertEquals("Output amount", string(SwapQuoteMismatchType.OUTPUT_AMOUNT.reportLabelRes))
+        assertEquals("Recipient address", string(SwapQuoteMismatchType.RECIPIENT_ADDRESS.reportLabelRes))
     }
 
     private fun chainName(chainTicker: String) = if (chainTicker == "arb") "Arbitrum" else chainTicker
+
+    /**
+     * The English copy of every resource the mismatch report labels resolve, keyed by resource id.
+     */
+    private val strings =
+        mapOf(
+            R.string.swap_mismatch_mode_swap to "Swap",
+            R.string.swap_mismatch_mode_crosspay to "CrossPay",
+            R.string.swap_mismatch_mode_swapIntoZec to "Swap into ZEC",
+            R.string.swap_mismatch_type_outputAmount to "Output amount",
+            R.string.swap_mismatch_type_recipientAddress to "Recipient address",
+            R.string.swap_mismatch_provider_near to "NEAR",
+            R.string.swap_mismatch_swapType_format to "%1\$s - %2\$s > %3\$s",
+            R.string.swap_mismatch_asset_format to "%1\$s (%2\$s)",
+        )
+
+    /** Stands in for `Context::getString`, so the assertions stay on the exact final strings. */
+    private fun string(resId: Int) = strings.getValue(resId)
 
     @Suppress("LongParameterList")
     private fun report(

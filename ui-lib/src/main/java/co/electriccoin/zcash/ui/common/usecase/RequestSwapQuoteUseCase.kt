@@ -230,7 +230,7 @@ class RequestSwapQuoteUseCase(
 }
 
 /** The only swap provider the app talks to; matches `NearSwapQuote.provider`. */
-private const val SWAP_PROVIDER_NEAR = "near"
+internal const val SWAP_PROVIDER_NEAR = "near"
 
 private const val ZEC_TICKER = "zec"
 

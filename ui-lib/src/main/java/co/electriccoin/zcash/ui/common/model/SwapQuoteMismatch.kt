@@ -1,25 +1,28 @@
 package co.electriccoin.zcash.ui.common.model
 
+import androidx.annotation.StringRes
+import co.electriccoin.zcash.ui.R
+
 /**
  * Which request-vs-response check rejected a swap quote (MOB-1340).
  *
- * [reportLabel] is English support-facing copy for the mismatch report email only — it is never shown
- * in the UI (the sheet is deliberately generic), so it is a Kotlin property rather than a string resource.
+ * [reportLabelRes] names the failed check in the mismatch report email; it is never shown in the UI,
+ * where the sheet stays deliberately generic.
  */
 enum class SwapQuoteMismatchType(
-    val reportLabel: String
+    @field:StringRes val reportLabelRes: Int
 ) {
-    RECIPIENT_ADDRESS("Recipient address"),
-    REFUND_ADDRESS("Refund address"),
-    ORIGIN_ASSET("Origin asset"),
-    DESTINATION_ASSET("Destination asset"),
-    SWAP_TYPE("Swap type"),
-    SLIPPAGE_TOLERANCE("Slippage tolerance"),
-    INPUT_AMOUNT("Input amount"),
-    OUTPUT_AMOUNT("Output amount"),
-    REQUESTED_AMOUNT("Requested amount"),
-    SLIPPAGE_EXCEEDED("Slippage exceeded"),
-    NON_POSITIVE_AMOUNT("Non-positive amount"),
+    RECIPIENT_ADDRESS(R.string.swap_mismatch_type_recipientAddress),
+    REFUND_ADDRESS(R.string.swap_mismatch_type_refundAddress),
+    ORIGIN_ASSET(R.string.swap_mismatch_type_originAsset),
+    DESTINATION_ASSET(R.string.swap_mismatch_type_destinationAsset),
+    SWAP_TYPE(R.string.swap_mismatch_type_swapType),
+    SLIPPAGE_TOLERANCE(R.string.swap_mismatch_type_slippageTolerance),
+    INPUT_AMOUNT(R.string.swap_mismatch_type_inputAmount),
+    OUTPUT_AMOUNT(R.string.swap_mismatch_type_outputAmount),
+    REQUESTED_AMOUNT(R.string.swap_mismatch_type_requestedAmount),
+    SLIPPAGE_EXCEEDED(R.string.swap_mismatch_type_slippageExceeded),
+    NON_POSITIVE_AMOUNT(R.string.swap_mismatch_type_nonPositiveAmount),
 }
 
 /**

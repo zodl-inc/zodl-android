@@ -11,6 +11,7 @@ import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getString
 import co.electriccoin.zcash.ui.screen.support.model.SupportInfoType
 import co.electriccoin.zcash.ui.util.EmailUtil
+import java.util.Locale
 
 @Suppress("TooManyFunctions")
 class SendEmailUseCase(
@@ -208,6 +209,7 @@ class SendEmailUseCase(
      * Sends a support email for a swap quote that failed the request-vs-response validation (MOB-1340).
      */
     suspend operator fun invoke(report: SwapQuoteMismatchReport) {
+        val getString: (Int) -> String = { resId -> context.getString(resId) }
         sendSupportEmail(
             subject = context.getString(R.string.swap_mismatch_support_email_subject),
             messageBody =
@@ -215,12 +217,12 @@ class SendEmailUseCase(
                     body =
                         context.getString(
                             R.string.swap_mismatch_support_email_body,
-                            swapQuoteMismatchProviderLabel(report.provider),
-                            swapQuoteMismatchSwapTypeLabel(report) { chainTicker ->
+                            swapQuoteMismatchProviderLabel(report.provider, getString),
+                            swapQuoteMismatchSwapTypeLabel(report, getString) { chainTicker ->
                                 blockchainProvider.getBlockchain(chainTicker).chainName.getString(context)
                             },
-                            report.mismatchType.reportLabel,
-                            report.depositAddress ?: UNKNOWN_QUOTE_ID,
+                            getString(report.mismatchType.reportLabelRes),
+                            report.depositAddress ?: getString(R.string.swap_mismatch_quoteId_unknown),
                         ),
                     supportInfo =
                         getSupport().toSupportString(
@@ -337,44 +339,62 @@ internal fun submitErrorPreSubmissionDetail(cause: Exception): SubmitErrorPreSub
         description = cause.stackTraceToLimitedString(PRE_SUBMISSION_STACK_TRACE_LIMIT) ?: "Unknown error"
     )
 
-private const val UNKNOWN_QUOTE_ID = "unknown"
-
 /**
  * The support-facing name of a swap provider, e.g. the `near` [co.electriccoin.zcash.ui.common.model.SwapQuote]
- * provider id renders as `NEAR`. English only: it is never shown in the UI.
+ * provider id renders as `NEAR`. A provider we carry no copy for falls back to its uppercased id.
+ * [getString] resolves a string resource, so the label stays testable without an Android context.
  */
-internal fun swapQuoteMismatchProviderLabel(provider: String): String = provider.uppercase()
+internal fun swapQuoteMismatchProviderLabel(
+    provider: String,
+    getString: (Int) -> String
+): String =
+    when (provider.lowercase()) {
+        SWAP_PROVIDER_NEAR -> getString(R.string.swap_mismatch_provider_near)
+        else -> provider.uppercase()
+    }
 
 /**
  * The support-facing swap-type line of a mismatch report, e.g. `CrossPay - ZEC > USDC (Arbitrum)`.
- * [chainName] resolves a chain ticker to its display name; the chain is omitted for ZEC, which has
- * only one. English only: it is never shown in the UI.
+ * [getString] resolves a string resource; [chainName] resolves a chain ticker to its display name,
+ * and the chain is omitted for ZEC, which has only one.
  */
 internal fun swapQuoteMismatchSwapTypeLabel(
     report: SwapQuoteMismatchReport,
+    getString: (Int) -> String,
     chainName: (String) -> String
 ): String {
     val mode =
-        when (report.mode) {
-            SwapMode.EXACT_INPUT -> "Swap"
-            SwapMode.EXACT_OUTPUT -> "CrossPay"
-            SwapMode.FLEX_INPUT -> "Swap into ZEC"
-        }
-    val origin = swapQuoteMismatchAssetLabel(report.originTokenTicker, report.originChainTicker, chainName)
+        getString(
+            when (report.mode) {
+                SwapMode.EXACT_INPUT -> R.string.swap_mismatch_mode_swap
+                SwapMode.EXACT_OUTPUT -> R.string.swap_mismatch_mode_crosspay
+                SwapMode.FLEX_INPUT -> R.string.swap_mismatch_mode_swapIntoZec
+            }
+        )
+    val origin =
+        swapQuoteMismatchAssetLabel(report.originTokenTicker, report.originChainTicker, getString, chainName)
     val destination =
-        swapQuoteMismatchAssetLabel(report.destinationTokenTicker, report.destinationChainTicker, chainName)
-    return "$mode - $origin > $destination"
+        swapQuoteMismatchAssetLabel(
+            report.destinationTokenTicker,
+            report.destinationChainTicker,
+            getString,
+            chainName
+        )
+    return getString(R.string.swap_mismatch_swapType_format)
+        .format(Locale.getDefault(), mode, origin, destination)
 }
 
 private fun swapQuoteMismatchAssetLabel(
     tokenTicker: String,
     chainTicker: String,
+    getString: (Int) -> String,
     chainName: (String) -> String
 ): String =
     if (tokenTicker.equals(ZEC_TICKER, ignoreCase = true) && chainTicker.equals(ZEC_TICKER, ignoreCase = true)) {
         tokenTicker.uppercase()
     } else {
-        "${tokenTicker.uppercase()} (${chainName(chainTicker)})"
+        getString(R.string.swap_mismatch_asset_format)
+            .format(Locale.getDefault(), tokenTicker.uppercase(), chainName(chainTicker))
     }
 
 private const val ZEC_TICKER = "zec"
