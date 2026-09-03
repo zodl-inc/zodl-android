@@ -10,7 +10,6 @@ import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.canSpend
-import co.electriccoin.zcash.ui.common.model.totalSpendableBalance
 import co.electriccoin.zcash.ui.common.repository.DEFAULT_SLIPPAGE
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
@@ -317,14 +316,12 @@ internal interface InternalState {
     val swapAssets: SwapAssetsData
     val isEphemeralAddressLocked: Boolean
 
-    val totalSpendableBalance: Zatoshi
-        get() = account.totalSpendableBalance
-
     /**
      * Delegates to the shared [co.electriccoin.zcash.ui.common.model.canSpend] primitive.
-     * Re-evaluated whenever the selected account emits a new balance.
+     * Re-evaluated whenever the selected account emits a new balance. Null while the balance has
+     * not loaded yet.
      */
-    fun canSpend(amount: Zatoshi): Boolean = account.canSpend(amount)
+    fun canSpend(amount: Zatoshi): Boolean? = account.canSpend(amount)
 }
 
 internal data class InternalStateImpl(

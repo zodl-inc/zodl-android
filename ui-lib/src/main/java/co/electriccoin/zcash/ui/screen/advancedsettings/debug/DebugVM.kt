@@ -3,7 +3,9 @@ package co.electriccoin.zcash.ui.screen.advancedsettings.debug
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.component.destructive
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
 import co.electriccoin.zcash.ui.common.migration.MigrationDebugActions
@@ -13,6 +15,7 @@ import co.electriccoin.zcash.ui.common.model.toStorageKeyId
 import co.electriccoin.zcash.ui.common.provider.DebugForceBackgroundExecutionUnavailable
 import co.electriccoin.zcash.ui.common.repository.EphemeralAddressRepository
 import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
+import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
 import co.electriccoin.zcash.ui.design.component.listitem.ListItemState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.advancedsettings.debug.db.DebugDBArgs
@@ -20,10 +23,19 @@ import co.electriccoin.zcash.ui.screen.advancedsettings.debug.orchardbalance.Deb
 import co.electriccoin.zcash.ui.screen.advancedsettings.debug.text.DebugTextArgs
 import co.electriccoin.zcash.ui.screen.hotfix.ephemeral.EphemeralHotfixArgs
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.WhileSubscribed
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+/**
+ * MOB-1397 added a debug action (Simulate SeedNotRelevant), pushing this debug-only menu's
+ * ViewModel past detekt's function-count threshold; it's a flat list of independent debug actions
+ * rather than genuinely complex, so suppressing here is preferable to splitting it.
+ */
+@Suppress("TooManyFunctions")
 class DebugVM(
     private val copyToClipboardUseCase: CopyToClipboardUseCase,
     private val ephemeralAddressRepository: EphemeralAddressRepository,
@@ -32,60 +44,75 @@ class DebugVM(
     private val migrationAppHooks: MigrationAppHooks,
     private val context: Context,
     private val navigationRouter: NavigationRouter,
+    private val simulateSeedNotRelevant: SimulateSeedNotRelevantUseCase,
 ) : ViewModel() {
-    val state: StateFlow<DebugState> =
-        MutableStateFlow(
-            DebugState(
-                onBack = ::onBack,
-                items =
-                    listOf(
-                        ListItemState(
-                            // bigIcon = imageRes(R.drawable.ic_zec_round_full),
-                            // smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_unshielded),
-                            title = stringRes("Get Current Ephemeral Address"),
-                            onClick = ::onGetEphemeralAddressClick
-                        ),
-                        ListItemState(
-                            // bigIcon = imageRes(R.drawable.ic_zec_round_full),
-                            // smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_unshielded),
-                            title = stringRes("Generate an Ephemeral Address"),
-                            onClick = ::onGenerateEphemeralAddressClick
-                        ),
-                        ListItemState(
-                            // bigIcon = imageRes(R.drawable.ic_zec_round_full),
-                            // smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_unshielded),
-                            title = stringRes("Discover Funds"),
-                            onClick = ::onDiscoverFundsClick
-                        ),
-                        ListItemState(
-                            // bigIcon = imageRes(R.drawable.ic_zec_round_full),
-                            // smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_unshielded),
-                            title = stringRes("Query Database"),
-                            onClick = ::onQueryDatabaseClick
-                        ),
-                        ListItemState(
-                            title = stringRes("Current Shield Addresses"),
-                            onClick = ::onCurrentShieldAddressesClick
-                        ),
-                        ListItemState(
-                            title = stringRes("Set Mock Orchard Balance (Migration)"),
-                            onClick = ::onSetMockOrchardBalanceClick
-                        ),
-                        ListItemState(
-                            title = stringRes("Migration restart"),
-                            onClick = ::onMigrationRestartClick
-                        ),
-                        ListItemState(
-                            title = stringRes("Migration: simulate Tor background failure"),
-                            onClick = ::onSimulateMigrationTorFailureClick
-                        ),
-                        ListItemState(
-                            title = stringRes("Migration: toggle 'no background execution' (Transfer Ready to Send)"),
-                            onClick = ::onToggleBackgroundExecutionUnavailableClick
-                        )
-                    )
+    private val confirmationDialog = MutableStateFlow<ZashiConfirmationState?>(null)
+
+    private val items =
+        listOf(
+            ListItemState(
+                // bigIcon = imageRes(R.drawable.ic_zec_round_full),
+                // smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_unshielded),
+                title = stringRes("Get Current Ephemeral Address"),
+                onClick = ::onGetEphemeralAddressClick
+            ),
+            ListItemState(
+                // bigIcon = imageRes(R.drawable.ic_zec_round_full),
+                // smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_unshielded),
+                title = stringRes("Generate an Ephemeral Address"),
+                onClick = ::onGenerateEphemeralAddressClick
+            ),
+            ListItemState(
+                // bigIcon = imageRes(R.drawable.ic_zec_round_full),
+                // smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_unshielded),
+                title = stringRes("Discover Funds"),
+                onClick = ::onDiscoverFundsClick
+            ),
+            ListItemState(
+                // bigIcon = imageRes(R.drawable.ic_zec_round_full),
+                // smallIcon = imageRes(co.electriccoin.zcash.ui.design.R.drawable.ic_zec_unshielded),
+                title = stringRes("Query Database"),
+                onClick = ::onQueryDatabaseClick
+            ),
+            ListItemState(
+                title = stringRes("Current Shield Addresses"),
+                onClick = ::onCurrentShieldAddressesClick
+            ),
+            ListItemState(
+                title = stringRes("Set Mock Orchard Balance (Migration)"),
+                onClick = ::onSetMockOrchardBalanceClick
+            ),
+            ListItemState(
+                title = stringRes("Migration restart"),
+                onClick = ::onMigrationRestartClick
+            ),
+            ListItemState(
+                title = stringRes("Migration: simulate Tor background failure"),
+                onClick = ::onSimulateMigrationTorFailureClick
+            ),
+            ListItemState(
+                title = stringRes("Migration: toggle 'no background execution' (Transfer Ready to Send)"),
+                onClick = ::onToggleBackgroundExecutionUnavailableClick
+            ),
+            ListItemState(
+                title = stringRes("Simulate SeedNotRelevant"),
+                onClick = ::onSimulateSeedNotRelevantClick
             )
-        ).asStateFlow()
+        )
+
+    val state: StateFlow<DebugState> =
+        confirmationDialog
+            .map { dialog ->
+                DebugState(
+                    onBack = ::onBack,
+                    items = items,
+                    confirmationDialog = dialog,
+                )
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
+                initialValue = DebugState(onBack = ::onBack, items = items, confirmationDialog = null),
+            )
 
     private fun onBack() = navigationRouter.back()
 
@@ -123,7 +150,7 @@ class DebugVM(
                             is ZashiAccount -> "Zashi"
                             is KeystoneAccount -> "Keystone"
                         }
-                    "$label\n${account.unified.address.address}"
+                    "$label\n${account.unifiedAddress}"
                 }
             copyToClipboardUseCase(text)
             navigationRouter.forward(
@@ -199,4 +226,30 @@ class DebugVM(
                 )
             )
         }
+
+    /**
+     * MOB-1397 review: this irreversibly overwrites the real stored seed with random entropy and
+     * then kills the process — a tester with a funded debug wallet loses it unless they backed it
+     * up first. Gate it behind an explicit confirmation so a stray tap can't destroy a funded
+     * debug wallet by accident. (Dismiss/confirm are inline lambdas rather than named private
+     * functions to stay under this class's function-count budget.)
+     */
+    private fun onSimulateSeedNotRelevantClick() {
+        confirmationDialog.value =
+            ZashiConfirmationState.destructive(
+                title = stringRes("Simulate SeedNotRelevant?"),
+                message =
+                    stringRes(
+                        "This overwrites the current wallet's stored seed with random entropy and " +
+                            "kills the app, irreversibly. Back up this wallet's seed first if it holds " +
+                            "real funds."
+                    ),
+                primaryText = stringRes("Overwrite seed"),
+                onPrimary = {
+                    confirmationDialog.value = null
+                    viewModelScope.launch { simulateSeedNotRelevant() }
+                },
+                onBack = { confirmationDialog.value = null },
+            )
+    }
 }

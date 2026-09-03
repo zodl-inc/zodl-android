@@ -17,7 +17,7 @@ import kotlin.time.Instant
 /**
  * Pure-logic coverage for the Migration Progress row rendering and header subtitle.
  *
- * Finalized 2026-08-03 (decision with Dominik) against 4 Figma reference screens: no debug-only
+ * Finalized 2026-08-03 (decision with the product owner) against 4 Figma reference screens: no debug-only
  * raw engine word is shown anywhere anymore, "Overdue" stays gone (decision 2026-07-31, reaffirmed
  * here), and every row falls into exactly one of: a genuinely-blocked state (`EXPIRED` /
  * `UNPROVABLE_ANCHOR` / `SIGNATURE` — the only three blockers that never self-resolve), "Sent"

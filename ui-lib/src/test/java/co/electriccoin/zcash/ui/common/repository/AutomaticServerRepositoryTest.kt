@@ -1,6 +1,8 @@
 package co.electriccoin.zcash.ui.common.repository
 
 import cash.z.ecc.android.sdk.Synchronizer
+import cash.z.ecc.android.sdk.model.AccountBalance
+import cash.z.ecc.android.sdk.model.AccountUuid
 import cash.z.ecc.android.sdk.model.PersistableWallet
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
@@ -14,6 +16,7 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -36,13 +39,17 @@ class AutomaticServerRepositoryTest {
     private val known = listOf(default, endpoint("na.zec.rocks"))
 
     private val isAutomaticProvider = mockk<IsServerSelectionAutomaticProvider>(relaxed = true)
-    private val persistableWalletProvider = mockk<PersistableWalletProvider>(relaxed = true)
+    private val persistedWallet = MutableStateFlow<PersistableWallet?>(null)
+    private val persistableWalletProvider =
+        mockk<PersistableWalletProvider>(relaxed = true) { every { persistableWallet } returns persistedWallet }
     private val lightWalletEndpointProvider =
         mockk<LightWalletEndpointProvider>(relaxed = true) { every { getEndpoints() } returns known }
-    private val synchronizer = mockk<Synchronizer>(relaxed = true)
+    private val localBalances = MutableStateFlow<Map<AccountUuid, AccountBalance>?>(null)
+    private val synchronizer = mockk<Synchronizer>(relaxed = true) { every { walletBalances } returns localBalances }
     private val synchronizerProvider =
         mockk<SynchronizerProvider>(relaxed = true).also {
             coEvery { it.getSynchronizerOrNull() } returns synchronizer
+            every { it.synchronizer } returns MutableStateFlow<Synchronizer?>(synchronizer)
         }
 
     /**
@@ -66,10 +73,10 @@ class AutomaticServerRepositoryTest {
             zashiProposalRepository = zashiProposalRepository,
             keystoneProposalRepository = keystoneProposalRepository,
             applicationStateProvider = mockk(relaxed = true),
+            synchronizerProvider = synchronizerProvider,
             persistableWalletProvider = persistableWalletProvider,
             lightWalletEndpointProvider = lightWalletEndpointProvider,
-            isServerSelectionAutomaticProvider = isAutomaticProvider,
-            synchronizerProvider = synchronizerProvider
+            isServerSelectionAutomaticProvider = isAutomaticProvider
         )
 
     @Test
@@ -171,6 +178,31 @@ class AutomaticServerRepositoryTest {
                 )
             }
         }
+
+    @Test
+    fun switchCandidateWaitsForTheLocalBalanceSnapshot() =
+        runTest {
+            stubSwitchDecision(balances = null)
+
+            assertNull(withTimeoutOrNull(1.seconds) { repository.resolveSwitchCandidate() })
+        }
+
+    @Test
+    fun switchCandidateIsReleasedByTheLocalBalanceSnapshot() =
+        runTest {
+            stubSwitchDecision(balances = emptyMap())
+
+            assertEquals(known.last(), repository.resolveSwitchCandidate())
+        }
+
+    private fun stubSwitchDecision(balances: Map<AccountUuid, AccountBalance>?) {
+        val wallet = wallet(known.first())
+        coEvery { isAutomaticProvider.get() } returns true
+        coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet
+        persistedWallet.value = wallet
+        localBalances.value = balances
+        coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns known.last()
+    }
 
     private fun wallet(walletEndpoint: LightWalletEndpoint) =
         mockk<PersistableWallet> { every { endpoint } returns walletEndpoint }

@@ -15,7 +15,6 @@ import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -57,16 +56,16 @@ class WalletViewModelTest {
     // MOB-1620: gated on MIGRATION_DUST_THRESHOLD_ZATOSHI rather than a bare `> 0L`, so a
     // dust-only residual (e.g. left over after a re-import resets the locally-tracked
     // isIronwoodAnnouncementShown flag) never re-triggers the full-screen announcement.
-    private fun vm(orchardZatoshi: Long): WalletViewModel {
+    private fun vm(orchardZatoshi: Long = 0L): WalletViewModel {
         val synchronizer =
             mockk<Synchronizer> {
                 every { network } returns ZcashNetwork.Mainnet
                 every { fullyScannedHeight } returns MutableStateFlow(BlockHeight.new(3_500_000L))
+                every { walletBalances } returns MutableStateFlow(balancesWithOrchard(orchardZatoshi))
             }
         val synchronizerProvider =
             mockk<SynchronizerProvider> {
                 every { this@mockk.synchronizer } returns MutableStateFlow(synchronizer)
-                every { walletBalances } returns flowOf(balancesWithOrchard(orchardZatoshi))
             }
         val walletRepository =
             mockk<WalletRepository>(relaxed = true) {

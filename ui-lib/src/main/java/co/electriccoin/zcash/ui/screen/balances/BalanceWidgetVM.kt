@@ -53,7 +53,6 @@ class BalanceWidgetVM(
                 )
         )
 
-    @Suppress("CyclomaticComplexMethod")
     private fun createState(
         account: WalletAccount?,
         exchangeRate: ExchangeRateState,
@@ -63,60 +62,62 @@ class BalanceWidgetVM(
         exchangeRate = if (args.isExchangeRateButtonEnabled) exchangeRate else null,
         button =
             when {
-                !args.isBalanceButtonEnabled -> {
-                    null
-                }
-
-                account == null -> {
-                    null
-                }
-
-                account.isAllShielded -> {
-                    null
-                }
-
-                account.totalBalance > account.spendableShieldedBalance &&
-                    account.isShieldedPending &&
-                    account.totalShieldedBalance > Zatoshi(0) &&
-                    account.spendableShieldedBalance == Zatoshi(0) -> {
-                    BalanceButtonState(
-                        icon = R.drawable.ic_balances_expand,
-                        text = stringRes(R.string.widget_balances_button_spendable),
-                        amount = null,
-                        onClick = ::onBalanceButtonClick
-                    )
-                }
-
-                account.totalBalance > account.spendableShieldedBalance &&
-                    !account.isShieldedPending &&
-                    account.totalShieldedBalance > Zatoshi(0) &&
-                    account.spendableShieldedBalance == Zatoshi(0) &&
-                    account.totalTransparentBalance == Zatoshi(0) -> {
-                    BalanceButtonState(
-                        icon = R.drawable.ic_balances_expand,
-                        text = stringRes(R.string.widget_balances_button_spendable),
-                        amount = null,
-                        onClick = ::onBalanceButtonClick
-                    )
-                }
-
-                account.totalBalance > account.spendableShieldedBalance -> {
-                    BalanceButtonState(
-                        icon = R.drawable.ic_balances_expand,
-                        text = stringRes(R.string.widget_balances_button_spendable),
-                        amount = account.spendableShieldedBalance,
-                        onClick = ::onBalanceButtonClick
-                    )
-                }
-
-                else -> {
-                    null
-                }
+                !args.isBalanceButtonEnabled -> null
+                account == null -> null
+                else -> createBalanceButtonState(account)
             },
         showDust = args.showDust,
         onBalanceClick =
             if (args.isBalanceBreakdownEnabled && account != null) ::onBalanceClick else null
     )
+
+    @Suppress("CyclomaticComplexMethod", "ReturnCount")
+    private fun createBalanceButtonState(account: WalletAccount): BalanceButtonState? {
+        val isAllShielded = account.isAllShielded ?: return null
+        if (isAllShielded) return null
+
+        val b = account.loadedBalances ?: return null
+
+        return when {
+            b.totalBalance > b.spendableShieldedBalance &&
+                b.isShieldedPending &&
+                b.totalShieldedBalance > Zatoshi(0) &&
+                b.spendableShieldedBalance == Zatoshi(0) -> {
+                BalanceButtonState(
+                    icon = R.drawable.ic_balances_expand,
+                    text = stringRes(R.string.widget_balances_button_spendable),
+                    amount = null,
+                    onClick = ::onBalanceButtonClick
+                )
+            }
+
+            b.totalBalance > b.spendableShieldedBalance &&
+                !b.isShieldedPending &&
+                b.totalShieldedBalance > Zatoshi(0) &&
+                b.spendableShieldedBalance == Zatoshi(0) &&
+                b.totalTransparentBalance == Zatoshi(0) -> {
+                BalanceButtonState(
+                    icon = R.drawable.ic_balances_expand,
+                    text = stringRes(R.string.widget_balances_button_spendable),
+                    amount = null,
+                    onClick = ::onBalanceButtonClick
+                )
+            }
+
+            b.totalBalance > b.spendableShieldedBalance -> {
+                BalanceButtonState(
+                    icon = R.drawable.ic_balances_expand,
+                    text = stringRes(R.string.widget_balances_button_spendable),
+                    amount = b.spendableShieldedBalance,
+                    onClick = ::onBalanceButtonClick
+                )
+            }
+
+            else -> {
+                null
+            }
+        }
+    }
 
     private fun onBalanceButtonClick() = navigationRouter.forward(SpendableBalanceArgs)
 

@@ -8,6 +8,8 @@ import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvid
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
+import co.electriccoin.zcash.ui.common.provider.rawWalletBalances
+import co.electriccoin.zcash.ui.common.provider.retainWhileWalletExists
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -15,6 +17,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
@@ -37,10 +40,10 @@ class AutomaticServerRepositoryImpl(
     private val zashiProposalRepository: ZashiProposalRepository,
     private val keystoneProposalRepository: KeystoneProposalRepository,
     private val applicationStateProvider: ApplicationStateProvider,
+    private val synchronizerProvider: SynchronizerProvider,
     private val persistableWalletProvider: PersistableWalletProvider,
     private val lightWalletEndpointProvider: LightWalletEndpointProvider,
     private val isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
-    private val synchronizerProvider: SynchronizerProvider,
 ) : AutomaticServerRepository {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -50,6 +53,12 @@ class AutomaticServerRepositoryImpl(
                 zashiProposalRepository.submitState.value != null ||
                 keystoneProposalRepository.transactionProposal.value != null ||
                 keystoneProposalRepository.submitState.value != null
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val walletBalances =
+        synchronizerProvider
+            .rawWalletBalances()
+            .retainWhileWalletExists(persistableWalletProvider)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override val isServerAutomatic: Flow<Boolean> =
@@ -85,15 +94,24 @@ class AutomaticServerRepositoryImpl(
         )
     }
 
+    /**
+     * Subscribes to the app-foreground signal. Every foreground edge benchmarks the bundled servers through
+     * the SDK's hysteresis policy, and a newer edge cancels an in-flight evaluation. A switch candidate is
+     * applied only once the first local balance snapshot exists: a different endpoint rebuilds the
+     * Synchronizer, and UI consumers retain that snapshot through the replacement.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun init() {
         applicationStateProvider
             .observeOnForeground()
-            .mapLatest { evaluateServerSwitch() }
+            .mapLatest { resolveSwitchCandidate() }
             .filterNotNull()
             .onEach { applyServerSwitch(it) }
             .launchIn(scope)
     }
+
+    internal suspend fun resolveSwitchCandidate(): LightWalletEndpoint? =
+        evaluateServerSwitch()?.also { walletBalances.filterNotNull().first() }
 
     @Suppress("ReturnCount")
     internal suspend fun evaluateServerSwitch(): LightWalletEndpoint? {

@@ -64,7 +64,7 @@ class MigrationProgressVM(
         ) { rate, readout ->
             // Everything on this screen derives LIVE from the engine's persisted states — no plan
             // cache to diverge, and no app-side "overdue"/countdown: each row renders purely from
-            // the engine's per-transaction status (decision with Dominik 2026-07-31). The measured
+            // the engine's per-transaction status (decision with the product owner 2026-07-31). The measured
             // block rate is still used for the rough total-duration estimate in the header only.
             // Both come from the SAME readout as the states below — one atomic read, never a fresh
             // states paired with a stale/independently-read tip estimate or vice versa.
@@ -309,7 +309,7 @@ internal fun orchardRemainingZatoshi(
  * existing static total-span framing unchanged: "over ~X" spanning the earliest to the latest
  * scheduled moment across preparations AND transfers.
  *
- * Once in progress (`completedCount > 0` — a concrete, checkable condition, decision with Dominik
+ * Once in progress (`completedCount > 0` — a concrete, checkable condition, decision with the product owner
  * 2026-08-01), the header instead counts down the REMAINING time to the last scheduled moment.
  * This MUST branch explicitly on `remaining > 0` vs `remaining <= 0`: [formatMigrationDuration]
  * floors its input at a network-dependent privacy floor (10 min testnet / 1 hour mainnet, decision
@@ -376,7 +376,7 @@ internal data class MigrationRowDisplay(
 
 /**
  * Row state for a crossing transfer, in Figma's priority order (2026-08-03 finalization, decision
- * with Dominik — replaces the old debug/primary split from 2026-08-01):
+ * with the product owner — replaces the old debug/primary split from 2026-08-01):
  *
  * 1. A genuinely blocked row (`EXPIRED`/`UNPROVABLE_ANCHOR`/`SIGNATURE`/`UNSATISFIABLE` — the ones
  *    that can never self-resolve) keeps its own explicit copy, regardless of schedule time.
@@ -396,7 +396,7 @@ internal data class MigrationRowDisplay(
  *    [isLastRowOverall], which gets "in ~X" (Figma is consistent: only the last row on screen ever
  *    gets the "in" prefix).
  *
- * Never reintroduces "Overdue" or a countdown-to-deadline (decision with Dominik 2026-07-31,
+ * Never reintroduces "Overdue" or a countdown-to-deadline (decision with the product owner 2026-07-31,
  * reaffirmed 2026-08-03) — a late-but-healthy transfer just reads "Ready now".
  *
  * Top-level and internal for unit-testability without Android or Koin.
@@ -474,7 +474,7 @@ internal fun preparationRowDisplay(
 
 /**
  * Collapses Figma's "Confirmed"/"Sent" split into a single broadcast state (2026-08-03, decision
- * with Dominik): [LiveMigrationTransfer] carries no broadcast timestamp, only an optional mined
+ * with the product owner): [LiveMigrationTransfer] carries no broadcast timestamp, only an optional mined
  * height/time, so "Sent {relative} ago" is only shown once [minedAt] is known; until then this
  * reads plain "Sent" rather than inventing a broadcast time the model doesn't have.
  */
