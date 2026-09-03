@@ -1,6 +1,9 @@
 package co.electriccoin.zcash.ui.common.repository
 
 import android.app.Application
+import androidx.annotation.RestrictTo
+import androidx.annotation.VisibleForTesting
+import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.WalletInitMode
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.FastestServersResult
@@ -83,7 +86,15 @@ class WalletRepositoryImpl(
     private val walletBackupFlagStorageProvider: WalletBackupFlagStorageProvider,
     private val isIronwoodAnnouncementShownStorageProvider: IsIronwoodAnnouncementShownStorageProvider,
 ) : WalletRepository {
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val sharingScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    /**
+     * Scope the repository's fire-and-forget jobs run on. A test seam: unit tests replace it
+     * with a test dispatcher before invoking any method.
+     */
+    @set:RestrictTo(RestrictTo.Scope.TESTS)
+    @VisibleForTesting
+    internal var scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val refreshFastestServersRequest = MutableSharedFlow<Unit>()
 
@@ -96,21 +107,28 @@ class WalletRepositoryImpl(
             )
         }
 
+    /**
+     * READY additionally requires a stored wallet ([resolveSecretState]), because the plain
+     * onboarding flag and the encrypted wallet store can diverge when the encrypted store is
+     * recreated after provable corruption (MOB-1836). This flow never catches: a transient
+     * Keystore failure surfacing here is left to crash the sharing coroutine, the same terminal
+     * outcome the app already reaches today via [co.electriccoin.zcash.ui.common.provider.SynchronizerProvider]
+     * collecting the same underlying store, rather than misrouting an intact-but-unreadable store
+     * to onboarding.
+     */
     override val secretState: StateFlow<SecretState> =
-        combine(configurationRepository.configurationFlow, onboardingState) { config, onboardingState ->
-            if (config == null) {
-                SecretState.LOADING
-            } else {
-                when (onboardingState) {
-                    OnboardingState.NEEDS_WARN,
-                    OnboardingState.NEEDS_BACKUP,
-                    OnboardingState.NONE -> SecretState.NONE
-
-                    OnboardingState.READY -> SecretState.READY
-                }
-            }
+        combine(
+            configurationRepository.configurationFlow,
+            onboardingState,
+            persistableWalletProvider.persistableWallet
+        ) { config, onboardingState, wallet ->
+            resolveSecretState(
+                isConfigurationLoaded = config != null,
+                onboardingState = onboardingState,
+                hasWallet = wallet != null
+            )
         }.stateIn(
-            scope = scope,
+            scope = sharingScope,
             started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
             initialValue = SecretState.LOADING
         )
@@ -119,7 +137,7 @@ class WalletRepositoryImpl(
         isIronwoodAnnouncementShownStorageProvider
             .observe()
             .stateIn(
-                scope = scope,
+                scope = sharingScope,
                 started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
                 initialValue = null
             )
@@ -183,7 +201,7 @@ class WalletRepositoryImpl(
             }.onEach {
                 previousFastestEndpoints = it
             }.stateIn(
-                scope = scope,
+                scope = sharingScope,
                 started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
                 initialValue = FastestServersState(servers = emptyList(), isLoading = true)
             )
@@ -192,7 +210,7 @@ class WalletRepositoryImpl(
         walletRestoringStateProvider
             .observe()
             .stateIn(
-                scope = scope,
+                scope = sharingScope,
                 started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
                 initialValue = WalletRestoringState.NONE
             )
@@ -202,8 +220,9 @@ class WalletRepositoryImpl(
         scope.launch {
             try {
                 migrateDecommissionedEndpointIfNeeded()
+                resetOnboardingIfWalletMissing()
             } catch (e: Exception) {
-                Twig.error(e) { "Decommissioned endpoint migration failed; will retry on next launch" }
+                Twig.error(e) { "Startup wallet consistency checks failed; will retry on next launch" }
             }
         }
     }
@@ -213,6 +232,24 @@ class WalletRepositoryImpl(
         if (wallet.endpoint.host in lightWalletEndpointProvider.getDecommissionedHosts()) {
             persistWalletInternal(wallet.copy(endpoint = lightWalletEndpointProvider.getDefaultEndpoint()))
         }
+    }
+
+    /**
+     * Self-heals a wallet-less READY state (MOB-1836): the onboarding flag and the encrypted
+     * wallet store live in separate preference files and can diverge when the encrypted store is
+     * recreated after provable corruption. Erases any stale SDK databases directly, since no
+     * synchronizer exists yet at this point to route through the usual delete-and-restore paths.
+     */
+    private suspend fun resetOnboardingIfWalletMissing() {
+        val currentOnboardingState =
+            OnboardingState.fromNumber(StandardPreferenceKeys.ONBOARDING_STATE.getValue(standardPreferenceProvider()))
+        if (currentOnboardingState != OnboardingState.READY) return
+        if (persistableWalletProvider.getPersistableWallet() != null) return
+
+        Twig.warn { "Onboarding state is READY but no wallet is stored; returning to onboarding" }
+        runCatching { Synchronizer.erase(application, ZcashNetwork.fromResources(application)) }
+            .onFailure { Twig.error(it) { "Erasing stale wallet data failed; continuing" } }
+        persistOnboardingStateInternal(OnboardingState.NONE)
     }
 
     override suspend fun updateWalletEndpoint(endpoint: LightWalletEndpoint) {
@@ -228,7 +265,6 @@ class WalletRepositoryImpl(
 
     override fun createNewWallet() {
         scope.launch {
-            persistOnboardingStateInternal(OnboardingState.READY)
             val zcashNetwork = ZcashNetwork.fromResources(application)
             val newWallet =
                 PersistableWallet.new(
@@ -239,6 +275,7 @@ class WalletRepositoryImpl(
                 )
             persistWalletInternal(newWallet)
             walletRestoringStateProvider.store(WalletRestoringState.INITIATING)
+            persistOnboardingStateInternal(OnboardingState.READY)
         }
     }
 
@@ -283,3 +320,19 @@ class WalletRepositoryImpl(
         }
     }
 }
+
+/**
+ * READY requires both the plain onboarding flag and a stored wallet, because the two live in
+ * separate preference files and can diverge when the encrypted store is recreated after provable
+ * corruption (MOB-1836).
+ */
+internal fun resolveSecretState(
+    isConfigurationLoaded: Boolean,
+    onboardingState: OnboardingState,
+    hasWallet: Boolean,
+): SecretState =
+    when {
+        !isConfigurationLoaded -> SecretState.LOADING
+        onboardingState == OnboardingState.READY && hasWallet -> SecretState.READY
+        else -> SecretState.NONE
+    }
