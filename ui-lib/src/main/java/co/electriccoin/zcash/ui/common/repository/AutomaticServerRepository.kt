@@ -1,18 +1,23 @@
 package co.electriccoin.zcash.ui.common.repository
 
 import co.electriccoin.zcash.ui.common.datasource.resolveIsServerSelectionAutomatic
+import co.electriccoin.zcash.ui.common.model.FastestServersState
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
+import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
+import co.electriccoin.zcash.ui.common.provider.rawWalletBalances
+import co.electriccoin.zcash.ui.common.provider.retainWhileWalletExists
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
-import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
@@ -33,6 +38,7 @@ class AutomaticServerRepositoryImpl(
     private val zashiProposalRepository: ZashiProposalRepository,
     private val keystoneProposalRepository: KeystoneProposalRepository,
     private val applicationStateProvider: ApplicationStateProvider,
+    private val synchronizerProvider: SynchronizerProvider,
     private val persistableWalletProvider: PersistableWalletProvider,
     private val lightWalletEndpointProvider: LightWalletEndpointProvider,
     private val isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
@@ -45,6 +51,12 @@ class AutomaticServerRepositoryImpl(
                 zashiProposalRepository.submitState.value != null ||
                 keystoneProposalRepository.transactionProposal.value != null ||
                 keystoneProposalRepository.submitState.value != null
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val walletBalances =
+        synchronizerProvider
+            .rawWalletBalances()
+            .retainWhileWalletExists(persistableWalletProvider)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override val isServerAutomatic: Flow<Boolean> =
@@ -80,14 +92,26 @@ class AutomaticServerRepositoryImpl(
         )
     }
 
+    /**
+     * Subscribes to the automatic-server candidate pipeline and the app-foreground signal.
+     *
+     * The candidate flow is intentionally left un-deduplicated: [WalletRepository.updateWalletEndpoint]
+     * already no-ops when the new endpoint matches the persisted one, so a redundant candidate here
+     * is cheap, whereas deduplicating upstream would permanently suppress a candidate that was
+     * skipped while [isAppInTransactionState] and never resurface it on a later emission. A
+     * different endpoint rebuilds the Synchronizer; the candidate waits for the first local balance
+     * snapshot, and UI consumers retain the previous state through the replacement.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun init() {
         isServerAutomatic
             .flatMapLatest { isAutomatic ->
                 if (isAutomatic) {
-                    walletRepository.fastestEndpoints
-                        .filter { !it.isLoading }
-                        .mapNotNull { it.servers?.firstOrNull() }
+                    combine(
+                        walletRepository.fastestEndpoints,
+                        walletBalances,
+                        ::resolveAutomaticServerCandidate,
+                    ).filterNotNull()
                 } else {
                     emptyFlow()
                 }
@@ -106,3 +130,14 @@ class AutomaticServerRepositoryImpl(
             }.launchIn(scope)
     }
 }
+
+internal fun resolveAutomaticServerCandidate(
+    fastestEndpoints: FastestServersState,
+    localBalances: Map<*, *>?,
+) =
+    fastestEndpoints.servers
+        ?.firstOrNull()
+        ?.takeIf {
+            !fastestEndpoints.isLoading &&
+                localBalances != null
+        }

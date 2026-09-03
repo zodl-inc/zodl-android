@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
@@ -24,7 +25,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -36,19 +37,6 @@ interface SynchronizerProvider {
     val synchronizer: StateFlow<Synchronizer?>
 
     val isSeedMismatch: StateFlow<Boolean>
-
-    /**
-     * MOB-1664: [Synchronizer.walletBalances] is per-synchronizer-instance state that resets to
-     * `null` every time the synchronizer is rebuilt (e.g. an automatic server switch tears down
-     * and reconstructs the whole engine), which would otherwise flash every balance display
-     * (top-line, per-pool breakdown) to 0.000 for the few seconds the new instance takes to
-     * re-establish itself. This retains the last known non-null value across that gap so
-     * consumers never observe a spurious drop to zero. Central here (rather than patched into
-     * each consumer) since [AccountDataSource], [co.electriccoin.zcash.ui.common.usecase.GetBalancePoolsUseCase],
-     * [co.electriccoin.zcash.ui.common.usecase.GetOrchardBalanceUseCase] and
-     * [co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel] all read this independently.
-     */
-    val walletBalances: Flow<Map<AccountUuid, AccountBalance>?>
 
     /**
      * Get synchronizer and wait for it to be ready.
@@ -110,14 +98,6 @@ class SynchronizerProviderImpl(
                 started = SharingStarted.Lazily,
                 initialValue = walletCoordinator.synchronizer.value
             )
-
-    private val lastKnownWalletBalances = MutableStateFlow<Map<AccountUuid, AccountBalance>?>(null)
-
-    override val walletBalances: Flow<Map<AccountUuid, AccountBalance>?> =
-        synchronizer
-            .flatMapLatest { it?.walletBalances ?: flowOf(null) }
-            .onEach { if (it != null) lastKnownWalletBalances.value = it }
-            .map { it ?: lastKnownWalletBalances.value }
 
     init {
         scope.launch {
@@ -186,3 +166,54 @@ class SynchronizerProviderImpl(
         return pipeline
     }
 }
+
+/**
+ * MOB-1723: retains the last non-null value of UI-facing wallet-derived state across the gap in
+ * which an automatic server switch (or any other rebuild) tears down and reconstructs the
+ * Synchronizer, so screens do not collapse to a loading state mid-rebuild. Clears to null as soon
+ * as the wallet is removed, so a deleted wallet's state is never shown. This retains plain data
+ * only — never the Synchronizer instance itself, whose close() cancels its coroutineScope and
+ * disposes its clients, making a retained instance a dead object with silently-frozen flows.
+ *
+ * MOB-1664 is the balance-flash precedent this generalizes: [Synchronizer.walletBalances] resets
+ * to `null` on every rebuild, which used to flash balance displays to 0.000 for the few seconds a
+ * new instance takes to re-establish itself.
+ *
+ * The retained value lives in this operator's [kotlinx.coroutines.flow.scan] accumulator, which is
+ * per-collection: under [kotlinx.coroutines.flow.stateIn] it must be paired with
+ * [kotlinx.coroutines.flow.SharingStarted.Eagerly], never `WhileSubscribed` — a `WhileSubscribed`
+ * restart tears down that collection and starts a fresh one, discarding the retained value and
+ * re-emitting the seed null.
+ */
+internal fun <T : Any> Flow<T?>.retainWhileWalletExists(
+    persistableWalletProvider: PersistableWalletProvider
+): Flow<T?> =
+    combine(
+        this,
+        persistableWalletProvider.persistableWallet.map { it != null }.distinctUntilChanged(),
+    ) { current, hasWallet ->
+        current to hasWallet
+    }.scan(null as T?) { retained, (current, hasWallet) ->
+        resolveRetained(retained = retained, current = current, hasWallet = hasWallet)
+    }
+
+internal fun <T : Any> resolveRetained(
+    retained: T?,
+    current: T?,
+    hasWallet: Boolean,
+): T? =
+    when {
+        !hasWallet -> null
+        current != null -> current
+        else -> retained
+    }
+
+/**
+ * The raw per-instance wallet balances, keyed by account. Null while the synchronizer is absent or
+ * has not loaded a balance snapshot yet. Retention is the caller's choice — this is the shared seam
+ * every balance-observing use case reads from instead of copying its own
+ * `synchronizer.flatMapLatest { it?.walletBalances ?: flowOf(null) }`.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+internal fun SynchronizerProvider.rawWalletBalances(): Flow<Map<AccountUuid, AccountBalance>?> =
+    synchronizer.flatMapLatest { it?.walletBalances ?: flowOf(null) }

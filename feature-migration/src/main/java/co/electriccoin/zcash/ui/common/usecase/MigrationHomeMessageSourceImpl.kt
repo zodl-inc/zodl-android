@@ -136,10 +136,10 @@ class MigrationHomeMessageSourceImpl(
                 // balance — a wallet can hold a raw balance above dustThreshold made up entirely
                 // of notes too small individually to be worth spending. Falls back to the raw
                 // balance (old behavior) if the SDK call fails, same guard shape as dustThreshold.
-                val orchardBalanceZatoshi = orchardBalance?.value ?: 0L
+                val orchardBalanceZatoshi = orchardBalance?.value
                 val migratableOrchardTotal =
                     runCatching { getOrchardMigrationSdk().migratableOrchardTotal() }
-                        .getOrDefault(orchardBalanceZatoshi)
+                        .getOrDefault(orchardBalanceZatoshi ?: 0L)
                 migrationMessageFor(
                     sdkState = sdkState,
                     snapshot = snapshot,
@@ -330,14 +330,20 @@ class MigrationHomeMessageSourceImpl(
  * found" once the notes it referenced had moved on. Not applied to the other branches above: the
  * celebration branch is explicitly out of scope for this fix, and the plain "Migrate now" branch
  * only shows a CTA (no one-click transfer proposal) so the same race isn't user-visible there.
+ *
+ * [orchardBalanceZatoshi] is null while the balance snapshot has not loaded yet — never coerced to
+ * zero, which would misreport an unknown balance as "nothing left". The three balance-dependent
+ * branches (celebration, residue, plain "Migrate now") each require it non-null and fall through to
+ * `null` (no banner) otherwise; the RequiresAttention and InProgress branches above them don't read
+ * the balance at all, so a null balance never suppresses those.
  */
 @Suppress("CyclomaticComplexMethod")
 internal fun migrationMessageFor(
     sdkState: MigrationState?,
     snapshot: LiveMigrationSnapshot?,
     hasSeenComplete: Boolean,
-    orchardBalanceZatoshi: Long,
-    migratableOrchardTotalZatoshi: Long = orchardBalanceZatoshi,
+    orchardBalanceZatoshi: Long?,
+    migratableOrchardTotalZatoshi: Long = orchardBalanceZatoshi ?: 0L,
     dustThresholdZatoshi: Long = MIGRATION_DUST_THRESHOLD_ZATOSHI,
     isFullySynced: Boolean = true,
     isBackgroundExecutionAvailable: Boolean = true,
@@ -412,6 +418,7 @@ internal fun migrationMessageFor(
         // .onDone() marks it seen.
         sdkState == MigrationState.Complete &&
             !hasSeenComplete &&
+            orchardBalanceZatoshi != null &&
             orchardBalanceZatoshi < MIGRATION_RESIDUAL_MIN_ZATOSHI -> {
             MigrationHomeMessageData(
                 isRunActive = false,
@@ -436,6 +443,7 @@ internal fun migrationMessageFor(
         // proposal ran (Slack repro, 2026-08-24).
         !midRunAttention &&
             isFullySynced &&
+            orchardBalanceZatoshi != null &&
             migratableOrchardTotalZatoshi > dustThresholdZatoshi &&
             orchardBalanceZatoshi < MIGRATION_RESIDUAL_MIN_ZATOSHI -> {
             MigrationHomeMessageData(
@@ -449,7 +457,9 @@ internal fun migrationMessageFor(
         // Migratable balance with no run in progress — covers "never migrated", "a Keystone round
         // finished, residual needs another round" (engine still reports Complete), and "campaign
         // done but new funds arrived". All three correctly say "Migrate now".
-        !midRunAttention && orchardBalanceZatoshi >= MIGRATION_RESIDUAL_MIN_ZATOSHI -> {
+        !midRunAttention &&
+            orchardBalanceZatoshi != null &&
+            orchardBalanceZatoshi >= MIGRATION_RESIDUAL_MIN_ZATOSHI -> {
             MigrationHomeMessageData(isRunActive = false)
         }
 

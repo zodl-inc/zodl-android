@@ -15,7 +15,7 @@ import com.flexa.identity.buildIdentity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import java.security.MessageDigest
 import java.util.UUID
@@ -45,8 +45,11 @@ class FlexaRepositoryImpl(
                 Twig.info { "Flexa initialized" }
 
                 accountDataSource.zashiAccount
-                    .map { it?.totalShieldedBalance to it?.spendableShieldedBalance }
-                    .collect { (total, available) ->
+                    .mapNotNull { account ->
+                        val total = account?.totalShieldedBalance
+                        val available = account?.spendableShieldedBalance
+                        if (total != null && available != null) total to available else null
+                    }.collect { (total, available) ->
                         val totalZec = total.convertZatoshiToZec().toDouble()
                         val availableZec = available.convertZatoshiToZec().toDouble()
                         Flexa.updateAssetAccounts(

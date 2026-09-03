@@ -34,7 +34,7 @@ class ShieldFundsInfoVM(
             getSelectedWalletAccount.observe(),
             shieldFundsInfoProvider.observe(),
         ) { account, infoEnabled ->
-            val transparentAmount = account?.transparent?.balance ?: Zatoshi(0)
+            val transparentAmount = account?.transparentBalance ?: Zatoshi(0)
             ShieldFundsInfoState(
                 onBack = ::onBack,
                 primaryButton =
