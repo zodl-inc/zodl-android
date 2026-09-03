@@ -80,6 +80,7 @@ internal class SwapVMMapper {
             swapInfoButton =
                 IconButtonState(
                     co.electriccoin.zcash.ui.design.R.drawable.ic_info,
+                    contentDescription = stringRes(R.string.swap_info_content_description),
                     onClick = callbacks.onSwapInfoClick
                 ),
             infoItems = createListItems(state),
@@ -114,6 +115,7 @@ internal class SwapVMMapper {
             changeModeButton =
                 IconButtonState(
                     icon = R.drawable.ic_swap_change_mode,
+                    contentDescription = stringRes(R.string.swap_change_direction_content_description),
                     onClick = callbacks.onChangeButtonClick
                 ),
             onAddressClick =
