@@ -27,33 +27,21 @@ enum class SwapQuoteMismatchType(
 
 /**
  * Thrown when a swap quote disagrees with the request that produced it. [type] identifies the failed
- * check so the user-facing mismatch sheet can report it to support; [depositAddress] is the quote id
- * we can hand the swap provider, attached by whichever layer still has the quote in hand.
+ * check so the user-facing mismatch sheet can report it to support.
+ *
+ * The report context — [depositAddress] (the quote id support can hand the swap provider), [provider]
+ * and both [SwapAsset]s of the request — is attached in place by whichever layer still has it, so the
+ * original throw site's stack trace survives.
  *
  * It stays an [IllegalArgumentException] so every existing fail-closed rejection path — the repository
  * catch-all, the status-check throws — keeps behaving exactly as before.
  */
 open class SwapQuoteMismatchException(
     val type: SwapQuoteMismatchType,
-    message: String,
-    val depositAddress: String? = null
+    message: String
 ) : IllegalArgumentException(message) {
-    /** This exception with [address] attached, or itself when there is nothing new to attach. */
-    open fun withDepositAddress(address: String?): SwapQuoteMismatchException =
-        if (address == null || depositAddress != null) {
-            this
-        } else {
-            SwapQuoteMismatchException(type = type, message = message.orEmpty(), depositAddress = address)
-        }
+    var depositAddress: String? = null
+    var provider: String? = null
+    var originAsset: SwapAsset? = null
+    var destinationAsset: SwapAsset? = null
 }
-
-/**
- * Maps a validator's asset slot name ("originAsset", "origin", "destinationAsset", "destination") to
- * the mismatch type reported for it.
- */
-internal fun swapAssetMismatchType(name: String): SwapQuoteMismatchType =
-    if (name.startsWith("origin", ignoreCase = true)) {
-        SwapQuoteMismatchType.ORIGIN_ASSET
-    } else {
-        SwapQuoteMismatchType.DESTINATION_ASSET
-    }

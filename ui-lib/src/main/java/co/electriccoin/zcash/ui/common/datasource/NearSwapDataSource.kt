@@ -1,7 +1,6 @@
 package co.electriccoin.zcash.ui.common.datasource
 
 import cash.z.ecc.android.sdk.type.AddressType
-import co.electriccoin.zcash.crash.android.GlobalCrashReporter
 import co.electriccoin.zcash.ui.common.model.DynamicSwapAddress
 import co.electriccoin.zcash.ui.common.model.SwapAddress
 import co.electriccoin.zcash.ui.common.model.SwapAsset
@@ -24,7 +23,6 @@ import co.electriccoin.zcash.ui.common.model.near.QuoteResponseDto
 import co.electriccoin.zcash.ui.common.model.near.RecipientType
 import co.electriccoin.zcash.ui.common.model.near.RefundType
 import co.electriccoin.zcash.ui.common.model.near.SubmitDepositTransactionRequest
-import co.electriccoin.zcash.ui.common.model.near.SwapAmountInconsistencyException
 import co.electriccoin.zcash.ui.common.model.near.SwapType
 import co.electriccoin.zcash.ui.common.provider.BlockchainProvider
 import co.electriccoin.zcash.ui.common.provider.NearApiProvider
@@ -179,8 +177,9 @@ class NearSwapDataSource(
                 expectedSlippageToleranceBps = slippageToleranceBps,
             )
         } catch (e: SwapQuoteMismatchException) {
-            GlobalCrashReporter.reportCaughtException(swapQuoteMismatchSignal(e))
-            throw e.withDepositAddress(response.quote.depositAddress)
+            e.depositAddress = response.quote.depositAddress
+            e.provider = NEAR_SWAP_PROVIDER
+            throw e
         }
     }
 
@@ -250,26 +249,8 @@ class NearSwapDataSource(
 
 const val AFFILIATE_FEE_BPS = 67
 const val AFFILIATE_ADDRESS = "d78abd5477432c9d9c5e32c4a1a0056cd7b8be6580d3c49e1f97185b786592db"
+
+/** The only swap provider the app talks to; the id [NearSwapQuote] reports as its `provider`. */
+internal const val NEAR_SWAP_PROVIDER = "near"
+
 private const val QUOTE_WAITING_TIME = 3000
-
-/**
- * Sanitized non-fatal reported to crash monitoring when a request-vs-response check rejects a quote
- * (MOB-1371, MOB-1340). Carries only the mismatch type — plus the field name and decimal precision for the
- * amount-consistency case — never the amounts (see the release log-redaction hardening), so it does not
- * leak transaction values to crash reporting.
- *
- * Reporting it means a future 1Click change surfaces as an observable "quotes blocked" signal instead of
- * silent breakage for users. The rejection itself still fails closed: the caller rethrows, with the quote's
- * deposit address attached from the raw response — the only place it exists when [NearSwapQuote]'s own
- * validation throws.
- */
-private fun swapQuoteMismatchSignal(e: SwapQuoteMismatchException): Exception =
-    if (e is SwapAmountInconsistencyException) {
-        SwapQuoteMismatchRejectedSignal("type=${e.type}, field=${e.field}, decimals=${e.decimals}")
-    } else {
-        SwapQuoteMismatchRejectedSignal("type=${e.type}")
-    }
-
-private class SwapQuoteMismatchRejectedSignal(
-    detail: String
-) : Exception("Swap quote validation rejected a quote ($detail)")

@@ -233,9 +233,6 @@ class RequestSwapQuoteUseCaseTest {
             assertForwardedToQuote()
         }
 
-    // endregion
-    // region quote validation mismatches route to the dedicated sheet (MOB-1340)
-
     @Test
     fun exactInputMismatchOpensTheMismatchSheetInsteadOfTheQuote() =
         runBlocking {
@@ -263,7 +260,14 @@ class RequestSwapQuoteUseCaseTest {
     @Test
     fun flexInputMismatchReportsTheSelectedAssetAsTheOrigin() =
         runBlocking {
-            useCase(mismatchError(SwapMode.FLEX_INPUT, SwapQuoteMismatchType.REFUND_ADDRESS)).flex()
+            useCase(
+                mismatchError(
+                    mode = SwapMode.FLEX_INPUT,
+                    type = SwapQuoteMismatchType.REFUND_ADDRESS,
+                    origin = btc,
+                    destination = zec
+                )
+            ).flex()
 
             verify {
                 navigationRouter.forward(
@@ -277,8 +281,12 @@ class RequestSwapQuoteUseCaseTest {
             verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
         }
 
+    /**
+     * With the cancel sheet up there is nowhere to navigate, so the rejection stays in the repository's
+     * quote — exactly like every other quote error — and surfaces once the sheet is dismissed.
+     */
     @Test
-    fun mismatchSheetIsNotOpenedWhenTheSwapScreenIsGone() =
+    fun mismatchErrorIsKeptWhenTheSwapScreenIsGone() =
         runBlocking {
             useCase(mismatchError(SwapMode.EXACT_INPUT, SwapQuoteMismatchType.SWAP_TYPE))
                 .requestExactInput(
@@ -289,7 +297,7 @@ class RequestSwapQuoteUseCaseTest {
                     canNavigateToSwapQuote = { false }
                 )
 
-            verify(exactly = 1) { swapRepository.clearQuote() }
+            verify(exactly = 0) { swapRepository.clearQuote() }
             verify(exactly = 0) { navigationRouter.forward(ofType<SwapQuoteMismatchArgs>()) }
         }
 
@@ -306,16 +314,21 @@ class RequestSwapQuoteUseCaseTest {
     // endregion
     // region helpers
 
-    private fun mismatchError(mode: SwapMode, type: SwapQuoteMismatchType) =
-        SwapQuoteData.Error(
-            mode = mode,
-            exception =
-                SwapQuoteMismatchException(
-                    type = type,
-                    message = "mismatch",
-                    depositAddress = "deposit-address"
-                )
-        )
+    private fun mismatchError(
+        mode: SwapMode,
+        type: SwapQuoteMismatchType,
+        origin: SwapAsset = zec,
+        destination: SwapAsset = btc
+    ) = SwapQuoteData.Error(
+        mode = mode,
+        exception =
+            SwapQuoteMismatchException(type = type, message = "mismatch").apply {
+                depositAddress = "deposit-address"
+                provider = "near"
+                originAsset = origin
+                destinationAsset = destination
+            }
+    )
 
     private fun assertForwardedToQuote() {
         verify { navigationRouter.forward(SwapQuoteArgs) }

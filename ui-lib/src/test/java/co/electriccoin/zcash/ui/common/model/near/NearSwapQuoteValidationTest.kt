@@ -9,8 +9,6 @@ import java.math.BigDecimal
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertIs
-import kotlin.test.assertNull
 
 /**
  * Unit tests for the pure NEAR swap quote validators introduced for the swap-security hardening
@@ -22,13 +20,20 @@ class NearSwapQuoteValidationTest {
     @Test
     fun requireConsistent_passesWhenRawMatchesFormattedShiftedByDecimals() {
         // 1.0 token at 8 decimals == 100_000_000 base units
-        requireConsistent(name = "amountIn", raw = BigDecimal("100000000"), formatted = BigDecimal("1"), decimals = 8)
+        requireConsistent(
+            name = "amountIn",
+            type = SwapQuoteMismatchType.INPUT_AMOUNT,
+            raw = BigDecimal("100000000"),
+            formatted = BigDecimal("1"),
+            decimals = 8
+        )
     }
 
     @Test
     fun requireConsistent_passesRegardlessOfFormattedScale() {
         requireConsistent(
             name = "amountIn",
+            type = SwapQuoteMismatchType.INPUT_AMOUNT,
             raw = BigDecimal("100000000"),
             formatted = BigDecimal("1.00"),
             decimals = 8
@@ -44,6 +49,7 @@ class NearSwapQuoteValidationTest {
                 // formatted=2 -> expects 200_000_000 base units, raw says 100_000_000
                 requireConsistent(
                     name = "amountIn",
+                    type = SwapQuoteMismatchType.INPUT_AMOUNT,
                     raw = BigDecimal("100000000"),
                     formatted = BigDecimal("2"),
                     decimals = 8
@@ -60,6 +66,7 @@ class NearSwapQuoteValidationTest {
             assertFailsWith<SwapAmountInconsistencyException> {
                 requireConsistent(
                     name = "amountOut",
+                    type = SwapQuoteMismatchType.OUTPUT_AMOUNT,
                     raw = BigDecimal("100000000"),
                     formatted = BigDecimal("2"),
                     decimals = 8
@@ -67,30 +74,6 @@ class NearSwapQuoteValidationTest {
             }
         assertEquals(SwapQuoteMismatchType.OUTPUT_AMOUNT, e.type)
     }
-
-    @Test
-    fun swapAmountInconsistency_attachesTheDepositAddressOnce() {
-        val e = SwapAmountInconsistencyException(field = "amountIn", decimals = 8, message = "boom")
-        assertNull(e.depositAddress)
-
-        val attached = e.withDepositAddress("deposit-address")
-        assertIs<SwapAmountInconsistencyException>(attached)
-        assertEquals("deposit-address", attached.depositAddress)
-        assertEquals("amountIn", attached.field)
-        assertEquals(8, attached.decimals)
-        assertEquals("boom", attached.message)
-        assertEquals("deposit-address", attached.withDepositAddress("other").depositAddress)
-    }
-
-    @Test
-    fun requireConsistent_noOpWhenEitherValueNull() {
-        requireConsistent(name = "amountIn", raw = null, formatted = BigDecimal("1"), decimals = 8)
-        requireConsistent(name = "amountIn", raw = BigDecimal("100000000"), formatted = null, decimals = 8)
-    }
-
-    // endregion
-
-    // region requireWithinSlippage — Z2: server's worst-case guarantee must respect requested slippage
 
     @Test
     fun requireWithinSlippage_outputFloating_passesAtAndAboveFloor() {
@@ -213,6 +196,7 @@ class NearSwapQuoteValidationTest {
     fun requireMatchingAsset_passesOnSameTickerAndChainCaseInsensitive() {
         requireMatchingAsset(
             name = "originAsset",
+            type = SwapQuoteMismatchType.ORIGIN_ASSET,
             expectedTokenTicker = "btc",
             expectedChainTicker = "bitcoin",
             actual = asset(token = "BTC", chain = "BITCOIN")
@@ -225,6 +209,7 @@ class NearSwapQuoteValidationTest {
             assertFailsWith<SwapQuoteMismatchException> {
                 requireMatchingAsset(
                     name = "originAsset",
+                    type = SwapQuoteMismatchType.ORIGIN_ASSET,
                     expectedTokenTicker = "BTC",
                     expectedChainTicker = "Bitcoin",
                     actual = asset(token = "ETH", chain = "Bitcoin")
@@ -239,6 +224,7 @@ class NearSwapQuoteValidationTest {
             assertFailsWith<SwapQuoteMismatchException> {
                 requireMatchingAsset(
                     name = "destinationAsset",
+                    type = SwapQuoteMismatchType.DESTINATION_ASSET,
                     expectedTokenTicker = "USDC",
                     expectedChainTicker = "Ethereum",
                     actual = asset(token = "USDC", chain = "Polygon")

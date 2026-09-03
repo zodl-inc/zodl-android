@@ -4,9 +4,13 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
+import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.swap.mismatch.SwapQuoteMismatchArgs
 import java.io.IOException
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -134,91 +138,89 @@ class SendEmailUseCaseTest {
     /**
      * The swap-type line of a quote-mismatch report follows the design's `CrossPay - ZEC > USDC
      * (Arbitrum)` shape: the mode's product name, then origin > destination with the chain spelled out
-     * for everything but ZEC.
+     * for everything but ZEC. Asserted structurally on the composed [StringResource], so a copy edit in
+     * strings.xml cannot leave this green while changing the email.
      */
     @Test
     fun swapMismatchReportNamesTheModeAndBothAssets() {
         assertEquals(
-            "CrossPay - ZEC > USDC (Arbitrum)",
-            swapQuoteMismatchSwapTypeLabel(
-                report(mode = SwapMode.EXACT_OUTPUT),
-                ::string
-            ) { chainTicker -> chainName(chainTicker) }
+            stringRes(
+                R.string.swap_mismatch_swapType_format,
+                stringRes(R.string.swap_mismatch_mode_crosspay),
+                stringRes("ZEC"),
+                stringRes(R.string.swap_mismatch_asset_format, stringRes("USDC"), stringRes("Arbitrum"))
+            ),
+            swapQuoteMismatchSwapTypeLabel(args(mode = SwapMode.EXACT_OUTPUT), ::chainName)
         )
     }
 
     @Test
     fun swapMismatchReportUsesTheModeProductNames() {
-        val label = { mode: SwapMode ->
-            swapQuoteMismatchSwapTypeLabel(report(mode = mode), ::string) { chainTicker -> chainName(chainTicker) }
+        val mode = { mode: SwapMode ->
+            swapQuoteMismatchSwapTypeLabel(args(mode = mode), ::chainName)
+                .let { assertIs<StringResource.ByResource>(it).args.first() }
         }
 
-        assertTrue(label(SwapMode.EXACT_INPUT).startsWith("Swap - "))
-        assertTrue(label(SwapMode.EXACT_OUTPUT).startsWith("CrossPay - "))
-        assertTrue(label(SwapMode.FLEX_INPUT).startsWith("Swap into ZEC - "))
+        assertEquals(stringRes(R.string.swap_mismatch_mode_swap), mode(SwapMode.EXACT_INPUT))
+        assertEquals(stringRes(R.string.swap_mismatch_mode_crosspay), mode(SwapMode.EXACT_OUTPUT))
+        assertEquals(stringRes(R.string.swap_mismatch_mode_swapIntoZec), mode(SwapMode.FLEX_INPUT))
     }
 
     @Test
     fun swapMismatchReportSpellsOutTheChainOfTheSoldAssetToo() {
         assertEquals(
-            "Swap into ZEC - USDC (Arbitrum) > ZEC",
+            stringRes(
+                R.string.swap_mismatch_swapType_format,
+                stringRes(R.string.swap_mismatch_mode_swapIntoZec),
+                stringRes(R.string.swap_mismatch_asset_format, stringRes("USDC"), stringRes("Arbitrum")),
+                stringRes("ZEC")
+            ),
             swapQuoteMismatchSwapTypeLabel(
-                report(
+                args(
                     mode = SwapMode.FLEX_INPUT,
                     originTokenTicker = "usdc",
                     originChainTicker = "arb",
                     destinationTokenTicker = "zec",
                     destinationChainTicker = "zec"
                 ),
-                ::string
-            ) { chainTicker -> chainName(chainTicker) }
+                ::chainName
+            )
         )
     }
 
     @Test
     fun swapMismatchReportNamesTheKnownProvider() {
-        assertEquals("NEAR", swapQuoteMismatchProviderLabel("near", ::string))
+        assertEquals(stringRes(R.string.swap_mismatch_provider_near), swapQuoteMismatchProviderLabel("near"))
     }
 
     @Test
     fun swapMismatchReportUppercasesAnUnknownProviderId() {
-        assertEquals("SOMESWAP", swapQuoteMismatchProviderLabel("someswap", ::string))
+        assertEquals(stringRes("SOMESWAP"), swapQuoteMismatchProviderLabel("someswap"))
     }
 
     @Test
     fun swapMismatchTypesCarryASupportFacingLabel() {
-        assertEquals("Output amount", string(SwapQuoteMismatchType.OUTPUT_AMOUNT.reportLabelRes))
-        assertEquals("Recipient address", string(SwapQuoteMismatchType.RECIPIENT_ADDRESS.reportLabelRes))
+        assertEquals(
+            R.string.swap_mismatch_type_outputAmount,
+            SwapQuoteMismatchType.OUTPUT_AMOUNT.reportLabelRes
+        )
+        assertEquals(
+            R.string.swap_mismatch_type_recipientAddress,
+            SwapQuoteMismatchType.RECIPIENT_ADDRESS.reportLabelRes
+        )
     }
 
-    private fun chainName(chainTicker: String) = if (chainTicker == "arb") "Arbitrum" else chainTicker
-
-    /**
-     * The English copy of every resource the mismatch report labels resolve, keyed by resource id.
-     */
-    private val strings =
-        mapOf(
-            R.string.swap_mismatch_mode_swap to "Swap",
-            R.string.swap_mismatch_mode_crosspay to "CrossPay",
-            R.string.swap_mismatch_mode_swapIntoZec to "Swap into ZEC",
-            R.string.swap_mismatch_type_outputAmount to "Output amount",
-            R.string.swap_mismatch_type_recipientAddress to "Recipient address",
-            R.string.swap_mismatch_provider_near to "NEAR",
-            R.string.swap_mismatch_swapType_format to "%1\$s - %2\$s > %3\$s",
-            R.string.swap_mismatch_asset_format to "%1\$s (%2\$s)",
-        )
-
-    /** Stands in for `Context::getString`, so the assertions stay on the exact final strings. */
-    private fun string(resId: Int) = strings.getValue(resId)
+    private fun chainName(chainTicker: String) =
+        stringRes(if (chainTicker == "arb") "Arbitrum" else chainTicker)
 
     @Suppress("LongParameterList")
-    private fun report(
+    private fun args(
         mode: SwapMode,
         originTokenTicker: String = "zec",
         originChainTicker: String = "zec",
         destinationTokenTicker: String = "usdc",
         destinationChainTicker: String = "arb"
-    ) = SwapQuoteMismatchReport(
+    ) = SwapQuoteMismatchArgs(
         provider = "near",
         mode = mode,
         originTokenTicker = originTokenTicker,

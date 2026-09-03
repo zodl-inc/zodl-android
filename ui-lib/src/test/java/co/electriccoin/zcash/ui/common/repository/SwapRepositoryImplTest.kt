@@ -292,13 +292,17 @@ class SwapRepositoryImplTest {
             assertExactInputError(repository, SwapQuoteMismatchType.ORIGIN_ASSET)
         }
 
+    /**
+     * A selection the loaded supported list no longer carries is a stale client-side state, not a
+     * request-vs-response disagreement, so it keeps following the generic "quote unavailable" path.
+     */
     @Test
     fun exactInputQuoteRejectsUnsupportedSelectedAsset() =
         runTest {
             // sol is not in the loaded supported list ([btc]); the selected destination must still be supported.
             val repository = loadedRepository(dataSourceReturning(fakeQuote(destinationAsset = sol)))
             repository.requestExactInputQuote(BigDecimal("1"), "destination", "refund", sol, BigDecimal("2"))
-            assertExactInputError(repository, SwapQuoteMismatchType.DESTINATION_ASSET)
+            assertPlainError(repository, SwapMode.EXACT_INPUT)
         }
 
     @Test
@@ -360,7 +364,7 @@ class SwapRepositoryImplTest {
         runTest {
             val repository = loadedRepository(dataSourceReturning(flexQuote(originAsset = sol)))
             repository.requestFlexInputIntoZec(BigDecimal("2"), "refund", "destination", sol, BigDecimal("2"))
-            assertFlexError(repository, SwapQuoteMismatchType.ORIGIN_ASSET)
+            assertPlainError(repository, SwapMode.FLEX_INPUT)
         }
 
     @Test
@@ -384,9 +388,11 @@ class SwapRepositoryImplTest {
                     coEvery { requestQuote(any(), any(), any(), any(), any(), any(), any(), any()) } throws
                         SwapQuoteMismatchException(
                             type = SwapQuoteMismatchType.SWAP_TYPE,
-                            message = "boom",
+                            message = "boom"
+                        ).apply {
                             depositAddress = "from-response"
-                        )
+                            provider = "from-response-provider"
+                        }
                 }
             val repository = loadedRepository(dataSource)
 
@@ -394,6 +400,38 @@ class SwapRepositoryImplTest {
 
             val exception = assertExactInputError(repository, SwapQuoteMismatchType.SWAP_TYPE)
             assertEquals("from-response", exception.depositAddress)
+            assertEquals("from-response-provider", exception.provider)
+        }
+
+    /**
+     * The report context the mismatch sheet and its support email need — the quote id, the provider and
+     * both sides of the request — is attached to the rejection by the repository.
+     */
+    @Test
+    fun quoteMismatchCarriesTheReportContextOfTheRequest() =
+        runTest {
+            val repository = loadedRepository(dataSourceReturning(fakeQuote(destinationAddress = "wrong")))
+
+            repository.requestExactInputQuote(BigDecimal("1"), "destination", "refund", btc, BigDecimal("2"))
+
+            val exception = assertExactInputError(repository, SwapQuoteMismatchType.RECIPIENT_ADDRESS)
+            assertEquals("deposit", exception.depositAddress)
+            assertEquals("test", exception.provider)
+            assertEquals(zec, exception.originAsset)
+            assertEquals(btc, exception.destinationAsset)
+        }
+
+    /** The flex path sells the selected asset, so the two report assets are the other way around. */
+    @Test
+    fun flexQuoteMismatchCarriesTheSelectedAssetAsTheOrigin() =
+        runTest {
+            val repository = loadedRepository(dataSourceReturning(flexQuote(refundAddress = "wrong")))
+
+            repository.requestFlexInputIntoZec(BigDecimal("2"), "refund", "destination", btc, BigDecimal("2"))
+
+            val exception = assertFlexError(repository, SwapQuoteMismatchType.REFUND_ADDRESS)
+            assertEquals(btc, exception.originAsset)
+            assertEquals(zec, exception.destinationAsset)
         }
 
     // endregion
@@ -652,6 +690,17 @@ class SwapRepositoryImplTest {
         assertIs<SwapQuoteMismatchException>(exception)
         assertEquals(type, exception.type)
         return exception
+    }
+
+    /** A rejection that is not a request-vs-response mismatch: stored as a plain quote error. */
+    private fun assertPlainError(
+        repository: SwapRepositoryImpl,
+        mode: SwapMode
+    ) {
+        val result = repository.quote.value
+        assertIs<SwapQuoteData.Error>(result)
+        assertEquals(mode, result.mode)
+        assertFalse(result.exception is SwapQuoteMismatchException)
     }
 
     private fun dataSourceReturning(quote: SwapQuote) =

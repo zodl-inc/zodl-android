@@ -6,6 +6,7 @@ import cash.z.ecc.android.sdk.model.Proposal
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.sdk.extension.ZERO
 import co.electriccoin.zcash.ui.common.datasource.AFFILIATE_FEE_BPS
+import co.electriccoin.zcash.ui.common.datasource.NEAR_SWAP_PROVIDER
 import co.electriccoin.zcash.ui.common.model.SwapAddress
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapMode
@@ -14,7 +15,6 @@ import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchException
 import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
 import co.electriccoin.zcash.ui.common.model.isSame
 import co.electriccoin.zcash.ui.common.model.isZCashAsset
-import co.electriccoin.zcash.ui.common.model.swapAssetMismatchType
 import java.math.BigDecimal
 import java.math.MathContext
 import java.math.RoundingMode
@@ -49,12 +49,14 @@ data class NearSwapQuote(
         }
         requireConsistent(
             name = "amountIn",
+            type = SwapQuoteMismatchType.INPUT_AMOUNT,
             raw = response.quote.amountIn,
             formatted = response.quote.amountInFormatted,
             decimals = originAsset.decimals
         )
         requireConsistent(
             name = "amountOut",
+            type = SwapQuoteMismatchType.OUTPUT_AMOUNT,
             raw = response.quote.amountOut,
             formatted = response.quote.amountOutFormatted,
             decimals = destinationAsset.decimals
@@ -86,7 +88,7 @@ data class NearSwapQuote(
         BigDecimal(response.quoteRequest.slippageTolerance)
             .divide(BigDecimal("100", MathContext.DECIMAL128))
 
-    override val provider = "near"
+    override val provider = NEAR_SWAP_PROVIDER
 
     override val mode: SwapMode =
         when (response.quoteRequest.swapType) {
@@ -160,10 +162,17 @@ data class NearSwapQuote(
         zecExchangeRate.multiply(getZecFee(proposal) ?: BigDecimal.ZERO, MathContext.DECIMAL128)
 }
 
-internal fun requireConsistent(name: String, raw: BigDecimal?, formatted: BigDecimal?, decimals: Int) {
+internal fun requireConsistent(
+    name: String,
+    type: SwapQuoteMismatchType,
+    raw: BigDecimal?,
+    formatted: BigDecimal?,
+    decimals: Int
+) {
     if (raw == null || formatted == null) return
     if (raw.compareTo(formatted.movePointRight(decimals)) != 0) {
         throw SwapAmountInconsistencyException(
+            type = type,
             field = name,
             decimals = decimals,
             message =
@@ -180,37 +189,16 @@ internal fun requireConsistent(name: String, raw: BigDecimal?, formatted: BigDec
  * The exact-equality posture is intentional and must NOT be relaxed to a tolerance: it is the "trust the
  * quote 0% or 100%" stance (MOB-1371). It is kept as a distinct [SwapQuoteMismatchException] subtype — so it
  * still flows through the generic quote-rejection handling unchanged — that carries only the non-sensitive
- * [field] / [decimals]. The data source uses those to emit a sanitized crash-monitoring signal (never the
+ * [field] / [decimals]. The repository uses those to emit a sanitized crash-monitoring signal (never the
  * amounts), so that if the 1Click API ever starts returning rounded display values, the resulting
  * rejections surface as an observable "quotes blocked" signal instead of silent breakage for users.
  */
 class SwapAmountInconsistencyException(
+    type: SwapQuoteMismatchType,
     val field: String,
     val decimals: Int,
-    message: String,
-    depositAddress: String? = null
-) : SwapQuoteMismatchException(
-        type =
-            if (field == "amountIn") {
-                SwapQuoteMismatchType.INPUT_AMOUNT
-            } else {
-                SwapQuoteMismatchType.OUTPUT_AMOUNT
-            },
-        message = message,
-        depositAddress = depositAddress
-    ) {
-    override fun withDepositAddress(address: String?): SwapQuoteMismatchException =
-        if (address == null || depositAddress != null) {
-            this
-        } else {
-            SwapAmountInconsistencyException(
-                field = field,
-                decimals = decimals,
-                message = message.orEmpty(),
-                depositAddress = address
-            )
-        }
-}
+    message: String
+) : SwapQuoteMismatchException(type = type, message = message)
 
 /**
  * Asserts the quote echoes back the amount the user actually requested for the user-fixed side of the
@@ -233,13 +221,14 @@ internal fun requireQuoteMatchesUserAmount(quoted: BigDecimal, requested: BigDec
 
 internal fun requireMatchingAsset(
     name: String,
+    type: SwapQuoteMismatchType,
     expectedTokenTicker: String,
     expectedChainTicker: String,
     actual: SwapAsset
 ) {
     if (!actual.isSame(expectedTokenTicker, expectedChainTicker)) {
         throw SwapQuoteMismatchException(
-            type = swapAssetMismatchType(name),
+            type = type,
             message =
                 "Swap asset mismatch: expected $name=$expectedTokenTicker/$expectedChainTicker " +
                     "but server returned ${actual.tokenTicker}/${actual.chainTicker}"

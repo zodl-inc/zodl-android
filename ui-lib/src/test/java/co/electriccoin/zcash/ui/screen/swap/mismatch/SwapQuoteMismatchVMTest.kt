@@ -5,7 +5,6 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
 import co.electriccoin.zcash.ui.common.usecase.SendEmailUseCase
-import co.electriccoin.zcash.ui.common.usecase.SwapQuoteMismatchReport
 import co.electriccoin.zcash.ui.design.util.stringRes
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -30,6 +29,18 @@ import kotlin.test.assertNotNull
 class SwapQuoteMismatchVMTest {
     private val navigationRouter = mockk<NavigationRouter>(relaxed = true)
     private val sendEmailUseCase = mockk<SendEmailUseCase>(relaxed = true)
+
+    private val args =
+        SwapQuoteMismatchArgs(
+            provider = "near",
+            mode = SwapMode.EXACT_OUTPUT,
+            originTokenTicker = "zec",
+            originChainTicker = "zec",
+            destinationTokenTicker = "usdc",
+            destinationChainTicker = "arb",
+            mismatchType = SwapQuoteMismatchType.OUTPUT_AMOUNT,
+            depositAddress = "deposit-address"
+        )
 
     @BeforeTest
     fun setUp() {
@@ -67,7 +78,7 @@ class SwapQuoteMismatchVMTest {
             .onClick()
 
         verify(exactly = 1) { navigationRouter.back() }
-        coVerify(exactly = 0) { sendEmailUseCase(ofType<SwapQuoteMismatchReport>()) }
+        coVerify(exactly = 0) { sendEmailUseCase(ofType<SwapQuoteMismatchArgs>()) }
     }
 
     @Test
@@ -85,36 +96,13 @@ class SwapQuoteMismatchVMTest {
                 .reportButton
                 .onClick()
 
-            coVerify(exactly = 1) {
-                sendEmailUseCase(
-                    SwapQuoteMismatchReport(
-                        provider = "near",
-                        mode = SwapMode.EXACT_OUTPUT,
-                        originTokenTicker = "zec",
-                        originChainTicker = "zec",
-                        destinationTokenTicker = "usdc",
-                        destinationChainTicker = "arb",
-                        mismatchType = SwapQuoteMismatchType.OUTPUT_AMOUNT,
-                        depositAddress = "deposit-address"
-                    )
-                )
-            }
+            coVerify(exactly = 1) { sendEmailUseCase(args) }
             verify(exactly = 1) { navigationRouter.back() }
         }
 
     private fun vm() =
         SwapQuoteMismatchVM(
-            args =
-                SwapQuoteMismatchArgs(
-                    provider = "near",
-                    mode = SwapMode.EXACT_OUTPUT,
-                    originTokenTicker = "zec",
-                    originChainTicker = "zec",
-                    destinationTokenTicker = "usdc",
-                    destinationChainTicker = "arb",
-                    mismatchType = SwapQuoteMismatchType.OUTPUT_AMOUNT,
-                    depositAddress = "deposit-address"
-                ),
+            args = args,
             navigationRouter = navigationRouter,
             sendEmailUseCase = sendEmailUseCase
         )

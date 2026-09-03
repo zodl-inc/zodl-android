@@ -11,12 +11,10 @@ import co.electriccoin.zcash.ui.common.datasource.InsufficientFundsException
 import co.electriccoin.zcash.ui.common.datasource.TexUnsupportedOnKSException
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.SwapAsset
-import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapQuote
-import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchException
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
@@ -26,7 +24,7 @@ import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.screen.insufficientfunds.InsufficientFundsArgs
-import co.electriccoin.zcash.ui.screen.swap.mismatch.SwapQuoteMismatchArgs
+import co.electriccoin.zcash.ui.screen.swap.mismatch.toMismatchArgs
 import co.electriccoin.zcash.ui.screen.swap.quote.SwapQuoteArgs
 import co.electriccoin.zcash.ui.screen.texunsupported.TEXUnsupportedArgs
 import kotlinx.coroutines.Dispatchers
@@ -61,7 +59,6 @@ class RequestSwapQuoteUseCase(
                     slippage = slippage
                 )
             },
-            selectedAsset = selectedAsset,
             createProposal = true,
             canNavigateToSwapQuote = canNavigateToSwapQuote
         )
@@ -85,7 +82,6 @@ class RequestSwapQuoteUseCase(
                     slippage = slippage
                 )
             },
-            selectedAsset = selectedAsset,
             createProposal = true,
             canNavigateToSwapQuote = canNavigateToSwapQuote
         )
@@ -110,7 +106,6 @@ class RequestSwapQuoteUseCase(
                         slippage = slippage
                     )
             },
-            selectedAsset = selectedAsset,
             createProposal = false,
             canNavigateToSwapQuote = canNavigateToSwapQuote
         )
@@ -119,7 +114,6 @@ class RequestSwapQuoteUseCase(
     @Suppress("TooGenericExceptionCaught")
     private suspend fun requestQuote(
         requestQuote: suspend () -> Unit,
-        selectedAsset: SwapAsset,
         createProposal: Boolean,
         canNavigateToSwapQuote: () -> Boolean
     ) = withContext(Dispatchers.Default) {
@@ -127,11 +121,11 @@ class RequestSwapQuoteUseCase(
 
         val result = swapRepository.quote.first { it !in listOf(null, SwapQuoteData.Loading) }
 
-        val mismatch = (result as? SwapQuoteData.Error)?.exception as? SwapQuoteMismatchException
-        if (mismatch != null) {
-            swapRepository.clearQuote()
+        val mismatchArgs = (result as? SwapQuoteData.Error)?.toMismatchArgs()
+        if (mismatchArgs != null) {
             if (canNavigateToSwapQuote()) {
-                navigationRouter.forward(mismatchArgs(mismatch, result.mode, selectedAsset))
+                swapRepository.clearQuote()
+                navigationRouter.forward(mismatchArgs)
             }
             return@withContext
         }
@@ -163,30 +157,6 @@ class RequestSwapQuoteUseCase(
         if (canNavigateToSwapQuote()) {
             navigationRouter.forward(SwapQuoteArgs)
         }
-    }
-
-    /**
-     * The mismatch sheet's arguments. The quote itself was rejected, so the assets come from the request:
-     * ZEC is the origin except in a flex-input swap, where the user-selected asset is what is being sold.
-     */
-    private fun mismatchArgs(
-        exception: SwapQuoteMismatchException,
-        mode: SwapMode,
-        selectedAsset: SwapAsset
-    ): SwapQuoteMismatchArgs {
-        val zecAsset = swapRepository.assets.value.zecAsset
-        val origin = if (mode == FLEX_INPUT) selectedAsset else zecAsset
-        val destination = if (mode == FLEX_INPUT) zecAsset else selectedAsset
-        return SwapQuoteMismatchArgs(
-            provider = SWAP_PROVIDER_NEAR,
-            mode = mode,
-            originTokenTicker = origin?.tokenTicker ?: ZEC_TICKER,
-            originChainTicker = origin?.chainTicker ?: ZEC_TICKER,
-            destinationTokenTicker = destination?.tokenTicker ?: ZEC_TICKER,
-            destinationChainTicker = destination?.chainTicker ?: ZEC_TICKER,
-            mismatchType = exception.type,
-            depositAddress = exception.depositAddress
-        )
     }
 
     @Suppress("TooGenericExceptionCaught")
@@ -228,11 +198,6 @@ class RequestSwapQuoteUseCase(
             is AddressType.Invalid -> throw IllegalStateException(result.reason)
         }
 }
-
-/** The only swap provider the app talks to; matches `NearSwapQuote.provider`. */
-internal const val SWAP_PROVIDER_NEAR = "near"
-
-private const val ZEC_TICKER = "zec"
 
 private fun BigDecimal.toExactQuoteZatoshi(): Zatoshi =
     try {

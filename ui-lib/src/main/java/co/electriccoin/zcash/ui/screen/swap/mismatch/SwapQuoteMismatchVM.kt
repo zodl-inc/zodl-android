@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.usecase.SendEmailUseCase
-import co.electriccoin.zcash.ui.common.usecase.SwapQuoteMismatchReport
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,18 +45,7 @@ class SwapQuoteMismatchVM(
 
     private fun onReport() {
         viewModelScope.launch {
-            sendEmailUseCase(
-                SwapQuoteMismatchReport(
-                    provider = args.provider,
-                    mode = args.mode,
-                    originTokenTicker = args.originTokenTicker,
-                    originChainTicker = args.originChainTicker,
-                    destinationTokenTicker = args.destinationTokenTicker,
-                    destinationChainTicker = args.destinationChainTicker,
-                    mismatchType = args.mismatchType,
-                    depositAddress = args.depositAddress
-                )
-            )
+            sendEmailUseCase(args)
             onBack()
         }
     }
