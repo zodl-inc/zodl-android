@@ -13,6 +13,7 @@
     }
   ],
   "releaseAssetFilter": "app-zcashmainnet-foss-release.apk",
-  "gpgKeyId": "0338...6AB1",
-  "gpgKeyFingerprint": "See https://github.com/zodl-inc/zodl-android/releases — each release includes a .asc GPG signature"
+  "gpgKeyFingerprint": "033834DD49DECF9DBB9934BC6C93CA8E58E26AB1",
+  "gpgKeyEmail": "sysadmin@zodl.com",
+  "gpgSignatureNote": "Each GitHub release includes .asc GPG signatures for all APKs"
 }

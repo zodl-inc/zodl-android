@@ -47,12 +47,27 @@ apksigner verify --print-certs app-zcashmainnet-foss-release.apk
 | MD5 | `33d742aafb8b57a35169cc6b527fec31` |
 
 **Certificate DN:** `O=Zerocoin Electric Coin Company, OU=Core Engineering, L=Denver, ST=CO, C=01`
-*(Note: the DN reflects the original key created under the ECC/Zashi name — the signing key has not been rotated as part of the ZODL rebrand. The fingerprints above are the canonical source of truth.)*
+*(Note: the DN reflects the original key created under the ECC/Zashi name — the signing key has not been rotated as part of the ZODL rebrand. `C=01` is what the certificate actually contains, not a standard ISO-3166 code. The SHA-256 fingerprint above is the canonical identifier for verification.)*
 
-These fingerprints are also embedded in each GitHub release as a
-`checksums.sha256` file signed with the ZODL GPG key
-(`0338...6AB1`) so you can verify the chain:
-APK → SHA-256 → GPG signature → ZODL key.
+Each GitHub release includes GPG signatures (`.asc` files) for all APKs, signed
+with the ZODL GPG key (fingerprint below). You can verify the APK authenticity:
+
+```sh
+# Download the APK and its signature from GitHub releases
+wget https://github.com/zodl-inc/zodl-android/releases/latest/download/app-zcashmainnet-foss-release.apk
+wget https://github.com/zodl-inc/zodl-android/releases/latest/download/app-zcashmainnet-foss-release.apk.asc
+
+# Import ZODL GPG key
+gpg --keyserver keyserver.ubuntu.com --recv-keys 033834DD49DECF9DBB9934BC6C93CA8E58E26AB1
+
+# Verify signature
+gpg --verify app-zcashmainnet-foss-release.apk.asc app-zcashmainnet-foss-release.apk
+```
+
+**ZODL GPG key:**
+- Fingerprint: `0338 34DD 49DE CF9D BB99  34BC 6C93 CA8E 58E2 6AB1`
+- Short ID: `58E26AB1`
+- Email: `sysadmin@zodl.com`
 
 ### Obtainium
 
