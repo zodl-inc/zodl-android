@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ironwood_announcement_title">Zcash को Ironwood पर अपग्रेड किया गया</string>
+    <string name="ironwood_announcement_body_1">Ironwood एक नया शील्डेड पूल है: वही प्रोटोकॉल जो Orchard में है, अब औपचारिक रूप से सत्यापित और स्वतंत्र रूप से ऑडिट किया हुआ। आपका फंड सुरक्षित है और आपके एड्रेस पहले की तरह काम करते हैं।</string>
+    <string name="ironwood_announcement_body_2">आपका Orchard फंड तब तक आपका ही रहता है जब तक आप उसे नहीं ले जाते। आप उसे अब भी खर्च कर सकते हैं, लेकिन Orchard से बाहर जाने वाली राशि सार्वजनिक होती है, इसलिए खर्च करने पर एक राशि चेन पर दर्ज हो जाती है, और वह आपके भेजे गए मूल्य से बड़ी हो सकती है।</string>
+    <string name="ironwood_announcement_body_3">आप उन्हें अभी ले जा सकते हैं। हम प्राइवेट विकल्प की सलाह देते हैं: यह आपके बैलेंस को छोटे-छोटे ट्रांसफर में बाँट देता है जो समय के साथ बैकग्राउंड में अपने आप भेजे जाते हैं, जिससे उन्हें आपसे जोड़ पाना मुश्किल हो जाता है। या फिर सब कुछ एक ही ट्रांसफर में एक साथ ले जाएँ।</string>
+    <string name="ironwood_announcement_body_guide">तय नहीं कर पा रहे कि कौन सा चुनें? हमारी गाइड दोनों विकल्प समझाती है।</string>
+    <string name="ironwood_announcement_body_guide_link">हमारी गाइड</string>
+    <string name="ironwood_announcement_primary_button">Zodl पर जाएँ</string>
+</resources>

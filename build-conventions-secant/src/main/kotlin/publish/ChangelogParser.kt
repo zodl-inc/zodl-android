@@ -4,6 +4,7 @@ import org.intellij.markdown.ast.getTextInNode
 import org.intellij.markdown.flavours.gfm.GFMFlavourDescriptor
 import org.intellij.markdown.parser.MarkdownParser
 import publish.ChangelogParser.ENGLISH_TAG
+import publish.ChangelogParser.HINDI_TAG
 import publish.ChangelogParser.SPANISH_TAG
 import java.io.File
 import java.text.SimpleDateFormat
@@ -19,15 +20,20 @@ object ChangelogParser {
 
     internal const val ENGLISH_TAG = "EN"
     internal const val SPANISH_TAG = "ES"
+    internal const val HINDI_TAG = "HI"
 
     private const val ADDED_PART_EN = "Added"
     private const val ADDED_PART_ES = "Añadido"
+    private const val ADDED_PART_HI = "जोड़ा गया"
     private const val CHANGED_PART_EN = "Changed"
     private const val CHANGED_PART_ES = "Cambiado"
+    private const val CHANGED_PART_HI = "बदला गया"
     private const val FIXED_PART_EN = "Fixed"
     private const val FIXED_PART_ES = "Corregido"
+    private const val FIXED_PART_HI = "ठीक किया गया"
     private const val REMOVED_PART_EN = "Removed"
     private const val REMOVED_PART_ES = "Removido"
+    private const val REMOVED_PART_HI = "हटाया गया"
 
     private fun log(value: Any) {
         if (DEBUG_LOGS_ENABLED) {
@@ -165,40 +171,33 @@ object ChangelogParser {
             }
     }
 
+    private fun sectionTitlesByLanguage(languageTag: LanguageTag): SectionTitles =
+        when (languageTag) {
+            is LanguageTag.English -> SectionTitles(ADDED_PART_EN, CHANGED_PART_EN, FIXED_PART_EN, REMOVED_PART_EN)
+            is LanguageTag.Spanish -> SectionTitles(ADDED_PART_ES, CHANGED_PART_ES, FIXED_PART_ES, REMOVED_PART_ES)
+            is LanguageTag.Hindi -> SectionTitles(ADDED_PART_HI, CHANGED_PART_HI, FIXED_PART_HI, REMOVED_PART_HI)
+        }
+
     private fun titleByLanguage(
         type: TitleType,
         languageTag: LanguageTag
     ): String =
-        when (type) {
-            TitleType.ADDED -> {
-                when (languageTag) {
-                    is LanguageTag.English -> ADDED_PART_EN
-                    is LanguageTag.Spanish -> ADDED_PART_ES
-                }
-            }
-
-            TitleType.CHANGED -> {
-                when (languageTag) {
-                    is LanguageTag.English -> CHANGED_PART_EN
-                    is LanguageTag.Spanish -> CHANGED_PART_ES
-                }
-            }
-
-            TitleType.FIXED -> {
-                when (languageTag) {
-                    is LanguageTag.English -> FIXED_PART_EN
-                    is LanguageTag.Spanish -> FIXED_PART_ES
-                }
-            }
-
-            TitleType.REMOVED -> {
-                when (languageTag) {
-                    is LanguageTag.English -> REMOVED_PART_EN
-                    is LanguageTag.Spanish -> REMOVED_PART_ES
-                }
+        sectionTitlesByLanguage(languageTag).let { titles ->
+            when (type) {
+                TitleType.ADDED -> titles.added
+                TitleType.CHANGED -> titles.changed
+                TitleType.FIXED -> titles.fixed
+                TitleType.REMOVED -> titles.removed
             }
         }
 }
+
+private data class SectionTitles(
+    val added: String,
+    val changed: String,
+    val fixed: String,
+    val removed: String
+)
 
 sealed class LanguageTag(
     open val tag: String
@@ -209,6 +208,10 @@ sealed class LanguageTag(
 
     data class Spanish(
         override val tag: String = SPANISH_TAG
+    ) : LanguageTag(tag)
+
+    data class Hindi(
+        override val tag: String = HINDI_TAG
     ) : LanguageTag(tag)
 }
 
