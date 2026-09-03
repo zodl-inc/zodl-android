@@ -16,12 +16,13 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
+import co.electriccoin.zcash.preference.androidsecurity.KeyStoreException as AndroidKeyStoreException
 
 /**
  * Pins the recovery heuristics of `AndroidPreferenceProvider.newEncrypted`: which failures are
- * allowed to trigger wipe-and-recreate of the encrypted preferences, and how the orphaned-file
- * Keystore query degrades when the Keystore itself misbehaves. Widening or narrowing either
- * behavior must be a deliberate change that shows up here.
+ * allowed to trigger wipe-and-recreate of the encrypted preferences, and which failures are
+ * allowed to delete the shared Keystore master key. Widening or narrowing either behavior must be
+ * a deliberate change that shows up here.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class EncryptedPreferenceRecoveryTest {
@@ -74,40 +75,29 @@ class EncryptedPreferenceRecoveryTest {
     }
 
     @Test
-    fun `retry recovers from a single transient failure`() {
-        var attempts = 0
-
-        val result =
-            retryOnceOrDefault(false) {
-                attempts++
-                if (attempts == 1) {
-                    error("transient Keystore failure")
-                }
-                true
-            }
-
-        assertTrue(result)
-        assertEquals(2, attempts)
+    fun `InvalidKeyException without an android Keystore cause is a master key failure`() {
+        assertTrue(isMasterKeyFailure(InvalidKeyException("Failed to unwrap key")))
+        assertTrue(isMasterKeyFailure(GeneralSecurityException(InvalidKeyException())))
     }
 
     @Test
-    fun `retry yields the default when the failure persists`() {
-        var attempts = 0
-
-        val result =
-            retryOnceOrDefault(false) {
-                attempts++
-                error("persistent Keystore failure")
-            }
-
-        assertFalse(result)
-        assertEquals(2, attempts)
+    fun `InvalidKeyException wrapping an android Keystore failure is not a master key failure`() {
+        assertFalse(
+            isMasterKeyFailure(
+                InvalidKeyException("Keystore operation failed", AndroidKeyStoreException())
+            )
+        )
     }
 
     @Test
-    fun `Keystore key failures are master key failures`() {
+    fun `java security KeyStoreException anywhere in the chain is a master key failure`() {
+        assertTrue(isMasterKeyFailure(KeyStoreException()))
         assertTrue(isMasterKeyFailure(GeneralSecurityException(KeyStoreException())))
-        assertTrue(isMasterKeyFailure(InvalidKeyException()))
+        assertTrue(
+            isMasterKeyFailure(
+                InvalidKeyException("Keystore operation failed", KeyStoreException())
+            )
+        )
     }
 
     @Test
@@ -133,7 +123,6 @@ class EncryptedPreferenceRecoveryTest {
             val result =
                 createEncryptedPreferencesWithRecovery(
                     filename = "test",
-                    isOrphaned = false,
                     create = {
                         attempts++
                         if (attempts == 1) error("transient Keystore failure")
@@ -158,7 +147,6 @@ class EncryptedPreferenceRecoveryTest {
                 assertFailsWith<IllegalStateException> {
                     createEncryptedPreferencesWithRecovery<String>(
                         filename = "test",
-                        isOrphaned = false,
                         create = {
                             attempts++
                             error("persistent Keystore failure")
@@ -182,7 +170,6 @@ class EncryptedPreferenceRecoveryTest {
             val result =
                 createEncryptedPreferencesWithRecovery(
                     filename = "test",
-                    isOrphaned = false,
                     create = {
                         attempts++
                         if (attempts <= ENCRYPTED_PREFERENCES_OPEN_ATTEMPTS) {
@@ -207,7 +194,6 @@ class EncryptedPreferenceRecoveryTest {
             val result =
                 createEncryptedPreferencesWithRecovery(
                     filename = "test",
-                    isOrphaned = false,
                     create = {
                         attempts++
                         if (attempts == 1) throw AEADBadTagException("decryption failed")
@@ -222,30 +208,6 @@ class EncryptedPreferenceRecoveryTest {
         }
 
     @Test
-    fun `an orphaned file with an unclassified failure is quarantined once then recreated`() =
-        runTest {
-            var attempts = 0
-            var quarantined = false
-
-            val result =
-                createEncryptedPreferencesWithRecovery(
-                    filename = "test",
-                    isOrphaned = true,
-                    create = {
-                        attempts++
-                        if (attempts <= ENCRYPTED_PREFERENCES_OPEN_ATTEMPTS) {
-                            throw IOException("disk error")
-                        }
-                        "fresh store"
-                    },
-                    quarantine = { quarantined = true },
-                )
-
-            assertEquals("fresh store", result)
-            assertTrue(quarantined)
-        }
-
-    @Test
     fun `recreate not allowed rethrows without quarantining`() =
         runTest {
             var quarantined = false
@@ -253,7 +215,6 @@ class EncryptedPreferenceRecoveryTest {
             assertFailsWith<AEADBadTagException> {
                 createEncryptedPreferencesWithRecovery<String>(
                     filename = "test",
-                    isOrphaned = false,
                     isRecreateAllowed = false,
                     create = { throw AEADBadTagException("decryption failed") },
                     quarantine = { quarantined = true },
@@ -271,7 +232,6 @@ class EncryptedPreferenceRecoveryTest {
             assertFailsWith<AEADBadTagException> {
                 createEncryptedPreferencesWithRecovery<String>(
                     filename = "test",
-                    isOrphaned = false,
                     create = { throw AEADBadTagException("decryption failed") },
                     quarantine = { quarantined = true },
                 )

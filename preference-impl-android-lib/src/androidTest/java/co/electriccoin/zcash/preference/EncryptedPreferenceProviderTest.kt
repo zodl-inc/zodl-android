@@ -127,6 +127,7 @@ class EncryptedPreferenceProviderTest {
 
             assertFalse(sharedPrefsBakFile(context, RECOVERY_FILENAME).exists())
             assertTrue(androidKeyStoreAlias().containsAlias(MasterKey.DEFAULT_MASTER_KEY_ALIAS))
+            assertFalse(recreatedMarkerFile(quarantineDirectory(context), RECOVERY_FILENAME).exists())
         }
 
     @Test
@@ -169,6 +170,7 @@ class EncryptedPreferenceProviderTest {
             assertEquals(1, quarantined.size)
 
             assertTrue(androidKeyStoreAlias().containsAlias(MasterKey.DEFAULT_MASTER_KEY_ALIAS))
+            assertFalse(recreatedMarkerFile(quarantineDirectory(context), D2D_FILENAME).exists())
 
             val expectedValue = StringDefaultPreferenceFixture.DEFAULT_VALUE + "restored"
             restoredProvider.putString(StringDefaultPreferenceFixture.KEY, expectedValue)
@@ -200,13 +202,13 @@ class EncryptedPreferenceProviderTest {
         private fun sharedPrefsBakFile(
             context: Context,
             filename: String
-        ) = File(File(context.filesDir.parent, "shared_prefs"), "$filename.xml.bak")
+        ) = encryptedPreferencesBackupFile(sharedPreferencesDirectory(context), filename)
 
         private fun quarantinedFiles(
             context: Context,
             filename: String
         ): List<File> {
-            val quarantineDir = File(context.noBackupFilesDir, QUARANTINE_DIRECTORY)
+            val quarantineDir = quarantineDirectory(context)
             return quarantineDir
                 .listFiles { file -> file.name.startsWith("$filename-") && file.name.endsWith(".xml") }
                 ?.toList()

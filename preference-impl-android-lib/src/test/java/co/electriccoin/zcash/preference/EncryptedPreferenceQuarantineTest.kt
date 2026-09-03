@@ -7,7 +7,6 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class EncryptedPreferenceQuarantineTest {
@@ -29,38 +28,35 @@ class EncryptedPreferenceQuarantineTest {
 
     @Test
     fun `moves the xml and bak files with timestamped names and preserved content`() {
-        File(sharedPrefsDir, "co.electriccoin.zcash.encrypted.xml").writeText("xml content")
-        File(sharedPrefsDir, "co.electriccoin.zcash.encrypted.xml.bak").writeText("bak content")
+        encryptedPreferencesFile(sharedPrefsDir, "co.electriccoin.zcash.encrypted").writeText("xml content")
+        encryptedPreferencesBackupFile(sharedPrefsDir, "co.electriccoin.zcash.encrypted").writeText("bak content")
 
-        val result =
-            quarantineEncryptedPreferencesFiles(
-                sharedPrefsDir = sharedPrefsDir,
-                quarantineDir = quarantineDir,
-                filename = "co.electriccoin.zcash.encrypted",
-                nowMillis = 1_700_000_000_000L,
-            )
+        quarantineEncryptedPreferencesFiles(
+            sharedPrefsDir = sharedPrefsDir,
+            quarantineDir = quarantineDir,
+            filename = "co.electriccoin.zcash.encrypted",
+            nowMillis = 1_700_000_000_000L,
+        )
 
         val quarantinedXml = File(quarantineDir, "co.electriccoin.zcash.encrypted-1700000000000.xml")
         val quarantinedBak = File(quarantineDir, "co.electriccoin.zcash.encrypted-1700000000000.xml.bak")
 
-        assertEquals(quarantinedXml, result)
         assertEquals("xml content", quarantinedXml.readText())
         assertEquals("bak content", quarantinedBak.readText())
-        assertFalse(File(sharedPrefsDir, "co.electriccoin.zcash.encrypted.xml").exists())
-        assertFalse(File(sharedPrefsDir, "co.electriccoin.zcash.encrypted.xml.bak").exists())
+        assertFalse(encryptedPreferencesFile(sharedPrefsDir, "co.electriccoin.zcash.encrypted").exists())
+        assertFalse(encryptedPreferencesBackupFile(sharedPrefsDir, "co.electriccoin.zcash.encrypted").exists())
     }
 
     @Test
-    fun `returns null when neither file exists`() {
-        val result =
-            quarantineEncryptedPreferencesFiles(
-                sharedPrefsDir = sharedPrefsDir,
-                quarantineDir = quarantineDir,
-                filename = "missing",
-                nowMillis = 1_700_000_000_000L,
-            )
+    fun `does nothing when neither file exists`() {
+        quarantineEncryptedPreferencesFiles(
+            sharedPrefsDir = sharedPrefsDir,
+            quarantineDir = quarantineDir,
+            filename = "missing",
+            nowMillis = 1_700_000_000_000L,
+        )
 
-        assertNull(result)
+        assertFalse(quarantineDir.exists())
     }
 
     @Test
@@ -93,5 +89,18 @@ class EncryptedPreferenceQuarantineTest {
             ),
             remaining
         )
+    }
+
+    @Test
+    fun `prune leaves the recreated marker for the filename untouched`() {
+        quarantineDir.mkdirs()
+        val marker = recreatedMarkerFile(quarantineDir, "target").apply { writeText("marker") }
+        (1L..5L).forEach { millis ->
+            File(quarantineDir, "target-$millis.xml").writeText("v$millis")
+        }
+
+        pruneQuarantine(quarantineDir, "target", keepNewest = 3)
+
+        assertTrue(marker.exists())
     }
 }
