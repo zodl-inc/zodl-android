@@ -1,9 +1,11 @@
 package co.electriccoin.zcash.ui.screen.deletewallet
 
+import android.app.Application
 import cash.z.ecc.android.sdk.CloseableSynchronizer
 import cash.z.ecc.android.sdk.WalletCoordinator
 import co.electriccoin.zcash.preference.EncryptedPreferenceProvider
 import co.electriccoin.zcash.preference.StandardPreferenceProvider
+import co.electriccoin.zcash.preference.purgeEncryptedPreferencesQuarantine
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -22,6 +24,7 @@ import okhttp3.internal.closeQuietly
 import kotlin.time.Duration.Companion.seconds
 
 class ResetZashiUseCase(
+    private val application: Application,
     private val walletCoordinator: WalletCoordinator,
     private val flexaRepository: FlexaRepository,
     private val synchronizerProvider: SynchronizerProvider,
@@ -92,6 +95,7 @@ class ResetZashiUseCase(
     private suspend fun clearSharedPrefs() {
         standardPreferenceProvider().clearPreferences()
         encryptedPreferenceProvider().clearPreferences()
+        purgeEncryptedPreferencesQuarantine(application)
     }
 
     private fun clearInMemoryData() {
