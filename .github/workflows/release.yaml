@@ -181,12 +181,16 @@ jobs:
           gpg -u sysadmin@zodl.com --armor --digest-algo SHA256 --detach-sign app-zcashmainnet-foss-release.apk
           gpg -u sysadmin@zodl.com --armor --digest-algo SHA256 --detach-sign app-zcashmainnet-foss-release-full-externallibs.apk
           gpg -u sysadmin@zodl.com --armor --digest-algo SHA256 --detach-sign app-zcashmainnet-google-play-store-release-universal.apk
+          gpg --armor --export sysadmin@zodl.com > zodl-gpg-public-key.asc
 
       - name: Print APK signing certificate fingerprints
         run: |
           cd artifacts/
-          echo "=== APK signing certificate fingerprints ==="
-          apksigner verify --print-certs app-zcashmainnet-foss-release.apk
+          APKSIGNER="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -n 1)/apksigner"
+          for apk in *.apk; do
+            echo "=== $apk signing certificate fingerprints ==="
+            "$APKSIGNER" verify --print-certs "$apk"
+          done
 
       - name: Upload to Release
         uses: softprops/action-gh-release@v3
