@@ -17,6 +17,7 @@ import co.electriccoin.zcash.di.viewModelModule
 import co.electriccoin.zcash.migration.di.featureMigrationModule
 import co.electriccoin.zcash.spackle.StrictModeCompat
 import co.electriccoin.zcash.spackle.Twig
+import co.electriccoin.zcash.spackle.process.ProcessNameCompat
 import co.electriccoin.zcash.ui.common.provider.CrashReportingStorageProvider
 import co.electriccoin.zcash.ui.common.provider.MigrationNotifier
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -59,6 +60,11 @@ class ZcashApplication : CoroutineApplication() {
         super.onCreate()
 
         configureLogging()
+
+        if (isCrashProcess()) {
+            Twig.info { "Skipping app initialization in the crash-reporting process" }
+            return
+        }
 
         preloadSdkNativeLibrary()
 
@@ -133,6 +139,15 @@ class ZcashApplication : CoroutineApplication() {
         }
     }
 
+    /**
+     * The `:crash` secondary process only hosts `ExceptionReceiver` and the crash content
+     * provider, which are Koin-free — everything below this check assumes Koin is started.
+     * [co.electriccoin.zcash.crash.android.GlobalCrashReporter.register] has its own copy of the
+     * same `:crash` suffix check, using a constant `internal` to crash-android-lib, so the literal
+     * is deliberately repeated here rather than shared.
+     */
+    private fun isCrashProcess() = ProcessNameCompat.getProcessName(this).endsWith(CRASH_PROCESS_NAME_SUFFIX)
+
     private fun configureStrictMode() {
         if (BuildConfig.DEBUG) {
             StrictModeCompat.enableStrictMode(BuildConfig.IS_STRICT_MODE_CRASH_ENABLED)
@@ -154,3 +169,5 @@ class ZcashApplication : CoroutineApplication() {
         }
     }
 }
+
+private const val CRASH_PROCESS_NAME_SUFFIX = ":crash"
