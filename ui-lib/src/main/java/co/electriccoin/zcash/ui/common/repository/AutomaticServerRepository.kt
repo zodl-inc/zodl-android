@@ -87,8 +87,8 @@ class AutomaticServerRepositoryImpl(
     // one of our own bundled servers — see resolveIsEndpointCustom.
     override suspend fun isServerCustom(): Boolean {
         if (isServerAutomatic()) return false
-        val endpoint = persistableWalletProvider.getPersistableWallet()?.endpoint ?: return false
-        return resolveIsEndpointCustom(endpoint, lightWalletEndpointProvider.getEndpoints())
+        val endpoint = persistableWalletProvider.getPersistableWallet()?.endpoint
+        return endpoint != null && resolveIsEndpointCustom(endpoint, lightWalletEndpointProvider.getEndpoints())
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
