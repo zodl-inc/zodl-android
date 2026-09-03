@@ -15,6 +15,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 - Coinholder Polling's poll list no longer refreshes itself in the background while you're just browsing it; it now updates when you open the screen, return to it, or pull to refresh.
 - Vote submission is faster and more reliable over Tor: a slow or unresponsive vote-helper server no longer stalls the whole submission.
+- The seed backup prompt now always takes priority over the migration banner and any sync/connectivity error banner once your wallet has received a balance and you haven't backed up your recovery phrase yet, so it can no longer be hidden behind other home screen messages for days.
 
 ### Fixed:
 
