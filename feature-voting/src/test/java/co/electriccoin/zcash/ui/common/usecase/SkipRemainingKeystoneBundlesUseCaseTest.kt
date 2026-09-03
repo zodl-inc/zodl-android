@@ -211,6 +211,7 @@ private class FakeSynchronizerProvider(
 
     override val error: StateFlow<SynchronizerError?> = MutableStateFlow(null)
     override val synchronizer: StateFlow<Synchronizer?> = MutableStateFlow(fakeSynchronizer)
+    override val isSeedMismatch: StateFlow<Boolean> = MutableStateFlow(false)
 
     override suspend fun getSynchronizer(): Synchronizer = fakeSynchronizer
 

@@ -333,6 +333,7 @@ private class FakeWalletRepository(
 private class FakeSynchronizerProvider : SynchronizerProvider {
     override val error = MutableStateFlow<SynchronizerError?>(null)
     override val synchronizer = MutableStateFlow<Synchronizer?>(MockSynchronizer(ServerValidation.Valid))
+    override val isSeedMismatch = MutableStateFlow(false)
 
     override suspend fun getSynchronizer(): Synchronizer = checkNotNull(synchronizer.value)
 

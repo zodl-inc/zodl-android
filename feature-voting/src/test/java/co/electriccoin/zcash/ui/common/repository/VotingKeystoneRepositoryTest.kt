@@ -704,6 +704,7 @@ class VotingKeystoneRepositoryTest {
     ) : SynchronizerProvider {
         override val error: StateFlow<SynchronizerError?> = MutableStateFlow(null)
         override val synchronizer: StateFlow<Synchronizer?> = MutableStateFlow(null)
+        override val isSeedMismatch: StateFlow<Boolean> = MutableStateFlow(false)
 
         private val fakeSynchronizer: Synchronizer =
             mockk<Synchronizer>(relaxed = true).also { every { it.network } returns ZcashNetwork.Mainnet }
