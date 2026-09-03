@@ -22,6 +22,7 @@ import co.electriccoin.zcash.ui.common.model.WalletRestoringState
 import co.electriccoin.zcash.ui.common.provider.IsIronwoodAnnouncementShownStorageProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
+import co.electriccoin.zcash.ui.common.provider.SdkEncryptedPreferenceRecoveryProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.WalletBackupFlagStorageProvider
 import co.electriccoin.zcash.ui.common.provider.WalletRestoringStateProvider
@@ -31,12 +32,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -85,6 +88,7 @@ class WalletRepositoryImpl(
     private val walletRestoringStateProvider: WalletRestoringStateProvider,
     private val walletBackupFlagStorageProvider: WalletBackupFlagStorageProvider,
     private val isIronwoodAnnouncementShownStorageProvider: IsIronwoodAnnouncementShownStorageProvider,
+    private val sdkEncryptedPreferenceRecoveryProvider: SdkEncryptedPreferenceRecoveryProvider,
 ) : WalletRepository {
     private val sharingScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -108,6 +112,22 @@ class WalletRepositoryImpl(
         }
 
     /**
+     * The encrypted wallet store is only awaited when [onboardingState] already claims a wallet
+     * exists; a fresh install with the flag at its default has nothing to read there, so its
+     * splash screen must not wait on the Keystore for [persistableWalletProvider]'s flow to first
+     * emit.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val onboardingWithWallet: Flow<Pair<OnboardingState, Boolean>> =
+        onboardingState.flatMapLatest { state ->
+            if (state == OnboardingState.READY) {
+                persistableWalletProvider.persistableWallet.map { state to (it != null) }
+            } else {
+                flowOf(state to false)
+            }
+        }
+
+    /**
      * READY additionally requires a stored wallet ([resolveSecretState]), because the plain
      * onboarding flag and the encrypted wallet store can diverge when the encrypted store is
      * recreated after provable corruption (MOB-1836). This flow never catches: a transient
@@ -119,13 +139,12 @@ class WalletRepositoryImpl(
     override val secretState: StateFlow<SecretState> =
         combine(
             configurationRepository.configurationFlow,
-            onboardingState,
-            persistableWalletProvider.persistableWallet
-        ) { config, onboardingState, wallet ->
+            onboardingWithWallet
+        ) { config, (onboardingState, hasWallet) ->
             resolveSecretState(
                 isConfigurationLoaded = config != null,
                 onboardingState = onboardingState,
-                hasWallet = wallet != null
+                hasWallet = hasWallet
             )
         }.stateIn(
             scope = sharingScope,
@@ -219,16 +238,17 @@ class WalletRepositoryImpl(
     override fun init() {
         scope.launch {
             try {
-                migrateDecommissionedEndpointIfNeeded()
-                resetOnboardingIfWalletMissing()
+                val wallet = persistableWalletProvider.getPersistableWallet()
+                migrateDecommissionedEndpointIfNeeded(wallet)
+                resetOnboardingIfWalletMissing(wallet)
             } catch (e: Exception) {
                 Twig.error(e) { "Startup wallet consistency checks failed; will retry on next launch" }
             }
         }
     }
 
-    private suspend fun migrateDecommissionedEndpointIfNeeded() {
-        val wallet = persistableWalletProvider.getPersistableWallet() ?: return
+    private suspend fun migrateDecommissionedEndpointIfNeeded(wallet: PersistableWallet?) {
+        if (wallet == null) return
         if (wallet.endpoint.host in lightWalletEndpointProvider.getDecommissionedHosts()) {
             persistWalletInternal(wallet.copy(endpoint = lightWalletEndpointProvider.getDefaultEndpoint()))
         }
@@ -237,19 +257,25 @@ class WalletRepositoryImpl(
     /**
      * Self-heals a wallet-less READY state (MOB-1836): the onboarding flag and the encrypted
      * wallet store live in separate preference files and can diverge when the encrypted store is
-     * recreated after provable corruption. Erases any stale SDK databases directly, since no
-     * synchronizer exists yet at this point to route through the usual delete-and-restore paths.
+     * recreated after provable corruption. The onboarding flag is written back to NONE first, so a
+     * Create/Restore the user completes while the SDK-store repair or the erase below is still
+     * running cannot be clobbered by this write landing afterwards. The SDK's own encrypted store
+     * is then repaired the same way (MOB-1836): it shares this app's Keystore master key but has
+     * no corruption recovery of its own. Finally, any stale SDK databases are erased directly,
+     * since no synchronizer exists yet at this point to route through the usual delete-and-restore
+     * paths.
      */
-    private suspend fun resetOnboardingIfWalletMissing() {
-        val currentOnboardingState =
-            OnboardingState.fromNumber(StandardPreferenceKeys.ONBOARDING_STATE.getValue(standardPreferenceProvider()))
-        if (currentOnboardingState != OnboardingState.READY) return
-        if (persistableWalletProvider.getPersistableWallet() != null) return
+    private suspend fun resetOnboardingIfWalletMissing(wallet: PersistableWallet?) {
+        if (wallet != null) return
+        if (onboardingState.first() != OnboardingState.READY) return
 
         Twig.warn { "Onboarding state is READY but no wallet is stored; returning to onboarding" }
+        persistOnboardingStateInternal(OnboardingState.NONE)
+
+        runCatching { sdkEncryptedPreferenceRecoveryProvider.ensureReadable() }
+            .onFailure { Twig.error(it) { "Repairing the SDK secret store failed; continuing" } }
         runCatching { Synchronizer.erase(application, ZcashNetwork.fromResources(application)) }
             .onFailure { Twig.error(it) { "Erasing stale wallet data failed; continuing" } }
-        persistOnboardingStateInternal(OnboardingState.NONE)
     }
 
     override suspend fun updateWalletEndpoint(endpoint: LightWalletEndpoint) {

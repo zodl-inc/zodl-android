@@ -14,6 +14,7 @@ import co.electriccoin.zcash.ui.common.model.WalletRestoringState
 import co.electriccoin.zcash.ui.common.provider.IsIronwoodAnnouncementShownStorageProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
+import co.electriccoin.zcash.ui.common.provider.SdkEncryptedPreferenceRecoveryProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.WalletBackupFlagStorageProvider
 import co.electriccoin.zcash.ui.common.provider.WalletRestoringStateProvider
@@ -55,7 +56,6 @@ class WalletRepositoryImplTest {
         coEvery { PersistableWallet.new(any(), any(), any(), any()) } returns mockk(relaxed = true)
 
         mockkObject(Synchronizer.Companion)
-        coEvery { Synchronizer.erase(any(), any(), any()) } returns true
     }
 
     @AfterTest
@@ -91,6 +91,24 @@ class WalletRepositoryImplTest {
         }
 
     @Test
+    fun secretStateDoesNotWaitOnTheWalletStoreWhenFlagIsNotReady() =
+        runTest {
+            val neverEmittingWalletProvider =
+                mockk<PersistableWalletProvider> {
+                    every { persistableWallet } returns MutableSharedFlow()
+                }
+
+            val (repository, _) =
+                newRepository(
+                    onboardingState = OnboardingState.NONE,
+                    initialWallet = null,
+                    persistableWalletProviderOverride = neverEmittingWalletProvider,
+                )
+
+            assertEquals(SecretState.NONE, repository.secretState.first { it != SecretState.LOADING })
+        }
+
+    @Test
     fun createNewWalletStoresWalletBeforeMarkingOnboardingReady() =
         runTest {
             val (repository, harness) = newRepository(onboardingState = OnboardingState.NONE, initialWallet = null)
@@ -111,8 +129,7 @@ class WalletRepositoryImplTest {
             repository.init()
             advanceUntilIdle()
 
-            assertEquals("0", harness.fakePrefs.getString(StandardPreferenceKeys.ONBOARDING_STATE.key))
-            coVerify(exactly = 1) { Synchronizer.erase(any(), any(), any()) }
+            assertEquals(listOf("onboarding=0", "sdkRepair", "erase"), harness.events)
         }
 
     @Test
@@ -129,11 +146,30 @@ class WalletRepositoryImplTest {
             coVerify(exactly = 0) { Synchronizer.erase(any(), any(), any()) }
         }
 
+    @Test
+    fun initSkipsRepairAndEraseWhenFlagIsNotReady() =
+        runTest {
+            val (repository, harness) = newRepository(onboardingState = OnboardingState.NONE, initialWallet = null)
+            repository.scope = CoroutineScope(StandardTestDispatcher(testScheduler))
+
+            repository.init()
+            advanceUntilIdle()
+
+            assertEquals(emptyList<String>(), harness.events)
+            coVerify(exactly = 0) { Synchronizer.erase(any(), any(), any()) }
+        }
+
     private suspend fun newRepository(
         onboardingState: OnboardingState,
         initialWallet: PersistableWallet?,
+        persistableWalletProviderOverride: PersistableWalletProvider? = null,
     ): Pair<WalletRepositoryImpl, TestHarness> {
         val events = mutableListOf<String>()
+
+        coEvery { Synchronizer.erase(any(), any(), any()) } coAnswers {
+            events += "erase"
+            true
+        }
 
         val configurationRepository =
             mockk<ConfigurationRepository> {
@@ -148,7 +184,8 @@ class WalletRepositoryImplTest {
                 every { getDecommissionedHosts() } returns emptySet()
             }
 
-        val persistableWalletProvider = FakePersistableWalletProvider(initialWallet, events)
+        val persistableWalletProvider =
+            persistableWalletProviderOverride ?: FakePersistableWalletProvider(initialWallet, events)
 
         val synchronizerProvider =
             mockk<SynchronizerProvider>(relaxed = true) {
@@ -172,6 +209,8 @@ class WalletRepositoryImplTest {
                 every { observe() } returns flowOf(null)
             }
 
+        val sdkEncryptedPreferenceRecoveryProvider = FakeSdkEncryptedPreferenceRecoveryProvider(events)
+
         val repository =
             WalletRepositoryImpl(
                 configurationRepository = configurationRepository,
@@ -184,6 +223,7 @@ class WalletRepositoryImplTest {
                 walletRestoringStateProvider = walletRestoringStateProvider,
                 walletBackupFlagStorageProvider = walletBackupFlagStorageProvider,
                 isIronwoodAnnouncementShownStorageProvider = isIronwoodAnnouncementShownStorageProvider,
+                sdkEncryptedPreferenceRecoveryProvider = sdkEncryptedPreferenceRecoveryProvider,
             )
 
         fakePrefs.seed(StandardPreferenceKeys.ONBOARDING_STATE.key, onboardingState.toNumber().toString())
@@ -195,6 +235,18 @@ class WalletRepositoryImplTest {
         val events: List<String>,
         val fakePrefs: RecordingPreferenceProvider,
     )
+}
+
+/**
+ * Records `"sdkRepair"` into the shared events list, so tests can assert where the SDK secret
+ * store repair lands relative to the onboarding-flag write and the SDK data erase.
+ */
+private class FakeSdkEncryptedPreferenceRecoveryProvider(
+    private val events: MutableList<String>
+) : SdkEncryptedPreferenceRecoveryProvider {
+    override suspend fun ensureReadable() {
+        events += "sdkRepair"
+    }
 }
 
 /**
