@@ -85,6 +85,7 @@ import co.electriccoin.zcash.ui.screen.swap.quote.SwapQuoteVM
 import co.electriccoin.zcash.ui.screen.swap.slippage.SwapSlippageVM
 import co.electriccoin.zcash.ui.screen.taxexport.TaxExportViewModel
 import co.electriccoin.zcash.ui.screen.texunsupported.TEXUnsupportedVM
+import co.electriccoin.zcash.ui.screen.theme.ThemeVM
 import co.electriccoin.zcash.ui.screen.theme.darklook.ThemeDarkLookVM
 import co.electriccoin.zcash.ui.screen.theme.settings.ThemeSettingsVM
 import co.electriccoin.zcash.ui.screen.tor.optin.TorOptInVM
@@ -162,6 +163,7 @@ val viewModelModule =
         viewModelOf(::WalletRestoringInfoViewModel)
         viewModelOf(::ThirdPartyScanViewModel)
         viewModelOf(::TorSettingsVM)
+        viewModelOf(::ThemeVM)
         viewModelOf(::ThemeSettingsVM)
         viewModelOf(::ThemeDarkLookVM)
         viewModelOf(::TorOptInVM)

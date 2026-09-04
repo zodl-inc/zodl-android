@@ -47,6 +47,7 @@ import co.electriccoin.zcash.ui.screen.authentication.WrapAuthentication
 import co.electriccoin.zcash.ui.screen.authentication.view.AnimationConstants
 import co.electriccoin.zcash.ui.screen.authentication.view.WelcomeAnimationAutostart
 import co.electriccoin.zcash.ui.screen.scan.thirdparty.ThirdPartyScan
+import co.electriccoin.zcash.ui.screen.theme.ThemeVM
 import co.electriccoin.zcash.ui.screen.warning.viewmodel.StorageCheckViewModel
 import co.electriccoin.zcash.work.WorkIds
 import kotlinx.coroutines.delay
@@ -65,6 +66,8 @@ import kotlin.time.Duration.Companion.seconds
 @Suppress("TooManyFunctions")
 class MainActivity : FragmentActivity() {
     private val oldHomeViewModel by viewModel<OldHomeViewModel>()
+
+    private val themeVM by viewModel<ThemeVM>()
 
     val walletViewModel by viewModel<WalletViewModel>()
 
@@ -144,8 +147,8 @@ class MainActivity : FragmentActivity() {
 
     /**
      * Holds the splash screen until the wallet secret is known and the stored theme has been read. Without
-     * the theme gate the first frames would render with [OldHomeViewModel]'s seeded System/Classic Dark
-     * defaults and then repaint the whole tree once the stored values land.
+     * the theme gate the first frames would render with [ThemeVM]'s seeded System/Classic Dark defaults and
+     * then repaint the whole tree once the stored values land.
      */
     private fun setupSplashScreen() {
         val splashScreen = installSplashScreen()
@@ -161,7 +164,7 @@ class MainActivity : FragmentActivity() {
                 }
             }
 
-            SecretState.LOADING == walletViewModel.secretState.value || !oldHomeViewModel.isThemeResolved.value
+            SecretState.LOADING == walletViewModel.secretState.value || !themeVM.isThemeResolved.value
         }
     }
 
@@ -173,8 +176,8 @@ class MainActivity : FragmentActivity() {
         setContentCompat {
             Override(configurationOverrideFlow) {
                 val isHideBalances by oldHomeViewModel.isHideBalances.collectAsStateWithLifecycle()
-                val appearanceMode by oldHomeViewModel.appearanceMode.collectAsStateWithLifecycle()
-                val isOledEnabled by oldHomeViewModel.isOledEnabled.collectAsStateWithLifecycle()
+                val appearanceMode by themeVM.appearanceMode.collectAsStateWithLifecycle()
+                val isOledEnabled by themeVM.isOledEnabled.collectAsStateWithLifecycle()
                 ZcashTheme(
                     balancesAvailable = isHideBalances == false,
                     appearanceMode = appearanceMode,
