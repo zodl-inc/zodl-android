@@ -16,6 +16,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -25,7 +26,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onEach
+import kotlin.coroutines.cancellation.CancellationException
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
 interface AutomaticServerRepository {
     val isServerAutomatic: Flow<Boolean>
@@ -46,6 +52,8 @@ class AutomaticServerRepositoryImpl(
     private val isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
 ) : AutomaticServerRepository {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    private val evaluationInterval = EvaluationInterval(MINIMUM_EVALUATION_INTERVAL)
 
     private val isAppInTransactionState: Boolean
         get() =
@@ -94,21 +102,41 @@ class AutomaticServerRepositoryImpl(
         )
     }
 
+    override fun init() {
+        observeSwitchCandidates(applicationStateProvider.observeOnForeground()).launchIn(scope)
+    }
+
     /**
-     * Subscribes to the app-foreground signal. Every foreground edge benchmarks the bundled servers through
-     * the SDK's hysteresis policy, and a newer edge cancels an in-flight evaluation. A switch candidate is
-     * applied only once the first local balance snapshot exists: a different endpoint rebuilds the
-     * Synchronizer, and UI consumers retain that snapshot through the replacement.
+     * The automatic-selection lane. Every foreground edge benchmarks the bundled servers through the SDK's
+     * hysteresis policy, and a newer edge cancels an in-flight evaluation. A switch candidate is applied
+     * only once the first local balance snapshot exists: a different endpoint rebuilds the Synchronizer,
+     * and UI consumers retain that snapshot through the replacement.
+     *
+     * Nothing here may throw out of the flow. This lane is launched once for the lifetime of the process on
+     * a scope with no exception handler, so a single failure - an unreachable server, a prefs read, a
+     * rejected argument - would otherwise take automatic selection down until the next process start, and
+     * reach the thread's uncaught handler on its way out.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    override fun init() {
-        applicationStateProvider
-            .observeOnForeground()
-            .mapLatest { resolveSwitchCandidate() }
+    internal fun observeSwitchCandidates(foregroundEdges: Flow<Unit>): Flow<LightWalletEndpoint> =
+        foregroundEdges
+            .filter { evaluationInterval.hasElapsed() }
+            .mapLatest { guarded("evaluate a server switch") { resolveSwitchCandidate() } }
             .filterNotNull()
-            .onEach { applyServerSwitch(it) }
-            .launchIn(scope)
-    }
+            .onEach { candidate ->
+                guarded("switch to ${candidate.host}:${candidate.port}") { applyServerSwitch(candidate) }
+            }
+
+    private suspend fun <T> guarded(
+        what: String,
+        block: suspend () -> T
+    ): T? =
+        runCatching { block() }
+            .getOrElse {
+                if (it is CancellationException) throw it
+                Twig.error(it) { "Automatic server: failed to $what" }
+                null
+            }
 
     internal suspend fun resolveSwitchCandidate(): LightWalletEndpoint? =
         evaluateServerSwitch()?.also { walletBalances.filterNotNull().first() }
@@ -120,12 +148,15 @@ class AutomaticServerRepositoryImpl(
         val candidates = lightWalletEndpointProvider.getEndpoints()
         if (candidates.isEmpty()) return null
         val synchronizer = synchronizerProvider.getSynchronizerOrNull() ?: return null
-        return synchronizer.evaluateServerSwitch(
-            current = current,
-            candidates = candidates,
-            fetchThreshold = 5.seconds,
-            blocksToFetch = 1
-        )
+        val candidate =
+            synchronizer.evaluateServerSwitch(
+                current = current,
+                candidates = candidates,
+                fetchThreshold = 5.seconds,
+                blocksToFetch = 1
+            )
+        evaluationInterval.markCompleted()
+        return candidate
     }
 
     private suspend fun applyServerSwitch(candidate: LightWalletEndpoint) {
@@ -135,3 +166,23 @@ class AutomaticServerRepositoryImpl(
         walletRepository.updateWalletEndpoint(candidate)
     }
 }
+
+/**
+ * Rate limit for the automatic-selection lane. `observeOnForeground()` fires on every foreground edge and a
+ * full evaluation opens a connection to every bundled host, so an app the user keeps switching in and out
+ * of would otherwise re-benchmark the whole list each time, for a decision that is almost always "stay".
+ */
+internal class EvaluationInterval(
+    private val minimumInterval: Duration,
+    private val timeSource: TimeSource = TimeSource.Monotonic
+) {
+    private var lastCompletedAt: TimeMark? = null
+
+    fun hasElapsed(): Boolean = lastCompletedAt?.let { it.elapsedNow() >= minimumInterval } ?: true
+
+    fun markCompleted() {
+        lastCompletedAt = timeSource.markNow()
+    }
+}
+
+private val MINIMUM_EVALUATION_INTERVAL = 10.minutes

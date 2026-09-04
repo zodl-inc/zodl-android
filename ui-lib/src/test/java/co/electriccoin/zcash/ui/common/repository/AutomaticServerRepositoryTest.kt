@@ -14,7 +14,11 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.test.Test
@@ -28,12 +32,14 @@ import kotlin.time.Duration.Companion.seconds
  * wallet points at a custom, non-bundled endpoint, and Automatic otherwise.
  *
  * Also covers the app-side half of the server switch hysteresis (MOB-1832): the guards and the arguments
- * handed to the SDK's `evaluateServerSwitch`, which owns the thresholds themselves.
+ * handed to the SDK's `evaluateServerSwitch`, which owns the thresholds themselves, plus the resilience of
+ * the foreground lane itself.
  *
- * Note: the foreground trigger pipeline lives in `init()`, which launches on an internal
- * `Dispatchers.IO` scope; it is exercised by the `ChooseServerSelectionTest` instrumentation test
- * rather than here, since deterministic unit coverage would require injecting that scope.
+ * Note: `init()` launches the lane on an internal `Dispatchers.IO` scope, so the tests drive
+ * `observeSwitchCandidates` - the lane `init()` launches - on the test scope instead. Wiring `init()` to
+ * the real foreground signal is exercised by the `ChooseServerSelectionTest` instrumentation test.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 class AutomaticServerRepositoryTest {
     private val default = endpoint("zec.rocks")
     private val known = listOf(default, endpoint("na.zec.rocks"))
@@ -67,9 +73,11 @@ class AutomaticServerRepositoryTest {
             every { submitState } returns MutableStateFlow<SubmitProposalState?>(null)
         }
 
+    private val walletRepository = mockk<WalletRepository>(relaxed = true)
+
     private val repository =
         AutomaticServerRepositoryImpl(
-            walletRepository = mockk(relaxed = true),
+            walletRepository = walletRepository,
             zashiProposalRepository = zashiProposalRepository,
             keystoneProposalRepository = keystoneProposalRepository,
             applicationStateProvider = mockk(relaxed = true),
@@ -193,6 +201,63 @@ class AutomaticServerRepositoryTest {
             stubSwitchDecision(balances = emptyMap())
 
             assertEquals(known.last(), repository.resolveSwitchCandidate())
+        }
+
+    @Test
+    fun theLaneSurvivesAFailedEvaluationAndKeepsServingTheNextEdge() =
+        runTest {
+            stubSwitchDecision(balances = emptyMap())
+            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } throws
+                IllegalStateException("benchmark failed")
+
+            val foregroundEdges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(foregroundEdges).launchIn(backgroundScope)
+            runCurrent()
+
+            foregroundEdges.emit(Unit)
+            runCurrent()
+
+            coVerify(exactly = 0) { walletRepository.updateWalletEndpoint(any()) }
+
+            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns known.last()
+            foregroundEdges.emit(Unit)
+            runCurrent()
+
+            coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(known.last()) }
+        }
+
+    @Test
+    fun theLaneSurvivesAFailureToApplyTheSwitch() =
+        runTest {
+            stubSwitchDecision(balances = emptyMap())
+            coEvery { walletRepository.updateWalletEndpoint(any()) } throws IllegalStateException("prefs failed")
+
+            val foregroundEdges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(foregroundEdges).launchIn(backgroundScope)
+            runCurrent()
+
+            foregroundEdges.emit(Unit)
+            runCurrent()
+
+            coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(known.last()) }
+        }
+
+    @Test
+    fun aSecondForegroundEdgeInsideTheEvaluationIntervalIsNotEvaluated() =
+        runTest {
+            stubSwitchDecision(balances = emptyMap())
+            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns null
+
+            val foregroundEdges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(foregroundEdges).launchIn(backgroundScope)
+            runCurrent()
+
+            foregroundEdges.emit(Unit)
+            runCurrent()
+            foregroundEdges.emit(Unit)
+            runCurrent()
+
+            coVerify(exactly = 1) { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) }
         }
 
     private fun stubSwitchDecision(balances: Map<AccountUuid, AccountBalance>?) {
