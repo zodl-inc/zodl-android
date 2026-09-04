@@ -45,7 +45,7 @@ class NearSwapQuoteValidationTest {
         // Distinct subtype (MOB-1371) so the data source can emit a sanitized monitoring signal; still an
         // IllegalArgumentException so the generic quote-rejection handling is unchanged.
         val e =
-            assertFailsWith<SwapAmountInconsistencyException> {
+            assertFailsWith<SwapQuoteMismatchException.AmountInconsistency> {
                 // formatted=2 -> expects 200_000_000 base units, raw says 100_000_000
                 requireConsistent(
                     name = "amountIn",
@@ -63,7 +63,7 @@ class NearSwapQuoteValidationTest {
     @Test
     fun requireConsistent_reportsTheOutputAmountMismatchTypeForAmountOut() {
         val e =
-            assertFailsWith<SwapAmountInconsistencyException> {
+            assertFailsWith<SwapQuoteMismatchException.AmountInconsistency> {
                 requireConsistent(
                     name = "amountOut",
                     type = SwapQuoteMismatchType.OUTPUT_AMOUNT,

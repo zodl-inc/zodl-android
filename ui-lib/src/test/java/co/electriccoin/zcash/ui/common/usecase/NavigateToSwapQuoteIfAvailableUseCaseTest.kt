@@ -4,6 +4,7 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.model.SwapAssetTestFixture
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapQuote
+import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatch
 import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchException
 import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
 import co.electriccoin.zcash.ui.common.repository.SwapQuoteData
@@ -114,14 +115,17 @@ class NavigateToSwapQuoteIfAvailableUseCaseTest {
         SwapQuoteData.Error(
             mode = SwapMode.EXACT_INPUT,
             exception =
-                SwapQuoteMismatchException(
+                SwapQuoteMismatchException.Rejected(
                     type = SwapQuoteMismatchType.RECIPIENT_ADDRESS,
                     message = "mismatch"
-                ).apply {
-                    depositAddress = "deposit-address"
-                    provider = "near"
-                    originAsset = zec
+                ),
+            mismatch =
+                SwapQuoteMismatch(
+                    type = SwapQuoteMismatchType.RECIPIENT_ADDRESS,
+                    provider = "near",
+                    depositAddress = "deposit-address",
+                    originAsset = zec,
                     destinationAsset = btc
-                }
+                )
         )
 }

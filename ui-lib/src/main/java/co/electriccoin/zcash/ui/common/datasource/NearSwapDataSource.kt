@@ -160,7 +160,7 @@ class NearSwapDataSource(
 
         return try {
             if (response.quoteRequest.swapType != request.swapType) {
-                throw SwapQuoteMismatchException(
+                throw SwapQuoteMismatchException.Rejected(
                     type = SwapQuoteMismatchType.SWAP_TYPE,
                     message =
                         "Swap quote type mismatch: requested ${request.swapType} " +
@@ -177,9 +177,10 @@ class NearSwapDataSource(
                 expectedSlippageToleranceBps = slippageToleranceBps,
             )
         } catch (e: SwapQuoteMismatchException) {
-            e.depositAddress = response.quote.depositAddress
-            e.provider = NEAR_SWAP_PROVIDER
-            throw e
+            throw e.withQuoteContext(
+                depositAddress = response.quote.depositAddress,
+                provider = NEAR_SWAP_PROVIDER
+            )
         }
     }
 

@@ -42,7 +42,7 @@ data class NearSwapQuote(
         // divide-by-zero. A quote with a non-positive input amount is invalid anyway; fail closed with a
         // clear message rather than letting an ArithmeticException surface from the property initializers.
         if (response.quote.amountInFormatted.signum() <= 0) {
-            throw SwapQuoteMismatchException(
+            throw SwapQuoteMismatchException.Rejected(
                 type = SwapQuoteMismatchType.NON_POSITIVE_AMOUNT,
                 message = "Swap quote has non-positive amountInFormatted=${response.quote.amountInFormatted}"
             )
@@ -67,7 +67,7 @@ data class NearSwapQuote(
         if (expectedSlippageToleranceBps != null &&
             response.quoteRequest.slippageTolerance != expectedSlippageToleranceBps
         ) {
-            throw SwapQuoteMismatchException(
+            throw SwapQuoteMismatchException.Rejected(
                 type = SwapQuoteMismatchType.SLIPPAGE_TOLERANCE,
                 message =
                     "Swap slippage tolerance mismatch: requested $expectedSlippageToleranceBps bps " +
@@ -171,7 +171,7 @@ internal fun requireConsistent(
 ) {
     if (raw == null || formatted == null) return
     if (raw.compareTo(formatted.movePointRight(decimals)) != 0) {
-        throw SwapAmountInconsistencyException(
+        throw SwapQuoteMismatchException.AmountInconsistency(
             type = type,
             field = name,
             decimals = decimals,
@@ -183,24 +183,6 @@ internal fun requireConsistent(
 }
 
 /**
- * Thrown by [requireConsistent] when the server's raw base-unit amount does not equal the exact decimal
- * expansion of its displayed `*Formatted` value.
- *
- * The exact-equality posture is intentional and must NOT be relaxed to a tolerance: it is the "trust the
- * quote 0% or 100%" stance (MOB-1371). It is kept as a distinct [SwapQuoteMismatchException] subtype — so it
- * still flows through the generic quote-rejection handling unchanged — that carries only the non-sensitive
- * [field] / [decimals]. The repository uses those to emit a sanitized crash-monitoring signal (never the
- * amounts), so that if the 1Click API ever starts returning rounded display values, the resulting
- * rejections surface as an observable "quotes blocked" signal instead of silent breakage for users.
- */
-class SwapAmountInconsistencyException(
-    type: SwapQuoteMismatchType,
-    val field: String,
-    val decimals: Int,
-    message: String
-) : SwapQuoteMismatchException(type = type, message = message)
-
-/**
  * Asserts the quote echoes back the amount the user actually requested for the user-fixed side of the
  * swap. The requested amount is truncated (RoundingMode.DOWN) to the asset's decimal precision before
  * comparing, because that is the precision the request is sent at — anything beyond `decimals` cannot be
@@ -210,7 +192,7 @@ class SwapAmountInconsistencyException(
 internal fun requireQuoteMatchesUserAmount(quoted: BigDecimal, requested: BigDecimal, decimals: Int) {
     val truncated = requested.setScale(decimals, RoundingMode.DOWN)
     if (quoted.compareTo(truncated) != 0) {
-        throw SwapQuoteMismatchException(
+        throw SwapQuoteMismatchException.Rejected(
             type = SwapQuoteMismatchType.REQUESTED_AMOUNT,
             message =
                 "Swap quote does not match user-requested amount: " +
@@ -227,7 +209,7 @@ internal fun requireMatchingAsset(
     actual: SwapAsset
 ) {
     if (!actual.isSame(expectedTokenTicker, expectedChainTicker)) {
-        throw SwapQuoteMismatchException(
+        throw SwapQuoteMismatchException.Rejected(
             type = type,
             message =
                 "Swap asset mismatch: expected $name=$expectedTokenTicker/$expectedChainTicker " +
@@ -270,7 +252,7 @@ internal fun requireWithinSlippage(
                     .multiply(basisPointsDenominator.subtract(bps))
                     .divide(basisPointsDenominator, 0, RoundingMode.DOWN)
             if (minAmountOut < floor) {
-                throw SwapQuoteMismatchException(
+                throw SwapQuoteMismatchException.Rejected(
                     type = SwapQuoteMismatchType.SLIPPAGE_EXCEEDED,
                     message =
                         "Swap slippage exceeded: server-guaranteed minAmountOut=$minAmountOut is below the " +
@@ -290,7 +272,7 @@ internal fun requireWithinSlippage(
                     .multiply(basisPointsDenominator.add(bps))
                     .divide(basisPointsDenominator, 0, RoundingMode.UP)
             if (maxInputGuarantee > ceiling) {
-                throw SwapQuoteMismatchException(
+                throw SwapQuoteMismatchException.Rejected(
                     type = SwapQuoteMismatchType.SLIPPAGE_EXCEEDED,
                     message =
                         "Swap slippage exceeded: server-guaranteed minAmountIn=$maxInputGuarantee is above the " +

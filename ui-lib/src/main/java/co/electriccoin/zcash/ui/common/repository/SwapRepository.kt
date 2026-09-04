@@ -5,6 +5,7 @@ import androidx.annotation.VisibleForTesting
 import co.electriccoin.zcash.crash.android.GlobalCrashReporter
 import co.electriccoin.zcash.ui.common.datasource.AFFILIATE_ADDRESS
 import co.electriccoin.zcash.ui.common.datasource.AssetNotFoundException
+import co.electriccoin.zcash.ui.common.datasource.NEAR_SWAP_PROVIDER
 import co.electriccoin.zcash.ui.common.datasource.SwapDataSource
 import co.electriccoin.zcash.ui.common.datasource.SwapTransactionProposal
 import co.electriccoin.zcash.ui.common.model.SwapAsset
@@ -13,11 +14,11 @@ import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapQuote
+import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatch
 import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchException
 import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
 import co.electriccoin.zcash.ui.common.model.SwapQuoteStatus
 import co.electriccoin.zcash.ui.common.model.isZCashAsset
-import co.electriccoin.zcash.ui.common.model.near.SwapAmountInconsistencyException
 import co.electriccoin.zcash.ui.common.model.near.requireMatchingAsset
 import co.electriccoin.zcash.ui.common.model.near.requireQuoteMatchesUserAmount
 import io.ktor.client.plugins.ResponseException
@@ -90,7 +91,13 @@ sealed interface SwapQuoteData {
 
     data class Error(
         val mode: SwapMode,
-        val exception: Exception
+        val exception: Exception,
+        /**
+         * The report context of a rejected quote, set when [exception] is a
+         * [SwapQuoteMismatchException]; null for every other quote failure, which stays on the
+         * generic quote-error path.
+         */
+        val mismatch: SwapQuoteMismatch? = null
     ) : SwapQuoteData
 
     data object Loading : SwapQuoteData
@@ -220,6 +227,7 @@ class SwapRepositoryImpl(
         originAsset: SwapAsset,
         slippage: BigDecimal
     ) {
+        requestQuoteJob?.cancel()
         requestQuoteJob =
             scope.launch {
                 quote.update { SwapQuoteData.Loading }
@@ -270,9 +278,14 @@ class SwapRepositoryImpl(
                     )
                     quote.update { SwapQuoteData.Success(quote = result) }
                 } catch (e: SwapQuoteMismatchException) {
-                    e.attachReportContext(receivedQuote, originAsset, destinationAsset)
                     GlobalCrashReporter.reportCaughtException(swapQuoteMismatchSignal(e))
-                    quote.update { SwapQuoteData.Error(FLEX_INPUT, e) }
+                    quote.update {
+                        SwapQuoteData.Error(
+                            mode = FLEX_INPUT,
+                            exception = e,
+                            mismatch = e.toMismatch(receivedQuote, originAsset, destinationAsset)
+                        )
+                    }
                 } catch (e: Exception) {
                     quote.update { SwapQuoteData.Error(FLEX_INPUT, e) }
                 }
@@ -288,6 +301,7 @@ class SwapRepositoryImpl(
         destinationAsset: SwapAsset,
         slippage: BigDecimal
     ) {
+        requestQuoteJob?.cancel()
         requestQuoteJob =
             scope.launch {
                 quote.update { SwapQuoteData.Loading }
@@ -351,9 +365,14 @@ class SwapRepositoryImpl(
                     )
                     quote.update { SwapQuoteData.Success(quote = result) }
                 } catch (e: SwapQuoteMismatchException) {
-                    e.attachReportContext(receivedQuote, originAsset, destinationAsset)
                     GlobalCrashReporter.reportCaughtException(swapQuoteMismatchSignal(e))
-                    quote.update { SwapQuoteData.Error(mode, e) }
+                    quote.update {
+                        SwapQuoteData.Error(
+                            mode = mode,
+                            exception = e,
+                            mismatch = e.toMismatch(receivedQuote, originAsset, destinationAsset)
+                        )
+                    }
                 } catch (e: Exception) {
                     quote.update { SwapQuoteData.Error(mode, e) }
                 }
@@ -484,7 +503,7 @@ private fun requireMatchingAddress(
     actual: String
 ) {
     if (expected != actual) {
-        throw SwapQuoteMismatchException(
+        throw SwapQuoteMismatchException.Rejected(
             type = type,
             message = "Swap quote address mismatch: expected $name=$expected but quote returned $actual"
         )
@@ -492,20 +511,22 @@ private fun requireMatchingAddress(
 }
 
 /**
- * Attaches what the mismatch report needs — the quote id support can hand the swap provider, plus both
- * assets of the request — to a rejection, in place so the throw site's stack trace survives. The quote
- * only exists once the data source returned it, and whatever the data source already attached wins.
+ * Builds what the mismatch report needs — the quote id support can hand the swap provider, the provider
+ * itself and both assets of the request — as an immutable value, leaving the rejection itself untouched.
+ * The quote only exists once the data source returned it, and whatever the data source already resolved
+ * wins; a rejection that never saw a quote is reported against the only provider the app swaps with.
  */
-private fun SwapQuoteMismatchException.attachReportContext(
+private fun SwapQuoteMismatchException.toMismatch(
     receivedQuote: SwapQuote?,
     originAsset: SwapAsset,
     destinationAsset: SwapAsset
-) {
-    depositAddress = depositAddress ?: receivedQuote?.depositAddress?.address
-    provider = provider ?: receivedQuote?.provider
-    this.originAsset = originAsset
-    this.destinationAsset = destinationAsset
-}
+) = SwapQuoteMismatch(
+    type = type,
+    provider = provider ?: receivedQuote?.provider ?: NEAR_SWAP_PROVIDER,
+    depositAddress = depositAddress ?: receivedQuote?.depositAddress?.address,
+    originAsset = originAsset,
+    destinationAsset = destinationAsset
+)
 
 /**
  * Sanitized non-fatal reported to crash monitoring when a request-vs-response check rejects a quote
@@ -518,7 +539,7 @@ private fun SwapQuoteMismatchException.attachReportContext(
  * state, from where the mismatch sheet reports it.
  */
 private fun swapQuoteMismatchSignal(e: SwapQuoteMismatchException): Exception =
-    if (e is SwapAmountInconsistencyException) {
+    if (e is SwapQuoteMismatchException.AmountInconsistency) {
         SwapQuoteMismatchRejectedSignal("type=${e.type}, field=${e.field}, decimals=${e.decimals}")
     } else {
         SwapQuoteMismatchRejectedSignal("type=${e.type}")
