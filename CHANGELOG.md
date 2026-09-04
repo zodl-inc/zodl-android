@@ -13,7 +13,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Changed:
 
-- Automatic server selection now switches only to a server that is meaningfully faster than the one you're on (at least 200 ms and 25 % faster), or when the current server fails its health check twice in a row, so the wallet no longer flips between near-equal or briefly slow servers. A switch is never followed by another within ten minutes, and the servers are re-checked at most once every ten minutes instead of on every return to the app.
+- Automatic server selection now switches only to a server that is meaningfully faster than the one you're on (at least 200 ms and 25 % faster), or when the current server fails its health check twice in a row, so the wallet no longer flips between near-equal or briefly slow servers. A switch is never followed by another within thirty minutes, and the servers are re-checked at most once every ten minutes instead of on every return to the app.
 - Coinholder Polling's poll list no longer refreshes itself in the background while you're just browsing it; it now updates when you open the screen, return to it, or pull to refresh.
 - Vote submission is faster and more reliable over Tor: a slow or unresponsive vote-helper server no longer stalls the whole submission.
 

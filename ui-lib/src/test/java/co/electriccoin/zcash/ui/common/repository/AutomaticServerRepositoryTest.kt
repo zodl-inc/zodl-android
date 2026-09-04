@@ -15,6 +15,8 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.launchIn
@@ -25,6 +27,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TestTimeSource
 
 /**
  * Repository-level resolution of Automatic vs Manual server selection (MOB-1144), including the
@@ -75,6 +78,8 @@ class AutomaticServerRepositoryTest {
 
     private val walletRepository = mockk<WalletRepository>(relaxed = true)
 
+    private val timeSource = TestTimeSource()
+
     private val repository =
         AutomaticServerRepositoryImpl(
             walletRepository = walletRepository,
@@ -84,7 +89,8 @@ class AutomaticServerRepositoryTest {
             synchronizerProvider = synchronizerProvider,
             persistableWalletProvider = persistableWalletProvider,
             lightWalletEndpointProvider = lightWalletEndpointProvider,
-            isServerSelectionAutomaticProvider = isAutomaticProvider
+            isServerSelectionAutomaticProvider = isAutomaticProvider,
+            evaluationInterval = EvaluationInterval(MINIMUM_EVALUATION_INTERVAL, timeSource)
         )
 
     @Test
@@ -187,6 +193,10 @@ class AutomaticServerRepositoryTest {
             }
         }
 
+    /**
+     * The wait is bounded, so this only pins that a snapshot which has not arrived yet still holds the
+     * switch back - [switchIsAppliedAnywayWhenTheLocalBalanceSnapshotNeverArrives] pins the other end.
+     */
     @Test
     fun switchCandidateWaitsForTheLocalBalanceSnapshot() =
         runTest {
@@ -201,6 +211,87 @@ class AutomaticServerRepositoryTest {
             stubSwitchDecision(balances = emptyMap())
 
             assertEquals(known.last(), repository.resolveSwitchCandidate())
+        }
+
+    @Test
+    fun switchIsAppliedAnywayWhenTheLocalBalanceSnapshotNeverArrives() =
+        runTest {
+            stubSwitchDecision(balances = null)
+
+            assertEquals(known.last(), repository.resolveSwitchCandidate())
+        }
+
+    @Test
+    fun anAppliedSwitchIsConfirmedToTheSdk() =
+        runTest {
+            stubSwitchDecision(balances = emptyMap())
+
+            val foregroundEdges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(foregroundEdges).launchIn(backgroundScope)
+            runCurrent()
+
+            foregroundEdges.emit(Unit)
+            runCurrent()
+
+            coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(known.last()) }
+            coVerify(exactly = 1) { synchronizer.confirmServerSwitch(known.last()) }
+        }
+
+    @Test
+    fun aDeclinedSwitchIsNotConfirmedToTheSdk() =
+        runTest {
+            stubSwitchDecision(balances = emptyMap())
+            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns
+                endpoint("no.longer.offered")
+
+            val foregroundEdges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(foregroundEdges).launchIn(backgroundScope)
+            runCurrent()
+
+            foregroundEdges.emit(Unit)
+            runCurrent()
+
+            coVerify(exactly = 0) { walletRepository.updateWalletEndpoint(any()) }
+            coVerify(exactly = 0) { synchronizer.confirmServerSwitch(any()) }
+        }
+
+    @Test
+    fun aCancelledEvaluationAppliesNothing() =
+        runTest {
+            stubSwitchDecision(balances = emptyMap())
+            coEvery {
+                synchronizer.evaluateServerSwitch(any(), any(), any(), any())
+            } coAnswers { awaitCancellation() }
+
+            val foregroundEdges = MutableSharedFlow<Unit>()
+            val lane = repository.observeSwitchCandidates(foregroundEdges).launchIn(backgroundScope)
+            runCurrent()
+
+            foregroundEdges.emit(Unit)
+            runCurrent()
+            lane.cancelAndJoin()
+
+            coVerify(exactly = 0) { walletRepository.updateWalletEndpoint(any()) }
+            coVerify(exactly = 0) { synchronizer.confirmServerSwitch(any()) }
+        }
+
+    @Test
+    fun aFailedEvaluationStillCountsAgainstTheEvaluationInterval() =
+        runTest {
+            stubSwitchDecision(balances = emptyMap())
+            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } throws
+                IllegalStateException("benchmark failed")
+
+            val foregroundEdges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(foregroundEdges).launchIn(backgroundScope)
+            runCurrent()
+
+            foregroundEdges.emit(Unit)
+            runCurrent()
+            foregroundEdges.emit(Unit)
+            runCurrent()
+
+            coVerify(exactly = 1) { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) }
         }
 
     @Test
@@ -220,6 +311,7 @@ class AutomaticServerRepositoryTest {
             coVerify(exactly = 0) { walletRepository.updateWalletEndpoint(any()) }
 
             coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns known.last()
+            timeSource += MINIMUM_EVALUATION_INTERVAL
             foregroundEdges.emit(Unit)
             runCurrent()
 

@@ -9,7 +9,8 @@ import kotlin.time.TestTimeSource
 
 /**
  * The rate limit the automatic-selection lane applies to the SDK benchmark (MOB-1832), since the app
- * foreground signal it is driven by has no throttle of its own.
+ * foreground signal it is driven by has no throttle of its own. What restarts the interval is an attempt,
+ * not a success - see [EvaluationInterval].
  */
 class EvaluationIntervalTest {
     private val interval = 10.minutes
@@ -24,7 +25,7 @@ class EvaluationIntervalTest {
         val timeSource = TestTimeSource()
         val evaluationInterval = EvaluationInterval(interval, timeSource)
 
-        evaluationInterval.markCompleted()
+        evaluationInterval.markAttempted()
         timeSource += interval - 1.seconds
 
         assertFalse(evaluationInterval.hasElapsed())
@@ -35,20 +36,20 @@ class EvaluationIntervalTest {
         val timeSource = TestTimeSource()
         val evaluationInterval = EvaluationInterval(interval, timeSource)
 
-        evaluationInterval.markCompleted()
+        evaluationInterval.markAttempted()
         timeSource += interval
 
         assertTrue(evaluationInterval.hasElapsed())
     }
 
     @Test
-    fun everyCompletedEvaluationRestartsTheInterval() {
+    fun everyAttemptedEvaluationRestartsTheInterval() {
         val timeSource = TestTimeSource()
         val evaluationInterval = EvaluationInterval(interval, timeSource)
 
-        evaluationInterval.markCompleted()
+        evaluationInterval.markAttempted()
         timeSource += interval
-        evaluationInterval.markCompleted()
+        evaluationInterval.markAttempted()
         timeSource += interval - 1.seconds
 
         assertFalse(evaluationInterval.hasElapsed())
