@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.preference
 
+import kotlinx.coroutines.test.runTest
 import java.io.File
 import java.nio.file.Files
 import kotlin.test.AfterTest
@@ -103,4 +104,61 @@ class EncryptedPreferenceQuarantineTest {
 
         assertTrue(marker.exists())
     }
+
+    /**
+     * The recovery sequence clears Android's in-memory `SharedPreferences` cache after the move,
+     * which commits an empty file back to the vacated path. When the recreate that follows fails,
+     * that file must already be gone, or the next launch would quarantine an empty file instead of
+     * letting the marker guard rethrow.
+     */
+    @Test
+    fun `the empty file left by clearing the cache is not quarantined on the next launch`() {
+        encryptedPreferencesFile(sharedPrefsDir, "target").writeText("corrupted")
+        encryptedPreferencesBackupFile(sharedPrefsDir, "target").writeText("corrupted bak")
+
+        quarantineEncryptedPreferencesFiles(
+            sharedPrefsDir = sharedPrefsDir,
+            quarantineDir = quarantineDir,
+            filename = "target",
+            nowMillis = 1_700_000_000_000L,
+        )
+        recreatedMarkerFile(quarantineDir, "target").createNewFile()
+        encryptedPreferencesFile(sharedPrefsDir, "target").writeText("<map />")
+
+        deleteEncryptedPreferencesFiles(sharedPrefsDir, "target")
+
+        quarantineEncryptedPreferencesFiles(
+            sharedPrefsDir = sharedPrefsDir,
+            quarantineDir = quarantineDir,
+            filename = "target",
+            nowMillis = 1_700_000_001_000L,
+        )
+
+        assertEquals(
+            setOf(
+                "target-1700000000000.xml",
+                "target-1700000000000.xml.bak",
+                "target.recreated"
+            ),
+            quarantineDir
+                .listFiles()
+                ?.map { it.name }
+                ?.toSet()
+                .orEmpty()
+        )
+    }
+
+    @Test
+    fun `purging removes every quarantined copy and every marker`() =
+        runTest {
+            quarantineDir.mkdirs()
+            File(quarantineDir, "target-1.xml").writeText("v1")
+            File(quarantineDir, "target-1.xml.bak").writeText("v1-bak")
+            File(quarantineDir, "other-9.xml").writeText("other")
+            recreatedMarkerFile(quarantineDir, "target").createNewFile()
+
+            purgeEncryptedPreferencesQuarantine(quarantineDir)
+
+            assertFalse(quarantineDir.exists())
+        }
 }

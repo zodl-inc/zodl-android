@@ -101,6 +101,11 @@ class EncryptedPreferenceRecoveryTest {
     }
 
     @Test
+    fun `java security KeyStoreException wrapping an android Keystore failure is not a master key failure`() {
+        assertFalse(isMasterKeyFailure(KeyStoreException("cannot use Android Keystore", AndroidKeyStoreException())))
+    }
+
+    @Test
     fun `data level failures are not master key failures`() {
         assertFalse(isMasterKeyFailure(AEADBadTagException()))
         assertFalse(isMasterKeyFailure(CharConversionException()))

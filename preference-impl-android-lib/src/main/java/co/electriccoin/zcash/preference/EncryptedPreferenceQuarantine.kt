@@ -23,6 +23,19 @@ internal fun encryptedPreferencesBackupFile(
 ): File = File(sharedPrefsDir, "$filename.xml.bak")
 
 /**
+ * Removes `<filename>.xml` and its `.xml.bak` sibling from [sharedPrefsDir]: the fallback when
+ * quarantining them fails, and the cleanup for the empty file that clearing Android's in-memory
+ * `SharedPreferences` cache commits back to the vacated path. A missing file is a no-op.
+ */
+internal fun deleteEncryptedPreferencesFiles(
+    sharedPrefsDir: File,
+    filename: String
+) {
+    encryptedPreferencesFile(sharedPrefsDir, filename).delete()
+    encryptedPreferencesBackupFile(sharedPrefsDir, filename).delete()
+}
+
+/**
  * The persisted "already recreated once" guard for [filename]: its presence means a quarantine
  * already ran for this store and the recreated store has not yet opened successfully, so a later
  * launch must rethrow instead of quarantining again. See `AndroidPreferenceProvider.openEncrypted`.
@@ -104,11 +117,12 @@ internal fun pruneQuarantine(
 }
 
 /**
- * Deletes every quarantined encrypted preferences file. Used by "Reset Zodl" so wiping the wallet
- * also removes any set-aside ciphertext left behind by an earlier recovery.
+ * Empties [quarantineDir] wholesale — every filename's set-aside copies and every
+ * [recreatedMarkerFile] guard, not just the entries [pruneQuarantine] would age out. Used by
+ * "Reset Zodl" so wiping the wallet also removes any ciphertext left behind by an earlier recovery.
  */
-internal suspend fun purgeEncryptedPreferencesQuarantine(context: Context) {
+internal suspend fun purgeEncryptedPreferencesQuarantine(quarantineDir: File) {
     withContext(Dispatchers.IO) {
-        quarantineDirectory(context).deleteRecursively()
+        quarantineDir.deleteRecursively()
     }
 }

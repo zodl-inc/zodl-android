@@ -186,6 +186,14 @@ interface AndroidPreferenceFactory {
      * caching a provider for it, repairing the file in place if it is corrupted. Used by the app
      * to repair the SDK's own `cash.z.ecc.android.sdk.encrypted` store, which shares this app's
      * Keystore master key but has no corruption recovery of its own.
+     *
+     * Caching no provider is deliberate: the opened store is never handed out, so no second
+     * [AndroidPreferenceProvider] — and therefore no second serializing dispatcher — is ever
+     * created for a file the SDK opens itself. The ordering that makes that safe is the caller's
+     * to keep: this must complete before anything else opens [filename]. The app's only caller,
+     * the wallet-less self-heal in `WalletRepositoryImpl.init`, awaits it before
+     * `Synchronizer.erase` and runs only on the path where no wallet is stored, so no synchronizer
+     * exists yet to be holding the SDK store open.
      */
     suspend fun ensureEncryptedReadable(context: Context, filename: String)
 }
@@ -271,21 +279,25 @@ private class AndroidPreferenceFactoryImpl : AndroidPreferenceFactory {
     }
 
     /**
-     * Sets the corrupted file aside instead of deleting it, in this order:
-     * 1. Move `<filename>.xml` and its `.xml.bak` sibling into the quarantine directory. The
-     *    `.bak` file is mandatory: `SharedPreferencesImpl.loadFromDisk` restores a leftover
-     *    `.bak` over a fresh file on the next process start, which would silently resurrect the
-     *    corrupted data. If the move itself fails, both files are deleted instead so recovery
-     *    still completes.
-     * 2. Create the [recreatedMarkerFile] guard on disk, right after the move so a crash before
-     *    the caller's post-quarantine retry still leaves the guard in place — see [openEncrypted]
-     *    for when it is cleared again.
-     * 3. Clear the in-memory `SharedPreferences` cache, so the retry gets a clean instance instead
-     *    of the cached corrupted one — done after the move, otherwise it would quarantine an empty
-     *    file.
-     * 4. Delete the Keystore master-key alias, but only for [isMasterKeyFailure]: `MasterKey.Builder.build()`
-     *    reuses an existing alias, so a data-level failure keeps the key and the quarantined file
-     *    stays decryptable by this device if the classification was ever wrong.
+     * Sets the corrupted file aside instead of deleting it. `<filename>.xml` and its `.xml.bak`
+     * sibling both move into the quarantine directory; taking the `.bak` along is mandatory,
+     * because `SharedPreferencesImpl.loadFromDisk` restores a leftover `.bak` over a fresh file on
+     * the next process start, which would silently resurrect the corrupted data. If the move
+     * itself fails, both files are deleted instead so recovery still completes.
+     *
+     * The [recreatedMarkerFile] guard is written next, right after the move, so a crash before the
+     * caller's post-quarantine retry still leaves the guard in place — see [openEncrypted] for
+     * when it is cleared again. Android's in-memory `SharedPreferences` cache is then cleared so
+     * the retry gets a clean instance instead of the cached corrupted one, which has to happen
+     * after the move or it would quarantine an empty file. That clear commits an empty
+     * `<filename>.xml` back to the now-vacated original path, so the file is removed again
+     * immediately: a retry that fails afterwards would otherwise leave a stray empty file behind
+     * for the next launch to quarantine, instead of the marker guard rethrowing.
+     *
+     * The Keystore master-key alias is deleted last, and only for [isMasterKeyFailure]:
+     * `MasterKey.Builder.build()` reuses an existing alias, so a data-level failure keeps the key
+     * and the quarantined file stays decryptable by this device if the classification was ever
+     * wrong.
      */
     private fun quarantineCorruptedEncryptedPreferences(
         context: Context,
@@ -303,8 +315,7 @@ private class AndroidPreferenceFactoryImpl : AndroidPreferenceFactory {
             )
         }.onFailure { failure ->
             Twig.error(failure) { "Quarantining encrypted preferences $filename failed; deleting instead" }
-            runCatching { encryptedPreferencesFile(sharedPrefsDir, filename).delete() }
-            runCatching { encryptedPreferencesBackupFile(sharedPrefsDir, filename).delete() }
+            runCatching { deleteEncryptedPreferencesFiles(sharedPrefsDir, filename) }
         }
 
         runCatching {
@@ -318,6 +329,7 @@ private class AndroidPreferenceFactoryImpl : AndroidPreferenceFactory {
                 .edit()
                 .clear()
                 .commit()
+            deleteEncryptedPreferencesFiles(sharedPrefsDir, filename)
         }
 
         if (isMasterKeyFailure(cause)) {
@@ -360,20 +372,31 @@ internal fun isUnrecoverableCorruption(exception: Exception): Boolean =
 
 /**
  * True for failures that mean the Keystore key itself is unusable, as opposed to the stored
- * ciphertext being unreadable or a transient Keystore-daemon hiccup. AOSP wraps a transient HAL
- * error as `InvalidKeyException("Keystore operation failed")` whose cause chain contains Android's
- * `android.security.KeyStoreException` (which extends `java.lang.Exception`, not
- * [java.security.KeyStoreException] — matched here by simple name since the Android framework class
- * isn't a JVM dependency); such a chain must NOT be treated as a master-key failure, or
- * [quarantineCorruptedEncryptedPreferences] would delete the shared master key over a transient
- * error and permanently orphan both the quarantined file and the SDK's own encrypted store.
+ * ciphertext being unreadable or a transient Keystore-daemon hiccup. Only ever consulted from
+ * [quarantineCorruptedEncryptedPreferences], which runs after
+ * [createEncryptedPreferencesWithRecovery] has exhausted its retry ladder, so anything reaching
+ * this classification already survived [ENCRYPTED_PREFERENCES_OPEN_ATTEMPTS] attempts.
+ *
+ * AOSP wraps a transient HAL error as `InvalidKeyException("Keystore operation failed")` whose
+ * cause chain contains Android's `android.security.KeyStoreException` (which extends
+ * `java.lang.Exception`, not [java.security.KeyStoreException] — matched here by simple name since
+ * the Android framework class isn't a JVM dependency). A chain carrying that marker is never a
+ * master-key failure, whatever else it holds, or [quarantineCorruptedEncryptedPreferences] would
+ * delete the shared master key over a transient error and permanently orphan both the quarantined
+ * file and the SDK's own encrypted store.
+ *
+ * The residual assumption is that a [java.security.KeyStoreException] without that marker is
+ * permanent. Tink's `AndroidKeystoreKmsClient.validateAead()` folds the failure it caught into the
+ * message of the [java.security.KeyStoreException] it throws rather than setting it as the cause,
+ * so a transient HAL error surfacing through it is indistinguishable by type from a genuinely
+ * broken Keystore; the retry ladder is the only mitigation for that case.
  */
 internal fun isMasterKeyFailure(exception: Exception): Boolean {
     val chain = generateSequence<Throwable>(exception) { it.cause }.take(CAUSE_CHAIN_LIMIT).toList()
-    if (chain.any { it is KeyStoreException }) return true
     val hasAndroidKeyStoreFailure =
         chain.any { it !is KeyStoreException && it.javaClass.simpleName == "KeyStoreException" }
-    return chain.any { it is InvalidKeyException } && !hasAndroidKeyStoreFailure
+    if (hasAndroidKeyStoreFailure) return false
+    return chain.any { it is KeyStoreException || it is InvalidKeyException }
 }
 
 internal const val ENCRYPTED_PREFERENCES_OPEN_ATTEMPTS = 3
