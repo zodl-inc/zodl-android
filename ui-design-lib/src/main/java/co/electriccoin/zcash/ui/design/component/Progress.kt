@@ -20,7 +20,7 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 @Preview
 @Composable
 private fun CircularScreenProgressIndicatorComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             Column {
                 CircularScreenProgressIndicator()
@@ -78,7 +78,7 @@ fun CircularSmallProgressIndicator(
 @Preview
 @Composable
 private fun LinearProgressIndicatorComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             @Suppress("MagicNumber")
             SmallLinearProgressIndicator(0.75f)

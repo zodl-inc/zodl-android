@@ -122,7 +122,7 @@ private fun CompletePreview() = Preview(BalanceWidgetState.completePreview)
 
 @Composable
 private fun Preview(state: BalanceWidgetState) {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface(modifier = Modifier.fillMaxWidth()) {
             BalanceWidget(state)
         }

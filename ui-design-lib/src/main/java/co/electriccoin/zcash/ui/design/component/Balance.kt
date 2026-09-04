@@ -137,7 +137,7 @@ object StyledBalanceDefaults {
 @Preview
 @Composable
 private fun StyledBalancePreview() =
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             Column {
                 StyledBalance(
@@ -152,7 +152,7 @@ private fun StyledBalancePreview() =
 @Preview
 @Composable
 private fun HiddenStyledBalancePreview() =
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             Column {
                 StyledBalance(
