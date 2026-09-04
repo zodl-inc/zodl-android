@@ -59,10 +59,11 @@ release workflow refuses to publish an APK whose certificate does not match
 that file, so the two cannot silently drift apart.
 
 Each GitHub release includes GPG signatures (`.asc` files) for all APKs, signed
-with the ZODL GPG key (fingerprint below). The public key is attached to every
-release as `zodl-gpg-public-key.asc` (releases published before this file was
-added lack it — take it from a newer release). You can verify the APK
-authenticity:
+with the ZODL GPG key (fingerprint below). The public key will be attached to
+every release as `zodl-gpg-public-key.asc` starting with the next release cut
+after this file merges — releases published before that, including the
+current latest, do not carry it and have no other release-asset fallback yet.
+You can verify the APK authenticity once that asset is available:
 
 ```sh
 # Download the APK, its signature and the public key from GitHub releases
