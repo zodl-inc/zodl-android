@@ -12,15 +12,19 @@ import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapAssetTestFixture
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapQuote
+import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchException
+import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
+import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
 import co.electriccoin.zcash.ui.common.repository.SwapQuoteData
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.screen.insufficientfunds.InsufficientFundsArgs
+import co.electriccoin.zcash.ui.screen.swap.mismatch.SwapQuoteMismatchArgs
 import co.electriccoin.zcash.ui.screen.swap.quote.SwapQuoteArgs
 import co.electriccoin.zcash.ui.screen.texunsupported.TEXUnsupportedArgs
 import io.mockk.coEvery
@@ -228,8 +232,104 @@ class RequestSwapQuoteUseCaseTest {
             assertForwardedToQuote()
         }
 
+    @Test
+    fun exactInputMismatchOpensTheMismatchSheetInsteadOfTheQuote() =
+        runBlocking {
+            useCase(mismatchError(SwapMode.EXACT_INPUT, SwapQuoteMismatchType.REQUESTED_AMOUNT)).exactInput()
+
+            verify(exactly = 1) { swapRepository.clearQuote() }
+            verify {
+                navigationRouter.forward(
+                    match<SwapQuoteMismatchArgs> {
+                        it.mismatchType == SwapQuoteMismatchType.REQUESTED_AMOUNT &&
+                            it.mode == SwapMode.EXACT_INPUT &&
+                            it.provider == "near" &&
+                            it.originTokenTicker == zec.tokenTicker &&
+                            it.originChainTicker == zec.chainTicker &&
+                            it.destinationTokenTicker == btc.tokenTicker &&
+                            it.destinationChainTicker == btc.chainTicker &&
+                            it.depositAddress == "deposit-address"
+                    }
+                )
+            }
+            verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
+            verify(exactly = 0) { navigateToError(any(), any()) }
+        }
+
+    @Test
+    fun flexInputMismatchReportsTheSelectedAssetAsTheOrigin() =
+        runBlocking {
+            useCase(
+                mismatchError(
+                    mode = SwapMode.FLEX_INPUT,
+                    type = SwapQuoteMismatchType.REFUND_ADDRESS,
+                    origin = btc,
+                    destination = zec
+                )
+            ).flex()
+
+            verify {
+                navigationRouter.forward(
+                    match<SwapQuoteMismatchArgs> {
+                        it.mismatchType == SwapQuoteMismatchType.REFUND_ADDRESS &&
+                            it.originTokenTicker == btc.tokenTicker &&
+                            it.destinationTokenTicker == zec.tokenTicker
+                    }
+                )
+            }
+            verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
+        }
+
+    /**
+     * With the cancel sheet up there is nowhere to navigate, so the rejection stays in the repository's
+     * quote — exactly like every other quote error — and surfaces once the sheet is dismissed.
+     */
+    @Test
+    fun mismatchErrorIsKeptWhenTheSwapScreenIsGone() =
+        runBlocking {
+            useCase(mismatchError(SwapMode.EXACT_INPUT, SwapQuoteMismatchType.SWAP_TYPE))
+                .requestExactInput(
+                    amount = BigDecimal("1"),
+                    address = "destination",
+                    selectedAsset = btc,
+                    slippage = BigDecimal("2"),
+                    canNavigateToSwapQuote = { false }
+                )
+
+            verify(exactly = 0) { swapRepository.clearQuote() }
+            verify(exactly = 0) { navigationRouter.forward(ofType<SwapQuoteMismatchArgs>()) }
+        }
+
+    /** A plain quote failure is surfaced by the swap screen itself, not by the mismatch sheet. */
+    @Test
+    fun nonMismatchQuoteErrorsStillFollowTheOldPath() =
+        runBlocking {
+            useCase(SwapQuoteData.Error(SwapMode.EXACT_INPUT, TestException())).exactInput()
+
+            verify(exactly = 0) { navigationRouter.forward(ofType<SwapQuoteMismatchArgs>()) }
+            verify { navigationRouter.forward(SwapQuoteArgs) }
+        }
+
     // endregion
     // region helpers
+
+    private fun mismatchError(
+        mode: SwapMode,
+        type: SwapQuoteMismatchType,
+        origin: SwapAsset = zec,
+        destination: SwapAsset = btc
+    ) = SwapQuoteData.Error(
+        mode = mode,
+        exception =
+            SwapQuoteMismatchException.Rejected(
+                type = type,
+                message = "mismatch",
+                depositAddress = "deposit-address",
+                provider = "near",
+                originAsset = origin,
+                destinationAsset = destination
+            )
+    )
 
     private fun assertForwardedToQuote() {
         verify { navigationRouter.forward(SwapQuoteArgs) }
@@ -285,8 +385,15 @@ class RequestSwapQuoteUseCaseTest {
     private suspend fun useCase(
         swapQuote: SwapQuote,
         selectedAccount: WalletAccount = zashi()
+    ): RequestSwapQuoteUseCase = useCase(SwapQuoteData.Success(swapQuote), selectedAccount)
+
+    private suspend fun useCase(
+        quoteData: SwapQuoteData,
+        selectedAccount: WalletAccount = zashi()
     ): RequestSwapQuoteUseCase {
-        every { swapRepository.quote } returns MutableStateFlow(SwapQuoteData.Success(swapQuote))
+        every { swapRepository.quote } returns MutableStateFlow(quoteData)
+        every { swapRepository.assets } returns
+            MutableStateFlow(SwapAssetsData(data = listOf(btc), zecAsset = zec))
 
         val shieldedAddress = "deposit"
         val synchronizer = mockk<Synchronizer> { coEvery { validateAddress(any()) } returns AddressType.Unified }

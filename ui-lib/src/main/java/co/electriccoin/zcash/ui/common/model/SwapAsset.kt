@@ -28,5 +28,8 @@ fun SwapAsset.isSame(
     chain: String
 ): Boolean = tokenTicker.equals(token, true) && chainTicker.equals(chain, true)
 
+/** The token and chain ticker of the ZEC asset, on both sides of the zec/zec pair. */
+const val ZEC_TICKER = "zec"
+
 val SwapAsset.isZCashAsset: Boolean
-    get() = isSame(token = "zec", chain = "zec")
+    get() = isSame(token = ZEC_TICKER, chain = ZEC_TICKER)
