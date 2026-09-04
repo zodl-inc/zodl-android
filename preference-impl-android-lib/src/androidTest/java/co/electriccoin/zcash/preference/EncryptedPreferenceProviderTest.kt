@@ -115,12 +115,19 @@ class EncryptedPreferenceProviderTest {
                 .putString(VALUE_KEYSET, "corrupted_keyset_data")
                 .commit()
 
-            // Should NOT throw — fix catches the parse/decryption exception and recreates fresh prefs
             val restoredProvider =
                 AndroidPreferenceProvider.newEncrypted(context, RECOVERY_FILENAME)
 
             // Prefs are empty: user will re-enter seed phrase to recover wallet
             assertFalse(restoredProvider.hasKey(StringDefaultPreferenceFixture.KEY))
+
+            val quarantined = quarantinedFiles(context, RECOVERY_FILENAME)
+            assertEquals(1, quarantined.size)
+            assertTrue(quarantined.single().readText().contains("corrupted_keyset_data"))
+
+            assertFalse(sharedPrefsBakFile(context, RECOVERY_FILENAME).exists())
+            assertTrue(androidKeyStoreAlias().containsAlias(MasterKey.DEFAULT_MASTER_KEY_ALIAS))
+            assertFalse(recreatedMarkerFile(quarantineDirectory(context), RECOVERY_FILENAME).exists())
         }
 
     @Test
@@ -154,11 +161,20 @@ class EncryptedPreferenceProviderTest {
                 deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
             }
 
-            // Should NOT throw — the orphaned file is provably undecryptable, so it is recreated
             val restoredProvider = AndroidPreferenceProvider.newEncrypted(context, D2D_FILENAME)
 
             // Prefs are empty: user will re-enter seed phrase to recover wallet
             assertFalse(restoredProvider.hasKey(StringDefaultPreferenceFixture.KEY))
+
+            val quarantined = quarantinedFiles(context, D2D_FILENAME)
+            assertEquals(1, quarantined.size)
+
+            assertTrue(androidKeyStoreAlias().containsAlias(MasterKey.DEFAULT_MASTER_KEY_ALIAS))
+            assertFalse(recreatedMarkerFile(quarantineDirectory(context), D2D_FILENAME).exists())
+
+            val expectedValue = StringDefaultPreferenceFixture.DEFAULT_VALUE + "restored"
+            restoredProvider.putString(StringDefaultPreferenceFixture.KEY, expectedValue)
+            assertEquals(expectedValue, StringDefaultPreferenceFixture.new().getValue(restoredProvider))
         }
 
     companion object {
@@ -179,5 +195,24 @@ class EncryptedPreferenceProviderTest {
                 ApplicationProvider.getApplicationContext(),
                 FILENAME
             )
+
+        private fun androidKeyStoreAlias(): KeyStore =
+            KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+
+        private fun sharedPrefsBakFile(
+            context: Context,
+            filename: String
+        ) = encryptedPreferencesBackupFile(sharedPreferencesDirectory(context), filename)
+
+        private fun quarantinedFiles(
+            context: Context,
+            filename: String
+        ): List<File> {
+            val quarantineDir = quarantineDirectory(context)
+            return quarantineDir
+                .listFiles { file -> file.name.startsWith("$filename-") && file.name.endsWith(".xml") }
+                ?.toList()
+                .orEmpty()
+        }
     }
 }

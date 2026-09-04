@@ -8,4 +8,6 @@ class EncryptedPreferenceProvider(
 ) : PreferenceHolder() {
     override suspend fun create(): PreferenceProvider =
         AndroidPreferenceProvider.newEncrypted(context, "co.electriccoin.zcash.encrypted")
+
+    suspend fun purgeQuarantine() = purgeEncryptedPreferencesQuarantine(quarantineDirectory(context))
 }

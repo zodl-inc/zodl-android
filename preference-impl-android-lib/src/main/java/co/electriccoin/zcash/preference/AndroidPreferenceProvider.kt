@@ -13,6 +13,7 @@ import co.electriccoin.zcash.spackle.Twig
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.callbackFlow
@@ -23,11 +24,12 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.CharConversionException
-import java.io.File
 import java.security.InvalidKeyException
 import java.security.KeyStore
 import java.security.KeyStoreException
 import javax.crypto.BadPaddingException
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Provides an Android implementation of shared preferences.
@@ -178,6 +180,22 @@ interface AndroidPreferenceFactory {
     suspend fun newStandard(context: Context, filename: String): PreferenceProvider
 
     suspend fun newEncrypted(context: Context, filename: String): PreferenceProvider
+
+    /**
+     * Runs the same open-with-recovery ladder as [newEncrypted] against [filename] without
+     * caching a provider for it, repairing the file in place if it is corrupted. Used by the app
+     * to repair the SDK's own `cash.z.ecc.android.sdk.encrypted` store, which shares this app's
+     * Keystore master key but has no corruption recovery of its own.
+     *
+     * Caching no provider is deliberate: the opened store is never handed out, so no second
+     * [AndroidPreferenceProvider] — and therefore no second serializing dispatcher — is ever
+     * created for a file the SDK opens itself. The ordering that makes that safe is the caller's
+     * to keep: this must complete before anything else opens [filename]. The app's only caller,
+     * the wallet-less self-heal in `WalletRepositoryImpl.init`, awaits it before
+     * `Synchronizer.erase` and runs only on the path where no wallet is stored, so no synchronizer
+     * exists yet to be holding the SDK store open.
+     */
+    suspend fun ensureEncryptedReadable(context: Context, filename: String) = Unit
 }
 
 /**
@@ -203,66 +221,43 @@ private class AndroidPreferenceFactoryImpl : AndroidPreferenceFactory {
             AndroidPreferenceProvider(sharedPreferences, dispatcher)
         }
 
-    /**
-     * Android Keystore keys are hardware-bound and not transferred during device-to-device
-     * migration, so the encrypted prefs file arrives on the new device but cannot be decrypted.
-     * Only failures that provably mean the stored data can never be decrypted again trigger
-     * [deleteCorruptedEncryptedPreferences] and a fresh start: the master key being verifiably
-     * absent while the file exists ([isEncryptedFileOrphaned]), or a deterministic decryption or
-     * keyset-parse failure ([isUnrecoverableCorruption]). Every other failure — for example a
-     * transient Keystore outage — is logged and rethrown, because misclassifying it as corruption
-     * would irreversibly destroy the stored secrets.
-     */
-    @Suppress("TooGenericExceptionCaught")
     override suspend fun newEncrypted(context: Context, filename: String): PreferenceProvider =
         encryptedCache.getOrCreate(filename) {
             val dispatcher = Dispatchers.IO.limitedParallelism(1)
 
-            val sharedPreferences =
-                withContext(dispatcher) {
-                    val isOrphaned = isEncryptedFileOrphaned(context, filename)
-                    try {
-                        createEncryptedSharedPreferences(context, filename)
-                    } catch (e: Exception) {
-                        if (isOrphaned || isUnrecoverableCorruption(e)) {
-                            Twig.error(e) {
-                                "Encrypted preferences $filename can never be decrypted again; recreating them"
-                            }
-                            deleteCorruptedEncryptedPreferences(context, filename)
-                            createEncryptedSharedPreferences(context, filename)
-                        } else {
-                            Twig.error(e) {
-                                "Opening encrypted preferences $filename failed; keeping data intact for a retry"
-                            }
-                            throw e
-                        }
-                    }
-                }
+            val sharedPreferences = withContext(dispatcher) { openEncrypted(context, filename) }
 
             AndroidPreferenceProvider(sharedPreferences, dispatcher)
         }
 
+    override suspend fun ensureEncryptedReadable(context: Context, filename: String) {
+        withContext(Dispatchers.IO) { openEncrypted(context, filename) }
+    }
+
     /**
-     * The device-to-device migration signature: the encrypted preferences file exists, but a
-     * working Keystore definitively reports the master key absent, so nothing can ever decrypt
-     * the file. The query is retried once so that a momentary Keystore hiccup does not disguise
-     * a genuinely orphaned file as healthy; a Keystore that still cannot be queried yields false —
-     * an unknown Keystore state must never authorize deleting the stored secrets.
-     *
-     * Must be evaluated before attempting [createEncryptedSharedPreferences]: a failed attempt has
-     * already recreated the master key alias via [MasterKey.Builder.build], so querying the
-     * Keystore afterwards would always report the alias present and never detect the orphan.
+     * Android Keystore keys are hardware-bound and not transferred during device-to-device
+     * migration, so the encrypted prefs file arrives on the new device but cannot be decrypted.
+     * Opening is retried [ENCRYPTED_PREFERENCES_OPEN_ATTEMPTS] times before any failure is
+     * classified, since a transient Keystore operation error can look identical to real
+     * corruption on the first attempt. Only a deterministic decryption or keyset-parse failure
+     * ([isUnrecoverableCorruption]) then triggers [quarantineCorruptedEncryptedPreferences] and a
+     * fresh start, and only once per filename until that fresh store opens successfully — the
+     * persisted [recreatedMarkerFile] guard is what bounds that, surviving across process
+     * restarts unlike an in-memory set. Every other failure is logged and rethrown, because
+     * misclassifying it as corruption would irreversibly destroy the stored secrets.
      */
-    private fun isEncryptedFileOrphaned(
+    private suspend fun openEncrypted(
         context: Context,
         filename: String
-    ): Boolean {
-        if (!encryptedPreferencesFile(context, filename).exists()) {
-            return false
-        }
-        return retryOnceOrDefault(false) {
-            !androidKeyStore().containsAlias(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
-        }
+    ): SharedPreferences {
+        val marker = recreatedMarkerFile(quarantineDirectory(context), filename)
+
+        return createEncryptedPreferencesWithRecovery(
+            filename = filename,
+            isRecreateAllowed = !marker.exists(),
+            create = { createEncryptedSharedPreferences(context, filename) },
+            quarantine = { cause -> quarantineCorruptedEncryptedPreferences(context, filename, cause) },
+        ).also { marker.delete() }
     }
 
     private fun createEncryptedSharedPreferences(
@@ -283,31 +278,62 @@ private class AndroidPreferenceFactoryImpl : AndroidPreferenceFactory {
         )
     }
 
-    private fun deleteCorruptedEncryptedPreferences(
+    /**
+     * Sets the corrupted file aside instead of deleting it. `<filename>.xml` and its `.xml.bak`
+     * sibling both move into the quarantine directory; taking the `.bak` along is mandatory,
+     * because `SharedPreferencesImpl.loadFromDisk` restores a leftover `.bak` over a fresh file on
+     * the next process start, which would silently resurrect the corrupted data. A failing move
+     * rethrows out of here and out of [createEncryptedPreferencesWithRecovery], leaving the
+     * original files untouched for a later attempt — see
+     * [quarantineEncryptedPreferencesFilesAndMarkRecreated] for why deleting them instead would be
+     * worse than not recovering at all.
+     *
+     * The [recreatedMarkerFile] guard is written by that same call, and only once the move
+     * succeeded: a crash before the caller's post-quarantine retry still leaves the guard in
+     * place — see [openEncrypted] for when it is cleared again. Android's in-memory
+     * `SharedPreferences` cache is then cleared so the retry gets a clean instance instead of the
+     * cached corrupted one, which has to happen after the move or it would quarantine an empty
+     * file. That clear commits an empty `<filename>.xml` back to the now-vacated original path, so
+     * the file is removed again immediately: a retry that fails afterwards would otherwise leave a
+     * stray empty file behind for the next launch to quarantine, instead of the marker guard
+     * rethrowing.
+     *
+     * The Keystore master-key alias is deleted last, and only for [isMasterKeyFailure]:
+     * `MasterKey.Builder.build()` reuses an existing alias, so a data-level failure keeps the key
+     * and the quarantined file stays decryptable by this device if the classification was ever
+     * wrong. That guarantee does not hold for an `InvalidKeyException` without the transient
+     * Keystore marker: [isUnrecoverableCorruption] reads it as corruption and [isMasterKeyFailure]
+     * reads it as a dead key, so the file is quarantined and the key deleted in this same call, and
+     * the quarantined file becomes permanently undecryptable on this device regardless of whether
+     * the classification was correct.
+     */
+    private fun quarantineCorruptedEncryptedPreferences(
         context: Context,
-        filename: String
+        filename: String,
+        cause: Exception
     ) {
-        runCatching {
-            androidKeyStore().deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
-        }
-        // Clear in-memory SharedPreferences cache so the retry gets a clean instance.
-        // Without this, Android returns the cached (corrupted) instance even after file deletion.
+        val sharedPrefsDir = sharedPreferencesDirectory(context)
+        val quarantineDir = quarantineDirectory(context)
+
+        quarantineEncryptedPreferencesFilesAndMarkRecreated(
+            sharedPrefsDir = sharedPrefsDir,
+            quarantineDir = quarantineDir,
+            filename = filename,
+        )
+
         runCatching {
             context
                 .getSharedPreferences(filename, Context.MODE_PRIVATE)
                 .edit()
                 .clear()
                 .commit()
+            deleteEncryptedPreferencesFiles(sharedPrefsDir, filename)
         }
-        runCatching {
-            encryptedPreferencesFile(context, filename).delete()
+
+        if (isMasterKeyFailure(cause)) {
+            runCatching { androidKeyStore().deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS) }
         }
     }
-
-    private fun encryptedPreferencesFile(
-        context: Context,
-        filename: String
-    ) = File(context.filesDir.parent, "shared_prefs/$filename.xml")
 }
 
 private const val ANDROID_KEYSTORE = "AndroidKeyStore"
@@ -318,38 +344,238 @@ private fun androidKeyStore(): KeyStore =
         .getInstance(ANDROID_KEYSTORE)
         .apply { load(null) }
 
+private fun causeChain(exception: Exception): List<Throwable> =
+    generateSequence<Throwable>(exception) { it.cause }
+        .take(CAUSE_CHAIN_LIMIT)
+        .toList()
+
+private const val ANDROID_KEY_STORE_EXCEPTION_SIMPLE_NAME = "KeyStoreException"
+
+/**
+ * `android.security.KeyStoreException.ERROR_KEY_DOES_NOT_EXIST`. AOSP maps both
+ * `ResponseCode.KEY_NOT_FOUND` and `ResponseCode.KEY_PERMANENTLY_INVALIDATED` onto it, so it is the
+ * public code for "the alias this store was encrypted under is gone for good".
+ */
+private const val ANDROID_KEY_STORE_ERROR_KEY_DOES_NOT_EXIST = 6
+
+/**
+ * `android.security.KeyStoreException.ERROR_KEY_CORRUPTED`, AOSP's public code for
+ * `ResponseCode.VALUE_CORRUPTED`: the stored key blob no longer parses.
+ */
+private const val ANDROID_KEY_STORE_ERROR_KEY_CORRUPTED = 7
+
+private val PERMANENT_ANDROID_KEY_STORE_ERROR_CODES =
+    setOf(
+        ANDROID_KEY_STORE_ERROR_KEY_DOES_NOT_EXIST,
+        ANDROID_KEY_STORE_ERROR_KEY_CORRUPTED
+    )
+
+/**
+ * AOSP's own wording for the Keystore and KeyMint conditions under which this device can never read
+ * the stored ciphertext again: the first two come from `KeymasterDefs.sErrorCodeToString`
+ * (`KM_ERROR_VERIFICATION_FAILED`, `KM_ERROR_INVALID_KEY_BLOB`), the rest from the
+ * `ResponseCode` switch in `KeyStore2.getKeyStoreException` (`VALUE_CORRUPTED`, `KEY_NOT_FOUND`,
+ * `KEY_PERMANENTLY_INVALIDATED`). They are hard-coded, never localized, and identical in the legacy
+ * `KeyStore.getKeyStoreException` that devices below API 31 still use, which is what makes matching
+ * on them the one permanence signal available on every supported API level — the typed
+ * classification below arrived only in API 33.
+ */
+private val PERMANENT_ANDROID_KEY_STORE_MESSAGES =
+    setOf(
+        "Signature/MAC verification failed",
+        "Invalid key blob",
+        "Key blob corrupted",
+        "Key not found",
+        "Key permanently invalidated"
+    )
+
+/**
+ * AOSP's own verdict from `android.security.KeyStoreException.isTransientFailure()`, which exists
+ * only from API 33. Below that the method is absent and this reports false — "AOSP did not say it
+ * is transient", not "AOSP said it is permanent"; [isPermanentAndroidKeyStoreFailure] still has to
+ * find positive evidence of permanence before the veto is released.
+ */
+private fun isTransientPerAndroidKeyStore(throwable: Throwable): Boolean =
+    runCatching {
+        throwable.javaClass.getMethod("isTransientFailure").invoke(throwable) as Boolean
+    }.getOrDefault(false)
+
+/**
+ * True when `android.security.KeyStoreException.getNumericErrorCode()` (API 33 and up) names a key
+ * that is gone or unparseable. Reflective for the same reason the class itself is matched by simple
+ * name, and false whenever the method is missing.
+ */
+private fun hasPermanentAndroidKeyStoreErrorCode(throwable: Throwable): Boolean {
+    val numericErrorCode =
+        runCatching {
+            throwable.javaClass.getMethod("getNumericErrorCode").invoke(throwable) as Int
+        }.getOrNull()
+
+    return numericErrorCode != null && numericErrorCode in PERMANENT_ANDROID_KEY_STORE_ERROR_CODES
+}
+
+/**
+ * True only when the Keystore itself reports a condition this device can never recover from: the
+ * key is gone, its blob is unparseable, or the stored ciphertext does not authenticate under the
+ * key that exists now — the shape a device-to-device transfer leaves behind, where
+ * `MasterKey.Builder.build()` silently mints a new key under the old alias and every decrypt then
+ * fails with `AEADBadTagException` caused by
+ * `android.security.KeyStoreException: Signature/MAC verification failed`.
+ *
+ * Everything else is treated as not-permanent, including a Keystore failure this code cannot
+ * classify at all: unsure means the veto holds and the store is rethrown for a later attempt,
+ * never quarantined.
+ *
+ * Rethrowing an unclassifiable failure means the user sits on the (already-deferred) splash with
+ * no in-app recourse — Reset Zodl lives behind a normal boot the wedged store can't reach, and
+ * there is no `SecretState.ERROR` screen yet to say so. Relaunching once the Keystore settles is
+ * the only way through. That is the deliberate price of failing safe: it is a worse experience
+ * than quarantining or wiping, but neither of those is reversible if the failure turns out to have
+ * been transient after all.
+ */
+private fun isPermanentAndroidKeyStoreFailure(throwable: Throwable): Boolean {
+    if (isTransientPerAndroidKeyStore(throwable)) return false
+
+    val message = throwable.message.orEmpty()
+
+    return PERMANENT_ANDROID_KEY_STORE_MESSAGES.any { message.startsWith(it) } ||
+        hasPermanentAndroidKeyStoreErrorCode(throwable)
+}
+
+/**
+ * True when [chain] carries an `android.security.KeyStoreException` that is not positively
+ * permanent. That class extends `java.lang.Exception` rather than [java.security.KeyStoreException]
+ * and is matched here by simple name, because the framework class is not a JVM dependency of this
+ * module. AOSP wraps a transient HAL error as `InvalidKeyException("Keystore operation failed")`
+ * carrying that marker, so such a chain says the Keystore daemon was wedged, not that anything is
+ * permanently broken.
+ *
+ * The marker alone is not enough to veto, because AOSP also raises it for failures that will never
+ * heal — [isPermanentAndroidKeyStoreFailure] is what separates the two. Vetoing on its mere
+ * presence stranded the device-to-device case this recovery exists for: the store could never be
+ * decrypted again, yet every launch classified it as transient, exhausted the retry ladder and
+ * rethrew, so onboarding was never reached.
+ *
+ * Both [isUnrecoverableCorruption] and [isMasterKeyFailure] veto on this, and deliberately share
+ * this one implementation: a shape only one of them vetoed would still be acted upon by the other,
+ * and either action — quarantining the store or deleting the shared master key — is irreversible
+ * for data the Keystore was about to be able to read again.
+ */
+private fun hasTransientAndroidKeyStoreMarker(chain: List<Throwable>): Boolean =
+    chain.any {
+        it !is KeyStoreException &&
+            it.javaClass.simpleName == ANDROID_KEY_STORE_EXCEPTION_SIMPLE_NAME &&
+            !isPermanentAndroidKeyStoreFailure(it)
+    }
+
 /**
  * True only for failures that are deterministic for the stored ciphertext or this device's
  * Keystore: an AEAD/padding authentication failure, a Tink keyset that no longer decodes
  * ([CharConversionException] is Tink's malformed-hex signature, InvalidProtocolBufferException its
- * malformed-proto one), Tink's Keystore self-test failure ([KeyStoreException] — in tink-android
- * 1.8.0, `AndroidKeystoreKmsClient` throws it from exactly one place, `validateAead()`, when a
- * post-key-creation AEAD encrypt/decrypt round-trip of a random message doesn't match; a
- * permanent condition on devices with a buggy hardware Keystore), or [InvalidKeyException], the
- * failure [createEncryptedSharedPreferences] actually throws for a genuinely
- * device-to-device-orphaned file when [isEncryptedFileOrphaned]'s Keystore query itself failed
- * twice (see [retryOnceOrDefault]) and so could not flag the orphan first — this is the second
- * line of defense for that case. Other Keystore and general IO failures are excluded because they
- * can be transient.
+ * malformed-proto one), Tink's Keystore self-test failure ([KeyStoreException] — as of tink-android
+ * 1.20.0, `AndroidKeystoreKmsClient` throws it from `validateAead()` when a post-key-creation AEAD
+ * encrypt/decrypt round-trip of a random message doesn't match; a permanent condition on devices
+ * with a buggy hardware Keystore), or [InvalidKeyException] — one of the failures
+ * [createEncryptedSharedPreferences] throws for a device-to-device-orphaned file, whose master key
+ * is verifiably gone on this device. (The other, seen on an emulator across API 31 and 35, is an
+ * `AEADBadTagException` carrying the Keystore's `Signature/MAC verification failed`.) Other
+ * Keystore and general IO failures are excluded because they can be transient —
+ * [createEncryptedPreferencesWithRecovery] retries before this classification runs.
+ *
+ * A chain carrying the [hasTransientAndroidKeyStoreMarker] shape is never corruption, whatever
+ * else it holds: quarantining moves the seed somewhere no screen can reach it, while rethrowing
+ * leaves the store readable again as soon as the Keystore settles. That veto is exactly as wide as
+ * the Keystore's own uncertainty — a Keystore failure that positively reports a gone, unparseable
+ * or unauthenticating key is not the shape, and is classified on its merits below.
  */
-internal fun isUnrecoverableCorruption(exception: Exception): Boolean =
-    generateSequence<Throwable>(exception) { it.cause }
-        .take(CAUSE_CHAIN_LIMIT)
-        .any {
-            it is BadPaddingException ||
-                it is CharConversionException ||
-                it is KeyStoreException ||
-                it is InvalidKeyException ||
-                it.javaClass.simpleName == "InvalidProtocolBufferException"
-        }
+internal fun isUnrecoverableCorruption(exception: Exception): Boolean {
+    val chain = causeChain(exception)
+    if (hasTransientAndroidKeyStoreMarker(chain)) return false
+    return chain.any {
+        it is BadPaddingException ||
+            it is CharConversionException ||
+            it is KeyStoreException ||
+            it is InvalidKeyException ||
+            it.javaClass.simpleName == "InvalidProtocolBufferException"
+    }
+}
 
 /**
- * Runs [block], retrying once if it throws; returns [default] when both attempts throw.
+ * True for failures that mean the Keystore key itself is unusable, as opposed to the stored
+ * ciphertext being unreadable or a transient Keystore-daemon hiccup. Only ever consulted from
+ * [quarantineCorruptedEncryptedPreferences], which runs after
+ * [createEncryptedPreferencesWithRecovery] has exhausted its retry ladder, so anything reaching
+ * this classification already survived [ENCRYPTED_PREFERENCES_OPEN_ATTEMPTS] attempts.
+ *
+ * A chain carrying the [hasTransientAndroidKeyStoreMarker] shape is never a master-key failure,
+ * whatever else it holds, or [quarantineCorruptedEncryptedPreferences] would delete the shared
+ * master key over a transient error and permanently orphan both the quarantined file and the SDK's
+ * own encrypted store.
+ *
+ * The residual assumption is that a [java.security.KeyStoreException] without that marker is
+ * permanent. Tink's `AndroidKeystoreKmsClient.validateAead()` folds the failure it caught into the
+ * message of the [java.security.KeyStoreException] it throws rather than setting it as the cause,
+ * so a transient HAL error surfacing through it is indistinguishable by type from a genuinely
+ * broken Keystore; the retry ladder is the only mitigation for that case.
  */
-internal fun <T> retryOnceOrDefault(
-    default: T,
-    block: () -> T
-): T =
-    runCatching(block)
-        .recoverCatching { block() }
-        .getOrDefault(default)
+internal fun isMasterKeyFailure(exception: Exception): Boolean {
+    val chain = causeChain(exception)
+    if (hasTransientAndroidKeyStoreMarker(chain)) return false
+    return chain.any { it is KeyStoreException || it is InvalidKeyException }
+}
+
+internal const val ENCRYPTED_PREFERENCES_OPEN_ATTEMPTS = 3
+
+internal fun encryptedPreferencesOpenBackoff(attempt: Int): Duration = 200.milliseconds * (1 shl (attempt - 1))
+
+/**
+ * Opens encrypted preferences with bounded retry before quarantine: the MOB-1452 Play trace showed
+ * an `AEADBadTagException` caused by a Keystore operation error, so a single failure is never
+ * enough to condemn the store. [create] is deliberately non-suspending — the only suspension point
+ * is [delay], kept outside the try/catch so a coroutine cancellation always propagates instead of
+ * being caught by the broad `Exception` handling here.
+ *
+ * After [maxAttempts] failures, [quarantine] runs only when [isRecreateAllowed] and the last
+ * failure is [isUnrecoverableCorruption]; otherwise the last failure is rethrown, keeping the
+ * stored data intact for a later retry.
+ */
+@Suppress("TooGenericExceptionCaught", "ReturnCount")
+internal suspend fun <T> createEncryptedPreferencesWithRecovery(
+    filename: String,
+    isRecreateAllowed: Boolean = true,
+    maxAttempts: Int = ENCRYPTED_PREFERENCES_OPEN_ATTEMPTS,
+    backoff: (attempt: Int) -> Duration = ::encryptedPreferencesOpenBackoff,
+    create: () -> T,
+    quarantine: (cause: Exception) -> Unit,
+): T {
+    require(maxAttempts >= 1) { "maxAttempts must be at least 1" }
+
+    var lastFailure: Exception? = null
+
+    for (attempt in 1..maxAttempts) {
+        val failure =
+            try {
+                return create()
+            } catch (e: Exception) {
+                e
+            }
+
+        lastFailure = failure
+        Twig.warn(failure) { "Opening encrypted preferences $filename failed on attempt $attempt of $maxAttempts" }
+
+        if (attempt < maxAttempts) {
+            delay(backoff(attempt))
+        }
+    }
+
+    val cause = checkNotNull(lastFailure)
+
+    return if (isRecreateAllowed && isUnrecoverableCorruption(cause)) {
+        Twig.error(cause) { "Encrypted preferences $filename can never be decrypted again; quarantining them" }
+        quarantine(cause)
+        create()
+    } else {
+        Twig.error(cause) { "Opening encrypted preferences $filename failed; keeping data intact for a retry" }
+        throw cause
+    }
+}

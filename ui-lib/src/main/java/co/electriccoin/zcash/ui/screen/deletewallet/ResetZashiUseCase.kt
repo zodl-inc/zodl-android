@@ -92,6 +92,7 @@ class ResetZashiUseCase(
     private suspend fun clearSharedPrefs() {
         standardPreferenceProvider().clearPreferences()
         encryptedPreferenceProvider().clearPreferences()
+        encryptedPreferenceProvider.purgeQuarantine()
     }
 
     private fun clearInMemoryData() {
