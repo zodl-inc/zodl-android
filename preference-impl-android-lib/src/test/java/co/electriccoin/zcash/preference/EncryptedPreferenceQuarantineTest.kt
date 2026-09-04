@@ -2,11 +2,13 @@ package co.electriccoin.zcash.preference
 
 import kotlinx.coroutines.test.runTest
 import java.io.File
+import java.io.IOException
 import java.nio.file.Files
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -61,7 +63,7 @@ class EncryptedPreferenceQuarantineTest {
     }
 
     @Test
-    fun `prune keeps only the newest entries for the filename and leaves others alone`() {
+    fun `prune keeps the oldest and the newest entries for the filename and leaves others alone`() {
         quarantineDir.mkdirs()
         (1L..5L).forEach { millis ->
             File(quarantineDir, "target-$millis.xml").writeText("v$millis")
@@ -80,8 +82,8 @@ class EncryptedPreferenceQuarantineTest {
 
         assertEquals(
             setOf(
-                "target-3.xml",
-                "target-3.xml.bak",
+                "target-1.xml",
+                "target-1.xml.bak",
                 "target-4.xml",
                 "target-4.xml.bak",
                 "target-5.xml",
@@ -89,6 +91,44 @@ class EncryptedPreferenceQuarantineTest {
                 "other-9.xml"
             ),
             remaining
+        )
+    }
+
+    /**
+     * Only the first quarantine of a filename can set aside a store that ever held a wallet: the
+     * recovery that follows recreates it empty, so every later quarantine sets aside an empty file.
+     * Retention must therefore never age out the first entry, however many times the store is
+     * quarantined afterwards.
+     */
+    @Test
+    fun `repeated quarantines keep the first copy, the only one holding a wallet`() {
+        encryptedPreferencesFile(sharedPrefsDir, "target").writeText("seed ciphertext")
+
+        (1L..5L).forEach { launch ->
+            quarantineEncryptedPreferencesFiles(
+                sharedPrefsDir = sharedPrefsDir,
+                quarantineDir = quarantineDir,
+                filename = "target",
+                nowMillis = 1_700_000_000_000L + launch,
+            )
+            encryptedPreferencesFile(sharedPrefsDir, "target").writeText("<map />")
+        }
+
+        assertEquals(
+            "seed ciphertext",
+            File(quarantineDir, "target-1700000000001.xml").readText()
+        )
+        assertEquals(
+            setOf(
+                "target-1700000000001.xml",
+                "target-1700000000004.xml",
+                "target-1700000000005.xml"
+            ),
+            quarantineDir
+                .listFiles()
+                ?.map { it.name }
+                ?.toSet()
+                .orEmpty()
         )
     }
 
@@ -146,6 +186,56 @@ class EncryptedPreferenceQuarantineTest {
                 ?.toSet()
                 .orEmpty()
         )
+    }
+
+    /**
+     * A quarantine that throws mid-move must leave the original ciphertext where it is instead of
+     * deleting it, and must write no [recreatedMarkerFile] — the marker is what would stop the next
+     * launch from recovering, and there is nothing set aside yet to justify that.
+     */
+    @Test
+    fun `a failed quarantine keeps the original files and writes no marker`() {
+        encryptedPreferencesFile(sharedPrefsDir, "target").writeText("seed ciphertext")
+        encryptedPreferencesBackupFile(sharedPrefsDir, "target").writeText("seed ciphertext bak")
+        quarantineDir.writeText("a regular file where the quarantine directory should be")
+
+        assertFailsWith<IOException> {
+            quarantineEncryptedPreferencesFilesAndMarkRecreated(
+                sharedPrefsDir = sharedPrefsDir,
+                quarantineDir = quarantineDir,
+                filename = "target",
+                nowMillis = 1_700_000_000_000L,
+            )
+        }
+
+        assertEquals(
+            "seed ciphertext",
+            encryptedPreferencesFile(sharedPrefsDir, "target").readText()
+        )
+        assertEquals(
+            "seed ciphertext bak",
+            encryptedPreferencesBackupFile(sharedPrefsDir, "target").readText()
+        )
+        assertFalse(recreatedMarkerFile(quarantineDir, "target").exists())
+    }
+
+    @Test
+    fun `a successful quarantine writes the marker`() {
+        encryptedPreferencesFile(sharedPrefsDir, "target").writeText("seed ciphertext")
+
+        quarantineEncryptedPreferencesFilesAndMarkRecreated(
+            sharedPrefsDir = sharedPrefsDir,
+            quarantineDir = quarantineDir,
+            filename = "target",
+            nowMillis = 1_700_000_000_000L,
+        )
+
+        assertTrue(recreatedMarkerFile(quarantineDir, "target").exists())
+        assertEquals(
+            "seed ciphertext",
+            File(quarantineDir, "target-1700000000000.xml").readText()
+        )
+        assertFalse(encryptedPreferencesFile(sharedPrefsDir, "target").exists())
     }
 
     @Test

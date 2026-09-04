@@ -1,3 +1,5 @@
+@file:Suppress("TooManyFunctions")
+
 package co.electriccoin.zcash.preference
 
 import android.content.Context
@@ -24,9 +26,9 @@ internal fun encryptedPreferencesBackupFile(
 ): File = File(sharedPrefsDir, "$filename.xml.bak")
 
 /**
- * Removes `<filename>.xml` and its `.xml.bak` sibling from [sharedPrefsDir]: the fallback when
- * quarantining them fails, and the cleanup for the empty file that clearing Android's in-memory
- * `SharedPreferences` cache commits back to the vacated path. A missing file is a no-op.
+ * Removes `<filename>.xml` and its `.xml.bak` sibling from [sharedPrefsDir]: the cleanup for the
+ * empty file that clearing Android's in-memory `SharedPreferences` cache commits back to the
+ * vacated path, once the real content is safely quarantined. A missing file is a no-op.
  */
 internal fun deleteEncryptedPreferencesFiles(
     sharedPrefsDir: File,
@@ -81,6 +83,43 @@ internal fun quarantineEncryptedPreferencesFiles(
     pruneQuarantine(quarantineDir, filename, keepNewest)
 }
 
+/**
+ * Runs [quarantineEncryptedPreferencesFiles] and writes the [recreatedMarkerFile] guard only once
+ * it has succeeded, so a store that was never set aside is still allowed to recover on the next
+ * launch.
+ *
+ * A failing quarantine is rethrown rather than falling back to deleting the original files.
+ * [moveFile] degrades to copy-then-delete when `renameTo` fails, and a copy that throws mid-write —
+ * low disk being the obvious trigger, and also a plausible reason `renameTo` failed — would leave a
+ * truncated copy in quarantine; deleting the original on top of that turns a recoverable failure
+ * into unrecoverable loss of the only ciphertext holding the seed. Rethrowing propagates out of
+ * `AndroidPreferenceProvider.createEncryptedPreferencesWithRecovery` instead, leaving the store
+ * exactly where it is for a later attempt.
+ */
+internal fun quarantineEncryptedPreferencesFilesAndMarkRecreated(
+    sharedPrefsDir: File,
+    quarantineDir: File,
+    filename: String,
+    nowMillis: Long = System.currentTimeMillis(),
+    keepNewest: Int = QUARANTINE_KEEP_NEWEST,
+) {
+    quarantineEncryptedPreferencesFiles(
+        sharedPrefsDir = sharedPrefsDir,
+        quarantineDir = quarantineDir,
+        filename = filename,
+        nowMillis = nowMillis,
+        keepNewest = keepNewest,
+    )
+
+    runCatching {
+        quarantineDir.mkdirs()
+        val markerCreated = recreatedMarkerFile(quarantineDir, filename).createNewFile()
+        if (!markerCreated) {
+            Twig.error { "Creating the recreated-marker for $filename returned false" }
+        }
+    }
+}
+
 private fun moveFile(
     source: File,
     destination: File
@@ -94,11 +133,19 @@ private fun moveFile(
 }
 
 /**
- * Keeps the [keepNewest] lexicographically-latest `<filename>-*.xml` quarantine entries (their
- * millisecond timestamps are fixed-width, so lexicographic order matches chronological order) and
- * deletes the rest, along with any `.bak` sibling. Other filenames' entries, including this
- * filename's [recreatedMarkerFile], are left untouched: the marker is named `<filename>.recreated`,
- * which never matches the `<filename>-*.xml` pattern.
+ * Prunes this filename's `<filename>-*.xml` quarantine entries down to [keepNewest] of them: the
+ * oldest entry unconditionally, plus the [keepNewest] - 1 latest ones. Everything between is
+ * deleted, along with any `.bak` sibling. (The millisecond timestamps are fixed-width, so
+ * lexicographic order matches chronological order.)
+ *
+ * Keeping the oldest is the whole point of the retention: only the first quarantine of a filename
+ * can set aside a store that ever held a wallet, because the recovery that follows it recreates
+ * that store empty, so every later quarantine of the same filename sets aside an empty or
+ * near-empty file. Deleting oldest-first would therefore drop the only copy holding the seed after
+ * a handful of launches on flaky Keystore hardware, while keeping it costs a few KB of XML.
+ *
+ * Other filenames' entries, including this filename's [recreatedMarkerFile], are left untouched:
+ * the marker is named `<filename>.recreated`, which never matches the `<filename>-*.xml` pattern.
  */
 internal fun pruneQuarantine(
     quarantineDir: File,
@@ -110,9 +157,12 @@ internal fun pruneQuarantine(
         quarantineDir.listFiles { file -> file.name.startsWith(prefix) && file.name.endsWith(".xml") }
             ?: return
 
-    xmlFiles
-        .sortedByDescending { it.name }
-        .drop(keepNewest)
+    val newestFirst = xmlFiles.sortedByDescending { it.name }
+    val oldest = newestFirst.lastOrNull()
+
+    newestFirst
+        .drop((keepNewest - 1).coerceAtLeast(0))
+        .filterNot { it == oldest }
         .forEach { xmlFile ->
             xmlFile.delete()
             File(quarantineDir, "${xmlFile.name}.bak").delete()

@@ -60,6 +60,31 @@ class EncryptedPreferenceRecoveryTest {
         assertTrue(isUnrecoverableCorruption(GeneralSecurityException(InvalidKeyException())))
     }
 
+    /**
+     * The AOSP-wrapped transient shape a wedged Keystore daemon throws. Classifying it as
+     * corruption would move the seed into quarantine, where no screen can reach it, over a failure
+     * that heals itself once the daemon settles; the veto must hold for both classifiers, not only
+     * for [isMasterKeyFailure].
+     */
+    @Test
+    fun `a failure wrapping an android Keystore failure is not corruption`() {
+        assertFalse(
+            isUnrecoverableCorruption(
+                InvalidKeyException("Keystore operation failed", AndroidKeyStoreException())
+            )
+        )
+        assertFalse(
+            isUnrecoverableCorruption(
+                KeyStoreException("cannot use Android Keystore", AndroidKeyStoreException())
+            )
+        )
+        assertFalse(
+            isUnrecoverableCorruption(
+                GeneralSecurityException(InvalidKeyException("Keystore operation failed", AndroidKeyStoreException()))
+            )
+        )
+    }
+
     @Test
     fun `corruption signature is found deep in the cause chain`() {
         val exception = RuntimeException(IOException(GeneralSecurityException(AEADBadTagException())))
