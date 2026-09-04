@@ -47,11 +47,9 @@ import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypographyInternal
 /**
  * Commonly used top level app theme definition
  *
- * @param forceDarkMode Set this to true to force the app to use the dark mode theme, which is helpful, e.g.,
- * for the compose previews. The user's [appearanceMode] light/dark choice is ignored while this is true, but
- * [isOledEnabled] still applies.
  * @param appearanceMode The user's chosen light/dark appearance. Defaults to the value provided by an enclosing
- * [ZcashTheme] so that nested, always-dark screens inherit the user's choice.
+ * [ZcashTheme] so that nested screens inherit the user's choice; pass [AppearanceMode.DARK] explicitly to
+ * force dark, which is what always-dark screens and the dark compose previews do.
  * @param isOledEnabled Whether pure black should be used whenever the theme resolves to dark. Independent of
  * [appearanceMode] - it applies under [AppearanceMode.DARK] just as much as under [AppearanceMode.SYSTEM]
  * resolving to dark. Defaults to the value provided by an enclosing [ZcashTheme].
@@ -59,15 +57,13 @@ import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypographyInternal
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ZcashTheme(
-    forceDarkMode: Boolean = false,
     balancesAvailable: Boolean = true,
     appearanceMode: AppearanceMode = LocalAppearanceMode.current,
     isOledEnabled: Boolean = LocalOledEnabled.current,
     content: @Composable () -> Unit
 ) {
     val useDarkMode =
-        forceDarkMode ||
-            appearanceMode == AppearanceMode.DARK ||
+        appearanceMode == AppearanceMode.DARK ||
             (appearanceMode == AppearanceMode.SYSTEM && isSystemInDarkTheme())
     val useOledDark = useDarkMode && isOledEnabled
     val (baseColors, extendedColors, zashiColors) = themePalettes(useDarkMode, useOledDark)
@@ -93,7 +89,7 @@ fun ZcashTheme(
                 // values-night, ...) - that's driven by the real Configuration.uiMode, which otherwise
                 // stays whatever the device's actual light/dark setting is. Force it to match the resolved
                 // theme so -night assets aren't picked while rendering the light palette (or vice versa)
-                // whenever appearanceMode/forceDarkMode diverges from the system setting.
+                // whenever appearanceMode diverges from the system setting.
                 //
                 // Deliberately NOT the ConfigurationOverride composable (which wraps LocalContext via
                 // Context.createConfigurationContext) - on an Activity context that returns a context

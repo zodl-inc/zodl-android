@@ -209,7 +209,7 @@ private fun ThemeSettingsPreview() =
 @PreviewScreens
 @Composable
 private fun ThemeSettingsDarkPreview() =
-    ZcashTheme(forceDarkMode = true) {
+    ZcashTheme(appearanceMode = AppearanceMode.DARK) {
         ThemeSettingsView(state = previewState(selected = AppearanceMode.DARK))
     }
 

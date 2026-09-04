@@ -839,7 +839,7 @@ fun SendFormMemoTextField(
 @Composable
 @Preview("SendFailure")
 private fun PreviewSendFailure() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             SendFailure(
                 onConfirm = {},

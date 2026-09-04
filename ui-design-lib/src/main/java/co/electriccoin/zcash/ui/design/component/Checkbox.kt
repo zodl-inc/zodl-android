@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
+import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.util.PressMorphDefaults
 import co.electriccoin.zcash.ui.design.util.pressMorph
@@ -28,7 +29,7 @@ import co.electriccoin.zcash.ui.design.util.pressMorph
 @Preview
 @Composable
 private fun LabeledCheckboxPreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             Row {
                 LabeledCheckBox(
@@ -49,7 +50,7 @@ private fun LabeledCheckboxPreview() {
 @Preview
 @Composable
 private fun LabeledCheckboxDarkPreview() {
-    ZcashTheme(forceDarkMode = true) {
+    ZcashTheme(appearanceMode = AppearanceMode.DARK) {
         BlankSurface {
             Row {
                 LabeledCheckBox(
