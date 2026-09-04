@@ -903,7 +903,7 @@
     <string name="swap_mismatch_support_email_body">Zodl detectó el siguiente error en la respuesta de la API del proveedor de swap. Proporcionar estos detalles nos permite plantearlo con ellos para investigarlo. No compartiremos tus datos personales con el proveedor de swap. Puedes enviarlo tal cual o incluir una nota para nosotros. Gracias de antemano.\n\nProveedor de swap: %1$s\nTipo de swap: %2$s\nTipo de discrepancia: %3$s\nID de cotización: %4$s</string>
     <string name="swap_mismatch_mode_swap">Swap</string>
     <string name="swap_mismatch_mode_crosspay">CrossPay</string>
-    <string name="swap_mismatch_mode_swapIntoZec">Swap into ZEC</string>
+    <string name="swap_mismatch_mode_swapIntoZec">Swap a ZEC</string>
     <string name="swap_mismatch_type_recipientAddress">Dirección del destinatario</string>
     <string name="swap_mismatch_type_refundAddress">Dirección de reembolso</string>
     <string name="swap_mismatch_type_originAsset">Activo de origen</string>
