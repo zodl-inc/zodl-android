@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
@@ -125,17 +126,19 @@ internal fun ThemeSettingsView(state: ThemeSettingsState) {
                     color = ZashiColors.Text.textTertiary,
                 )
                 Spacer(modifier = Modifier.height(24.dp))
-                state.options.forEachIndexed { index, option ->
-                    if (index > 0) {
-                        Spacer(modifier = Modifier.height(12.dp))
+                Column(modifier = Modifier.selectableGroup()) {
+                    state.options.forEachIndexed { index, option ->
+                        if (index > 0) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                        ThemeOption(
+                            modifier = Modifier.fillMaxWidth(),
+                            isChecked = option.isChecked,
+                            title = stringResource(option.mode.titleRes),
+                            subtitle = stringResource(option.mode.subtitleRes),
+                            onClick = option.onClick
+                        )
                     }
-                    ThemeOption(
-                        modifier = Modifier.fillMaxWidth(),
-                        isChecked = option.isChecked,
-                        title = stringResource(option.mode.titleRes),
-                        subtitle = stringResource(option.mode.subtitleRes),
-                        onClick = option.onClick
-                    )
                 }
             }
         }
@@ -145,7 +148,9 @@ internal fun ThemeSettingsView(state: ThemeSettingsState) {
 /**
  * The screen's logo + palette header: the app's own logo circle overlapped by a circle carrying the same
  * palette glyph used for the [R.string.settings_theme] row, re-tinted with [ZashiColors.Text.textPrimary] so
- * it stays legible against [ZashiColors.Surfaces.bgTertiary] in both appearances.
+ * it stays legible against [ZashiColors.Surfaces.bgTertiary] in both appearances. The glyph occupies the
+ * inner half of its own vector, so the icon is drawn at the full circle size - the same way the Settings row
+ * draws it - which renders the artwork at the intended ~20dp.
  */
 @Composable
 private fun ThemeSettingsHeader(modifier: Modifier = Modifier) {
@@ -172,7 +177,7 @@ private fun ThemeSettingsHeader(modifier: Modifier = Modifier) {
                 painter = painterResource(R.drawable.ic_settings_theme),
                 contentDescription = null,
                 tint = ZashiColors.Text.textPrimary,
-                modifier = Modifier.padding(10.dp)
+                modifier = Modifier.size(HEADER_ICON_SIZE)
             )
         }
     }
@@ -219,7 +224,7 @@ private fun ThemeSettingsLightPreview() =
 private fun previewState(selected: AppearanceMode) =
     ThemeSettingsState(
         options =
-            AppearanceMode.entries.map { mode ->
+            listOf(AppearanceMode.SYSTEM, AppearanceMode.LIGHT, AppearanceMode.DARK).map { mode ->
                 AppearanceModeOptionState(
                     mode = mode,
                     isChecked = mode == selected,

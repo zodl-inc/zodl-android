@@ -11,7 +11,7 @@ import org.koin.androidx.compose.koinViewModel
 fun ThemeSettingsScreen() {
     val vm = koinViewModel<ThemeSettingsVM>()
     val state by vm.state.collectAsStateWithLifecycle()
-    BackHandler { state?.onBack() }
+    BackHandler(enabled = state != null) { state?.onBack() }
     state?.let { ThemeSettingsView(state = it) }
 }
 

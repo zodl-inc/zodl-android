@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
@@ -70,17 +71,19 @@ private fun BottomSheetContent(
             style = ZashiTypography.textSm
         )
         Spacer(24.dp)
-        state.options.forEachIndexed { index, option ->
-            if (index > 0) {
-                Spacer(12.dp)
+        Column(modifier = Modifier.selectableGroup()) {
+            state.options.forEachIndexed { index, option ->
+                if (index > 0) {
+                    Spacer(12.dp)
+                }
+                ThemeOption(
+                    modifier = Modifier.fillMaxWidth(),
+                    isChecked = option.isChecked,
+                    title = stringResource(option.titleRes),
+                    subtitle = stringResource(option.subtitleRes),
+                    onClick = option.onClick
+                )
             }
-            ThemeOption(
-                modifier = Modifier.fillMaxWidth(),
-                isChecked = option.isChecked,
-                title = stringResource(option.titleRes),
-                subtitle = stringResource(option.subtitleRes),
-                onClick = option.onClick
-            )
         }
         Spacer(24.dp)
         ZashiButton(

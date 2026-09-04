@@ -4,6 +4,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
+import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.provider.AppearanceModeStorageProvider
@@ -26,13 +27,13 @@ internal class ThemeSettingsVM(
     private val appearanceModeStorageProvider: AppearanceModeStorageProvider,
     private val setAppearanceMode: SetAppearanceModeUseCase,
 ) : ViewModel() {
-    private var originalMode = AppearanceMode.SYSTEM
+    private var storedMode = AppearanceMode.SYSTEM
 
-    private val selectedMode = MutableStateFlow(AppearanceMode.SYSTEM)
+    private val selectedMode = MutableStateFlow<AppearanceMode?>(null)
 
     val state =
         selectedMode
-            .map(::createState)
+            .map { mode -> mode?.let(::createState) }
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
@@ -41,8 +42,8 @@ internal class ThemeSettingsVM(
 
     init {
         viewModelScope.launch {
-            originalMode = appearanceModeStorageProvider.getOrSystem()
-            selectedMode.update { originalMode }
+            storedMode = appearanceModeStorageProvider.getOrSystem()
+            selectedMode.update { storedMode }
         }
     }
 
@@ -60,7 +61,7 @@ internal class ThemeSettingsVM(
                 ButtonState(
                     stringRes(R.string.currencyConversion_saveBtn),
                     onClick = ::onSaveClick,
-                    isEnabled = selectedMode != originalMode,
+                    isEnabled = selectedMode != storedMode,
                     hapticFeedbackType = HapticFeedbackType.Confirm
                 ),
             onBack = ::onBack
@@ -83,10 +84,14 @@ internal class ThemeSettingsVM(
 
     private fun onSaveClick() =
         viewModelScope.launch {
-            require(selectedMode.value == AppearanceMode.LIGHT) {
-                "onSaveClick is only reachable for AppearanceMode.LIGHT - System and Dark forward to the " +
-                    "dark-look sheet, which persists isOledEnabled itself."
+            val mode = selectedMode.value
+            if (mode != AppearanceMode.LIGHT) {
+                Twig.warn {
+                    "Ignoring save for $mode - only AppearanceMode.LIGHT is selectable here, System and Dark " +
+                        "forward to the dark-look sheet, which persists the mode together with isOledEnabled."
+                }
+                return@launch
             }
-            setAppearanceMode(selectedMode.value, isOledEnabled = false)
+            setAppearanceMode(mode, isOledEnabled = false)
         }
 }
