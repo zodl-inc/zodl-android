@@ -320,7 +320,10 @@ private class AndroidPreferenceFactoryImpl : AndroidPreferenceFactory {
 
         runCatching {
             quarantineDir.mkdirs()
-            recreatedMarkerFile(quarantineDir, filename).createNewFile()
+            val markerCreated = recreatedMarkerFile(quarantineDir, filename).createNewFile()
+            if (!markerCreated) {
+                Twig.error { "Creating the recreated-marker for $filename returned false" }
+            }
         }
 
         runCatching {
