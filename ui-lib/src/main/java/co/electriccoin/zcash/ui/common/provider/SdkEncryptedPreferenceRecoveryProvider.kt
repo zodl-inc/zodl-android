@@ -4,16 +4,17 @@ import android.content.Context
 import co.electriccoin.zcash.preference.AndroidPreferenceProvider
 
 interface SdkEncryptedPreferenceRecoveryProvider {
+    /**
+     * The SDK's encrypted store (`cash.z.ecc.android.sdk.encrypted`) shares this app's Keystore
+     * master key, but the SDK has no corruption recovery of its own, and both
+     * `Synchronizer.erase` and `Synchronizer.new` open it unguarded. So after the app's own
+     * encrypted store had to be recreated, the SDK store must be repaired the same way, or a
+     * restore attempt that reaches it crash-loops instead of self-healing. Callers must await this
+     * before anything else opens the SDK store.
+     */
     suspend fun ensureReadable()
 }
 
-/**
- * The SDK's encrypted store ([SDK_ENCRYPTED_PREFERENCES_FILENAME]) shares this app's Keystore
- * master key, but the SDK has no corruption recovery of its own, and both
- * `Synchronizer.erase` and `Synchronizer.new` open it unguarded. So after the app's own encrypted
- * store had to be recreated, the SDK store must be repaired the same way, or a restore attempt
- * that reaches it crash-loops instead of self-healing.
- */
 class SdkEncryptedPreferenceRecoveryProviderImpl(
     private val context: Context
 ) : SdkEncryptedPreferenceRecoveryProvider {

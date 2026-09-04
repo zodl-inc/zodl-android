@@ -339,7 +339,7 @@ private class WalletStoredAfterFirstReadProvider(
  * `AndroidPreferenceProvider` re-emits on every preference change, so
  * `StandardPreferenceKeys.ONBOARDING_STATE.observe(...)` reacts to writes made through this fake.
  */
-internal class RecordingPreferenceProvider(
+private class RecordingPreferenceProvider(
     private val events: MutableList<String>
 ) : PreferenceProvider {
     private val values = mutableMapOf<String, String?>()
