@@ -28,6 +28,7 @@ import io.mockk.mockkObject
 import io.mockk.unmockkAll
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +36,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
@@ -50,6 +52,8 @@ import kotlin.test.assertEquals
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class WalletRepositoryImplTest {
+    private val scopes = mutableListOf<CoroutineScope>()
+
     @BeforeTest
     fun setUp() {
         mockkObject(PersistableWallet.Companion)
@@ -60,6 +64,8 @@ class WalletRepositoryImplTest {
 
     @AfterTest
     fun tearDown() {
+        scopes.forEach { it.cancel() }
+        scopes.clear()
         unmockkAll()
     }
 
@@ -69,6 +75,7 @@ class WalletRepositoryImplTest {
         assertEquals(SecretState.NONE, resolveSecretState(true, OnboardingState.READY, false))
         assertEquals(SecretState.NONE, resolveSecretState(true, OnboardingState.NONE, false))
         assertEquals(SecretState.NONE, resolveSecretState(true, OnboardingState.NONE, true))
+        assertEquals(SecretState.NONE, resolveSecretState(true, OnboardingState.NEEDS_WARN, true))
         assertEquals(SecretState.NONE, resolveSecretState(true, OnboardingState.NEEDS_BACKUP, true))
         assertEquals(SecretState.LOADING, resolveSecretState(false, OnboardingState.READY, true))
     }
@@ -112,7 +119,7 @@ class WalletRepositoryImplTest {
     fun createNewWalletStoresWalletBeforeMarkingOnboardingReady() =
         runTest {
             val (repository, harness) = newRepository(onboardingState = OnboardingState.NONE, initialWallet = null)
-            repository.scope = CoroutineScope(StandardTestDispatcher(testScheduler))
+            repository.useTestScope(testScheduler)
 
             repository.createNewWallet()
             advanceUntilIdle()
@@ -124,7 +131,7 @@ class WalletRepositoryImplTest {
     fun initResetsOnboardingAndErasesSdkDataWhenWalletIsMissing() =
         runTest {
             val (repository, harness) = newRepository(onboardingState = OnboardingState.READY, initialWallet = null)
-            repository.scope = CoroutineScope(StandardTestDispatcher(testScheduler))
+            repository.useTestScope(testScheduler)
 
             repository.init()
             advanceUntilIdle()
@@ -137,7 +144,7 @@ class WalletRepositoryImplTest {
         runTest {
             val (repository, harness) =
                 newRepository(onboardingState = OnboardingState.READY, initialWallet = mockk(relaxed = true))
-            repository.scope = CoroutineScope(StandardTestDispatcher(testScheduler))
+            repository.useTestScope(testScheduler)
 
             repository.init()
             advanceUntilIdle()
@@ -150,7 +157,7 @@ class WalletRepositoryImplTest {
     fun initSkipsRepairAndEraseWhenFlagIsNotReady() =
         runTest {
             val (repository, harness) = newRepository(onboardingState = OnboardingState.NONE, initialWallet = null)
-            repository.scope = CoroutineScope(StandardTestDispatcher(testScheduler))
+            repository.useTestScope(testScheduler)
 
             repository.init()
             advanceUntilIdle()
@@ -158,6 +165,33 @@ class WalletRepositoryImplTest {
             assertEquals(emptyList<String>(), harness.events)
             coVerify(exactly = 0) { Synchronizer.erase(any(), any(), any()) }
         }
+
+    @Test
+    fun initSkipsEraseWhenAWalletIsStoredWhileSelfHealing() =
+        runTest {
+            val (repository, harness) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = null,
+                    persistableWalletProviderOverride =
+                        WalletStoredAfterFirstReadProvider(mockk(relaxed = true)),
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            assertEquals(listOf("onboarding=0", "sdkRepair"), harness.events)
+            coVerify(exactly = 0) { Synchronizer.erase(any(), any(), any()) }
+        }
+
+    /**
+     * Replaces the repository's production scope with one driven by the test's scheduler, and
+     * registers both for cancellation in [tearDown] so no test leaves a live scope behind.
+     */
+    private fun WalletRepositoryImpl.useTestScope(scheduler: TestCoroutineScheduler) {
+        scope = CoroutineScope(StandardTestDispatcher(scheduler)).also { scopes += it }
+    }
 
     private suspend fun newRepository(
         onboardingState: OnboardingState,
@@ -228,6 +262,8 @@ class WalletRepositoryImplTest {
 
         fakePrefs.seed(StandardPreferenceKeys.ONBOARDING_STATE.key, onboardingState.toNumber().toString())
 
+        scopes += repository.scope
+
         return repository to TestHarness(events, fakePrefs)
     }
 
@@ -269,6 +305,28 @@ private class FakePersistableWalletProvider(
     }
 
     override suspend fun getPersistableWallet(): PersistableWallet? = walletFlow.value
+
+    override suspend fun requirePersistableWallet(): PersistableWallet = checkNotNull(walletFlow.value)
+}
+
+/**
+ * Reports no wallet on the first read and a stored wallet on every read after it, which is the
+ * shape of the self-heal race: [WalletRepositoryImpl.init] sees an empty encrypted store, and by
+ * the time the erase would run a wallet has been stored under it. The erase must not happen.
+ */
+private class WalletStoredAfterFirstReadProvider(
+    private val storedLater: PersistableWallet
+) : PersistableWalletProvider {
+    private val walletFlow = MutableStateFlow<PersistableWallet?>(null)
+
+    override val persistableWallet: Flow<PersistableWallet?> = walletFlow
+
+    override suspend fun store(persistableWallet: PersistableWallet) {
+        walletFlow.value = persistableWallet
+    }
+
+    override suspend fun getPersistableWallet(): PersistableWallet? =
+        walletFlow.value.also { walletFlow.value = storedLater }
 
     override suspend fun requirePersistableWallet(): PersistableWallet = checkNotNull(walletFlow.value)
 }

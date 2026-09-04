@@ -50,6 +50,8 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 interface WalletRepository {
     val secretState: StateFlow<SecretState>
@@ -91,6 +93,13 @@ class WalletRepositoryImpl(
     private val sdkEncryptedPreferenceRecoveryProvider: SdkEncryptedPreferenceRecoveryProvider,
 ) : WalletRepository {
     private val sharingScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    /**
+     * Serializes the startup self-heal ([init]) against wallet creation and restore, so the erase
+     * in [resetOnboardingIfWalletMissing] can never interleave with a wallet those paths are in
+     * the middle of storing.
+     */
+    private val walletMutation = Mutex()
 
     /**
      * Scope the repository's fire-and-forget jobs run on. A test seam: unit tests replace it
@@ -238,9 +247,12 @@ class WalletRepositoryImpl(
     override fun init() {
         scope.launch {
             try {
-                val wallet = persistableWalletProvider.getPersistableWallet()
-                migrateDecommissionedEndpointIfNeeded(wallet)
-                resetOnboardingIfWalletMissing(wallet)
+                walletMutation.withLock {
+                    val wallet = persistableWalletProvider.getPersistableWallet()
+                    val onboarding = onboardingState.first()
+                    migrateDecommissionedEndpointIfNeeded(wallet)
+                    resetOnboardingIfWalletMissing(wallet = wallet, onboardingState = onboarding)
+                }
             } catch (e: Exception) {
                 Twig.error(e) { "Startup wallet consistency checks failed; will retry on next launch" }
             }
@@ -264,16 +276,30 @@ class WalletRepositoryImpl(
      * no corruption recovery of its own. Finally, any stale SDK databases are erased directly,
      * since no synchronizer exists yet at this point to route through the usual delete-and-restore
      * paths.
+     *
+     * [wallet] and [onboardingState] are both read by [init] under [walletMutation], which
+     * [createNewWallet] and [restoreWallet] hold too, so neither can interleave with this. The
+     * wallet is nevertheless re-read immediately before the erase: that erase destroys databases
+     * for good, and a wallet stored outside those two paths while the SDK secret store was being
+     * repaired must not be erased under it.
      */
-    private suspend fun resetOnboardingIfWalletMissing(wallet: PersistableWallet?) {
-        if (wallet != null) return
-        if (onboardingState.first() != OnboardingState.READY) return
+    private suspend fun resetOnboardingIfWalletMissing(
+        wallet: PersistableWallet?,
+        onboardingState: OnboardingState
+    ) {
+        if (wallet != null || onboardingState != OnboardingState.READY) return
 
         Twig.warn { "Onboarding state is READY but no wallet is stored; returning to onboarding" }
         persistOnboardingStateInternal(OnboardingState.NONE)
 
         runCatching { sdkEncryptedPreferenceRecoveryProvider.ensureReadable() }
             .onFailure { Twig.error(it) { "Repairing the SDK secret store failed; continuing" } }
+
+        if (persistableWalletProvider.getPersistableWallet() != null) {
+            Twig.warn { "A wallet was stored while self-healing; keeping its data instead of erasing" }
+            return
+        }
+
         runCatching { Synchronizer.erase(application, ZcashNetwork.fromResources(application)) }
             .onFailure { Twig.error(it) { "Erasing stale wallet data failed; continuing" } }
     }
@@ -291,17 +317,19 @@ class WalletRepositoryImpl(
 
     override fun createNewWallet() {
         scope.launch {
-            val zcashNetwork = ZcashNetwork.fromResources(application)
-            val newWallet =
-                PersistableWallet.new(
-                    application = application,
-                    zcashNetwork = zcashNetwork,
-                    endpoint = lightWalletEndpointProvider.getDefaultEndpoint(),
-                    walletInitMode = WalletInitMode.NewWallet,
-                )
-            persistWalletInternal(newWallet)
-            walletRestoringStateProvider.store(WalletRestoringState.INITIATING)
-            persistOnboardingStateInternal(OnboardingState.READY)
+            walletMutation.withLock {
+                val zcashNetwork = ZcashNetwork.fromResources(application)
+                val newWallet =
+                    PersistableWallet.new(
+                        application = application,
+                        zcashNetwork = zcashNetwork,
+                        endpoint = lightWalletEndpointProvider.getDefaultEndpoint(),
+                        walletInitMode = WalletInitMode.NewWallet,
+                    )
+                persistWalletInternal(newWallet)
+                walletRestoringStateProvider.store(WalletRestoringState.INITIATING)
+                persistOnboardingStateInternal(OnboardingState.READY)
+            }
         }
     }
 
@@ -330,19 +358,21 @@ class WalletRepositoryImpl(
         birthday: BlockHeight
     ) {
         scope.launch {
-            val restoredWallet =
-                PersistableWallet(
-                    network = network,
-                    birthday = birthday,
-                    endpoint = lightWalletEndpointProvider.getDefaultEndpoint(),
-                    seedPhrase = seedPhrase,
-                    walletInitMode = WalletInitMode.RestoreWallet,
-                )
-            persistWalletInternal(restoredWallet)
-            walletRestoringStateProvider.store(WalletRestoringState.RESTORING)
-            walletBackupFlagStorageProvider.store(true)
-            restoreTimestampDataSource.getOrCreate()
-            persistOnboardingStateInternal(OnboardingState.READY)
+            walletMutation.withLock {
+                val restoredWallet =
+                    PersistableWallet(
+                        network = network,
+                        birthday = birthday,
+                        endpoint = lightWalletEndpointProvider.getDefaultEndpoint(),
+                        seedPhrase = seedPhrase,
+                        walletInitMode = WalletInitMode.RestoreWallet,
+                    )
+                persistWalletInternal(restoredWallet)
+                walletRestoringStateProvider.store(WalletRestoringState.RESTORING)
+                walletBackupFlagStorageProvider.store(true)
+                restoreTimestampDataSource.getOrCreate()
+                persistOnboardingStateInternal(OnboardingState.READY)
+            }
         }
     }
 }
@@ -351,6 +381,12 @@ class WalletRepositoryImpl(
  * READY requires both the plain onboarding flag and a stored wallet, because the two live in
  * separate preference files and can diverge when the encrypted store is recreated after provable
  * corruption (MOB-1836).
+ *
+ * Every other [OnboardingState] resolves to [SecretState.NONE], a stored wallet notwithstanding.
+ * [OnboardingState.NEEDS_WARN] and [OnboardingState.NEEDS_BACKUP] are ordinals of an earlier
+ * onboarding flow that nothing writes any more — [WalletRepositoryImpl] only ever persists
+ * [OnboardingState.NONE] or [OnboardingState.READY] — and both mean onboarding never ran to
+ * completion, so routing a wallet found under them back to onboarding is the intended outcome.
  */
 internal fun resolveSecretState(
     isConfigurationLoaded: Boolean,
