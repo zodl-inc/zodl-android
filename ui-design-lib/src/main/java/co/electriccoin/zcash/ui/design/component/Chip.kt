@@ -16,12 +16,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.spackle.model.Index
+import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 
 @Preview
 @Composable
 private fun ComposableChipPreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         Box(modifier = Modifier.padding(all = 12.dp)) {
             Chip("route")
         }
@@ -31,7 +32,7 @@ private fun ComposableChipPreview() {
 @Preview
 @Composable
 private fun ComposableChipIndexedPreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         Box(modifier = Modifier.padding(all = 12.dp)) {
             ChipIndexed(Index(0), "edict")
         }
@@ -41,7 +42,7 @@ private fun ComposableChipIndexedPreview() {
 @Preview
 @Composable
 private fun ComposableLongChipPreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         Box(modifier = Modifier.padding(all = 12.dp)) {
             ChipIndexed(
                 Index(1),
@@ -54,7 +55,7 @@ private fun ComposableLongChipPreview() {
 @Preview
 @Composable
 private fun ComposableChipOnSurfacePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         Box(modifier = Modifier.padding(all = 12.dp)) {
             ChipOnSurface({}, "ribbon")
         }
@@ -64,7 +65,7 @@ private fun ComposableChipOnSurfacePreview() {
 @Preview
 @Composable
 private fun ComposableChipOnSurfaceDarkPreview() {
-    ZcashTheme(forceDarkMode = true) {
+    ZcashTheme(appearanceMode = AppearanceMode.DARK) {
         Box(modifier = Modifier.padding(all = 12.dp)) {
             ChipOnSurface({}, "ribbon")
         }

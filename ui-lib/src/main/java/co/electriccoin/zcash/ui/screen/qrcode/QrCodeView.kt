@@ -53,6 +53,7 @@ import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
 import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
+import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
@@ -66,7 +67,7 @@ import kotlinx.coroutines.runBlocking
 @Composable
 @PreviewScreens
 private fun QrCodeLoadingPreview() =
-    ZcashTheme(forceDarkMode = true) {
+    ZcashTheme(appearanceMode = AppearanceMode.DARK) {
         QrCodeView(
             state = QrCodeState.Loading,
             snackbarHostState = SnackbarHostState(),
@@ -76,7 +77,7 @@ private fun QrCodeLoadingPreview() =
 @Composable
 @PreviewScreens
 private fun ZashiPreview() =
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         val address = runBlocking { WalletAddressFixture.unified() }
         QrCodeView(
             state =
@@ -95,7 +96,7 @@ private fun ZashiPreview() =
 @Composable
 @PreviewScreens
 private fun KeystonePreview() =
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         val address = runBlocking { WalletAddressFixture.unified() }
         QrCodeView(
             state =

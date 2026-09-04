@@ -15,7 +15,7 @@ import co.electriccoin.zcash.ui.design.util.orDark
 @Preview("Scaffold with blank background")
 @Composable
 private fun BlankBgScaffoldComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankBgScaffold {
             Text(text = "Blank background scaffold")
         }

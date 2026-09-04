@@ -41,6 +41,7 @@ import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
 import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
+import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.screen.request.model.AmountState
 import co.electriccoin.zcash.ui.screen.request.model.MemoState
@@ -53,7 +54,7 @@ import kotlin.math.roundToInt
 @Composable
 @PreviewScreens
 private fun RequestLoadingPreview() =
-    ZcashTheme(forceDarkMode = true) {
+    ZcashTheme(appearanceMode = AppearanceMode.DARK) {
         RequestView(
             state = RequestState.Loading,
             snackbarHostState = SnackbarHostState(),
@@ -63,7 +64,7 @@ private fun RequestLoadingPreview() =
 @Composable
 @PreviewScreens
 private fun RequestPreview() =
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         RequestView(
             state =
                 RequestState.Amount(

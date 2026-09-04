@@ -188,6 +188,10 @@ import co.electriccoin.zcash.ui.screen.taxexport.AndroidTaxExport
 import co.electriccoin.zcash.ui.screen.taxexport.TaxExport
 import co.electriccoin.zcash.ui.screen.texunsupported.AndroidTEXUnsupported
 import co.electriccoin.zcash.ui.screen.texunsupported.TEXUnsupportedArgs
+import co.electriccoin.zcash.ui.screen.theme.darklook.ThemeDarkLookArgs
+import co.electriccoin.zcash.ui.screen.theme.darklook.ThemeDarkLookScreen
+import co.electriccoin.zcash.ui.screen.theme.settings.ThemeSettingsArgs
+import co.electriccoin.zcash.ui.screen.theme.settings.ThemeSettingsScreen
 import co.electriccoin.zcash.ui.screen.tor.optin.TorOptInArgs
 import co.electriccoin.zcash.ui.screen.tor.optin.TorOptInScreen
 import co.electriccoin.zcash.ui.screen.tor.settings.TorSettingsArgs
@@ -318,6 +322,8 @@ fun NavGraphBuilder.walletNavGraph(
         composable<AddGenericABContactArgs> { AddGenericABContactScreen(it.toRoute()) }
         composable<UpdateGenericABContactArgs> { UpdateGenericABContactScreen(it.toRoute()) }
         composable<TorSettingsArgs> { TorSettingsScreen() }
+        composable<ThemeSettingsArgs> { ThemeSettingsScreen() }
+        dialogComposable<ThemeDarkLookArgs> { ThemeDarkLookScreen(it.toRoute()) }
         composable<TorOptInArgs> { TorOptInScreen() }
         dialogComposable<ShieldedAddressInfoArgs> { ShieldedAddressInfoScreen() }
         dialogComposable<TransparentAddressInfoArgs> { TransparentAddressInfoScreen() }

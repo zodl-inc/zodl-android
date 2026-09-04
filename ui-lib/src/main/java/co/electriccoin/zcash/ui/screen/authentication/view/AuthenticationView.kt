@@ -16,13 +16,14 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationResult
 import co.electriccoin.zcash.ui.design.component.AppAlertDialog
 import co.electriccoin.zcash.ui.design.component.BlankSurface
+import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.screen.authentication.view.AnimationConstants.WELCOME_ANIM_TEST_TAG
 
 @Preview("App Access Authentication")
 @Composable
 private fun PreviewAppAccessAuthentication() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             AppAccessAuthentication(
                 onRetry = {},
@@ -36,7 +37,7 @@ private fun PreviewAppAccessAuthentication() {
 @Preview
 @Composable
 private fun ErrorAuthenticationPreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             AuthenticationErrorDialog(
                 onDismiss = {},
@@ -51,7 +52,7 @@ private fun ErrorAuthenticationPreview() {
 @Preview
 @Composable
 private fun ErrorAuthenticationDarkPreview() {
-    ZcashTheme(forceDarkMode = true) {
+    ZcashTheme(appearanceMode = AppearanceMode.DARK) {
         BlankSurface {
             AuthenticationErrorDialog(
                 onDismiss = {},
