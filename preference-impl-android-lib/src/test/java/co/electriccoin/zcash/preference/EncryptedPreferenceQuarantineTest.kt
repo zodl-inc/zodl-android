@@ -132,6 +132,41 @@ class EncryptedPreferenceQuarantineTest {
         )
     }
 
+    /**
+     * A `.xml`-only entry listing would never see an entry whose `.xml` move failed mid-commit,
+     * leaving only its `.xml.bak` sibling — so it would never age out, growing the quarantine
+     * directory without bound. Identifying entries by base name closes that gap.
+     */
+    @Test
+    fun `prune counts and prunes an entry that has only a bak file`() {
+        quarantineDir.mkdirs()
+        (1L..5L).forEach { millis ->
+            File(quarantineDir, "target-$millis.xml").writeText("v$millis")
+            File(quarantineDir, "target-$millis.xml.bak").writeText("v$millis-bak")
+        }
+        File(quarantineDir, "target-6.xml.bak").writeText("bak only")
+
+        pruneQuarantine(quarantineDir, "target", keepNewest = 3)
+
+        val remaining =
+            quarantineDir
+                .listFiles()
+                ?.map { it.name }
+                ?.toSet()
+                .orEmpty()
+
+        assertEquals(
+            setOf(
+                "target-1.xml",
+                "target-1.xml.bak",
+                "target-5.xml",
+                "target-5.xml.bak",
+                "target-6.xml.bak"
+            ),
+            remaining
+        )
+    }
+
     @Test
     fun `prune leaves the recreated marker for the filename untouched`() {
         quarantineDir.mkdirs()

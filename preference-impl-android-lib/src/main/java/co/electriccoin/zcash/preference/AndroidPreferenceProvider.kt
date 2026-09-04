@@ -425,6 +425,13 @@ private fun hasPermanentAndroidKeyStoreErrorCode(throwable: Throwable): Boolean 
  * Everything else is treated as not-permanent, including a Keystore failure this code cannot
  * classify at all: unsure means the veto holds and the store is rethrown for a later attempt,
  * never quarantined.
+ *
+ * Rethrowing an unclassifiable failure means the user sits on the (already-deferred) splash with
+ * no in-app recourse — Reset Zodl lives behind a normal boot the wedged store can't reach, and
+ * there is no `SecretState.ERROR` screen yet to say so. Relaunching once the Keystore settles is
+ * the only way through. That is the deliberate price of failing safe: it is a worse experience
+ * than quarantining or wiping, but neither of those is reversible if the failure turns out to have
+ * been transient after all.
  */
 private fun isPermanentAndroidKeyStoreFailure(throwable: Throwable): Boolean {
     if (isTransientPerAndroidKeyStore(throwable)) return false

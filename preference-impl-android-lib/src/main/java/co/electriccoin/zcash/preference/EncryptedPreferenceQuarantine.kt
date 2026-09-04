@@ -133,10 +133,14 @@ private fun moveFile(
 }
 
 /**
- * Prunes this filename's `<filename>-*.xml` quarantine entries down to [keepNewest] of them: the
- * oldest entry unconditionally, plus the [keepNewest] - 1 latest ones. Everything between is
- * deleted, along with any `.bak` sibling. (The millisecond timestamps are fixed-width, so
- * lexicographic order matches chronological order.)
+ * Prunes this filename's quarantine entries down to [keepNewest] of them: the oldest entry
+ * unconditionally, plus the [keepNewest] - 1 latest ones. An entry is identified by its shared
+ * `<filename>-<millis>` base name rather than by its `.xml` file alone, so an entry that only has
+ * a `.xml.bak` — the `.xml` move having failed mid-commit — still counts and still gets pruned
+ * like any other, instead of sitting there forever because the `.xml`-only listing never saw it.
+ * Everything between the oldest and the kept newest is deleted, both the `.xml` and `.xml.bak` for
+ * that base name if present. (The millisecond timestamps are fixed-width, so lexicographic order
+ * matches chronological order.)
  *
  * Keeping the oldest is the whole point of the retention: only the first quarantine of a filename
  * can set aside a store that ever held a wallet, because the recovery that follows it recreates
@@ -145,7 +149,7 @@ private fun moveFile(
  * a handful of launches on flaky Keystore hardware, while keeping it costs a few KB of XML.
  *
  * Other filenames' entries, including this filename's [recreatedMarkerFile], are left untouched:
- * the marker is named `<filename>.recreated`, which never matches the `<filename>-*.xml` pattern.
+ * the marker is named `<filename>.recreated`, which never matches the `<filename>-*` pattern.
  */
 internal fun pruneQuarantine(
     quarantineDir: File,
@@ -153,19 +157,22 @@ internal fun pruneQuarantine(
     keepNewest: Int
 ) {
     val prefix = "$filename-"
-    val xmlFiles =
-        quarantineDir.listFiles { file -> file.name.startsWith(prefix) && file.name.endsWith(".xml") }
+    val entries =
+        quarantineDir
+            .listFiles { file ->
+                file.name.startsWith(prefix) && (file.name.endsWith(".xml") || file.name.endsWith(".xml.bak"))
+            }?.mapTo(mutableSetOf()) { it.name.removeSuffix(".bak").removeSuffix(".xml") }
             ?: return
 
-    val newestFirst = xmlFiles.sortedByDescending { it.name }
+    val newestFirst = entries.sortedByDescending { it }
     val oldest = newestFirst.lastOrNull()
 
     newestFirst
         .drop((keepNewest - 1).coerceAtLeast(0))
         .filterNot { it == oldest }
-        .forEach { xmlFile ->
-            xmlFile.delete()
-            File(quarantineDir, "${xmlFile.name}.bak").delete()
+        .forEach { baseName ->
+            File(quarantineDir, "$baseName.xml").delete()
+            File(quarantineDir, "$baseName.xml.bak").delete()
         }
 }
 
