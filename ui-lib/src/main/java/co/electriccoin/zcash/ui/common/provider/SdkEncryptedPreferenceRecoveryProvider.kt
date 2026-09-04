@@ -15,7 +15,7 @@ interface SdkEncryptedPreferenceRecoveryProvider {
     suspend fun ensureReadable()
 }
 
-class SdkEncryptedPreferenceRecoveryProviderImpl(
+internal class SdkEncryptedPreferenceRecoveryProviderImpl(
     private val context: Context
 ) : SdkEncryptedPreferenceRecoveryProvider {
     override suspend fun ensureReadable() =

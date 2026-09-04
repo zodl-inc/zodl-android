@@ -426,6 +426,8 @@ internal suspend fun <T> createEncryptedPreferencesWithRecovery(
     create: () -> T,
     quarantine: (cause: Exception) -> Unit,
 ): T {
+    require(maxAttempts >= 1) { "maxAttempts must be at least 1" }
+
     var lastFailure: Exception? = null
 
     for (attempt in 1..maxAttempts) {
@@ -444,7 +446,7 @@ internal suspend fun <T> createEncryptedPreferencesWithRecovery(
         }
     }
 
-    val cause = checkNotNull(lastFailure) { "maxAttempts must be at least 1" }
+    val cause = checkNotNull(lastFailure)
 
     return if (isRecreateAllowed && isUnrecoverableCorruption(cause)) {
         Twig.error(cause) { "Encrypted preferences $filename can never be decrypted again; quarantining them" }

@@ -170,4 +170,7 @@ class ZcashApplication : CoroutineApplication() {
     }
 }
 
+/**
+ * Kept in sync with `GlobalCrashReporter`'s own copy of this suffix — see [isCrashProcess].
+ */
 private const val CRASH_PROCESS_NAME_SUFFIX = ":crash"

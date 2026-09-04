@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.preference
 
 import android.content.Context
+import co.electriccoin.zcash.spackle.Twig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -86,7 +87,9 @@ private fun moveFile(
 ) {
     if (!source.renameTo(destination)) {
         source.copyTo(destination, overwrite = true)
-        source.delete()
+        if (!source.delete()) {
+            Twig.error { "Failed to delete source file after copy: $source" }
+        }
     }
 }
 
