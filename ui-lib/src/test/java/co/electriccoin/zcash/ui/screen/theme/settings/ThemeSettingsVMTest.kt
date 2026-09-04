@@ -13,6 +13,7 @@ import co.electriccoin.zcash.ui.screen.theme.darklook.ThemeDarkLookArgs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -188,38 +189,42 @@ class ThemeSettingsVMTest {
 private class FakeAppearanceModeStorageProvider(
     stored: AppearanceMode?
 ) : AppearanceModeStorageProvider {
-    var stored: AppearanceMode? = stored
-        private set
+    private val state = MutableStateFlow(stored)
 
-    override suspend fun get(): AppearanceMode? = stored
+    val stored: AppearanceMode?
+        get() = state.value
+
+    override suspend fun get(): AppearanceMode? = state.value
 
     override suspend fun store(amount: AppearanceMode) {
-        stored = amount
+        state.value = amount
     }
 
-    override fun observe(): Flow<AppearanceMode?> = emptyFlow()
+    override fun observe(): Flow<AppearanceMode?> = state
 
     override suspend fun clear() {
-        stored = null
+        state.value = null
     }
 }
 
 private class FakeIsOledEnabledStorageProvider(
     stored: Boolean?
 ) : IsOledEnabledStorageProvider {
-    var stored: Boolean? = stored
-        private set
+    private val state = MutableStateFlow(stored)
 
-    override suspend fun get(): Boolean? = stored
+    val stored: Boolean?
+        get() = state.value
+
+    override suspend fun get(): Boolean? = state.value
 
     override suspend fun store(amount: Boolean) {
-        stored = amount
+        state.value = amount
     }
 
-    override fun observe(): Flow<Boolean?> = emptyFlow()
+    override fun observe(): Flow<Boolean?> = state
 
     override suspend fun clear() {
-        stored = null
+        state.value = null
     }
 }
 
