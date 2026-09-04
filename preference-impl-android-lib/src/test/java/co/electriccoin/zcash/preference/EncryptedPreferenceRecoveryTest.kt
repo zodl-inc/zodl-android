@@ -17,6 +17,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
 import co.electriccoin.zcash.preference.androidsecurity.KeyStoreException as AndroidKeyStoreException
+import co.electriccoin.zcash.preference.androidsecurity.legacy.KeyStoreException as LegacyAndroidKeyStoreException
 
 /**
  * Pins the recovery heuristics of `AndroidPreferenceProvider.newEncrypted`: which failures are
@@ -81,6 +82,120 @@ class EncryptedPreferenceRecoveryTest {
         assertFalse(
             isUnrecoverableCorruption(
                 GeneralSecurityException(InvalidKeyException("Keystore operation failed", AndroidKeyStoreException()))
+            )
+        )
+    }
+
+    /**
+     * The shape a device-to-device transfer actually leaves behind, reproduced on an emulator on
+     * both API 31 and API 35: `MasterKey.Builder.build()` mints a replacement key under the old
+     * alias, so the stored ciphertext no longer authenticates and the Keystore says so. The marker
+     * is present, but the failure will never heal — vetoing on the marker alone stranded the store
+     * on every launch instead of quarantining it and returning the user to onboarding.
+     */
+    @Test
+    fun `a Keystore failure that cannot authenticate the stored ciphertext is corruption`() {
+        assertTrue(
+            isUnrecoverableCorruption(
+                aeadFailureCausedBy(
+                    AndroidKeyStoreException(
+                        "Signature/MAC verification failed (internal Keystore code: -30)",
+                        numericErrorCode = AndroidKeyStoreException.ERROR_KEYMINT_FAILURE
+                    )
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `a Keystore failure reporting a missing key is corruption and a master key failure`() {
+        val keyNotFound =
+            InvalidKeyException(
+                "Keystore operation failed",
+                AndroidKeyStoreException(
+                    "Key not found",
+                    numericErrorCode = AndroidKeyStoreException.ERROR_KEY_DOES_NOT_EXIST
+                )
+            )
+
+        assertTrue(isUnrecoverableCorruption(keyNotFound))
+        assertTrue(isMasterKeyFailure(keyNotFound))
+    }
+
+    @Test
+    fun `a Keystore failure reporting a permanently invalidated key is corruption and a master key failure`() {
+        val permanentlyInvalidated =
+            InvalidKeyException(
+                "Keystore operation failed",
+                AndroidKeyStoreException(
+                    "Key permanently invalidated",
+                    numericErrorCode = AndroidKeyStoreException.ERROR_KEY_DOES_NOT_EXIST
+                )
+            )
+
+        assertTrue(isUnrecoverableCorruption(permanentlyInvalidated))
+        assertTrue(isMasterKeyFailure(permanentlyInvalidated))
+    }
+
+    /**
+     * AOSP falls back to the bare error code as the message for a condition it has no wording for,
+     * so the API 33 classification has to stand on its own.
+     */
+    @Test
+    fun `the API 33 error code identifies a lost key without a recognizable message`() {
+        assertTrue(
+            isUnrecoverableCorruption(
+                aeadFailureCausedBy(
+                    AndroidKeyStoreException(
+                        "7",
+                        numericErrorCode = AndroidKeyStoreException.ERROR_KEY_CORRUPTED
+                    )
+                )
+            )
+        )
+    }
+
+    /**
+     * Devices below API 33 carry no classification methods at all, so the message AOSP hard-codes
+     * for the condition is the only permanence signal there.
+     */
+    @Test
+    fun `a pre API 33 Keystore failure is classified from its message alone`() {
+        assertTrue(
+            isUnrecoverableCorruption(
+                aeadFailureCausedBy(LegacyAndroidKeyStoreException("Signature/MAC verification failed"))
+            )
+        )
+        assertFalse(
+            isUnrecoverableCorruption(
+                InvalidKeyException("Keystore operation failed", LegacyAndroidKeyStoreException("System error"))
+            )
+        )
+    }
+
+    @Test
+    fun `a Keystore failure AOSP itself calls transient is never permanent`() {
+        val secureHardwareBusy =
+            InvalidKeyException(
+                "Keystore operation failed",
+                AndroidKeyStoreException("Secure hardware busy", isTransientFailure = true)
+            )
+
+        assertFalse(isUnrecoverableCorruption(secureHardwareBusy))
+        assertFalse(isMasterKeyFailure(secureHardwareBusy))
+    }
+
+    /**
+     * The retry verdict AOSP gives outranks the wording, so a Keystore that is merely wedged can
+     * never be read as permanent however its message happens to read.
+     */
+    @Test
+    fun `a transient verdict outranks a permanent sounding message`() {
+        assertFalse(
+            isUnrecoverableCorruption(
+                aeadFailureCausedBy(
+                    AndroidKeyStoreException("Signature/MAC verification failed", isTransientFailure = true)
+                )
             )
         )
     }
@@ -270,6 +385,13 @@ class EncryptedPreferenceRecoveryTest {
             assertTrue(quarantined)
         }
 }
+
+/**
+ * The AEAD failure a Keystore raises through `AndroidKeyStoreCipherSpiBase.engineDoFinal`, which
+ * chains the Keystore exception as the cause rather than passing it to a constructor.
+ */
+private fun aeadFailureCausedBy(cause: Throwable): AEADBadTagException =
+    AEADBadTagException("decryption failed").apply { initCause(cause) }
 
 /**
  * Stand-in matching Tink's shaded `InvalidProtocolBufferException` by simple name, which is how

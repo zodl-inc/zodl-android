@@ -349,20 +349,117 @@ private fun causeChain(exception: Exception): List<Throwable> =
         .take(CAUSE_CHAIN_LIMIT)
         .toList()
 
+private const val ANDROID_KEY_STORE_EXCEPTION_SIMPLE_NAME = "KeyStoreException"
+
 /**
- * True when [chain] carries Android's `android.security.KeyStoreException` (which extends
- * `java.lang.Exception`, not [java.security.KeyStoreException] — matched here by simple name since
- * the Android framework class isn't a JVM dependency). AOSP wraps a transient HAL error as
- * `InvalidKeyException("Keystore operation failed")` carrying that marker, so a chain holding it
- * says the Keystore daemon was wedged, not that anything is permanently broken.
+ * `android.security.KeyStoreException.ERROR_KEY_DOES_NOT_EXIST`. AOSP maps both
+ * `ResponseCode.KEY_NOT_FOUND` and `ResponseCode.KEY_PERMANENTLY_INVALIDATED` onto it, so it is the
+ * public code for "the alias this store was encrypted under is gone for good".
+ */
+private const val ANDROID_KEY_STORE_ERROR_KEY_DOES_NOT_EXIST = 6
+
+/**
+ * `android.security.KeyStoreException.ERROR_KEY_CORRUPTED`, AOSP's public code for
+ * `ResponseCode.VALUE_CORRUPTED`: the stored key blob no longer parses.
+ */
+private const val ANDROID_KEY_STORE_ERROR_KEY_CORRUPTED = 7
+
+private val PERMANENT_ANDROID_KEY_STORE_ERROR_CODES =
+    setOf(
+        ANDROID_KEY_STORE_ERROR_KEY_DOES_NOT_EXIST,
+        ANDROID_KEY_STORE_ERROR_KEY_CORRUPTED
+    )
+
+/**
+ * AOSP's own wording for the Keystore and KeyMint conditions under which this device can never read
+ * the stored ciphertext again: the first two come from `KeymasterDefs.sErrorCodeToString`
+ * (`KM_ERROR_VERIFICATION_FAILED`, `KM_ERROR_INVALID_KEY_BLOB`), the rest from the
+ * `ResponseCode` switch in `KeyStore2.getKeyStoreException` (`VALUE_CORRUPTED`, `KEY_NOT_FOUND`,
+ * `KEY_PERMANENTLY_INVALIDATED`). They are hard-coded, never localized, and identical in the legacy
+ * `KeyStore.getKeyStoreException` that devices below API 31 still use, which is what makes matching
+ * on them the one permanence signal available on every supported API level — the typed
+ * classification below arrived only in API 33.
+ */
+private val PERMANENT_ANDROID_KEY_STORE_MESSAGES =
+    setOf(
+        "Signature/MAC verification failed",
+        "Invalid key blob",
+        "Key blob corrupted",
+        "Key not found",
+        "Key permanently invalidated"
+    )
+
+/**
+ * AOSP's own verdict from `android.security.KeyStoreException.isTransientFailure()`, which exists
+ * only from API 33. Below that the method is absent and this reports false — "AOSP did not say it
+ * is transient", not "AOSP said it is permanent"; [isPermanentAndroidKeyStoreFailure] still has to
+ * find positive evidence of permanence before the veto is released.
+ */
+private fun isTransientPerAndroidKeyStore(throwable: Throwable): Boolean =
+    runCatching {
+        throwable.javaClass.getMethod("isTransientFailure").invoke(throwable) as Boolean
+    }.getOrDefault(false)
+
+/**
+ * True when `android.security.KeyStoreException.getNumericErrorCode()` (API 33 and up) names a key
+ * that is gone or unparseable. Reflective for the same reason the class itself is matched by simple
+ * name, and false whenever the method is missing.
+ */
+private fun hasPermanentAndroidKeyStoreErrorCode(throwable: Throwable): Boolean {
+    val numericErrorCode =
+        runCatching {
+            throwable.javaClass.getMethod("getNumericErrorCode").invoke(throwable) as Int
+        }.getOrNull()
+
+    return numericErrorCode != null && numericErrorCode in PERMANENT_ANDROID_KEY_STORE_ERROR_CODES
+}
+
+/**
+ * True only when the Keystore itself reports a condition this device can never recover from: the
+ * key is gone, its blob is unparseable, or the stored ciphertext does not authenticate under the
+ * key that exists now — the shape a device-to-device transfer leaves behind, where
+ * `MasterKey.Builder.build()` silently mints a new key under the old alias and every decrypt then
+ * fails with `AEADBadTagException` caused by
+ * `android.security.KeyStoreException: Signature/MAC verification failed`.
  *
- * Both [isUnrecoverableCorruption] and [isMasterKeyFailure] veto on it, and deliberately share
+ * Everything else is treated as not-permanent, including a Keystore failure this code cannot
+ * classify at all: unsure means the veto holds and the store is rethrown for a later attempt,
+ * never quarantined.
+ */
+private fun isPermanentAndroidKeyStoreFailure(throwable: Throwable): Boolean {
+    if (isTransientPerAndroidKeyStore(throwable)) return false
+
+    val message = throwable.message.orEmpty()
+
+    return PERMANENT_ANDROID_KEY_STORE_MESSAGES.any { message.startsWith(it) } ||
+        hasPermanentAndroidKeyStoreErrorCode(throwable)
+}
+
+/**
+ * True when [chain] carries an `android.security.KeyStoreException` that is not positively
+ * permanent. That class extends `java.lang.Exception` rather than [java.security.KeyStoreException]
+ * and is matched here by simple name, because the framework class is not a JVM dependency of this
+ * module. AOSP wraps a transient HAL error as `InvalidKeyException("Keystore operation failed")`
+ * carrying that marker, so such a chain says the Keystore daemon was wedged, not that anything is
+ * permanently broken.
+ *
+ * The marker alone is not enough to veto, because AOSP also raises it for failures that will never
+ * heal — [isPermanentAndroidKeyStoreFailure] is what separates the two. Vetoing on its mere
+ * presence stranded the device-to-device case this recovery exists for: the store could never be
+ * decrypted again, yet every launch classified it as transient, exhausted the retry ladder and
+ * rethrew, so onboarding was never reached.
+ *
+ * Both [isUnrecoverableCorruption] and [isMasterKeyFailure] veto on this, and deliberately share
  * this one implementation: a shape only one of them vetoed would still be acted upon by the other,
  * and either action — quarantining the store or deleting the shared master key — is irreversible
  * for data the Keystore was about to be able to read again.
  */
 private fun hasTransientAndroidKeyStoreMarker(chain: List<Throwable>): Boolean =
-    chain.any { it !is KeyStoreException && it.javaClass.simpleName == "KeyStoreException" }
+    chain.any {
+        it !is KeyStoreException &&
+            it.javaClass.simpleName == ANDROID_KEY_STORE_EXCEPTION_SIMPLE_NAME &&
+            !isPermanentAndroidKeyStoreFailure(it)
+    }
 
 /**
  * True only for failures that are deterministic for the stored ciphertext or this device's
@@ -371,15 +468,18 @@ private fun hasTransientAndroidKeyStoreMarker(chain: List<Throwable>): Boolean =
  * malformed-proto one), Tink's Keystore self-test failure ([KeyStoreException] — as of tink-android
  * 1.20.0, `AndroidKeystoreKmsClient` throws it from `validateAead()` when a post-key-creation AEAD
  * encrypt/decrypt round-trip of a random message doesn't match; a permanent condition on devices
- * with a buggy hardware Keystore), or [InvalidKeyException] — the failure
+ * with a buggy hardware Keystore), or [InvalidKeyException] — one of the failures
  * [createEncryptedSharedPreferences] throws for a device-to-device-orphaned file, whose master key
- * is verifiably gone on this device. Other Keystore and general IO failures are excluded because
- * they can be transient — [createEncryptedPreferencesWithRecovery] retries before this
- * classification runs.
+ * is verifiably gone on this device. (The other, seen on an emulator across API 31 and 35, is an
+ * `AEADBadTagException` carrying the Keystore's `Signature/MAC verification failed`.) Other
+ * Keystore and general IO failures are excluded because they can be transient —
+ * [createEncryptedPreferencesWithRecovery] retries before this classification runs.
  *
  * A chain carrying the [hasTransientAndroidKeyStoreMarker] shape is never corruption, whatever
  * else it holds: quarantining moves the seed somewhere no screen can reach it, while rethrowing
- * leaves the store readable again as soon as the Keystore settles.
+ * leaves the store readable again as soon as the Keystore settles. That veto is exactly as wide as
+ * the Keystore's own uncertainty — a Keystore failure that positively reports a gone, unparseable
+ * or unauthenticating key is not the shape, and is classified on its merits below.
  */
 internal fun isUnrecoverableCorruption(exception: Exception): Boolean {
     val chain = causeChain(exception)
