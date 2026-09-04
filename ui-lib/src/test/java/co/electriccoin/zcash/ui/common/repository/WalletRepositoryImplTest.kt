@@ -5,6 +5,7 @@ import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.model.PersistableWallet
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.configuration.model.map.Configuration
+import co.electriccoin.zcash.crash.android.GlobalCrashReporter
 import co.electriccoin.zcash.preference.StandardPreferenceProvider
 import co.electriccoin.zcash.preference.api.PreferenceProvider
 import co.electriccoin.zcash.preference.model.entry.PreferenceKey
@@ -26,6 +27,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
+import io.mockk.verify
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.cancel
@@ -183,6 +185,61 @@ class WalletRepositoryImplTest {
 
             assertEquals(listOf("onboarding=0", "sdkRepair"), harness.events)
             coVerify(exactly = 0) { Synchronizer.erase(any(), any(), any()) }
+        }
+
+    /**
+     * The fail-safe hinge of the whole self-heal: "no wallet" must only ever mean "the store said
+     * there is no wallet", never "reading the store failed". Nothing in
+     * `PersistableWalletProviderImpl.getPersistableWallet` catches, so a read failure propagates
+     * out of [WalletRepositoryImpl.init] today — this pins that against a future well-meaning
+     * `runCatching` turning an unreadable store into a reset to onboarding and an erase.
+     */
+    @Test
+    fun initNeitherResetsOnboardingNorErasesWhenTheWalletReadFails() =
+        runTest {
+            val failingWalletProvider =
+                mockk<PersistableWalletProvider> {
+                    every { persistableWallet } returns MutableSharedFlow()
+                }
+            coEvery { failingWalletProvider.getPersistableWallet() } throws
+                IllegalStateException("encrypted preferences unreadable")
+
+            val (repository, harness) =
+                newRepository(
+                    onboardingState = OnboardingState.READY,
+                    initialWallet = null,
+                    persistableWalletProviderOverride = failingWalletProvider,
+                )
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            assertEquals(emptyList<String>(), harness.events)
+            assertEquals("3", harness.fakePrefs.getString(StandardPreferenceKeys.ONBOARDING_STATE.key))
+            coVerify(exactly = 0) { Synchronizer.erase(any(), any(), any()) }
+        }
+
+    /**
+     * "The erase failed and we carried on anyway" is the half-reset state MOB-1836 was reported
+     * for, so it has to reach crash reporting rather than only a log line on the user's device.
+     */
+    @Test
+    fun initReportsAFailedEraseToCrashReporting() =
+        runTest {
+            mockkObject(GlobalCrashReporter)
+            every { GlobalCrashReporter.reportCaughtException(any()) } returns Unit
+
+            val (repository, harness) = newRepository(onboardingState = OnboardingState.READY, initialWallet = null)
+            val eraseFailure = RuntimeException("erasing the SDK databases failed")
+            coEvery { Synchronizer.erase(any(), any(), any()) } throws eraseFailure
+            repository.useTestScope(testScheduler)
+
+            repository.init()
+            advanceUntilIdle()
+
+            assertEquals(listOf("onboarding=0", "sdkRepair"), harness.events)
+            verify(exactly = 1) { GlobalCrashReporter.reportCaughtException(eraseFailure) }
         }
 
     /**

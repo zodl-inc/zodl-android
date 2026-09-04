@@ -13,6 +13,7 @@ import cash.z.ecc.android.sdk.model.ZcashNetwork
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import cash.z.ecc.sdk.type.fromResources
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
+import co.electriccoin.zcash.crash.android.GlobalCrashReporter
 import co.electriccoin.zcash.preference.StandardPreferenceProvider
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.datasource.RestoreTimestampDataSource
@@ -288,6 +289,10 @@ class WalletRepositoryImpl(
      * wallet is nevertheless re-read immediately before the erase: that erase destroys databases
      * for good, and a wallet stored outside those two paths while the SDK secret store was being
      * repaired must not be erased under it.
+     *
+     * A failed erase is reported to [GlobalCrashReporter] as well as logged: "the erase failed and
+     * we carried on anyway" leaves exactly the half-reset state MOB-1836 was reported for, and a
+     * log line alone never reaches us from a user's device.
      */
     private suspend fun resetOnboardingIfWalletMissing(
         wallet: PersistableWallet?,
@@ -307,7 +312,10 @@ class WalletRepositoryImpl(
         }
 
         runCatching { Synchronizer.erase(application, ZcashNetwork.fromResources(application)) }
-            .onFailure { Twig.error(it) { "Erasing stale wallet data failed; continuing" } }
+            .onFailure {
+                Twig.error(it) { "Erasing stale wallet data failed; continuing" }
+                GlobalCrashReporter.reportCaughtException(it)
+            }
     }
 
     override suspend fun updateWalletEndpoint(endpoint: LightWalletEndpoint) {
