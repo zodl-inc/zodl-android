@@ -49,7 +49,7 @@ internal class ThemeSettingsVM(
     private fun createState(selectedMode: AppearanceMode) =
         ThemeSettingsState(
             options =
-                AppearanceMode.entries.map { mode ->
+                listOf(AppearanceMode.SYSTEM, AppearanceMode.LIGHT, AppearanceMode.DARK).map { mode ->
                     AppearanceModeOptionState(
                         mode = mode,
                         isChecked = mode == selectedMode,
@@ -83,6 +83,10 @@ internal class ThemeSettingsVM(
 
     private fun onSaveClick() =
         viewModelScope.launch {
+            require(selectedMode.value == AppearanceMode.LIGHT) {
+                "onSaveClick is only reachable for AppearanceMode.LIGHT - System and Dark forward to the " +
+                    "dark-look sheet, which persists isOledEnabled itself."
+            }
             setAppearanceMode(selectedMode.value, isOledEnabled = false)
         }
 }

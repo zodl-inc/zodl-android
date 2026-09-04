@@ -24,6 +24,8 @@ internal class ThemeDarkLookVM(
     private val isOledEnabledStorageProvider: IsOledEnabledStorageProvider,
     private val setAppearanceMode: SetAppearanceModeUseCase,
 ) : ViewModel() {
+    private var originalOledEnabled = false
+
     private val selectedOledEnabled = MutableStateFlow(false)
 
     val state =
@@ -37,7 +39,8 @@ internal class ThemeDarkLookVM(
 
     init {
         viewModelScope.launch {
-            selectedOledEnabled.update { isOledEnabledStorageProvider.get() == true }
+            originalOledEnabled = isOledEnabledStorageProvider.get() == true
+            selectedOledEnabled.update { originalOledEnabled }
         }
     }
 
@@ -55,6 +58,7 @@ internal class ThemeDarkLookVM(
                 ButtonState(
                     stringRes(R.string.currencyConversion_saveBtn),
                     onClick = ::onSaveClick,
+                    isEnabled = oledEnabled != originalOledEnabled,
                     hapticFeedbackType = HapticFeedbackType.Confirm
                 ),
             onBack = ::onBack
