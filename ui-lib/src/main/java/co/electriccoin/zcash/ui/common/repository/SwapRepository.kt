@@ -22,6 +22,7 @@ import co.electriccoin.zcash.ui.common.model.isZCashAsset
 import co.electriccoin.zcash.ui.common.model.near.requireMatchingAsset
 import co.electriccoin.zcash.ui.common.model.near.requireQuoteMatchesUserAmount
 import io.ktor.client.plugins.ResponseException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -286,6 +287,8 @@ class SwapRepositoryImpl(
                             mismatch = e.toMismatch(receivedQuote, originAsset, destinationAsset)
                         )
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     quote.update { SwapQuoteData.Error(FLEX_INPUT, e) }
                 }
@@ -373,6 +376,8 @@ class SwapRepositoryImpl(
                             mismatch = e.toMismatch(receivedQuote, originAsset, destinationAsset)
                         )
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     quote.update { SwapQuoteData.Error(mode, e) }
                 }

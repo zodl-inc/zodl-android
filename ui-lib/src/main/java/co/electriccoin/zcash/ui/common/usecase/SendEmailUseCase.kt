@@ -217,17 +217,9 @@ class SendEmailUseCase(
             messageBody =
                 EmailUtil.formatMessage(
                     body =
-                        stringRes(
-                            R.string.swap_mismatch_support_email_body,
-                            swapQuoteMismatchProviderLabel(args.provider),
-                            swapQuoteMismatchSwapTypeLabel(args) { chainTicker ->
-                                blockchainProvider.getBlockchain(chainTicker).chainName
-                            },
-                            stringRes(args.mismatchType.reportLabelRes),
-                            args.depositAddress
-                                ?.let { stringRes(it) }
-                                ?: stringRes(R.string.swap_mismatch_quoteId_unknown)
-                        ).getString(context),
+                        swapQuoteMismatchReportBody(args) { chainTicker ->
+                            blockchainProvider.getBlockchain(chainTicker).chainName
+                        }.getString(context),
                     supportInfo =
                         getSupport().toSupportString(
                             setOf(
@@ -352,6 +344,25 @@ internal fun swapQuoteMismatchProviderLabel(provider: String): StringResource =
         NEAR_SWAP_PROVIDER -> stringRes(R.string.swap_mismatch_provider_near)
         else -> stringRes(provider.uppercase())
     }
+
+/**
+ * The support-facing body of a rejected-swap-quote report email, pinning the four placeholders of
+ * `swap_mismatch_support_email_body`: the provider, the swap-type line, the failed check, and the
+ * deposit address (or its "unknown" fallback when the quote never reached one).
+ */
+internal fun swapQuoteMismatchReportBody(
+    args: SwapQuoteMismatchArgs,
+    chainName: (String) -> StringResource
+): StringResource =
+    stringRes(
+        R.string.swap_mismatch_support_email_body,
+        swapQuoteMismatchProviderLabel(args.provider),
+        swapQuoteMismatchSwapTypeLabel(args, chainName),
+        stringRes(args.mismatchType.reportLabelRes),
+        args.depositAddress
+            ?.let { stringRes(it) }
+            ?: stringRes(R.string.swap_mismatch_quoteId_unknown)
+    )
 
 /**
  * The support-facing swap-type line of a mismatch report, e.g. `CrossPay - ZEC > USDC (Arbitrum)`.

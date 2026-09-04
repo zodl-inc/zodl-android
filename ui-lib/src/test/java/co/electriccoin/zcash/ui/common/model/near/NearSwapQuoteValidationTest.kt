@@ -76,6 +76,28 @@ class NearSwapQuoteValidationTest {
     }
 
     @Test
+    fun requireConsistent_noOpWhenEitherValueNull() {
+        requireConsistent(
+            name = "amountIn",
+            type = SwapQuoteMismatchType.INPUT_AMOUNT,
+            raw = null,
+            formatted = BigDecimal("1"),
+            decimals = 8
+        )
+        requireConsistent(
+            name = "amountIn",
+            type = SwapQuoteMismatchType.INPUT_AMOUNT,
+            raw = BigDecimal("100000000"),
+            formatted = null,
+            decimals = 8
+        )
+    }
+
+    // endregion
+
+    // region requireWithinSlippage — Z2: server's worst-case guarantee must respect requested slippage
+
+    @Test
     fun requireWithinSlippage_outputFloating_passesAtAndAboveFloor() {
         // 10% slippage, amountOut=100 -> floor=90. minAmountIn is the fixed side (== amountIn) and ignored here.
         requireWithinSlippage(SwapType.EXACT_INPUT, A_THOUSAND, HUNDRED, A_THOUSAND, BigDecimal("90"), BPS_10_PCT)

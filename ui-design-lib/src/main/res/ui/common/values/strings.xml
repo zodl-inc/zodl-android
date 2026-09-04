@@ -969,7 +969,7 @@
     <string name="swap_mismatch_msg_3">Reported or not, you can also try again. If the details match, you won\’t see this screen and you\’ll be able to proceed.</string>
     <string name="swap_mismatch_goBack">Go back</string>
     <string name="swap_mismatch_support_email_subject">Zodl Swap: API mismatch</string>
-    <string name="swap_mismatch_support_email_body">Zodl detected the following error in the API response from the swap provider. Providing these details allows us raise it with them to investigate. We won\’t relay your personal details with the swap provider. You can send this as-is, or include a note to us. Thanks in advance.\n\nSwap provider: %1$s\nSwap type: %2$s\nMismatch type: %3$s\nQuote ID: %4$s</string>
+    <string name="swap_mismatch_support_email_body">Zodl detected the following error in the API response from the swap provider. Providing these details allows us to raise it with them to investigate. We won\’t relay your personal details to the swap provider. You can send this as-is, or include a note to us. Thanks in advance.\n\nSwap provider: %1$s\nSwap type: %2$s\nMismatch type: %3$s\nQuote ID: %4$s</string>
     <string name="swap_mismatch_mode_swap">Swap</string>
     <string name="swap_mismatch_mode_crosspay">CrossPay</string>
     <string name="swap_mismatch_mode_swapIntoZec">Swap into ZEC</string>
