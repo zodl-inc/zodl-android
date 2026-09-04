@@ -64,6 +64,17 @@ class ThemeSettingsVMTest {
         }
 
     @Test
+    fun cardsAreOrderedSystemLightDark() =
+        runTest(dispatcher) {
+            val vm = startedVm(modeProvider = FakeAppearanceModeStorageProvider(stored = null))
+
+            assertEquals(
+                listOf(AppearanceMode.SYSTEM, AppearanceMode.LIGHT, AppearanceMode.DARK),
+                requireNotNull(vm.state.value).options.map { it.mode }
+            )
+        }
+
+    @Test
     fun storedModeIsReflectedInSelection() =
         runTest(dispatcher) {
             val vm = startedVm(modeProvider = FakeAppearanceModeStorageProvider(stored = AppearanceMode.DARK))

@@ -177,7 +177,9 @@ private fun RadioButtonIndicator(
 /**
  * The animated checked/unchecked layering shared by every radio-style indicator in the design system:
  * [uncheckedContent] is always drawn, with [checkedContent] scaling in/out on top of it as [isChecked]
- * flips. [checkedContent] is expected to be opaque so it fully covers [uncheckedContent] while visible.
+ * flips. Both are laid out at the same origin and stay stacked, so [checkedContent] must match
+ * [uncheckedContent]'s size and geometry - a filled circle covering it, or a stroked ring drawn at the very
+ * same radius. Opacity is not required; a transparent [checkedContent] only has to line up.
  */
 @Composable
 fun ZashiRadioIndicator(

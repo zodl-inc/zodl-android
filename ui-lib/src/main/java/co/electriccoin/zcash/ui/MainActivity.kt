@@ -142,6 +142,11 @@ class MainActivity : FragmentActivity() {
             }
     }
 
+    /**
+     * Holds the splash screen until the wallet secret is known and the stored theme has been read. Without
+     * the theme gate the first frames would render with [OldHomeViewModel]'s seeded System/Classic Dark
+     * defaults and then repaint the whole tree once the stored values land.
+     */
     private fun setupSplashScreen() {
         val splashScreen = installSplashScreen()
         val start = SystemClock.elapsedRealtime().milliseconds
@@ -156,7 +161,7 @@ class MainActivity : FragmentActivity() {
                 }
             }
 
-            SecretState.LOADING == walletViewModel.secretState.value
+            SecretState.LOADING == walletViewModel.secretState.value || !oldHomeViewModel.isThemeResolved.value
         }
     }
 

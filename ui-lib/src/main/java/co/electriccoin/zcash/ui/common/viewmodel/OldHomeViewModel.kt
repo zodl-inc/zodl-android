@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.preference.StandardPreferenceKeys
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -34,12 +35,31 @@ class OldHomeViewModel(
     val isHideBalances: StateFlow<Boolean?> = booleanStateFlow(StandardPreferenceKeys.IS_HIDE_BALANCES)
 
     /**
+     * Both stored theme values as one emission, so [appearanceMode], [isOledEnabled] and [isThemeResolved]
+     * all derive from a single upstream read and can never disagree about whether it has landed yet. Null
+     * until that read completes.
+     */
+    private val theme: StateFlow<ThemeAppearance?> =
+        combine(
+            appearanceModeStorageProvider.observe(),
+            isOledEnabledStorageProvider.observe()
+        ) { appearanceMode, isOledEnabled ->
+            ThemeAppearance(
+                appearanceMode = appearanceMode ?: AppearanceMode.SYSTEM,
+                isOledEnabled = isOledEnabled == true
+            )
+        }.stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
+            null
+        )
+
+    /**
      * A flow of the user's chosen [AppearanceMode]. A never-chosen preference resolves to [AppearanceMode.SYSTEM].
      */
     val appearanceMode: StateFlow<AppearanceMode> =
-        appearanceModeStorageProvider
-            .observe()
-            .map { it ?: AppearanceMode.SYSTEM }
+        theme
+            .map { it?.appearanceMode ?: AppearanceMode.SYSTEM }
             .stateIn(
                 viewModelScope,
                 SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
@@ -50,12 +70,26 @@ class OldHomeViewModel(
      * A flow of whether pure black (OLED) should be used whenever [appearanceMode] resolves to dark.
      */
     val isOledEnabled: StateFlow<Boolean> =
-        isOledEnabledStorageProvider
-            .observe()
-            .map { it == true }
+        theme
+            .map { it?.isOledEnabled == true }
             .stateIn(
                 viewModelScope,
                 SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
+                false
+            )
+
+    /**
+     * Whether [appearanceMode] and [isOledEnabled] carry the stored values instead of their seeded defaults.
+     * The splash screen is held while this is false, so the first composed frame already renders the user's
+     * own appearance rather than flashing System/Classic Dark first. Shared eagerly because that gate reads
+     * the value without subscribing to it.
+     */
+    val isThemeResolved: StateFlow<Boolean> =
+        theme
+            .map { it != null }
+            .stateIn(
+                viewModelScope,
+                SharingStarted.Eagerly,
                 false
             )
 
@@ -68,3 +102,8 @@ class OldHomeViewModel(
             null
         )
 }
+
+private data class ThemeAppearance(
+    val appearanceMode: AppearanceMode,
+    val isOledEnabled: Boolean,
+)
