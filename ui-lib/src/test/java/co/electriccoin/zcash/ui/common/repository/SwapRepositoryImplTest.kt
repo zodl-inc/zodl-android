@@ -10,7 +10,6 @@ import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapAssetTestFixture
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapQuote
-import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatch
 import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchException
 import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
 import co.electriccoin.zcash.ui.common.model.SwapQuoteStatus
@@ -667,12 +666,12 @@ class SwapRepositoryImplTest {
     private fun assertExactInputError(
         repository: SwapRepositoryImpl,
         type: SwapQuoteMismatchType
-    ): SwapQuoteMismatch = assertMismatch(repository, SwapMode.EXACT_INPUT, type)
+    ): SwapQuoteMismatchException = assertMismatch(repository, SwapMode.EXACT_INPUT, type)
 
     private fun assertFlexError(
         repository: SwapRepositoryImpl,
         type: SwapQuoteMismatchType
-    ): SwapQuoteMismatch = assertMismatch(repository, SwapMode.FLEX_INPUT, type)
+    ): SwapQuoteMismatchException = assertMismatch(repository, SwapMode.FLEX_INPUT, type)
 
     /**
      * A rejected quote is stored as an error carrying the request's own mode, the typed rejection and its
@@ -683,13 +682,12 @@ class SwapRepositoryImplTest {
         repository: SwapRepositoryImpl,
         mode: SwapMode,
         type: SwapQuoteMismatchType
-    ): SwapQuoteMismatch {
+    ): SwapQuoteMismatchException {
         val result = repository.quote.value
         assertIs<SwapQuoteData.Error>(result)
         assertEquals(mode, result.mode)
-        assertIs<SwapQuoteMismatchException>(result.exception)
-        val mismatch = result.mismatch
-        assertNotNull(mismatch)
+        val mismatch = result.exception
+        assertIs<SwapQuoteMismatchException>(mismatch)
         assertEquals(type, mismatch.type)
         return mismatch
     }
@@ -703,7 +701,6 @@ class SwapRepositoryImplTest {
         assertIs<SwapQuoteData.Error>(result)
         assertEquals(mode, result.mode)
         assertFalse(result.exception is SwapQuoteMismatchException)
-        assertNull(result.mismatch)
     }
 
     private fun dataSourceReturning(quote: SwapQuote) =

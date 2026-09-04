@@ -31,12 +31,14 @@ enum class SwapQuoteMismatchType(
  *
  * The hierarchy is closed: a rejection is either a plain [Rejected] check failure or the
  * [AmountInconsistency] special case, which carries the non-sensitive detail of its own check. Both are
- * immutable — the report context the mismatch sheet needs is assembled into a [SwapQuoteMismatch] value
- * by the repository, so nothing is ever attached to an exception after it was thrown.
+ * immutable — every field is a constructor `val`, so the whole report context the mismatch sheet and its
+ * support email need travels on the rejection itself and nothing is ever written to an exception after it
+ * was thrown. A layer that knows more about the rejected quote attaches it by constructing a new
+ * rejection chained to this one — see [withQuoteContext] and [withReportContext].
  *
- * [depositAddress] (the quote id support can hand the swap provider) and [provider] hold what the
- * provider's response already says about the rejected quote; both stay null until there is a response to
- * take them from, and are set by the layer that has it — see [withQuoteContext].
+ * [depositAddress] (the quote id support can hand the swap provider), [provider], [originAsset] and
+ * [destinationAsset] stay null until such a layer supplies them: a failing check throws before there is a
+ * response to read the provider's side from, and knows nothing of the request's two assets.
  *
  * It stays an [IllegalArgumentException] so every existing fail-closed rejection path — the repository
  * catch-all, the status-check throws — keeps behaving exactly as before.
@@ -46,6 +48,8 @@ sealed class SwapQuoteMismatchException(
     override val message: String,
     val depositAddress: String?,
     val provider: String?,
+    val originAsset: SwapAsset?,
+    val destinationAsset: SwapAsset?,
     cause: Throwable?
 ) : IllegalArgumentException(message, cause) {
     /** A quote rejected by one of the request-vs-response checks. */
@@ -54,12 +58,16 @@ sealed class SwapQuoteMismatchException(
         message: String,
         depositAddress: String? = null,
         provider: String? = null,
+        originAsset: SwapAsset? = null,
+        destinationAsset: SwapAsset? = null,
         cause: Throwable? = null
     ) : SwapQuoteMismatchException(
             type = type,
             message = message,
             depositAddress = depositAddress,
             provider = provider,
+            originAsset = originAsset,
+            destinationAsset = destinationAsset,
             cause = cause
         )
 
@@ -81,21 +89,56 @@ sealed class SwapQuoteMismatchException(
         message: String,
         depositAddress: String? = null,
         provider: String? = null,
+        originAsset: SwapAsset? = null,
+        destinationAsset: SwapAsset? = null,
         cause: Throwable? = null
     ) : SwapQuoteMismatchException(
             type = type,
             message = message,
             depositAddress = depositAddress,
             provider = provider,
+            originAsset = originAsset,
+            destinationAsset = destinationAsset,
             cause = cause
         )
 
     /**
-     * The same rejection carrying the report context the provider's response supplies. Copied rather than
-     * mutated in place — the original is chained as the cause, so the failing check's own throw site
-     * survives in the stack trace.
+     * The same rejection carrying what the provider's response already says about the rejected quote,
+     * keeping whatever assets it was given. Copied rather than mutated in place — the original is chained
+     * as the cause, so the failing check's own throw site survives in the stack trace.
      */
     internal fun withQuoteContext(depositAddress: String?, provider: String): SwapQuoteMismatchException =
+        copyWithContext(
+            depositAddress = depositAddress,
+            provider = provider,
+            originAsset = originAsset,
+            destinationAsset = destinationAsset
+        )
+
+    /**
+     * The same rejection carrying the complete report context the mismatch sheet and its support email
+     * read: the quote id support can look the quote up by, the provider that returned it and both sides of
+     * the request. Copied the same way [withQuoteContext] is.
+     */
+    internal fun withReportContext(
+        depositAddress: String?,
+        provider: String,
+        originAsset: SwapAsset,
+        destinationAsset: SwapAsset
+    ): SwapQuoteMismatchException =
+        copyWithContext(
+            depositAddress = depositAddress,
+            provider = provider,
+            originAsset = originAsset,
+            destinationAsset = destinationAsset
+        )
+
+    private fun copyWithContext(
+        depositAddress: String?,
+        provider: String,
+        originAsset: SwapAsset?,
+        destinationAsset: SwapAsset?
+    ): SwapQuoteMismatchException =
         when (this) {
             is Rejected -> {
                 Rejected(
@@ -103,6 +146,8 @@ sealed class SwapQuoteMismatchException(
                     message = message,
                     depositAddress = depositAddress,
                     provider = provider,
+                    originAsset = originAsset,
+                    destinationAsset = destinationAsset,
                     cause = this
                 )
             }
@@ -115,24 +160,10 @@ sealed class SwapQuoteMismatchException(
                     message = message,
                     depositAddress = depositAddress,
                     provider = provider,
+                    originAsset = originAsset,
+                    destinationAsset = destinationAsset,
                     cause = this
                 )
             }
         }
 }
-
-/**
- * The report context of a rejected swap quote (MOB-1340), assembled once by the repository from the
- * rejection and the request that produced it: the [provider] that returned the quote, the
- * [depositAddress] support can look the quote up by, both sides of the request and the failed check.
- *
- * An immutable value carried by the quote's error state, so the mismatch sheet and its support email read
- * a snapshot rather than an exception that could still be written to.
- */
-data class SwapQuoteMismatch(
-    val type: SwapQuoteMismatchType,
-    val provider: String,
-    val depositAddress: String?,
-    val originAsset: SwapAsset,
-    val destinationAsset: SwapAsset
-)

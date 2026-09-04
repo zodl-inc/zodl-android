@@ -13,7 +13,6 @@ import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapAssetTestFixture
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.SwapQuote
-import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatch
 import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchException
 import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
 import co.electriccoin.zcash.ui.common.model.WalletAccount
@@ -322,12 +321,12 @@ class RequestSwapQuoteUseCaseTest {
         destination: SwapAsset = btc
     ) = SwapQuoteData.Error(
         mode = mode,
-        exception = SwapQuoteMismatchException.Rejected(type = type, message = "mismatch"),
-        mismatch =
-            SwapQuoteMismatch(
+        exception =
+            SwapQuoteMismatchException.Rejected(
                 type = type,
-                provider = "near",
+                message = "mismatch",
                 depositAddress = "deposit-address",
+                provider = "near",
                 originAsset = origin,
                 destinationAsset = destination
             )

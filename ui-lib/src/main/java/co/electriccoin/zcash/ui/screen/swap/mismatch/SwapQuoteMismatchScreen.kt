@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import co.electriccoin.zcash.ui.common.model.SwapMode
+import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchException
 import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
 import co.electriccoin.zcash.ui.common.repository.SwapQuoteData
 import kotlinx.serialization.Serializable
@@ -32,19 +33,26 @@ data class SwapQuoteMismatchArgs(
 )
 
 /**
- * The mismatch sheet's arguments for a rejected quote, or null when the error carries no mismatch report
- * context — the caller then stays on the generic quote-error path.
+ * The mismatch sheet's arguments for a rejected quote, or null when the error is not a rejection carrying
+ * the report context the repository attaches — the caller then stays on the generic quote-error path.
  */
-internal fun SwapQuoteData.Error.toMismatchArgs(): SwapQuoteMismatchArgs? =
-    mismatch?.let {
+internal fun SwapQuoteData.Error.toMismatchArgs(): SwapQuoteMismatchArgs? {
+    val mismatch = exception as? SwapQuoteMismatchException ?: return null
+    val provider = mismatch.provider
+    val originAsset = mismatch.originAsset
+    val destinationAsset = mismatch.destinationAsset
+    return if (provider != null && originAsset != null && destinationAsset != null) {
         SwapQuoteMismatchArgs(
-            provider = it.provider,
+            provider = provider,
             mode = mode,
-            originTokenTicker = it.originAsset.tokenTicker,
-            originChainTicker = it.originAsset.chainTicker,
-            destinationTokenTicker = it.destinationAsset.tokenTicker,
-            destinationChainTicker = it.destinationAsset.chainTicker,
-            mismatchType = it.type,
-            depositAddress = it.depositAddress
+            originTokenTicker = originAsset.tokenTicker,
+            originChainTicker = originAsset.chainTicker,
+            destinationTokenTicker = destinationAsset.tokenTicker,
+            destinationChainTicker = destinationAsset.chainTicker,
+            mismatchType = mismatch.type,
+            depositAddress = mismatch.depositAddress
         )
+    } else {
+        null
     }
+}

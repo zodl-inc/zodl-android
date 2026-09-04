@@ -14,7 +14,6 @@ import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapQuote
-import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatch
 import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchException
 import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
 import co.electriccoin.zcash.ui.common.model.SwapQuoteStatus
@@ -92,13 +91,12 @@ sealed interface SwapQuoteData {
 
     data class Error(
         val mode: SwapMode,
-        val exception: Exception,
         /**
-         * The report context of a rejected quote, set when [exception] is a
-         * [SwapQuoteMismatchException]; null for every other quote failure, which stays on the
-         * generic quote-error path.
+         * The failure that ended the quote request. A [SwapQuoteMismatchException] carries the report
+         * context of a rejected quote and routes to the mismatch sheet; every other failure stays on
+         * the generic quote-error path.
          */
-        val mismatch: SwapQuoteMismatch? = null
+        val exception: Exception
     ) : SwapQuoteData
 
     data object Loading : SwapQuoteData
@@ -283,8 +281,7 @@ class SwapRepositoryImpl(
                     quote.update {
                         SwapQuoteData.Error(
                             mode = FLEX_INPUT,
-                            exception = e,
-                            mismatch = e.toMismatch(receivedQuote, originAsset, destinationAsset)
+                            exception = e.withQuoteReportContext(receivedQuote, originAsset, destinationAsset)
                         )
                     }
                 } catch (e: CancellationException) {
@@ -372,8 +369,7 @@ class SwapRepositoryImpl(
                     quote.update {
                         SwapQuoteData.Error(
                             mode = mode,
-                            exception = e,
-                            mismatch = e.toMismatch(receivedQuote, originAsset, destinationAsset)
+                            exception = e.withQuoteReportContext(receivedQuote, originAsset, destinationAsset)
                         )
                     }
                 } catch (e: CancellationException) {
@@ -516,19 +512,19 @@ private fun requireMatchingAddress(
 }
 
 /**
- * Builds what the mismatch report needs — the quote id support can hand the swap provider, the provider
- * itself and both assets of the request — as an immutable value, leaving the rejection itself untouched.
- * The quote only exists once the data source returned it, and whatever the data source already resolved
- * wins; a rejection that never saw a quote is reported against the only provider the app swaps with.
+ * The same rejection carrying what the mismatch report needs — the quote id support can hand the swap
+ * provider, the provider itself and both assets of the request — attached as a new immutable rejection,
+ * leaving the thrown one untouched. The quote only exists once the data source returned it, and whatever
+ * the data source already resolved wins; a rejection that never saw a quote is reported against the only
+ * provider the app swaps with.
  */
-private fun SwapQuoteMismatchException.toMismatch(
+private fun SwapQuoteMismatchException.withQuoteReportContext(
     receivedQuote: SwapQuote?,
     originAsset: SwapAsset,
     destinationAsset: SwapAsset
-) = SwapQuoteMismatch(
-    type = type,
-    provider = provider ?: receivedQuote?.provider ?: NEAR_SWAP_PROVIDER,
+) = withReportContext(
     depositAddress = depositAddress ?: receivedQuote?.depositAddress?.address,
+    provider = provider ?: receivedQuote?.provider ?: NEAR_SWAP_PROVIDER,
     originAsset = originAsset,
     destinationAsset = destinationAsset
 )
