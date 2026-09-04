@@ -195,7 +195,7 @@ interface AndroidPreferenceFactory {
      * `Synchronizer.erase` and runs only on the path where no wallet is stored, so no synchronizer
      * exists yet to be holding the SDK store open.
      */
-    suspend fun ensureEncryptedReadable(context: Context, filename: String)
+    suspend fun ensureEncryptedReadable(context: Context, filename: String) = Unit
 }
 
 /**

@@ -92,7 +92,13 @@ class WalletRepositoryImpl(
     private val isIronwoodAnnouncementShownStorageProvider: IsIronwoodAnnouncementShownStorageProvider,
     private val sdkEncryptedPreferenceRecoveryProvider: SdkEncryptedPreferenceRecoveryProvider,
 ) : WalletRepository {
-    private val sharingScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    /**
+     * Scope the repository's `stateIn`-shared flows run on. Captured by those flows at
+     * construction time, so unlike [scope] it is never reassigned for tests — only exposed so
+     * test teardown can cancel it too.
+     */
+    @VisibleForTesting
+    internal val sharingScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     /**
      * Serializes the startup self-heal ([init]) against wallet creation and restore, so the erase

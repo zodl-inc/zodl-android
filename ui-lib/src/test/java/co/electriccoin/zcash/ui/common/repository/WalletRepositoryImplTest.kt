@@ -263,6 +263,7 @@ class WalletRepositoryImplTest {
         fakePrefs.seed(StandardPreferenceKeys.ONBOARDING_STATE.key, onboardingState.toNumber().toString())
 
         scopes += repository.scope
+        scopes += repository.sharingScope
 
         return repository to TestHarness(events, fakePrefs)
     }
