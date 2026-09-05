@@ -214,6 +214,7 @@ class EvaluationInterval(
     private val minimumInterval: Duration,
     private val timeSource: TimeSource = ElapsedRealtimeTimeSource
 ) {
+    @Volatile
     private var lastAttemptAt: TimeMark? = null
 
     fun hasElapsed(): Boolean = lastAttemptAt?.let { it.elapsedNow() >= minimumInterval } ?: true
