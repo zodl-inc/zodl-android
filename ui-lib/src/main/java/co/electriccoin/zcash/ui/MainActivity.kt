@@ -149,6 +149,10 @@ class MainActivity : FragmentActivity() {
      * Holds the splash screen until the wallet secret is known and the stored theme has been read. Without
      * the theme gate the first frames would render with [ThemeVM]'s seeded System/Classic Dark defaults and
      * then repaint the whole tree once the stored values land.
+     *
+     * The theme is the first operand because `||` short-circuits: reading it second would leave [ThemeVM]
+     * unconstructed - and its preference read unstarted - until the wallet secret had already landed,
+     * serialising the two reads instead of running them alongside each other.
      */
     private fun setupSplashScreen() {
         val splashScreen = installSplashScreen()
@@ -164,7 +168,7 @@ class MainActivity : FragmentActivity() {
                 }
             }
 
-            SecretState.LOADING == walletViewModel.secretState.value || !themeVM.isThemeResolved.value
+            !themeVM.isThemeResolved.value || SecretState.LOADING == walletViewModel.secretState.value
         }
     }
 
