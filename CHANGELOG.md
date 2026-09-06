@@ -22,6 +22,10 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - Support/error reports for a failed transaction no longer claim a fake `gRPC: false, code: -1` status when the failure actually happened before submission (e.g. a Sapling parameter download failure); such reports now correctly identify the real exception instead.
 - Opening Send immediately after a cold start no longer falls back to a loading screen while automatic server selection reconnects the wallet. The automatic winner waits for the local balance snapshot, which remains visible while the new server connection settles.
 - Fixed a crash loop some wallets hit at startup when the SDK reported the stored seed as no longer relevant to its database. The app now recovers automatically by clearing the mismatched local data and rescanning, instead of crashing repeatedly.
+- The app returns to onboarding so you can restore from your recovery phrase when its secret store is found empty while it still believes a
+  wallet was set up, instead of opening a home screen with no wallet behind it.
+- Opening the encrypted secret store is retried a few times before it is declared unreadable, and an unreadable store is set aside on the
+  device instead of being deleted.
 
 ## [3.10.1 (2512)] - 2026-08-25
 

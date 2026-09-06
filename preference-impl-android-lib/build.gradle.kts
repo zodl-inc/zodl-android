@@ -21,6 +21,10 @@ android {
             execution = "ANDROIDX_TEST_ORCHESTRATOR"
         }
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {

@@ -43,6 +43,8 @@ import co.electriccoin.zcash.ui.common.provider.PreferredFiatProvider
 import co.electriccoin.zcash.ui.common.provider.PreferredFiatProviderImpl
 import co.electriccoin.zcash.ui.common.provider.RestoreTimestampStorageProvider
 import co.electriccoin.zcash.ui.common.provider.RestoreTimestampStorageProviderImpl
+import co.electriccoin.zcash.ui.common.provider.SdkEncryptedPreferenceRecoveryProvider
+import co.electriccoin.zcash.ui.common.provider.SdkEncryptedPreferenceRecoveryProviderImpl
 import co.electriccoin.zcash.ui.common.provider.SelectedAccountUUIDProvider
 import co.electriccoin.zcash.ui.common.provider.SelectedAccountUUIDProviderImpl
 import co.electriccoin.zcash.ui.common.provider.ShieldFundsInfoProvider
@@ -118,4 +120,5 @@ val providerModule =
         factoryOf(::KeystoneSDKProviderImpl) bind KeystoneSDKProvider::class
         singleOf(::LastNetworkActivityStorageProviderImpl) bind LastNetworkActivityStorageProvider::class
         factoryOf(::IsBackgroundExecutionAvailableProvider)
+        singleOf(::SdkEncryptedPreferenceRecoveryProviderImpl) bind SdkEncryptedPreferenceRecoveryProvider::class
     }
