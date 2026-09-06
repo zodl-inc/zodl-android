@@ -116,34 +116,36 @@ private fun ThemeRadioIndicator(
     isChecked: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    ZashiRadioIndicator(
-        isChecked = isChecked,
-        checkedContent = {
-            Box(
-                modifier =
-                    modifier
-                        .size(RADIO_SIZE)
-                        .clip(CircleShape)
-                        .background(ZashiColors.Text.textPrimary),
-                contentAlignment = Alignment.Center
-            ) {
+    Box(modifier = modifier) {
+        ZashiRadioIndicator(
+            isChecked = isChecked,
+            checkedContent = {
                 Box(
                     modifier =
                         Modifier
-                            .size(RADIO_DOT_SIZE)
+                            .size(RADIO_SIZE)
                             .clip(CircleShape)
-                            .background(ZashiColors.Surfaces.bgPrimary)
+                            .background(ZashiColors.Text.textPrimary),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(RADIO_DOT_SIZE)
+                                .clip(CircleShape)
+                                .background(ZashiColors.Surfaces.bgPrimary)
+                    )
+                }
+            },
+            uncheckedContent = {
+                Box(
+                    modifier =
+                        Modifier
+                            .size(RADIO_SIZE)
+                            .clip(CircleShape)
+                            .border(UNCHECKED_RADIO_STROKE_WIDTH, ZashiColors.Checkboxes.boxOffStroke, CircleShape)
                 )
             }
-        },
-        uncheckedContent = {
-            Box(
-                modifier =
-                    modifier
-                        .size(RADIO_SIZE)
-                        .clip(CircleShape)
-                        .border(UNCHECKED_RADIO_STROKE_WIDTH, ZashiColors.Checkboxes.boxOffStroke, CircleShape)
-            )
-        }
-    )
+        )
+    }
 }

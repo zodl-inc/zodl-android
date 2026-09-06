@@ -7,12 +7,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
@@ -25,7 +29,8 @@ import kotlin.test.assertTrue
 /**
  * The app-wide theme state (MOB-1740): the stored appearance mode and dark look are read as one emission, so
  * the splash gate ([ThemeVM.isThemeResolved]) never reports resolved while either half is still missing, and
- * the two exposed values always belong to the same read.
+ * the two exposed values always belong to the same read. The read is bounded, so neither a silent nor a
+ * throwing preference store can hold the splash screen up indefinitely.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ThemeVMTest {
@@ -77,7 +82,8 @@ class ThemeVMTest {
             val vm =
                 startedVm(
                     modeProvider = FakeAppearanceModeStorageProvider(stored = AppearanceMode.LIGHT),
-                    oledProvider = oledProvider
+                    oledProvider = oledProvider,
+                    advanceToIdle = false
                 )
 
             assertFalse(vm.isThemeResolved.value)
@@ -89,6 +95,48 @@ class ThemeVMTest {
 
             assertTrue(vm.isThemeResolved.value)
             assertEquals(AppearanceMode.LIGHT, vm.appearanceMode.value)
+        }
+
+    @Test
+    fun theSplashGateIsReleasedWithDefaultsWhenAStoredValueNeverArrives() =
+        runTest(dispatcher) {
+            val oledProvider = FakeIsOledEnabledStorageProvider(isSeeded = false)
+            val vm =
+                startedVm(
+                    modeProvider = FakeAppearanceModeStorageProvider(stored = AppearanceMode.LIGHT),
+                    oledProvider = oledProvider,
+                    advanceToIdle = false
+                )
+
+            assertFalse(vm.isThemeResolved.value)
+
+            advanceTimeBy(THEME_READ_TIMEOUT)
+            runCurrent()
+
+            assertTrue(vm.isThemeResolved.value)
+            assertEquals(AppearanceMode.SYSTEM, vm.appearanceMode.value)
+            assertFalse(vm.isOledEnabled.value)
+
+            oledProvider.emit(true)
+            advanceUntilIdle()
+
+            assertEquals(AppearanceMode.LIGHT, vm.appearanceMode.value)
+            assertTrue(vm.isOledEnabled.value)
+        }
+
+    @Test
+    fun theSplashGateIsReleasedWithDefaultsWhenTheStoredValuesThrow() =
+        runTest(dispatcher) {
+            val vm =
+                startedVm(
+                    modeProvider = FakeAppearanceModeStorageProvider(stored = AppearanceMode.DARK),
+                    oledProvider = FakeIsOledEnabledStorageProvider(failure = IllegalStateException("no store")),
+                    advanceToIdle = false
+                )
+
+            assertTrue(vm.isThemeResolved.value)
+            assertEquals(AppearanceMode.SYSTEM, vm.appearanceMode.value)
+            assertFalse(vm.isOledEnabled.value)
         }
 
     @Test
@@ -123,6 +171,7 @@ class ThemeVMTest {
     private fun TestScope.startedVm(
         modeProvider: FakeAppearanceModeStorageProvider = FakeAppearanceModeStorageProvider(stored = null),
         oledProvider: FakeIsOledEnabledStorageProvider = FakeIsOledEnabledStorageProvider(stored = null),
+        advanceToIdle: Boolean = true,
     ): ThemeVM {
         val vm =
             ThemeVM(
@@ -131,7 +180,7 @@ class ThemeVMTest {
             )
         backgroundScope.launch { vm.appearanceMode.collect { } }
         backgroundScope.launch { vm.isOledEnabled.collect { } }
-        advanceUntilIdle()
+        if (advanceToIdle) advanceUntilIdle() else runCurrent()
         return vm
     }
 }
@@ -167,6 +216,7 @@ private class FakeAppearanceModeStorageProvider(
 private class FakeIsOledEnabledStorageProvider(
     stored: Boolean? = null,
     isSeeded: Boolean = true,
+    private val failure: Throwable? = null,
 ) : IsOledEnabledStorageProvider {
     private val state = MutableSharedFlow<Boolean?>(replay = 1)
 
@@ -187,7 +237,11 @@ private class FakeIsOledEnabledStorageProvider(
 
     override suspend fun store(amount: Boolean) = emit(amount)
 
-    override fun observe(): Flow<Boolean?> = state
+    override fun observe(): Flow<Boolean?> =
+        flow {
+            failure?.let { throw it }
+            emitAll(state)
+        }
 
     override suspend fun clear() = emit(null)
 }
