@@ -16,6 +16,7 @@ import androidx.compose.material3.RippleConfiguration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalConfiguration
@@ -85,43 +86,68 @@ fun ZcashTheme(
                 colorScheme = baseColors,
                 typography = PrimaryTypography,
             ) {
-                // Compose color locals above don't affect resource-qualifier resolution (drawable-night,
-                // values-night, ...) - that's driven by the real Configuration.uiMode, which otherwise
-                // stays whatever the device's actual light/dark setting is. Force it to match the resolved
-                // theme so -night assets aren't picked while rendering the light palette (or vice versa)
-                // whenever appearanceMode diverges from the system setting.
-                //
-                // Deliberately NOT the ConfigurationOverride composable (which wraps LocalContext via
-                // Context.createConfigurationContext) - on an Activity context that returns a context
-                // wrapping the Activity's *internal* base context, one level deeper than
-                // ContextWrapper.baseContext expects, which breaks LocalContext.componentActivity()'s
-                // single-level unwrap (KoinActivityViewModel.kt) for every screen below. ContextThemeWrapper
-                // + applyOverrideConfiguration keeps baseContext pointing at the Activity itself, matching
-                // the same safe pattern Override.kt already uses to wrap this same content root for tests.
-                val currentConfiguration = LocalConfiguration.current
-                val resolvedConfiguration =
-                    remember(currentConfiguration, useDarkMode) {
-                        ConfigurationOverride(
-                            uiMode = if (useDarkMode) UiMode.Dark else UiMode.Light,
-                            locale = null
-                        ).newConfiguration(currentConfiguration)
-                    }
-                val activityContext = LocalContext.current
-                val resolvedContext =
-                    remember(activityContext, resolvedConfiguration) {
-                        object : ContextThemeWrapper(activityContext, null) {
-                            init {
-                                applyOverrideConfiguration(resolvedConfiguration)
-                            }
-                        }
-                    }
-                CompositionLocalProvider(
-                    LocalConfiguration provides resolvedConfiguration,
-                    LocalContext provides resolvedContext
-                ) {
+                ResolvedConfiguration(useDarkMode) {
                     content()
                 }
             }
+        }
+    }
+}
+
+/**
+ * Provides [content] with a [android.content.res.Configuration] whose `uiMode` matches the resolved theme.
+ *
+ * The Compose color locals don't affect resource-qualifier resolution (drawable-night, values-night, ...) -
+ * that follows the real `Configuration.uiMode`, which otherwise stays whatever the device's own light/dark
+ * setting is, so `-night` assets would be picked while the light palette renders (or vice versa) whenever the
+ * chosen appearance diverges from the system setting.
+ *
+ * Nothing is provided when the ambient configuration already carries the resolved `uiMode`. That covers the
+ * common case, and it covers the screenshot tests, where
+ * [co.electriccoin.zcash.ui.design.component.Override] has already driven that very `uiMode`
+ * into both the configuration and the context - re-wrapping there produced a
+ * `ContextThemeWrapper(ContextThemeWrapper(Activity))`. Stacking is no longer fatal in itself, because
+ * `LocalContext.componentActivity()` (KoinActivityViewModel) now walks the entire
+ * [android.content.ContextWrapper] chain rather than one level; skipping the redundant wrap simply keeps the
+ * chain as short as the situation allows. [movableContentOf] preserves the subtree's state across the two
+ * branches, the same way that same Override composable does.
+ *
+ * [ContextThemeWrapper] plus `applyOverrideConfiguration` rather than `Context.createConfigurationContext`:
+ * on an activity context the latter returns a context wrapping the activity's *internal* base context, which
+ * buries the activity one level deeper for no gain.
+ */
+@Composable
+private fun ResolvedConfiguration(
+    useDarkMode: Boolean,
+    content: @Composable () -> Unit
+) {
+    val currentConfiguration = LocalConfiguration.current
+    val resolvedConfiguration =
+        remember(currentConfiguration, useDarkMode) {
+            ConfigurationOverride(
+                uiMode = if (useDarkMode) UiMode.Dark else UiMode.Light,
+                locale = null
+            ).newConfiguration(currentConfiguration)
+        }
+    val contentSlot = remember { movableContentOf { content() } }
+
+    if (resolvedConfiguration == currentConfiguration) {
+        contentSlot()
+    } else {
+        val ambientContext = LocalContext.current
+        val resolvedContext =
+            remember(ambientContext, resolvedConfiguration) {
+                object : ContextThemeWrapper(ambientContext, null) {
+                    init {
+                        applyOverrideConfiguration(resolvedConfiguration)
+                    }
+                }
+            }
+        CompositionLocalProvider(
+            LocalConfiguration provides resolvedConfiguration,
+            LocalContext provides resolvedContext
+        ) {
+            contentSlot()
         }
     }
 }
