@@ -15,7 +15,6 @@ import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -62,11 +61,11 @@ class WalletViewModelTest {
             mockk<Synchronizer> {
                 every { network } returns ZcashNetwork.Mainnet
                 every { fullyScannedHeight } returns MutableStateFlow(BlockHeight.new(3_500_000L))
+                every { walletBalances } returns MutableStateFlow(balancesWithOrchard(orchardZatoshi))
             }
         val synchronizerProvider =
             mockk<SynchronizerProvider> {
                 every { this@mockk.synchronizer } returns MutableStateFlow(synchronizer)
-                every { walletBalances } returns flowOf(balancesWithOrchard(orchardZatoshi))
             }
         val walletRepository =
             mockk<WalletRepository>(relaxed = true) {

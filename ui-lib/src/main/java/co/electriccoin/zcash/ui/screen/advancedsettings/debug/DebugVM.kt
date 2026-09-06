@@ -150,7 +150,7 @@ class DebugVM(
                             is ZashiAccount -> "Zashi"
                             is KeystoneAccount -> "Keystone"
                         }
-                    "$label\n${account.unified.address.address}"
+                    "$label\n${account.unifiedAddress}"
                 }
             copyToClipboardUseCase(text)
             navigationRouter.forward(

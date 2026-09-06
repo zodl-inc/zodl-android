@@ -228,7 +228,7 @@ class MigrationKeystoneSignVM(
                     ZashiAccountInfoListItemState(
                         icon = account.icon,
                         title = account.name,
-                        subtitle = stringRes("${account.unified.address.address.take(ADDRESS_MAX_LENGTH)}..."),
+                        subtitle = stringRes("${account.unifiedAddress.take(ADDRESS_MAX_LENGTH)}..."),
                     ),
                 badgeText = stringRes(DesignR.string.migrationKeystoneSign_badgeHardware),
                 generateNextQrCode = {

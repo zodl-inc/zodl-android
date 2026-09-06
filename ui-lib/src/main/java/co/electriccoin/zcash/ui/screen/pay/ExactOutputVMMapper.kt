@@ -416,7 +416,7 @@ private data class ExactOutputInternalState(
      * both text fields) renders from, computed once per state instance so the rule can never drift
      * between them.
      */
-    val isInsufficientFunds: Boolean = getZatoshi()?.let { !canSpend(it) } == true
+    val isInsufficientFunds: Boolean = getZatoshi()?.let { canSpend(it) == false } == true
 
     fun getOriginFiatAmount(): BigDecimal? {
         val tokenAmount = amount.amount

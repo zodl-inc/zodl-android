@@ -24,9 +24,9 @@ class GetIronwoodBalanceUseCase(
     private val accountDataSource: AccountDataSource,
 ) {
     suspend operator fun invoke(): Zatoshi {
-        synchronizerProvider.getSynchronizer()
+        val synchronizer = synchronizerProvider.getSynchronizer()
         val account = accountDataSource.getSelectedAccount()
-        val balances = synchronizerProvider.walletBalances.filterNotNull().first()
+        val balances = synchronizer.walletBalances.filterNotNull().first()
         val ironwood = balances[account.sdkAccount.accountUuid]?.ironwood ?: return Zatoshi.ZERO
         return ironwood.total + ironwood.locked
     }

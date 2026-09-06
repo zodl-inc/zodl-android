@@ -2,7 +2,6 @@ package co.electriccoin.zcash.ui.common.provider
 
 import cash.z.ecc.android.sdk.fixture.AccountFixture
 import cash.z.ecc.android.sdk.model.BlockHeight
-import cash.z.ecc.android.sdk.model.WalletAddress
 import co.electriccoin.zcash.preference.StandardPreferenceProvider
 import co.electriccoin.zcash.preference.api.PreferenceProvider
 import co.electriccoin.zcash.preference.model.entry.PreferenceKey
@@ -209,7 +208,7 @@ private class FakeAccountDataSource(
         birthday: BlockHeight?
     ): cash.z.ecc.android.sdk.model.Account = error("unsupported")
 
-    override suspend fun requestNextShieldedAddress(): WalletAddress.Unified = error("unsupported")
+    override suspend fun requestNextShieldedAddress(): String = error("unsupported")
 
     override suspend fun deleteAccount(account: WalletAccount) = error("unsupported")
 }

@@ -346,7 +346,7 @@ fun SendButton(
             recipientAddressState.address.isNotEmpty() &&
             amountState is AmountState.Valid &&
             amountState.value.getValue().isNotBlank() &&
-            selectedAccount.canSpend(amountState.zatoshi) &&
+            selectedAccount.canSpend(amountState.zatoshi) == true &&
             // A valid memo is necessary only for non-transparent recipient
             (recipientAddressState.type == AddressType.Transparent || memoState is MemoState.Correct)
 
@@ -574,7 +574,8 @@ fun SendFormAmountTextField(
             }
 
             is AmountState.Valid -> {
-                if (selectedAccount.spendableShieldedBalance < amountState.zatoshi) {
+                val spendableShieldedBalance = selectedAccount.spendableShieldedBalance
+                if (spendableShieldedBalance != null && spendableShieldedBalance < amountState.zatoshi) {
                     stringResource(id = R.string.sheet_insufficientBalance_title)
                 } else {
                     null

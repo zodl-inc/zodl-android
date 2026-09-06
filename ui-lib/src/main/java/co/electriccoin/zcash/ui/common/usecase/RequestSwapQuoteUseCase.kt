@@ -54,7 +54,7 @@ class RequestSwapQuoteUseCase(
                 swapRepository.requestExactInputQuote(
                     amount = amount,
                     address = address,
-                    refundAddress = newAddress.address,
+                    refundAddress = newAddress,
                     destinationAsset = selectedAsset,
                     slippage = slippage
                 )
@@ -77,7 +77,7 @@ class RequestSwapQuoteUseCase(
                 swapRepository.requestExactOutputQuote(
                     amount = amount,
                     address = address,
-                    refundAddress = newAddress.address,
+                    refundAddress = newAddress,
                     destinationAsset = selectedAsset,
                     slippage = slippage
                 )
@@ -101,7 +101,7 @@ class RequestSwapQuoteUseCase(
                     .requestFlexInputIntoZec(
                         amount = amount,
                         refundAddress = refundAddress,
-                        destinationAddress = newAddress.address,
+                        destinationAddress = newAddress,
                         originAsset = selectedAsset,
                         slippage = slippage
                     )

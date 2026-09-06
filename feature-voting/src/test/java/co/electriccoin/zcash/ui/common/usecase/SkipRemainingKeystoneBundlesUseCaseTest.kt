@@ -5,17 +5,12 @@ import cash.z.ecc.android.sdk.fixture.AccountFixture
 import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
 import cash.z.ecc.android.sdk.fixture.WalletBalanceFixture
 import cash.z.ecc.android.sdk.model.Account
-import cash.z.ecc.android.sdk.model.AccountBalance
-import cash.z.ecc.android.sdk.model.AccountUuid
 import cash.z.ecc.android.sdk.model.BlockHeight
-import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.SynchronizerError
-import co.electriccoin.zcash.ui.common.model.TransparentInfo
-import co.electriccoin.zcash.ui.common.model.UnifiedInfo
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -144,20 +139,14 @@ class SkipRemainingKeystoneBundlesUseCaseTest {
         votingRecoveryRepository = recoveryRepository.repository
     )
 
-    private suspend fun keystoneAccount(): KeystoneAccount =
+    private fun keystoneAccount(): KeystoneAccount =
         KeystoneAccount(
             sdkAccount = AccountFixture.new(),
-            unified =
-                UnifiedInfo(
-                    address = WalletAddressFixture.unified(),
-                    balance = WalletBalanceFixture.newLong()
-                ),
+            unifiedAddress = WalletAddressFixture.UNIFIED_ADDRESS_STRING,
+            orchardBalance = WalletBalanceFixture.newLong(),
             ironwoodBalance = WalletBalanceFixture.newLong(0, 0, 0),
-            transparent =
-                TransparentInfo(
-                    address = WalletAddressFixture.transparent(),
-                    balance = Zatoshi(0)
-                ),
+            transparentAddress = WalletAddressFixture.TRANSPARENT_ADDRESS_STRING,
+            transparentBalance = Zatoshi(0),
             isSelected = true
         )
 
@@ -210,7 +199,7 @@ private class FakeAccountDataSource(
         birthday: BlockHeight?
     ): Account = unsupported()
 
-    override suspend fun requestNextShieldedAddress(): WalletAddress.Unified = unsupported()
+    override suspend fun requestNextShieldedAddress(): String = unsupported()
 
     override suspend fun deleteAccount(account: WalletAccount) = unsupported()
 }
@@ -222,7 +211,6 @@ private class FakeSynchronizerProvider(
 
     override val error: StateFlow<SynchronizerError?> = MutableStateFlow(null)
     override val synchronizer: StateFlow<Synchronizer?> = MutableStateFlow(fakeSynchronizer)
-    override val walletBalances: Flow<Map<AccountUuid, AccountBalance>?> = flowOf(null)
     override val isSeedMismatch: StateFlow<Boolean> = MutableStateFlow(false)
 
     override suspend fun getSynchronizer(): Synchronizer = fakeSynchronizer

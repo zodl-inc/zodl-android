@@ -541,4 +541,72 @@ class MigrationBannerStateTest {
             )
         assertEquals(MigrationHomeMessageData(isRunActive = false), result)
     }
+
+    /**
+     * A null [orchardBalanceZatoshi] (balance snapshot not loaded yet) must not be treated as a
+     * zero balance — coercing it to zero would make the celebration/residue/"Migrate now" branches
+     * fire (or fail to fire) on a value the wallet never actually reported. With no run active and
+     * no attention condition, an unknown balance must show no banner at all.
+     */
+    @Test
+    fun nullOrchardBalanceWithNoRunShowsNothing() {
+        val result =
+            migrationMessageFor(
+                sdkState = null,
+                snapshot = null,
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = null,
+            )
+        assertNull(result, "A not-yet-loaded balance must not be coerced to zero and must show no banner")
+    }
+
+    /**
+     * Same as above, but the engine reports Complete and the celebration hasn't been seen yet — the
+     * celebration branch requires a known balance below the residual minimum; a null balance must
+     * not satisfy that (0 < MIGRATION_RESIDUAL_MIN_ZATOSHI would incorrectly fire it if coerced).
+     */
+    @Test
+    fun nullOrchardBalanceWithCompleteStateDoesNotFireCelebration() {
+        val result =
+            migrationMessageFor(
+                sdkState = MigrationState.Complete,
+                snapshot = null,
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = null,
+            )
+        assertNull(result, "A not-yet-loaded balance must not fire the celebration branch")
+    }
+
+    /**
+     * A null balance must not suppress the RequiresAttention branch above it — that branch never
+     * reads the balance at all.
+     */
+    @Test
+    fun nullOrchardBalanceDoesNotSuppressRequiresAttentionBanner() {
+        val result =
+            migrationMessageFor(
+                sdkState = MigrationState.RequiresAttention(AttentionReason.TransferExpired),
+                snapshot = snapshot(),
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = null,
+            )
+        assertEquals(MigrationAttentionKind.TRANSFER_EXPIRED, result?.attentionKind)
+    }
+
+    /**
+     * A null balance must not suppress the plain InProgress branch above it either — it also never
+     * reads the balance.
+     */
+    @Test
+    fun nullOrchardBalanceDoesNotSuppressInProgressBanner() {
+        val progress = MigrationProgress(completedTransfers = 1, totalTransfers = 3, nextTransferReadyAtHeight = null)
+        val result =
+            migrationMessageFor(
+                sdkState = MigrationState.InProgress(progress),
+                snapshot = snapshot(),
+                hasSeenComplete = false,
+                orchardBalanceZatoshi = null,
+            )
+        assertEquals(MigrationHomeMessageData(isRunActive = true, completedCount = 1, totalCount = 2), result)
+    }
 }
