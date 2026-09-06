@@ -138,8 +138,8 @@ class SendEmailUseCaseTest {
     /**
      * The swap-type line of a quote-mismatch report follows the design's `CrossPay - ZEC > USDC
      * (Arbitrum)` shape: the mode's product name, then origin > destination with the chain spelled out
-     * for everything but ZEC. Asserted on the rendered string (via [render] and [strings]), so a copy
-     * edit to any of the resources involved shows up here.
+     * for everything but ZEC. Asserted on the string the labels compose through [render] against
+     * [strings], which pins which value fills which placeholder and in what order.
      */
     @Test
     fun swapMismatchReportNamesTheModeAndBothAssets() {
@@ -231,9 +231,10 @@ class SendEmailUseCaseTest {
         stringRes(if (chainTicker == "arb") "Arbitrum" else chainTicker)
 
     /**
-     * The English copy of every resource the mismatch report labels resolve, keyed by resource id --
-     * stands in for `Context::getString` so [render] can assert on the exact final strings without an
-     * Android context.
+     * The English copy of every resource the mismatch report labels resolve, keyed by resource id -- a
+     * hand-maintained duplicate of `strings.xml`, not a read of it, standing in for `Context::getString`
+     * so [render] can assert on exact final strings without an Android context. A copy edit in the XML
+     * therefore does not reach this suite; keep the entries in step with it by hand.
      */
     private val strings =
         mapOf(
@@ -256,8 +257,8 @@ class SendEmailUseCaseTest {
 
     /**
      * Renders a [StringResource] the way `Context::getString` would, resolving [StringResource.ByResource]
-     * arguments recursively through [strings] -- so a copy edit to any resource this suite composes shows
-     * up as a test failure, not just a resource-id match.
+     * arguments recursively through [strings] -- so the assertions pin the composition itself: the
+     * placeholder count and order of each format resource, and the values the labels feed into them.
      */
     private fun StringResource.render(): String =
         when (this) {

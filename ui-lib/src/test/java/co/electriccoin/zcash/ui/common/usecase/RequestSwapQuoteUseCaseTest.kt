@@ -301,6 +301,29 @@ class RequestSwapQuoteUseCaseTest {
             verify(exactly = 0) { navigationRouter.forward(ofType<SwapQuoteMismatchArgs>()) }
         }
 
+    /**
+     * Only a rejection carrying the report context opens the mismatch sheet. One without it cannot be
+     * built by the repository, so reaching this would be a routing bug: the request falls back to the
+     * generic quote-error path instead of the sheet, and the rejection is reported to crash monitoring.
+     */
+    @Test
+    fun mismatchWithoutReportContextFallsBackToTheGenericQuoteError() =
+        runBlocking {
+            useCase(
+                SwapQuoteData.Error(
+                    mode = SwapMode.EXACT_INPUT,
+                    exception =
+                        SwapQuoteMismatchException.Rejected(
+                            type = SwapQuoteMismatchType.SWAP_TYPE,
+                            message = "mismatch"
+                        )
+                )
+            ).exactInput()
+
+            verify(exactly = 0) { navigationRouter.forward(ofType<SwapQuoteMismatchArgs>()) }
+            verify { navigationRouter.forward(SwapQuoteArgs) }
+        }
+
     /** A plain quote failure is surfaced by the swap screen itself, not by the mismatch sheet. */
     @Test
     fun nonMismatchQuoteErrorsStillFollowTheOldPath() =
@@ -322,7 +345,7 @@ class RequestSwapQuoteUseCaseTest {
     ) = SwapQuoteData.Error(
         mode = mode,
         exception =
-            SwapQuoteMismatchException.Rejected(
+            SwapQuoteMismatchException.Reported(
                 type = type,
                 message = "mismatch",
                 depositAddress = "deposit-address",

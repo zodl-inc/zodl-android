@@ -114,7 +114,7 @@ class NavigateToSwapQuoteIfAvailableUseCaseTest {
         SwapQuoteData.Error(
             mode = SwapMode.EXACT_INPUT,
             exception =
-                SwapQuoteMismatchException.Rejected(
+                SwapQuoteMismatchException.Reported(
                     type = SwapQuoteMismatchType.RECIPIENT_ADDRESS,
                     message = "mismatch",
                     depositAddress = "deposit-address",

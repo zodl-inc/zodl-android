@@ -20,6 +20,7 @@ import co.electriccoin.zcash.ui.common.model.SwapQuoteStatus
 import co.electriccoin.zcash.ui.common.model.isZCashAsset
 import co.electriccoin.zcash.ui.common.model.near.requireMatchingAsset
 import co.electriccoin.zcash.ui.common.model.near.requireQuoteMatchesUserAmount
+import co.electriccoin.zcash.ui.common.model.swapQuoteMismatchSignal
 import io.ktor.client.plugins.ResponseException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -92,9 +93,9 @@ sealed interface SwapQuoteData {
     data class Error(
         val mode: SwapMode,
         /**
-         * The failure that ended the quote request. A [SwapQuoteMismatchException] carries the report
-         * context of a rejected quote and routes to the mismatch sheet; every other failure stays on
-         * the generic quote-error path.
+         * The failure that ended the quote request. A [SwapQuoteMismatchException.Reported] carries the
+         * report context of a rejected quote and routes to the mismatch sheet; every other failure stays
+         * on the generic quote-error path.
          */
         val exception: Exception
     ) : SwapQuoteData
@@ -512,40 +513,22 @@ private fun requireMatchingAddress(
 }
 
 /**
- * The same rejection carrying what the mismatch report needs — the quote id support can hand the swap
- * provider, the provider itself and both assets of the request — attached as a new immutable rejection,
- * leaving the thrown one untouched. The quote only exists once the data source returned it, and whatever
- * the data source already resolved wins; a rejection that never saw a quote is reported against the only
- * provider the app swaps with.
+ * The same rejection in its reported form, carrying what the mismatch report needs — the quote id support
+ * can hand the swap provider, the provider itself and both assets of the request — attached as a new
+ * immutable rejection, leaving the thrown one untouched. This is the only place a
+ * [SwapQuoteMismatchException.Reported] is built, so every rejection the mismatch sheet sees has all
+ * three non-null. The quote only exists once the data source returned it, and whatever the data source
+ * already resolved wins; a rejection that never saw a quote is reported against the only provider the app
+ * swaps with.
  */
 private fun SwapQuoteMismatchException.withQuoteReportContext(
     receivedQuote: SwapQuote?,
     originAsset: SwapAsset,
     destinationAsset: SwapAsset
-) = withReportContext(
-    depositAddress = depositAddress ?: receivedQuote?.depositAddress?.address,
-    provider = provider ?: receivedQuote?.provider ?: NEAR_SWAP_PROVIDER,
-    originAsset = originAsset,
-    destinationAsset = destinationAsset
-)
-
-/**
- * Sanitized non-fatal reported to crash monitoring when a request-vs-response check rejects a quote
- * (MOB-1371, MOB-1340). Carries only the mismatch type — plus the field name and decimal precision for the
- * amount-consistency case — never the amounts (see the release log-redaction hardening), so it does not
- * leak transaction values to crash reporting.
- *
- * Reporting it means a future 1Click change surfaces as an observable "quotes blocked" signal instead of
- * silent breakage for users. The rejection itself still fails closed: it is stored as the quote's error
- * state, from where the mismatch sheet reports it.
- */
-private fun swapQuoteMismatchSignal(e: SwapQuoteMismatchException): Exception =
-    if (e is SwapQuoteMismatchException.AmountInconsistency) {
-        SwapQuoteMismatchRejectedSignal("type=${e.type}, field=${e.field}, decimals=${e.decimals}")
-    } else {
-        SwapQuoteMismatchRejectedSignal("type=${e.type}")
-    }
-
-private class SwapQuoteMismatchRejectedSignal(
-    detail: String
-) : Exception("Swap quote validation rejected a quote ($detail)")
+): SwapQuoteMismatchException.Reported =
+    withReportContext(
+        depositAddress = depositAddress ?: receivedQuote?.depositAddress?.address,
+        provider = provider ?: receivedQuote?.provider ?: NEAR_SWAP_PROVIDER,
+        originAsset = originAsset,
+        destinationAsset = destinationAsset
+    )

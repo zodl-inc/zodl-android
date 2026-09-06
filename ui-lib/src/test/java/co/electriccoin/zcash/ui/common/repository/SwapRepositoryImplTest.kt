@@ -666,28 +666,28 @@ class SwapRepositoryImplTest {
     private fun assertExactInputError(
         repository: SwapRepositoryImpl,
         type: SwapQuoteMismatchType
-    ): SwapQuoteMismatchException = assertMismatch(repository, SwapMode.EXACT_INPUT, type)
+    ): SwapQuoteMismatchException.Reported = assertMismatch(repository, SwapMode.EXACT_INPUT, type)
 
     private fun assertFlexError(
         repository: SwapRepositoryImpl,
         type: SwapQuoteMismatchType
-    ): SwapQuoteMismatchException = assertMismatch(repository, SwapMode.FLEX_INPUT, type)
+    ): SwapQuoteMismatchException.Reported = assertMismatch(repository, SwapMode.FLEX_INPUT, type)
 
     /**
-     * A rejected quote is stored as an error carrying the request's own mode, the typed rejection and its
-     * report context, so the use case can route it to the mismatch sheet and the report email can name
-     * the failed check.
+     * A rejected quote is stored as an error carrying the request's own mode and the rejection in its
+     * reported form — the only form that carries the report context — so the use case can route it to the
+     * mismatch sheet and the report email can name the failed check.
      */
     private fun assertMismatch(
         repository: SwapRepositoryImpl,
         mode: SwapMode,
         type: SwapQuoteMismatchType
-    ): SwapQuoteMismatchException {
+    ): SwapQuoteMismatchException.Reported {
         val result = repository.quote.value
         assertIs<SwapQuoteData.Error>(result)
         assertEquals(mode, result.mode)
         val mismatch = result.exception
-        assertIs<SwapQuoteMismatchException>(mismatch)
+        assertIs<SwapQuoteMismatchException.Reported>(mismatch)
         assertEquals(type, mismatch.type)
         return mismatch
     }
