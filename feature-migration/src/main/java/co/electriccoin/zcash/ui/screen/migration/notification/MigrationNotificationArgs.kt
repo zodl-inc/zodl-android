@@ -36,6 +36,7 @@ import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
 import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
+import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
@@ -213,7 +214,7 @@ private fun Preview() =
 @PreviewScreens
 @Composable
 private fun PreviewForceDark() =
-    ZcashTheme(forceDarkMode = true) {
+    ZcashTheme(appearanceMode = AppearanceMode.DARK) {
         MigrationNotificationView(
             state = MigrationNotificationState(onAllow = {}, onSkip = {}, onAutoSkip = {}, onBack = {})
         )

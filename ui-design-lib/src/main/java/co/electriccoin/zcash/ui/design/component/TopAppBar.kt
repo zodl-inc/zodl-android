@@ -48,6 +48,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.R
+import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.internal.SecondaryTypography
 import co.electriccoin.zcash.ui.design.theme.internal.TopAppBarColors
@@ -55,7 +56,7 @@ import co.electriccoin.zcash.ui.design.theme.internal.TopAppBarColors
 @Preview
 @Composable
 private fun TopAppBarTextComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             SmallTopAppBar(
                 navigationAction = {
@@ -74,7 +75,7 @@ private fun TopAppBarTextComposablePreview() {
 @Preview
 @Composable
 private fun TopAppBarTextDarkComposablePreview() {
-    ZcashTheme(forceDarkMode = true) {
+    ZcashTheme(appearanceMode = AppearanceMode.DARK) {
         BlankSurface {
             SmallTopAppBar(
                 navigationAction = {
@@ -93,7 +94,7 @@ private fun TopAppBarTextDarkComposablePreview() {
 @Preview
 @Composable
 private fun TopAppBarTextRestoringComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             SmallTopAppBar(
                 navigationAction = {
@@ -113,7 +114,7 @@ private fun TopAppBarTextRestoringComposablePreview() {
 @Preview
 @Composable
 private fun TopAppBarTextRestoringLongComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             SmallTopAppBar(
                 navigationAction = {
@@ -133,7 +134,7 @@ private fun TopAppBarTextRestoringLongComposablePreview() {
 @Preview
 @Composable
 private fun TopAppBarLogoComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             SmallTopAppBar(
                 navigationAction = {
@@ -152,7 +153,7 @@ private fun TopAppBarLogoComposablePreview() {
 @Preview
 @Composable
 private fun TopAppBarLogoRestoringComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             SmallTopAppBar(
                 navigationAction = {
@@ -172,7 +173,7 @@ private fun TopAppBarLogoRestoringComposablePreview() {
 @Preview
 @Composable
 private fun TopAppBarLogoRestoringDarkComposablePreview() {
-    ZcashTheme(forceDarkMode = true) {
+    ZcashTheme(appearanceMode = AppearanceMode.DARK) {
         BlankSurface {
             SmallTopAppBar(
                 navigationAction = {
@@ -192,7 +193,7 @@ private fun TopAppBarLogoRestoringDarkComposablePreview() {
 @Preview
 @Composable
 private fun TopAppBarRegularMenuComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             SmallTopAppBar(
                 titleText = "Screen B",
@@ -210,7 +211,7 @@ private fun TopAppBarRegularMenuComposablePreview() {
 @Preview
 @Composable
 private fun TopAppBarOneVisibleActionMenuComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             SmallTopAppBar(
                 titleText = "Screen C",
@@ -234,7 +235,7 @@ private fun TopAppBarOneVisibleActionMenuComposablePreview() {
 @Preview
 @Composable
 private fun TopAppBarHamburgerMenuComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             SmallTopAppBar(
                 titleText = "Screen D",
@@ -258,7 +259,7 @@ private fun TopAppBarHamburgerMenuComposablePreview() {
 @Preview
 @Composable
 private fun TopAppBarHamburgerPlusActionComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             SmallTopAppBar(
                 titleText = "Screen E",

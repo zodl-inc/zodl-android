@@ -10,6 +10,9 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ### Added:
 
 - Coinholder Polling now shows a pull-to-refresh indicator on the poll list, so you can manually refresh it on demand.
+- App Theme setting in Settings, letting you choose System, Light, or Dark — with a bottom sheet to pick
+  Classic Dark or Pure Black (OLED) whenever a dark appearance applies.
+- The in-app browser now matches the app theme, including the Pure Black theme.
 
 ### Changed:
 

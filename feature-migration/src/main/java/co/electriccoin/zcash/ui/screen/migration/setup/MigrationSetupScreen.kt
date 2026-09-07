@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.migration.setup
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,8 +22,6 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -34,6 +33,8 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
@@ -49,6 +50,7 @@ import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.CircularScreenProgressIndicator
 import co.electriccoin.zcash.ui.design.component.ZashiButton
+import co.electriccoin.zcash.ui.design.component.ZashiRadioIndicator
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
@@ -307,14 +309,9 @@ private fun MigrationModeOption(
                 ).padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.Top,
     ) {
-        RadioButton(
-            selected = isSelected,
-            onClick = null,
-            colors =
-                RadioButtonDefaults.colors(
-                    selectedColor = if (isWarningSelected) warningRadio else ZashiColors.Text.textPrimary,
-                    unselectedColor = ZashiColors.Surfaces.strokePrimary,
-                ),
+        MigrationRadioIndicator(
+            isSelected = isSelected,
+            selectedColor = if (isWarningSelected) warningRadio else ZashiColors.Text.textPrimary,
         )
         Column(modifier = Modifier.padding(start = 12.dp)) {
             Text(
@@ -327,6 +324,51 @@ private fun MigrationModeOption(
                 text = subtitle,
                 style = ZashiTypography.textSm,
                 color = ZashiColors.Text.textTertiary,
+            )
+        }
+    }
+}
+
+private val MIGRATION_RADIO_SIZE = 20.dp
+
+private val MIGRATION_RADIO_STROKE_WIDTH = 2.dp
+
+private val MIGRATION_RADIO_DOT_SIZE = 12.dp
+
+@Composable
+private fun MigrationRadioIndicator(
+    isSelected: Boolean,
+    selectedColor: Color,
+) {
+    ZashiRadioIndicator(
+        isChecked = isSelected,
+        checkedContent = { MigrationRadioCircle(color = selectedColor, isSelected = true) },
+        uncheckedContent = { MigrationRadioCircle(color = ZashiColors.Surfaces.strokePrimary, isSelected = false) }
+    )
+}
+
+/**
+ * Replicates Material 3's own RadioButton canvas so the visuals stay identical: a 20dp ring with a 2dp
+ * stroke, plus a centered 12dp filled dot when selected - both rings share the same radius so
+ * [ZashiRadioIndicator]'s layering (unchecked always drawn, checked scaling in on top) covers cleanly.
+ */
+@Composable
+private fun MigrationRadioCircle(
+    color: Color,
+    isSelected: Boolean,
+) {
+    Canvas(modifier = Modifier.size(MIGRATION_RADIO_SIZE)) {
+        val strokeWidthPx = MIGRATION_RADIO_STROKE_WIDTH.toPx()
+        drawCircle(
+            color = color,
+            radius = size.minDimension / 2 - strokeWidthPx / 2,
+            style = Stroke(strokeWidthPx)
+        )
+        if (isSelected) {
+            drawCircle(
+                color = color,
+                radius = MIGRATION_RADIO_DOT_SIZE.toPx() / 2,
+                style = Fill
             )
         }
     }
