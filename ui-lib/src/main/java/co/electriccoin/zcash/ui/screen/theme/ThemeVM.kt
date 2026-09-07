@@ -36,6 +36,13 @@ internal class ThemeVM(
      * a throwing preference store falls back to [DEFAULT_THEME_APPEARANCE] instead of killing the coroutine,
      * and a store that simply never answers is given [THEME_READ_TIMEOUT] before the same fallback is
      * emitted. A genuine value arriving afterwards still replaces the fallback.
+     *
+     * That fallback has a sharp edge: once `.catch` emits [DEFAULT_THEME_APPEARANCE], the combined flow
+     * completes, so if only one of the two stores throws, the other store's still-healthy value is discarded
+     * for the rest of the session too, with no retry, instead of being kept on its own. This is accepted
+     * because this flow exists only to release the splash gate, not to serve as a durable source of truth,
+     * and `ThemeVMTest` pins it: a stored [AppearanceMode.DARK] alongside a throwing OLED store still
+     * resolves to [AppearanceMode.SYSTEM].
      */
     private val theme: StateFlow<ThemeAppearance?> =
         channelFlow {
