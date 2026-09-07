@@ -2,6 +2,8 @@ package co.electriccoin.zcash.ui.common.datasource
 
 import co.electriccoin.zcash.ui.common.model.SwapAssetTestFixture
 import co.electriccoin.zcash.ui.common.model.SwapMode
+import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchException
+import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
 import co.electriccoin.zcash.ui.common.model.near.ErrorDto
 import co.electriccoin.zcash.ui.common.model.near.NearTokenDto
 import co.electriccoin.zcash.ui.common.model.near.QuoteRequest
@@ -207,27 +209,36 @@ class NearSwapDataSourceTest {
         }
     }
 
+    /**
+     * The rejection carries the quote id from the raw response — the only place it exists when the
+     * quote itself never gets built.
+     */
     @Test
     fun requestQuoteRejectsSwapTypeMismatchFromServer() {
         runBlocking {
             val response =
                 mockk<QuoteResponseDto> {
                     every { quoteRequest } returns mockk { every { swapType } returns SwapType.EXACT_OUTPUT }
+                    every { quote } returns mockk { every { depositAddress } returns "deposit-address" }
                 }
             coEvery { nearApiProvider.requestQuote(any()) } returns response
 
-            assertFailsWith<IllegalArgumentException> {
-                dataSource.requestQuote(
-                    swapMode = SwapMode.EXACT_INPUT,
-                    amount = BigDecimal("1"),
-                    refundAddress = "refund",
-                    originAsset = origin,
-                    destinationAddress = "destination",
-                    destinationAsset = zec,
-                    slippage = BigDecimal("2"),
-                    affiliateAddress = "affiliate"
-                )
-            }
+            val exception =
+                assertFailsWith<SwapQuoteMismatchException> {
+                    dataSource.requestQuote(
+                        swapMode = SwapMode.EXACT_INPUT,
+                        amount = BigDecimal("1"),
+                        refundAddress = "refund",
+                        originAsset = origin,
+                        destinationAddress = "destination",
+                        destinationAsset = zec,
+                        slippage = BigDecimal("2"),
+                        affiliateAddress = "affiliate"
+                    )
+                }
+
+            assertEquals(SwapQuoteMismatchType.SWAP_TYPE, exception.type)
+            assertEquals("deposit-address", exception.depositAddress)
         }
     }
 

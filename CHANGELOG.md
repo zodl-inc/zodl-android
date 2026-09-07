@@ -27,6 +27,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   wallet was set up, instead of opening a home screen with no wallet behind it.
 - Opening the encrypted secret store is retried a few times before it is declared unreadable, and an unreadable store is set aside on the
   device instead of being deleted.
+- Swap quotes that fail the request-vs-response validation now show a dedicated "Swap details didn't match" sheet with a Report button that pre-fills a support email (MOB-1340).
 
 ## [3.10.1 (2512)] - 2026-08-25
 
