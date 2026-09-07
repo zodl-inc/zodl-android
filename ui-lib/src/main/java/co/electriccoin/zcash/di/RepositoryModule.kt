@@ -10,6 +10,7 @@ import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.ConfigurationRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.EphemeralAddressRepository
 import co.electriccoin.zcash.ui.common.repository.EphemeralAddressRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.EvaluationInterval
 import co.electriccoin.zcash.ui.common.repository.ExchangeRateRepository
 import co.electriccoin.zcash.ui.common.repository.ExchangeRateRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.FlexaRepository
@@ -18,6 +19,7 @@ import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepository
 import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.MINIMUM_EVALUATION_INTERVAL
 import co.electriccoin.zcash.ui.common.repository.MockOrchardBalanceRepository
 import co.electriccoin.zcash.ui.common.repository.MockOrchardBalanceRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
@@ -50,6 +52,7 @@ val repositoryModule =
         singleOf(::HomeMessageCacheRepositoryImpl) bind HomeMessageCacheRepository::class
         singleOf(::WalletSnapshotRepositoryImpl) bind WalletSnapshotRepository::class
         singleOf(::ApplicationStateRepositoryImpl) bind ApplicationStateRepository::class
+        single { EvaluationInterval(minimumInterval = MINIMUM_EVALUATION_INTERVAL) }
         singleOf(::AutomaticServerRepositoryImpl) bind AutomaticServerRepository::class
         singleOf(::SwapRepositoryImpl) bind SwapRepository::class
         singleOf(::EphemeralAddressRepositoryImpl) bind EphemeralAddressRepository::class
