@@ -2,8 +2,10 @@ package co.electriccoin.zcash.ui.common.repository
 
 import androidx.annotation.RestrictTo
 import androidx.annotation.VisibleForTesting
+import co.electriccoin.zcash.crash.android.GlobalCrashReporter
 import co.electriccoin.zcash.ui.common.datasource.AFFILIATE_ADDRESS
 import co.electriccoin.zcash.ui.common.datasource.AssetNotFoundException
+import co.electriccoin.zcash.ui.common.datasource.NEAR_SWAP_PROVIDER
 import co.electriccoin.zcash.ui.common.datasource.SwapDataSource
 import co.electriccoin.zcash.ui.common.datasource.SwapTransactionProposal
 import co.electriccoin.zcash.ui.common.model.SwapAsset
@@ -12,11 +14,15 @@ import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapQuote
+import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchException
+import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
 import co.electriccoin.zcash.ui.common.model.SwapQuoteStatus
 import co.electriccoin.zcash.ui.common.model.isZCashAsset
 import co.electriccoin.zcash.ui.common.model.near.requireMatchingAsset
 import co.electriccoin.zcash.ui.common.model.near.requireQuoteMatchesUserAmount
+import co.electriccoin.zcash.ui.common.model.swapQuoteMismatchSignal
 import io.ktor.client.plugins.ResponseException
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -86,6 +92,11 @@ sealed interface SwapQuoteData {
 
     data class Error(
         val mode: SwapMode,
+        /**
+         * The failure that ended the quote request. A [SwapQuoteMismatchException.Reported] carries the
+         * report context of a rejected quote and routes to the mismatch sheet; every other failure stays
+         * on the generic quote-error path.
+         */
         val exception: Exception
     ) : SwapQuoteData
 
@@ -216,10 +227,12 @@ class SwapRepositoryImpl(
         originAsset: SwapAsset,
         slippage: BigDecimal
     ) {
+        requestQuoteJob?.cancel()
         requestQuoteJob =
             scope.launch {
                 quote.update { SwapQuoteData.Loading }
                 val destinationAsset = assets.value.zecAsset ?: return@launch
+                var receivedQuote: SwapQuote? = null
                 try {
                     val result =
                         swapDataSource.requestQuote(
@@ -232,6 +245,7 @@ class SwapRepositoryImpl(
                             slippage = slippage,
                             affiliateAddress = AFFILIATE_ADDRESS
                         )
+                    receivedQuote = result
                     requireQuoteMatchesUserAmount(
                         quoted = result.amountInFormatted,
                         requested = amount,
@@ -239,26 +253,40 @@ class SwapRepositoryImpl(
                     )
                     requireSupportedSelectedAsset(
                         name = "originAsset",
+                        type = SwapQuoteMismatchType.ORIGIN_ASSET,
                         supportedAssets = assets.value.data,
                         selectedAsset = originAsset,
                         actual = result.originAsset
                     )
                     requireExpectedAsset(
                         name = "destinationAsset",
+                        type = SwapQuoteMismatchType.DESTINATION_ASSET,
                         expected = destinationAsset,
                         actual = result.destinationAsset
                     )
                     requireMatchingAddress(
                         name = "refundAddress",
+                        type = SwapQuoteMismatchType.REFUND_ADDRESS,
                         expected = refundAddress,
                         actual = result.refundAddress.address
                     )
                     requireMatchingAddress(
                         name = "destinationAddress",
+                        type = SwapQuoteMismatchType.RECIPIENT_ADDRESS,
                         expected = destinationAddress,
                         actual = result.destinationAddress.address
                     )
                     quote.update { SwapQuoteData.Success(quote = result) }
+                } catch (e: SwapQuoteMismatchException) {
+                    GlobalCrashReporter.reportCaughtException(swapQuoteMismatchSignal(e))
+                    quote.update {
+                        SwapQuoteData.Error(
+                            mode = FLEX_INPUT,
+                            exception = e.withQuoteReportContext(receivedQuote, originAsset, destinationAsset)
+                        )
+                    }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     quote.update { SwapQuoteData.Error(FLEX_INPUT, e) }
                 }
@@ -274,10 +302,12 @@ class SwapRepositoryImpl(
         destinationAsset: SwapAsset,
         slippage: BigDecimal
     ) {
+        requestQuoteJob?.cancel()
         requestQuoteJob =
             scope.launch {
                 quote.update { SwapQuoteData.Loading }
                 val originAsset = assets.value.zecAsset ?: return@launch
+                var receivedQuote: SwapQuote? = null
                 try {
                     val result =
                         swapDataSource.requestQuote(
@@ -290,6 +320,7 @@ class SwapRepositoryImpl(
                             slippage = slippage,
                             affiliateAddress = AFFILIATE_ADDRESS
                         )
+                    receivedQuote = result
                     when (mode) {
                         EXACT_INPUT,
                         FLEX_INPUT -> {
@@ -310,26 +341,40 @@ class SwapRepositoryImpl(
                     }
                     requireExpectedAsset(
                         name = "originAsset",
+                        type = SwapQuoteMismatchType.ORIGIN_ASSET,
                         expected = originAsset,
                         actual = result.originAsset
                     )
                     requireSupportedSelectedAsset(
                         name = "destinationAsset",
+                        type = SwapQuoteMismatchType.DESTINATION_ASSET,
                         supportedAssets = assets.value.data,
                         selectedAsset = destinationAsset,
                         actual = result.destinationAsset
                     )
                     requireMatchingAddress(
                         name = "destinationAddress",
+                        type = SwapQuoteMismatchType.RECIPIENT_ADDRESS,
                         expected = address,
                         actual = result.destinationAddress.address
                     )
                     requireMatchingAddress(
                         name = "refundAddress",
+                        type = SwapQuoteMismatchType.REFUND_ADDRESS,
                         expected = refundAddress,
                         actual = result.refundAddress.address
                     )
                     quote.update { SwapQuoteData.Success(quote = result) }
+                } catch (e: SwapQuoteMismatchException) {
+                    GlobalCrashReporter.reportCaughtException(swapQuoteMismatchSignal(e))
+                    quote.update {
+                        SwapQuoteData.Error(
+                            mode = mode,
+                            exception = e.withQuoteReportContext(receivedQuote, originAsset, destinationAsset)
+                        )
+                    }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     quote.update { SwapQuoteData.Error(mode, e) }
                 }
@@ -351,12 +396,14 @@ class SwapRepositoryImpl(
             )
         requireMatchingAsset(
             name = "origin",
+            type = SwapQuoteMismatchType.ORIGIN_ASSET,
             expectedTokenTicker = swapMetadata.origin.tokenTicker,
             expectedChainTicker = swapMetadata.origin.chainTicker,
             actual = result.originAsset
         )
         requireMatchingAsset(
             name = "destination",
+            type = SwapQuoteMismatchType.DESTINATION_ASSET,
             expectedTokenTicker = swapMetadata.destination.tokenTicker,
             expectedChainTicker = swapMetadata.destination.chainTicker,
             actual = result.destinationAsset
@@ -407,10 +454,16 @@ val DEFAULT_SLIPPAGE = BigDecimal("2")
  * ZEC asset — a cross-check that the right ZEC asset was used. The user-selected side is validated more
  * strictly by [requireSupportedSelectedAsset].
  */
-private fun requireExpectedAsset(name: String, expected: SwapAsset?, actual: SwapAsset) {
+private fun requireExpectedAsset(
+    name: String,
+    type: SwapQuoteMismatchType,
+    expected: SwapAsset?,
+    actual: SwapAsset
+) {
     if (expected == null) return
     requireMatchingAsset(
         name = name,
+        type = type,
         expectedTokenTicker = expected.tokenTicker,
         expectedChainTicker = expected.chainTicker,
         actual = actual
@@ -421,9 +474,13 @@ private fun requireExpectedAsset(name: String, expected: SwapAsset?, actual: Swa
  * Looks the user-selected asset up in the currently-supported assets by id (requiring it to still be
  * supported) and matches the quote against that canonical record — catching a stale/unknown selection
  * and a selection whose ticker/chain disagrees with the supported record.
+ *
+ * A selection missing from the loaded list is a client-side staleness, not a request-vs-response
+ * disagreement, so it stays a plain rejection; only the echo comparison reports a typed mismatch.
  */
 private fun requireSupportedSelectedAsset(
     name: String,
+    type: SwapQuoteMismatchType,
     supportedAssets: List<SwapAsset>?,
     selectedAsset: SwapAsset,
     actual: SwapAsset
@@ -434,14 +491,44 @@ private fun requireSupportedSelectedAsset(
     }
     requireMatchingAsset(
         name = name,
+        type = type,
         expectedTokenTicker = supported.tokenTicker,
         expectedChainTicker = supported.chainTicker,
         actual = actual
     )
 }
 
-private fun requireMatchingAddress(name: String, expected: String, actual: String) {
-    require(expected == actual) {
-        "Swap quote address mismatch: expected $name=$expected but quote returned $actual"
+private fun requireMatchingAddress(
+    name: String,
+    type: SwapQuoteMismatchType,
+    expected: String,
+    actual: String
+) {
+    if (expected != actual) {
+        throw SwapQuoteMismatchException.Rejected(
+            type = type,
+            message = "Swap quote address mismatch: expected $name=$expected but quote returned $actual"
+        )
     }
 }
+
+/**
+ * The same rejection in its reported form, carrying what the mismatch report needs — the quote id support
+ * can hand the swap provider, the provider itself and both assets of the request — attached as a new
+ * immutable rejection, leaving the thrown one untouched. This is the only place a
+ * [SwapQuoteMismatchException.Reported] is built, so every rejection the mismatch sheet sees has all
+ * three non-null. The quote only exists once the data source returned it, and whatever the data source
+ * already resolved wins; a rejection that never saw a quote is reported against the only provider the app
+ * swaps with.
+ */
+private fun SwapQuoteMismatchException.withQuoteReportContext(
+    receivedQuote: SwapQuote?,
+    originAsset: SwapAsset,
+    destinationAsset: SwapAsset
+): SwapQuoteMismatchException.Reported =
+    withReportContext(
+        depositAddress = depositAddress ?: receivedQuote?.depositAddress?.address,
+        provider = provider ?: receivedQuote?.provider ?: NEAR_SWAP_PROVIDER,
+        originAsset = originAsset,
+        destinationAsset = destinationAsset
+    )

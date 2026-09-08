@@ -18,6 +18,7 @@ import co.electriccoin.zcash.ui.screen.exchangerate.settings.ExchangeRateSetting
 import co.electriccoin.zcash.ui.screen.feedback.FeedbackArgs
 import co.electriccoin.zcash.ui.screen.hotfix.enhancement.EnhancementHotfixArgs
 import co.electriccoin.zcash.ui.screen.hotfix.ephemeral.EphemeralHotfixArgs
+import co.electriccoin.zcash.ui.screen.theme.settings.ThemeSettingsArgs
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -54,6 +55,11 @@ class MoreVM(
                         onClick = ::onVotingClick
                     ).takeIf { votingSettingsEntry.isEnabled },
                     ListItemState(
+                        title = stringRes(R.string.settings_theme),
+                        bigIcon = imageRes(R.drawable.ic_settings_theme),
+                        onClick = ::onThemeClick
+                    ),
+                    ListItemState(
                         title = stringRes(R.string.settings_advanced),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings),
                         onClick = ::onAdvancedSettingsClick
@@ -89,6 +95,8 @@ class MoreVM(
     private fun onVotingClick() = viewModelScope.launch { navigateToVoting() }
 
     private fun onAdvancedSettingsClick() = navigationRouter.forward(AdvancedSettingsArgs)
+
+    private fun onThemeClick() = navigationRouter.forward(ThemeSettingsArgs)
 
     private fun onAboutUsClick() = navigationRouter.forward(AboutArgs)
 

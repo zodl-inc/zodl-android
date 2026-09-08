@@ -5,7 +5,10 @@ import android.app.Activity
 import androidx.navigation.NavHostController
 import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.serialization.generateHashCode
+import co.electriccoin.zcash.ui.common.provider.AppearanceModeStorageProvider
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
+import co.electriccoin.zcash.ui.common.provider.IsOledEnabledStorageProvider
+import co.electriccoin.zcash.ui.common.provider.getOrSystem
 import co.electriccoin.zcash.ui.design.KeyboardManager
 import co.electriccoin.zcash.ui.screen.ExternalUrl
 import co.electriccoin.zcash.ui.screen.about.util.WebBrowserUtil
@@ -27,6 +30,8 @@ class NavigatorImpl(
     private val flexaViewModel: FlexaViewModel,
     private val keyboardManager: KeyboardManager,
     private val applicationStateProvider: ApplicationStateProvider,
+    private val appearanceModeStorageProvider: AppearanceModeStorageProvider,
+    private val isOledEnabledStorageProvider: IsOledEnabledStorageProvider,
 ) : Navigator {
     override suspend fun executeCommand(command: NavigationCommand) {
         keyboardManager.close()
@@ -67,7 +72,7 @@ class NavigatorImpl(
         }
     }
 
-    private fun replaceAll(command: NavigationCommand.ReplaceAll) {
+    private suspend fun replaceAll(command: NavigationCommand.ReplaceAll) {
         command.routes.forEachIndexed { index, route ->
             when (route) {
                 co.electriccoin.zcash.ui.screen.flexa.Flexa -> {
@@ -102,7 +107,7 @@ class NavigatorImpl(
                     }
 
                     applicationStateProvider.onThirdPartyUiShown()
-                    WebBrowserUtil.startActivity(activity, route.url)
+                    startWebBrowser(route)
                 }
 
                 else -> {
@@ -120,7 +125,7 @@ class NavigatorImpl(
         }
     }
 
-    private fun replace(command: NavigationCommand.Replace) {
+    private suspend fun replace(command: NavigationCommand.Replace) {
         command.routes.forEachIndexed { index, route ->
             when (route) {
                 co.electriccoin.zcash.ui.screen.flexa.Flexa -> {
@@ -145,7 +150,7 @@ class NavigatorImpl(
                     }
 
                     applicationStateProvider.onThirdPartyUiShown()
-                    WebBrowserUtil.startActivity(activity, route.url)
+                    startWebBrowser(route)
                 }
 
                 else -> {
@@ -161,11 +166,11 @@ class NavigatorImpl(
         }
     }
 
-    private fun forward(command: NavigationCommand.Forward) {
+    private suspend fun forward(command: NavigationCommand.Forward) {
         command.routes.forEach { route ->
             when (route) {
                 co.electriccoin.zcash.ui.screen.flexa.Flexa -> createFlexaFlow(flexaViewModel)
-                is ExternalUrl -> WebBrowserUtil.startActivity(activity, route.url)
+                is ExternalUrl -> startWebBrowser(route)
                 else -> navController.executeNavigation(route = route)
             }
         }
@@ -173,6 +178,15 @@ class NavigatorImpl(
         if (command.routes.lastOrNull() in listOf(ExternalUrl, co.electriccoin.zcash.ui.screen.flexa.Flexa)) {
             applicationStateProvider.onThirdPartyUiShown()
         }
+    }
+
+    private suspend fun startWebBrowser(route: ExternalUrl) {
+        WebBrowserUtil.startActivity(
+            activity = activity,
+            url = route.url,
+            appearanceMode = appearanceModeStorageProvider.getOrSystem(),
+            isOledEnabled = isOledEnabledStorageProvider.get() == true
+        )
     }
 
     private fun NavHostController.executeNavigation(

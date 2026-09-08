@@ -8,7 +8,9 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import co.electriccoin.zcash.ui.common.compose.LocalActivity
 import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
+import co.electriccoin.zcash.ui.common.provider.AppearanceModeStorageProvider
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
+import co.electriccoin.zcash.ui.common.provider.IsOledEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.viewmodel.SecretState
 import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
 import co.electriccoin.zcash.ui.design.LocalKeyboardManager
@@ -33,6 +35,8 @@ fun RootNavGraph(
     val flexaViewModel = koinViewModel<FlexaViewModel>()
     val navigationRouter = koinInject<NavigationRouter>()
     val applicationStateProvider = koinInject<ApplicationStateProvider>()
+    val appearanceModeStorageProvider = koinInject<AppearanceModeStorageProvider>()
+    val isOledEnabledStorageProvider = koinInject<IsOledEnabledStorageProvider>()
     val migrationAppHooks = koinInject<MigrationAppHooks>()
     val navController = LocalNavController.current
     val activity = LocalActivity.current
@@ -42,14 +46,18 @@ fun RootNavGraph(
             navController,
             flexaViewModel,
             keyboardManager,
-            applicationStateProvider
+            applicationStateProvider,
+            appearanceModeStorageProvider,
+            isOledEnabledStorageProvider
         ) {
             NavigatorImpl(
                 activity = activity,
                 navController = navController,
                 flexaViewModel = flexaViewModel,
                 keyboardManager = keyboardManager,
-                applicationStateProvider = applicationStateProvider
+                applicationStateProvider = applicationStateProvider,
+                appearanceModeStorageProvider = appearanceModeStorageProvider,
+                isOledEnabledStorageProvider = isOledEnabledStorageProvider
             )
         }
 

@@ -24,6 +24,7 @@ import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.screen.insufficientfunds.InsufficientFundsArgs
+import co.electriccoin.zcash.ui.screen.swap.mismatch.toMismatchArgs
 import co.electriccoin.zcash.ui.screen.swap.quote.SwapQuoteArgs
 import co.electriccoin.zcash.ui.screen.texunsupported.TEXUnsupportedArgs
 import kotlinx.coroutines.Dispatchers
@@ -53,7 +54,7 @@ class RequestSwapQuoteUseCase(
                 swapRepository.requestExactInputQuote(
                     amount = amount,
                     address = address,
-                    refundAddress = newAddress.address,
+                    refundAddress = newAddress,
                     destinationAsset = selectedAsset,
                     slippage = slippage
                 )
@@ -76,7 +77,7 @@ class RequestSwapQuoteUseCase(
                 swapRepository.requestExactOutputQuote(
                     amount = amount,
                     address = address,
-                    refundAddress = newAddress.address,
+                    refundAddress = newAddress,
                     destinationAsset = selectedAsset,
                     slippage = slippage
                 )
@@ -100,7 +101,7 @@ class RequestSwapQuoteUseCase(
                     .requestFlexInputIntoZec(
                         amount = amount,
                         refundAddress = refundAddress,
-                        destinationAddress = newAddress.address,
+                        destinationAddress = newAddress,
                         originAsset = selectedAsset,
                         slippage = slippage
                     )
@@ -119,6 +120,15 @@ class RequestSwapQuoteUseCase(
         requestQuote()
 
         val result = swapRepository.quote.first { it !in listOf(null, SwapQuoteData.Loading) }
+
+        val mismatchArgs = (result as? SwapQuoteData.Error)?.toMismatchArgs()
+        if (mismatchArgs != null) {
+            if (canNavigateToSwapQuote()) {
+                swapRepository.clearQuote()
+                navigationRouter.forward(mismatchArgs)
+            }
+            return@withContext
+        }
 
         if (result is SwapQuoteData.Success && createProposal) {
             try {

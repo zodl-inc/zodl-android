@@ -14,7 +14,7 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 @Preview("Column with blank background")
 @Composable
 private fun BlankBgColumnComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankBgColumn {
             Text(text = "Blank background column")
         }

@@ -14,6 +14,22 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.11.0 (2653)] - 2026-09-08
+
+### Añadido:
+
+- Agregamos una opción de Tema de la App, con un tema oscuro negro puro para pantallas OLED.
+
+### Cambiado:
+
+- Hicimos que el cambio automático de servidor sea más estable y confiable.
+- Realizamos varias mejoras de seguridad y privacidad.
+
+### Corregido:
+
+- Corregimos un problema por el cual la app podía indicar saldo insuficiente aunque tuvieras fondos.
+- Corregimos un problema por el cual la app podía quedarse cargando tras actualizar desde una versión antigua.
+
 ## [3.10.2 (2569)] - 2026-08-27
 
 ### Añadido:

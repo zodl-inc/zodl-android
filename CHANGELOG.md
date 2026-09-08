@@ -7,6 +7,29 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [3.11.0 (2653)] - 2026-09-08
+
+### Added:
+
+- App Theme setting in Settings, letting you choose System, Light, or Dark — with a bottom sheet to pick
+  Classic Dark or Pure Black (OLED) whenever a dark appearance applies.
+- The in-app browser now matches the app theme, including the Pure Black theme.
+
+### Changed:
+
+- Automatic server selection now switches only to a server that is meaningfully faster than the one you're on (at least 200 ms and 25 % faster), or when the current server fails its health check twice in a row, so the wallet no longer flips between near-equal or briefly slow servers. A switch is never followed by another within thirty minutes, and the servers are re-checked at most once every ten minutes instead of on every return to the app.
+
+### Fixed:
+
+- Support/error reports for a failed transaction no longer claim a fake `gRPC: false, code: -1` status when the failure actually happened before submission (e.g. a Sapling parameter download failure); such reports now correctly identify the real exception instead.
+- Opening Send immediately after a cold start no longer falls back to a loading screen while automatic server selection reconnects the wallet. The automatic winner waits for the local balance snapshot, which remains visible while the new server connection settles.
+- Fixed a crash loop some wallets hit at startup when the SDK reported the stored seed as no longer relevant to its database. The app now recovers automatically by clearing the mismatched local data and rescanning, instead of crashing repeatedly.
+- The app returns to onboarding so you can restore from your recovery phrase when its secret store is found empty while it still believes a
+  wallet was set up, instead of opening a home screen with no wallet behind it.
+- Opening the encrypted secret store is retried a few times before it is declared unreadable, and an unreadable store is set aside on the
+  device instead of being deleted.
+- Swap quotes that fail the request-vs-response validation now show a dedicated "Swap details didn't match" sheet with a Report button that pre-fills a support email (MOB-1340).
+
 ## [3.10.2 (2569)] - 2026-08-27
 
 ### Added:

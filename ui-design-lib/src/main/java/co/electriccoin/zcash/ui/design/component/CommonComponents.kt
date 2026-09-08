@@ -13,12 +13,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import co.electriccoin.zcash.ui.design.R
+import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 
 @Preview
 @Composable
 private fun TopScreenLogoRegularComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             TopScreenLogoTitle(
                 title = "Test screen title",
@@ -31,7 +32,7 @@ private fun TopScreenLogoRegularComposablePreview() {
 @Preview
 @Composable
 private fun TopScreenLogoRegularDarkComposablePreview() {
-    ZcashTheme(forceDarkMode = true) {
+    ZcashTheme(appearanceMode = AppearanceMode.DARK) {
         BlankSurface {
             TopScreenLogoTitle(
                 title = "Test screen title",
@@ -44,7 +45,7 @@ private fun TopScreenLogoRegularDarkComposablePreview() {
 @Preview
 @Composable
 private fun TopScreenLogoLongComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             TopScreenLogoTitle(
                 title = "Test screen title which is very very long and can overflow the allowed title length",

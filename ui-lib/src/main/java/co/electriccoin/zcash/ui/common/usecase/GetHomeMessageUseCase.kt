@@ -102,17 +102,18 @@ class GetHomeMessageUseCase(
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeShieldFundsMessage() =
         accountDataSource.selectedAccount.flatMapLatest { account ->
+            val transparentBalance = account?.transparentBalance
             when {
-                account == null -> {
+                account == null || transparentBalance == null -> {
                     flowOf(null)
                 }
 
-                account.isShieldingAvailable -> {
+                account.isShieldingAvailable == true -> {
                     messageAvailabilityDataSource.canShowShieldMessage
                         .map { canShowShieldMessage ->
                             when {
                                 !canShowShieldMessage -> null
-                                else -> HomeMessageData.ShieldFunds(account.transparent.balance)
+                                else -> HomeMessageData.ShieldFunds(transparentBalance)
                             }
                         }
                 }

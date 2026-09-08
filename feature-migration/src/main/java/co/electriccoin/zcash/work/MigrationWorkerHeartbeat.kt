@@ -5,7 +5,7 @@ import androidx.core.content.edit
 
 /**
  * Two plain-SharedPreferences timestamps forming the worker's dead-man's switch (design with
- * Dominik, 2026-07-30 late evening): [stampScheduled] records when the NEXT worker run is
+ * the product owner, 2026-07-30 late evening): [stampScheduled] records when the NEXT worker run is
  * expected (written by [MigrationScheduler.schedule]); [stampRun] records when a worker run
  * actually STARTED. [MigrationTransferDueReceiver]'s alarm fires a late-margin after the expected
  * time and compares the two — a worker that ran clears the check; one the OS silently killed or
