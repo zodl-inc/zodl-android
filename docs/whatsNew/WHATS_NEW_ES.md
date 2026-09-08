@@ -14,6 +14,21 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.10.2 (2569)] - 2026-08-27
+
+### Añadido:
+
+- Añadimos actualización manual (pull-to-refresh) en Coinholder Polling.
+
+### Cambiado:
+
+- Coinholder Polling es más rápido y fiable en Tor: las votaciones cargan más rápido y el envío de tu voto ya no se bloquea con un servidor lento.
+- Coinholder Polling resiste mejor las interrupciones del servicio gracias a fuentes de respaldo.
+
+### Corregido:
+
+- Corregimos bloqueos indefinidos en Coinholder Polling cuando un servidor de votación no estaba disponible.
+
 ## [3.10.1 (2512)] - 2026-08-25
 
 ### Añadido:
