@@ -14,6 +14,22 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.11.0 (2653)] - 2026-09-08
+
+### Added:
+
+- We added an App Theme setting, including a pure black dark theme for OLED screens.
+
+### Changed:
+
+- We made automatic server switching steadier and more reliable.
+- We made a range of security and privacy improvements.
+
+### Fixed:
+
+- We fixed an issue where you could be told you had insufficient funds when you had enough.
+- We fixed an issue where the app could stay stuck loading after updating from an older version.
+
 ## [3.10.2 (2569)] - 2026-08-27
 
 ### Added:
