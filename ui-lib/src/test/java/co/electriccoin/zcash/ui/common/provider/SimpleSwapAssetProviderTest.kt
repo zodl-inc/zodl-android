@@ -54,7 +54,9 @@ class SimpleSwapAssetProviderTest {
     fun inclusionListExcludesAssetNotInAllowList() {
         val result = provider.getCuratedSwapAssets()
 
-        assertTrue(result.none { it.isSame("DOGE", "doge") })
+        // SHIB@eth is offered by 1Click but deliberately not curated. (This used to assert on DOGE@doge,
+        // which is curated as of the ADA/ALEO/GRAM/DOGE/POL/EURe/GNO addition.)
+        assertTrue(result.none { it.isSame("SHIB", "eth") })
     }
 
     @Test
@@ -80,6 +82,15 @@ class SimpleSwapAssetProviderTest {
             "BCH" to "bch",
             "ZEC" to "sol",
             "ZEC" to "near",
+            "ADA" to "cardano",
+            "ALEO" to "aleo",
+            "USDCx" to "aleo",
+            "GRAM" to "ton",
+            "DOGE" to "doge",
+            "POL" to "pol",
+            "USDC" to "pol",
+            "EURe" to "gnosis",
+            "GNO" to "gnosis",
         ).forEach { (symbol, blockchain) ->
             assertTrue(result.any { it.isSame(symbol, blockchain) }, "$symbol@$blockchain should be included")
         }

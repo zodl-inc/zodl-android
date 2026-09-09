@@ -50,6 +50,17 @@ class SimpleSwapAssetProviderImpl(
             "BCH" to "bch",
             "ZEC" to "sol",
             "ZEC" to "near",
+            "ADA" to "cardano",
+            "ALEO" to "aleo",
+            "USDCx" to "aleo",
+            // GRAM is the TON chain's native coin, renamed from Toncoin to Gram: the HOT Omni asset id
+            // nep245:v2_1.omni.hot.tg:1117_ has an empty contract suffix (i.e. native, not a jetton),
+            // 9 decimals, and coingeckoId "the-open-network".
+            "GRAM" to "ton",
+            "DOGE" to "doge",
+            "POL" to "pol",
+            "EURe" to "gnosis",
+            "GNO" to "gnosis",
         )
 
     // Built once: the curated set is static, but getCuratedSwapAssets() is called on every
