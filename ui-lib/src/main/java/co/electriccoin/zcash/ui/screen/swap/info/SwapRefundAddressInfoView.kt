@@ -25,7 +25,7 @@ fun SwapRefundAddressInfoView(state: SwapRefundAddressInfoState?) {
         onBack = state.onBack,
         primaryButton =
             ButtonState(
-                text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_ok),
+                text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_dismiss),
                 onClick = state.onBack,
             ),
     ) {
