@@ -1,10 +1,7 @@
 package co.electriccoin.zcash.ui.screen.support.model
 
 import co.electriccoin.zcash.configuration.AndroidConfigurationFactory
-import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
 import co.electriccoin.zcash.ui.test.getAppContext
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import kotlin.test.assertFalse
@@ -152,17 +149,5 @@ private suspend fun newSupportInfo(isTorEnabled: Boolean? = true) =
     SupportInfo.new(
         getAppContext(),
         AndroidConfigurationFactory.new(),
-        FakeIsTorEnabledStorageProvider(isTorEnabled)
+        isTorEnabled
     )
-
-private class FakeIsTorEnabledStorageProvider(
-    private val value: Boolean?
-) : IsTorEnabledStorageProvider {
-    override suspend fun get(): Boolean? = value
-
-    override suspend fun store(amount: Boolean) = Unit
-
-    override fun observe(): Flow<Boolean?> = flowOf(value)
-
-    override suspend fun clear() = Unit
-}

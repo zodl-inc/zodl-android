@@ -24,6 +24,7 @@ class SupportViewModel(
     // care about is capturing a snapshot of the app, OS, and device state.
     val supportInfo: StateFlow<SupportInfo?> =
         flow<SupportInfo?> {
-            emit(SupportInfo.new(application, androidConfigurationProvider, isTorEnabledStorageProvider))
+            val isTorEnabled = isTorEnabledStorageProvider.get()
+            emit(SupportInfo.new(application, androidConfigurationProvider, isTorEnabled))
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT, Duration.ZERO), null)
 }

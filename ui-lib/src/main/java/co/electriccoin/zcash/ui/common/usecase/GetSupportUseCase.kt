@@ -11,5 +11,5 @@ class GetSupportUseCase(
     private val isTorEnabledStorageProvider: IsTorEnabledStorageProvider
 ) {
     suspend operator fun invoke() =
-        SupportInfo.new(context, androidConfigurationProvider, isTorEnabledStorageProvider)
+        SupportInfo.new(context, androidConfigurationProvider, isTorEnabledStorageProvider.get())
 }

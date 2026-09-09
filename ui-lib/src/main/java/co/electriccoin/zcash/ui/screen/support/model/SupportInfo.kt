@@ -3,7 +3,6 @@ package co.electriccoin.zcash.ui.screen.support.model
 import android.content.Context
 import co.electriccoin.zcash.configuration.api.ConfigurationProvider
 import co.electriccoin.zcash.spackle.getPackageInfoCompatSuspend
-import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
 import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.toPersistentList
 
@@ -73,7 +72,7 @@ data class SupportInfo(
         suspend fun new(
             context: Context,
             androidConfigurationProvider: ConfigurationProvider,
-            isTorEnabledStorageProvider: IsTorEnabledStorageProvider
+            isTorEnabled: Boolean?
         ): SupportInfo {
             val applicationContext = context.applicationContext
             val packageInfo = applicationContext.packageManager.getPackageInfoCompatSuspend(context.packageName, 0L)
@@ -85,7 +84,7 @@ data class SupportInfo(
                 OperatingSystemInfo.new(),
                 DeviceInfo.new(),
                 EnvironmentInfo.new(applicationContext),
-                TorInfo.new(isTorEnabledStorageProvider),
+                TorInfo(isTorEnabled),
                 PermissionInfo.all(applicationContext).toPersistentList(),
                 CrashInfo.all(context).toPersistentList()
             )
