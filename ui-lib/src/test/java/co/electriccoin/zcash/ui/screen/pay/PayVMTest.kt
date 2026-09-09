@@ -4,6 +4,7 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapAssetTestFixture
 import co.electriccoin.zcash.ui.common.model.SwapMode
+import co.electriccoin.zcash.ui.common.model.SwapProvider
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
@@ -285,7 +286,7 @@ class PayVMTest {
 
             harness.onSwapAssetPickerClick()
 
-            coVerify { harness.navigateToSwapAssetPicker(onlyChainTicker = "eth") }
+            coVerify { harness.navigateToSwapAssetPicker(onlyChainTicker = "eth", provider = SwapProvider.NEAR) }
         }
 
     // endregion
@@ -309,7 +310,7 @@ class PayVMTest {
             }
         val navigateToSwapAssetPicker =
             mockk<NavigateToSwapAssetPickerUseCase> {
-                coEvery { this@mockk.invoke(any()) } returns assetResult
+                coEvery { this@mockk.invoke(any(), any()) } returns assetResult
             }
         val navigateToSelectSwapRecipient =
             mockk<NavigateToSelectABSwapRecipientUseCase> { coEvery { this@mockk.invoke() } returns recipient }

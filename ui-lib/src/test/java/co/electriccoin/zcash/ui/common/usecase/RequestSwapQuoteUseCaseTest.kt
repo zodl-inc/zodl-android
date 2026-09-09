@@ -374,9 +374,9 @@ class RequestSwapQuoteUseCaseTest {
         verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
     }
 
-    private fun zashi(): WalletAccount = mockk<ZashiAccount>()
+    private fun zashi(): WalletAccount = mockk<ZashiAccount> { every { transparentAddress } returns "deposit" }
 
-    private fun keystone(): WalletAccount = mockk<KeystoneAccount>()
+    private fun keystone(): WalletAccount = mockk<KeystoneAccount> { every { transparentAddress } returns "deposit" }
 
     private suspend fun RequestSwapQuoteUseCase.exactInput(selectedAsset: SwapAsset = btc) =
         requestExactInput(
@@ -418,10 +418,8 @@ class RequestSwapQuoteUseCaseTest {
         every { swapRepository.assets } returns
             MutableStateFlow(SwapAssetsData(data = listOf(btc), zecAsset = zec))
 
-        val shieldedAddress = "deposit"
         val synchronizer = mockk<Synchronizer> { coEvery { validateAddress(any()) } returns AddressType.Unified }
         val synchronizerProvider = mockk<SynchronizerProvider> { coEvery { getSynchronizer() } returns synchronizer }
-        coEvery { accountDataSource.requestNextShieldedAddress() } returns shieldedAddress
         coEvery { accountDataSource.getSelectedAccount() } returns selectedAccount
         return RequestSwapQuoteUseCase(
             navigationRouter = navigationRouter,

@@ -1,5 +1,7 @@
 package co.electriccoin.zcash.di
 
+import co.electriccoin.zcash.ui.common.datasource.SwapDataSource
+import co.electriccoin.zcash.ui.common.model.SwapProvider
 import co.electriccoin.zcash.ui.common.repository.ApplicationStateRepository
 import co.electriccoin.zcash.ui.common.repository.ApplicationStateRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
@@ -22,6 +24,8 @@ import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.MINIMUM_EVALUATION_INTERVAL
 import co.electriccoin.zcash.ui.common.repository.MockOrchardBalanceRepository
 import co.electriccoin.zcash.ui.common.repository.MockOrchardBalanceRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.SwapAggregatorRepository
+import co.electriccoin.zcash.ui.common.repository.SwapAggregatorRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.TransactionFilterRepository
@@ -35,6 +39,7 @@ import co.electriccoin.zcash.ui.common.repository.WalletSnapshotRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepositoryImpl
 import org.koin.core.module.dsl.singleOf
+import org.koin.core.qualifier.named
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
@@ -54,7 +59,21 @@ val repositoryModule =
         singleOf(::ApplicationStateRepositoryImpl) bind ApplicationStateRepository::class
         single { EvaluationInterval(minimumInterval = MINIMUM_EVALUATION_INTERVAL) }
         singleOf(::AutomaticServerRepositoryImpl) bind AutomaticServerRepository::class
-        singleOf(::SwapRepositoryImpl) bind SwapRepository::class
+        single<SwapRepository> { get<SwapAggregatorRepository>() }
+        single<SwapRepository>(named(SwapProvider.NEAR)) {
+            SwapRepositoryImpl(get<SwapDataSource>(named(SwapProvider.NEAR)))
+        }
+        single<SwapRepository>(named(SwapProvider.MAYA)) {
+            SwapRepositoryImpl(get<SwapDataSource>(named(SwapProvider.MAYA)))
+        }
+        single<SwapAggregatorRepository> {
+            SwapAggregatorRepositoryImpl(
+                mapOf(
+                    SwapProvider.NEAR to get<SwapRepository>(named(SwapProvider.NEAR)),
+                    SwapProvider.MAYA to get<SwapRepository>(named(SwapProvider.MAYA)),
+                )
+            )
+        }
         singleOf(::EphemeralAddressRepositoryImpl) bind EphemeralAddressRepository::class
         singleOf(::MockOrchardBalanceRepositoryImpl) bind MockOrchardBalanceRepository::class
     }

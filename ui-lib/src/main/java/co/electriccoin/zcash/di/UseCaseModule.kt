@@ -1,6 +1,8 @@
 package co.electriccoin.zcash.di
 
 import co.electriccoin.zcash.ui.common.mapper.SwapSupportMapper
+import co.electriccoin.zcash.ui.common.model.SwapProvider
+import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.usecase.ApplyTransactionFiltersUseCase
 import co.electriccoin.zcash.ui.common.usecase.ApplyTransactionFulltextFiltersUseCase
 import co.electriccoin.zcash.ui.common.usecase.CancelProposalFlowUseCase
@@ -151,6 +153,7 @@ import co.electriccoin.zcash.ui.screen.deletewallet.ResetZashiUseCase
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
+import org.koin.core.qualifier.named
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
@@ -257,8 +260,6 @@ val useCaseModule =
         factoryOf(::OptInExchangeRateAndTorUseCase)
         factoryOf(::SetAppearanceModeUseCase)
         factoryOf(::NavigateToSwapUseCase)
-        factoryOf(::CancelSwapUseCase)
-        factoryOf(::GetCuratedSwapAssetsUseCase)
         factoryOf(::EnsureSwapAssetsLoadedUseCase)
         factoryOf(::FilterSwapAssetsUseCase)
         factoryOf(::FilterSwapBlockchainsUseCase)
@@ -266,9 +267,7 @@ val useCaseModule =
         factoryOf(::GetTotalSpendableBalanceUseCase)
         factoryOf(::GetBalancePoolsUseCase)
         factoryOf(::IsABContactHintVisibleUseCase)
-        factoryOf(::RequestSwapQuoteUseCase)
         factoryOf(::CancelSwapQuoteUseCase)
-        factoryOf(::NavigateToSwapQuoteIfAvailableUseCase)
         singleOf(::NavigateToScanGenericAddressUseCase)
         singleOf(::NavigateToSelectABSwapRecipientUseCase)
         singleOf(::NavigateToSelectSwapBlockchainUseCase)
@@ -277,7 +276,39 @@ val useCaseModule =
         singleOf(::NavigateToSelectFiatCurrencyUseCase)
         factoryOf(::ConfirmResyncUseCase)
         factoryOf(::ValidateSwapABContactAddressUseCase)
-        factoryOf(::NavigateToNearPayUseCase)
+        factory {
+            NavigateToNearPayUseCase(swapRepository = get(named(SwapProvider.NEAR)), navigationRouter = get())
+        }
+        factory { (swapRepository: SwapRepository) ->
+            GetCuratedSwapAssetsUseCase(swapRepository = swapRepository, simpleSwapAssetProvider = get())
+        }
+        factory { (swapRepository: SwapRepository) ->
+            CancelSwapUseCase(swapRepository = swapRepository, navigationRouter = get())
+        }
+        factory { (swapRepository: SwapRepository) ->
+            NavigateToSwapQuoteIfAvailableUseCase(
+                swapRepository = swapRepository,
+                navigationRouter = get()
+            )
+        }
+        factory { (swapRepository: SwapRepository) ->
+            GetPreselectedSwapAssetUseCase(
+                swapRepository = swapRepository,
+                metadataRepository = get(),
+                simpleSwapAssetProvider = get()
+            )
+        }
+        factory { (swapRepository: SwapRepository) ->
+            RequestSwapQuoteUseCase(
+                navigationRouter = get(),
+                navigateToErrorUseCase = get(),
+                swapRepository = swapRepository,
+                zashiProposalRepository = get(),
+                keystoneProposalRepository = get(),
+                accountDataSource = get(),
+                synchronizerProvider = get()
+            )
+        }
         factoryOf(::SaveORSwapUseCase)
         factoryOf(::GetReloadableSwapQuoteUseCase)
         factoryOf(::ShareQRUseCase)
@@ -295,7 +326,6 @@ val useCaseModule =
         singleOf(::SubmitIncreaseEphemeralGapLimitUseCase)
         factoryOf(::CreateIncreaseEphemeralGapLimitProposalUseCase)
         factoryOf(::ResetZashiUseCase)
-        factoryOf(::GetPreselectedSwapAssetUseCase)
         singleOf(::RecoverFromSeedMismatchUseCase)
         factoryOf(::ObserveSeedMismatchUseCase)
         factoryOf(::GetSwapStatusUseCase)

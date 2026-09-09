@@ -6,10 +6,14 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT
+import co.electriccoin.zcash.ui.common.model.SwapProvider
+import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.model.isZCashAsset
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.SwapTokenAmountState
+import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByAddress
 import co.electriccoin.zcash.ui.design.util.stringResByDynamicCurrencyNumber
@@ -26,9 +30,11 @@ internal class SwapQuoteVMMapper {
     @Suppress("UseCheckOrError")
     fun createState(
         state: SwapQuoteInternalState,
+        successQuotes: List<SwapQuote>,
         onBack: () -> Unit,
         onSubmitQuoteClick: () -> Unit,
-        onNavigateToOnRampSwap: () -> Unit
+        onNavigateToOnRampSwap: () -> Unit,
+        onSelectProvider: (SwapProvider) -> Unit,
     ): SwapQuoteState.Success =
         with(state) {
             return SwapQuoteState.Success(
@@ -39,11 +45,13 @@ internal class SwapQuoteVMMapper {
                         quote.mode == EXACT_OUTPUT -> stringRes(R.string.swapAndPay_payNow)
                         else -> throw IllegalStateException("Unknown swap mode")
                     },
+                providerIcon = quote.provider.providerIcon(),
                 rotateIcon = quote.mode == EXACT_OUTPUT,
                 from = createFromState(),
                 to = createToState(),
                 items = createItems(),
                 amount = createTotalAmountState(),
+                comparison = createComparison(successQuotes, quote.provider, onSelectProvider),
                 onBack = onBack,
                 infoText = createInfoText(),
                 primaryButton =
@@ -160,4 +168,40 @@ internal class SwapQuoteVMMapper {
             token = stringRes(quote.destinationAsset.tokenTicker),
             chain = quote.destinationAsset.chainName
         )
+
+    /** Comparison rows, one per provider that returned a quote. Null (or a single quote) → no tabs. */
+    private fun createComparison(
+        quotes: List<SwapQuote>,
+        selectedProvider: SwapProvider,
+        onSelectProvider: (SwapProvider) -> Unit
+    ): List<SwapProviderQuoteState>? {
+        if (quotes.size < 2) return null
+        return quotes.map { quote ->
+            SwapProviderQuoteState(
+                provider = quote.provider,
+                icon = quote.provider.providerIcon(),
+                name = quote.provider.displayName(),
+                amount =
+                    stringResByDynamicCurrencyNumber(
+                        quote.amountOutFormatted.setScale(quote.destinationAsset.decimals, RoundingMode.DOWN),
+                        quote.destinationAsset.tokenTicker
+                    ),
+                fiatAmount = stringResByDynamicCurrencyNumber(quote.amountOutUsd, FiatCurrency.USD.symbol),
+                isSelected = quote.provider == selectedProvider,
+                onClick = { onSelectProvider(quote.provider) }
+            )
+        }
+    }
+
+    private fun SwapProvider.providerIcon(): ImageResource =
+        when (this) {
+            SwapProvider.NEAR -> imageRes(R.drawable.ic_provider_near)
+            SwapProvider.MAYA -> imageRes(R.drawable.ic_provider_maya)
+        }
+
+    private fun SwapProvider.displayName(): StringResource =
+        when (this) {
+            SwapProvider.NEAR -> stringRes(R.string.swapAndPay_providerNear)
+            SwapProvider.MAYA -> stringRes(R.string.swapAndPay_providerMaya)
+        }
 }
