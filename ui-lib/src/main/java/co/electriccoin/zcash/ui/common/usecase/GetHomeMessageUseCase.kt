@@ -297,9 +297,9 @@ internal fun prioritizeHomeMessage(
     lastMessage: HomeMessageData?,
     lastShownMessage: HomeMessageData?,
 ): HomeMessageData? {
-    val isSameMessageUpdate = message?.priority == lastMessage?.priority // same but updated
-    val someMessageBeenShown = lastShownMessage != null // has any message been shown while app in fg
-    val hasNoMessageBeenShownLately = lastMessage == null // has no message been shown
+    val isSameMessageUpdate = message?.priority == lastMessage?.priority
+    val someMessageBeenShownInForeground = lastShownMessage != null
+    val hasNoMessageBeenShownLately = lastMessage == null
     val isHigherPriorityMessage = (message?.priority ?: 0) > (lastShownMessage?.priority ?: 0)
     return when {
         message == null -> {
@@ -316,7 +316,7 @@ internal fun prioritizeHomeMessage(
 
         isHigherPriorityMessage -> {
             if (hasNoMessageBeenShownLately) {
-                if (someMessageBeenShown) null else message
+                if (someMessageBeenShownInForeground) null else message
             } else {
                 message
             }

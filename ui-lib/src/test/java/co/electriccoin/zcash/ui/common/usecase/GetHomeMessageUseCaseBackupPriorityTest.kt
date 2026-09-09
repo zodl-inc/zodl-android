@@ -49,10 +49,12 @@ class GetHomeMessageUseCaseBackupPriorityTest {
         assertEquals(HomeMessageData.Backup, result)
     }
 
+    /**
+     * MOB-909: `WalletBackupMessageUseCaseImpl` reports [WalletBackupData.Unavailable] when there is no
+     * `ReceiveTransaction` yet (balance = 0), regardless of the backup flag itself.
+     */
     @Test
     fun `zero balance regression guard leaves runtime message unaffected`() {
-        // MOB-909: WalletBackupMessageUseCaseImpl reports Unavailable when there's no
-        // ReceiveTransaction yet (balance = 0), regardless of the backup flag itself.
         val result =
             createHomeMessage(
                 runtimeMessage = FakeMigrationMessage,
@@ -81,10 +83,9 @@ class GetHomeMessageUseCaseBackupPriorityTest {
         assertEquals(syncError, result)
     }
 
+    /** Regression guard: the relative ordering of the rest of the Prioritized family is unaffected by MOB-1787. */
     @Test
     fun `no urgent backup and no runtime message preserves normal Prioritized ordering`() {
-        // Regression guard for task 4 — relative ordering of the rest of the Prioritized family
-        // must be unaffected by the MOB-1787 reordering.
         val result =
             createHomeMessage(
                 runtimeMessage = null,
@@ -98,11 +99,12 @@ class GetHomeMessageUseCaseBackupPriorityTest {
         assertEquals(HomeMessageData.CoinholderPolling, result)
     }
 
-    // --- prioritizeHomeMessage: the urgent Backup message must also bypass the hysteresis that
-    // otherwise protects against flicker between optional/dismissible Prioritized messages, since
-    // otherwise a previously-shown RuntimeMessage (priority Int.MAX_VALUE) cached as
-    // lastShownMessage would make Backup's finite priority (5) look "lower" and get filtered out.
-
+    /**
+     * [prioritizeHomeMessage]: the urgent Backup message must also bypass the hysteresis that otherwise
+     * protects against flicker between optional/dismissible Prioritized messages. Without the special case,
+     * a previously-shown [RuntimeMessage] (priority `Int.MAX_VALUE`) cached as `lastShownMessage` would make
+     * Backup's finite priority (5) look lower and get filtered out.
+     */
     @Test
     fun `urgent backup is shown immediately even right after a RuntimeMessage was last shown`() {
         val result =
