@@ -14,6 +14,8 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Changed:
 
+- Currency Conversion now offers every fiat currency supported by the exchange-rate provider except CUP, IRR and RUB. The currency picker loads
+  the list on demand and shows a loading state, or an error with retry when the list cannot be fetched.
 - Bottom sheets across the app now share one background color.
 - Coinholder Polling now loads its trusted configuration through the resilient voting config gateway, so a GitHub outage no longer blocks
   configuration loading while the mirrored copy is available.

@@ -341,6 +341,7 @@
     <string name="currencyConversion_torOnInfo">Disabling Tor Protection will also disable the Currency Conversion feature until re-enabled.</string>
     <string name="currencyConversion_torOffInfo">If you would like to protect your IP address, enable Tor Protection in Advanced Settings.</string>
     <string name="currencyConversion_selectCurrencyTitle">Select currency</string>
+    <string name="currencyConversion_pickerErrorDesc">We couldn\’t load the currencies. Please check your connection and try again.</string>
 
     <!-- ===== export_data ===== -->
     <string name="privateDataConsent_screenTitle">Data Export</string>
