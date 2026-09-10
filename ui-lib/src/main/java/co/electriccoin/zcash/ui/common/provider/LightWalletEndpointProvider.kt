@@ -10,25 +10,21 @@ import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 class LightWalletEndpointProvider(
     private val application: Application
 ) {
+    // OHTTP build: ONLY the OHTTP gateways are offered. Any clearnet lightwalletd in this list
+    // would be picked by the SDK's fastest-server selection / the sync engine's endpoint probe
+    // and receive the bulk sync in plaintext, defeating the privacy guarantee. Users who add a
+    // custom server explicitly opt out of OHTTP for that server.
     fun getEndpoints(): List<LightWalletEndpoint> =
         if (ZcashNetwork.fromResources(application) == ZcashNetwork.Mainnet) {
             listOf(
                 // OHTTP (RFC 9458): the SDK routes gRPC HPKE-encrypted through a relay to this
                 // gateway. Relay sees IP but not content; gateway/LWD see content but not IP.
                 LightWalletEndpoint(host = "ohttp-gateway.zodl.com", port = 443, isSecure = true),
-                LightWalletEndpoint(host = "zec.rocks", port = 443, isSecure = true),
-                LightWalletEndpoint(host = "na.zec.rocks", port = 443, isSecure = true),
-                LightWalletEndpoint(host = "sa.zec.rocks", port = 443, isSecure = true),
-                LightWalletEndpoint(host = "eu.zec.rocks", port = 443, isSecure = true),
-                LightWalletEndpoint(host = "ap.zec.rocks", port = 443, isSecure = true),
-                LightWalletEndpoint(host = "us.zec.stardust.rest", port = 443, isSecure = true),
-                LightWalletEndpoint(host = "eu.zec.stardust.rest", port = 443, isSecure = true),
             )
         } else {
             listOf(
                 // OHTTP (RFC 9458) testnet gateway — served via relay-simulator-testnet.zodl.com
                 LightWalletEndpoint(host = "ohttp-gateway-testnet.zodl.com", port = 443, isSecure = true),
-                LightWalletEndpoint(host = "testnet.zec.rocks", port = 443, isSecure = true)
             )
         }
 
