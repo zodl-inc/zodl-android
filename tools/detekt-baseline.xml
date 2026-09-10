@@ -21,8 +21,10 @@
     <ID>InstanceOfCheckForException:VotingApiProvider.kt$KtorVotingApiProvider$exception is CancellationException</ID>
     <ID>InstanceOfCheckForException:VotingServerFailoverException.kt$exception is CancellationException</ID>
     <ID>InvalidRange:KeystoneBatchChunkingTest.kt$KeystoneBatchChunkingTest$3 until 3</ID>
+    <ID>LargeClass:KtorVotingApiProviderTest.kt$KtorVotingApiProviderTest</ID>
     <ID>LargeClass:SubmitVotesUseCase.kt$SubmitVotesUseCase</ID>
     <ID>LargeClass:SubmitVotesUseCaseProgressTest.kt$SubmitVotesUseCaseProgressTest</ID>
+    <ID>LargeClass:VotingApiProvider.kt$KtorVotingApiProvider : VotingApiProvider</ID>
     <ID>LoopWithTooManyJumpStatements:VotingChainConfigRepository.kt$for</ID>
     <ID>LoopWithTooManyJumpStatements:VotingRecoveryRepository.kt$VotingRecoveryRepositoryImpl$for</ID>
     <ID>MagicNumber:MigrationFlowPreviews.kt$3</ID>

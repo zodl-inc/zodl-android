@@ -111,9 +111,26 @@ interface VotingApiProvider {
 
     suspend fun submitDelegation(registration: DelegationRegistration): TxResult
 
+    /**
+     * Posts on [client] instead of the shared one, so a caller running several bundle chains at
+     * once can give each chain its own connection (its own Tor circuit) rather than serializing
+     * them all through a single client.
+     */
+    suspend fun submitDelegation(
+        registration: DelegationRegistration,
+        client: HttpClient
+    ): TxResult
+
     suspend fun submitVoteCommitment(
         bundle: VoteCommitmentBundle,
         signature: CastVoteSignature
+    ): TxResult
+
+    /** Per-chain variant of [submitVoteCommitment]; see [submitDelegation]. */
+    suspend fun submitVoteCommitment(
+        bundle: VoteCommitmentBundle,
+        signature: CastVoteSignature,
+        client: HttpClient
     ): TxResult
 
     suspend fun fetchTallyResults(roundIdHex: String): TallyResults
@@ -133,6 +150,12 @@ interface VotingApiProvider {
     ): List<String>
 
     suspend fun fetchTxConfirmation(txHash: String): TxConfirmation?
+
+    /** Per-chain variant of [fetchTxConfirmation]; see [submitDelegation]. */
+    suspend fun fetchTxConfirmation(
+        txHash: String,
+        client: HttpClient
+    ): TxConfirmation?
 
     suspend fun fetchCommitmentTreeLatest(roundIdHex: String): CommitmentTreeLatest
 
@@ -305,11 +328,34 @@ class KtorVotingApiProvider(
             )
         }
 
+    override suspend fun submitDelegation(
+        registration: DelegationRegistration,
+        client: HttpClient
+    ): TxResult =
+        executeWithVoteServerFailover(client, DELEGATE_VOTE_PATH) { baseUrl ->
+            postTxResult(
+                url = "$baseUrl$DELEGATE_VOTE_PATH",
+                body = registration.toApiBody()
+            )
+        }
+
     override suspend fun submitVoteCommitment(
         bundle: VoteCommitmentBundle,
         signature: CastVoteSignature
     ): TxResult =
         executeWithVoteServerFailover(CAST_VOTE_PATH) { baseUrl ->
+            postTxResult(
+                url = "$baseUrl$CAST_VOTE_PATH",
+                body = bundle.toApiBody(signature)
+            )
+        }
+
+    override suspend fun submitVoteCommitment(
+        bundle: VoteCommitmentBundle,
+        signature: CastVoteSignature,
+        client: HttpClient
+    ): TxResult =
+        executeWithVoteServerFailover(client, CAST_VOTE_PATH) { baseUrl ->
             postTxResult(
                 url = "$baseUrl$CAST_VOTE_PATH",
                 body = bundle.toApiBody(signature)
@@ -509,34 +555,52 @@ class KtorVotingApiProvider(
 
     override suspend fun fetchTxConfirmation(txHash: String): TxConfirmation? =
         configuredVoteServerUrls().let { serverUrls ->
-            execute {
-                for (baseUrl in serverUrls) {
-                    try {
-                        return@execute get("$baseUrl${txConfirmationPath(txHash)}")
-                            .bodyAsText()
-                            .toTxConfirmation()
-                    } catch (responseException: ResponseException) {
-                        when (responseException.response.status) {
-                            HttpStatusCode.NotFound -> {
-                                Unit
-                            }
+            execute { fetchTxConfirmationFrom(serverUrls, txHash) }
+        }
 
-                            HttpStatusCode.UnprocessableEntity -> {
-                                return@execute responseException.response.bodyAsText().toTxConfirmation()
-                            }
+    override suspend fun fetchTxConfirmation(
+        txHash: String,
+        client: HttpClient
+    ): TxConfirmation? {
+        val serverUrls = configuredVoteServerUrls()
+        return withContext(Dispatchers.IO) { client.fetchTxConfirmationFrom(serverUrls, txHash) }
+    }
 
-                            else -> {
-                                Unit
-                            }
-                        }
-                    } catch (exception: Exception) {
-                        if (exception is CancellationException) {
-                            throw exception
-                        }
-                    }
-                }
+    private suspend fun HttpClient.fetchTxConfirmationFrom(
+        serverUrls: List<String>,
+        txHash: String
+    ): TxConfirmation? {
+        for (baseUrl in serverUrls) {
+            fetchTxConfirmationFromServer(baseUrl, txHash)?.let { confirmation -> return confirmation }
+        }
+        return null
+    }
+
+    /**
+     * Null means "this server has nothing usable, try the next one": a 404, an unexpected status, or
+     * a transport failure. A 422 carries the rejection detail the caller needs, so it is parsed and
+     * returned rather than skipped.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun HttpClient.fetchTxConfirmationFromServer(
+        baseUrl: String,
+        txHash: String
+    ): TxConfirmation? =
+        try {
+            get("$baseUrl${txConfirmationPath(txHash)}")
+                .bodyAsText()
+                .toTxConfirmation()
+        } catch (responseException: ResponseException) {
+            if (responseException.response.status == HttpStatusCode.UnprocessableEntity) {
+                responseException.response.bodyAsText().toTxConfirmation()
+            } else {
                 null
             }
+        } catch (exception: Exception) {
+            if (exception is CancellationException) {
+                throw exception
+            }
+            null
         }
 
     override suspend fun fetchCommitmentTreeLatest(roundIdHex: String): CommitmentTreeLatest {
@@ -813,23 +877,52 @@ class KtorVotingApiProvider(
     ): T {
         val serverUrls = configuredVoteServerUrls()
         return executeWithKtorTimeoutSupport { supportsKtorTimeouts ->
-            withVoteServerFailover(
-                path = path,
-                serverUrls = serverUrls,
-                shouldTryNext = shouldTryNext,
-                operation = { serverUrl ->
-                    // MOB-1811: bounds each per-server attempt so one dropping (not refusing)
-                    // Tor connection can't stall the whole failover walk - see the constructor
-                    // param doc above and withTorRequestTimeoutFallback's own TRAP doc for why
-                    // withVoteServerFailover's catch clauses must (and do) special-case the
-                    // TimeoutCancellationException this throws under Tor.
-                    withTorRequestTimeoutFallback(supportsKtorTimeouts, voteServerFailoverTimeoutMillis) {
-                        block(serverUrl)
-                    }
-                }
-            )
+            voteServerFailover(path, serverUrls, shouldTryNext, supportsKtorTimeouts, block)
         }
     }
+
+    private suspend fun <T> executeWithVoteServerFailover(
+        client: HttpClient,
+        path: String,
+        shouldTryNext: (Throwable) -> Boolean = ::shouldTryNextVoteServer,
+        block: suspend HttpClient.(String) -> T
+    ): T {
+        val serverUrls = configuredVoteServerUrls()
+        val supportsKtorTimeouts = httpClientProvider.supportsKtorTimeouts()
+        return withContext(Dispatchers.IO) {
+            client.voteServerFailover(path, serverUrls, shouldTryNext, supportsKtorTimeouts, block)
+        }
+    }
+
+    private suspend fun <T> HttpClient.voteServerFailover(
+        path: String,
+        serverUrls: List<String>,
+        shouldTryNext: (Throwable) -> Boolean,
+        supportsKtorTimeouts: Boolean,
+        block: suspend HttpClient.(String) -> T
+    ): T =
+        withVoteServerFailover(
+            path = path,
+            serverUrls = serverUrls,
+            shouldTryNext = shouldTryNext,
+            operation = { serverUrl ->
+                // MOB-1811: bounds each per-server attempt so one dropping (not refusing)
+                // Tor connection can't stall the whole failover walk - see the constructor
+                // param doc above and withTorRequestTimeoutFallback's own TRAP doc for why
+                // withVoteServerFailover's catch clauses must (and do) special-case the
+                // TimeoutCancellationException this throws under Tor.
+                withTorRequestTimeoutFallback(supportsKtorTimeouts, voteServerFailoverTimeoutMillis) {
+                    block(serverUrl)
+                }
+            }
+        )
+
+    /**
+     * A fresh client for one bundle chain to own for the duration of its run. Under Tor each client
+     * gets its own circuit, so chains do not queue behind one another on a single connection; the
+     * caller closes it.
+     */
+    suspend fun createIsolatedClient(): HttpClient = httpClientProvider.create()
 
     private suspend fun HttpClient.postTxResult(
         url: String,

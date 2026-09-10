@@ -445,6 +445,45 @@ class KtorVotingApiProviderTest {
             assertEquals(1, serviceConfig.voteServers.size)
         }
 
+    @Test
+    fun explicitClientOverloadsBypassSharedClient() =
+        runBlocking {
+            val sharedRequests = mutableListOf<String>()
+            val chainRequests = mutableListOf<String>()
+            val provider =
+                KtorVotingApiProvider(
+                    httpClientProvider =
+                        object : HttpClientProvider {
+                            override suspend fun supportsKtorTimeouts(): Boolean = true
+
+                            override suspend fun createTor(): HttpClient = create()
+
+                            override suspend fun create(): HttpClient = configClient(sharedRequests)
+                        },
+                    configurationRepository = TestConfigurationRepository(),
+                    votingChainConfigRepository = TestVotingChainConfigRepository(),
+                    votingCryptoClient = unusedVotingCryptoClient()
+                )
+            val chainClient =
+                HttpClient(
+                    MockEngine { request ->
+                        chainRequests += request.url.encodedPath
+                        respond(
+                            content = """{"height":42,"code":0,"log":"","events":[]}""",
+                            status = HttpStatusCode.OK,
+                            headers = headersOf(HttpHeaders.ContentType, "application/json")
+                        )
+                    }
+                ) { expectSuccess = true }
+
+            val confirmation = provider.fetchTxConfirmation("tx-hash", chainClient)
+
+            assertEquals(42L, confirmation?.height)
+            assertEquals(listOf("/shielded-vote/v1/tx/tx-hash"), chainRequests)
+            // The shared client only resolved the config; the request itself never touched it.
+            assertFalse(sharedRequests.any { path -> path.startsWith("/shielded-vote/v1/tx/") })
+        }
+
     // endregion
 
     // region vote-server failover timeout (MOB-1811)
@@ -1371,6 +1410,33 @@ private fun staticConfigJson(dynamicConfigUrl: String): String =
       ]
     }
     """.trimIndent()
+
+private const val DYNAMIC_CONFIG_URL = "https://example.com/first-dynamic-voting-config.json"
+
+private fun configClient(requests: MutableList<String>): HttpClient =
+    HttpClient(
+        MockEngine { request ->
+            val path = request.url.encodedPath
+            requests += path
+            when (path) {
+                "/static-voting-config.json" -> {
+                    respond(
+                        content = staticConfigJsonV2(listOf(DYNAMIC_CONFIG_URL)),
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, "application/json")
+                    )
+                }
+
+                else -> {
+                    respond(
+                        content = validDynamicServiceConfigJson(),
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, "application/json")
+                    )
+                }
+            }
+        }
+    ) { expectSuccess = true }
 
 private fun staticConfigJsonV2(dynamicConfigUrls: List<String>): String =
     """

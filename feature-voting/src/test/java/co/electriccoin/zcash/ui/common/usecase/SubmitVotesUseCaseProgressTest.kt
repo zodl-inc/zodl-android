@@ -900,6 +900,30 @@ class SubmitVotesUseCaseProgressTest {
     }
 
     @Test
+    fun overallProgressIsMonotonicWithChainsAtDifferentQuestions() {
+        val emissions = mutableListOf<VotingSubmissionProgress.Submitting>()
+        val ledger =
+            SubmissionProgressLedger(
+                bundleCount = 2,
+                totalChoices = 4,
+                onProgress = { progress ->
+                    emissions += assertIs<VotingSubmissionProgress.Submitting>(progress)
+                }
+            )
+
+        // Bundle 0 races ahead to its third question while bundle 1 is still on its first.
+        ledger.update(bundleIndex = 0, questionIndex = 0, stage = CONFIRMED_STAGE)
+        ledger.update(bundleIndex = 0, questionIndex = 1, stage = CONFIRMED_STAGE)
+        ledger.update(bundleIndex = 0, questionIndex = 2, stage = PROOF_STAGE_CEILING)
+        ledger.update(bundleIndex = 1, questionIndex = 0, stage = PROOF_STAGE_CEILING)
+        ledger.update(bundleIndex = 1, questionIndex = 0, stage = CONFIRMED_STAGE)
+
+        assertTrue(emissions.map { it.progress }.zipWithNext().all { (previous, next) -> previous <= next })
+        // The label follows the chain that is furthest behind, never the one that raced ahead.
+        assertEquals(listOf(1, 1, 1, 1, 2), emissions.map { it.current })
+    }
+
+    @Test
     fun ledgerNeverMovesProgressBackwards() {
         val emissions = mutableListOf<Float>()
         val ledger =

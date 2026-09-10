@@ -22,6 +22,7 @@ import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.VotingConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingConfigSnapshot
+import io.ktor.client.HttpClient
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -77,9 +78,20 @@ class RefreshActiveVotingSessionUseCaseTest {
         override suspend fun submitDelegation(registration: DelegationRegistration): TxResult =
             error("unused")
 
+        override suspend fun submitDelegation(
+            registration: DelegationRegistration,
+            client: HttpClient
+        ): TxResult = error("unused")
+
         override suspend fun submitVoteCommitment(
             bundle: VoteCommitmentBundle,
             signature: CastVoteSignature
+        ): TxResult = error("unused")
+
+        override suspend fun submitVoteCommitment(
+            bundle: VoteCommitmentBundle,
+            signature: CastVoteSignature,
+            client: HttpClient
         ): TxResult = error("unused")
 
         override suspend fun fetchTallyResults(roundIdHex: String): TallyResults =
@@ -102,6 +114,11 @@ class RefreshActiveVotingSessionUseCaseTest {
 
         override suspend fun fetchTxConfirmation(txHash: String): TxConfirmation? =
             error("unused")
+
+        override suspend fun fetchTxConfirmation(
+            txHash: String,
+            client: HttpClient
+        ): TxConfirmation? = error("unused")
 
         override suspend fun fetchCommitmentTreeLatest(roundIdHex: String): CommitmentTreeLatest =
             error("unused")

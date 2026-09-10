@@ -23,6 +23,9 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - Coinholder Polling now sends the encrypted vote shares to the helper servers in the background
   while it moves on to the next question, instead of waiting for each delivery before continuing.
   A delivery that no server accepts still fails the submission, only once every vote is on chain.
+- Coinholder Polling now runs one chain per note bundle instead of taking them strictly one after
+  another, so while one bundle waits for its transaction to be mined the other is already proving
+  its next vote. Proofs still run one at a time and each bundle gets its own connection.
 
 ## [3.11.0 (2653)] - 2026-09-08
 
