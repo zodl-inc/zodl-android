@@ -12,6 +12,7 @@ enum class SupportInfoType {
     Os,
     Device,
     Environment,
+    Tor,
     Permission,
     Crash
 }
@@ -23,6 +24,7 @@ data class SupportInfo(
     val operatingSystemInfo: OperatingSystemInfo,
     val deviceInfo: DeviceInfo,
     val environmentInfo: EnvironmentInfo,
+    val torInfo: TorInfo,
     val permissionInfo: PersistentList<PermissionInfo>,
     val crashInfo: PersistentList<CrashInfo>
 ) {
@@ -51,6 +53,10 @@ data class SupportInfo(
                 append(environmentInfo.toSupportString())
             }
 
+            if (set.contains(SupportInfoType.Tor)) {
+                append(torInfo.toSupportString())
+            }
+
             if (set.contains(SupportInfoType.Permission)) {
                 append(permissionInfo.toPermissionSupportString())
             }
@@ -65,7 +71,8 @@ data class SupportInfo(
         // in the future.
         suspend fun new(
             context: Context,
-            androidConfigurationProvider: ConfigurationProvider
+            androidConfigurationProvider: ConfigurationProvider,
+            isTorEnabled: Boolean?
         ): SupportInfo {
             val applicationContext = context.applicationContext
             val packageInfo = applicationContext.packageManager.getPackageInfoCompatSuspend(context.packageName, 0L)
@@ -77,6 +84,7 @@ data class SupportInfo(
                 OperatingSystemInfo.new(),
                 DeviceInfo.new(),
                 EnvironmentInfo.new(applicationContext),
+                TorInfo(isTorEnabled),
                 PermissionInfo.all(applicationContext).toPersistentList(),
                 CrashInfo.all(context).toPersistentList()
             )
