@@ -11,6 +11,14 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 - The support email now includes whether Tor is enabled.
 
+### Changed:
+
+- Coinholder Polling now votes with at most two note bundles instead of one per five notes, so a
+  wallet with many small notes no longer pays for dozens of proofs and confirmation waits. Bundles
+  are only dropped while the voting weight they carry stays under 1 % of your eligible balance
+  (never more than 1,000 ZEC), and the confirmation screen shows exactly how much weight was left
+  out.
+
 ## [3.11.0 (2653)] - 2026-09-08
 
 ### Added:

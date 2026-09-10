@@ -81,6 +81,8 @@ data class VotingRecoverySnapshot(
     val eligibleWeight: Long? = null,
     val bundleWeights: List<Long> = emptyList(),
     val skippedBundleCount: Int = 0,
+    val trimmedBundleCount: Int = 0,
+    val trimmedWeight: Long = 0,
     val submittedAtEpochSeconds: Long? = null,
     val voteEndEpochSeconds: Long? = null,
     // Legacy recovery snapshots stored the voting hotkey seed inline here.
@@ -130,7 +132,9 @@ interface VotingRecoveryRepository {
         roundId: String,
         bundleCount: Int,
         eligibleWeight: Long,
-        bundleWeights: List<Long>
+        bundleWeights: List<Long>,
+        trimmedBundleCount: Int = 0,
+        trimmedWeight: Long = 0
     )
 
     suspend fun setEligibleWeight(
@@ -369,7 +373,9 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         bundleCount: Int,
         eligibleWeight: Long,
-        bundleWeights: List<Long>
+        bundleWeights: List<Long>,
+        trimmedBundleCount: Int,
+        trimmedWeight: Long
     ) {
         val current =
             get(accountUuid, roundId) ?: VotingRecoverySnapshot(
@@ -383,6 +389,8 @@ class VotingRecoveryRepositoryImpl(
                 eligibleWeight = eligibleWeight,
                 bundleWeights = bundleWeights,
                 skippedBundleCount = 0,
+                trimmedBundleCount = trimmedBundleCount,
+                trimmedWeight = trimmedWeight,
                 updatedAt = Instant.now()
             )
         )
@@ -881,6 +889,8 @@ private fun VotingRecoverySnapshot.encode(): String =
         .put("eligible_weight", eligibleWeight)
         .put("bundle_weights", JSONArray(bundleWeights))
         .put("skipped_bundle_count", skippedBundleCount)
+        .put("trimmed_bundle_count", trimmedBundleCount)
+        .put("trimmed_weight", trimmedWeight)
         .put("submitted_at_epoch_seconds", submittedAtEpochSeconds)
         .put("vote_end_epoch_seconds", voteEndEpochSeconds)
         .put("hotkey_seed", hotkeySeedBase64)
@@ -975,6 +985,16 @@ private fun String.toVotingRecoverySnapshot(): VotingRecoverySnapshot {
             json
                 .optInt("skipped_bundle_count")
                 .takeIf { json.has("skipped_bundle_count") && !json.isNull("skipped_bundle_count") }
+                ?: 0,
+        trimmedBundleCount =
+            json
+                .optInt("trimmed_bundle_count")
+                .takeIf { json.has("trimmed_bundle_count") && !json.isNull("trimmed_bundle_count") }
+                ?: 0,
+        trimmedWeight =
+            json
+                .optLong("trimmed_weight")
+                .takeIf { json.has("trimmed_weight") && !json.isNull("trimmed_weight") }
                 ?: 0,
         submittedAtEpochSeconds =
             json

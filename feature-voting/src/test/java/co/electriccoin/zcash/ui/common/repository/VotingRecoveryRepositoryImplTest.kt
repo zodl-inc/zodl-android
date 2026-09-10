@@ -79,6 +79,44 @@ class VotingRecoveryRepositoryImplTest {
             )
         }
 
+    @Test
+    fun trimmedFieldsRoundTripThroughJson() =
+        runTest {
+            repository.storeBundleSetup(
+                accountUuid = ACCOUNT_UUID,
+                roundId = ROUND_ID,
+                bundleCount = 2,
+                eligibleWeight = 300L,
+                bundleWeights = listOf(200L, 100L),
+                trimmedBundleCount = 3,
+                trimmedWeight = 12L
+            )
+
+            val restored = repository.get(ACCOUNT_UUID, ROUND_ID)
+
+            assertEquals(3, restored?.trimmedBundleCount)
+            assertEquals(12L, restored?.trimmedWeight)
+            assertEquals(2, restored?.bundleCount)
+            assertEquals(listOf(200L, 100L), restored?.bundleWeights)
+        }
+
+    @Test
+    fun untrimmedSetupRoundTripsAsZeroTrimmedFields() =
+        runTest {
+            repository.storeBundleSetup(
+                accountUuid = ACCOUNT_UUID,
+                roundId = ROUND_ID,
+                bundleCount = 2,
+                eligibleWeight = 300L,
+                bundleWeights = listOf(200L, 100L)
+            )
+
+            val restored = repository.get(ACCOUNT_UUID, ROUND_ID)
+
+            assertEquals(0, restored?.trimmedBundleCount)
+            assertEquals(0L, restored?.trimmedWeight)
+        }
+
     private companion object {
         const val ACCOUNT_UUID = "aabbccddeeff00112233445566778899"
         const val ROUND_ID = "1111111111111111111111111111111111111111111111111111111111111111"

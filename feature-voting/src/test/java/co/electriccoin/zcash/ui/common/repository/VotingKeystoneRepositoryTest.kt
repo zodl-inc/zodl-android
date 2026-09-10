@@ -467,7 +467,9 @@ class VotingKeystoneRepositoryTest {
             roundId: String,
             bundleCount: Int,
             eligibleWeight: Long,
-            bundleWeights: List<Long>
+            bundleWeights: List<Long>,
+            trimmedBundleCount: Int,
+            trimmedWeight: Long
         ) = unsupported()
 
         override suspend fun setEligibleWeight(

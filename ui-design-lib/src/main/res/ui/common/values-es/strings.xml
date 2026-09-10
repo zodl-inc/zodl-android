@@ -1240,5 +1240,6 @@
     <string name="migrationHome_defaultSubtitle">Mueve tus fondos a Ironwood.</string>
     <string name="migrationHome_residueTitle">%1$s restante en Orchard</string>
     <string name="migrationHome_residueSubtitle">Toca para decidir qué hacer con él</string>
+    <string name="coinVote_confirmSubmission_detailExcludedWeight">Excluido de esta votación</string>
 
 </resources>

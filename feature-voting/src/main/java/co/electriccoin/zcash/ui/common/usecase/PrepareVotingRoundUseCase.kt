@@ -9,12 +9,16 @@ import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.voting.DelegationPhase
 import co.electriccoin.zcash.ui.common.model.voting.VoteIneligibilityReason
 import co.electriccoin.zcash.ui.common.model.voting.VotingBundleSetupResult
+import co.electriccoin.zcash.ui.common.model.voting.VotingBundleTrim
 import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
+import co.electriccoin.zcash.ui.common.model.voting.computeTrimmedBundleKeepCount
 import co.electriccoin.zcash.ui.common.model.voting.isDelegationSetupOverwrite
 import co.electriccoin.zcash.ui.common.model.voting.requireKnownPolyLen
+import co.electriccoin.zcash.ui.common.model.voting.trimmedTo
+import co.electriccoin.zcash.ui.common.model.voting.votingBundleRawWeights
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
@@ -173,13 +177,13 @@ class PrepareVotingRoundUseCase(
                                     dbHandle = dbHandle,
                                     roundId = roundId,
                                     notesJson = notesJson
-                                ).also { setup ->
-                                    votingRecoveryRepository.storeBundleSetup(
+                                ).let { setup ->
+                                    trimAndStoreBundleSetup(
                                         accountUuid = accountUuidString,
                                         roundId = roundId,
-                                        bundleCount = setup.bundleCount,
-                                        eligibleWeight = setup.eligibleWeight,
-                                        bundleWeights = setup.bundleWeights
+                                        dbHandle = dbHandle,
+                                        setup = setup,
+                                        notesJson = notesJson
                                     )
                                 }.let { setup -> setup.bundleCount to setup.eligibleWeight }
                         } else {
@@ -345,6 +349,95 @@ class PrepareVotingRoundUseCase(
             preparationResult
         }
 
+    /**
+     * Applies the privacy trim to a freshly built bundle setup and persists the result.
+     *
+     * The notes JSON is deliberately left untouched: the JNI re-chunks the full note list at every
+     * later step and asserts the result matches the stored bundle rows. The supported way to end up
+     * with fewer bundles is therefore the same "skipped suffix" the Keystone skip flow uses —
+     * delete the value-DESC tail rows and keep the prefix exactly as it was built.
+     */
+    private suspend fun trimAndStoreBundleSetup(
+        accountUuid: String,
+        roundId: String,
+        dbHandle: Long,
+        setup: VotingBundleSetupResult,
+        notesJson: String
+    ): VotingBundleSetupResult {
+        val keepCount =
+            if (setup.bundleWeights.size < setup.bundleCount) {
+                Log.w(TAG, "Voting round $roundId has no per-bundle weights; skipping the privacy trim")
+                setup.bundleCount
+            } else {
+                computeTrimmedBundleKeepCount(trimWeightsFor(setup, notesJson, roundId))
+            }
+
+        if (keepCount >= setup.bundleCount) {
+            votingRecoveryRepository.storeBundleSetup(
+                accountUuid = accountUuid,
+                roundId = roundId,
+                bundleCount = setup.bundleCount,
+                eligibleWeight = setup.eligibleWeight,
+                bundleWeights = setup.bundleWeights
+            )
+            return setup
+        }
+
+        val trim =
+            VotingBundleTrim(
+                keepCount = keepCount,
+                trimmedBundleCount = setup.bundleCount - keepCount,
+                trimmedWeight = setup.bundleWeights.drop(keepCount).sum()
+            )
+        Log.i(
+            TAG,
+            "Trimming voting round $roundId from ${setup.bundleCount} to $keepCount bundles " +
+                "(${trim.trimmedWeight} zatoshi of voting weight dropped)"
+        )
+        votingCryptoClient.deleteSkippedBundles(
+            dbHandle = dbHandle,
+            roundId = roundId,
+            keepCount = keepCount
+        )
+        val trimmedSetup = setup.trimmedTo(keepCount)
+        votingRecoveryRepository.storeBundleSetup(
+            accountUuid = accountUuid,
+            roundId = roundId,
+            bundleCount = trimmedSetup.bundleCount,
+            eligibleWeight = trimmedSetup.eligibleWeight,
+            bundleWeights = trimmedSetup.bundleWeights,
+            trimmedBundleCount = trim.trimmedBundleCount,
+            trimmedWeight = trim.trimmedWeight
+        )
+        return trimmedSetup
+    }
+
+    /**
+     * Raw (un-quantized) bundle totals drive the trim budget so it matches the crate's own rule.
+     * When the Kotlin chunker disagrees with the native bundle count the quantized weights are the
+     * only trustworthy fallback; they differ by less than one ballot divisor per bundle.
+     */
+    private fun trimWeightsFor(
+        setup: VotingBundleSetupResult,
+        notesJson: String,
+        roundId: String
+    ): List<Long> {
+        val rawWeights =
+            runCatching { votingBundleRawWeights(notesJson) }
+                .onFailure { throwable ->
+                    Log.w(TAG, "Unable to derive raw voting bundle weights for round $roundId", throwable)
+                }.getOrDefault(emptyList())
+        if (rawWeights.size == setup.bundleCount) {
+            return rawWeights
+        }
+        Log.w(
+            TAG,
+            "Raw voting bundle weights (${rawWeights.size}) do not match the prepared bundle count " +
+                "(${setup.bundleCount}) for round $roundId; trimming on quantized weights instead"
+        )
+        return setup.bundleWeights
+    }
+
     private suspend fun recoverExistingBundleSetup(
         accountUuid: String,
         roundId: String,
@@ -383,7 +476,9 @@ class PrepareVotingRoundUseCase(
             roundId = roundId,
             bundleCount = recoveredSetup.bundleCount,
             eligibleWeight = recoveredSetup.eligibleWeight,
-            bundleWeights = recoveredSetup.bundleWeights
+            bundleWeights = recoveredSetup.bundleWeights,
+            trimmedBundleCount = computedSetup.bundleCount - dbBundleCount,
+            trimmedWeight = computedSetup.bundleWeights.drop(dbBundleCount).sum()
         )
         return recoveredSetup
     }

@@ -1187,6 +1187,7 @@ Your vote can no longer be submitted.</string>
     <string name="vote_confirm_memo_preparing" tools:ignore="MissingTranslation">Your wallet is still preparing the voting authorization for this poll.</string>
     <string name="coinVote_confirmSubmission_detailPoll" tools:ignore="MissingTranslation">Poll</string>
     <string name="coinVote_confirmSubmission_detailVotingPower" tools:ignore="MissingTranslation">Voting power</string>
+    <string name="coinVote_confirmSubmission_detailExcludedWeight">Excluded from this vote</string>
     <string name="coinVote_confirmSubmission_detailVotingHotkey" tools:ignore="MissingTranslation">Voting hotkey</string>
     <string name="coinVote_confirmSubmission_detailMemo" tools:ignore="MissingTranslation">Memo</string>
     <string name="vote_delegation_signing_title" tools:ignore="MissingTranslation">Delegation signing</string>

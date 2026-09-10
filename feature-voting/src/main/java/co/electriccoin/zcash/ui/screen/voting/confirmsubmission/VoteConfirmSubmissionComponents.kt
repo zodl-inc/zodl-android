@@ -57,6 +57,13 @@ internal fun VoteSubmissionDetailsCard(state: VoteConfirmSubmissionState) {
                     value = state.votingWeightZEC.getValue(),
                 )
             }
+            state.excludedWeightNote?.let { excludedWeightNote ->
+                HorizontalDivider(color = ZashiColors.Surfaces.bgPrimary)
+                VoteSubmissionDetailRow(
+                    label = stringRes(R.string.coinVote_confirmSubmission_detailExcludedWeight),
+                    value = excludedWeightNote.getValue(),
+                )
+            }
         }
     }
 }
