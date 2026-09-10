@@ -380,6 +380,20 @@ if (zcashSdkIncludedBuildPath.isNotEmpty()) {
     }
 }
 
+// Substitute only the lightwallet-client module (gRPC transport, incl. the OHTTP channel) with a local
+// SDK checkout while keeping sdk-lib/backend-lib from Maven. Avoids the Rust toolchain build and lets
+// the transport layer be iterated independently. Mutually exclusive with SDK_INCLUDED_BUILD_PATH.
+val lightwalletClientIncludedBuildPath = (extra.properties["LIGHTWALLET_CLIENT_INCLUDED_BUILD_PATH"] ?: "").toString()
+
+if (lightwalletClientIncludedBuildPath.isNotEmpty() && zcashSdkIncludedBuildPath.isEmpty()) {
+    logger.lifecycle("lightwallet-client will be used from $lightwalletClientIncludedBuildPath instead of Maven Central.")
+    includeBuild(lightwalletClientIncludedBuildPath) {
+        dependencySubstitution {
+            substitute(module("cash.z.ecc.android:lightwallet-client")).using(project(":lightwallet-client-lib"))
+        }
+    }
+}
+
 val bip39IncludedBuildPath = extra["BIP_39_INCLUDED_BUILD_PATH"].toString()
 
 if (bip39IncludedBuildPath.isNotEmpty()) {
