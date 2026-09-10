@@ -16,7 +16,7 @@ import kotlin.test.assertTrue
 /**
  * MOB-1378: exchange rates must only ever be fetched over Tor. [CMCApiProvider] must ask for the
  * Tor-only client and must never use create(), which falls back to the direct (clearnet) client when
- * Tor is disabled.
+ * Tor is disabled. The same holds for the supported-currency list added in MOB-1707.
  */
 class CMCApiProviderTest {
     @Test
@@ -42,9 +42,33 @@ class CMCApiProviderTest {
             )
             assertTrue(httpClientProvider.requestedHosts.all { it == CMC_API_HOST })
         }
+
+    @Test
+    fun getFiatMapUsesTorClientAndNeverTheDirectClient() =
+        runTest {
+            val httpClientProvider = RecordingHttpClientProvider()
+            val provider = CMCApiProviderImpl(httpClientProvider)
+
+            val response = provider.getFiatMap(apiKey = "key")
+
+            assertEquals(1, httpClientProvider.createTorCalls, "CMC must use the Tor-only client")
+            assertEquals(
+                0,
+                httpClientProvider.createCalls,
+                "CMC must never use create() (which can fall back to clearnet)"
+            )
+            assertEquals(listOf("USD"), response.data.map { it.symbol })
+            assertTrue(httpClientProvider.requestedHosts.all { it == CMC_API_HOST })
+            assertEquals(listOf("key"), httpClientProvider.requestedApiKeys)
+        }
 }
 
 private const val RATE = 42.0
+
+private const val FIAT_MAP_JSON =
+    """{"status":{"credit_count":1},"data":[{"id":2781,"name":"United States Dollar","sign":"$","symbol":"USD"}]}"""
+
+private const val FIAT_MAP_PATH = "/v1/fiat/map"
 
 private class RecordingHttpClientProvider : HttpClientProvider {
     var createCalls = 0
@@ -52,6 +76,7 @@ private class RecordingHttpClientProvider : HttpClientProvider {
     var createTorCalls = 0
         private set
     val requestedHosts = mutableListOf<String>()
+    val requestedApiKeys = mutableListOf<String>()
 
     override suspend fun create(): HttpClient {
         createCalls++
@@ -63,8 +88,14 @@ private class RecordingHttpClientProvider : HttpClientProvider {
         return HttpClient(
             MockEngine { request ->
                 requestedHosts += request.url.host
+                request.headers["X-CMC_PRO_API_KEY"]?.let { requestedApiKeys += it }
                 respond(
-                    content = """{"data":{"ZEC":{"quote":{"USD":{"price":$RATE}}}}}""",
+                    content =
+                        if (request.url.encodedPath == FIAT_MAP_PATH) {
+                            FIAT_MAP_JSON
+                        } else {
+                            """{"data":{"ZEC":{"quote":{"USD":{"price":$RATE}}}}}"""
+                        },
                     status = HttpStatusCode.OK,
                     headers = headersOf(HttpHeaders.ContentType, "application/json")
                 )

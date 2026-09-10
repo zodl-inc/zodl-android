@@ -4,6 +4,8 @@ import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSourceImpl
 import co.electriccoin.zcash.ui.common.datasource.ExchangeRateDataSource
 import co.electriccoin.zcash.ui.common.datasource.ExchangeRateDataSourceImpl
+import co.electriccoin.zcash.ui.common.datasource.FiatCurrencyDataSource
+import co.electriccoin.zcash.ui.common.datasource.FiatCurrencyDataSourceImpl
 import co.electriccoin.zcash.ui.common.datasource.MessageAvailabilityDataSource
 import co.electriccoin.zcash.ui.common.datasource.MessageAvailabilityDataSourceImpl
 import co.electriccoin.zcash.ui.common.datasource.NearSwapDataSource
@@ -30,4 +32,5 @@ val dataSourceModule =
         singleOf(::WalletSnapshotDataSourceImpl) bind WalletSnapshotDataSource::class
         singleOf(::NearSwapDataSource) bind SwapDataSource::class
         singleOf(::ExchangeRateDataSourceImpl) bind ExchangeRateDataSource::class
+        single<FiatCurrencyDataSource> { FiatCurrencyDataSourceImpl(cmcApiProvider = get()) }
     }

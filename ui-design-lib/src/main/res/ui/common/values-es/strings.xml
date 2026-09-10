@@ -326,6 +326,7 @@
     <string name="currencyConversion_torOnInfo">Desactivar la Protección Tor también desactivará la función de Conversión de Moneda hasta que se vuelva a activar.</string>
     <string name="currencyConversion_torOffInfo">Si deseas proteger tu dirección IP, activa la Protección Tor en la Configuración Avanzada.</string>
     <string name="currencyConversion_selectCurrencyTitle">Seleccionar moneda</string>
+    <string name="currencyConversion_pickerErrorDesc">No pudimos cargar las monedas. Verifica tu conexión e inténtalo de nuevo.</string>
 
     <!-- ===== export_data ===== -->
     <string name="privateDataConsent_screenTitle">Exportar Datos</string>

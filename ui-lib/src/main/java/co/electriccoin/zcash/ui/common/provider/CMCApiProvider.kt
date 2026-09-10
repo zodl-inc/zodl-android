@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.provider
 
+import co.electriccoin.zcash.ui.common.model.GetCMCFiatMapResponse
 import co.electriccoin.zcash.ui.common.model.GetCMCQuoteResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -15,6 +16,12 @@ import kotlinx.coroutines.withContext
 interface CMCApiProvider {
     @Throws(ResponseException::class)
     suspend fun getExchangeRateQuote(apiKey: String, fiat: String): GetCMCQuoteResponse
+
+    /**
+     * Returns every fiat currency the exchange-rate provider supports, in the provider's own order.
+     */
+    @Throws(ResponseException::class)
+    suspend fun getFiatMap(apiKey: String): GetCMCFiatMapResponse
 }
 
 class CMCApiProviderImpl(
@@ -25,6 +32,14 @@ class CMCApiProviderImpl(
             get("https://$CMC_API_HOST/v1/cryptocurrency/quotes/latest") {
                 parameter("symbol", "ZEC")
                 parameter("convert", fiat)
+                contentType(ContentType.Application.Json)
+                header("X-CMC_PRO_API_KEY", apiKey)
+            }.body()
+        }
+
+    override suspend fun getFiatMap(apiKey: String): GetCMCFiatMapResponse =
+        execute {
+            get("https://$CMC_API_HOST/v1/fiat/map") {
                 contentType(ContentType.Application.Json)
                 header("X-CMC_PRO_API_KEY", apiKey)
             }.body()
