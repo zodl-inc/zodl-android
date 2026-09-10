@@ -7,6 +7,10 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Added:
+
+- The support email now includes whether Tor is enabled.
+
 ## [3.11.0 (2653)] - 2026-09-08
 
 ### Added:
