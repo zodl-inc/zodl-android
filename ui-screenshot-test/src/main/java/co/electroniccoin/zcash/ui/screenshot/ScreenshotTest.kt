@@ -166,6 +166,14 @@ class ScreenshotTest : UiTestPrerequisites() {
         }
     }
 
+    @Test
+    @LargeTest
+    fun takeScreenshotsForRestoreWalletLightHiIN() {
+        runWith(UiMode.Light, "hi-IN") { context, tag ->
+            takeScreenshotsForRestoreWallet(context, tag)
+        }
+    }
+
     // Dark mode was introduced in Android Q
     @Test
     @LargeTest
@@ -179,6 +187,14 @@ class ScreenshotTest : UiTestPrerequisites() {
     @LargeTest
     fun takeScreenshotsForRestoreWalletDarkEsSP() {
         runWith(UiMode.Dark, "es-SP") { context, tag ->
+            takeScreenshotsForRestoreWallet(context, tag)
+        }
+    }
+
+    @Test
+    @LargeTest
+    fun takeScreenshotsForRestoreWalletDarkHiIN() {
+        runWith(UiMode.Dark, "hi-IN") { context, tag ->
             takeScreenshotsForRestoreWallet(context, tag)
         }
     }
@@ -347,6 +363,14 @@ class ScreenshotTest : UiTestPrerequisites() {
         }
     }
 
+    @Test
+    @LargeTest
+    fun takeScreenshotsForNewWalletAndRestOfAppLightHiIN() {
+        runWith(UiMode.Light, "hi-IN") { context, tag ->
+            takeScreenshotsForNewWalletAndRestOfApp(context, tag)
+        }
+    }
+
     // Dark mode was introduced in Android Q
     @Test
     @LargeTest
@@ -362,6 +386,15 @@ class ScreenshotTest : UiTestPrerequisites() {
     @SdkSuppress(minSdkVersion = Build.VERSION_CODES.Q)
     fun takeScreenshotsForNewWalletAndRestOfAppDarkEsSP() {
         runWith(UiMode.Dark, "es-SP") { context, tag ->
+            takeScreenshotsForNewWalletAndRestOfApp(context, tag)
+        }
+    }
+
+    @Test
+    @LargeTest
+    @SdkSuppress(minSdkVersion = Build.VERSION_CODES.Q)
+    fun takeScreenshotsForNewWalletAndRestOfAppDarkHiIN() {
+        runWith(UiMode.Dark, "hi-IN") { context, tag ->
             takeScreenshotsForNewWalletAndRestOfApp(context, tag)
         }
     }

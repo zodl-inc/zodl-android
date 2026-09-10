@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="error_keystone_firmware_title">Keystone फर्मवेयर अपडेट आवश्यक है</string>
+    <string name="error_keystone_firmware_message">आपके Keystone का फर्मवेयर (%1$s) न्यूनतम समर्थित वर्ज़न (%2$s) से पुराना है। अपने डिवाइस का फर्मवेयर अपडेट करें, फिर दोबारा कोशिश करें।</string>
+    <string name="error_keystone_firmware_message_legacy">आपके Keystone का फर्मवेयर इतना पुराना है कि वह अपना वर्ज़न नहीं बता सकता, और यह न्यूनतम समर्थित वर्ज़न (%1$s) से पुराना है। अपने डिवाइस का फर्मवेयर अपडेट करें, फिर दोबारा कोशिश करें।</string>
+    <string name="error_keystone_firmware_close">बंद करें</string>
+    <string name="error_keystone_account_title">Keystone अकाउंट नहीं जोड़ा जा सका</string>
+    <string name="error_keystone_account_message">स्कैन किया गया Keystone अकाउंट इस ऐप के साथ इस्तेमाल नहीं किया जा सकता। पक्का करें कि आपका Keystone डिवाइस उसी नेटवर्क पर सेट है जिस पर यह ऐप है, फिर QR कोड दोबारा स्कैन करें।</string>
+</resources>

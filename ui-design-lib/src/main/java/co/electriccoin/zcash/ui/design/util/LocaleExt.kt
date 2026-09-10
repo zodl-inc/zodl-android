@@ -15,5 +15,5 @@ fun rememberDesiredFormatLocale(): Locale {
 
 fun Configuration.getPreferredLocale(): Locale {
     val locales = ConfigurationCompat.getLocales(this)
-    return locales.getFirstMatch(arrayOf("en", "es")) ?: locales.get(0) ?: Locale.US
+    return locales.getFirstMatch(arrayOf("en", "es", "hi")) ?: locales.get(0) ?: Locale.US
 }

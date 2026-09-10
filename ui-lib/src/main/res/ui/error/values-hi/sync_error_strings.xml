@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sync_error_title">कुछ गलत हो गया</string>
+    <string name="sync_error_message">पिछला ऑपरेशन पूरा करने में गड़बड़ी हुई। अपना कनेक्शन और VPN सेटिंग जाँचें, ऐप को दोबारा शुरू करें, या इनमें से कोई एक तरीका आज़माएँ:</string>
+    <string name="sync_error_switch_server">सर्वर बदलें</string>
+    <string name="sync_error_disable_tor">Tor सुरक्षा बंद करें</string>
+    <string name="sync_error_contact_support">सपोर्ट से संपर्क करें</string>
+</resources>

@@ -17,10 +17,12 @@ This is a brief checklist to ensure all the necessary pre-release and post-relea
    - [ ] Update all supported What's New release notes for Google Play:
      - [WHATS_NEW_EN.md](../../docs/whatsNew/WHATS_NEW_EN.md)
      - [WHATS_NEW_ES.md](../../docs/whatsNew/WHATS_NEW_ES.md)
+     - [WHATS_NEW_HI.md](../../docs/whatsNew/WHATS_NEW_HI.md)
    - [ ] Create release notes for all supported languages for F-Droid. Note the new file name MUST be equal to the app 
      `versionCode`.
      - [EN changelog](../../fastlane/metadata/android/en-US/changelogs/)
      - [ES changelog](../../fastlane/metadata/android/es/changelogs/)
+     - [HI changelog](../../fastlane/metadata/android/hi/changelogs/)
    - [ ] Update the build version name **ZCASH_VERSION_NAME** in [gradle.properties](../../gradle.properties) (if required)
    - [ ] Check if the latest [**Zcash SDK**](https://repo.maven.apache.org/maven2/cash/z/ecc/android/zcash-android-sdk/) with the updated checkpoints is used
    - [ ] Check if the latest [**Bip39**](https://repo.maven.apache.org/maven2/cash/z/ecc/android/kotlin-bip39/) is used

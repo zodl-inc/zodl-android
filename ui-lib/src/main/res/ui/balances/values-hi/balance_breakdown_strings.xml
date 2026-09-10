@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="balance_breakdown_title">सभी पूल में कुल बैलेंस</string>
+    <string name="balance_breakdown_subtitle">आपका ZEC बैलेंस अब Zcash पूल के अनुसार विभाजित है, ताकि आप ठीक-ठीक देख सकें कि आपका फंड कहाँ है।</string>
+    <string name="balance_breakdown_total">कुल बैलेंस</string>
+    <string name="balance_breakdown_pool_orchard">Orchard</string>
+    <string name="balance_breakdown_pool_sapling">Sapling</string>
+    <string name="balance_breakdown_pool_transparent">Transparent</string>
+    <string name="balance_breakdown_pool_ironwood">Ironwood</string>
+    <string name="balance_breakdown_got_it">ठीक है</string>
+</resources>
