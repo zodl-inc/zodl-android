@@ -16,6 +16,7 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
 import co.electriccoin.zcash.ui.common.model.voting.voteBadgeInfo
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
+import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
@@ -57,6 +58,7 @@ class VoteProposalListVM(
     private val args: VoteProposalListArgs,
     private val votingApiRepository: VotingApiRepository,
     private val votingRecoveryRepository: VotingRecoveryRepository,
+    private val votingProofPrecomputeRepository: VotingProofPrecomputeRepository,
     private val prepareVotingRound: PrepareVotingRoundUseCase,
     private val navigationRouter: NavigationRouter,
     observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase,
@@ -546,6 +548,18 @@ class VoteProposalListVM(
         when (args.mode) {
             VoteProposalListMode.VOTED -> navigationRouter.backTo(VoteCoinholderPollingArgs::class)
             else -> navigationRouter.back()
+        }
+    }
+
+    /**
+     * This VM owns the voting flow's lifetime - the confirmation screen is pushed above it - so
+     * leaving it is what ends the round's background proving. The confirmation VM deliberately does
+     * not cancel: a cold-launch resume enters it standalone.
+     */
+    override fun onCleared() {
+        super.onCleared()
+        if (args.mode == VoteProposalListMode.VOTING) {
+            votingProofPrecomputeRepository.cancelBackgroundProofs()
         }
     }
 

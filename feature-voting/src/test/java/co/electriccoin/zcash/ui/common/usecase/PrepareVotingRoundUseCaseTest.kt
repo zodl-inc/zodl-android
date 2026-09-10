@@ -8,6 +8,8 @@ import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.RoundPhase
 import co.electriccoin.zcash.ui.common.model.voting.RoundStateInfo
@@ -22,6 +24,8 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
+import co.electriccoin.zcash.ui.common.repository.VotingDelegationPirPrecomputeKey
+import co.electriccoin.zcash.ui.common.repository.VotingDelegationPirPrecomputeRequest
 import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryPhase
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
@@ -37,6 +41,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import java.time.Instant
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
@@ -197,6 +202,82 @@ class PrepareVotingRoundUseCaseTest {
             assertEquals(emptyList(), fixture.storedBundleSetups)
         }
 
+    @Test
+    fun softwareRequestsCarryProofMaterial() =
+        runTest {
+            val fixture =
+                PrepareFixture(
+                    bundleWeights = listOf(5_000 * ZEC, 5_000 * ZEC),
+                    selectedAccount = softwareAccount()
+                )
+
+            fixture.useCase()(ROUND_ID)
+
+            val material =
+                fixture.startedPrecomputeRequests
+                    .map { request -> requireNotNull(request.proofMaterial) }
+            assertEquals(2, material.size)
+            material.forEach { proofMaterial ->
+                assertContentEquals(FVK_BYTES, proofMaterial.fvkBytes)
+                assertEquals(HOTKEY_SEED_BYTES, proofMaterial.hotkeySeed.size)
+                assertEquals("Round", proofMaterial.roundName)
+            }
+        }
+
+    @Test
+    fun keystoneRequestsOmitProofMaterial() =
+        runTest {
+            val fixture = PrepareFixture(bundleWeights = listOf(5_000 * ZEC, 5_000 * ZEC))
+
+            fixture.useCase()(ROUND_ID)
+
+            // Keystone cannot produce a delegation proof without the device, so no PIR precompute
+            // request is registered at all for it.
+            assertEquals(emptyList(), fixture.startedPrecomputeRequests)
+        }
+
+    @Test
+    fun freshSetupCancelsBackgroundProofs() =
+        runTest {
+            val fixture = PrepareFixture(bundleWeights = listOf(5_000 * ZEC, 5_000 * ZEC))
+
+            fixture.useCase()(ROUND_ID)
+
+            assertEquals(1, fixture.backgroundProofCancellations)
+        }
+
+    @Test
+    fun resumedRoundDoesNotCancelBackgroundProofs() =
+        runTest {
+            val fixture =
+                PrepareFixture(
+                    bundleWeights = listOf(5_000 * ZEC, 5_000 * ZEC),
+                    existingRoundState =
+                        RoundStateInfo(
+                            roundId = ROUND_ID,
+                            phase = RoundPhase.DELEGATION,
+                            snapshotHeight = SNAPSHOT_HEIGHT,
+                            hotkeyAddress = HOTKEY_ADDRESS,
+                            delegatedWeight = null,
+                            proofGenerated = false
+                        ),
+                    recovery =
+                        VotingRecoverySnapshot(
+                            accountUuid = ACCOUNT_UUID,
+                            roundId = ROUND_ID,
+                            phase = VotingRecoveryPhase.BUNDLES_PREPARED,
+                            bundleCount = 2,
+                            eligibleWeight = 10_000 * ZEC,
+                            bundleWeights = listOf(5_000 * ZEC, 5_000 * ZEC),
+                            hotkeyAddress = HOTKEY_ADDRESS
+                        )
+                )
+
+            fixture.useCase()(ROUND_ID)
+
+            assertEquals(0, fixture.backgroundProofCancellations)
+        }
+
     private data class StoredBundleSetup(
         val bundleCount: Int,
         val eligibleWeight: Long,
@@ -208,21 +289,43 @@ class PrepareVotingRoundUseCaseTest {
     private class PrepareFixture(
         private val bundleWeights: List<Long>,
         private val existingRoundState: RoundStateInfo? = null,
-        private val recovery: VotingRecoverySnapshot? = null
+        private val recovery: VotingRecoverySnapshot? = null,
+        private val selectedAccount: WalletAccount = keystoneAccount()
     ) {
         val crypto = mockk<VotingCryptoClient>(relaxed = true)
         val deletedSuffixKeepCounts = mutableListOf<Int>()
         val storedBundleSetups = mutableListOf<StoredBundleSetup>()
         val witnessedBundleIndices = mutableListOf<Int>()
+        val startedPrecomputeRequests = mutableListOf<VotingDelegationPirPrecomputeRequest>()
+        var backgroundProofCancellations = 0
 
         private val recoveryRepository = mockk<VotingRecoveryRepository>(relaxed = true)
         private val sessionStore = mockk<VotingSessionStore>(relaxed = true)
         private val hotkeySeedProvider = mockk<VotingHotkeySeedProvider>(relaxed = true)
-        private val proofPrecomputeRepository = mockk<VotingProofPrecomputeRepository>(relaxed = true)
+
+        // A hand-written fake so the requests and the cancel calls can be observed directly.
+        private val proofPrecomputeRepository =
+            object : VotingProofPrecomputeRepository {
+                override fun warmProvingCaches() = Unit
+
+                override fun startDelegationPirPrecompute(request: VotingDelegationPirPrecomputeRequest) {
+                    startedPrecomputeRequests += request
+                }
+
+                override suspend fun awaitDelegationPirPrecompute(
+                    key: VotingDelegationPirPrecomputeKey
+                ) = null
+
+                override suspend fun awaitDelegationProof(key: VotingDelegationPirPrecomputeKey): Result<Unit>? = null
+
+                override fun cancelBackgroundProofs() {
+                    backgroundProofCancellations += 1
+                }
+            }
         private val synchronizerProvider = mockk<SynchronizerProvider>(relaxed = true)
         private val resolveVotingRoundSession = mockk<ResolveVotingRoundSessionUseCase>()
         private val getSelectedWalletAccount = mockk<GetSelectedWalletAccountUseCase>()
-        private val selectedAccount = keystoneAccount()
+        private val walletSeedBytes = mockk<GetWalletSeedBytesUseCase>()
 
         init {
             val synchronizer = mockk<Synchronizer>(relaxed = true)
@@ -285,6 +388,8 @@ class PrepareVotingRoundUseCaseTest {
             coEvery { crypto.delegationPhases(any(), any()) } returns emptyList()
             coEvery { crypto.generateHotkey(any(), any()) } returns
                 VotingHotkey(rawAddress = ByteArray(32), address = HOTKEY_ADDRESS)
+            coEvery { crypto.extractOrchardFvkFromUfvk(any(), any()) } returns FVK_BYTES
+            coEvery { walletSeedBytes() } returns ByteArray(64)
         }
 
         fun useCase() =
@@ -297,7 +402,7 @@ class PrepareVotingRoundUseCaseTest {
                 votingProofPrecomputeRepository = proofPrecomputeRepository,
                 synchronizerProvider = synchronizerProvider,
                 getSelectedWalletAccount = getSelectedWalletAccount,
-                getWalletSeedBytes = mockk(relaxed = true)
+                getWalletSeedBytes = walletSeedBytes
             )
     }
 
@@ -308,7 +413,10 @@ class PrepareVotingRoundUseCaseTest {
         const val ZEC = 100_000_000L
         const val NOTES_PER_BUNDLE = 5
 
+        const val HOTKEY_SEED_BYTES = 64
+
         val ACCOUNT_UUID: String = AccountFixture.new().accountUuid.toVotingAccountScopeId()
+        val FVK_BYTES: ByteArray = ByteArray(32) { 7 }
 
         /**
          * Builds a notes array the Kotlin chunker turns back into exactly [bundleWeights]: every
@@ -355,6 +463,19 @@ class PrepareVotingRoundUseCaseTest {
                     ),
                 status = SessionStatus.ACTIVE,
                 createdAtHeight = 1
+            )
+
+        fun softwareAccount() =
+            ZashiAccount(
+                sdkAccount = AccountFixture.new(),
+                unifiedAddress = WalletAddressFixture.UNIFIED_ADDRESS_STRING,
+                transparentAddress = WalletAddressFixture.TRANSPARENT_ADDRESS_STRING,
+                saplingAddress = WalletAddressFixture.SAPLING_ADDRESS_STRING,
+                orchardBalance = WalletBalanceFixture.newLong(),
+                saplingBalance = WalletBalanceFixture.newLong(),
+                ironwoodBalance = WalletBalanceFixture.newLong(0, 0, 0),
+                transparentBalance = Zatoshi(0),
+                isSelected = true
             )
 
         fun keystoneAccount() =

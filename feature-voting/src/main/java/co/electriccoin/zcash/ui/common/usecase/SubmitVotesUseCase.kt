@@ -477,6 +477,12 @@ class SubmitVotesUseCase(
             .firstOrNull { bundle -> bundle.bundleIndex == bundleIndex }
             ?.phase
 
+    /**
+     * Makes sure this bundle has a delegation proof, reusing a stored or background one when it
+     * still matches the current alpha and proving on demand otherwise. A fresh proof also clears
+     * any rebuild-since-proof flag for the bundle (see `VotingKeystoneRepository.createPcztEncoder`),
+     * which the new proof has just made stale.
+     */
     @Suppress("LongMethod")
     private suspend fun buildDelegationProofIfNeeded(
         context: VotingSubmitContext,
@@ -562,54 +568,107 @@ class SubmitVotesUseCase(
             }.getOrThrow()
         }
 
-        val alreadyProved =
-            !setupJustBuilt &&
-                bundleIndex !in context.recovery.rebuiltSinceProofBundles &&
-                currentDelegationPhase(dbHandle, roundId, bundleIndex).let {
-                    it == DelegationPhase.PROVED || it == DelegationPhase.SUBMITTED || it == DelegationPhase.CONFIRMED
+        if (isDelegationProofAlreadyUsable(context, dbHandle, bundleIndex, setupJustBuilt)) {
+            return
+        }
+
+        val fvkBytes =
+            votingCryptoClient.extractOrchardFvkFromUfvk(
+                ufvk =
+                    requireNotNull(context.accountUfvk) {
+                        "Account is missing UFVK for voting bundle $bundleIndex"
+                    },
+                networkId = context.networkId
+            )
+        runVotingAuthorizationStep(context.isKeystone) {
+            votingCryptoClient.buildAndProveDelegation(
+                dbHandle = dbHandle,
+                roundId = roundId,
+                bundleIndex = bundleIndex,
+                pirServerUrl = context.pirServerUrl,
+                pirLayout = context.pirLayout,
+                notesJson = context.allNotesJson,
+                fvkBytes = fvkBytes,
+                hotkeySeed = context.hotkeySeed,
+                seedFingerprint =
+                    requireNotNull(context.seedFingerprint) {
+                        "Account is missing seed fingerprint for voting bundle $bundleIndex"
+                    },
+                accountIndex = context.accountIndex,
+                roundName = context.session.title,
+                proofProgress = { progress ->
+                    ledger.update(
+                        bundleIndex = bundleIndex,
+                        questionIndex = 0,
+                        stage = progress * PROOF_STAGE_CEILING
+                    )
                 }
-        if (!alreadyProved) {
-            val fvkBytes =
-                votingCryptoClient.extractOrchardFvkFromUfvk(
-                    ufvk =
-                        requireNotNull(context.accountUfvk) {
-                            "Account is missing UFVK for voting bundle $bundleIndex"
-                        },
-                    networkId = context.networkId
-                )
-            runVotingAuthorizationStep(context.isKeystone) {
-                votingCryptoClient.buildAndProveDelegation(
-                    dbHandle = dbHandle,
+            )
+        }
+        votingRecoveryRepository.clearBundleRebuiltSinceProof(
+            accountUuid = context.accountUuidString,
+            roundId = roundId,
+            bundleIndex = bundleIndex
+        )
+    }
+
+    /**
+     * True when this bundle already has a proof that matches its current alpha - either one stored
+     * by an earlier run or one the background stage just produced.
+     *
+     * A fresh construct wrote new alpha, and a bundle rebuilt since its last proof has a stale
+     * `proofs` row; in both cases any existing proof was produced against the old alpha and must be
+     * disregarded, which is why nothing is reused when [setupJustBuilt] is true.
+     */
+    private suspend fun isDelegationProofAlreadyUsable(
+        context: VotingSubmitContext,
+        dbHandle: Long,
+        bundleIndex: Int,
+        setupJustBuilt: Boolean
+    ): Boolean {
+        if (setupJustBuilt || bundleIndex in context.recovery.rebuiltSinceProofBundles) {
+            return false
+        }
+        val phase = currentDelegationPhase(dbHandle, context.roundId, bundleIndex)
+        return phase == DelegationPhase.PROVED ||
+            phase == DelegationPhase.SUBMITTED ||
+            phase == DelegationPhase.CONFIRMED ||
+            awaitedBackgroundProofSucceeded(context, dbHandle, bundleIndex)
+    }
+
+    /**
+     * Waits for the background delegation proof of this bundle and reports whether the bundle came
+     * out PROVED. False means there was no background proof, it failed, or it did not leave the
+     * bundle proved - the caller then proves on demand exactly as it did before.
+     */
+    private suspend fun awaitedBackgroundProofSucceeded(
+        context: VotingSubmitContext,
+        dbHandle: Long,
+        bundleIndex: Int
+    ): Boolean {
+        val roundId = context.roundId
+        val outcome =
+            votingProofPrecomputeRepository.awaitDelegationProof(
+                VotingDelegationPirPrecomputeKey(
+                    accountUuid = context.accountUuidString,
                     roundId = roundId,
-                    bundleIndex = bundleIndex,
-                    pirServerUrl = context.pirServerUrl,
-                    pirLayout = context.pirLayout,
-                    notesJson = context.allNotesJson,
-                    fvkBytes = fvkBytes,
-                    hotkeySeed = context.hotkeySeed,
-                    seedFingerprint =
-                        requireNotNull(context.seedFingerprint) {
-                            "Account is missing seed fingerprint for voting bundle $bundleIndex"
-                        },
-                    accountIndex = context.accountIndex,
-                    roundName = context.session.title,
-                    proofProgress = { progress ->
-                        ledger.update(
-                            bundleIndex = bundleIndex,
-                            questionIndex = 0,
-                            stage = progress * PROOF_STAGE_CEILING
-                        )
-                    }
+                    bundleIndex = bundleIndex
                 )
-            }
-            // A fresh proof now matches the current alpha, so any earlier rebuild-since-proof
-            // flag for this bundle (see VotingKeystoneRepository.createPcztEncoder) is stale.
+            ) ?: return false
+        outcome.onFailure { throwable ->
+            Log.w(TAG, "Background voting delegation proof failed for round $roundId bundle $bundleIndex", throwable)
+        }
+        val proved =
+            outcome.isSuccess &&
+                currentDelegationPhase(dbHandle, roundId, bundleIndex) == DelegationPhase.PROVED
+        if (proved) {
             votingRecoveryRepository.clearBundleRebuiltSinceProof(
                 accountUuid = context.accountUuidString,
                 roundId = roundId,
                 bundleIndex = bundleIndex
             )
         }
+        return proved
     }
 
     /**

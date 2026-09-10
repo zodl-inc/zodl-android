@@ -8,6 +8,7 @@ import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.voting.DelegationPhase
 import co.electriccoin.zcash.ui.common.model.voting.VoteIneligibilityReason
+import co.electriccoin.zcash.ui.common.model.voting.VotingBackgroundProofPolicy
 import co.electriccoin.zcash.ui.common.model.voting.VotingBundleSetupResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingBundleTrim
 import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
@@ -23,6 +24,7 @@ import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
 import co.electriccoin.zcash.ui.common.repository.VotingDelegationPirPrecomputeRequest
+import co.electriccoin.zcash.ui.common.repository.VotingDelegationProofMaterial
 import co.electriccoin.zcash.ui.common.repository.VotingEligibility
 import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
@@ -119,6 +121,7 @@ class PrepareVotingRoundUseCase(
                     when (existingRoundRecoveryAction) {
                         ExistingRoundRecoveryAction.REINITIALIZE -> {
                             Log.i(TAG, "Reinitializing verified empty voting round $roundId")
+                            votingProofPrecomputeRepository.cancelBackgroundProofs()
                             votingCryptoClient.clearRound(dbHandle, roundId)
                             votingCryptoClient.clearRecoveryState(dbHandle, roundId)
                             votingRecoveryRepository.clearRound(accountUuidString, roundId)
@@ -162,6 +165,7 @@ class PrepareVotingRoundUseCase(
                             freshNotesJson = notesJson
                             roundNotesJson = notesJson
 
+                            votingProofPrecomputeRepository.cancelBackgroundProofs()
                             votingCryptoClient.initializeRound(
                                 dbHandle = dbHandle,
                                 roundId = roundId,
@@ -543,6 +547,12 @@ class PrepareVotingRoundUseCase(
         }
     }
 
+    /**
+     * Builds the per-bundle precompute requests for a software wallet, each carrying the material
+     * the background delegation proof needs. The Orchard FVK is read once for the whole round: it
+     * is the same bytes for every bundle, and a failure reading it must leave PIR precompute
+     * running rather than disable it too.
+     */
     private suspend fun buildSoftwareDelegationPirPrecomputeRequests(
         accountUuid: String,
         walletId: String,
@@ -563,6 +573,16 @@ class PrepareVotingRoundUseCase(
         expectedSnapshotHeight: Long
     ): List<VotingDelegationPirPrecomputeRequest> {
         val requests = mutableListOf<VotingDelegationPirPrecomputeRequest>()
+        val fvkBytes =
+            if (VotingBackgroundProofPolicy.ENABLED) {
+                runCatching {
+                    votingCryptoClient.extractOrchardFvkFromUfvk(ufvk = ufvk, networkId = networkId)
+                }.onFailure { throwable ->
+                    Log.w(TAG, "Skipping background voting delegation proofs for round $roundId", throwable)
+                }.getOrNull()
+            } else {
+                null
+            }
         val phaseByBundle =
             votingCryptoClient
                 .delegationPhases(dbHandle, roundId)
@@ -611,7 +631,17 @@ class PrepareVotingRoundUseCase(
                         pirLayout = pirLayout,
                         expectedSnapshotHeight = expectedSnapshotHeight,
                         networkId = networkId,
-                        notesJson = notesJson
+                        notesJson = notesJson,
+                        proofMaterial =
+                            fvkBytes?.let { fvk ->
+                                VotingDelegationProofMaterial(
+                                    fvkBytes = fvk.copyOf(),
+                                    hotkeySeed = hotkeySeed.copyOf(),
+                                    seedFingerprint = seedFingerprint.copyOf(),
+                                    accountIndex = accountIndex,
+                                    roundName = roundName
+                                )
+                            }
                     )
             }.onFailure { throwable ->
                 // Deliberately error-level, not warn: a swallowed construct failure here is
