@@ -114,7 +114,23 @@ val featureVotingModule =
         factoryOf(::PrepareVotingRoundUseCase)
         factoryOf(::AuthorizeVotingSubmissionUseCase)
         factoryOf(::SkipRemainingKeystoneBundlesUseCase)
-        factoryOf(::SubmitVotesUseCase)
+        factory {
+            SubmitVotesUseCase(
+                resolveVotingRoundSession = get(),
+                votingRecoveryRepository = get(),
+                votingSessionStore = get(),
+                votingCryptoClient = get(),
+                votingProofPrecomputeRepository = get(),
+                votingApiProvider = get(),
+                pirSnapshotResolver = get(),
+                votingHotkeySeedProvider = get(),
+                synchronizerProvider = get(),
+                getSelectedWalletAccount = get(),
+                getWalletSeedBytes = get(),
+                prepareVotingRound = get(),
+                votingShareTrackingScheduler = get()
+            )
+        }
         factoryOf(::TrackVotingSharesUseCase)
         factoryOf(::ParseVotingKeystonePCZTUseCase)
         factoryOf(::CreateVotingKeystonePcztEncoderUseCase)

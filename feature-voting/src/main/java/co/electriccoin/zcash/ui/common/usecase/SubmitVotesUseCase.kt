@@ -42,8 +42,18 @@ import co.electriccoin.zcash.ui.common.repository.toCanonicalUuidString
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.work.VotingShareTrackingScheduler
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.job
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
@@ -51,6 +61,7 @@ import java.time.Instant
 import java.util.Base64
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
+import kotlin.coroutines.CoroutineContext
 
 class VotingAuthorizationException(
     cause: Exception
@@ -73,6 +84,7 @@ class SubmitVotesUseCase(
     private val getWalletSeedBytes: GetWalletSeedBytesUseCase,
     private val prepareVotingRound: PrepareVotingRoundUseCase,
     private val votingShareTrackingScheduler: VotingShareTrackingScheduler,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) {
     private class VotingSubmitContext(
         val roundId: String,
@@ -104,7 +116,7 @@ class SubmitVotesUseCase(
         choices: Map<Int, Int>,
         onProgress: (VotingSubmissionProgress) -> Unit = {}
     ): VotingSubmissionResult =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             if (choices.isEmpty()) {
                 return@withContext VotingSubmissionResult(submittedProposalCount = 0)
             }
@@ -222,6 +234,8 @@ class SubmitVotesUseCase(
             val dbHandle = votingCryptoClient.openVotingDb(context.votingDbPath)
             check(dbHandle != 0L) { "Failed to open voting DB at ${context.votingDbPath}" }
 
+            val shareDelivery = ShareDelivery(coroutineContext, ioDispatcher)
+
             try {
                 votingCryptoClient.setWalletId(
                     dbHandle,
@@ -257,7 +271,7 @@ class SubmitVotesUseCase(
                         }.mapValuesTo(mutableMapOf()) { (_, votes) ->
                             votes.mapTo(mutableSetOf()) { vote -> vote.bundleIndex }
                         }
-                val delegatedShareIndicesByTarget =
+                shareDelivery.seed(
                     votingCryptoClient
                         .getShareDelegations(
                             dbHandle = dbHandle,
@@ -267,9 +281,10 @@ class SubmitVotesUseCase(
                                 bundleIndex = record.bundleIndex,
                                 proposalId = record.proposalId
                             )
-                        }.mapValuesTo(mutableMapOf()) { (_, records) ->
+                        }.mapValues { (_, records) ->
                             records.mapTo(mutableSetOf()) { it.shareIndex }
                         }
+                )
 
                 if (context.recovery.needsDelegationSubmission()) {
                     submitDelegationBundles(
@@ -286,10 +301,12 @@ class SubmitVotesUseCase(
                         dbHandle = dbHandle,
                         bundleCount = bundleCount,
                         submittedBundleIndicesByProposal = submittedBundleIndicesByProposal,
-                        delegatedShareIndicesByTarget = delegatedShareIndicesByTarget,
+                        shareDelivery = shareDelivery,
                         unresolvedCommittedProposalIds = unresolvedCommittedProposalIds,
                         onProgress = onProgress
                     )
+
+                shareDelivery.awaitAll()
 
                 val completedProposalCount =
                     votingRecoveryRepository
@@ -308,6 +325,7 @@ class SubmitVotesUseCase(
                     roundId = context.roundId,
                     phase = VotingRecoveryPhase.VOTES_SUBMITTED
                 )
+                shareDelivery.firstFailure()?.let { failure -> throw failure }
                 votingRecoveryRepository.setPhase(
                     accountUuid = context.accountUuidString,
                     roundId = context.roundId,
@@ -337,6 +355,8 @@ class SubmitVotesUseCase(
             } catch (exception: Exception) {
                 throw exception
             } finally {
+                withContext(NonCancellable) { shareDelivery.awaitAll() }
+                shareDelivery.close()
                 traceVotingStep(
                     roundId = roundId,
                     step = "closeVotingDb"
@@ -828,7 +848,7 @@ class SubmitVotesUseCase(
         dbHandle: Long,
         bundleCount: Int,
         submittedBundleIndicesByProposal: MutableMap<Int, MutableSet<Int>>,
-        delegatedShareIndicesByTarget: MutableMap<ShareDelegationTarget, MutableSet<Int>>,
+        shareDelivery: ShareDelivery,
         unresolvedCommittedProposalIds: Set<Int>,
         onProgress: (VotingSubmissionProgress) -> Unit
     ): Int {
@@ -907,7 +927,7 @@ class SubmitVotesUseCase(
                             bundleIndex = bundleIndex,
                             proposalId = proposalId,
                             requestedSelection = selection,
-                            delegatedShareIndicesByTarget = delegatedShareIndicesByTarget
+                            shareDelivery = shareDelivery
                         )
                     if (reusedCachedVote) {
                         submittedBundles += bundleIndex
@@ -940,7 +960,7 @@ class SubmitVotesUseCase(
                     context = context,
                     dbHandle = dbHandle,
                     posted = posted,
-                    delegatedShareIndicesByTarget = delegatedShareIndicesByTarget
+                    shareDelivery = shareDelivery
                 )
                 submittedBundles += posted.bundleIndex
                 ledger.update(posted.bundleIndex, proposalIndex, CONFIRMED_STAGE)
@@ -984,7 +1004,7 @@ class SubmitVotesUseCase(
         bundleIndex: Int,
         proposalId: Int,
         requestedSelection: VotingProposalSelection,
-        delegatedShareIndicesByTarget: MutableMap<ShareDelegationTarget, MutableSet<Int>>
+        shareDelivery: ShareDelivery
     ): Boolean {
         val roundId = context.roundId
         val cachedConfirmation =
@@ -1047,12 +1067,12 @@ class SubmitVotesUseCase(
                 )
             }
         }
-        submitMissingShares(
+        launchShareDelivery(
             context = context,
             dbHandle = dbHandle,
             bundleIndex = bundleIndex,
             proposalId = proposalId,
-            delegatedShareIndicesByTarget = delegatedShareIndicesByTarget
+            shareDelivery = shareDelivery
         )
         return true
     }
@@ -1198,7 +1218,7 @@ class SubmitVotesUseCase(
         context: VotingSubmitContext,
         dbHandle: Long,
         posted: PostedVote,
-        delegatedShareIndicesByTarget: MutableMap<ShareDelegationTarget, MutableSet<Int>>
+        shareDelivery: ShareDelivery
     ) {
         val roundId = context.roundId
         val bundleIndex = posted.bundleIndex
@@ -1240,12 +1260,12 @@ class SubmitVotesUseCase(
                 vcTreePosition = vcTreePosition
             )
         }
-        submitMissingShares(
+        launchShareDelivery(
             context = context,
             dbHandle = dbHandle,
             bundleIndex = bundleIndex,
             proposalId = proposalId,
-            delegatedShareIndicesByTarget = delegatedShareIndicesByTarget
+            shareDelivery = shareDelivery
         )
     }
 
@@ -1406,11 +1426,10 @@ class SubmitVotesUseCase(
         dbHandle: Long,
         bundleIndex: Int,
         proposalId: Int,
-        delegatedShareIndicesByTarget: MutableMap<ShareDelegationTarget, MutableSet<Int>>
+        shareDelivery: ShareDelivery
     ) {
         val roundId = context.roundId
         val target = ShareDelegationTarget(bundleIndex = bundleIndex, proposalId = proposalId)
-        val existingShareIndices = delegatedShareIndicesByTarget.getOrPut(target) { mutableSetOf() }
         val committedVote =
             traceVotingStep(
                 roundId = roundId,
@@ -1436,10 +1455,7 @@ class SubmitVotesUseCase(
                     )
                 )
             }
-        val pendingPayloads =
-            payloads.filterNot { payload ->
-                payload.encShare.shareIndex in existingShareIndices
-            }
+        val pendingPayloads = shareDelivery.pending(target, payloads)
 
         if (pendingPayloads.isEmpty()) {
             return
@@ -1470,7 +1486,43 @@ class SubmitVotesUseCase(
                     submitAt = payload.submitAt
                 )
             }
-            existingShareIndices += info.shareIndex
+            shareDelivery.recordDelivered(target, info.shareIndex)
+        }
+    }
+
+    /**
+     * Delivers this bundle's shares in the background. A delivery that no server accepts is
+     * recorded rather than thrown: it must not stop the votes still to be cast, and the round only
+     * fails once every vote is on chain.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private fun launchShareDelivery(
+        context: VotingSubmitContext,
+        dbHandle: Long,
+        bundleIndex: Int,
+        proposalId: Int,
+        shareDelivery: ShareDelivery
+    ) {
+        shareDelivery.launch {
+            try {
+                submitMissingShares(
+                    context = context,
+                    dbHandle = dbHandle,
+                    bundleIndex = bundleIndex,
+                    proposalId = proposalId,
+                    shareDelivery = shareDelivery
+                )
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                Log.w(
+                    TAG,
+                    "Voting share delivery failed for round ${context.roundId} " +
+                        "bundle $bundleIndex proposal $proposalId",
+                    exception
+                )
+                shareDelivery.record(exception)
+            }
         }
     }
 
@@ -1580,6 +1632,90 @@ class SubmitVotesUseCase(
         val bundleIndex: Int,
         val proposalId: Int
     )
+
+    /**
+     * Owns the background delivery of encrypted shares: the coroutine scope they run on, which
+     * share indices are already on a helper server, the jobs still in flight, and the failures they
+     * reported.
+     *
+     * Share delivery is Tor traffic to helper servers and never blocks the vote chain, so keeping it
+     * off the critical path removes one network round trip per bundle per question.
+     *
+     * The jobs run on a supervisor child of the submission's own job: a delivery that fails never
+     * cancels the votes still to be cast, but cancelling the submission still cancels the
+     * deliveries.
+     */
+    private class ShareDelivery(
+        parentContext: CoroutineContext,
+        dispatcher: CoroutineDispatcher
+    ) {
+        private val supervisor = SupervisorJob(parentContext.job)
+        private val scope = CoroutineScope(parentContext + supervisor + dispatcher)
+
+        private val mutex = Mutex()
+        private val deliveredByTarget = mutableMapOf<ShareDelegationTarget, MutableSet<Int>>()
+
+        private val lock = ReentrantLock()
+        private val jobs = mutableListOf<Job>()
+        private val failures = mutableListOf<Exception>()
+
+        fun seed(delivered: Map<ShareDelegationTarget, Set<Int>>) {
+            deliveredByTarget.clear()
+            delivered.forEach { (target, indices) -> deliveredByTarget[target] = indices.toMutableSet() }
+        }
+
+        fun launch(block: suspend () -> Unit) {
+            lock.withLock { jobs += scope.launch { block() } }
+        }
+
+        /**
+         * Waits for every delivery started so far. A caller that must not be interrupted - the one
+         * closing the voting DB - wraps this in `NonCancellable`, because a plain join throws once
+         * the outer job is cancelled and the DB must not close under a running job.
+         */
+        suspend fun awaitAll() {
+            lock.withLock { jobs.toList() }.joinAll()
+        }
+
+        /**
+         * Finishes the supervisor job. It is a `CompletableJob`, so without this the enclosing
+         * `withContext` would wait on it forever.
+         */
+        fun close() {
+            supervisor.complete()
+        }
+
+        fun record(exception: Exception) {
+            lock.withLock { failures += exception }
+        }
+
+        /**
+         * The first delivery failure, if any. A share no server accepted was never
+         * `recordShareDelegation`-ed, so [co.electriccoin.zcash.ui.common.usecase.TrackVotingSharesUseCase]
+         * cannot pick it up later and the submission has to surface it - just once every vote is
+         * safely on chain. A retry re-enters through the cached-vote path and resends only the
+         * share indices that are still missing.
+         */
+        fun firstFailure(): Exception? = lock.withLock { failures.firstOrNull() }
+
+        suspend fun pending(
+            target: ShareDelegationTarget,
+            payloads: List<SharePayload>
+        ): List<SharePayload> =
+            mutex.withLock {
+                val delivered = deliveredByTarget.getOrPut(target) { mutableSetOf() }
+                payloads.filterNot { payload -> payload.encShare.shareIndex in delivered }
+            }
+
+        suspend fun recordDelivered(
+            target: ShareDelegationTarget,
+            shareIndex: Int
+        ) {
+            mutex.withLock {
+                deliveredByTarget.getOrPut(target) { mutableSetOf() } += shareIndex
+            }
+        }
+    }
 
     /** A vote commitment whose transaction hash is durable but whose confirmation is still pending. */
     private data class PostedVote(

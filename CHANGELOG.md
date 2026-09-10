@@ -20,6 +20,9 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   out.
 - Coinholder Polling now broadcasts every bundle of a question before it starts waiting for any of
   them to be mined, instead of waiting out one bundle at a time.
+- Coinholder Polling now sends the encrypted vote shares to the helper servers in the background
+  while it moves on to the next question, instead of waiting for each delivery before continuing.
+  A delivery that no server accepts still fails the submission, only once every vote is on chain.
 
 ## [3.11.0 (2653)] - 2026-09-08
 

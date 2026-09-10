@@ -54,6 +54,13 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import java.io.EOFException
 import java.time.Instant
@@ -547,6 +554,85 @@ class SubmitVotesUseCaseRecoveryTest {
             assertEquals(VotingRecoveryPhase.DELEGATION_SUBMITTED, fixture.recovery.phase)
         }
 
+    @Test
+    fun shareDeliveryFailureDoesNotBlockNextQuestion() =
+        runTest {
+            val fixture =
+                CastVoteRecoveryFixture(
+                    selectedAccount = keystoneAccount(),
+                    proposalCount = 2,
+                    successfulVoteSubmissions = true,
+                    failingShareProposalId = 1
+                )
+
+            val failure =
+                assertFailsWith<IllegalStateException> {
+                    fixture.newUseCase()(ROUND_ID, mapOf(1 to 0, 2 to 0))
+                }
+
+            assertEquals("share helper unavailable", failure.message)
+            // Both votes still reached the chain, and only proposal 2's share was recorded.
+            assertEquals(listOf(1, 2), fixture.submittedBundles.map { bundle -> bundle.proposalId })
+            assertEquals(listOf(0), fixture.recordedShares)
+            // The failure surfaces after every vote is on chain, never before the next question.
+            assertEquals(VotingRecoveryPhase.VOTES_SUBMITTED, fixture.recovery.phase)
+        }
+
+    @Test
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun shareJobsAreJoinedBeforeVotingDbCloses() =
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            val fixture =
+                CastVoteRecoveryFixture(
+                    selectedAccount = keystoneAccount(),
+                    successfulVoteSubmissions = true,
+                    shareDeliveryGate = gate
+                )
+
+            val submission =
+                launch {
+                    fixture.newUseCase(StandardTestDispatcher(testScheduler))(ROUND_ID, mapOf(1 to 0))
+                }
+            advanceUntilIdle()
+
+            assertEquals(1, fixture.submittedBundles.size)
+            assertEquals(0, fixture.closeDbCalls)
+
+            gate.complete(Unit)
+            advanceUntilIdle()
+            submission.join()
+
+            assertEquals(1, fixture.closeDbCalls)
+            assertEquals(listOf(0), fixture.recordedShares)
+        }
+
+    @Test
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun cancellationCancelsInFlightShareJobs() =
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            val fixture =
+                CastVoteRecoveryFixture(
+                    selectedAccount = keystoneAccount(),
+                    successfulVoteSubmissions = true,
+                    shareDeliveryGate = gate
+                )
+
+            val submission =
+                launch {
+                    fixture.newUseCase(StandardTestDispatcher(testScheduler))(ROUND_ID, mapOf(1 to 0))
+                }
+            advanceUntilIdle()
+            assertEquals(0, fixture.closeDbCalls)
+
+            submission.cancel()
+            advanceUntilIdle()
+
+            assertEquals(1, fixture.closeDbCalls)
+            assertEquals(emptyList(), fixture.recordedShares)
+        }
+
     private class CastVoteRecoveryFixture(
         private val selectedAccount: KeystoneAccount,
         private val confirmedChoice: Int = 0,
@@ -557,7 +643,9 @@ class SubmitVotesUseCaseRecoveryTest {
         private val successfulVoteSubmissions: Boolean = false,
         private val initialSelections: Map<Int, VotingProposalSelection> = emptyMap(),
         private val latestNextIndexOverride: Long? = null,
-        private val rejectedConfirmationBundleIndex: Int? = null
+        private val rejectedConfirmationBundleIndex: Int? = null,
+        private val failingShareProposalId: Int? = null,
+        private val shareDeliveryGate: CompletableDeferred<Unit>? = null
     ) {
         val crypto = mockk<VotingCryptoClient>(relaxed = true)
         val api = mockk<VotingApiProvider>(relaxed = true)
@@ -791,8 +879,10 @@ class SubmitVotesUseCaseRecoveryTest {
                     nextFromHeight = 0
                 )
             }
-            coEvery { api.delegateShares(any()) } answers {
+            coEvery { api.delegateShares(any()) } coAnswers {
                 val proposalId = firstArg<List<SharePayload>>().single().proposalId
+                shareDeliveryGate?.await()
+                check(proposalId != failingShareProposalId) { "share helper unavailable" }
                 listOf(
                     DelegatedShareInfo(
                         shareIndex = 0,
@@ -803,7 +893,7 @@ class SubmitVotesUseCaseRecoveryTest {
             }
         }
 
-        fun newUseCase() =
+        fun newUseCase(ioDispatcher: CoroutineDispatcher = Dispatchers.IO) =
             SubmitVotesUseCase(
                 resolveVotingRoundSession = resolveVotingRoundSession,
                 votingRecoveryRepository = recoveryRepository,
@@ -817,7 +907,8 @@ class SubmitVotesUseCaseRecoveryTest {
                 getSelectedWalletAccount = getSelectedWalletAccount,
                 getWalletSeedBytes = mockk(relaxed = true),
                 prepareVotingRound = prepareVotingRound,
-                votingShareTrackingScheduler = mockk<VotingShareTrackingScheduler>(relaxed = true)
+                votingShareTrackingScheduler = mockk<VotingShareTrackingScheduler>(relaxed = true),
+                ioDispatcher = ioDispatcher
             )
     }
 
