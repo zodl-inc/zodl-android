@@ -8,6 +8,7 @@ import co.electriccoin.zcash.ui.common.model.voting.TxEvent
 import co.electriccoin.zcash.ui.common.model.voting.TxEventAttribute
 import co.electriccoin.zcash.ui.common.model.voting.TxResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
+import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionProgress
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.test.runTest
@@ -869,6 +870,80 @@ class SubmitVotesUseCaseProgressTest {
                 bundleProgress = 1.0
             )
         )
+    }
+
+    @Test
+    fun ledgerProgressIsMonotonicWhenLaterBundleProvesBeforeEarlierConfirms() {
+        val emissions = mutableListOf<VotingSubmissionProgress.Submitting>()
+        val ledger =
+            SubmissionProgressLedger(
+                bundleCount = 2,
+                totalChoices = 2,
+                onProgress = { progress ->
+                    emissions += assertIs<VotingSubmissionProgress.Submitting>(progress)
+                }
+            )
+
+        ledger.update(bundleIndex = 0, questionIndex = 0, stage = 0.0)
+        ledger.update(bundleIndex = 0, questionIndex = 0, stage = PROOF_STAGE_CEILING)
+        ledger.update(bundleIndex = 0, questionIndex = 0, stage = POSTED_STAGE)
+        // Bundle 1 proves and posts while bundle 0 is still waiting for its confirmation.
+        ledger.update(bundleIndex = 1, questionIndex = 0, stage = PROOF_STAGE_CEILING)
+        ledger.update(bundleIndex = 1, questionIndex = 0, stage = POSTED_STAGE)
+        ledger.update(bundleIndex = 0, questionIndex = 0, stage = CONFIRMED_STAGE)
+        ledger.update(bundleIndex = 1, questionIndex = 0, stage = CONFIRMED_STAGE)
+
+        assertTrue(emissions.map { it.progress }.zipWithNext().all { (previous, next) -> previous <= next })
+        // The slowest bundle governs the "question X of N" label, so it never runs ahead.
+        assertEquals(listOf(1, 1, 1, 1, 1, 1, 2), emissions.map { it.current })
+        assertEquals(0.5f, emissions.last().progress)
+    }
+
+    @Test
+    fun ledgerNeverMovesProgressBackwards() {
+        val emissions = mutableListOf<Float>()
+        val ledger =
+            SubmissionProgressLedger(
+                bundleCount = 1,
+                totalChoices = 1,
+                onProgress = { progress ->
+                    emissions += assertIs<VotingSubmissionProgress.Submitting>(progress).progress
+                }
+            )
+
+        ledger.update(bundleIndex = 0, questionIndex = 0, stage = POSTED_STAGE)
+        ledger.update(bundleIndex = 0, questionIndex = 0, stage = 0.0)
+
+        assertEquals(listOf(0.9f, 0.9f), emissions)
+    }
+
+    @Test
+    fun ledgerReproducesTodaysValuesForASingleBundleRound() {
+        val emissions = mutableListOf<VotingSubmissionProgress.Submitting>()
+        val ledger =
+            SubmissionProgressLedger(
+                bundleCount = 1,
+                totalChoices = 4,
+                onProgress = { progress ->
+                    emissions += assertIs<VotingSubmissionProgress.Submitting>(progress)
+                }
+            )
+
+        ledger.update(bundleIndex = 0, questionIndex = 2, stage = 0.0)
+        ledger.update(bundleIndex = 0, questionIndex = 2, stage = CONFIRMED_STAGE)
+
+        assertEquals(
+            calculateSubmittingBundleProgress(
+                proposalIndex = 2,
+                bundleIndex = 0,
+                bundleCount = 1,
+                totalChoices = 4,
+                bundleProgress = 0.0
+            ),
+            emissions.first().progress
+        )
+        assertEquals(3, emissions.first().current)
+        assertEquals(0.75f, emissions.last().progress)
     }
 
     private fun spentNullifierResult(txHash: String = "duplicate-tx") =

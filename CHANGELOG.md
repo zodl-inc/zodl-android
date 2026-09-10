@@ -18,6 +18,8 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   are only dropped while the voting weight they carry stays under 1 % of your eligible balance
   (never more than 1,000 ZEC), and the confirmation screen shows exactly how much weight was left
   out.
+- Coinholder Polling now broadcasts every bundle of a question before it starts waiting for any of
+  them to be mined, instead of waiting out one bundle at a time.
 
 ## [3.11.0 (2653)] - 2026-09-08
 

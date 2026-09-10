@@ -472,6 +472,81 @@ class SubmitVotesUseCaseRecoveryTest {
             assertEquals(VotingRecoveryPhase.DELEGATION_SUBMITTED, fixture.recovery.phase)
         }
 
+    @Test
+    fun twoBundlesPostBothBeforeAnyConfirmation() =
+        runTest {
+            val fixture =
+                CastVoteRecoveryFixture(
+                    selectedAccount = keystoneAccount(),
+                    bundleCount = 2,
+                    successfulVoteSubmissions = true
+                )
+
+            val result = fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
+
+            assertEquals(1, result.submittedProposalCount)
+            assertEquals(
+                listOf("post:0", "post:1", "confirm:accepted-0-1", "confirm:accepted-1-1"),
+                fixture.apiCallLog
+            )
+        }
+
+    @Test
+    fun treeSyncRunsOncePerQuestionForAllBundles() =
+        runTest {
+            val fixture =
+                CastVoteRecoveryFixture(
+                    selectedAccount = keystoneAccount(),
+                    proposalCount = 2,
+                    bundleCount = 2,
+                    successfulVoteSubmissions = true
+                )
+
+            val result = fixture.newUseCase()(ROUND_ID, mapOf(1 to 0, 2 to 0))
+
+            assertEquals(2, result.submittedProposalCount)
+            assertEquals(2, fixture.treeSyncCalls)
+        }
+
+    @Test
+    fun confirmationFailureOnSecondBundleKeepsFirstBundlePersisted() =
+        runTest {
+            val fixture =
+                CastVoteRecoveryFixture(
+                    selectedAccount = keystoneAccount(),
+                    bundleCount = 2,
+                    successfulVoteSubmissions = true,
+                    rejectedConfirmationBundleIndex = 1
+                )
+
+            assertFailsWith<IllegalStateException> {
+                fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
+            }
+
+            // Both bundles were posted and their hashes persisted before any wait started, and the
+            // bundle that did confirm keeps its positions so a retry resumes from the cached hash.
+            assertEquals(listOf("accepted-0-1", "accepted-1-1"), fixture.storedVoteHashes)
+            assertEquals(listOf(StoredVanPosition(bundleIndex = 0, position = 7)), fixture.storedVanPositions)
+            assertEquals(listOf(12L), fixture.recordedVcPositions)
+        }
+
+    @Test
+    fun delegationPostsAllBundlesBeforeConfirming() =
+        runTest {
+            val fixture = RecoveryFixture(keystoneAccount(), successfulDelegations = true)
+
+            assertFailsWith<ContinuationReached> {
+                fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
+            }
+
+            assertEquals(
+                listOf("post:0", "post:1", "confirm:bundle-0-tx", "confirm:bundle-1-tx"),
+                fixture.apiCallLog
+            )
+            assertEquals(listOf("bundle-0-tx", "bundle-1-tx"), fixture.storedDelegationHashes)
+            assertEquals(VotingRecoveryPhase.DELEGATION_SUBMITTED, fixture.recovery.phase)
+        }
+
     private class CastVoteRecoveryFixture(
         private val selectedAccount: KeystoneAccount,
         private val confirmedChoice: Int = 0,
@@ -481,10 +556,13 @@ class SubmitVotesUseCaseRecoveryTest {
         private val cachedVoteTxHash: String? = null,
         private val successfulVoteSubmissions: Boolean = false,
         private val initialSelections: Map<Int, VotingProposalSelection> = emptyMap(),
-        private val latestNextIndexOverride: Long? = null
+        private val latestNextIndexOverride: Long? = null,
+        private val rejectedConfirmationBundleIndex: Int? = null
     ) {
         val crypto = mockk<VotingCryptoClient>(relaxed = true)
         val api = mockk<VotingApiProvider>(relaxed = true)
+        val apiCallLog = mutableListOf<String>()
+        var treeSyncCalls = 0
         val submittedBundles = mutableListOf<VoteCommitmentBundle>()
         val submittedSignatures = mutableListOf<CastVoteSignature>()
         val builtVoteTargets = mutableListOf<Pair<Int, Int>>()
@@ -582,7 +660,6 @@ class SubmitVotesUseCaseRecoveryTest {
             coEvery { crypto.getShareDelegations(any(), any()) } returns emptyList()
             coEvery { crypto.getVoteTxHash(any(), any(), any(), any()) } returns
                 (cachedVoteTxHash?.let(VotingTxHashLookup::Present) ?: VotingTxHashLookup.NotFound)
-            var treeSyncCalls = 0
             coEvery { crypto.syncVoteTree(any(), any(), any()) } answers {
                 treeSyncCalls += 1
                 if (failFirstTreeSync && treeSyncCalls == 1) -1L else 10L
@@ -657,6 +734,7 @@ class SubmitVotesUseCaseRecoveryTest {
             coEvery { api.submitVoteCommitment(any(), any()) } answers {
                 submittedBundles += firstArg<VoteCommitmentBundle>()
                 submittedSignatures += secondArg<CastVoteSignature>()
+                apiCallLog += "post:${builtVoteTargets.last().first}"
                 if (successfulVoteSubmissions) {
                     val (bundleIndex, proposalId) = builtVoteTargets.last()
                     return@answers TxResult(
@@ -678,8 +756,17 @@ class SubmitVotesUseCaseRecoveryTest {
                 confirmationLookups += ORIGINAL_CAST_TX_HASH
                 castVoteConfirmation()
             }
-            coEvery { api.fetchTxConfirmation(match { txHash -> txHash.startsWith("accepted-") }) } returns
-                castVoteConfirmation()
+            coEvery { api.fetchTxConfirmation(match { txHash -> txHash.startsWith("accepted-") }) } answers {
+                val txHash = firstArg<String>()
+                apiCallLog += "confirm:$txHash"
+                if (rejectedConfirmationBundleIndex != null &&
+                    txHash.startsWith("accepted-$rejectedConfirmationBundleIndex-")
+                ) {
+                    TxConfirmation(height = 20, code = 4, log = "vote commitment rejected")
+                } else {
+                    castVoteConfirmation()
+                }
+            }
             val confirmedCommitment = castVoteCommitment(proposalId = 1, choice = confirmedChoice)
             val confirmedLeaves =
                 MutableList(13) { ByteArray(32) }.also { leaves ->
@@ -736,10 +823,12 @@ class SubmitVotesUseCaseRecoveryTest {
 
     private class RecoveryFixture(
         private val selectedAccount: KeystoneAccount,
-        private val bundle0Failure: Exception? = null
+        private val bundle0Failure: Exception? = null,
+        private val successfulDelegations: Boolean = false
     ) {
         val crypto = mockk<VotingCryptoClient>(relaxed = true)
         val api = mockk<VotingApiProvider>(relaxed = true)
+        val apiCallLog = mutableListOf<String>()
         val delegationPhases = mutableListOf(DelegationPhase.PROVED, DelegationPhase.PROVED)
         val submissionCounts = mutableMapOf(0 to 0, 1 to 0)
         val storedVanPositions = mutableListOf<StoredVanPosition>()
@@ -839,7 +928,12 @@ class SubmitVotesUseCaseRecoveryTest {
                         1
                     }
                 submissionCounts[bundleIndex] = submissionCounts.getValue(bundleIndex) + 1
+                apiCallLog += "post:$bundleIndex"
                 when {
+                    successfulDelegations -> {
+                        TxResult(txHash = "bundle-$bundleIndex-tx", code = 0)
+                    }
+
                     bundleIndex == 0 && bundle0Failure != null -> {
                         throw bundle0Failure
                     }
@@ -857,7 +951,8 @@ class SubmitVotesUseCaseRecoveryTest {
                     }
                 }
             }
-            coEvery { api.fetchTxConfirmation("bundle-1-tx") } returns
+            coEvery { api.fetchTxConfirmation(match { txHash -> txHash.startsWith("bundle-") }) } answers {
+                apiCallLog += "confirm:${firstArg<String>()}"
                 TxConfirmation(
                     height = 20,
                     code = 0,
@@ -869,6 +964,7 @@ class SubmitVotesUseCaseRecoveryTest {
                             )
                         )
                 )
+            }
             coEvery { api.fetchCommitmentTreeLatest(ROUND_ID) } returns CommitmentTreeLatest(20, 2)
             coEvery { api.fetchCommitmentTreeLeafPage(ROUND_ID, any(), 20) } answers {
                 val fromHeight = secondArg<Long>()

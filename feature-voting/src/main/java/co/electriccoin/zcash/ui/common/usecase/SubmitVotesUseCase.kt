@@ -49,6 +49,8 @@ import org.json.JSONObject
 import java.io.File
 import java.time.Instant
 import java.util.Base64
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
 class VotingAuthorizationException(
     cause: Exception
@@ -370,14 +372,31 @@ class SubmitVotesUseCase(
         }
     }
 
+    /**
+     * Posts every delegation bundle first and only then waits for their confirmations. Each wait is
+     * a poll-until-mined round trip on the vote chain, so overlapping them turns `bundleCount`
+     * sequential waits into one.
+     */
     private suspend fun submitDelegationBundles(
         context: VotingSubmitContext,
         dbHandle: Long,
         bundleCount: Int,
         onProgress: (VotingSubmissionProgress) -> Unit
     ) {
+        val ledger =
+            SubmissionProgressLedger(
+                bundleCount = bundleCount,
+                totalChoices = 1,
+                authorizing = true,
+                onProgress = onProgress
+            )
+        val postedDelegations = mutableListOf<PostedDelegation>()
         repeat(bundleCount) { bundleIndex ->
-            submitSingleDelegationBundle(context, dbHandle, bundleIndex, bundleCount, onProgress)
+            proveAndPostDelegationBundle(context, dbHandle, bundleIndex, ledger)
+                ?.let { posted -> postedDelegations += posted }
+        }
+        postedDelegations.forEach { posted ->
+            confirmDelegationBundle(context, dbHandle, posted, ledger)
         }
 
         votingRecoveryRepository.setPhase(
@@ -402,8 +421,7 @@ class SubmitVotesUseCase(
         context: VotingSubmitContext,
         dbHandle: Long,
         bundleIndex: Int,
-        bundleCount: Int,
-        onProgress: (VotingSubmissionProgress) -> Unit
+        ledger: SubmissionProgressLedger
     ) {
         val roundId = context.roundId
         if (currentDelegationPhase(dbHandle, roundId, bundleIndex).let {
@@ -515,14 +533,10 @@ class SubmitVotesUseCase(
                     accountIndex = context.accountIndex,
                     roundName = context.session.title,
                     proofProgress = { progress ->
-                        onProgress(
-                            VotingSubmissionProgress.Authorizing(
-                                progress =
-                                    (
-                                        (bundleIndex + progress.coerceIn(0.0, 1.0)) /
-                                            bundleCount.coerceAtLeast(1)
-                                    ).toFloat()
-                            )
+                        ledger.update(
+                            bundleIndex = bundleIndex,
+                            questionIndex = 0,
+                            stage = progress * PROOF_STAGE_CEILING
                         )
                     }
                 )
@@ -537,20 +551,28 @@ class SubmitVotesUseCase(
         }
     }
 
-    private suspend fun submitSingleDelegationBundle(
-        context: VotingSubmitContext,
+    /**
+     * True when this bundle's delegation is already on chain with a stored VAN position, either
+     * because a cached transaction hash resolved to one or because the bundle is already CONFIRMED.
+     *
+     * A resumed round may already have this specific bundle CONFIRMED - per-bundle phase, not
+     * round-level: a multi-bundle round can have bundle 0 confirmed while bundle 1 is still pending,
+     * and the round-level phase alone can't tell those apart.
+     *
+     * SUBMITTED is deliberately NOT treated as resolved here: it means delegation_tx_hash is set but
+     * van_leaf_position isn't yet - the normal in-flight state while awaiting confirmation, not an
+     * edge case. Falling through is safe: buildDelegationProofIfNeeded no-ops for an
+     * already-SUBMITTED bundle (see its own phase check). A software-wallet retry may have a
+     * different RedPallas signature and transaction hash even though the persisted VAN commitment is
+     * unchanged, so the submit path reconciles a spent-nullifier response against that commitment.
+     * It then stores van_leaf_position instead of leaving it unset (which previously wedged the
+     * round downstream in the vote tree sync and VAN witness generation).
+     */
+    private suspend fun isDelegationAlreadyResolved(
         dbHandle: Long,
-        bundleIndex: Int,
-        bundleCount: Int,
-        onProgress: (VotingSubmissionProgress) -> Unit
-    ) {
-        val roundId = context.roundId
-        onProgress(
-            VotingSubmissionProgress.Authorizing(
-                progress = bundleIndex.toFloat() / bundleCount.coerceAtLeast(1)
-            )
-        )
-
+        roundId: String,
+        bundleIndex: Int
+    ): Boolean {
         val cachedVanPosition = probeCachedDelegationVanPosition(dbHandle, roundId, bundleIndex)
         if (cachedVanPosition != null) {
             votingCryptoClient.storeVanPosition(
@@ -559,35 +581,40 @@ class SubmitVotesUseCase(
                 bundleIndex = bundleIndex,
                 position = cachedVanPosition
             )
-            return
+            return true
+        }
+        return currentDelegationPhase(dbHandle, roundId, bundleIndex) == DelegationPhase.CONFIRMED
+    }
+
+    /**
+     * Proves this bundle's delegation and broadcasts it, stopping once the transaction hash is
+     * durable. The hash is stored before any wait, so a crash between the two passes leaves the
+     * bundle in the normal in-flight state - hash set, VAN position unset - that
+     * [probeCachedDelegationVanPosition] already resumes from. Null means the delegation was
+     * resolved without a transaction to await.
+     */
+    private suspend fun proveAndPostDelegationBundle(
+        context: VotingSubmitContext,
+        dbHandle: Long,
+        bundleIndex: Int,
+        ledger: SubmissionProgressLedger
+    ): PostedDelegation? {
+        val roundId = context.roundId
+        ledger.update(bundleIndex = bundleIndex, questionIndex = 0, stage = 0.0)
+
+        if (isDelegationAlreadyResolved(dbHandle, roundId, bundleIndex)) {
+            ledger.update(bundleIndex = bundleIndex, questionIndex = 0, stage = CONFIRMED_STAGE)
+            return null
         }
 
-        // A resumed round may already have this specific bundle CONFIRMED — nothing left to do.
-        // Per-bundle phase, not round-level: a multi-bundle round can have bundle 0 confirmed
-        // while bundle 1 is still pending, and the round-level phase alone can't tell those apart.
-        //
-        // SUBMITTED is deliberately NOT short-circuited here (unlike the check above, which mirrors
-        // this one for a different purpose): SUBMITTED means delegation_tx_hash is set but
-        // van_leaf_position isn't yet — the normal in-flight state while awaiting confirmation, not
-        // an edge case. Falling through is safe: buildDelegationProofIfNeeded no-ops for an
-        // already-SUBMITTED bundle (see its own phase check). A software-wallet retry may have a
-        // different RedPallas signature and transaction hash even though the persisted VAN
-        // commitment is unchanged, so the submit path below reconciles a spent-nullifier response
-        // against that commitment. It then stores van_leaf_position instead of leaving it unset
-        // (which previously wedged the round downstream in submitFreshVoteBundle → syncVoteTree →
-        // generateVanWitnessJson).
-        if (currentDelegationPhase(dbHandle, roundId, bundleIndex) == DelegationPhase.CONFIRMED) {
-            return
-        }
-
-        buildDelegationProofIfNeeded(context, dbHandle, bundleIndex, bundleCount, onProgress)
+        buildDelegationProofIfNeeded(context, dbHandle, bundleIndex, ledger)
         votingRecoveryRepository.setPhase(
             accountUuid = context.accountUuidString,
             roundId = roundId,
             phase = VotingRecoveryPhase.DELEGATION_PROVED
         )
 
-        when (val submissionResolution = resolveDelegationSubmission(context, dbHandle, bundleIndex)) {
+        return when (val submissionResolution = resolveDelegationSubmission(context, dbHandle, bundleIndex)) {
             is DelegationSubmissionResolution.ConfirmedVan -> {
                 submissionResolution.txHash?.let { txHash ->
                     votingCryptoClient.storeDelegationTxHash(
@@ -603,14 +630,21 @@ class SubmitVotesUseCase(
                     bundleIndex = bundleIndex,
                     position = submissionResolution.position
                 )
+                ledger.update(bundleIndex = bundleIndex, questionIndex = 0, stage = CONFIRMED_STAGE)
+                null
             }
 
             is DelegationSubmissionResolution.AcceptedTransaction -> {
-                storeConfirmedDelegation(
-                    context = context,
+                votingCryptoClient.storeDelegationTxHash(
                     dbHandle = dbHandle,
+                    roundId = roundId,
                     bundleIndex = bundleIndex,
-                    acceptedTransaction = submissionResolution.transaction
+                    txHash = submissionResolution.transaction.txHash
+                )
+                ledger.update(bundleIndex = bundleIndex, questionIndex = 0, stage = POSTED_STAGE)
+                PostedDelegation(
+                    bundleIndex = bundleIndex,
+                    transaction = submissionResolution.transaction
                 )
             }
         }
@@ -725,19 +759,15 @@ class SubmitVotesUseCase(
         }
     }
 
-    private suspend fun storeConfirmedDelegation(
+    private suspend fun confirmDelegationBundle(
         context: VotingSubmitContext,
         dbHandle: Long,
-        bundleIndex: Int,
-        acceptedTransaction: AcceptedVotingTransaction
+        posted: PostedDelegation,
+        ledger: SubmissionProgressLedger
     ) {
         val roundId = context.roundId
-        votingCryptoClient.storeDelegationTxHash(
-            dbHandle = dbHandle,
-            roundId = roundId,
-            bundleIndex = bundleIndex,
-            txHash = acceptedTransaction.txHash
-        )
+        val bundleIndex = posted.bundleIndex
+        val acceptedTransaction = posted.transaction
 
         val confirmation =
             acceptedTransaction.confirmation
@@ -764,6 +794,7 @@ class SubmitVotesUseCase(
                 position = vanPosition
             )
         }
+        ledger.update(bundleIndex = bundleIndex, questionIndex = 0, stage = CONFIRMED_STAGE)
     }
 
     private suspend fun findPersistedVanPosition(
@@ -787,6 +818,11 @@ class SubmitVotesUseCase(
         }
     }
 
+    /**
+     * Casts every requested vote and returns how many proposals ended up accounted for. One vote
+     * tree sync per question serves every bundle: the previous question's VAN positions are all
+     * stored by then, and this question's own leaves are only appended once its confirmations land.
+     */
     private suspend fun submitVoteCommitmentsAndShares(
         context: VotingSubmitContext,
         dbHandle: Long,
@@ -811,6 +847,12 @@ class SubmitVotesUseCase(
         // A proposal already on-chain from a prior run (the idempotent recovery
         // path below) counts as submitted — the user's previous attempt already
         // succeeded for that proposal.
+        val ledger =
+            SubmissionProgressLedger(
+                bundleCount = bundleCount,
+                totalChoices = context.totalChoices,
+                onProgress = onProgress
+            )
         var processedProposalCount = 0
         // Unresolved commitments first; the stable sort keeps ascending proposal
         // order within each group.
@@ -833,40 +875,15 @@ class SubmitVotesUseCase(
                             numOptions = proposal.options.size
                         )
                     }
-            val progressBase = proposalIndex + 1
-
-            fun emitSubmittingProgress(
-                bundleIndex: Int,
-                bundleProgress: Double
-            ) {
-                onProgress(
-                    VotingSubmissionProgress.Submitting(
-                        current = progressBase,
-                        total = context.totalChoices,
-                        progress =
-                            calculateSubmittingBundleProgress(
-                                proposalIndex = proposalIndex,
-                                bundleIndex = bundleIndex,
-                                bundleCount = bundleCount,
-                                totalChoices = context.totalChoices,
-                                bundleProgress = bundleProgress
-                            )
-                    )
-                )
-            }
 
             val submittedBundles =
                 submittedBundleIndicesByProposal
                     .getOrPut(proposalId) { mutableSetOf() }
 
             if (proposalId in context.recovery.submittedProposalIds && submittedBundles.size >= bundleCount) {
-                onProgress(
-                    VotingSubmissionProgress.Submitting(
-                        current = progressBase,
-                        total = context.totalChoices,
-                        progress = progressBase.toFloat() / context.totalChoices.coerceAtLeast(1)
-                    )
-                )
+                repeat(bundleCount) { bundleIndex ->
+                    ledger.update(bundleIndex, proposalIndex, CONFIRMED_STAGE)
+                }
                 markProposalSubmissionComplete(context.accountUuidString, roundId, proposalId, requestedSelection)
                 processedProposalCount++
                 return@forEachIndexed
@@ -877,42 +894,56 @@ class SubmitVotesUseCase(
                     "Unknown vote option $choiceId for proposal $proposalId"
                 }
 
-            repeat(bundleCount) { bundleIndex ->
-                if (bundleIndex in submittedBundles) {
-                    return@repeat
+            val pendingBundleIndices = (0 until bundleCount).filterNot { it in submittedBundles }
+            val postedVotes = mutableListOf<PostedVote>()
+            if (pendingBundleIndices.isNotEmpty()) {
+                val syncedHeight = syncVoteTreeOrThrow(context, dbHandle)
+                pendingBundleIndices.forEach { bundleIndex ->
+                    ledger.update(bundleIndex, proposalIndex, 0.0)
+                    val reusedCachedVote =
+                        submitCachedVoteIfReusable(
+                            context = context,
+                            dbHandle = dbHandle,
+                            bundleIndex = bundleIndex,
+                            proposalId = proposalId,
+                            requestedSelection = selection,
+                            delegatedShareIndicesByTarget = delegatedShareIndicesByTarget
+                        )
+                    if (reusedCachedVote) {
+                        submittedBundles += bundleIndex
+                        ledger.update(bundleIndex, proposalIndex, CONFIRMED_STAGE)
+                    } else {
+                        postedVotes +=
+                            proveAndPostVoteBundle(
+                                context = context,
+                                dbHandle = dbHandle,
+                                syncedHeight = syncedHeight,
+                                bundleIndex = bundleIndex,
+                                proposalId = proposalId,
+                                choiceId = choiceId,
+                                numOptions = proposal.options.size,
+                                onProofProgress = { proofProgress ->
+                                    ledger.update(
+                                        bundleIndex,
+                                        proposalIndex,
+                                        proofProgress * PROOF_STAGE_CEILING
+                                    )
+                                }
+                            )
+                        ledger.update(bundleIndex, proposalIndex, POSTED_STAGE)
+                    }
                 }
+            }
 
-                emitSubmittingProgress(bundleIndex, 0.0)
-
-                if (
-                    submitCachedVoteIfReusable(
-                        context = context,
-                        dbHandle = dbHandle,
-                        bundleIndex = bundleIndex,
-                        proposalId = proposalId,
-                        requestedSelection = selection,
-                        delegatedShareIndicesByTarget = delegatedShareIndicesByTarget
-                    )
-                ) {
-                    submittedBundles += bundleIndex
-                    emitSubmittingProgress(bundleIndex, 1.0)
-                    return@repeat
-                }
-
-                submitFreshVoteBundle(
+            postedVotes.forEach { posted ->
+                confirmVoteBundle(
                     context = context,
                     dbHandle = dbHandle,
-                    bundleIndex = bundleIndex,
-                    proposalId = proposalId,
-                    choiceId = choiceId,
-                    numOptions = proposal.options.size,
-                    delegatedShareIndicesByTarget = delegatedShareIndicesByTarget,
-                    emitSubmittingProgress = { progressBundleIndex, bundleProgress ->
-                        emitSubmittingProgress(progressBundleIndex, bundleProgress)
-                    }
+                    posted = posted,
+                    delegatedShareIndicesByTarget = delegatedShareIndicesByTarget
                 )
-                submittedBundles += bundleIndex
-                emitSubmittingProgress(bundleIndex, 1.0)
+                submittedBundles += posted.bundleIndex
+                ledger.update(posted.bundleIndex, proposalIndex, CONFIRMED_STAGE)
             }
 
             markProposalSubmissionComplete(context.accountUuidString, roundId, proposalId, selection)
@@ -1026,23 +1057,15 @@ class SubmitVotesUseCase(
         return true
     }
 
-    private suspend fun submitFreshVoteBundle(
+    private suspend fun syncVoteTreeOrThrow(
         context: VotingSubmitContext,
-        dbHandle: Long,
-        bundleIndex: Int,
-        proposalId: Int,
-        choiceId: Int,
-        numOptions: Int,
-        delegatedShareIndicesByTarget: MutableMap<ShareDelegationTarget, MutableSet<Int>>,
-        emitSubmittingProgress: (Int, Double) -> Unit
-    ) {
+        dbHandle: Long
+    ): Long {
         val roundId = context.roundId
         val syncedHeight =
             traceVotingStep(
                 roundId = roundId,
-                step = "syncVoteTree",
-                bundleIndex = bundleIndex,
-                proposalId = proposalId
+                step = "syncVoteTree"
             ) {
                 votingCryptoClient.syncVoteTree(
                     dbHandle = dbHandle,
@@ -1055,7 +1078,25 @@ class SubmitVotesUseCase(
                 VotingErrors.VoteTreeSyncFailed(roundId)
             )
         }
+        return syncedHeight
+    }
 
+    /**
+     * Builds this bundle's vote commitment and broadcasts it, stopping once the transaction hash is
+     * durable. The confirmation wait is deliberately left to [confirmVoteBundle] so every bundle of
+     * a question can be in flight at the same time.
+     */
+    private suspend fun proveAndPostVoteBundle(
+        context: VotingSubmitContext,
+        dbHandle: Long,
+        syncedHeight: Long,
+        bundleIndex: Int,
+        proposalId: Int,
+        choiceId: Int,
+        numOptions: Int,
+        onProofProgress: (Double) -> Unit
+    ): PostedVote {
+        val roundId = context.roundId
         val vanWitnessJson =
             traceVotingStep(
                 roundId = roundId,
@@ -1106,9 +1147,7 @@ class SubmitVotesUseCase(
                     vanPosition = vanWitness.position,
                     anchorHeight = vanWitness.anchorHeight,
                     singleShare = context.singleShare,
-                    proofProgress = { proofProgress ->
-                        emitSubmittingProgress(bundleIndex, proofProgress)
-                    }
+                    proofProgress = onProofProgress
                 )
             }
         val signature = CastVoteSignature(voteAuthSig = commitment.voteAuthSig)
@@ -1147,11 +1186,29 @@ class SubmitVotesUseCase(
             )
         }
 
+        return PostedVote(
+            bundleIndex = bundleIndex,
+            proposalId = proposalId,
+            txHash = acceptedTransaction.txHash,
+            confirmation = acceptedTransaction.confirmation
+        )
+    }
+
+    private suspend fun confirmVoteBundle(
+        context: VotingSubmitContext,
+        dbHandle: Long,
+        posted: PostedVote,
+        delegatedShareIndicesByTarget: MutableMap<ShareDelegationTarget, MutableSet<Int>>
+    ) {
+        val roundId = context.roundId
+        val bundleIndex = posted.bundleIndex
+        val proposalId = posted.proposalId
+
         val confirmation =
-            acceptedTransaction.confirmation
-                ?: awaitTxConfirmation(acceptedTransaction.txHash)
+            posted.confirmation
+                ?: awaitTxConfirmation(posted.txHash)
                 ?: throw VotingSubmissionRecoverableException(
-                    VotingErrors.TxConfirmationTimedOut(acceptedTransaction.txHash)
+                    VotingErrors.TxConfirmationTimedOut(posted.txHash)
                 )
         confirmation.requireAccepted("Vote commitment transaction failed")
 
@@ -1524,6 +1581,20 @@ class SubmitVotesUseCase(
         val proposalId: Int
     )
 
+    /** A vote commitment whose transaction hash is durable but whose confirmation is still pending. */
+    private data class PostedVote(
+        val bundleIndex: Int,
+        val proposalId: Int,
+        val txHash: String,
+        val confirmation: TxConfirmation?
+    )
+
+    /** A delegation whose transaction hash is durable but whose confirmation is still pending. */
+    private data class PostedDelegation(
+        val bundleIndex: Int,
+        val transaction: AcceptedVotingTransaction
+    )
+
     private companion object {
         const val TAG = "SubmitVotesUseCase"
         const val TX_CONFIRMATION_RETRIES = 45
@@ -1537,6 +1608,79 @@ internal data class AcceptedVotingTransaction(
     val txHash: String,
     val confirmation: TxConfirmation?
 )
+
+/** Fraction of a bundle's per-question progress a completed zero-knowledge proof accounts for. */
+internal const val PROOF_STAGE_CEILING = 0.85
+
+/** Fraction reached once the transaction is broadcast and its hash is durable. */
+internal const val POSTED_STAGE = 0.9
+
+/** Fraction reached once the transaction is confirmed and its positions are stored. */
+internal const val CONFIRMED_STAGE = 1.0
+
+/**
+ * Tracks per-bundle progress so the overall figure stays monotonic when bundles no longer advance
+ * in lockstep - a later bundle can be proving while an earlier one is still awaiting confirmation.
+ *
+ * Each bundle's position is `completedQuestions + stageFraction`, the reported fraction is the mean
+ * of those positions, and `current` follows the slowest bundle so the "question X of N" label never
+ * runs ahead of work that is still outstanding.
+ *
+ * Guarded by a plain lock rather than a coroutine `Mutex`: the native proof-progress callback is not
+ * a suspending function, and the critical section is arithmetic plus one listener call.
+ */
+internal class SubmissionProgressLedger(
+    bundleCount: Int,
+    private val totalChoices: Int,
+    private val authorizing: Boolean = false,
+    private val onProgress: (VotingSubmissionProgress) -> Unit
+) {
+    private val lock = ReentrantLock()
+    private val positions = DoubleArray(bundleCount.coerceAtLeast(1))
+
+    fun update(
+        bundleIndex: Int,
+        questionIndex: Int,
+        stage: Double
+    ) {
+        lock.withLock {
+            val position = questionIndex + stage.coerceIn(0.0, 1.0)
+            if (position > positions[bundleIndex]) {
+                positions[bundleIndex] = position
+            }
+            onProgress(currentProgress())
+        }
+    }
+
+    private fun currentProgress(): VotingSubmissionProgress {
+        val progress = overallProgress()
+        return if (authorizing) {
+            VotingSubmissionProgress.Authorizing(progress = progress)
+        } else {
+            VotingSubmissionProgress.Submitting(
+                current = (positions.min().toInt() + 1).coerceAtMost(totalChoices),
+                total = totalChoices,
+                progress = progress
+            )
+        }
+    }
+
+    private fun overallProgress(): Float {
+        var accumulated = 0.0
+        positions.forEach { position ->
+            val completedQuestions = position.toInt()
+            accumulated +=
+                calculateSubmittingBundleProgress(
+                    proposalIndex = completedQuestions,
+                    bundleIndex = 0,
+                    bundleCount = 1,
+                    totalChoices = totalChoices,
+                    bundleProgress = position - completedQuestions
+                )
+        }
+        return (accumulated / positions.size).toFloat().coerceIn(0f, 1f)
+    }
+}
 
 internal sealed interface DelegationSubmissionResolution {
     data class AcceptedTransaction(
