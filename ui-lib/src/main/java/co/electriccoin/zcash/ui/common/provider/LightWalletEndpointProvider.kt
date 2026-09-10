@@ -13,9 +13,9 @@ class LightWalletEndpointProvider(
     fun getEndpoints(): List<LightWalletEndpoint> =
         if (ZcashNetwork.fromResources(application) == ZcashNetwork.Mainnet) {
             listOf(
-                // OHTTP relay — routes gRPC through Cloudflare relay → EKS gateway → LWD
-                // Client IP is never visible to the LWD node (privacy-preserving transport)
-                LightWalletEndpoint(host = "ohttp-lwd.zodl.com", port = 443, isSecure = true),
+                // OHTTP (RFC 9458): the SDK routes gRPC HPKE-encrypted through a relay to this
+                // gateway. Relay sees IP but not content; gateway/LWD see content but not IP.
+                LightWalletEndpoint(host = "ohttp-gateway.zodl.com", port = 443, isSecure = true),
                 LightWalletEndpoint(host = "zec.rocks", port = 443, isSecure = true),
                 LightWalletEndpoint(host = "na.zec.rocks", port = 443, isSecure = true),
                 LightWalletEndpoint(host = "sa.zec.rocks", port = 443, isSecure = true),
@@ -28,9 +28,8 @@ class LightWalletEndpointProvider(
             )
         } else {
             listOf(
-                // OHTTP relay for testnet — IP never visible to LWD
-                // Proxy gateway — LWD never sees app IP (gateway IP only)
-                LightWalletEndpoint(host = "ohttp-lwd-testnet-proxy.zodl.com", port = 443, isSecure = true),
+                // OHTTP (RFC 9458) testnet gateway — served via relay-simulator-testnet.zodl.com
+                LightWalletEndpoint(host = "ohttp-gateway-testnet.zodl.com", port = 443, isSecure = true),
                 LightWalletEndpoint(host = "testnet.zec.rocks", port = 443, isSecure = true)
             )
         }
