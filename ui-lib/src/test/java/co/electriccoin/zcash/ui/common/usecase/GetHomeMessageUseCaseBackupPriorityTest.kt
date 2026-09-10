@@ -50,11 +50,13 @@ class GetHomeMessageUseCaseBackupPriorityTest {
     }
 
     /**
-     * MOB-909: `WalletBackupMessageUseCaseImpl` reports [WalletBackupData.Unavailable] when there is no
-     * `ReceiveTransaction` yet (balance = 0), regardless of the backup flag itself.
+     * Regression guard for the other half of the branch: only [WalletBackupData.Available] jumps the
+     * queue, so a wallet reported as [WalletBackupData.Unavailable] must leave the runtime message alone.
+     * Which conditions collapse to `Unavailable` - no receive transaction yet, an already backed-up seed,
+     * a still-running "remind me later" lockout - is covered directly in [WalletBackupMessageUseCaseImplTest].
      */
     @Test
-    fun `zero balance regression guard leaves runtime message unaffected`() {
+    fun `unavailable backup does not outrank an active migration message`() {
         val result =
             createHomeMessage(
                 runtimeMessage = FakeMigrationMessage,
@@ -69,7 +71,7 @@ class GetHomeMessageUseCaseBackupPriorityTest {
     }
 
     @Test
-    fun `already backed up seed leaves runtime message unaffected`() {
+    fun `unavailable backup does not outrank an active sync error message`() {
         val result =
             createHomeMessage(
                 runtimeMessage = syncError,
