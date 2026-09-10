@@ -6,6 +6,7 @@ import co.electriccoin.zcash.ui.common.datasource.NEAR_SWAP_PROVIDER
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapMode
+import co.electriccoin.zcash.ui.common.model.SwapProvider
 import co.electriccoin.zcash.ui.common.model.SynchronizerError
 import co.electriccoin.zcash.ui.common.model.ZEC_TICKER
 import co.electriccoin.zcash.ui.common.provider.BlockchainProvider
@@ -342,6 +343,7 @@ internal fun submitErrorPreSubmissionDetail(cause: Exception): SubmitErrorPreSub
 internal fun swapQuoteMismatchProviderLabel(provider: String): StringResource =
     when (provider.lowercase()) {
         NEAR_SWAP_PROVIDER -> stringRes(R.string.swap_mismatch_provider_near)
+        SwapProvider.MAYA.value -> stringRes(R.string.swap_mismatch_provider_maya)
         else -> stringRes(provider.uppercase())
     }
 

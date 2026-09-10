@@ -4,6 +4,7 @@ import co.electriccoin.zcash.ui.common.model.isSame
 import co.electriccoin.zcash.ui.common.provider.SimpleSwapAssetProvider
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 
 class GetCuratedSwapAssetsUseCase(
@@ -12,13 +13,14 @@ class GetCuratedSwapAssetsUseCase(
 ) {
     /**
      * Synchronous snapshot of the currently loaded assets, curated. Returns [SwapAssetsData] with
-     * `data == null` when assets haven't loaded yet — callers (e.g. `SwapVM.preselectChain`) treat
-     * that as "nothing selectable". Prefer [observe] for reactive UI; use this only for one-off reads.
+     * `data == null` when assets haven't loaded yet or the repository has no snapshot at all — callers
+     * (e.g. `SwapVM.preselectChain`) treat that as "nothing selectable". Prefer [observe] for reactive UI;
+     * use this only for one-off reads.
      */
-    operator fun invoke() = curate(swapRepository.assets.value)
+    operator fun invoke() = curate(swapRepository.assets.value ?: SwapAssetsData())
 
     /** Reactive curated stream. */
-    fun observe() = swapRepository.assets.map(::curate)
+    fun observe() = swapRepository.assets.filterNotNull().map(::curate)
 
     private fun curate(data: SwapAssetsData): SwapAssetsData {
         val inclusionList = simpleSwapAssetProvider.getCuratedSwapAssets()

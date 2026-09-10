@@ -12,11 +12,12 @@ import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.FLEX_INPUT
+import co.electriccoin.zcash.ui.common.model.SwapProvider
 import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.provider.ResponseWithNearErrorException
+import co.electriccoin.zcash.ui.common.repository.SwapAggregatorRepository
 import co.electriccoin.zcash.ui.common.repository.SwapQuoteData
-import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.usecase.CancelSwapQuoteUseCase
 import co.electriccoin.zcash.ui.common.usecase.CancelSwapUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveProposalUseCase
@@ -31,6 +32,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
@@ -42,7 +44,7 @@ import kotlin.time.Duration.Companion.minutes
 internal class SwapQuoteVM(
     observeProposal: ObserveProposalUseCase,
     applicationStateProvider: ApplicationStateProvider,
-    private val swapRepository: SwapRepository,
+    private val swapRepository: SwapAggregatorRepository,
     private val cancelSwapQuote: CancelSwapQuoteUseCase,
     private val cancelSwap: CancelSwapUseCase,
     private val swapQuoteSuccessMapper: SwapQuoteVMMapper,
@@ -52,12 +54,13 @@ internal class SwapQuoteVM(
     val state: StateFlow<SwapQuoteState?> =
         combine(
             swapRepository.quote.filterNotNull(),
+            swapRepository.quotes,
             observeProposal.observeNullable(),
-        ) { quote, proposal ->
+        ) { quote, quotes, proposal ->
             when (quote) {
                 SwapQuoteData.Loading -> null
                 is SwapQuoteData.Error -> createErrorState(quote)
-                is SwapQuoteData.Success -> createState(proposal, quote)
+                is SwapQuoteData.Success -> createState(proposal, quote, quotes)
             }
         }.stateIn(
             scope = viewModelScope,
@@ -69,7 +72,7 @@ internal class SwapQuoteVM(
         applicationStateProvider
             .observeOnForeground()
             .onEach {
-                val quote = (swapRepository.quote.value as? SwapQuoteData.Success)?.quote ?: return@onEach
+                val quote = (swapRepository.quote.first() as? SwapQuoteData.Success)?.quote ?: return@onEach
 
                 if ((Clock.System.now() - quote.timestamp) >= 3.minutes) {
                     cancelSwapQuote()
@@ -79,14 +82,19 @@ internal class SwapQuoteVM(
 
     private fun createState(
         proposal: TransactionProposal?,
-        quote: SwapQuoteData.Success
+        quote: SwapQuoteData.Success,
+        quotes: List<SwapQuoteData>?
     ): SwapQuoteState.Success =
         swapQuoteSuccessMapper.createState(
             state = SwapQuoteInternalState(proposal as? SwapTransactionProposal, quote.quote),
+            successQuotes = quotes?.filterIsInstance<SwapQuoteData.Success>()?.map { it.quote }.orEmpty(),
             onBack = ::onBack,
             onSubmitQuoteClick = ::onSubmitQuoteClick,
-            onNavigateToOnRampSwap = ::onNavigateToOnRampSwap
+            onNavigateToOnRampSwap = ::onNavigateToOnRampSwap,
+            onSelectProvider = ::onSelectProvider
         )
+
+    private fun onSelectProvider(provider: SwapProvider) = swapRepository.selectProvider(provider)
 
     private fun onNavigateToOnRampSwap() = navigationRouter.forward(ORSwapConfirmationArgs)
 

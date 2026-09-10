@@ -12,7 +12,7 @@ class EnsureSwapAssetsLoadedUseCase(
     private val swapRepository: SwapRepository,
 ) {
     suspend operator fun invoke() {
-        if (swapRepository.assets.value.data == null) {
+        if (swapRepository.assets.value?.data == null) {
             swapRepository.requestRefreshAssetsOnce()
         }
     }

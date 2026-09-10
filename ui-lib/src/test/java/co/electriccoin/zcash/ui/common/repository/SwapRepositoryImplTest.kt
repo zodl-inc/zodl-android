@@ -9,6 +9,7 @@ import co.electriccoin.zcash.ui.common.model.SimpleSwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapAssetTestFixture
 import co.electriccoin.zcash.ui.common.model.SwapMode
+import co.electriccoin.zcash.ui.common.model.SwapProvider
 import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchException
 import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
@@ -415,7 +416,7 @@ class SwapRepositoryImplTest {
 
             val mismatch = assertExactInputError(repository, SwapQuoteMismatchType.RECIPIENT_ADDRESS)
             assertEquals("deposit", mismatch.depositAddress)
-            assertEquals("test", mismatch.provider)
+            assertEquals(SwapProvider.NEAR.value, mismatch.provider)
             assertEquals(zec, mismatch.originAsset)
             assertEquals(btc, mismatch.destinationAsset)
         }

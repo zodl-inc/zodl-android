@@ -261,6 +261,11 @@ private fun SlippageSeparator(
     }
 }
 
+/**
+ * The from-ZEC (BOTTOM) "Address" label is intentionally an empty line rather than removed: it reserves the
+ * line height so the address block stays as tall as the to-ZEC "Refund Address" block and the Price
+ * flexibility / Rate rows below do not shift when the swap direction is switched.
+ */
 @Composable
 private fun TopAppBar(
     state: SwapState,
@@ -325,7 +330,7 @@ private fun ColumnScope.AddressTextField(state: SwapState) {
             text =
                 when (state.addressLocation) {
                     TOP -> stringResource(R.string.swapToZec_refundAddress)
-                    BOTTOM -> stringResource(co.electriccoin.zcash.ui.design.R.string.swapAndPay_address)
+                    BOTTOM -> ""
                 },
             style = ZashiTypography.textSm,
             fontWeight = FontWeight.Medium

@@ -37,9 +37,11 @@ class SwapAssetPickerVM(
 
     private val searchTextFieldState = searchText.map { createTextFieldState(it) }
 
+    private val swapAssets = getSwapAssets.observe()
+
     private val filteredSwapAssets =
         combine(
-            getSwapAssets.observe(),
+            swapAssets,
             metadataRepository.observeLastUsedAssetHistory(),
             searchText
         ) { assets, latestUsedAssets, text ->
