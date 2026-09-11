@@ -114,7 +114,8 @@ internal class SwapVMMapper {
             changeModeButton =
                 IconButtonState(
                     icon = R.drawable.ic_swap_change_mode,
-                    onClick = callbacks.onChangeButtonClick
+                    onClick = callbacks.onChangeButtonClick,
+                    isEnabled = !state.isRequestingQuote
                 ),
             onAddressClick =
                 when (state.swapDirection) {
@@ -433,7 +434,7 @@ internal class SwapVMMapper {
     private fun createPrimaryButtonState(
         textField: SwapAmountTextFieldState,
         state: SwapInternalState,
-        onRequestSwapQuoteClick: (BigDecimal, String) -> Unit,
+        onRequestSwapQuoteClick: (amount: BigDecimal, fiatAmount: BigDecimal?, address: String) -> Unit,
         onTryAgainClick: () -> Unit
     ): ButtonState? {
         if (state.swapAssets.error is ResponseException &&
@@ -469,7 +470,9 @@ internal class SwapVMMapper {
                     onTryAgainClick()
                 } else {
                     val address = state.selectedContact?.address ?: state.addressText
-                    state.getOriginTokenAmount()?.let { onRequestSwapQuoteClick(it, address) }
+                    state.getOriginTokenAmount()?.let {
+                        onRequestSwapQuoteClick(it, state.getOriginFiatAmount(), address)
+                    }
                 }
             },
             isEnabled =
@@ -598,10 +601,11 @@ private data class SwapInternalState(
         when (currencyType) {
             TOKEN -> {
                 val tokenAmount = amountTextState.amount
-                if (tokenAmount == null || originAsset == null) {
+                val usdPrice = originAsset?.usdPrice
+                if (tokenAmount == null || usdPrice == null) {
                     null
                 } else {
-                    tokenAmount.multiply(originAsset.usdPrice, MathContext.DECIMAL128)
+                    tokenAmount.multiply(usdPrice, MathContext.DECIMAL128)
                 }
             }
 
@@ -618,10 +622,11 @@ private data class SwapInternalState(
             }
 
             FIAT -> {
-                if (fiatAmount == null || originAsset == null) {
+                val usdPrice = originAsset?.usdPrice
+                if (fiatAmount == null || usdPrice == null) {
                     null
                 } else {
-                    fiatAmount.divide(originAsset.usdPrice, MathContext.DECIMAL128)
+                    fiatAmount.divide(usdPrice, MathContext.DECIMAL128)
                 }
             }
         }
@@ -629,12 +634,14 @@ private data class SwapInternalState(
 
     fun getDestinationAssetAmount(): BigDecimal? {
         val amountToken = getOriginTokenAmount()
-        return if (originAsset == null || destinationAsset == null || amountToken == null) {
+        val originUsdPrice = originAsset?.usdPrice
+        val destinationUsdPrice = destinationAsset?.usdPrice
+        return if (amountToken == null || originUsdPrice == null || destinationUsdPrice == null) {
             null
         } else {
             amountToken
-                .multiply(originAsset.usdPrice, MathContext.DECIMAL128)
-                .divide(destinationAsset.usdPrice, MathContext.DECIMAL128)
+                .multiply(originUsdPrice, MathContext.DECIMAL128)
+                .divide(destinationUsdPrice, MathContext.DECIMAL128)
         }
     }
 
@@ -686,7 +693,7 @@ internal data class SwapStateCallbacks(
     val onSwapAssetPickerClick: () -> Unit,
     val onSwapCurrencyTypeClick: (BigDecimal?) -> Unit,
     val onSlippageClick: (BigDecimal?) -> Unit,
-    val onRequestSwapQuoteClick: (BigDecimal, String) -> Unit,
+    val onRequestSwapQuoteClick: (amount: BigDecimal, fiatAmount: BigDecimal?, address: String) -> Unit,
     val onTryAgainClick: () -> Unit,
     val onAddressChange: (String) -> Unit,
     val onTextFieldChange: (NumberTextFieldInnerState) -> Unit,

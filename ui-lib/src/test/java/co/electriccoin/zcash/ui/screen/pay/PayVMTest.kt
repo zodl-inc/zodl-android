@@ -19,6 +19,7 @@ import co.electriccoin.zcash.ui.common.usecase.NavigateToSelectABSwapRecipientUs
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSlippageUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapAssetPickerUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapQuoteIfAvailableUseCase
+import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapRefundWarningUseCase
 import co.electriccoin.zcash.ui.common.usecase.RequestSwapQuoteUseCase
 import co.electriccoin.zcash.ui.common.usecase.ScanResult
 import co.electriccoin.zcash.ui.design.component.NumberTextFieldInnerState
@@ -102,7 +103,7 @@ class PayVMTest {
             val harness = harness(preselect = asset)
             harness.collectState(this)
 
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "destination-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "destination-address")
 
             coVerify(exactly = 1) {
                 harness.requestSwapQuote.requestExactOutput(
@@ -123,7 +124,7 @@ class PayVMTest {
             val harness = harness(preselect = null)
             harness.collectState(this)
 
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "destination-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "destination-address")
 
             assertNull(harness.capturedState.asset)
             coVerify(exactly = 0) {
@@ -138,11 +139,38 @@ class PayVMTest {
             harness.collectState(this)
             val gate = harness.makeQuoteHang()
 
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "destination-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "destination-address")
             assertEquals(true, harness.capturedState.isRequestingQuote)
 
             gate.complete(Unit)
             assertEquals(false, harness.capturedState.isRequestingQuote)
+        }
+
+    @Test
+    fun refundWarningCancelledSkipsQuoteAndClearsRequestingFlag() =
+        runTest {
+            val harness = harness(refundWarningResult = false)
+            harness.collectState(this)
+
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), BigDecimal("100"), "destination-address")
+
+            coVerify(exactly = 0) {
+                harness.requestSwapQuote.requestExactOutput(any(), any(), any(), any(), any())
+            }
+            assertEquals(false, harness.capturedState.isRequestingQuote)
+        }
+
+    @Test
+    fun refundWarningReceivesFiatAmountInExactOutputMode() =
+        runTest {
+            val harness = harness()
+            harness.collectState(this)
+
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), BigDecimal("100"), "destination-address")
+
+            coVerify(exactly = 1) {
+                harness.navigateToSwapRefundWarning(fiatAmount = BigDecimal("100"), mode = SwapMode.EXACT_OUTPUT)
+            }
         }
 
     // endregion
@@ -167,7 +195,7 @@ class PayVMTest {
             val harness = harness()
             harness.collectState(this)
             harness.makeQuoteHang()
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "destination-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "destination-address")
 
             harness.onBack()
 
@@ -180,7 +208,7 @@ class PayVMTest {
             val harness = harness()
             harness.collectState(this)
             val gate = harness.makeQuoteHang()
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "destination-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "destination-address")
             harness.onBack() // requesting -> show cancel confirmation
             gate.complete(Unit) // request finishes -> no longer requesting, sheet still visible
 
@@ -196,7 +224,7 @@ class PayVMTest {
             val harness = harness()
             harness.collectState(this)
             harness.makeQuoteHang()
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "destination-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "destination-address")
             harness.onBack()
 
             harness.vm.cancelState.value
@@ -215,7 +243,7 @@ class PayVMTest {
             val harness = harness()
             harness.collectState(this)
             harness.makeQuoteHang()
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "destination-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "destination-address")
             harness.onBack()
 
             harness.vm.cancelState.value
@@ -325,7 +353,8 @@ class PayVMTest {
         fiatRecompute: NumberTextFieldInnerState = NumberTextFieldInnerState(),
         recipient: EnhancedABContact? = null,
         scanResult: ScanResult? = null,
-        assets: SwapAssetsData = SwapAssetTestFixture.assetsData()
+        assets: SwapAssetsData = SwapAssetTestFixture.assetsData(),
+        refundWarningResult: Boolean = true
     ): Harness {
         val navigateToSlippage =
             mockk<NavigateToSlippageUseCase> {
@@ -347,6 +376,10 @@ class PayVMTest {
                     // Never resolves -> the VM keeps `asset` null (covers the no-asset-selected path).
                     coEvery { this@mockk.invoke() } coAnswers { awaitCancellation() }
                 }
+            }
+        val navigateToSwapRefundWarning =
+            mockk<NavigateToSwapRefundWarningUseCase> {
+                coEvery { this@mockk.invoke(any(), any()) } returns refundWarningResult
             }
         val requestSwapQuote = mockk<RequestSwapQuoteUseCase>(relaxed = true)
         val cancelSwap = mockk<CancelSwapUseCase>(relaxed = true)
@@ -372,6 +405,7 @@ class PayVMTest {
             Harness(
                 navigateToSlippage = navigateToSlippage,
                 navigateToSwapAssetPicker = navigateToSwapAssetPicker,
+                navigateToSwapRefundWarning = navigateToSwapRefundWarning,
                 requestSwapQuote = requestSwapQuote,
                 mapper = mapper,
                 cancelSwap = cancelSwap,
@@ -411,6 +445,7 @@ class PayVMTest {
                 getPreselectedSwapAsset = preselectSwapAsset,
                 navigateToSlippage = navigateToSlippage,
                 navigateToSwapAssetPicker = navigateToSwapAssetPicker,
+                navigateToSwapRefundWarning = navigateToSwapRefundWarning,
             )
         return harness
     }
@@ -418,6 +453,7 @@ class PayVMTest {
     private class Harness(
         val navigateToSlippage: NavigateToSlippageUseCase,
         val navigateToSwapAssetPicker: NavigateToSwapAssetPickerUseCase,
+        val navigateToSwapRefundWarning: NavigateToSwapRefundWarningUseCase,
         val requestSwapQuote: RequestSwapQuoteUseCase,
         val mapper: ExactOutputVMMapper,
         val cancelSwap: CancelSwapUseCase,
@@ -432,7 +468,7 @@ class PayVMTest {
         var onAddressBookClick: () -> Unit = {}
         var onAddressChange: (String) -> Unit = {}
         var onQrCodeScannerClick: () -> Unit = {}
-        var onRequestSwapQuoteClick: (BigDecimal, String) -> Unit = { _, _ -> }
+        var onRequestSwapQuoteClick: (BigDecimal, BigDecimal?, String) -> Unit = { _, _, _ -> }
 
         /** Makes the next exact-output quote request hang so `isRequestingQuote` stays true. */
         fun makeQuoteHang(): CompletableDeferred<Unit> {

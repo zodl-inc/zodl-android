@@ -22,6 +22,7 @@
     <string name="general_loading">Loading</string>
     <string name="send_review">Review</string>
     <string name="general_ok">OK</string>
+    <string name="general_dismiss">Dismiss</string>
     <string name="general_report">Report</string>
     <string name="restoreInfo_gotIt">Got it!</string>
     <string name="send_report">Report</string>
@@ -502,7 +503,7 @@
 
     <!-- ===== pay ===== -->
     <string name="crosspay_help_payWith">CrossPay with</string>
-    <string name="pay_info_subtitle">Make cross-chain payments in any NEAR-supported coin or token.\n\nIf the actual slippage and network conditions result in your recipient receiving less than the promised amount, your transaction will be reversed. You will receive a full refund minus network fees.</string>
+    <string name="pay_info_subtitle">Make cross-chain payments in any NEAR-supported coin or token.\n\nIf slippage or network conditions result in your recipient receiving less than the promised amount, your payment will be refunded minus network fees.\n\nRefunds only apply to payments of $300 or more. Payments under $300 aren\'t eligible for a refund. Please double-check all details before continuing.</string>
     <string name="swapAndPay_slippageWarn">Any unused portion of the slippage fee will be refunded if the swap executes with lower slippage than expected.</string>
 
     <!-- ===== payment_request ===== -->
@@ -815,7 +816,8 @@
     <string name="coinVote_delegationSigning_memo" tools:ignore="MissingTranslation" translatable="false">Memo</string>
 
     <!-- ===== swap ===== -->
-    <string name="swap_info_message">Swap %1$s with any NEAR-supported token.\n\nIf swapping TO %2$s, you will send funds from a 3rd party wallet and provide an address where change can be refunded.\n\nIf swapping FROM %3$s, you must provide a valid address for the asset you are swapping to.</string>
+    <string name="swap_info_message">Swap between %1$s and any NEAR-supported coin or token.\n\nIf swapping TO %2$s, you will send funds from a third-party wallet and provide an address where funds can be refunded.\n\nRefunds only apply to swaps of $300 or more. Swaps under $300 aren\'t eligible for a refund if sent to a wrong address or wrong network.\n\nIf swapping FROM %3$s, you must provide a valid address for the asset you are swapping to.</string>
+    <string name="swap_info_learn_more">Learn more</string>
     <string name="swapAndPay_help_swapWith">Swap with</string>
     <string name="swap_select_token">Select Token</string>
     <string name="swapAndPay_search">Search by name or ticker…</string>
@@ -866,8 +868,13 @@
     <string name="swap_to_zec_share_text">Deposit address for %1$s %2$s on %3$s swap to %4$s in Zodl</string>
     <string name="swapToZec_refundAddress">Refund Address</string>
     <string name="swapToZec_refundAddress_title">Refund Address</string>
-    <string name="swap_refund_address_info_message_empty">If the swap fails or market conditions change, your transaction may be refunded minus the transaction fees.\n\nThe refunded amount will be returned to your wallet in the source currency. Please enter a valid address to avoid loss of funds.</string>
-    <string name="swap_refund_address_info_message">If the swap fails or market conditions change, your transaction may be refunded minus the transaction fees.\n\nThe refunded amount will be returned to your wallet in the source currency on the same network. Please enter a valid address to avoid loss of funds.</string>
+    <string name="swap_refund_address_info_message_empty">If the swap fails or market conditions change, your transaction may be refunded minus network fees.\n\nRefunds only apply to swaps of $300 or more. Swaps under $300 aren\'t eligible for a refund.\n\nThe refunded amount will be returned to your wallet in the source currency. Please enter a valid address to avoid loss of funds.</string>
+    <string name="swap_refund_address_info_message">If the swap fails or market conditions change, your transaction may be refunded minus network fees.\n\nRefunds only apply to swaps of $300 or more. Swaps under $300 aren\'t eligible for a refund.\n\nThe refunded amount will be returned to your wallet in the source currency on the same network. Please enter a valid address to avoid loss of funds.</string>
+    <string name="swap_refund_warning_title">No Refunds Under $300</string>
+    <string name="swap_refund_warning_message_swap">NEAR doesn\'t refund mistakes like a wrong address or wrong network for swaps under $300. Please double-check all details before continuing.</string>
+    <string name="swap_refund_warning_message_pay">NEAR doesn\'t refund mistakes like a wrong address or wrong network for payments under $300. Please double-check all details before continuing.</string>
+    <string name="swap_refund_warning_checkbox">Don\'t show this message again</string>
+    <string name="swap_refund_warning_continue">Continue</string>
     <string name="swapToZec_swapDetails">Swap Details</string>
     <string name="swapToZec_depositTo">Deposit to</string>
     <string name="swapStatus_swapExpired">Swap Expired</string>
