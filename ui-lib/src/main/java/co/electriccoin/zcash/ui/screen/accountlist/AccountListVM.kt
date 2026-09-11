@@ -41,7 +41,7 @@ class AccountListVM(
                                 AccountListItem.Account(
                                     ZashiAccountListItemState(
                                         title = account.name,
-                                        subtitle = stringResByAddress(account.unified.address.address),
+                                        subtitle = stringResByAddress(account.unifiedAddress),
                                         icon =
                                             when (account) {
                                                 is KeystoneAccount -> R.drawable.ic_item_keystone

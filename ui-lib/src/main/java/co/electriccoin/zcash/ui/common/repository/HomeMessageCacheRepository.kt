@@ -84,7 +84,7 @@ sealed interface HomeMessageData {
     }
 
     data object Backup : Prioritized {
-        override val priority: Int = 4
+        override val priority: Int = 5
     }
 
     data object EnableCurrencyConversion : Prioritized {
@@ -93,6 +93,19 @@ sealed interface HomeMessageData {
 
     data object CrashReport : Prioritized {
         override val priority: Int = 1
+    }
+
+    /**
+     * Nudge to participate in the active Coinholder Polling (CHP) round (MOB-1805). Ranked below
+     * [Backup] but above the other opt-in flows ([EnableTor], [EnableCurrencyConversion],
+     * [CrashReport]) — see [co.electriccoin.zcash.ui.common.usecase.GetHomeMessageUseCase]'s
+     * `createMessage`. No dismiss affordance in the design, so unlike the other opt-in messages
+     * this one has no persisted "seen"/dismissed flag — its producer
+     * (`VotingHomeMessageSource.observeIsCoinholderPollingMessageVisible`) is purely data-driven:
+     * it disappears on its own once the account has voted, the round ends, or voting is disabled.
+     */
+    data object CoinholderPolling : Prioritized {
+        override val priority: Int = 4
     }
 }
 

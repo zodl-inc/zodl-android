@@ -116,6 +116,7 @@ dependencyResolutionManagement {
             if (isRepoRestrictionEnabled) {
                 content {
                     includeGroup("cash.z.ecc.android")
+                    includeGroup("com.zodl.android")
                 }
             }
         }
@@ -126,6 +127,7 @@ dependencyResolutionManagement {
             if (isRepoRestrictionEnabled) {
                 content {
                     includeGroup("cash.z.ecc.android")
+                    includeGroup("com.zodl.android")
                 }
             }
         }
@@ -246,9 +248,9 @@ dependencyResolutionManagement {
             library("markdown", "org.jetbrains:markdown:$markdownVersion")
             library("mlkit-scanning", "com.google.mlkit:barcode-scanning:$mlkitScanningVersion")
             library("tink", "com.google.crypto.tink:tink-android:$tinkVersion")
-            library("zcash-sdk", "cash.z.ecc.android:zcash-android-sdk:$zcashSdkVersion")
-            library("zcash-sdk-backend", "cash.z.ecc.android:zcash-android-backend:$zcashSdkVersion")
-            library("zcash-sdk-incubator", "cash.z.ecc.android:zcash-android-sdk-incubator:$zcashSdkVersion")
+            library("zcash-sdk", "com.zodl.android:zcash-android-sdk:$zcashSdkVersion")
+            library("zcash-sdk-backend", "com.zodl.android:zcash-android-backend:$zcashSdkVersion")
+            library("zcash-sdk-incubator", "com.zodl.android:zcash-android-sdk-incubator:$zcashSdkVersion")
             library("zcash-bip39", "cash.z.ecc.android:kotlin-bip39:$zcashBip39Version")
             library("zip321", "org.zecdev:zip321:$zip321Version")
             library("zxing", "com.google.zxing:core:$zxingVersion")
@@ -373,9 +375,9 @@ if (zcashSdkIncludedBuildPath.isNotEmpty()) {
     logger.lifecycle("The SDK will be used from $zcashSdkIncludedBuildPath instead of Maven Central.")
     includeBuild(zcashSdkIncludedBuildPath) {
         dependencySubstitution {
-            substitute(module("cash.z.ecc.android:zcash-android-sdk")).using(project(":sdk-lib"))
-            substitute(module("cash.z.ecc.android:zcash-android-backend")).using(project(":backend-lib"))
-            substitute(module("cash.z.ecc.android:zcash-android-sdk-incubator")).using(project(":sdk-incubator-lib"))
+            substitute(module("com.zodl.android:zcash-android-sdk")).using(project(":sdk-lib"))
+            substitute(module("com.zodl.android:zcash-android-backend")).using(project(":backend-lib"))
+            substitute(module("com.zodl.android:zcash-android-sdk-incubator")).using(project(":sdk-incubator-lib"))
         }
     }
 }

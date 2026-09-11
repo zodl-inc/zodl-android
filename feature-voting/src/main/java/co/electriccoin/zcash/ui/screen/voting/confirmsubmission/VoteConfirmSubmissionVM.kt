@@ -25,7 +25,6 @@ import co.electriccoin.zcash.ui.common.usecase.VotingSubmissionAuthorizationResu
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
-import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.voting.coinholderpolling.VoteCoinholderPollingArgs
 import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingArgs
@@ -453,11 +452,17 @@ class VoteConfirmSubmissionVM(
                     "Failed to submit votes for round ${args.roundIdHex}",
                     throwable
                 )
-                val error = throwable.message ?: "Vote submission failed."
                 setFailureStatus(
                     when (throwable) {
-                        is VotingAuthorizationException -> VoteSubmissionStatus.ProtocolAuthFailed(error)
-                        else -> VoteSubmissionStatus.SubmissionFailed(error)
+                        is VotingAuthorizationException -> {
+                            VoteSubmissionStatus.ProtocolAuthFailed(throwable.message)
+                        }
+
+                        else -> {
+                            VoteSubmissionStatus.SubmissionFailed(
+                                VotingErrorMapper.toUserFriendlyMessage(throwable)
+                            )
+                        }
                     }
                 )
             }
@@ -562,9 +567,9 @@ class VoteConfirmSubmissionVM(
             }
 
             is VoteSubmissionStatus.SubmissionFailed -> {
-                status.error.toErrorMessageOrDefault(
-                    status.defaultError ?: stringRes(R.string.coinVote_confirmSubmission_submissionFailedMessage)
-                )
+                status.error
+                    ?: status.defaultError
+                    ?: stringRes(R.string.coinVote_confirmSubmission_submissionFailedMessage)
             }
 
             else -> {
@@ -628,13 +633,6 @@ private data class SubmissionUiState(
 private fun Long.toVotingWeightLabel() = "%.4f ZEC".format(this / ZATOSHI_PER_ZEC)
 
 private const val ZATOSHI_PER_ZEC = 100_000_000.0
-
-private fun String?.toErrorMessageOrDefault(default: StringResource): StringResource =
-    if (isNullOrBlank()) {
-        default
-    } else {
-        VotingErrorMapper.toUserFriendlyMessage(this)
-    }
 
 private fun String.toDraftChoices(): Map<Int, Int> {
     val json = JSONObject(this)

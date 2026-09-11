@@ -89,49 +89,45 @@ internal fun MigrationSchedulingView() {
                     .scaffoldPadding(padding),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            Spacer(Modifier.weight(1f))
+            Image(
+                painter = painterResource(R.drawable.ic_fist_punch),
+                contentDescription = null,
+                modifier = Modifier.size(120.dp),
+            )
+            Spacer(Modifier.height(24.dp))
+            Text(
+                text = stringRes(DesignR.string.migrationScheduled_schedulingTitle).getValue(),
+                style = ZashiTypography.header5,
+                fontWeight = FontWeight.SemiBold,
+                color = ZashiColors.Text.textPrimary,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = stringRes(DesignR.string.migrationScheduled_schedulingSubtitle).getValue(),
+                style = ZashiTypography.textSm,
+                color = ZashiColors.Text.textTertiary,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(24.dp))
             Column(
-                Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(ZashiColors.Surfaces.bgSecondary)
+                        .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Image(
-                    painter = painterResource(R.drawable.ic_fist_punch),
-                    contentDescription = null,
-                    modifier = Modifier.size(120.dp),
+                SkeletonSummaryRow(
+                    label = stringRes(DesignR.string.migrationScheduled_totalToTransferLabel).getValue()
                 )
-                Spacer(Modifier.height(24.dp))
-                Text(
-                    text = stringRes(DesignR.string.migrationScheduled_schedulingTitle).getValue(),
-                    style = ZashiTypography.header5,
-                    fontWeight = FontWeight.SemiBold,
-                    color = ZashiColors.Text.textPrimary,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = stringRes(DesignR.string.migrationScheduled_schedulingSubtitle).getValue(),
-                    style = ZashiTypography.textSm,
-                    color = ZashiColors.Text.textTertiary,
-                    textAlign = TextAlign.Center,
-                )
-                Spacer(Modifier.height(24.dp))
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(ZashiColors.Surfaces.bgSecondary)
-                            .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    SkeletonSummaryRow(
-                        label = stringRes(DesignR.string.migrationScheduled_totalToTransferLabel).getValue()
-                    )
-                    SkeletonSummaryRow(label = stringRes(DesignR.string.migrationScheduled_poolLabel).getValue())
-                    SkeletonSummaryRow(label = stringRes(DesignR.string.migrationScheduled_transfersLabel).getValue())
-                    SkeletonSummaryRow(label = stringRes(DesignR.string.migrationScheduled_durationLabel).getValue())
-                }
+                SkeletonSummaryRow(label = stringRes(DesignR.string.migrationScheduled_poolLabel).getValue())
+                SkeletonSummaryRow(label = stringRes(DesignR.string.migrationScheduled_transfersLabel).getValue())
+                SkeletonSummaryRow(label = stringRes(DesignR.string.migrationScheduled_durationLabel).getValue())
             }
+            Spacer(Modifier.weight(1f))
             ZashiButton(
                 state =
                     ButtonState(
@@ -181,67 +177,63 @@ fun MigrationScheduledView(state: MigrationScheduledState) {
                     .scaffoldPadding(padding),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            Spacer(Modifier.weight(1f))
+            Image(
+                painter = painterResource(R.drawable.ic_fist_punch),
+                contentDescription = null,
+                modifier = Modifier.size(120.dp),
+            )
+            Spacer(Modifier.height(24.dp))
+            Text(
+                text = stringRes(DesignR.string.migrationScheduled_doneTitle).getValue(),
+                style = ZashiTypography.header5,
+                fontWeight = FontWeight.SemiBold,
+                color = ZashiColors.Text.textPrimary,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = stringRes(DesignR.string.migrationScheduled_doneSubtitle).getValue(),
+                style = ZashiTypography.textSm,
+                color = ZashiColors.Text.textTertiary,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(24.dp))
             Column(
-                Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(ZashiColors.Surfaces.bgSecondary)
+                        .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Image(
-                    painter = painterResource(R.drawable.ic_fist_punch),
-                    contentDescription = null,
-                    modifier = Modifier.size(120.dp),
+                SummaryRow(
+                    label = stringRes(DesignR.string.migrationScheduled_totalToTransferLabel).getValue(),
+                    value = state.totalAmount.getValue(),
                 )
-                Spacer(Modifier.height(24.dp))
-                Text(
-                    text = stringRes(DesignR.string.migrationScheduled_doneTitle).getValue(),
-                    style = ZashiTypography.header5,
-                    fontWeight = FontWeight.SemiBold,
-                    color = ZashiColors.Text.textPrimary,
-                    textAlign = TextAlign.Center,
+                SummaryRow(
+                    label = stringRes(DesignR.string.migrationScheduled_poolLabel).getValue(),
+                    value = stringRes(DesignR.string.migrationScheduled_poolValue).getValue(),
                 )
-                Spacer(Modifier.height(4.dp))
+                SummaryRow(
+                    label = stringRes(DesignR.string.migrationScheduled_transfersLabel).getValue(),
+                    value = state.transfersProgress.getValue(),
+                )
+                SummaryRow(
+                    label = stringRes(DesignR.string.migrationScheduled_durationLabel).getValue(),
+                    value = state.duration.getValue(),
+                )
+            }
+            state.backgroundHint?.let {
+                Spacer(Modifier.height(12.dp))
                 Text(
-                    text = stringRes(DesignR.string.migrationScheduled_doneSubtitle).getValue(),
+                    text = it.getValue(),
                     style = ZashiTypography.textSm,
                     color = ZashiColors.Text.textTertiary,
-                    textAlign = TextAlign.Center,
                 )
-                Spacer(Modifier.height(24.dp))
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(ZashiColors.Surfaces.bgSecondary)
-                            .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    SummaryRow(
-                        label = stringRes(DesignR.string.migrationScheduled_totalToTransferLabel).getValue(),
-                        value = state.totalAmount.getValue(),
-                    )
-                    SummaryRow(
-                        label = stringRes(DesignR.string.migrationScheduled_poolLabel).getValue(),
-                        value = stringRes(DesignR.string.migrationScheduled_poolValue).getValue(),
-                    )
-                    SummaryRow(
-                        label = stringRes(DesignR.string.migrationScheduled_transfersLabel).getValue(),
-                        value = state.transfersProgress.getValue(),
-                    )
-                    SummaryRow(
-                        label = stringRes(DesignR.string.migrationScheduled_durationLabel).getValue(),
-                        value = state.duration.getValue(),
-                    )
-                }
-                state.backgroundHint?.let {
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        text = it.getValue(),
-                        style = ZashiTypography.textSm,
-                        color = ZashiColors.Text.textTertiary,
-                    )
-                }
             }
+            Spacer(Modifier.weight(1f))
             ZashiButton(
                 state = ButtonState(text = stringRes(DesignR.string.migration_status_done), onClick = state.onDone),
                 modifier = Modifier.fillMaxWidth(),

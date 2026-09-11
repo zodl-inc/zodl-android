@@ -9,7 +9,7 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
 /**
- * The worker's DEAD-MAN'S SWITCH (design with Dominik, 2026-07-30): an inexact-while-idle alarm
+ * The worker's DEAD-MAN'S SWITCH (design with the product owner, 2026-07-30): an inexact-while-idle alarm
  * armed by [MigrationScheduler] a late margin PAST the worker's expected run. By construction,
  * firing means the OS had its chance to run the worker and didn't (Doze, App-Standby, OEM
  * killers, user-disabled background) — so this compares the [MigrationWorkerHeartbeat] stamps

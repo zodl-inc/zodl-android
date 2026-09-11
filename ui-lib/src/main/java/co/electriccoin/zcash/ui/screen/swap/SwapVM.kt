@@ -10,8 +10,9 @@ import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapDirection
 import co.electriccoin.zcash.ui.common.model.SwapDirection.SWAP_FROM_ZEC
 import co.electriccoin.zcash.ui.common.model.SwapDirection.SWAP_INTO_ZEC
-import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.model.canSpend
+import co.electriccoin.zcash.ui.common.model.toSwapMode
 import co.electriccoin.zcash.ui.common.repository.DEFAULT_SLIPPAGE
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
@@ -26,6 +27,7 @@ import co.electriccoin.zcash.ui.common.usecase.NavigateToSlippageUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapAssetPickerUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapInfoUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapQuoteIfAvailableUseCase
+import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapRefundWarningUseCase
 import co.electriccoin.zcash.ui.common.usecase.RequestSwapQuoteUseCase
 import co.electriccoin.zcash.ui.common.usecase.resolve
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -64,6 +66,7 @@ internal class SwapVM(
     private val navigateToSelectSwapRecipient: NavigateToSelectABSwapRecipientUseCase,
     private val navigateToSlippage: NavigateToSlippageUseCase,
     private val navigateToSwapAssetPicker: NavigateToSwapAssetPickerUseCase,
+    private val navigateToSwapRefundWarning: NavigateToSwapRefundWarningUseCase,
 ) : ViewModel() {
     // VM-owned state. The externally-observed `swapAssets`/`account` fields are injected by the
     // `state` combine below, so the VM only ever updates the fields it owns.
@@ -267,11 +270,7 @@ internal class SwapVM(
                 navigateToSlippage(
                     currentSlippage = internalState.value.slippage,
                     fiatAmount = fiatAmount,
-                    mode =
-                        when (internalState.value.swapDirection) {
-                            SWAP_FROM_ZEC -> SwapMode.EXACT_INPUT
-                            SWAP_INTO_ZEC -> SwapMode.FLEX_INPUT
-                        }
+                    mode = internalState.value.swapDirection.toSwapMode()
                 )
             if (newSlippage != null) {
                 internalState.update { it.copy(slippage = newSlippage) }
@@ -338,12 +337,17 @@ internal class SwapVM(
     private fun onTextFieldChange(new: NumberTextFieldInnerState) =
         internalState.update { it.copy(amountTextState = new) }
 
-    private fun onRequestSwapQuoteClick(amount: BigDecimal, address: String) =
+    /** Gates the quote request behind the refund warning, on the direction snapshotted at tap time. */
+    private fun onRequestSwapQuoteClick(amount: BigDecimal, fiatAmount: BigDecimal?, address: String) =
         viewModelScope.launch {
             val asset = internalState.value.swapAsset ?: return@launch
             val slippage = internalState.value.slippage
+            val direction = internalState.value.swapDirection
+            if (!navigateToSwapRefundWarning(fiatAmount = fiatAmount, mode = direction.toSwapMode())) {
+                return@launch
+            }
             internalState.update { it.copy(isRequestingQuote = true) }
-            when (internalState.value.swapDirection) {
+            when (direction) {
                 SWAP_FROM_ZEC -> {
                     requestSwapQuote.requestExactInput(
                         amount = amount,
@@ -402,8 +406,14 @@ internal interface InternalState {
     val swapDirection: SwapDirection
     val isEphemeralAddressLocked: Boolean
 
-    val totalSpendableBalance: Zatoshi
-        get() = account?.spendableShieldedBalance ?: Zatoshi(0)
+    /**
+     * Delegates to the shared [co.electriccoin.zcash.ui.common.model.canSpend] primitive — the same
+     * one the pre-quote check in
+     * [co.electriccoin.zcash.ui.common.usecase.RequestSwapQuoteUseCase.requestExactInput] validates
+     * against. Re-evaluated whenever the selected account emits a new balance. Null while the
+     * balance has not loaded yet.
+     */
+    fun canSpend(amount: Zatoshi): Boolean? = account.canSpend(amount)
 }
 
 internal data class InternalStateImpl(

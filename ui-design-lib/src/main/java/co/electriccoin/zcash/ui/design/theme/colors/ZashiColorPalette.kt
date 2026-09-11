@@ -9,6 +9,7 @@ internal object Base {
     val Concrete = Color(0xFFF4F4F4)
     val Espresso = Color(0xFF332424)
     val Obsidian = Color(0xFF231F20)
+    val Black = Color(0xFF000000)
     val Brand = Color(0xFFFCBB1A)
 }
 

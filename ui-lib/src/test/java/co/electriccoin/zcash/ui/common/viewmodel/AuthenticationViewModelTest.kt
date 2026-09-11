@@ -6,6 +6,7 @@ import co.electriccoin.zcash.preference.StandardPreferenceProvider
 import co.electriccoin.zcash.preference.api.PreferenceProvider
 import co.electriccoin.zcash.preference.model.entry.PreferenceKey
 import co.electriccoin.zcash.spackle.AndroidApiVersion
+import co.electriccoin.zcash.ui.common.provider.GetMonotonicTimeProvider
 import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
 import co.electriccoin.zcash.ui.fixture.VersionInfoFixture
 import io.mockk.coEvery
@@ -28,6 +29,9 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * Regression coverage for MOB-1447: opening the app before any wallet has been created or
@@ -140,11 +144,56 @@ class AuthenticationViewModelTest {
             assertEquals(AuthenticationUIState.NotRequired, viewModel.appAccessAuthenticationResultState.value)
         }
 
+    @Test
+    fun recentBackgroundDoesNotResetAuthenticationState() =
+        runTest {
+            val (viewModel, _, setMonotonicTimeMillis) = newViewModel(secretState = SecretState.READY)
+            viewModel.appAccessAuthentication.value = AuthenticationUIState.Successful
+            viewModel.setWelcomeAnimationDisplayed()
+
+            setMonotonicTimeMillis(0L)
+            viewModel.onEnteredBackground()
+
+            setMonotonicTimeMillis(5.minutes.inWholeMilliseconds)
+            viewModel.runAuthenticationRequiredCheck()
+
+            assertEquals(AuthenticationUIState.Successful, viewModel.appAccessAuthentication.value)
+            assertFalse(viewModel.showWelcomeAnimation.value)
+        }
+
+    @Test
+    fun backgroundTimeoutResetsAuthenticationState() =
+        runTest {
+            val (viewModel, _, setMonotonicTimeMillis) = newViewModel(secretState = SecretState.READY)
+            viewModel.appAccessAuthentication.value = AuthenticationUIState.Successful
+            viewModel.setWelcomeAnimationDisplayed()
+
+            setMonotonicTimeMillis(0L)
+            viewModel.onEnteredBackground()
+
+            setMonotonicTimeMillis(16.minutes.inWholeMilliseconds)
+            viewModel.runAuthenticationRequiredCheck()
+
+            assertEquals(AuthenticationUIState.Initial, viewModel.appAccessAuthentication.value)
+            assertTrue(viewModel.showWelcomeAnimation.value)
+        }
+
+    @Test
+    fun authenticationCheckWithoutRecordedBackgroundTimeIsNoOp() =
+        runTest {
+            val (viewModel, _, _) = newViewModel(secretState = SecretState.READY)
+            viewModel.appAccessAuthentication.value = AuthenticationUIState.Successful
+
+            viewModel.runAuthenticationRequiredCheck()
+
+            assertEquals(AuthenticationUIState.Successful, viewModel.appAccessAuthentication.value)
+        }
+
     private fun newViewModel(
         secretState: SecretState,
         isAppAccessAuthenticationPreference: String? = null,
         isRunningUnderTestService: Boolean = false
-    ): Pair<AuthenticationViewModel, MutableStateFlow<SecretState>> {
+    ): Triple<AuthenticationViewModel, MutableStateFlow<SecretState>, (Long) -> Unit> {
         val secretStateFlow = MutableStateFlow(secretState)
         val walletViewModel = mockk<WalletViewModel>()
         every { walletViewModel.secretState } returns secretStateFlow
@@ -156,16 +205,21 @@ class AuthenticationViewModelTest {
         every { getVersionInfo() } returns
             VersionInfoFixture.new(isRunningUnderTestService = isRunningUnderTestService)
 
+        var monotonicTimeMillis = 0L
+        val getMonotonicTime = mockk<GetMonotonicTimeProvider>()
+        every { getMonotonicTime() } answers { monotonicTimeMillis }
+
         val viewModel =
             AuthenticationViewModel(
                 application = application,
                 biometricManager = biometricManager,
+                getMonotonicTime = getMonotonicTime,
                 getVersionInfo = getVersionInfo,
                 standardPreferenceProvider = standardPreferenceProvider,
                 walletViewModel = walletViewModel
             )
 
-        return viewModel to secretStateFlow
+        return Triple(viewModel, secretStateFlow) { monotonicTimeMillis = it }
     }
 }
 

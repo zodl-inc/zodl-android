@@ -9,22 +9,106 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Added:
 
-- Buttons, rows, and other interactive elements now respond to touch with a subtle expressive press animation.
-- Screens and sheets across the app now use frosted-glass headers and footers, with content scrolling beneath them.
+- The support email now includes whether Tor is enabled.
+- Swap and CrossPay now warn you before requesting a quote when the amount you are sending is worth less than
+  $300, because NEAR does not refund a swap or payment under $300 that is lost to a wrong address or a wrong
+  network. The warning carries a "Don't show this message again" checkbox that silences it for that flow only
+  (MOB-1890).
 
 ### Changed:
 
+- The Swap, CrossPay and refund-address explainers no longer describe NEAR refunds as unconditional; they now
+  state the $300 threshold. The Swap and CrossPay explainers also gained a "Learn more" button that opens the
+  matching support article, and all three explainers now close with a "Dismiss" button instead of "OK", matching
+  iOS (MOB-1890).
 - Currency Conversion now offers every fiat currency supported by the exchange-rate provider except CUP, IRR and RUB. The currency picker loads
   the list on demand and shows a loading state, or an error with retry when the list cannot be fetched.
-- Bottom sheets across the app now share one background color.
-- Coinholder Polling now loads its trusted configuration through the resilient voting config gateway, so a GitHub outage no longer blocks
-  configuration loading while the mirrored copy is available.
 
 ### Fixed:
 
-- Shielded coinholder polling works again after the voting infrastructure's v1.3.0 upgrade: the app now reads the PIR polynomial length from the
-  voting configuration, verifies the new round-attestation signature format, and submits vote shares with the round binding the voting server
-  requires. Rounds signed with the old attestation format are no longer shown.
+- The seed backup prompt now always takes priority over the migration banner and any sync/connectivity error banner once your wallet has received a balance and you haven't backed up your recovery phrase yet, so it can no longer be hidden behind other home screen messages for days.
+
+## [3.11.0 (2653)] - 2026-09-08
+
+### Added:
+
+- App Theme setting in Settings, letting you choose System, Light, or Dark — with a bottom sheet to pick
+  Classic Dark or Pure Black (OLED) whenever a dark appearance applies.
+- The in-app browser now matches the app theme, including the Pure Black theme.
+
+### Changed:
+
+- Automatic server selection now switches only to a server that is meaningfully faster than the one you're on (at least 200 ms and 25 % faster), or when the current server fails its health check twice in a row, so the wallet no longer flips between near-equal or briefly slow servers. A switch is never followed by another within thirty minutes, and the servers are re-checked at most once every ten minutes instead of on every return to the app.
+
+### Fixed:
+
+- Support/error reports for a failed transaction no longer claim a fake `gRPC: false, code: -1` status when the failure actually happened before submission (e.g. a Sapling parameter download failure); such reports now correctly identify the real exception instead.
+- Opening Send immediately after a cold start no longer falls back to a loading screen while automatic server selection reconnects the wallet. The automatic winner waits for the local balance snapshot, which remains visible while the new server connection settles.
+- Fixed a crash loop some wallets hit at startup when the SDK reported the stored seed as no longer relevant to its database. The app now recovers automatically by clearing the mismatched local data and rescanning, instead of crashing repeatedly.
+- The app returns to onboarding so you can restore from your recovery phrase when its secret store is found empty while it still believes a
+  wallet was set up, instead of opening a home screen with no wallet behind it.
+- Opening the encrypted secret store is retried a few times before it is declared unreadable, and an unreadable store is set aside on the
+  device instead of being deleted.
+- Swap quotes that fail the request-vs-response validation now show a dedicated "Swap details didn't match" sheet with a Report button that pre-fills a support email (MOB-1340).
+
+## [3.10.2 (2569)] - 2026-08-27
+
+### Added:
+
+- Coinholder Polling now shows a pull-to-refresh indicator on the poll list, so you can manually refresh it on demand.
+
+### Changed:
+
+- Coinholder Polling's poll list no longer refreshes itself in the background while you're just browsing it; it now updates when you open the screen, return to it, or pull to refresh.
+- Vote submission is faster and more reliable over Tor: a slow or unresponsive vote-helper server no longer stalls the whole submission.
+- Coinholder Polling no longer becomes unavailable when the primary voting configuration service is unreachable or blocked: the app
+  verifies the same pinned configuration from a second independent mirror, walks the configuration's own mirror list, and config
+  requests now give up after 15 seconds instead of two minutes.
+
+### Fixed:
+
+- Coinholder Polling's poll list and proposal loading no longer hang indefinitely when a vote server is unreachable over Tor; a slow or dropped connection now fails over to the next server within a bounded time.
+
+## [3.10.1 (2512)] - 2026-08-25
+
+### Added:
+
+- We added a home screen banner and follow-up screen for a small amount of ZEC that can be left in Orchard after migrating to Ironwood, so you can choose whether to lock it or move it.
+
+### Fixed:
+
+- We fixed migrating with a Keystone wallet, so migrations are now split into signing rounds correctly.
+
+### Fixed:
+
+- A temporary Android Keystore failure at startup is no longer mistaken for corrupted encrypted storage: the encrypted secret store is now
+  recreated only when its data is provably undecryptable (for example after a device-to-device transfer, which cannot move hardware-bound
+  keys), and any other failure keeps the stored data intact.
+
+## [3.10.0 (2475)] - 2026-08-20
+
+### Added:
+
+- Buttons, rows, and other interactive elements now respond to touch with a subtle expressive press animation.
+- Screens and sheets across the app now use frosted-glass headers and footers, with content scrolling beneath them.
+- We brought back Coinholder Polling, so you can take part in Zcash community polls from your wallet.
+
+### Changed:
+
+- Bottom sheets across the app now share one background color.
+- We rebuilt polling to work with your Ironwood-migrated funds.
+- We made poll loading more reliable during service outages.
+
+### Fixed:
+
+- Requesting a swap quote you cannot afford now shows the Insufficient Funds sheet instead of the technical error screen. A shortfall
+  found while building the transaction is now reported by the SDK as an insufficient-funds failure rather than a raw error.
+- The app-lock re-authentication timeout is now measured with a monotonic clock instead of the system wall clock, so it can no longer be
+  bypassed by changing the device's date and time.
+- We polished several UI details: the swap quote review header now stands out from the sheet background, the Activity header turns frosted
+  sooner so it stays readable while you scroll, the Terms of Service icon matches the Privacy Policy one, and the Ironwood migration screens
+  scroll properly on small displays.
+- We fixed errors that interrupted signing, and made preparing a Keystone signature much faster.
 
 ## [3.9.3 (2393)] - 2026-08-17
 

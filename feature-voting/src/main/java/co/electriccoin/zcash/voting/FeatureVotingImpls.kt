@@ -4,6 +4,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
 import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
@@ -15,6 +16,7 @@ import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshActiveVotingSessionUseCase
 import co.electriccoin.zcash.ui.common.voting.VotingHomeHooks
+import co.electriccoin.zcash.ui.common.voting.VotingHomeMessageSource
 import co.electriccoin.zcash.ui.common.voting.VotingNavContributor
 import co.electriccoin.zcash.ui.common.voting.VotingSettingsEntry
 import co.electriccoin.zcash.ui.dialogComposable
@@ -42,7 +44,14 @@ import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingScr
 import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingArgs
 import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingScreen
 import co.electriccoin.zcash.work.VotingShareTrackingScheduler
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import org.json.JSONObject
+import java.time.Instant
 
 /**
  * Master kill switch for coinholder (shielded) voting.
@@ -57,6 +66,16 @@ import org.json.JSONObject
  */
 const val VOTING_ENABLED = true
 
+/**
+ * Temporarily disables the Coinholder Polling home-widget prompt (MOB-1805, PR #2472) while its
+ * eligibility check and the unconditional voting-session network refresh it rides along with are
+ * redesigned - see MOB-1814 and the Slack thread linked there. This does NOT touch
+ * [VOTING_ENABLED] or the underlying [RefreshActiveVotingSessionUseCase] call in
+ * [VotingHomeHooksImpl.recoverPendingRouteIfNeeded] - voting itself, and that pre-existing
+ * refresh, are unaffected. Re-enable by flipping this back to `true` once the redesign lands.
+ */
+const val COINHOLDER_HOME_PROMPT_ENABLED = false
+
 class VotingHomeHooksImpl(
     private val votingRecoveryRepository: VotingRecoveryRepository,
     private val votingApiRepository: VotingApiRepository,
@@ -69,20 +88,26 @@ class VotingHomeHooksImpl(
     @Suppress("ReturnCount", "SpreadOperator")
     override suspend fun recoverPendingRouteIfNeeded(): Boolean {
         if (!VOTING_ENABLED) return false
+        val accountUuid = getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId()
+
+        // Purely local check - most home-screen opens have no pending Keystone request at all,
+        // so skip the network refresh entirely rather than fetching service config + all rounds
+        // on every open just to find nothing to recover (MOB-1814).
+        val pendingRoundIds = votingRecoveryRepository.getRoundIdsWithPendingKeystoneRequest(accountUuid)
+        if (pendingRoundIds.isEmpty()) return false
+
         runCatching {
             refreshActiveVotingSession()
         }.getOrElse {
             return false
         }
-        val accountUuid = getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId()
-        var recovery: VotingRecoverySnapshot? = null
-        for (roundId in votingApiRepository.snapshot.value.sessionsByRoundId.keys) {
-            val candidate = votingRecoveryRepository.get(accountUuid, roundId)
-            if (candidate?.pendingKeystoneRequest != null) {
-                recovery = candidate
-                break
-            }
-        }
+        val activeRoundIds = votingApiRepository.snapshot.value.sessionsByRoundId.keys
+        val recovery =
+            pendingRoundIds
+                .filter { roundId -> roundId in activeRoundIds }
+                .firstNotNullOfOrNull { roundId ->
+                    votingRecoveryRepository.get(accountUuid, roundId)?.takeIf { it.pendingKeystoneRequest != null }
+                }
         recovery ?: return false
         val roundId = recovery.roundId
         val pendingRequest = recovery.pendingKeystoneRequest ?: return false
@@ -158,6 +183,70 @@ class VotingSettingsEntryImpl(
     override fun navigateToHowToVote() = navigationRouter.forward(VoteHowToVoteArgs)
 
     override fun navigateToCoinholderPolling() = navigationRouter.forward(VoteCoinholderPollingArgs)
+}
+
+/**
+ * See [VotingHomeMessageSource] for the eligibility contract this implements. Combines the
+ * currently selected account, the latest fetched rounds/sessions ([VotingApiRepository]) and this
+ * device's submission record to decide whether the Coinholder Polling home-widget prompt
+ * (MOB-1805) should currently be eligible to show.
+ *
+ * Submission state is read from [VotingSessionStore] first (in-memory, populated the moment a
+ * submit completes this process) falling back to the durable [VotingRecoveryRepository] (survives
+ * process death/restart) — the same two-source fallback [VoteCoinholderPollingVM] already uses,
+ * needed because [VotingSessionStore] starts empty on every fresh launch.
+ */
+class VotingHomeMessageSourceImpl(
+    private val votingApiRepository: VotingApiRepository,
+    private val votingSessionStore: VotingSessionStore,
+    private val votingRecoveryRepository: VotingRecoveryRepository,
+    private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
+) : VotingHomeMessageSource {
+    private data class ActiveScope(
+        val accountUuid: String,
+        val roundId: String
+    )
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun observeIsCoinholderPollingMessageVisible(): Flow<Boolean> {
+        if (!VOTING_ENABLED || !COINHOLDER_HOME_PROMPT_ENABLED) return flowOf(false)
+
+        val activeScope: Flow<ActiveScope?> =
+            combine(
+                votingApiRepository.snapshot,
+                getSelectedWalletAccount.observe(),
+            ) { apiSnapshot, account ->
+                val accountUuid = account?.sdkAccount?.accountUuid?.toVotingAccountScopeId()
+                val activeEntry =
+                    apiSnapshot.sessionsByRoundId.entries.firstOrNull { entry ->
+                        entry.value.status == SessionStatus.ACTIVE
+                    }
+
+                when {
+                    accountUuid == null || activeEntry == null -> null
+                    !Instant.now().isBefore(activeEntry.value.voteEndTime) -> null
+                    else -> ActiveScope(accountUuid, activeEntry.key)
+                }
+            }.distinctUntilChanged()
+
+        return activeScope
+            .flatMapLatest { scope ->
+                if (scope == null) {
+                    flowOf(false)
+                } else {
+                    val roundId = scope.roundId
+                    combine(
+                        votingSessionStore.state,
+                        votingRecoveryRepository.observe(scope.accountUuid, roundId),
+                    ) { sessionStoreState, recovery ->
+                        val inMemoryCount = sessionStoreState.submittedProposalCount(scope.accountUuid, roundId)
+                        val hasVoted = inMemoryCount != null || recovery?.submittedAtEpochSeconds != null
+
+                        !hasVoted
+                    }
+                }
+            }.distinctUntilChanged()
+    }
 }
 
 class VotingNavContributorImpl : VotingNavContributor {

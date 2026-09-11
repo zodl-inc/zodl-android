@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.appbar.ZashiMainTopAppBarState
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
+import co.electriccoin.zcash.ui.design.component.HeaderBlurIntensityStops
 import co.electriccoin.zcash.ui.design.component.IconButtonState
 import co.electriccoin.zcash.ui.design.component.TextFieldState
 import co.electriccoin.zcash.ui.design.component.ZashiHorizontalDivider
@@ -88,7 +89,7 @@ fun ActivityHistoryView(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .zashiFrostedHeader(hazeState)
+                        .zashiFrostedHeader(hazeState, intensityStops = HeaderBlurIntensityStops)
             ) {
                 TransactionHistoryAppBar(
                     mainAppBarState = mainAppBarState,

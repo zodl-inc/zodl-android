@@ -1,0 +1,5 @@
+Added:
+- We added a home screen banner and follow-up screen for a small amount of ZEC that can be left in Orchard after migrating to Ironwood, so you can choose whether to lock it or move it.
+
+Fixed:
+- We fixed migrating with a Keystone wallet, so migrations are now split into signing rounds correctly.

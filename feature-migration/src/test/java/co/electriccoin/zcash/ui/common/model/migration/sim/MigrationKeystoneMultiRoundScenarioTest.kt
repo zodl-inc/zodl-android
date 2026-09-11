@@ -36,7 +36,7 @@ class MigrationKeystoneMultiRoundScenarioTest {
 
         // Per-run migratable ceiling the engine's note cap imposes.
         const val PER_RUN_CAP: Long = 1_000_000L // 0.01 ZEC per run
-        const val DUST: Long = 100_000L // 0.001 ZEC — the protocol dust threshold
+        const val DUST: Long = 10_000L // 0.0001 ZEC — the protocol dust threshold
 
         // Start with 2.5x a single run's reach: three rounds' worth (ceil(2_500_000/1_000_000) = 3).
         const val INITIAL_RESIDUAL: Long = 2_500_000L
@@ -94,7 +94,7 @@ class MigrationKeystoneMultiRoundScenarioTest {
             assertEquals(2, afterRound1, "1_500_000 / 1_000_000 = 2 runs still to go.")
             assertTrue(
                 anotherRoundNeeded(sdk),
-                "residual 1_500_000 > dust 100_000 and needs >0 further runs — round 2 expected.",
+                "residual 1_500_000 > dust 10_000 and needs >0 further runs — round 2 expected.",
             )
 
             // ── Round 2 completes: another run's worth clears. ──
@@ -104,7 +104,7 @@ class MigrationKeystoneMultiRoundScenarioTest {
             assertTrue(anotherRoundNeeded(sdk), "500_000 > dust — round 3 expected.")
 
             // ── Round 3 clears all but dust. ──
-            driver.setMigratableResidual(zatoshi = DUST - 1L) // 99_999 — below the dust threshold
+            driver.setMigratableResidual(zatoshi = DUST - 1L) // 9_999 — below the dust threshold
             assertEquals(
                 1,
                 sdk.estimateMigrationRunCount(),
@@ -112,7 +112,7 @@ class MigrationKeystoneMultiRoundScenarioTest {
             )
             assertFalse(
                 anotherRoundNeeded(sdk),
-                "…but the app gates on the dust threshold: 99_999 < 100_000 is negligible — campaign ends.",
+                "…but the app gates on the dust threshold: 9_999 < 10_000 is negligible — campaign ends.",
             )
 
             // Exactly-zero residual is unambiguously done.

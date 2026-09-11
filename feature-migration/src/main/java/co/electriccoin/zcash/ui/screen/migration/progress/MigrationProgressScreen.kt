@@ -84,6 +84,7 @@ fun MigrationProgressView(state: MigrationProgressState) {
             modifier =
                 Modifier
                     .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
                     .scaffoldPadding(padding),
         ) {
             Text(
@@ -104,11 +105,7 @@ fun MigrationProgressView(state: MigrationProgressState) {
                 Spacer(Modifier.height(20.dp))
             }
 
-            Column(
-                Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-            ) {
+            Column {
                 // A multi-step note-split collapses into a single "Split Balance" row with a
                 // "Show details" sheet (Figma "PR App Designs Q3'26" node 5207:16023, 2026-08-03,
                 // mirroring MigrationReviewScreen's identical threshold) — state.preparations is
@@ -176,6 +173,8 @@ fun MigrationProgressView(state: MigrationProgressState) {
                     )
                 }
             }
+
+            Spacer(Modifier.weight(1f))
 
             // No Send-now / Re-schedule buttons: the engine drives execution and the foreground
             // pass sends silently while this screen is open — the screen is a pure live status

@@ -80,6 +80,7 @@ import co.electriccoin.zcash.ui.design.component.SmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.TopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
+import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
@@ -110,7 +111,7 @@ fun ScanView(
     onOpenSettings: () -> Unit,
     onScanStateChange: (ScanScreenState) -> Unit,
     validationResult: ScanValidationState
-) = ZcashTheme(forceDarkMode = true) {
+) = ZcashTheme(appearanceMode = AppearanceMode.DARK) {
     // forces dark theme for this screen
     val permissionState =
         if (LocalInspectionMode.current) {

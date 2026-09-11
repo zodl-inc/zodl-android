@@ -9,8 +9,10 @@ import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.voting.DelegationPhase
 import co.electriccoin.zcash.ui.common.model.voting.VoteIneligibilityReason
 import co.electriccoin.zcash.ui.common.model.voting.VotingBundleSetupResult
+import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
+import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
 import co.electriccoin.zcash.ui.common.model.voting.isDelegationSetupOverwrite
 import co.electriccoin.zcash.ui.common.model.voting.requireKnownPolyLen
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -23,6 +25,7 @@ import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -95,28 +98,39 @@ class PrepareVotingRoundUseCase(
                     votingCryptoClient.setWalletId(dbHandle, accountUuidString, networkId)
                     var existingRoundState = votingCryptoClient.getRoundState(dbHandle, roundId)
                     var effectiveRecoverySnapshot = recoverySnapshot
-                    // iOS `verifyWitnesses` (VotingStore+Delegation.swift:96-99) clears stale Rust
-                    // round state plus any recovery row when no recovery hits exist before re-running
-                    // the witness pipeline. The Android analog: a Rust round row is present, but
-                    // neither the wallet-side recovery snapshot nor the Rust DB carries usable bundle
-                    // data (e.g., `initializeRound` ran but `setupBundles` never did, or the recovery
-                    // snapshot was wiped while the Rust round survived). Treat the round as
-                    // unrecoverable and start fresh — otherwise we would either error out in
-                    // `recoverExistingBundleSetup` or report `Ineligible` for an account that holds
-                    // notes.
-                    if (existingRoundState != null &&
-                        !isRoundRecoverable(
-                            recoverySnapshot = effectiveRecoverySnapshot,
-                            dbHandle = dbHandle,
-                            roundId = roundId
-                        )
-                    ) {
-                        Log.i(TAG, "Discarding stale voting round $roundId before fresh init")
-                        votingCryptoClient.clearRound(dbHandle, roundId)
-                        votingCryptoClient.clearRecoveryState(dbHandle, roundId)
-                        votingRecoveryRepository.clearRound(accountUuidString, roundId)
-                        existingRoundState = null
-                        effectiveRecoverySnapshot = null
+                    // An existing round may contain an ambiguously broadcast transaction whose
+                    // accepted response was lost. In that state there is no stored tx hash, but the
+                    // bundle's alpha and van_comm_rand are still the only way to reconcile and
+                    // continue it. Unknown or incomplete state must therefore fail closed instead
+                    // of being cleared automatically.
+                    val existingRoundRecoveryAction =
+                        existingRoundState?.let {
+                            existingRoundRecoveryAction(
+                                hasPreparedRecovery = effectiveRecoverySnapshot?.preparedBundleSetup() != null,
+                                getBundleCount = {
+                                    votingCryptoClient.getBundleCount(dbHandle, roundId)
+                                }
+                            )
+                        }
+                    when (existingRoundRecoveryAction) {
+                        ExistingRoundRecoveryAction.REINITIALIZE -> {
+                            Log.i(TAG, "Reinitializing verified empty voting round $roundId")
+                            votingCryptoClient.clearRound(dbHandle, roundId)
+                            votingCryptoClient.clearRecoveryState(dbHandle, roundId)
+                            votingRecoveryRepository.clearRound(accountUuidString, roundId)
+                            existingRoundState = null
+                            effectiveRecoverySnapshot = null
+                        }
+
+                        ExistingRoundRecoveryAction.FAIL_CLOSED -> {
+                            Log.w(TAG, "Retaining incomplete voting round $roundId for recovery")
+                            throw VotingSubmissionRecoverableException(VotingErrors.MissingBundleCount(roundId))
+                        }
+
+                        ExistingRoundRecoveryAction.RESUME,
+                        null -> {
+                            Unit
+                        }
                     }
                     // iOS distinguishes `noNotes` (`VotingStore+Session.swift:268`) and
                     // `balanceTooLow` (`:282`) by checking the un-bundled note count before smart
@@ -374,21 +388,6 @@ class PrepareVotingRoundUseCase(
         return recoveredSetup
     }
 
-    private suspend fun isRoundRecoverable(
-        recoverySnapshot: VotingRecoverySnapshot?,
-        dbHandle: Long,
-        roundId: String
-    ): Boolean {
-        if (recoverySnapshot?.preparedBundleSetup() != null) {
-            return true
-        }
-        val dbBundleCount =
-            runCatching {
-                votingCryptoClient.getBundleCount(dbHandle, roundId)
-            }.getOrNull() ?: return false
-        return dbBundleCount > 0
-    }
-
     private fun VotingRecoverySnapshot.preparedBundleSetup(): VotingBundleSetupResult? {
         val count = bundleCount ?: return null
         val weight = eligibleWeight ?: return null
@@ -573,5 +572,34 @@ class PrepareVotingRoundUseCase(
         // gap within a single engine tick after the boot-gate above releases.
         const val FULLY_SCANNED_HEIGHT_TIMEOUT_MS = 5_000L
         const val HOTKEY_SEED_BYTES = 64
+    }
+}
+
+internal enum class ExistingRoundRecoveryAction {
+    RESUME,
+    REINITIALIZE,
+    FAIL_CLOSED
+}
+
+internal suspend fun existingRoundRecoveryAction(
+    hasPreparedRecovery: Boolean,
+    getBundleCount: suspend () -> Int
+): ExistingRoundRecoveryAction {
+    if (hasPreparedRecovery) {
+        return ExistingRoundRecoveryAction.RESUME
+    }
+    val dbBundleCount =
+        try {
+            getBundleCount()
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (_: Exception) {
+            null
+        }
+    return when {
+        dbBundleCount == null -> ExistingRoundRecoveryAction.FAIL_CLOSED
+        dbBundleCount > 0 -> ExistingRoundRecoveryAction.RESUME
+        dbBundleCount == 0 -> ExistingRoundRecoveryAction.REINITIALIZE
+        else -> ExistingRoundRecoveryAction.FAIL_CLOSED
     }
 }

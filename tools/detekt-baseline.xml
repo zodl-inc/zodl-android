@@ -22,6 +22,7 @@
     <ID>InstanceOfCheckForException:VotingServerFailoverException.kt$exception is CancellationException</ID>
     <ID>InvalidRange:KeystoneBatchChunkingTest.kt$KeystoneBatchChunkingTest$3 until 3</ID>
     <ID>LargeClass:SubmitVotesUseCase.kt$SubmitVotesUseCase</ID>
+    <ID>LargeClass:SubmitVotesUseCaseProgressTest.kt$SubmitVotesUseCaseProgressTest</ID>
     <ID>LoopWithTooManyJumpStatements:VotingChainConfigRepository.kt$for</ID>
     <ID>LoopWithTooManyJumpStatements:VotingRecoveryRepository.kt$VotingRecoveryRepositoryImpl$for</ID>
     <ID>MagicNumber:MigrationFlowPreviews.kt$3</ID>
@@ -54,7 +55,6 @@
     <ID>ReturnCount:MigrationWorker.kt$MigrationWorker$override suspend fun doWork(): Result</ID>
     <ID>ReturnCount:PrepareVotingRoundUseCase.kt$PrepareVotingRoundUseCase$private fun VotingRecoverySnapshot.preparedBundleSetup(): VotingBundleSetupResult?</ID>
     <ID>ReturnCount:PrepareVotingRoundUseCase.kt$PrepareVotingRoundUseCase$private suspend fun getOrCreateHotkeySeed( accountUuid: String, roundId: String, recoverySnapshot: VotingRecoverySnapshot?, existingRoundStatePhase: RoundPhase? ): ByteArray</ID>
-    <ID>ReturnCount:PrepareVotingRoundUseCase.kt$PrepareVotingRoundUseCase$private suspend fun isRoundRecoverable( recoverySnapshot: VotingRecoverySnapshot?, dbHandle: Long, roundId: String ): Boolean</ID>
     <ID>ReturnCount:RoundAuthenticator.kt$RoundAuthenticator$fun authenticate( chainEaPK: ByteArray, roundIdHex: String, rounds: Map&lt;String, VotingServiceConfig.RoundEntry&gt;, trustedKeys: List&lt;StaticVotingConfig.TrustedKey&gt;, pirLayout: VotingPirLayout ): RoundAuthStatus</ID>
     <ID>ReturnCount:RoundAuthenticator.kt$RoundAuthenticator$fun signingPayloadV2( roundIdHex: String, eaPk: ByteArray, pirLayout: VotingPirLayout ): ByteArray?</ID>
     <ID>ReturnCount:RoundAuthenticator.kt$RoundAuthenticator$fun verifyEntrySignatures( entry: VotingServiceConfig.RoundEntry, roundIdHex: String, pirLayout: VotingPirLayout, trustedKeys: List&lt;StaticVotingConfig.TrustedKey&gt; ): Boolean</ID>

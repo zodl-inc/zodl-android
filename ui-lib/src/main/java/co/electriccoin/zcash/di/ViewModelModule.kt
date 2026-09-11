@@ -78,13 +78,18 @@ import co.electriccoin.zcash.ui.screen.swap.detail.SwapDetailVM
 import co.electriccoin.zcash.ui.screen.swap.detail.support.SwapSupportVM
 import co.electriccoin.zcash.ui.screen.swap.info.SwapRefundAddressInfoVM
 import co.electriccoin.zcash.ui.screen.swap.lock.EphemeralLockVM
+import co.electriccoin.zcash.ui.screen.swap.mismatch.SwapQuoteMismatchVM
 import co.electriccoin.zcash.ui.screen.swap.orconfirmation.ORSwapConfirmationVM
 import co.electriccoin.zcash.ui.screen.swap.picker.SwapAssetPickerVM
 import co.electriccoin.zcash.ui.screen.swap.picker.SwapBlockchainPickerVM
 import co.electriccoin.zcash.ui.screen.swap.quote.SwapQuoteVM
+import co.electriccoin.zcash.ui.screen.swap.refundwarning.SwapRefundWarningVM
 import co.electriccoin.zcash.ui.screen.swap.slippage.SwapSlippageVM
 import co.electriccoin.zcash.ui.screen.taxexport.TaxExportViewModel
 import co.electriccoin.zcash.ui.screen.texunsupported.TEXUnsupportedVM
+import co.electriccoin.zcash.ui.screen.theme.ThemeVM
+import co.electriccoin.zcash.ui.screen.theme.darklook.ThemeDarkLookVM
+import co.electriccoin.zcash.ui.screen.theme.settings.ThemeSettingsVM
 import co.electriccoin.zcash.ui.screen.tor.optin.TorOptInVM
 import co.electriccoin.zcash.ui.screen.tor.settings.TorSettingsVM
 import co.electriccoin.zcash.ui.screen.transactiondetail.TransactionDetailVM
@@ -160,10 +165,14 @@ val viewModelModule =
         viewModelOf(::WalletRestoringInfoViewModel)
         viewModelOf(::ThirdPartyScanViewModel)
         viewModelOf(::TorSettingsVM)
+        viewModelOf(::ThemeVM)
+        viewModelOf(::ThemeSettingsVM)
+        viewModelOf(::ThemeDarkLookVM)
         viewModelOf(::TorOptInVM)
         viewModelOf(::ExchangeRateOptInVM)
         viewModelOf(::SwapAssetPickerVM)
         viewModelOf(::SwapSlippageVM)
+        viewModelOf(::SwapRefundWarningVM)
         viewModelOf(::SwapVM)
         viewModelOf(::PayVM)
         viewModelOf(::SwapQuoteVM)
@@ -178,6 +187,7 @@ val viewModelModule =
         viewModelOf(::ORSwapConfirmationVM)
         viewModelOf(::SwapDetailVM)
         viewModelOf(::SwapSupportVM)
+        viewModelOf(::SwapQuoteMismatchVM)
         viewModelOf(::SwapRefundAddressInfoVM)
         viewModelOf(::ScreenTimeoutVM)
         viewModelOf(::EphemeralHotfixVM)

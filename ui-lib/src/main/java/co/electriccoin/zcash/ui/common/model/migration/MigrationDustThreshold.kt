@@ -9,7 +9,7 @@ package co.electriccoin.zcash.ui.common.model.migration
 // Lives in ui-lib (not feature-migration) so ui-lib-level callers -- e.g.
 // WalletViewModel.shouldShowIronwoodAnnouncement -- can share the same gate feature-migration
 // uses, instead of each module inventing its own threshold.
-const val MIGRATION_DUST_THRESHOLD_ZATOSHI = 100_000L
+const val MIGRATION_DUST_THRESHOLD_ZATOSHI = 10_000L
 
 // The smallest Orchard balance the migration engine will actually migrate. Mirrors librustzcash's
 // `RESIDUAL_MIGRATION_MIN` in `zcash_pool_migration/src/denomination.rs` (0.01 ZEC): below this,

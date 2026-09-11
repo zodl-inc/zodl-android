@@ -52,6 +52,7 @@ import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
 import co.electriccoin.zcash.ui.common.usecase.FinalizeMigrationScheduleUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetBalancePoolsUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetIronwoodBalanceUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetMigrationPrivacyOrReviewDestinationUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetOrchardBalanceUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetOrchardMigrationSdkUseCase
@@ -61,6 +62,7 @@ import co.electriccoin.zcash.ui.common.usecase.ScheduleNextMigrationWindowUseCas
 import co.electriccoin.zcash.ui.common.usecase.SubmitProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.ViewTransactionDetailAfterSuccessfulProposalUseCase
 import co.electriccoin.zcash.ui.screen.migration.battery.MigrationBatteryVM
+import co.electriccoin.zcash.ui.screen.migration.complete.MigrationCompleteArgs
 import co.electriccoin.zcash.ui.screen.migration.complete.MigrationCompleteVM
 import co.electriccoin.zcash.ui.screen.migration.customservertor.MigrationCustomServerTorArgs
 import co.electriccoin.zcash.ui.screen.migration.customservertor.MigrationCustomServerTorVM
@@ -125,6 +127,7 @@ class MigrationKoinGraphSmokeTest {
                 factory { mockk<GetOrchardMigrationSdkUseCase>(relaxed = true) }
                 factory { mockk<GetSelectedWalletAccountUseCase>(relaxed = true) }
                 factory { mockk<GetOrchardBalanceUseCase>(relaxed = true) }
+                factory { mockk<GetIronwoodBalanceUseCase>(relaxed = true) }
                 factory { mockk<GetBalancePoolsUseCase>(relaxed = true) }
                 factory { mockk<LockOrchardBalanceUseCase>(relaxed = true) }
                 factory { mockk<FinalizeMigrationScheduleUseCase>(relaxed = true) }
@@ -169,6 +172,7 @@ class MigrationKoinGraphSmokeTest {
                 factory { MigrationPrivacyArgs(mode = MigrationMode.AUTOMATIC) }
                 factory { MigrationReviewArgs(mode = MigrationMode.AUTOMATIC) }
                 factory { MigrationSuccessArgs(txId = null) }
+                factory { MigrationCompleteArgs() }
             }
 
         koin =

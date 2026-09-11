@@ -30,6 +30,7 @@ import co.electriccoin.zcash.ui.design.component.ZashiVersion
 import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
 import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
+import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
@@ -178,13 +179,13 @@ private fun WhatsNewViewPreview() {
 @Preview
 @Composable
 private fun WhatsNewViewPreviewLight() =
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         WhatsNewViewPreview()
     }
 
 @Preview
 @Composable
 private fun WhatsNewViewPreviewDark() =
-    ZcashTheme(forceDarkMode = true) {
+    ZcashTheme(appearanceMode = AppearanceMode.DARK) {
         WhatsNewViewPreview()
     }

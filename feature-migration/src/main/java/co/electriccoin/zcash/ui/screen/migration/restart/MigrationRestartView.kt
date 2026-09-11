@@ -102,6 +102,7 @@ fun MigrationRestartView(state: MigrationRestartState) {
                 SummaryCard(state)
                 Spacer(Modifier.height(8.dp))
                 WarningCard(state.warning.getValue())
+                Spacer(Modifier.height(12.dp))
                 Spacer(Modifier.weight(1f))
                 SupportRow(state.support.getValue())
                 Spacer(Modifier.height(12.dp))

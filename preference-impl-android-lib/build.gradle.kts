@@ -21,6 +21,10 @@ android {
             execution = "ANDROIDX_TEST_ORCHESTRATOR"
         }
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
@@ -29,6 +33,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.coroutines.core)
     implementation(projects.preferenceApiLib)
+    implementation(projects.spackleAndroidLib)
 
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlinx.coroutines.test)

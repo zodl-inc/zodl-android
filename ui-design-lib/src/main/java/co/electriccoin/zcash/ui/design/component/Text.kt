@@ -35,7 +35,7 @@ import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 @Preview
 @Composable
 private fun ReferenceComposablePreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             Column {
                 Reference(
@@ -300,7 +300,7 @@ fun Reference(
 @Preview
 @Composable
 private fun NavigationTabTextPreview() {
-    ZcashTheme(forceDarkMode = false) {
+    ZcashTheme {
         BlankSurface {
             Column {
                 NavigationTabText(

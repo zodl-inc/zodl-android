@@ -9,6 +9,7 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.model.canSpend
 import co.electriccoin.zcash.ui.common.repository.DEFAULT_SLIPPAGE
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
@@ -23,6 +24,7 @@ import co.electriccoin.zcash.ui.common.usecase.NavigateToSelectABSwapRecipientUs
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSlippageUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapAssetPickerUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapQuoteIfAvailableUseCase
+import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapRefundWarningUseCase
 import co.electriccoin.zcash.ui.common.usecase.RequestSwapQuoteUseCase
 import co.electriccoin.zcash.ui.common.usecase.resolve
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -62,6 +64,7 @@ internal class PayVM(
     private val getPreselectedSwapAsset: GetPreselectedSwapAssetUseCase,
     private val navigateToSlippage: NavigateToSlippageUseCase,
     private val navigateToSwapAssetPicker: NavigateToSwapAssetPickerUseCase,
+    private val navigateToSwapRefundWarning: NavigateToSwapRefundWarningUseCase,
 ) : ViewModel() {
     // VM-owned state. The externally-observed `swapAssets`/`account`/`isABHintVisible` fields are
     // injected by the `state` combine below, so the VM only ever updates the fields it owns.
@@ -281,10 +284,14 @@ internal class PayVM(
         internalState.update { it.copy(amount = amount, fiatAmount = fiat) }
     }
 
-    private fun onRequestSwapQuoteClick(amount: BigDecimal, address: String) =
+    /** Gates the quote request behind the refund warning before the CTA starts spinning. */
+    private fun onRequestSwapQuoteClick(amount: BigDecimal, fiatAmount: BigDecimal?, address: String) =
         viewModelScope.launch {
             val asset = internalState.value.asset ?: return@launch
             val slippage = internalState.value.slippage
+            if (!navigateToSwapRefundWarning(fiatAmount = fiatAmount, mode = SwapMode.EXACT_OUTPUT)) {
+                return@launch
+            }
             internalState.update { it.copy(isRequestingQuote = true) }
             requestSwapQuote.requestExactOutput(
                 amount = amount,
@@ -345,8 +352,12 @@ internal interface InternalState {
     val swapAssets: SwapAssetsData
     val isEphemeralAddressLocked: Boolean
 
-    val totalSpendableBalance: Zatoshi
-        get() = account?.spendableShieldedBalance ?: Zatoshi(0)
+    /**
+     * Delegates to the shared [co.electriccoin.zcash.ui.common.model.canSpend] primitive.
+     * Re-evaluated whenever the selected account emits a new balance. Null while the balance has
+     * not loaded yet.
+     */
+    fun canSpend(amount: Zatoshi): Boolean? = account.canSpend(amount)
 }
 
 internal data class InternalStateImpl(
