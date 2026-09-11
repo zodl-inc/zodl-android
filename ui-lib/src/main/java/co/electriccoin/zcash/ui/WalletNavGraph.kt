@@ -184,6 +184,8 @@ import co.electriccoin.zcash.ui.screen.swap.picker.SwapBlockchainPickerArgs
 import co.electriccoin.zcash.ui.screen.swap.picker.SwapBlockchainPickerScreen
 import co.electriccoin.zcash.ui.screen.swap.quote.SwapQuoteArgs
 import co.electriccoin.zcash.ui.screen.swap.quote.SwapQuoteScreen
+import co.electriccoin.zcash.ui.screen.swap.refundwarning.SwapRefundWarningArgs
+import co.electriccoin.zcash.ui.screen.swap.refundwarning.SwapRefundWarningScreen
 import co.electriccoin.zcash.ui.screen.swap.slippage.SwapSlippageArgs
 import co.electriccoin.zcash.ui.screen.swap.slippage.SwapSlippageScreen
 import co.electriccoin.zcash.ui.screen.taxexport.AndroidTaxExport
@@ -315,6 +317,7 @@ fun NavGraphBuilder.walletNavGraph(
         dialogComposable<CurrencyConversionPickerArgs> { CurrencyConversionPickerScreen(it.toRoute()) }
         composable<SwapArgs> { SwapScreen() }
         dialogComposable<SwapSlippageArgs> { SwapSlippageScreen(it.toRoute()) }
+        dialogComposable<SwapRefundWarningArgs> { SwapRefundWarningScreen(it.toRoute()) }
         dialogComposable<SwapInfoArgs> { SwapInfoScreen() }
         dialogComposable<DepositSwapInfoArgs> { DepositSwapInfoScreen() }
         dialogComposable<SwapQuoteArgs> { SwapQuoteScreen() }

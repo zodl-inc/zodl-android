@@ -26,6 +26,7 @@ import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.rememberScreenModalBottomSheetState
 import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
 import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 
 /**
  * Shared chrome for info/help bottom-sheet dialogs.
@@ -75,9 +76,11 @@ fun InfoBottomSheetView(
                         ZashiButton(
                             state = it,
                             modifier = Modifier.fillMaxWidth(),
-                            defaultPrimaryColors = ZashiButtonDefaults.secondaryColors(),
+                            defaultPrimaryColors =
+                                ZashiButtonDefaults.secondaryColors(
+                                    borderColor = ZashiColors.Btns.Secondary.btnSecondaryBorder
+                                ),
                         )
-                        Spacer(12.dp)
                     }
                     ZashiButton(
                         state = primaryButton,

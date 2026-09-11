@@ -83,6 +83,7 @@ import co.electriccoin.zcash.ui.screen.swap.orconfirmation.ORSwapConfirmationVM
 import co.electriccoin.zcash.ui.screen.swap.picker.SwapAssetPickerVM
 import co.electriccoin.zcash.ui.screen.swap.picker.SwapBlockchainPickerVM
 import co.electriccoin.zcash.ui.screen.swap.quote.SwapQuoteVM
+import co.electriccoin.zcash.ui.screen.swap.refundwarning.SwapRefundWarningVM
 import co.electriccoin.zcash.ui.screen.swap.slippage.SwapSlippageVM
 import co.electriccoin.zcash.ui.screen.taxexport.TaxExportViewModel
 import co.electriccoin.zcash.ui.screen.texunsupported.TEXUnsupportedVM
@@ -171,6 +172,7 @@ val viewModelModule =
         viewModelOf(::ExchangeRateOptInVM)
         viewModelOf(::SwapAssetPickerVM)
         viewModelOf(::SwapSlippageVM)
+        viewModelOf(::SwapRefundWarningVM)
         viewModelOf(::SwapVM)
         viewModelOf(::PayVM)
         viewModelOf(::SwapQuoteVM)

@@ -19,6 +19,7 @@ import co.electriccoin.zcash.ui.common.usecase.NavigateToSlippageUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapAssetPickerUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapInfoUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapQuoteIfAvailableUseCase
+import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapRefundWarningUseCase
 import co.electriccoin.zcash.ui.common.usecase.RequestSwapQuoteUseCase
 import co.electriccoin.zcash.ui.common.usecase.ScanResult
 import co.electriccoin.zcash.ui.screen.swap.info.SwapRefundAddressInfoArgs
@@ -120,7 +121,7 @@ class SwapVMTest {
             val harness = harness(preselect = asset)
             harness.collectState(this)
 
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "refund-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "refund-address")
 
             // Default mode is SWAP_INTO_ZEC -> flex input, pinned to the preselected asset + default slippage.
             coVerify(exactly = 1) {
@@ -142,7 +143,7 @@ class SwapVMTest {
             harness.collectState(this)
 
             harness.onChangeButtonClick() // SWAP_INTO_ZEC -> SWAP_FROM_ZEC
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "destination-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "destination-address")
 
             coVerify(exactly = 1) {
                 harness.requestSwapQuote.requestExactInput(
@@ -220,7 +221,7 @@ class SwapVMTest {
             val harness = harness(preselect = null)
             harness.collectState(this)
 
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "refund-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "refund-address")
 
             assertNull(harness.capturedState.swapAsset)
             coVerify(exactly = 0) {
@@ -235,11 +236,43 @@ class SwapVMTest {
             harness.collectState(this)
             val gate = harness.makeQuoteHang()
 
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "refund-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "refund-address")
             assertEquals(true, harness.capturedState.isRequestingQuote)
 
             gate.complete(Unit)
             assertEquals(false, harness.capturedState.isRequestingQuote)
+        }
+
+    @Test
+    fun refundWarningCancelledSkipsQuoteAndClearsRequestingFlag() =
+        runTest {
+            val harness = harness(refundWarningResult = false)
+            harness.collectState(this)
+
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), BigDecimal("100"), "refund-address")
+
+            coVerify(exactly = 0) {
+                harness.requestSwapQuote.requestFlexInputIntoZec(any(), any(), any(), any(), any())
+            }
+            assertEquals(false, harness.capturedState.isRequestingQuote)
+        }
+
+    @Test
+    fun refundWarningModeFollowsSwapDirection() =
+        runTest {
+            val harness = harness()
+            harness.collectState(this)
+
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), BigDecimal("100"), "refund-address")
+            coVerify(exactly = 1) {
+                harness.navigateToSwapRefundWarning(fiatAmount = BigDecimal("100"), mode = SwapMode.FLEX_INPUT)
+            }
+
+            harness.onChangeButtonClick()
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), BigDecimal("50"), "destination-address")
+            coVerify(exactly = 1) {
+                harness.navigateToSwapRefundWarning(fiatAmount = BigDecimal("50"), mode = SwapMode.EXACT_INPUT)
+            }
         }
 
     // endregion
@@ -264,7 +297,7 @@ class SwapVMTest {
             val harness = harness()
             harness.collectState(this)
             harness.makeQuoteHang()
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "refund-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "refund-address")
 
             harness.onBack()
 
@@ -277,7 +310,7 @@ class SwapVMTest {
             val harness = harness()
             harness.collectState(this)
             val gate = harness.makeQuoteHang()
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "refund-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "refund-address")
             harness.onBack() // requesting -> show cancel confirmation
             gate.complete(Unit) // request finishes -> no longer requesting, sheet still visible
 
@@ -293,7 +326,7 @@ class SwapVMTest {
             val harness = harness()
             harness.collectState(this)
             harness.makeQuoteHang()
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "refund-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "refund-address")
             harness.onBack()
 
             harness.vm.cancelState.value
@@ -312,7 +345,7 @@ class SwapVMTest {
             val harness = harness()
             harness.collectState(this)
             harness.makeQuoteHang()
-            harness.onRequestSwapQuoteClick(BigDecimal("1"), "refund-address")
+            harness.onRequestSwapQuoteClick(BigDecimal("1"), null, "refund-address")
             harness.onBack()
 
             harness.vm.cancelState.value
@@ -469,7 +502,8 @@ class SwapVMTest {
         assetResult: SwapAsset? = null,
         recipient: EnhancedABContact? = null,
         scanResult: ScanResult? = null,
-        assets: SwapAssetsData = SwapAssetTestFixture.assetsData()
+        assets: SwapAssetsData = SwapAssetTestFixture.assetsData(),
+        refundWarningResult: Boolean = true
     ): Harness {
         val navigateToSlippage =
             mockk<NavigateToSlippageUseCase> {
@@ -492,6 +526,10 @@ class SwapVMTest {
                     coEvery { this@mockk.invoke() } coAnswers { awaitCancellation() }
                 }
             }
+        val navigateToSwapRefundWarning =
+            mockk<NavigateToSwapRefundWarningUseCase> {
+                coEvery { this@mockk.invoke(any(), any()) } returns refundWarningResult
+            }
         val requestSwapQuote = mockk<RequestSwapQuoteUseCase>(relaxed = true)
         val cancelSwap = mockk<CancelSwapUseCase>(relaxed = true)
         val navigateToSwapQuoteIfAvailable = mockk<NavigateToSwapQuoteIfAvailableUseCase>(relaxed = true)
@@ -513,6 +551,7 @@ class SwapVMTest {
             Harness(
                 navigateToSlippage = navigateToSlippage,
                 navigateToSwapAssetPicker = navigateToSwapAssetPicker,
+                navigateToSwapRefundWarning = navigateToSwapRefundWarning,
                 requestSwapQuote = requestSwapQuote,
                 cancelSwap = cancelSwap,
                 navigateToSwapQuoteIfAvailable = navigateToSwapQuoteIfAvailable,
@@ -554,6 +593,7 @@ class SwapVMTest {
                 navigateToSelectSwapRecipient = navigateToSelectSwapRecipient,
                 navigateToSlippage = navigateToSlippage,
                 navigateToSwapAssetPicker = navigateToSwapAssetPicker,
+                navigateToSwapRefundWarning = navigateToSwapRefundWarning,
             )
         return harness
     }
@@ -561,6 +601,7 @@ class SwapVMTest {
     private class Harness(
         val navigateToSlippage: NavigateToSlippageUseCase,
         val navigateToSwapAssetPicker: NavigateToSwapAssetPickerUseCase,
+        val navigateToSwapRefundWarning: NavigateToSwapRefundWarningUseCase,
         val requestSwapQuote: RequestSwapQuoteUseCase,
         val cancelSwap: CancelSwapUseCase,
         val navigateToSwapQuoteIfAvailable: NavigateToSwapQuoteIfAvailableUseCase,
@@ -577,7 +618,7 @@ class SwapVMTest {
         var onAddressChange: (String) -> Unit = {}
         var onQrCodeScannerClick: () -> Unit = {}
         var onAddressClick: () -> Unit = {}
-        var onRequestSwapQuoteClick: (BigDecimal, String) -> Unit = { _, _ -> }
+        var onRequestSwapQuoteClick: (BigDecimal, BigDecimal?, String) -> Unit = { _, _, _ -> }
 
         /** Makes the next flex-input quote request hang so `isRequestingQuote` stays true. */
         fun makeQuoteHang(): CompletableDeferred<Unit> {

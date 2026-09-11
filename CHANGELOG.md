@@ -10,6 +10,17 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ### Added:
 
 - The support email now includes whether Tor is enabled.
+- Swap and CrossPay now warn you before requesting a quote when the amount you are sending is worth less than
+  $300, because NEAR does not refund a swap or payment under $300 that is lost to a wrong address or a wrong
+  network. The warning carries a "Don't show this message again" checkbox that silences it for that flow only
+  (MOB-1890).
+
+### Changed:
+
+- The Swap, CrossPay and refund-address explainers no longer describe NEAR refunds as unconditional; they now
+  state the $300 threshold. The Swap and CrossPay explainers also gained a "Learn more" button that opens the
+  matching support article, and all three explainers now close with a "Dismiss" button instead of "OK", matching
+  iOS (MOB-1890).
 
 ### Fixed:
 

@@ -299,7 +299,7 @@ internal class ExactOutputVMMapper {
     private fun createPrimaryButtonState(
         textField: NumberTextFieldState,
         state: ExactOutputInternalState,
-        onRequestSwapQuoteClick: (BigDecimal, String) -> Unit,
+        onRequestSwapQuoteClick: (amount: BigDecimal, fiatAmount: BigDecimal?, address: String) -> Unit,
         onTryAgainClick: () -> Unit
     ): ButtonState? {
         if (state.swapAssets.error is ResponseException &&
@@ -335,7 +335,9 @@ internal class ExactOutputVMMapper {
                     onTryAgainClick()
                 } else {
                     val address = state.selectedABContact?.address ?: state.address
-                    state.getOriginTokenAmount()?.let { onRequestSwapQuoteClick(it, address) }
+                    state.getOriginTokenAmount()?.let {
+                        onRequestSwapQuoteClick(it, state.getOriginFiatAmount(), address)
+                    }
                 }
             },
             isEnabled =
@@ -420,10 +422,11 @@ private data class ExactOutputInternalState(
 
     fun getOriginFiatAmount(): BigDecimal? {
         val tokenAmount = amount.amount
-        return if (tokenAmount == null || asset == null) {
+        val usdPrice = asset?.usdPrice
+        return if (tokenAmount == null || usdPrice == null) {
             null
         } else {
-            tokenAmount.multiply(asset.usdPrice, MathContext.DECIMAL128)
+            tokenAmount.multiply(usdPrice, MathContext.DECIMAL128)
         }
     }
 
@@ -463,7 +466,7 @@ internal data class ExactOutputStateCallbacks(
     val onSwapInfoClick: () -> Unit,
     val onSwapAssetPickerClick: () -> Unit,
     val onSlippageClick: (BigDecimal?) -> Unit,
-    val onRequestSwapQuoteClick: (BigDecimal, String) -> Unit,
+    val onRequestSwapQuoteClick: (amount: BigDecimal, fiatAmount: BigDecimal?, address: String) -> Unit,
     val onTryAgainClick: () -> Unit,
     val onAddressChange: (String) -> Unit,
     val onTextFieldChange: (amount: NumberTextFieldInnerState, fiat: NumberTextFieldInnerState) -> Unit,

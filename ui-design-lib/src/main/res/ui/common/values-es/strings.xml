@@ -19,6 +19,7 @@
     <string name="general_less">Menos</string>
     <string name="general_loading">Cargando</string>
     <string name="general_ok">OK</string>
+    <string name="general_dismiss">Descartar</string>
     <string name="general_report">Reportar</string>
     <string name="restoreInfo_gotIt">¡Entendido!</string>
     <string name="send_report">Reportar</string>
@@ -466,7 +467,7 @@
 
     <!-- ===== pay ===== -->
     <string name="crosspay_help_payWith">CrossPay con</string>
-    <string name="pay_info_subtitle">Haz pagos entre cadenas en cualquier moneda o token compatible con NEAR.\n\nSi el deslizamiento real y las condiciones de la red resultan en que tu destinatario reciba menos de la cantidad prometida, tu transacción será revertida. Recibirás un reembolso completo menos las comisiones de red.</string>
+    <string name="pay_info_subtitle">Haz pagos entre cadenas en cualquier moneda o token compatible con NEAR.\n\nSi el deslizamiento o las condiciones de la red resultan en que tu destinatario reciba menos de la cantidad prometida, tu pago será reembolsado menos las comisiones de red.\n\nLos reembolsos solo se aplican a pagos de $300 o más. Los pagos de menos de $300 no son elegibles para reembolso. Verifica todos los detalles antes de continuar.</string>
     <string name="swapAndPay_slippageWarn">Cualquier parte no utilizada de la comisión por deslizamiento será reembolsada si el intercambio se ejecuta con un deslizamiento menor al esperado.</string>
 
     <!-- ===== payment_request ===== -->
@@ -746,7 +747,8 @@
     <string name="keystoneTransactionReject_rejectSig">Rechazar firma</string>
 
     <!-- ===== swap ===== -->
-    <string name="swap_info_message">Haz swap de %1$s con cualquier token compatible con NEAR.\n\nSi haces swap HACIA %2$s, enviarás fondos desde una wallet de terceros y deberás proporcionar una dirección donde se pueda reembolsar el cambio.\n\nSi haces swap DESDE %3$s, debes proporcionar una dirección válida para el activo al que haces swap.</string>
+    <string name="swap_info_message">Haz swap entre %1$s y cualquier moneda o token compatible con NEAR.\n\nSi haces swap HACIA %2$s, enviarás fondos desde una wallet de terceros y deberás proporcionar una dirección donde se puedan reembolsar los fondos.\n\nLos reembolsos solo se aplican a swaps de $300 o más. Los swaps de menos de $300 no son elegibles para reembolso si se envían a una dirección o red incorrecta.\n\nSi haces swap DESDE %3$s, debes proporcionar una dirección válida para el activo al que haces swap.</string>
+    <string name="swap_info_learn_more">Más información</string>
     <string name="swapAndPay_help_swapWith">Swap con</string>
     <string name="swap_select_token">Seleccionar token</string>
     <string name="swapAndPay_search">Buscar por nombre o ticker…</string>
@@ -797,8 +799,13 @@
     <string name="swap_to_zec_share_text">Dirección de depósito para %1$s %2$s en %3$s swap a %4$s en Zodl</string>
     <string name="swapToZec_refundAddress">Dirección de reembolso</string>
     <string name="swapToZec_refundAddress_title">Dirección de reembolso</string>
-    <string name="swap_refund_address_info_message_empty">Si el swap falla o cambian las condiciones del mercado, tu transacción puede ser reembolsada menos las comisiones de transacción.\n\nEl monto reembolsado será devuelto a tu wallet en la moneda de origen. Por favor, ingresa una dirección válida para evitar la pérdida de fondos.</string>
-    <string name="swap_refund_address_info_message">Si el swap falla o cambian las condiciones del mercado, tu transacción puede ser reembolsada menos las comisiones de transacción.\n\nEl monto reembolsado será devuelto a tu wallet en la moneda de origen en la misma red. Por favor, ingresa una dirección válida para evitar la pérdida de fondos.</string>
+    <string name="swap_refund_address_info_message_empty">Si el swap falla o cambian las condiciones del mercado, tu transacción puede ser reembolsada menos las comisiones de red.\n\nLos reembolsos solo se aplican a swaps de $300 o más. Los swaps de menos de $300 no son elegibles para reembolso.\n\nEl monto reembolsado será devuelto a tu wallet en la moneda de origen. Por favor, ingresa una dirección válida para evitar la pérdida de fondos.</string>
+    <string name="swap_refund_address_info_message">Si el swap falla o cambian las condiciones del mercado, tu transacción puede ser reembolsada menos las comisiones de red.\n\nLos reembolsos solo se aplican a swaps de $300 o más. Los swaps de menos de $300 no son elegibles para reembolso.\n\nEl monto reembolsado será devuelto a tu wallet en la moneda de origen en la misma red. Por favor, ingresa una dirección válida para evitar la pérdida de fondos.</string>
+    <string name="swap_refund_warning_title">Sin reembolsos por debajo de $300</string>
+    <string name="swap_refund_warning_message_swap">NEAR no reembolsa errores como una dirección o red incorrecta en swaps de menos de $300. Verifica todos los detalles antes de continuar.</string>
+    <string name="swap_refund_warning_message_pay">NEAR no reembolsa errores como una dirección o red incorrecta en pagos de menos de $300. Verifica todos los detalles antes de continuar.</string>
+    <string name="swap_refund_warning_checkbox">No volver a mostrar este mensaje</string>
+    <string name="swap_refund_warning_continue">Continuar</string>
     <string name="swapToZec_swapDetails">Detalles del swap</string>
     <string name="swapToZec_depositTo">Depositar en</string>
     <string name="swapStatus_swapExpired">Swap expirado</string>

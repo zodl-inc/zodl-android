@@ -24,6 +24,7 @@ import co.electriccoin.zcash.ui.common.usecase.NavigateToSelectABSwapRecipientUs
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSlippageUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapAssetPickerUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapQuoteIfAvailableUseCase
+import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapRefundWarningUseCase
 import co.electriccoin.zcash.ui.common.usecase.RequestSwapQuoteUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.NumberTextFieldInnerState
@@ -62,6 +63,7 @@ internal class PayVM(
     private val getPreselectedSwapAsset: GetPreselectedSwapAssetUseCase,
     private val navigateToSlippage: NavigateToSlippageUseCase,
     private val navigateToSwapAssetPicker: NavigateToSwapAssetPickerUseCase,
+    private val navigateToSwapRefundWarning: NavigateToSwapRefundWarningUseCase,
 ) : ViewModel() {
     // VM-owned state. The externally-observed `swapAssets`/`account`/`isABHintVisible` fields are
     // injected by the `state` combine below, so the VM only ever updates the fields it owns.
@@ -252,10 +254,14 @@ internal class PayVM(
         internalState.update { it.copy(amount = amount, fiatAmount = fiat) }
     }
 
-    private fun onRequestSwapQuoteClick(amount: BigDecimal, address: String) =
+    /** Gates the quote request behind the refund warning before the CTA starts spinning. */
+    private fun onRequestSwapQuoteClick(amount: BigDecimal, fiatAmount: BigDecimal?, address: String) =
         viewModelScope.launch {
             val asset = internalState.value.asset ?: return@launch
             val slippage = internalState.value.slippage
+            if (!navigateToSwapRefundWarning(fiatAmount = fiatAmount, mode = SwapMode.EXACT_OUTPUT)) {
+                return@launch
+            }
             internalState.update { it.copy(isRequestingQuote = true) }
             requestSwapQuote.requestExactOutput(
                 amount = amount,
