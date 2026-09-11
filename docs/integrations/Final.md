@@ -1,6 +1,6 @@
 # Zodl Card via Final — Screen Specification
 
-**PRO-380** · Living document · Last updated 2026-08-31
+**PRO-380** · Living document · Last updated 2026-09-02
 
 Screen-by-screen spec for the Zodl Card feature, mapping each screen in the current Figma to
 the API call that feeds it and the screen it leads to. Built from Final's pre-release
@@ -18,6 +18,7 @@ privately — ask in `#ext-final-zodl` if you need the link.
 - Figma: [Zodl Card](https://www.figma.com/design/PM0vui65Tce6NiGvKM9dOn/Zodl-Card?node-id=409-40272)
 - Slack: [`#ext-final-zodl`](https://zodl.slack.com/archives/C0BM4E0E137), specifically
   [Nathan's answers, 31.8](https://zodl.slack.com/archives/C0BM4E0E137/p1788180925626459?thread_ts=1788166958.307709&cid=C0BM4E0E137)
+  and [Trev's card-model + wallet answers, 2.9](https://zodl.slack.com/archives/C0BM4E0E137/p1788367749720679?thread_ts=1788256439.045839&cid=C0BM4E0E137)
 - Final's API doc: `integrating-with-final.html`, shared 2026-08-29, pre-release
 
 ## Legend
@@ -81,7 +82,7 @@ Runs once, before a persistent card exists. Ends with the first deposit.
 | **Home → Zodl** `#478:5993` `#714:8022` | App home before Card is set up — just an entry point | None (static) | → Card Onboarding carousel | ✅ |
 | **Zodl + Card** `#478:6275` `#714:8182` | App home once Card exists — adds the persistent Card entry point | `GET /connections/{id}` | ↔ Card Home | ✅ |
 | **Card Onboarding — Meet Zodl Card** `#753:17666` `#484:10448` `#769:2016` | Value-prop carousel; card-style preview art only (Black/Flame), not a real issued card yet | None | Home → this → Spend Anywhere | ✅ |
-| **Spend Anywhere** `#478:6677` | Value-prop: usable anywhere the network is accepted | None — `Card.network = "visa"` confirmed; cross-border usability + Apple/Google Pay provisioning still unconfirmed with Final | carousel step | 🟣 |
+| **Spend Anywhere** `#478:6677` | Value-prop: usable anywhere the network is accepted | `Card.network = "visa"` confirmed, but Trev (2.9) confirmed the single-use V1 card is **online-only in practice** — brick-and-mortar would need a cashier to manually key in the number, which they'll likely refuse (they take on fraud liability). Trev's own recommendation: *"advertise this as online-only at first."* This screen's "anywhere" framing should be revisited before it ships | carousel step | 🟣 |
 | **Swap Back Anytime** `#478:6799` | Value-prop promising funds can move back to ZEC on demand | Implies a Balance→self-custody route. Final confirmed (31.8) this doesn't exist yet and isn't in active development. Showing this screen in V1 onboarding promises a capability the app can't deliver — flag to Andrea/Daniel before it ships | carousel step | 🔵 |
 | **Zodl Single Account (No Keystone)** `#490:10827` | Gate shown to Keystone-signed accounts instead of Connect | Local account-type check. Not a Final constraint — nothing in the API requires excluding Keystone. Verify the reason with Andrea/Pablo | replaces Connect for Keystone accounts | 🟣 |
 | **Card Onboarding — Fund it with ZEC** `#483:3730` | First-deposit prompt, shown right after Connect completes | None itself — hands off into Top Up | Connect (external) → this → Top Up → Default | ✅ |
@@ -91,13 +92,33 @@ Runs once, before a persistent card exists. Ends with the first deposit.
 The persistent hub. Ten Figma frames named "Spend — Card Home (Default)" are one screen
 re-skinned across up to eight cosmetic card styles — not ten states.
 
+> **Card model — single-use, not persistent (confirmed by Trev, 2.9, not in the API doc).**
+> "we maintain exactly one active card against a balance at any given time" — and per Andrea's
+> summary of an earlier call, the single-use card **auto-replaces itself after every purchase**.
+> This is materially different from what the `Card` object's shape alone suggests (`exp_month`,
+> `freeze`/`unfreeze`) — none of that implies single-use, and it isn't documented anywhere in
+> the API doc. Treat the API doc's `Card` shape as accurate for *a* card, but not as evidence of
+> how long any one card lives.
+>
+> Final is separately building **reloadable, Apple/Google Wallet-loadable debit cards**,
+> targeting **end of 2026**. The holdup: in the US a reloadable card is a *"covered prepaid
+> program"* under Prepaid Access law, which triggers extra identity-verification and monitoring
+> requirements — a regulatory blocker, not just a backlog item.
+>
+> A shortcut endpoint is coming to fetch "whatever card is currently active" without tracking
+> rotating card IDs client-side — likely `GET`/`POST /balances/{id}/card_details`. **Not live
+> yet.**
+>
+> **Open (not yet asked):** how do `freeze`/`unfreeze` behave under auto-rotation — does freeze
+> pause replacement entirely, or only the currently-active single-use card?
+
 | Screen | Shows | Data source | Nav | Status |
 |---|---|---|---|---|
-| **Spend — Card Home (Default)** *(10 frames, one skin each)* | Balance, card status, recent activity | `GET /balances`, `GET /cards`, `GET /exchange_rate`; live via SSE `GET /connections/{id}/events` (poll fallback when Tor is on) | the hub — every flow below returns here | ✅ |
+| **Spend — Card Home (Default)** *(10 frames, one skin each)* | Balance, currently-active card, recent activity | `GET /balances`, `GET /cards` (today) → `GET /balances/{id}/card_details` once it ships, `GET /exchange_rate`; live via SSE `GET /connections/{id}/events` (poll fallback when Tor is on) | the hub — every flow below returns here | ✅ |
 | **Spend — Card Frozen (Active)** `#714:7753` `#787:4102` | Card Home when `Card.status == "frozen"` | same as above | reached after Freeze confirmation | ✅ |
 | **Spend → More Bottom Sheet** `#715:7485` | Action menu — freeze, top up, withdraw, customize | None | opened from Card Home → routes into each flow | ✅ |
-| **Card Details Sheet (Peek)** `#545:24648` | last4, network, expiry, status summary | already-fetched `GET /cards` data — no extra call | tap card on Home → Peek → expand | ✅ |
-| **Card Details Sheet (Expanded)** `#545:24957` | Full PAN, expiry, CVC | `POST /cards/{id}/embed_url` opened as an embedded WebView; PAN never passes through app code | expand from Peek | ✅ |
+| **Card Details Sheet (Peek)** `#545:24648` | last4, network, expiry, status summary — of the *currently-active* single-use card | already-fetched `GET /cards` data — no extra call | tap card on Home → Peek → expand | ✅ |
+| **Card Details Sheet (Expanded)** `#545:24957` | Full PAN, expiry, CVC — likely opened before every online purchase, since the number changes after each use | `POST /cards/{id}/embed_url` opened as an embedded WebView; PAN never passes through app code | expand from Peek | ✅ |
 | **Freeze Confirmation Sheet** `#498:15703` | Confirms intent before freezing | None yet | More sheet → this → `POST /cards/{id}/freeze` | ✅ |
 | **Card Frozen Confirmation Sheet** `#498:15925` | Post-freeze acknowledgement + toast | `card.frozen` event on the stream | after Freeze Confirmation | ✅ |
 
@@ -216,8 +237,10 @@ stores.
 
 Nathan answered Q1–Q3 on 31.8
 ([thread](https://zodl.slack.com/archives/C0BM4E0E137/p1788180925626459?thread_ts=1788166958.307709&cid=C0BM4E0E137)).
-Q4 is still with Trev. Q5 is internal. Q6 is new — something Final asked *us*. Q7 is drafted
-but not yet sent.
+Trev added regulatory context to Q3 and effectively answered Q7 on 2.9, before we even sent it
+([thread](https://zodl.slack.com/archives/C0BM4E0E137/p1788367749720679?thread_ts=1788256439.045839&cid=C0BM4E0E137)).
+Q4 is still with Trev. Q5 is internal. Q6 is new — something Final asked *us*. Q8 is new,
+not yet sent.
 
 **Q1 — answered, 31.8.** What does `swap_via` actually do — bridge native ZEC onto a Solana-side
 representation of ZEC, or convert into a different asset?
@@ -247,9 +270,15 @@ self-custody, outside of card spend?
 > **Nathan, 31.8:** Not today. It's slated to start development after Final finishes their
 > current work to make integration easier — "we're not clear about the interface for it yet,"
 > which is why it isn't in the doc. No timeline given.
+>
+> **Trev, 2.9 (added context):** the reloadable/Wallet-loadable card this depends on is
+> targeted for **end of 2026**, held up specifically because a reloadable card is a "covered
+> prepaid program" under US Prepaid Access law — additional identity-verification and
+> monitoring requirements apply. This is a compliance dependency on Final's side, not an
+> engineering backlog item.
 
 Resolves: the entire Withdraw group and Swap Back Anytime → both now 🔵 future, not
-blocked-pending-answer
+blocked-pending-answer; now has a target window (end of 2026) and a named reason (regulatory)
 
 **Q4 — blocked, awaiting Trev.** Does slippage ever apply on our side for deposits, or is the
 exchange rate always pinned by Final? Lower urgency now — Slippage → Edit Active is confirmed
@@ -264,7 +293,28 @@ one (Q2 answer). Needs a Zodl-side decision, then a reply in `#ext-final-zodl` �
 obvious default given ecosystem ubiquity, but worth a quick gut-check with Andrea/Daniel before
 replying. Not blocking V1 (V1 is ZEC-only).
 
-**Q7 — drafted, not yet sent.** Does Final support Apple Pay / Google Pay provisioning (push
-provisioning) for the card? No route for it appears in the API doc, and it matters for "Spend
-Anywhere" — without wallet tokenization, in-store contactless spend isn't really possible; the
-card would effectively be online/card-not-present only.
+**Q7 — answered, 2.9 (before we sent it).** Does Final support Apple Pay / Google Pay
+provisioning (push provisioning) for the card?
+
+> **Trev, 2.9:** "we are 100% working on debit cards that can be loaded into a digital wallet
+> (Apple Wallet/Google Wallet) and targeting by end of year for this." Not available for the
+> current single-use card. Until then: online-only in practice (see Q3 and the Spend Anywhere
+> row above).
+
+Resolves: confirms the "Spend Anywhere" onboarding screen needs an online-only caveat for V1;
+no need to send the drafted question separately.
+
+**Q8 — new, not yet sent.** How do `freeze`/`unfreeze` behave given the single-use,
+auto-replacing card model? Does freezing stop the *next* auto-issued card from being created,
+or only pause the currently-active one (which would then just get replaced on the next
+purchase attempt, making freeze a no-op)?
+
+---
+
+## Security note (FYI, not an open question)
+
+Daniel asked (28.8) if Final has an audit planned.
+
+> **Trev, 2.9:** yes — at least two planned audits of the codebase. Final deploys no custom
+> Solana contracts; every call goes directly against system contracts, which reduces the attack
+> surface.
