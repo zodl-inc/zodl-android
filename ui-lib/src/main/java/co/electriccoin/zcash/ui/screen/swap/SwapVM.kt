@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.common.model.SwapDirection.SWAP_FROM_ZEC
 import co.electriccoin.zcash.ui.common.model.SwapDirection.SWAP_INTO_ZEC
 import co.electriccoin.zcash.ui.common.model.SwapMode
 import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.model.canSpend
 import co.electriccoin.zcash.ui.common.repository.DEFAULT_SLIPPAGE
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
@@ -402,8 +403,14 @@ internal interface InternalState {
     val swapDirection: SwapDirection
     val isEphemeralAddressLocked: Boolean
 
-    val totalSpendableBalance: Zatoshi
-        get() = account?.spendableShieldedBalance ?: Zatoshi(0)
+    /**
+     * Delegates to the shared [co.electriccoin.zcash.ui.common.model.canSpend] primitive — the same
+     * one the pre-quote check in
+     * [co.electriccoin.zcash.ui.common.usecase.RequestSwapQuoteUseCase.requestExactInput] validates
+     * against. Re-evaluated whenever the selected account emits a new balance. Null while the
+     * balance has not loaded yet.
+     */
+    fun canSpend(amount: Zatoshi): Boolean? = account.canSpend(amount)
 }
 
 internal data class InternalStateImpl(

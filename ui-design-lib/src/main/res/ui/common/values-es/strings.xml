@@ -75,15 +75,15 @@
     <string name="about_title">Acerca de</string>
     <string name="about_subtitle">Presentando Zodl</string>
     <string name="about_overflow_menu_content_description">Más opciones</string>
-    <string name="whatsNew_version" formatted="true">VersiÃ³n de Zodl <xliff:g example="1" id="version">%s</xliff:g></string>
+    <string name="whatsNew_version" formatted="true">Versión de Zodl <xliff:g example="1" id="version">%s</xliff:g></string>
     <string name="about_debug_menu_app_name">Nombre de la app:<xliff:g example="Zodl" id="app_name">%1$s</xliff:g></string>
-    <string name="about_debug_menu_build">CompilaciÃ³n: <xliff:g example="635dac0eb9ddc2bc6da5177f0dd495d8b76af4dc" id="git_commit_hash">%1$s</xliff:g></string>
-    <string name="about_description">Zodl es una wallet mÃ³vil impulsada por Zcash, creada para pagos privados imparables.
-        EstÃ¡ optimizada para almacenar y usar en el mundo real $ZEC protegido: la criptomoneda verdaderamente privada.\n\nDesarrollada por el equipo que estableciÃ³ el estÃ¡ndar de la industria en privacidad en cadena (on-chain), los desarrolladores originales del protocolo Zcash.
+    <string name="about_debug_menu_build">Compilación: <xliff:g example="635dac0eb9ddc2bc6da5177f0dd495d8b76af4dc" id="git_commit_hash">%1$s</xliff:g></string>
+    <string name="about_description">Zodl es una wallet móvil impulsada por Zcash, creada para pagos privados imparables.
+        Está optimizada para almacenar y usar en el mundo real $ZEC protegido: la criptomoneda verdaderamente privada.\n\nDesarrollada por el equipo que estableció el estándar de la industria en privacidad en cadena (on-chain), los desarrolladores originales del protocolo Zcash.
     </string>
-    <string name="about_termsOfUse">TÃ©rminos del Servicio</string>
-    <string name="about_unable_to_web_browser">No se pudo encontrar una aplicaciÃ³n de navegador web.</string>
-    <string name="about_privacyPolicy">PolÃ­tica de privacidad</string>
+    <string name="about_termsOfUse">Términos del Servicio</string>
+    <string name="about_unable_to_web_browser">No se pudo encontrar una aplicación de navegador web.</string>
+    <string name="about_privacyPolicy">Política de privacidad</string>
 
     <!-- ===== account_list ===== -->
     <string name="keystone_drawer_title">Billeteras y Dispositivos</string>
@@ -699,6 +699,11 @@
         código: <xliff:g example="123" id="code">%3$d</xliff:g>,
         descripción: <xliff:g example="Network unreachable" id="desc">%4$s</xliff:g>
     </string>
+    <string name="send_confirmation_report_status_presubmission_failure" formatted="true">Fallo antes del envío
+        de la transacción (no se realizó ninguna llamada gRPC):
+        <xliff:g example="IOException" id="type">%1$s</xliff:g>:
+        <xliff:g example="Failed to download Sapling parameters" id="detail">%2$s</xliff:g>
+    </string>
     <string name="send_confirmation_multiple_trx_failure_report_unable_open_email">No se pudo abrir la app de correo.</string>
     <string name="send_confirmation_multiple_trx_failure_copy_tag">IDs de Transacción</string>
     <string name="swapAndPay_successSwapInfo">Iniciaste un intercambio exitosamente.\nSigue su estatus en la pantalla de transacciones.</string>
@@ -890,6 +895,31 @@
     <string name="reportSwap_msg">Al tocar el botón de abajo, se enviarán detalles de este swap (como la dirección de depósito y el activo destino) al equipo de soporte de Zodl para que puedan ayudarte a resolver tu problema. La información de la transacción se incluye automáticamente.</string>
     <string name="transaction_detail_support_email_subject">Problema con transacción de swap</string>
     <string name="transaction_detail_support_email_body">Por favor describe tu problema aquí:\n\n\n\nDetalles del swap:\nDirección de depósito: %1$s\nActivo de origen: %2$s\nActivo destino: %3$s</string>
+    <string name="swap_mismatch_title">Los detalles del swap no coincidieron</string>
+    <string name="swap_mismatch_msg_1">Recibimos una cotización del proveedor de swap, pero no coincidió con algunos de los detalles que proporcionaste. Hacemos esta comprobación para asegurarnos de que tu swap sea el que esperas.</string>
+    <string name="swap_mismatch_msg_2">Te agradeceríamos que nos lo reportaras para que podamos investigarlo con el proveedor de swap.</string>
+    <string name="swap_mismatch_msg_3">Lo reportes o no, también puedes intentarlo de nuevo. Si los detalles coinciden, no verás esta pantalla y podrás continuar.</string>
+    <string name="swap_mismatch_goBack">Volver</string>
+    <string name="swap_mismatch_support_email_subject">Zodl Swap: discrepancia en la API</string>
+    <string name="swap_mismatch_support_email_body">Zodl detectó el siguiente error en la respuesta de la API del proveedor de swap. Proporcionar estos detalles nos permite plantearlo con ellos para investigarlo. No compartiremos tus datos personales con el proveedor de swap. Puedes enviarlo tal cual o incluir una nota para nosotros. Gracias de antemano.\n\nProveedor de swap: %1$s\nTipo de swap: %2$s\nTipo de discrepancia: %3$s\nID de cotización: %4$s</string>
+    <string name="swap_mismatch_mode_swap">Swap</string>
+    <string name="swap_mismatch_mode_crosspay">CrossPay</string>
+    <string name="swap_mismatch_mode_swapIntoZec">Swap a ZEC</string>
+    <string name="swap_mismatch_type_recipientAddress">Dirección del destinatario</string>
+    <string name="swap_mismatch_type_refundAddress">Dirección de reembolso</string>
+    <string name="swap_mismatch_type_originAsset">Activo de origen</string>
+    <string name="swap_mismatch_type_destinationAsset">Activo destino</string>
+    <string name="swap_mismatch_type_swapType">Tipo de swap</string>
+    <string name="swap_mismatch_type_slippageTolerance">Tolerancia de slippage</string>
+    <string name="swap_mismatch_type_inputAmount">Monto de entrada</string>
+    <string name="swap_mismatch_type_outputAmount">Monto de salida</string>
+    <string name="swap_mismatch_type_requestedAmount">Monto solicitado</string>
+    <string name="swap_mismatch_type_slippageExceeded">Slippage excedido</string>
+    <string name="swap_mismatch_type_nonPositiveAmount">Monto no positivo</string>
+    <string name="swap_mismatch_provider_near">NEAR</string>
+    <string name="swap_mismatch_quoteId_unknown">desconocido</string>
+    <string name="swap_mismatch_swapType_format">%1$s - %2$s &gt; %3$s</string>
+    <string name="swap_mismatch_asset_format">%1$s (%2$s)</string>
     <string name="deposits_info">Los depósitos pueden tardar varios minutos en confirmarse.</string>
     <string name="swapAndPay_status_incompleteDeposit">Depósito incompleto</string>
     <string name="swapAndPay_status_pending">Pendiente</string>
@@ -1077,6 +1107,11 @@
     <string name="migrationComplete_migrateAnywayFailureRejected">La red rechazó esta transacción. Comunícate con el soporte.</string>
     <string name="migrationComplete_migrateAnywayFailureError">Ocurrió un error al enviar. Comunícate con el soporte.</string>
     <string name="migrationComplete_migrateAnywayFailurePartial">Se enviaron algunas partes de esta transacción, pero no todas. Comunícate con el soporte.</string>
+    <string name="migrationComplete_residueTitle">Te has movido a Ironwood</string>
+    <string name="migrationComplete_residueSubtitle">Un pequeño saldo todavía permanece en Orchard.</string>
+    <string name="migrationComplete_inIronwoodLabel">En Ironwood</string>
+    <string name="migrationComplete_leftInOrchardLabel">Restante en Orchard</string>
+    <string name="migrationComplete_residueRecommendationBody">%1$s todavía está en Orchard. Mover un monto tan específico podría vincular tus fondos de Ironwood con tu historial de Orchard. Te recomendamos bloquearlo en su lugar.</string>
 
     <string name="migrationNotifPermission_title">Permitir notificaciones</string>
     <string name="migrationNotifPermission_subtitle">Si se pierde una transferencia programada o falla un envío en segundo plano, podemos enviarte una notificación local para que abras Zodl. Recibe avisos sobre:</string>
@@ -1204,5 +1239,7 @@
     <string name="migrationHome_readyToSendTitle">Transferencia lista</string>
     <string name="migrationHome_attentionTitle">El plan de migración necesita actualización</string>
     <string name="migrationHome_defaultSubtitle">Mueve tus fondos a Ironwood.</string>
+    <string name="migrationHome_residueTitle">%1$s restante en Orchard</string>
+    <string name="migrationHome_residueSubtitle">Toca para decidir qué hacer con él</string>
 
 </resources>

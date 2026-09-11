@@ -17,6 +17,7 @@ import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepository
 import co.electriccoin.zcash.ui.common.repository.HomeMessageData
 import co.electriccoin.zcash.ui.common.repository.MigrationHomeMessage
 import co.electriccoin.zcash.ui.common.repository.RuntimeMessage
+import co.electriccoin.zcash.ui.common.voting.VotingHomeMessageSource
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -49,6 +50,7 @@ class GetHomeMessageUseCase(
     private val cache: HomeMessageCacheRepository,
     private val isTorEnabledStorageProvider: IsTorEnabledStorageProvider,
     private val migrationHomeMessageSource: MigrationHomeMessageSource,
+    private val votingHomeMessageSource: VotingHomeMessageSource,
 ) {
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     fun observe(): Flow<HomeMessageData?> =
@@ -59,14 +61,20 @@ class GetHomeMessageUseCase(
                     walletBackupMessageUseCase.observe(),
                     observeIsTorMessageVisible(),
                     observeIsExchangeRateMessageVisible(),
-                    crashReportingStorageProvider.observe().map { it == null },
-                ) { runtimeMessage, backup, isTorAvailable, isCCAvailable, isCrashReportingEnabled ->
-                    createMessage(
+                    combine(
+                        votingHomeMessageSource.observeIsCoinholderPollingMessageVisible(),
+                        crashReportingStorageProvider.observe().map { it == null },
+                    ) { isCoinholderPollingVisible, isCrashReportingVisible ->
+                        TrailingPrioritizedInputs(isCoinholderPollingVisible, isCrashReportingVisible)
+                    },
+                ) { runtimeMessage, backup, isTorAvailable, isCCAvailable, trailing ->
+                    createHomeMessage(
                         runtimeMessage = runtimeMessage,
                         backup = backup,
                         isTorVisible = isTorAvailable,
                         isCurrencyConversionEnabled = isCCAvailable,
-                        isCrashReportingVisible = isCrashReportingEnabled,
+                        isCoinholderPollingVisible = trailing.isCoinholderPollingVisible,
+                        isCrashReportingVisible = trailing.isCrashReportingVisible,
                     )
                 }
 
@@ -94,17 +102,18 @@ class GetHomeMessageUseCase(
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun observeShieldFundsMessage() =
         accountDataSource.selectedAccount.flatMapLatest { account ->
+            val transparentBalance = account?.transparentBalance
             when {
-                account == null -> {
+                account == null || transparentBalance == null -> {
                     flowOf(null)
                 }
 
-                account.isShieldingAvailable -> {
+                account.isShieldingAvailable == true -> {
                     messageAvailabilityDataSource.canShowShieldMessage
                         .map { canShowShieldMessage ->
                             when {
                                 !canShowShieldMessage -> null
-                                else -> HomeMessageData.ShieldFunds(account.transparent.balance)
+                                else -> HomeMessageData.ShieldFunds(transparentBalance)
                             }
                         }
                 }
@@ -120,6 +129,17 @@ class GetHomeMessageUseCase(
         val migration: MigrationHomeMessage?,
         val account: WalletAccount?,
         val walletSnapshot: WalletSnapshot
+    )
+
+    /**
+     * [HomeMessageData.CoinholderPolling] and [HomeMessageData.CrashReport] bundled together into
+     * one flow purely so the outer `observe()` combine (already at kotlinx's 5-flow overload
+     * ceiling) doesn't need a 6th argument — same "bundle inputs into a data class" trick as
+     * [RuntimeMessageInputs] above.
+     */
+    private data class TrailingPrioritizedInputs(
+        val isCoinholderPollingVisible: Boolean,
+        val isCrashReportingVisible: Boolean,
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -181,55 +201,13 @@ class GetHomeMessageUseCase(
     private fun observeIsTorMessageVisible() =
         isTorEnabledStorageProvider.observe().map { it == null }.distinctUntilChanged()
 
-    private fun createMessage(
-        runtimeMessage: RuntimeMessage?,
-        backup: WalletBackupData,
-        isTorVisible: Boolean,
-        isCurrencyConversionEnabled: Boolean,
-        isCrashReportingVisible: Boolean,
-    ) = when {
-        runtimeMessage != null -> runtimeMessage
-        backup is WalletBackupData.Available -> HomeMessageData.Backup
-        isTorVisible -> HomeMessageData.EnableTor
-        isCurrencyConversionEnabled -> HomeMessageData.EnableCurrencyConversion
-        isCrashReportingVisible -> HomeMessageData.CrashReport
-        else -> null
-    }
-
     private fun prioritizeMessage(message: HomeMessageData?): HomeMessageData? {
-        val isSameMessageUpdate =
-            message?.priority == cache.lastMessage?.priority // same but updated
-        val someMessageBeenShown =
-            cache.lastShownMessage != null // has any message been shown while app in fg
-        val hasNoMessageBeenShownLately = cache.lastMessage == null // has no message been shown
-        val isHigherPriorityMessage =
-            (message?.priority ?: 0) > (cache.lastShownMessage?.priority ?: 0)
         val result =
-            when {
-                message == null -> {
-                    null
-                }
-
-                message is RuntimeMessage -> {
-                    message
-                }
-
-                isSameMessageUpdate -> {
-                    message
-                }
-
-                isHigherPriorityMessage -> {
-                    if (hasNoMessageBeenShownLately) {
-                        if (someMessageBeenShown) null else message
-                    } else {
-                        message
-                    }
-                }
-
-                else -> {
-                    null
-                }
-            }
+            prioritizeHomeMessage(
+                message = message,
+                lastMessage = cache.lastMessage,
+                lastShownMessage = cache.lastShownMessage,
+            )
 
         if (result != null) {
             messageAvailabilityDataSource.onMessageShown()
@@ -273,6 +251,81 @@ class GetHomeMessageUseCase(
         syncMessageShownBefore: Boolean,
         someBalance: Boolean,
     ): RuntimeMessage? = syncingMessageFor(walletSnapshot, syncMessageShownBefore, someBalance)
+}
+
+/**
+ * Resolves the single [HomeMessageData] to show, applying the MOB-1787 rule that an urgent
+ * [HomeMessageData.Backup] (i.e. [backup] is [WalletBackupData.Available] — seed not backed up
+ * and a balance has been received, as already gated by `WalletBackupMessageUseCase`, snooze
+ * included) outranks every [RuntimeMessage], not just the other [co.electriccoin.zcash.ui.common.repository.Prioritized]
+ * messages. When [backup] is [WalletBackupData.Unavailable], behavior is unchanged from before
+ * MOB-1787: [runtimeMessage], then the remaining opt-in messages in their existing order.
+ */
+internal fun createHomeMessage(
+    runtimeMessage: RuntimeMessage?,
+    backup: WalletBackupData,
+    isTorVisible: Boolean,
+    isCurrencyConversionEnabled: Boolean,
+    isCoinholderPollingVisible: Boolean,
+    isCrashReportingVisible: Boolean,
+): HomeMessageData? =
+    when {
+        backup is WalletBackupData.Available -> HomeMessageData.Backup
+        runtimeMessage != null -> runtimeMessage
+        isCoinholderPollingVisible -> HomeMessageData.CoinholderPolling
+        isTorVisible -> HomeMessageData.EnableTor
+        isCurrencyConversionEnabled -> HomeMessageData.EnableCurrencyConversion
+        isCrashReportingVisible -> HomeMessageData.CrashReport
+        else -> null
+    }
+
+/**
+ * Pure decision function behind [GetHomeMessageUseCase]'s `prioritizeMessage` — extracted (like
+ * [createHomeMessage] and [syncingMessageFor]) so its logic is directly unit-testable without
+ * standing up the whole use case's dependency graph.
+ *
+ * MOB-1787: [message] being [RuntimeMessage] or an urgent [HomeMessageData.Backup] (only ever
+ * produced by [createHomeMessage] when the seed is unbacked and a balance has been received) must
+ * always win immediately, bypassing the hysteresis below. That hysteresis exists to avoid flicker
+ * for optional/dismissible [co.electriccoin.zcash.ui.common.repository.Prioritized] messages —
+ * without the [HomeMessageData.Backup] special-case here, a previously-shown [RuntimeMessage]
+ * (priority `Int.MAX_VALUE`) cached as [lastShownMessage] would make Backup's finite priority (5)
+ * look "lower" and get silently filtered out by [isHigherPriorityMessage] below.
+ */
+internal fun prioritizeHomeMessage(
+    message: HomeMessageData?,
+    lastMessage: HomeMessageData?,
+    lastShownMessage: HomeMessageData?,
+): HomeMessageData? {
+    val isSameMessageUpdate = message?.priority == lastMessage?.priority
+    val someMessageBeenShownInForeground = lastShownMessage != null
+    val hasNoMessageBeenShownLately = lastMessage == null
+    val isHigherPriorityMessage = (message?.priority ?: 0) > (lastShownMessage?.priority ?: 0)
+    return when {
+        message == null -> {
+            null
+        }
+
+        message is RuntimeMessage || message is HomeMessageData.Backup -> {
+            message
+        }
+
+        isSameMessageUpdate -> {
+            message
+        }
+
+        isHigherPriorityMessage -> {
+            if (hasNoMessageBeenShownLately) {
+                if (someMessageBeenShownInForeground) null else message
+            } else {
+                message
+            }
+        }
+
+        else -> {
+            null
+        }
+    }
 }
 
 internal const val SYNCING_BANNER_HIDE_BELOW_BLOCKS = 3456L

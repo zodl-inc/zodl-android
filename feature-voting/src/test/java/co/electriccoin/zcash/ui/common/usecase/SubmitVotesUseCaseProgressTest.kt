@@ -1,18 +1,555 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLatest
+import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLeafBlock
+import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLeafPage
 import co.electriccoin.zcash.ui.common.model.voting.TxConfirmation
 import co.electriccoin.zcash.ui.common.model.voting.TxEvent
 import co.electriccoin.zcash.ui.common.model.voting.TxEventAttribute
+import co.electriccoin.zcash.ui.common.model.voting.TxResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.test.runTest
+import java.util.Base64
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class SubmitVotesUseCaseProgressTest {
+    @Test
+    fun vanCommitmentFallbackFindsOriginalWhenRetryHashIsNotConfirmed() =
+        runTest {
+            val expectedVan = ByteArray(32) { 7 }
+
+            val resolution =
+                reconcileDelegationTransactionResult(
+                    result = spentNullifierResult(txHash = "rejected-retry-hash"),
+                    bundleIndex = 0,
+                    rejectionMessage = "rejected",
+                    fetchTxConfirmation = { null },
+                    findVanPosition = {
+                        findVanCommitmentPosition(
+                            roundId = "round",
+                            expectedVanCmx = expectedVan,
+                            recoveryDelayMillis = 0,
+                            fetchLatest = { CommitmentTreeLatest(height = 100, nextIndex = 2) },
+                            fetchLeafPage = { _, _, _ ->
+                                leafPage(
+                                    blocks =
+                                        listOf(
+                                            leafBlock(
+                                                height = 100,
+                                                startIndex = 0,
+                                                leaves = listOf(ByteArray(32) { 1 }, expectedVan)
+                                            )
+                                        )
+                                )
+                            }
+                        )
+                    }
+                )
+
+            assertEquals(1, (resolution as DelegationSubmissionResolution.ConfirmedVan).position)
+        }
+
+    @Test
+    fun successfulSpentNullifierHashRecoverySkipsVanLookup() =
+        runTest {
+            var vanLookups = 0
+            val confirmation =
+                TxConfirmation(
+                    height = 12,
+                    code = 0,
+                    events =
+                        listOf(
+                            TxEvent(
+                                type = "delegate_vote",
+                                attributes = listOf(TxEventAttribute(key = "leaf_index", value = "7"))
+                            )
+                        )
+                )
+
+            val resolution =
+                reconcileDelegationTransactionResult(
+                    result = spentNullifierResult(),
+                    bundleIndex = 0,
+                    rejectionMessage = "rejected",
+                    fetchTxConfirmation = { confirmation },
+                    findVanPosition = {
+                        vanLookups += 1
+                        8
+                    }
+                )
+
+            assertIs<DelegationSubmissionResolution.AcceptedTransaction>(resolution)
+            assertEquals(0, vanLookups)
+        }
+
+    @Test
+    fun missingSpentNullifierHashLeafFallsBackToVanAndRetainsHash() =
+        runTest {
+            val resolution =
+                reconcileDelegationTransactionResult(
+                    result = spentNullifierResult(txHash = "confirmed-tx"),
+                    bundleIndex = 0,
+                    rejectionMessage = "rejected",
+                    fetchTxConfirmation = { TxConfirmation(height = 12, code = 0) },
+                    findVanPosition = { 8 }
+                )
+
+            val confirmedVan = assertIs<DelegationSubmissionResolution.ConfirmedVan>(resolution)
+            assertEquals(8, confirmedVan.position)
+            assertEquals("confirmed-tx", confirmedVan.txHash)
+        }
+
+    @Test
+    fun spentNullifierHashCancellationDoesNotFallBackToVan() =
+        runTest {
+            var vanLookups = 0
+            val cancellation = CancellationException("cancelled")
+
+            val thrown =
+                assertFailsWith<CancellationException> {
+                    reconcileDelegationTransactionResult(
+                        result = spentNullifierResult(),
+                        bundleIndex = 0,
+                        rejectionMessage = "rejected",
+                        fetchTxConfirmation = { throw cancellation },
+                        findVanPosition = {
+                            vanLookups += 1
+                            8
+                        }
+                    )
+                }
+
+            assertSame(cancellation, thrown)
+            assertEquals(0, vanLookups)
+        }
+
+    @Test
+    fun vanCommitmentLookupFollowsServerContinuationCursor() =
+        runTest {
+            val expectedVan = ByteArray(32) { 9 }
+            val requestedRanges = mutableListOf<LongRange>()
+
+            val position =
+                findVanCommitmentPosition(
+                    roundId = "round",
+                    expectedVanCmx = expectedVan,
+                    recoveryDelayMillis = 0,
+                    fetchLatest = { CommitmentTreeLatest(height = 18, nextIndex = 4) },
+                    fetchLeafPage = { roundId, fromHeight, toHeight ->
+                        assertEquals("round", roundId)
+                        requestedRanges += fromHeight..toHeight
+                        when (fromHeight) {
+                            0L -> {
+                                leafPage(
+                                    blocks =
+                                        listOf(
+                                            leafBlock(
+                                                height = 12,
+                                                startIndex = 0,
+                                                leaves = listOf(ByteArray(32) { 1 }, ByteArray(32) { 2 })
+                                            )
+                                        ),
+                                    nextFromHeight = 15
+                                )
+                            }
+
+                            15L -> {
+                                leafPage(
+                                    blocks =
+                                        listOf(
+                                            leafBlock(
+                                                height = 16,
+                                                startIndex = 2,
+                                                leaves = listOf(ByteArray(32) { 3 }, expectedVan)
+                                            )
+                                        )
+                                )
+                            }
+
+                            else -> {
+                                error("unexpected cursor $fromHeight")
+                            }
+                        }
+                    }
+                )
+
+            assertEquals(3, position)
+            assertEquals(listOf(0L..18L, 15L..18L), requestedRanges)
+        }
+
+    @Test
+    fun vanCommitmentLookupRejectsUnboundedServerPagination() =
+        runTest {
+            var pageCalls = 0
+
+            val failure =
+                assertFailsWith<IllegalStateException> {
+                    findVanCommitmentPosition(
+                        roundId = "round",
+                        expectedVanCmx = ByteArray(32) { 9 },
+                        maxRecoveryAttempts = 1,
+                        recoveryDelayMillis = 0,
+                        maxPagesPerAttempt = 2,
+                        fetchLatest = { CommitmentTreeLatest(height = 100, nextIndex = 0) },
+                        fetchLeafPage = { _, fromHeight, _ ->
+                            pageCalls += 1
+                            leafPage(nextFromHeight = fromHeight + 1)
+                        }
+                    )
+                }
+
+            assertEquals("Commitment tree pagination exceeded 2 pages", failure.message)
+            assertEquals(2, pageCalls)
+        }
+
+    @Test
+    fun vanCommitmentLookupRejectsCursorBeforeLastReturnedBlock() =
+        runTest {
+            assertFailsWith<IllegalArgumentException> {
+                findVanCommitmentPosition(
+                    roundId = "round",
+                    expectedVanCmx = ByteArray(32) { 9 },
+                    maxRecoveryAttempts = 1,
+                    recoveryDelayMillis = 0,
+                    fetchLatest = { CommitmentTreeLatest(height = 100, nextIndex = 1) },
+                    fetchLeafPage = { _, _, _ ->
+                        leafPage(
+                            blocks =
+                                listOf(
+                                    leafBlock(
+                                        height = 10,
+                                        startIndex = 0,
+                                        leaves = listOf(ByteArray(32) { 1 })
+                                    )
+                                ),
+                            nextFromHeight = 5
+                        )
+                    }
+                )
+            }
+        }
+
+    @Test
+    fun vanCommitmentLookupRejectsOmittedLeafPrefix() =
+        runTest {
+            assertFailsWith<IllegalArgumentException> {
+                findVanCommitmentPosition(
+                    roundId = "round",
+                    expectedVanCmx = ByteArray(32) { 9 },
+                    maxRecoveryAttempts = 1,
+                    recoveryDelayMillis = 0,
+                    fetchLatest = { CommitmentTreeLatest(height = 100, nextIndex = 2) },
+                    fetchLeafPage = { _, _, _ ->
+                        leafPage(
+                            blocks =
+                                listOf(
+                                    leafBlock(
+                                        height = 100,
+                                        startIndex = 1,
+                                        leaves = listOf(ByteArray(32) { 9 })
+                                    )
+                                )
+                        )
+                    }
+                )
+            }
+        }
+
+    @Test
+    fun vanCommitmentLookupRetriesForDelayedIndexing() =
+        runTest {
+            val expectedVan = ByteArray(32) { 5 }
+            var latestCalls = 0
+
+            val position =
+                findVanCommitmentPosition(
+                    roundId = "round",
+                    expectedVanCmx = expectedVan,
+                    maxRecoveryAttempts = 2,
+                    recoveryDelayMillis = 0,
+                    fetchLatest = {
+                        latestCalls += 1
+                        if (latestCalls == 1) {
+                            CommitmentTreeLatest(height = 100, nextIndex = 0)
+                        } else {
+                            CommitmentTreeLatest(height = 101, nextIndex = 1)
+                        }
+                    },
+                    fetchLeafPage = { _, _, toHeight ->
+                        if (toHeight == 101L) {
+                            leafPage(
+                                blocks = listOf(leafBlock(height = 101, startIndex = 0, leaves = listOf(expectedVan)))
+                            )
+                        } else {
+                            leafPage()
+                        }
+                    }
+                )
+
+            assertEquals(0, position)
+            assertEquals(2, latestCalls)
+        }
+
+    @Test
+    fun absentVanCommitmentExhaustsBoundedAttemptsWithoutPosition() =
+        runTest {
+            var latestCalls = 0
+
+            val position =
+                findVanCommitmentPosition(
+                    roundId = "round",
+                    expectedVanCmx = ByteArray(32) { 5 },
+                    maxRecoveryAttempts = 3,
+                    recoveryDelayMillis = 0,
+                    fetchLatest = {
+                        latestCalls += 1
+                        CommitmentTreeLatest(height = 100, nextIndex = 0)
+                    },
+                    fetchLeafPage = { _, _, _ -> leafPage() }
+                )
+
+            assertNull(position)
+            assertEquals(3, latestCalls)
+        }
+
+    @Test
+    fun duplicateVanCommitmentIsRejected() =
+        runTest {
+            val expectedVan = ByteArray(32) { 5 }
+
+            assertFailsWith<IllegalArgumentException> {
+                findVanCommitmentPosition(
+                    roundId = "round",
+                    expectedVanCmx = expectedVan,
+                    recoveryDelayMillis = 0,
+                    fetchLatest = { CommitmentTreeLatest(height = 100, nextIndex = 2) },
+                    fetchLeafPage = { _, _, _ ->
+                        leafPage(
+                            blocks =
+                                listOf(
+                                    leafBlock(
+                                        height = 100,
+                                        startIndex = 0,
+                                        leaves = listOf(expectedVan, expectedVan)
+                                    )
+                                )
+                        )
+                    }
+                )
+            }
+        }
+
+    @Test
+    fun malformedVanCommitmentLeafIsRejected() =
+        runTest {
+            assertFailsWith<IllegalArgumentException> {
+                findVanCommitmentPosition(
+                    roundId = "round",
+                    expectedVanCmx = ByteArray(32) { 5 },
+                    recoveryDelayMillis = 0,
+                    fetchLatest = { CommitmentTreeLatest(height = 100, nextIndex = 1) },
+                    fetchLeafPage = { _, _, _ ->
+                        leafPage(
+                            blocks =
+                                listOf(
+                                    CommitmentTreeLeafBlock(
+                                        height = 100,
+                                        startIndex = 0,
+                                        leavesBase64 = listOf("not base64")
+                                    )
+                                )
+                        )
+                    }
+                )
+            }
+        }
+
+    @Test
+    fun wrongLengthVanCommitmentLeafIsRejectedAsMalformed() =
+        runTest {
+            val failure =
+                assertFailsWith<IllegalArgumentException> {
+                    findVanCommitmentPosition(
+                        roundId = "round",
+                        expectedVanCmx = ByteArray(32) { 5 },
+                        recoveryDelayMillis = 0,
+                        fetchLatest = { CommitmentTreeLatest(height = 100, nextIndex = 1) },
+                        fetchLeafPage = { _, _, _ ->
+                            leafPage(
+                                blocks =
+                                    listOf(
+                                        leafBlock(
+                                            height = 100,
+                                            startIndex = 0,
+                                            leaves = listOf(ByteArray(16) { 5 })
+                                        )
+                                    )
+                            )
+                        }
+                    )
+                }
+
+            assertEquals("Malformed commitment leaf", failure.message)
+        }
+
+    @Test
+    fun acceptedVotingTransactionDoesNotPollForRecovery() =
+        runTest {
+            var fetchCount = 0
+
+            val accepted =
+                reconcileVotingTransactionResult(
+                    result = TxResult(txHash = "accepted-tx", code = 0),
+                    rejectionMessage = "rejected",
+                    fetchTxConfirmation = {
+                        fetchCount += 1
+                        null
+                    }
+                )
+
+            assertEquals("accepted-tx", accepted.txHash)
+            assertNull(accepted.confirmation)
+            assertEquals(0, fetchCount)
+        }
+
+    @Test
+    fun spentNullifierRecoversAfterTransactionIndexingDelay() =
+        runTest {
+            var fetchCount = 0
+            val confirmation = TxConfirmation(height = 12, code = 0)
+
+            val accepted =
+                reconcileVotingTransactionResult(
+                    result = spentNullifierResult(),
+                    rejectionMessage = "rejected",
+                    recoveryDelayMillis = 0,
+                    fetchTxConfirmation = {
+                        fetchCount += 1
+                        if (fetchCount == 3) confirmation else null
+                    }
+                )
+
+            assertEquals("duplicate-tx", accepted.txHash)
+            assertSame(confirmation, accepted.confirmation)
+            assertEquals(3, fetchCount)
+        }
+
+    @Test
+    fun spentNullifierStopsAfterBoundedRecoveryMisses() =
+        runTest {
+            var fetchCount = 0
+
+            val failure =
+                assertFailsWith<IllegalStateException> {
+                    reconcileVotingTransactionResult(
+                        result = spentNullifierResult(),
+                        rejectionMessage = "rejected",
+                        recoveryDelayMillis = 0,
+                        fetchTxConfirmation = {
+                            fetchCount += 1
+                            null
+                        }
+                    )
+                }
+
+            assertEquals("nullifier already spent: abc123", failure.message)
+            assertEquals(3, fetchCount)
+        }
+
+    @Test
+    fun spentNullifierWithoutHashDoesNotPoll() =
+        runTest {
+            var fetchCount = 0
+
+            assertFailsWith<IllegalStateException> {
+                reconcileVotingTransactionResult(
+                    result = spentNullifierResult(txHash = ""),
+                    rejectionMessage = "rejected",
+                    fetchTxConfirmation = {
+                        fetchCount += 1
+                        null
+                    }
+                )
+            }
+
+            assertEquals(0, fetchCount)
+        }
+
+    @Test
+    fun unrelatedRejectionDoesNotPoll() =
+        runTest {
+            var fetchCount = 0
+
+            val failure =
+                assertFailsWith<IllegalStateException> {
+                    reconcileVotingTransactionResult(
+                        result = TxResult(txHash = "failed-tx", code = 1, log = "invalid proof"),
+                        rejectionMessage = "rejected",
+                        fetchTxConfirmation = {
+                            fetchCount += 1
+                            null
+                        }
+                    )
+                }
+
+            assertEquals("invalid proof", failure.message)
+            assertEquals(0, fetchCount)
+        }
+
+    @Test
+    fun rejectedConfirmationDoesNotRecoverSpentNullifier() =
+        runTest {
+            val failure =
+                assertFailsWith<IllegalStateException> {
+                    reconcileVotingTransactionResult(
+                        result = spentNullifierResult(),
+                        rejectionMessage = "rejected",
+                        fetchTxConfirmation = {
+                            TxConfirmation(height = 12, code = 2, log = "transaction failed")
+                        }
+                    )
+                }
+
+            assertEquals("transaction failed", failure.message)
+        }
+
+    @Test
+    fun cancellationDuringSpentNullifierLookupPropagates() =
+        runTest {
+            val cancellation = CancellationException("cancelled")
+
+            val failure =
+                assertFailsWith<CancellationException> {
+                    reconcileVotingTransactionResult(
+                        result = spentNullifierResult(),
+                        rejectionMessage = "rejected",
+                        fetchTxConfirmation = { throw cancellation }
+                    )
+                }
+
+            assertSame(cancellation, failure)
+        }
+
+    @Test
+    fun acceptedVotingTransactionRequiresHash() =
+        runTest {
+            assertFailsWith<IllegalStateException> {
+                reconcileVotingTransactionResult(
+                    result = TxResult(txHash = "", code = 0),
+                    rejectionMessage = "rejected",
+                    fetchTxConfirmation = { null }
+                )
+            }
+        }
+
     @Test
     fun keystoneAuthorizationClassifierWrapsGenericFailures() {
         val cause = IllegalStateException("Delegation transaction failed")
@@ -83,6 +620,161 @@ class SubmitVotesUseCaseProgressTest {
 
         val failure = assertIs<VotingErrors.UnexpectedSdkResponse>(exception.failure)
         assertEquals("Malformed delegate_vote leaf_index for bundle 4: not-a-position", failure.userMessage)
+    }
+
+    @Test
+    fun delegateVoteVanPositionRecoversLegacyBase64DecodedLeafIndex() {
+        val decodedLeafIndex =
+            String(
+                Base64.getDecoder().decode("3753"),
+                Charsets.UTF_8
+            )
+        val confirmation =
+            TxConfirmation(
+                height = 1,
+                code = 0,
+                events =
+                    listOf(
+                        TxEvent(
+                            type = "delegate_vote",
+                            attributes =
+                                listOf(
+                                    TxEventAttribute(
+                                        key = "leaf_index",
+                                        value = decodedLeafIndex
+                                    )
+                                )
+                        )
+                    )
+            )
+
+        assertEquals(3753, confirmation.delegateVoteVanPosition(bundleIndex = 0))
+    }
+
+    @Test
+    fun recoverLeafIndexOrNullParsesPlainDecimal() {
+        assertEquals(42, "42".recoverLeafIndexOrNull())
+    }
+
+    @Test
+    fun recoverLeafIndexOrNullTrimsWhitespaceBeforeParsing() {
+        assertEquals(42, "  42\n".recoverLeafIndexOrNull())
+    }
+
+    @Test
+    fun recoverLeafIndexOrNullRecoversBase64DecodedValue() {
+        val decoded = String(Base64.getDecoder().decode("3753"), Charsets.UTF_8)
+
+        assertEquals(3753, decoded.recoverLeafIndexOrNull())
+    }
+
+    @Test
+    fun recoverLeafIndexOrNullReturnsNullForNonRecoverableNonAsciiInput() {
+        // Non-ASCII text that doesn't re-encode to a valid decimal position must fail closed
+        // rather than silently propagate a wrong leaf index.
+        assertNull("ÿþ not a position".recoverLeafIndexOrNull())
+    }
+
+    @Test
+    fun recoverLeafIndexOrNullReturnsNullForBlankInput() {
+        assertNull("".recoverLeafIndexOrNull())
+    }
+
+    @Test
+    fun castVoteLeafPositionsRejectsCorruptedLeafIndexInsteadOfMisparsing() {
+        // Guards the safety assumption documented on castVoteLeafPositions: "7,12" is not
+        // itself valid Base64 (',' is outside the alphabet), which is exactly why an upstream
+        // opportunistic Base64-decode of this attribute is expected to fail and fall back to
+        // the original ASCII rather than silently corrupt it. This test instead covers the
+        // residual case: if a fully non-ASCII, comma-free payload ever reached this parser
+        // regardless, it must fail closed rather than silently produce a wrong (van, commitment)
+        // pair - there is no recovery path here the way there is for delegate_vote's leaf_index.
+        val corrupted = "ÿþ not a valid pair"
+        val confirmation =
+            TxConfirmation(
+                height = 1,
+                code = 0,
+                events =
+                    listOf(
+                        TxEvent(
+                            type = "cast_vote",
+                            attributes = listOf(TxEventAttribute(key = "leaf_index", value = corrupted))
+                        )
+                    )
+            )
+
+        val exception =
+            assertFailsWith<VotingSubmissionRecoverableException> {
+                confirmation.castVoteLeafPositions()
+            }
+
+        val failure = assertIs<VotingErrors.UnexpectedSdkResponse>(exception.failure)
+        assertEquals("Malformed cast_vote leaf_index: $corrupted", failure.userMessage)
+    }
+
+    @Test
+    fun castVoteLeafPositionsParseRecoveredConfirmation() {
+        val confirmation =
+            TxConfirmation(
+                height = 1,
+                code = 0,
+                events =
+                    listOf(
+                        TxEvent(
+                            type = "cast_vote",
+                            attributes =
+                                listOf(
+                                    TxEventAttribute(
+                                        key = "leaf_index",
+                                        value = "7, 12"
+                                    )
+                                )
+                        )
+                    )
+            )
+
+        assertEquals(7 to 12L, confirmation.castVoteLeafPositions())
+    }
+
+    @Test
+    fun castVoteLeafPositionsReportsMissingEventAsRecoverableSdkResponse() {
+        val exception =
+            assertFailsWith<VotingSubmissionRecoverableException> {
+                TxConfirmation(height = 1, code = 0).castVoteLeafPositions()
+            }
+
+        val failure = assertIs<VotingErrors.UnexpectedSdkResponse>(exception.failure)
+        assertEquals("Missing cast_vote leaf_index", failure.userMessage)
+    }
+
+    @Test
+    fun castVoteLeafPositionsReportsMalformedEventAsRecoverableSdkResponse() {
+        val confirmation =
+            TxConfirmation(
+                height = 1,
+                code = 0,
+                events =
+                    listOf(
+                        TxEvent(
+                            type = "cast_vote",
+                            attributes =
+                                listOf(
+                                    TxEventAttribute(
+                                        key = "leaf_index",
+                                        value = "not-positions"
+                                    )
+                                )
+                        )
+                    )
+            )
+
+        val exception =
+            assertFailsWith<VotingSubmissionRecoverableException> {
+                confirmation.castVoteLeafPositions()
+            }
+
+        val failure = assertIs<VotingErrors.UnexpectedSdkResponse>(exception.failure)
+        assertEquals("Malformed cast_vote leaf_index: not-positions", failure.userMessage)
     }
 
     @Test
@@ -178,4 +870,29 @@ class SubmitVotesUseCaseProgressTest {
             )
         )
     }
+
+    private fun spentNullifierResult(txHash: String = "duplicate-tx") =
+        TxResult(
+            txHash = txHash,
+            code = 1,
+            log = "nullifier already spent: abc123"
+        )
+
+    private fun leafBlock(
+        height: Long,
+        startIndex: Long,
+        leaves: List<ByteArray>
+    ) = CommitmentTreeLeafBlock(
+        height = height,
+        startIndex = startIndex,
+        leavesBase64 = leaves.map { leaf -> Base64.getEncoder().encodeToString(leaf) }
+    )
+
+    private fun leafPage(
+        blocks: List<CommitmentTreeLeafBlock> = emptyList(),
+        nextFromHeight: Long = 0
+    ) = CommitmentTreeLeafPage(
+        blocks = blocks,
+        nextFromHeight = nextFromHeight
+    )
 }

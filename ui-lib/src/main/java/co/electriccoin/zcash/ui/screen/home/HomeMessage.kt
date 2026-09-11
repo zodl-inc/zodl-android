@@ -37,6 +37,8 @@ import androidx.compose.ui.zIndex
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.screen.home.backup.WalletBackupMessage
 import co.electriccoin.zcash.ui.screen.home.backup.WalletBackupMessageState
+import co.electriccoin.zcash.ui.screen.home.coinholderpolling.CoinholderPollingMessage
+import co.electriccoin.zcash.ui.screen.home.coinholderpolling.CoinholderPollingMessageState
 import co.electriccoin.zcash.ui.screen.home.currency.EnableCurrencyConversionMessage
 import co.electriccoin.zcash.ui.screen.home.currency.EnableCurrencyConversionMessageState
 import co.electriccoin.zcash.ui.screen.home.disconnected.WalletDisconnectedMessage
@@ -209,6 +211,14 @@ fun HomeMessage(
                     EnableTorMessage(
                         innerModifier = innerModifier,
                         state = normalizedState as EnableTorMessageState,
+                        contentPadding = contentPadding
+                    )
+                }
+
+                is CoinholderPollingMessageState -> {
+                    CoinholderPollingMessage(
+                        innerModifier = innerModifier,
+                        state = normalizedState as CoinholderPollingMessageState,
                         contentPadding = contentPadding
                     )
                 }

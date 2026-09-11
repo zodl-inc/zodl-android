@@ -29,8 +29,8 @@ import co.electriccoin.zcash.ui.common.repository.effectiveChoices
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
-import co.electriccoin.zcash.ui.common.usecase.RefreshActiveVotingSessionUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshVotingRoundsUseCase
+import co.electriccoin.zcash.ui.common.usecase.RefreshVotingServiceConfigUseCase
 import co.electriccoin.zcash.ui.common.usecase.TrackVotingSharesUseCase
 import co.electriccoin.zcash.ui.common.usecase.VotingShareTrackingResult
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -64,7 +64,7 @@ import java.time.format.DateTimeFormatter
 
 @Suppress("LargeClass")
 class VoteCoinholderPollingVM(
-    private val refreshActiveVotingSession: RefreshActiveVotingSessionUseCase,
+    private val refreshVotingServiceConfig: RefreshVotingServiceConfigUseCase,
     private val refreshVotingRounds: RefreshVotingRoundsUseCase,
     private val configurationRepository: ConfigurationRepository,
     private val votingChainConfigRepository: VotingChainConfigRepository,
@@ -121,7 +121,6 @@ class VoteCoinholderPollingVM(
                 }
         }
         observeVotingChainConfigChanges()
-        startVotingDataAutoRefresh()
         startForegroundShareTracking()
     }
 
@@ -150,6 +149,7 @@ class VoteCoinholderPollingVM(
                 onBack = ::onBack,
                 onRefresh = ::refreshVotingData,
                 onConfigSettings = ::onConfigSettings,
+                isInitialLoading = true,
             )
 
     val state =
@@ -163,10 +163,23 @@ class VoteCoinholderPollingVM(
             val apiSnapshot = apiSnapshotWithConfig.apiSnapshot
             val rounds =
                 when {
-                    !apiSnapshotWithConfig.isSelectedConfigLoaded -> null
+                    // Cache-and-fresh: show the repository's last-fetched rounds immediately,
+                    // even before *this* VM instance (recreated on every screen re-entry) has
+                    // completed its own load — `isSelectedConfigLoaded` is VM-local state that
+                    // resets to false on every fresh instance, but `apiSnapshot.rounds` is a
+                    // repository-scoped cache that `onScreenEntered()`'s soft refresh
+                    // deliberately preserves (see softRefresh's "avoid card flicker" comment in
+                    // refreshVotingDataInternal). A genuine config-source switch or explicit
+                    // refresh already clears the repository first (clearLoadedVotingStateForServiceConfigRefresh),
+                    // so trusting non-empty `apiSnapshot.rounds` here never shows stale-source data.
                     apiSnapshot.rounds.isNotEmpty() -> apiSnapshot.rounds
+
+                    !apiSnapshotWithConfig.isSelectedConfigLoaded -> null
+
                     roundsLceState.loading -> null
+
                     roundsLceState.content is LceContent.Success -> emptyList()
+
                     else -> null
                 }
 
@@ -354,26 +367,11 @@ class VoteCoinholderPollingVM(
 
     private fun refreshVotingData() {
         roundsLce.execute {
-            refreshVotingDataInternal(resetVisibleConfigError = true)
-        }
-    }
-
-    private fun startVotingDataAutoRefresh() {
-        viewModelScope.launch {
-            while (true) {
-                delay(votingDataAutoRefreshIntervalMs())
-                if (roundsLce.state.value.loading) {
-                    continue
-                }
-
-                try {
-                    refreshVotingDataInternal(resetVisibleConfigError = false)
-                } catch (exception: CancellationException) {
-                    throw exception
-                } catch (throwable: Throwable) {
-                    Log.w(TAG, "Round list auto refresh failed", throwable)
-                }
-            }
+            // softRefresh = true (MOB-1808): this is the pull-to-refresh action — it should
+            // behave like onScreenEntered()'s re-entry refresh, keeping the currently-visible
+            // (possibly stale) rounds up while a fresh fetch runs, not clear the repository
+            // cache first and force the full-screen loading view back for the whole round trip.
+            refreshVotingDataInternal(resetVisibleConfigError = true, softRefresh = true)
         }
     }
 
@@ -532,24 +530,80 @@ class VoteCoinholderPollingVM(
             // Mirror iOS `prepareForServiceConfigRefresh` (VotingStore+Session.swift:644-647):
             // every flow entry / user-driven refresh drops the cached resolved config so
             // downstream callers (authenticateVotingSession, configuredVoteServerUrls,
-            // delegateShares) cannot serve a stale config across flow openings. Auto-refresh
-            // polls leave the cache intact since they already force-refresh via
-            // RefreshVotingRoundsUseCase -> fetchServiceConfig.
+            // delegateShares) cannot serve a stale config across flow openings. All three
+            // remaining callers (onScreenEntered, refreshVotingData, refreshVotingDataForConfigChange)
+            // pass resetVisibleConfigError = true, so this always runs now — MOB-1808 removed the
+            // periodic auto-refresh tick that used to call this with resetVisibleConfigError =
+            // false to deliberately skip invalidation and ride fetchServiceConfig()'s
+            // CONFIG_CACHE_TTL_MS cache instead; the screen no longer has a background caller.
             votingApiProvider.invalidateConfigCache()
         }
 
-        refreshVotingRounds()
         var nextConfigIssue: VotingConfigException? = null
-        runCatching {
-            refreshActiveVotingSession()
-        }.onFailure { throwable ->
-            if (throwable is VotingConfigException) {
-                nextConfigIssue = throwable
-            } else {
-                Log.w(TAG, "Active round refresh failed", throwable)
+        try {
+            // refreshVotingRounds() -> RefreshVotingRoundsUseCase calls fetchServiceConfig()
+            // before fetchAllRounds(), and fetchServiceConfig() is the ONLY source of
+            // VotingConfigException on this path: it never touches round authentication
+            // (that lives in the unrelated fetchActiveVotingSession()), and fetchAllRounds()
+            // swallows per-round auth failures internally via authenticateVotingSessionOrNull
+            // rather than propagating them. So catching VotingConfigException specifically
+            // here cannot accidentally absorb a real round-fetch/auth failure — only a genuine
+            // config problem lands here, and everything else still falls through to the
+            // caller's normal LCE error handling. A non-VotingConfigException failure here
+            // means a real round-fetch failure, which must still fail this whole refresh —
+            // rethrow unconditionally instead of swallowing it.
+            refreshVotingRounds()
+        } catch (exception: VotingConfigException) {
+            nextConfigIssue = exception
+        }
+        if (nextConfigIssue == null) {
+            runCatching {
+                // MOB-1808: this used to be RefreshActiveVotingSessionUseCase, which — despite
+                // its name — fetches the service config AND the entire round list, redundantly
+                // re-doing the fetchAllRounds() refreshVotingRounds() (above) just did. Its only
+                // non-redundant job is storing the resolved VotingConfigSnapshot into
+                // votingConfigRepository (refreshVotingRounds() above never does this — it just
+                // resolves+caches the config for its own internal use); RefreshVotingServiceConfigUseCase
+                // does just that store, without the second round-list fetch (confirmed live:
+                // the old call was doubling every /rounds request during the CHP screen's
+                // auto-refresh). This call is NOT the configIssue error-surfacing site anymore —
+                // it only runs once refreshVotingRounds() above has already proven the config
+                // resolves cleanly, so with the TTL cache (bumped to 10min) this is a guaranteed
+                // cache hit in practice; the try/catch above is the real error path now (Milan's
+                // #2483 review: the old ordering made this probe's error-surfacing dead code).
+                // RefreshActiveVotingSessionUseCase itself is unchanged and still used as-is by
+                // VotingHomeHooksImpl, which genuinely wants its round-list side effect for
+                // pending-Keystone-request recovery.
+                refreshVotingServiceConfig()
+            }.onFailure { throwable ->
+                if (throwable is VotingConfigException) {
+                    nextConfigIssue = throwable
+                } else {
+                    Log.w(TAG, "Voting service config refresh failed", throwable)
+                }
             }
         }
         configIssue = nextConfigIssue
+
+        // MOB-1808 review (round 2): swallowing every config-leg failure into configIssue and
+        // returning successfully is only safe when cached rounds are still visible — the
+        // cache-and-fresh pattern (line ~175 above) keeps showing those while configIssue sits
+        // quietly behind them, and the dedicated configErrorSheet still catches a real config
+        // problem when the user taps an ACTIVE card. With an EMPTY rounds repo (first-ever
+        // screen entry, or right after a config-source switch's hard
+        // clearLoadedVotingStateForServiceConfigRefresh()), there is no cached content to fall
+        // back to and no ACTIVE card to tap — silently completing here produced
+        // roundsLceState = Success -> emptyList() and the misleading "there are no polls"
+        // noRoundsSheet instead of a real error+retry state, for something as ordinary as being
+        // offline. Rethrow so roundsLce.execute()'s catch (MutableLce.kt) routes it through the
+        // normal LCE failure path instead, which withLce (below) turns into the proper
+        // error+retry state via errorStateMapper.
+        if (nextConfigIssue != null &&
+            votingApiRepository.snapshot.value.rounds
+                .isEmpty()
+        ) {
+            throw nextConfigIssue
+        }
 
         selectedAccountUuid.value?.let { accountUuid ->
             refreshRecoveryVoteCounts(votingApiRepository.snapshot.value.rounds, accountUuid)
@@ -569,18 +623,6 @@ class VoteCoinholderPollingVM(
         votingConfigRepository.clear()
         votingSessionStore.clear()
         votingApiRepository.clear()
-    }
-
-    private fun votingDataAutoRefreshIntervalMs(): Long {
-        val rounds = votingApiRepository.snapshot.value.rounds
-        val hasRoundChangingStatus =
-            rounds.isEmpty() ||
-                rounds.any { round -> round.status == SessionStatus.ACTIVE || round.status == SessionStatus.TALLYING }
-        return if (hasRoundChangingStatus) {
-            ROUND_STATUS_AUTO_REFRESH_INTERVAL_MS
-        } else {
-            ROUND_LIST_AUTO_REFRESH_INTERVAL_MS
-        }
     }
 
     private fun refreshRecoveryVoteCounts(
@@ -807,8 +849,6 @@ class VoteCoinholderPollingVM(
 
     private companion object {
         const val TAG = "VoteCoinholderPolling"
-        const val ROUND_STATUS_AUTO_REFRESH_INTERVAL_MS = 5_000L
-        const val ROUND_LIST_AUTO_REFRESH_INTERVAL_MS = 30_000L
 
         // Minimum sleep between successive `TrackVotingSharesUseCase` invocations for a round.
         // Matches `MIN_DELAY_MILLIS` inside the use case itself; duplicated here as a defensive

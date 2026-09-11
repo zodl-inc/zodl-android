@@ -9,6 +9,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.R
@@ -25,12 +26,13 @@ import co.electriccoin.zcash.ui.design.util.stringResByDynamicCurrencyNumber
 @Composable
 fun ZashiSwapQuoteHeader(
     state: SwapQuoteHeaderState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    color: Color = ZashiColors.Surfaces.bgSecondary
 ) {
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(ZashiDimensions.Radius.radius2xl),
-        color = ZashiColors.Surfaces.bgSecondary
+        color = color
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically

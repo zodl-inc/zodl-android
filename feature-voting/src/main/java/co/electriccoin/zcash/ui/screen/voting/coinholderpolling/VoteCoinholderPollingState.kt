@@ -17,6 +17,11 @@ data class VoteCoinholderPollingState(
     val configErrorSheet: ZashiConfirmationState? = null,
     val unverifiedPollWarningSheet: ZashiConfirmationState? = null,
     val noRoundsSheet: ZashiConfirmationState? = null,
+    // Set once by the VM (VoteCoinholderPollingVM's `rounds == null` check) rather than
+    // re-derived in the Screen composable from activeRounds/pastRounds nullness — the VM already
+    // knows exactly why there's no content yet (cold start vs. cache-and-fresh); the View should
+    // just trust this one flag instead of reconstructing the same decision from raw fields.
+    val isInitialLoading: Boolean = false,
 ) {
     companion object {
         val preview =

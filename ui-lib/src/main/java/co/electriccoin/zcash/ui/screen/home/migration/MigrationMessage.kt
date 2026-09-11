@@ -203,6 +203,25 @@ private fun PreviewComplete() =
 
 @PreviewScreens
 @Composable
+private fun PreviewCompleteResidue() =
+    ZcashTheme {
+        BlankSurface {
+            MigrationMessage(
+                contentPadding = PaddingValues(),
+                state =
+                    MigrationMessageState(
+                        phase = MigrationBannerPhase.COMPLETE,
+                        title = "0.008 ZEC left in Orchard",
+                        progressLabel = "Tap to decide what happens to it",
+                        onClick = {},
+                        onButtonClick = {},
+                    ),
+            )
+        }
+    }
+
+@PreviewScreens
+@Composable
 private fun PreviewReadyToSend() =
     ZcashTheme {
         BlankSurface {

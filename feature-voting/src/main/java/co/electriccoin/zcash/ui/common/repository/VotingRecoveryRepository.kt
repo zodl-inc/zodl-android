@@ -3,6 +3,8 @@ package co.electriccoin.zcash.ui.common.repository
 import co.electriccoin.zcash.preference.EncryptedPreferenceProvider
 import co.electriccoin.zcash.preference.api.PreferenceProvider
 import co.electriccoin.zcash.preference.model.entry.PreferenceKey
+import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
+import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
@@ -167,6 +169,13 @@ interface VotingRecoveryRepository {
         draftChoices: Map<Int, Int>
     )
 
+    /**
+     * Locks the supplied selections for their proposals. A selection that is already locked
+     * accepts only an identical value; storing a different value throws
+     * [VotingSubmissionRecoverableException] with [VotingErrors.ConflictingProposalSelection].
+     * This is the single owner of the selection-lock invariant: every submission path that
+     * binds or reuses a proposal choice revalidates through this method.
+     */
     suspend fun storeProposalSelections(
         accountUuid: String,
         roundId: String,
@@ -267,6 +276,15 @@ interface VotingRecoveryRepository {
      * short-circuits when there are no unconfirmed shares.
      */
     suspend fun getRoundIdsRequiringShareTracking(accountUuid: String): List<String>
+
+    /**
+     * Enumerates round ids for the given account with a stored [VotingPendingKeystoneRequest] -
+     * a Keystone signature this device is still waiting on. Purely local (backed by the same
+     * on-device index as [getRoundIdsRequiringShareTracking]): callers can check "is there
+     * anything to recover at all" without first fetching the active session list from the
+     * network, and only pay for that fetch when this returns a non-empty list.
+     */
+    suspend fun getRoundIdsWithPendingKeystoneRequest(accountUuid: String): List<String>
 }
 
 class VotingRecoveryRepositoryImpl(
@@ -494,6 +512,19 @@ class VotingRecoveryRepositoryImpl(
                 accountUuid = accountUuid,
                 roundId = roundId
             )
+        val conflictingProposalId =
+            proposalSelections.entries
+                .firstOrNull { (proposalId, selection) ->
+                    current.proposalSelections[proposalId]?.let { it != selection } == true
+                }?.key
+        if (conflictingProposalId != null) {
+            throw VotingSubmissionRecoverableException(
+                VotingErrors.ConflictingProposalSelection(
+                    roundId = roundId,
+                    proposalId = conflictingProposalId
+                )
+            )
+        }
         store(
             current.copy(
                 proposalSelections = current.proposalSelections + proposalSelections,
@@ -688,6 +719,9 @@ class VotingRecoveryRepositoryImpl(
                 accountUuid = accountUuid,
                 roundId = roundId
             )
+        require(current.singleShareMode == null || current.singleShareMode == singleShareMode) {
+            "Share mode is already locked for round $roundId"
+        }
         store(
             current.copy(
                 singleShareMode = singleShareMode,
@@ -721,7 +755,16 @@ class VotingRecoveryRepositoryImpl(
         removeFromIndex(preferenceProvider, accountUuid, roundId)
     }
 
-    override suspend fun getRoundIdsRequiringShareTracking(accountUuid: String): List<String> {
+    override suspend fun getRoundIdsRequiringShareTracking(accountUuid: String): List<String> =
+        roundIdsMatching(accountUuid) { snapshot -> snapshot.submittedProposalIds.isNotEmpty() }
+
+    override suspend fun getRoundIdsWithPendingKeystoneRequest(accountUuid: String): List<String> =
+        roundIdsMatching(accountUuid) { snapshot -> snapshot.pendingKeystoneRequest != null }
+
+    private suspend fun roundIdsMatching(
+        accountUuid: String,
+        predicate: (VotingRecoverySnapshot) -> Boolean
+    ): List<String> {
         val preferenceProvider = encryptedPreferenceProvider()
         val scopedAccount = accountUuid.lowercase()
         val pairs = readIndex(preferenceProvider)
@@ -737,11 +780,7 @@ class VotingRecoveryRepositoryImpl(
                         removeFromIndex(preferenceProvider, scopedAccount, indexedRoundId)
                         return@mapNotNull null
                     }
-                if (snapshot.submittedProposalIds.isNotEmpty()) {
-                    snapshot.roundId
-                } else {
-                    null
-                }
+                snapshot.roundId.takeIf { predicate(snapshot) }
             }
     }
 

@@ -221,9 +221,8 @@ jobs:
         timeout-minutes: 5
       - name: Test
         # 45 rather than the usual 15: when SDK_COMMIT_PIN is set (see
-        # setup-sdk-companion), :ui-lib:testZcashmainnetStoreDebugUnitTest pulls in the
-        # companion SDK's Rust dependency graph, compiled cold here for the first time in
-        # this job.
+        # setup-sdk-companion), compiling :ui-lib pulls in the full companion SDK's Rust
+        # dependency graph, which can take ~20-25 min alone on a cold cargo/target cache.
         timeout-minutes: 45
         run: |
           ./gradlew :configuration-api-lib:check :crash-lib:check :preference-api-lib:check :spackle-lib:check :ui-design-lib:check

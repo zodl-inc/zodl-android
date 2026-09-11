@@ -14,6 +14,62 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.11.0 (2653)] - 2026-09-08
+
+### Added:
+
+- We added an App Theme setting, including a pure black dark theme for OLED screens.
+
+### Changed:
+
+- We made automatic server switching steadier and more reliable.
+- We made a range of security and privacy improvements.
+
+### Fixed:
+
+- We fixed an issue where you could be told you had insufficient funds when you had enough.
+- We fixed an issue where the app could stay stuck loading after updating from an older version.
+
+## [3.10.2 (2569)] - 2026-08-27
+
+### Added:
+
+- We added a pull-to-refresh option to Coinholder Polling, so you can manually check for new polls anytime.
+
+### Changed:
+
+- We made Coinholder Polling faster and more reliable over Tor: polls load quicker and vote submission no longer gets stuck on a slow server.
+- We made Coinholder Polling more resilient to voting-service outages with backup configuration sources.
+
+### Fixed:
+
+- We fixed cases where Coinholder Polling could hang indefinitely when a voting server was unreachable.
+
+## [3.10.1 (2512)] - 2026-08-25
+
+### Added:
+
+- We added a home screen banner and follow-up screen for a small amount of ZEC that can be left in Orchard after migrating to Ironwood, so you can choose whether to lock it or move it.
+
+### Fixed:
+
+- We fixed migrating with a Keystone wallet, so migrations are now split into signing rounds correctly.
+
+## [3.10.0 (2475)] - 2026-08-20
+
+### Added:
+
+- We brought back Coinholder Polling, so you can take part in Zcash community polls from your wallet.
+
+### Changed:
+
+- We rebuilt polling to work with your Ironwood-migrated funds.
+- We made poll loading more reliable during service outages.
+
+### Fixed:
+
+- We fixed errors that interrupted signing, and made preparing a Keystone signature much faster.
+
 ## [3.9.3 (2393)] - 2026-08-17
 
 ### Changed:

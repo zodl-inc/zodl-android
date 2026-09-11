@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.voting
 
 import androidx.navigation.NavGraphBuilder
+import kotlinx.coroutines.flow.Flow
 
 /*
  * Seam between ui-lib (the app "core") and the feature-voting module. ui-lib never imports
@@ -52,4 +53,20 @@ interface VotingSettingsEntry {
 /** Installs the voting destinations into the wallet nav graph. */
 interface VotingNavContributor {
     fun contribute(navGraphBuilder: NavGraphBuilder)
+}
+
+/**
+ * Produces the "eligible to show" signal for the Coinholder Polling home-widget prompt (MOB-1805)
+ * — a narrow, single-purpose contract (mirrors `MigrationHomeMessageSource` for the migration
+ * seam) rather than piling another member onto [VotingHomeHooks], since this one is continuously
+ * observed by `GetHomeMessageUseCase` rather than run once per app-open like [VotingHomeHooks]'s
+ * two lifecycle hooks.
+ */
+interface VotingHomeMessageSource {
+    /**
+     * True for the currently selected account when: voting is enabled, an active voting session
+     * exists and hasn't passed its end time, and that account hasn't already submitted votes for
+     * every proposal in it. False (never true) whenever [VotingSettingsEntry.isEnabled] is false.
+     */
+    fun observeIsCoinholderPollingMessageVisible(): Flow<Boolean>
 }

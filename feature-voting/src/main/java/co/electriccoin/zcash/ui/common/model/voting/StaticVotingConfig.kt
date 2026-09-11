@@ -12,9 +12,11 @@ import java.util.Base64
 @Serializable
 data class StaticVotingConfig(
     @SerialName("static_config_version")
-    val staticConfigVersion: Int = SUPPORTED_VERSION,
+    val staticConfigVersion: Int,
     @SerialName("dynamic_config_url")
-    val dynamicConfigURL: String,
+    val dynamicConfigURL: String? = null,
+    @SerialName("dynamic_config_urls")
+    val dynamicConfigURLs: List<String> = emptyList(),
     @SerialName("trusted_keys")
     val trustedKeys: List<TrustedKey> = emptyList(),
 ) {
@@ -31,8 +33,26 @@ data class StaticVotingConfig(
     }
 
     fun validate() {
-        if (staticConfigVersion != SUPPORTED_VERSION) {
+        if (staticConfigVersion !in SUPPORTED_VERSIONS) {
             throw VotingConfigException("Unsupported static_config_version $staticConfigVersion")
+        }
+        when (staticConfigVersion) {
+            STATIC_CONFIG_VERSION_V1 -> {
+                if (dynamicConfigURL.isNullOrBlank()) {
+                    throw VotingConfigException("dynamic_config_url must not be blank")
+                }
+                requireHttpsScheme(dynamicConfigURL, "dynamic_config_url")
+            }
+
+            STATIC_CONFIG_VERSION_V2 -> {
+                if (dynamicConfigURLs.isEmpty()) {
+                    throw VotingConfigException("dynamic_config_urls must contain at least one entry")
+                }
+                if (dynamicConfigURLs.any(String::isBlank)) {
+                    throw VotingConfigException("dynamic_config_urls must not contain blank entries")
+                }
+                dynamicConfigURLs.forEach { url -> requireHttpsScheme(url, "dynamic_config_urls") }
+            }
         }
         if (trustedKeys.isEmpty()) {
             throw VotingConfigException("trusted_keys must contain at least one entry")
@@ -47,33 +67,89 @@ data class StaticVotingConfig(
         }
     }
 
+    /**
+     * Unifies the v1 singular `dynamic_config_url` and the v2 `dynamic_config_urls` array
+     * behind one accessor, so callers never need to branch on [staticConfigVersion]: for v2 this
+     * is [dynamicConfigURLs] verbatim, for v1 it is [dynamicConfigURL] wrapped in a single-item
+     * list.
+     */
+    fun resolvedDynamicConfigUrls(): List<String> =
+        if (staticConfigVersion == STATIC_CONFIG_VERSION_V2) {
+            dynamicConfigURLs
+        } else {
+            listOfNotNull(dynamicConfigURL)
+        }
+
     companion object {
-        const val SUPPORTED_VERSION = 1
+        const val STATIC_CONFIG_VERSION_V1 = 1
+        const val STATIC_CONFIG_VERSION_V2 = 2
         const val ALG_ED25519 = "ed25519"
 
+        private val SUPPORTED_VERSIONS = setOf(STATIC_CONFIG_VERSION_V1, STATIC_CONFIG_VERSION_V2)
         private const val ED25519_PUBLIC_KEY_BYTES = 32
 
-        // Content-addressed pin (checksum fb62a56f) via the resilient voting.valargroup.dev
-        // gateway — MOB-1678 hardening (analog of iOS zodl-ios#1996). The gateway serves this
-        // exact content-addressed path (/pins/prod/<sha>/...) immutably, same as the previous
-        // raw.githubusercontent.com blob pin, but reads from GitHub normally and falls back to
-        // an automatically published Cloudflare copy during a GitHub outage — so a GitHub outage
-        // no longer blocks default-configured users from loading their voting trust anchor. This
-        // is NOT the mutable https://voting.valargroup.dev/prod/static-voting-config.json URL:
-        // that one gets republished on every new round/key rotation, which would break this
-        // bundled checksum for every default-configured user on the very next republish and
-        // brick voting until an app update. Bump the checksum (in both the path and the query
-        // param) whenever this bundled fallback needs to move forward to a newer trusted_keys set.
+        /**
+         * Content-addressed pin (checksum 28fc9b63) via the resilient voting.valargroup.dev
+         * gateway — MOB-1678 hardening (analog of iOS zodl-ios#1996), bumped to static config
+         * version 2 for MOB-1806 (analog of iOS MOB-1801): the only schema change from v1 is
+         * `dynamic_config_url` (singular) becoming `dynamic_config_urls` (an array — currently
+         * the valargroup.dev URL plus a raw.githubusercontent.com mirror), which is Valar's
+         * defense against an ISP blocking `voting.valargroup.dev` outright; `trusted_keys` is
+         * unchanged. The gateway serves this exact content-addressed path (/pins/prod/<sha>/...)
+         * immutably, same as the previous raw.githubusercontent.com blob pin, but reads from
+         * GitHub normally and falls back to an automatically published Cloudflare copy during a
+         * GitHub outage — so a GitHub outage no longer blocks default-configured users from
+         * loading their voting trust anchor. This is NOT the mutable
+         * https://voting.valargroup.dev/prod/static-voting-config.json URL: that one gets
+         * republished on every new round/key rotation, which would break this bundled checksum
+         * for every default-configured user on the very next republish and brick voting until an
+         * app update. Bump the checksum (in both the path and the query param) whenever this
+         * bundled fallback needs to move forward to a newer trusted_keys set.
+         */
         const val BUNDLED_PINNED_SOURCE =
             "https://voting.valargroup.dev/pins/prod/" +
-                "fb62a56fae28debfdaa092f163cda0dab13295f87d25bbc4d0064d6ccdeb6943/static-voting-config.json" +
-                "?checksum=sha256:fb62a56fae28debfdaa092f163cda0dab13295f87d25bbc4d0064d6ccdeb6943"
+                "28fc9b631091ae8bc2f8635d8930489238ce144174cbd15a03efb0530b301ebe/v2-static-voting-config.json" +
+                "?checksum=sha256:28fc9b631091ae8bc2f8635d8930489238ce144174cbd15a03efb0530b301ebe"
+
+        /**
+         * Mirror of [BUNDLED_PINNED_SOURCE] on raw.githubusercontent.com, serving the identical
+         * content-addressed bytes (same checksum, both in the path segment and the query param).
+         * Trust here is carried entirely by the checksum, not by which origin served the bytes —
+         * this mirror is exactly as trustworthy as the gateway itself. It exists for networks
+         * where the voting.valargroup.dev domain is blocked outright (the gateway's own
+         * GitHub-outage fallback does not help if the gateway domain cannot be reached at all).
+         * Bump alongside [BUNDLED_PINNED_SOURCE] whenever the checksum moves forward.
+         */
+        const val BUNDLED_PINNED_SOURCE_MIRROR =
+            "https://raw.githubusercontent.com/valargroup/token-holder-voting-config/main/pins/prod/" +
+                "28fc9b631091ae8bc2f8635d8930489238ce144174cbd15a03efb0530b301ebe/v2-static-voting-config.json" +
+                "?checksum=sha256:28fc9b631091ae8bc2f8635d8930489238ce144174cbd15a03efb0530b301ebe"
+
+        /**
+         * The static-config trust anchor's full mirror list, canonical origin
+         * ([BUNDLED_PINNED_SOURCE]) first. Walked in order when no override is configured (or
+         * the configured override resolves to one of these entries), falling through to the
+         * next mirror on transport failure, a non-200 response, or a checksum mismatch.
+         */
+        val BUNDLED_PINNED_SOURCES: List<String> = listOf(BUNDLED_PINNED_SOURCE, BUNDLED_PINNED_SOURCE_MIRROR)
+
+        /** [BUNDLED_PINNED_SOURCES], pre-parsed. */
+        val BUNDLED_PINNED_CONFIG_SOURCES: List<PinnedConfigSource> by lazy {
+            BUNDLED_PINNED_SOURCES.map(PinnedConfigSource::parse)
+        }
+
+        /**
+         * Per-attempt request timeout for both the static and dynamic config fetch legs: a
+         * blackholed route must fail fast enough to fall through to the next mirror, rather
+         * than hanging for the client's session-wide default (two minutes).
+         */
+        const val CONFIG_REQUEST_TIMEOUT_MS = 15_000L
 
         fun decodeAndVerify(data: ByteArray, expectedSHA256: ByteArray?): StaticVotingConfig {
             if (expectedSHA256 != null) {
                 val actualSHA256 = MessageDigest.getInstance("SHA-256").digest(data)
                 if (!actualSHA256.contentEquals(expectedSHA256)) {
-                    throw VotingConfigException(
+                    throw StaticVotingConfigHashMismatchException(
                         "Static voting config hash mismatch: expected ${expectedSHA256.toLowerHex()}, " +
                             "got ${actualSHA256.toLowerHex()}"
                     )
@@ -91,6 +167,28 @@ data class StaticVotingConfig(
             config.validate()
             return config
         }
+    }
+}
+
+/**
+ * Thrown by [StaticVotingConfig.decodeAndVerify] specifically for a checksum mismatch against
+ * the pinned expected hash, as distinct from a decode or [StaticVotingConfig.validate] failure.
+ * A mirror walk (see `KtorVotingApiProvider`) must retry the next mirror on this exception but
+ * treat every other [VotingConfigException] from the same call as authoritative — decode or
+ * validation failing after the hash matched means the mirror served identical, malformed bytes,
+ * and every other pinned mirror serves the same bytes by definition.
+ */
+class StaticVotingConfigHashMismatchException(
+    message: String
+) : VotingConfigException(message)
+
+private fun requireHttpsScheme(
+    url: String,
+    fieldName: String
+) {
+    val scheme = runCatching { URI(url).scheme }.getOrNull()
+    if (!scheme.equals("https", ignoreCase = true)) {
+        throw VotingConfigException("$fieldName must use https; got $url")
     }
 }
 

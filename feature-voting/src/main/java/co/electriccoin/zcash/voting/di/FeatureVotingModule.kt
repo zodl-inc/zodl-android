@@ -29,11 +29,13 @@ import co.electriccoin.zcash.ui.common.usecase.ParseVotingKeystonePCZTUseCase
 import co.electriccoin.zcash.ui.common.usecase.PrepareVotingRoundUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshActiveVotingSessionUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshVotingRoundsUseCase
+import co.electriccoin.zcash.ui.common.usecase.RefreshVotingServiceConfigUseCase
 import co.electriccoin.zcash.ui.common.usecase.ResolveVotingRoundSessionUseCase
 import co.electriccoin.zcash.ui.common.usecase.SkipRemainingKeystoneBundlesUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitVotesUseCase
 import co.electriccoin.zcash.ui.common.usecase.TrackVotingSharesUseCase
 import co.electriccoin.zcash.ui.common.voting.VotingHomeHooks
+import co.electriccoin.zcash.ui.common.voting.VotingHomeMessageSource
 import co.electriccoin.zcash.ui.common.voting.VotingNavContributor
 import co.electriccoin.zcash.ui.common.voting.VotingSettingsEntry
 import co.electriccoin.zcash.ui.screen.voting.chainconfig.VoteChainConfigVM
@@ -47,6 +49,7 @@ import co.electriccoin.zcash.ui.screen.voting.scankeystone.viewmodel.ScanKeyston
 import co.electriccoin.zcash.ui.screen.voting.signkeystone.SignKeystoneVotingVM
 import co.electriccoin.zcash.ui.screen.voting.tallying.VoteTallyingVM
 import co.electriccoin.zcash.voting.VotingHomeHooksImpl
+import co.electriccoin.zcash.voting.VotingHomeMessageSourceImpl
 import co.electriccoin.zcash.voting.VotingNavContributorImpl
 import co.electriccoin.zcash.voting.VotingSettingsEntryImpl
 import co.electriccoin.zcash.work.VotingShareTrackingScheduler
@@ -69,11 +72,19 @@ val featureVotingModule =
         singleOf(::VotingHomeHooksImpl) bind VotingHomeHooks::class
         singleOf(::VotingSettingsEntryImpl) bind VotingSettingsEntry::class
         singleOf(::VotingNavContributorImpl) bind VotingNavContributor::class
+        singleOf(::VotingHomeMessageSourceImpl) bind VotingHomeMessageSource::class
 
         // Providers
         singleOf(::VotingCryptoClientImpl) bind VotingCryptoClient::class
         singleOf(::VotingHotkeySeedProviderImpl) bind VotingHotkeySeedProvider::class
-        singleOf(::KtorVotingApiProvider) bind VotingApiProvider::class
+        single<VotingApiProvider> {
+            KtorVotingApiProvider(
+                httpClientProvider = get(),
+                configurationRepository = get(),
+                votingChainConfigRepository = get(),
+                votingCryptoClient = get()
+            )
+        }
         singleOf(::HttpPirSnapshotResolver) bind PirSnapshotResolver::class
         singleOf(::VotingShareTrackingScheduler)
 
@@ -93,6 +104,7 @@ val featureVotingModule =
 
         // Use cases
         factoryOf(::RefreshActiveVotingSessionUseCase)
+        factoryOf(::RefreshVotingServiceConfigUseCase)
         // Explicit factory: the defaulted logEndorsementFailure lambda must use its Kotlin
         // default — factoryOf resolves ALL constructor params via Koin and dies on the Function1
         // (mirrors CheckMigrationRecoveryUseCase's registration in featureMigrationModule).

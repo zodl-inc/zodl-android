@@ -13,6 +13,7 @@ import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
+import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
 import co.electriccoin.zcash.ui.common.model.voting.voteBadgeInfo
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
@@ -223,10 +224,19 @@ class VoteProposalListVM(
             icon = R.drawable.ic_reset_zashi_warning,
             title = stringRes(R.string.coinVote_error_configUnavailableTitle),
             message =
-                rawMessage
-                    .takeIf { it.isNotBlank() }
-                    ?.let(VotingErrorMapper::toUserFriendlyMessage)
-                    ?: stringRes(R.string.vote_error_voting_unavailable_message),
+                when {
+                    throwable is VotingSubmissionRecoverableException -> {
+                        VotingErrorMapper.toUserFriendlyMessage(throwable)
+                    }
+
+                    rawMessage.isNotBlank() -> {
+                        VotingErrorMapper.toUserFriendlyMessage(rawMessage)
+                    }
+
+                    else -> {
+                        stringRes(R.string.vote_error_voting_unavailable_message)
+                    }
+                },
             primaryAction =
                 ButtonState(
                     text = stringRes(R.string.coinVote_common_tryAgain),

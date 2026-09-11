@@ -444,6 +444,8 @@
     <string name="crash_report_detail_item_title_1">What is shared?</string>
     <string name="home_message_crash_reporting_title">Help improve Zodl</string>
     <string name="home_message_crash_reporting_subtitle">Allow sharing crash reports</string>
+    <string name="home_message_coinholder_polling_subtitle" tools:ignore="MissingTranslation">Shape the future of the Zcash network.</string>
+    <string name="home_message_coinholder_polling_button" tools:ignore="MissingTranslation">Start</string>
     <string name="balances_spendableBalance_title">Spendable Balance</string>
     <string name="balances_everythingDone">All your funds are shielded and spendable.</string>
     <string name="balances_infoPending">Pending receipt of change from a prior transaction.</string>
@@ -741,6 +743,11 @@
         code: <xliff:g example="123" id="code">%3$d</xliff:g>,
         description: <xliff:g example="Network unreachable" id="desc">%4$s</xliff:g>
     </string>
+    <string name="send_confirmation_report_status_presubmission_failure" formatted="true">Failure before transaction
+        submission (no gRPC call was made):
+        <xliff:g example="IOException" id="type">%1$s</xliff:g>:
+        <xliff:g example="Failed to download Sapling parameters" id="detail">%2$s</xliff:g>
+    </string>
     <string name="send_confirmation_multiple_trx_failure_report_unable_open_email">Unable to launch email app.</string>
     <string name="send_confirmation_multiple_trx_failure_copy_tag">Transaction IDs</string>
     <string name="swapAndPay_successSwapInfo">You successfully initiated a swap.\nFollow its status on the transaction screen.</string>
@@ -957,6 +964,31 @@
     <string name="reportSwap_msg">Tapping the button below will send details about this swap (like the deposit address and target asset) to the Zodl support team so they can help resolve your issue. The transaction info is included automatically.</string>
     <string name="transaction_detail_support_email_subject">Swap Transaction Issue</string>
     <string name="transaction_detail_support_email_body">Please describe your issue here:\n\n\n\nSwap Details:\nDeposit Address: %1$s\nSource Asset: %2$s\nTarget Asset: %3$s</string>
+    <string name="swap_mismatch_title">Swap details didn\’t match</string>
+    <string name="swap_mismatch_msg_1">We received a quote back from the swap provider, however, it didn\’t match some details you provided. We make this check to ensure your swap is what you expect.</string>
+    <string name="swap_mismatch_msg_2">We\’d appreciate you reporting this to us so we can investigate it with the swap provider.</string>
+    <string name="swap_mismatch_msg_3">Reported or not, you can also try again. If the details match, you won\’t see this screen and you\’ll be able to proceed.</string>
+    <string name="swap_mismatch_goBack">Go back</string>
+    <string name="swap_mismatch_support_email_subject">Zodl Swap: API mismatch</string>
+    <string name="swap_mismatch_support_email_body">Zodl detected the following error in the API response from the swap provider. Providing these details allows us to raise it with them to investigate. We won\’t relay your personal details to the swap provider. You can send this as-is, or include a note to us. Thanks in advance.\n\nSwap provider: %1$s\nSwap type: %2$s\nMismatch type: %3$s\nQuote ID: %4$s</string>
+    <string name="swap_mismatch_mode_swap">Swap</string>
+    <string name="swap_mismatch_mode_crosspay">CrossPay</string>
+    <string name="swap_mismatch_mode_swapIntoZec">Swap into ZEC</string>
+    <string name="swap_mismatch_type_recipientAddress">Recipient address</string>
+    <string name="swap_mismatch_type_refundAddress">Refund address</string>
+    <string name="swap_mismatch_type_originAsset">Origin asset</string>
+    <string name="swap_mismatch_type_destinationAsset">Destination asset</string>
+    <string name="swap_mismatch_type_swapType">Swap type</string>
+    <string name="swap_mismatch_type_slippageTolerance">Slippage tolerance</string>
+    <string name="swap_mismatch_type_inputAmount">Input amount</string>
+    <string name="swap_mismatch_type_outputAmount">Output amount</string>
+    <string name="swap_mismatch_type_requestedAmount">Requested amount</string>
+    <string name="swap_mismatch_type_slippageExceeded">Slippage exceeded</string>
+    <string name="swap_mismatch_type_nonPositiveAmount">Non-positive amount</string>
+    <string name="swap_mismatch_provider_near">NEAR</string>
+    <string name="swap_mismatch_quoteId_unknown">unknown</string>
+    <string name="swap_mismatch_swapType_format">%1$s - %2$s &gt; %3$s</string>
+    <string name="swap_mismatch_asset_format">%1$s (%2$s)</string>
     <string name="deposits_info">Deposits may take several minutes to confirm.</string>
     <string name="swapAndPay_status_incompleteDeposit">Incomplete deposit</string>
     <string name="swapAndPay_status_pending">Pending</string>
@@ -1135,6 +1167,7 @@ Your vote can no longer be submitted.</string>
     <string name="vote_confirm_cta_submitting" tools:ignore="MissingTranslation">Submitting vote %1$d of %2$d</string>
     <string name="coinVote_store_submissionAuthorizingVote" tools:ignore="MissingTranslation">Authorizing vote...</string>
     <string name="coinVote_confirmSubmission_progressSubmittingVoteCount" tools:ignore="MissingTranslation">Submitting vote %1$d of %2$d...</string>
+    <string name="coinVote_confirmSubmission_submittingExplainerNote" tools:ignore="MissingTranslation">This can take a few minutes. Wallets with more voting weight take longer to process.</string>
     <string name="coinVote_results_percentValue" tools:ignore="MissingTranslation">%1$d%%</string>
     <string name="coinVote_common_submission" tools:ignore="MissingTranslation">Submission</string>
     <string name="coinVote_confirmSubmission_headerTitleIdle" tools:ignore="MissingTranslation">Confirm &amp; Submit</string>
@@ -1229,6 +1262,11 @@ Your vote can no longer be submitted.</string>
     <string name="coinVote_store_userError_noTreeState" tools:ignore="MissingTranslation">The voting commitment tree is not available yet. The voting round may not have started or the chain has not processed any commitments.</string>
     <string name="coinVote_store_userError_http5" tools:ignore="MissingTranslation">The voting server is temporarily unavailable. Please try again shortly.</string>
     <string name="coinVote_store_userError_lightwalletdUnavailable" tools:ignore="MissingTranslation">Unable to reach the Zcash lightwalletd server. Please check your internet connection or try switching to a different server in Settings.</string>
+    <string name="coinVote_store_userError_conflictingSelection" tools:ignore="MissingTranslation">Your choice for a proposal was locked by an earlier submission attempt and can\'t be changed. Resubmit with your original selection to finish voting.</string>
+    <string name="coinVote_store_userError_omittedCommittedProposal" tools:ignore="MissingTranslation">A proposal from an earlier submission attempt still needs to finish. Resubmit with all of your original selections to finish voting.</string>
+    <string name="coinVote_store_userError_recoveredVoteMismatch" tools:ignore="MissingTranslation">The network reported an existing vote for this wallet that does not match this submission. If you voted from another device, check that device\'s voting status.</string>
+    <string name="coinVote_store_userError_recoveredVoteUnverified" tools:ignore="MissingTranslation">An earlier vote transaction may already be on the network, but it could not be verified with the vote servers. Please try again in a moment.</string>
+    <string name="coinVote_store_userError_roundNotPrepared" tools:ignore="MissingTranslation">This voting round\'s prepared data is missing on this device. Reopen the round to prepare it again.</string>
     <string name="vote_error_mapper_pir_connection" tools:ignore="MissingTranslation">Could not connect to the privacy-preserving vote server. Please check your connection and try again.</string>
     <string name="vote_error_mapper_insufficient_funds" tools:ignore="MissingTranslation">Insufficient funds to authorize your vote. A small fee is required.</string>
     <string name="coinVote_delegation_insufficientSnapshotBalance" tools:ignore="MissingTranslation">Your shielded balance at the snapshot (%1$s ZEC) is below the minimum required to vote (%2$s ZEC).</string>
@@ -1358,6 +1396,11 @@ Your vote can no longer be submitted.</string>
     <string name="migrationComplete_migrateAnywayFailureRejected">The network rejected this transaction. Please contact support.</string>
     <string name="migrationComplete_migrateAnywayFailureError">Something went wrong while sending. Please contact support.</string>
     <string name="migrationComplete_migrateAnywayFailurePartial">Some but not all of this transaction\'s parts were sent. Please contact support.</string>
+    <string name="migrationComplete_residueTitle">You’ve moved to Ironwood</string>
+    <string name="migrationComplete_residueSubtitle">A small balance is still sitting in Orchard.</string>
+    <string name="migrationComplete_inIronwoodLabel">In Ironwood</string>
+    <string name="migrationComplete_leftInOrchardLabel">Left in Orchard</string>
+    <string name="migrationComplete_residueRecommendationBody">%1$s is still in Orchard. Moving an amount this specific would link your Ironwood funds back to your Orchard history. We recommend locking it instead.</string>
 
     <string name="migrationNotifPermission_title">Allow Notifications</string>
     <string name="migrationNotifPermission_subtitle">If a scheduled transfer is missed or a background submission fails, we can send you a local notification and prompt you to open Zodl. Get notified about:</string>
@@ -1485,5 +1528,7 @@ Your vote can no longer be submitted.</string>
     <string name="migrationHome_readyToSendTitle">Transfer Ready</string>
     <string name="migrationHome_attentionTitle">Migration plan needs update</string>
     <string name="migrationHome_defaultSubtitle">Move your funds to Ironwood.</string>
+    <string name="migrationHome_residueTitle">%1$s left in Orchard</string>
+    <string name="migrationHome_residueSubtitle">Tap to decide what happens to it</string>
 
 </resources>

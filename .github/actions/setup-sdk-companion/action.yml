@@ -86,4 +86,4 @@ runs:
         # since this env var reaches only the companion build's tooling classpath
         # resolution, not the app's own dependency locking (if any).
         echo "ORG_GRADLE_PROJECT_ZCASH_IS_DEPENDENCY_LOCKING_ENABLED=false" >> "$GITHUB_ENV"
-        echo "::notice::Building against zodl-android-wallet-sdk@${{ steps.pin.outputs.commit }} (SDK_COMMIT_PIN), not the published Maven artifact."
+        echo "::notice::Building against zodl-inc/zodl-android-wallet-sdk@${{ steps.pin.outputs.commit }} (SDK_COMMIT_PIN), not the published Maven artifact."

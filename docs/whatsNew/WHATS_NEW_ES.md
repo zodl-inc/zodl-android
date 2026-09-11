@@ -14,6 +14,62 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.11.0 (2653)] - 2026-09-08
+
+### Añadido:
+
+- Agregamos una opción de Tema de la App, con un tema oscuro negro puro para pantallas OLED.
+
+### Cambiado:
+
+- Hicimos que el cambio automático de servidor sea más estable y confiable.
+- Realizamos varias mejoras de seguridad y privacidad.
+
+### Corregido:
+
+- Corregimos un problema por el cual la app podía indicar saldo insuficiente aunque tuvieras fondos.
+- Corregimos un problema por el cual la app podía quedarse cargando tras actualizar desde una versión antigua.
+
+## [3.10.2 (2569)] - 2026-08-27
+
+### Añadido:
+
+- Añadimos actualización manual (pull-to-refresh) en Coinholder Polling.
+
+### Cambiado:
+
+- Coinholder Polling es más rápido y fiable en Tor: las votaciones cargan más rápido y el envío de tu voto ya no se bloquea con un servidor lento.
+- Coinholder Polling resiste mejor las interrupciones del servicio gracias a fuentes de respaldo.
+
+### Corregido:
+
+- Corregimos bloqueos indefinidos en Coinholder Polling cuando un servidor de votación no estaba disponible.
+
+## [3.10.1 (2512)] - 2026-08-25
+
+### Añadido:
+
+- Añadimos un banner en la pantalla de inicio y una pantalla de seguimiento para un pequeño monto de ZEC que puede quedar en Orchard después de migrar a Ironwood, para que decidas si bloquearlo o moverlo.
+
+### Corregido:
+
+- Corregimos la migración con una billetera Keystone: ahora las migraciones se dividen correctamente en rondas de firma.
+
+## [3.10.0 (2475)] - 2026-08-20
+
+### Añadido:
+
+- Recuperamos Coinholder Polling para que puedas participar en las encuestas de la comunidad Zcash desde tu billetera.
+
+### Cambiado:
+
+- Actualizamos las encuestas para que funcionen con tus fondos migrados a Ironwood.
+- La carga de encuestas es más confiable ante fallas del servicio.
+
+### Corregido:
+
+- Corregimos errores al firmar y aceleramos la preparación de firmas con Keystone.
+
 ## [3.9.3 (2393)] - 2026-08-17
 
 ### Cambiado:

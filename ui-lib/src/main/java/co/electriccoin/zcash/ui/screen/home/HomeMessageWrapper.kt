@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.component.HorizontalSpacer
 import co.electriccoin.zcash.ui.design.component.LocalZashiButtonColors
@@ -47,12 +48,16 @@ fun HomeMessageWrapper(
     contentColor: Color = ZashiLightColors.Utility.Purple.utilityPurple50,
     subtitleColor: Color = ZashiLightColors.Utility.Purple.utilityPurple200,
     progressTrackColor: Color = ZashiLightColors.Utility.Purple.utilityPurple400,
+    contentHorizontalPadding: Dp = 16.dp,
+    contentVerticalPadding: Dp = 18.dp,
 ) {
     Container(
         contentPadding = contentPadding,
         onClick = onClick,
         innerModifier = innerModifier,
         backgroundBrush = backgroundBrush,
+        contentHorizontalPadding = contentHorizontalPadding,
+        contentVerticalPadding = contentVerticalPadding,
     ) {
         CompositionLocalProvider(
             LocalContentColor provides contentColor,
@@ -101,13 +106,15 @@ fun HomeMessageWrapper(
     }
 }
 
-@Suppress("ModifierNaming", "ModifierWithoutDefault")
+@Suppress("ModifierNaming", "ModifierWithoutDefault", "LongParameterList")
 @Composable
 private fun Container(
     innerModifier: Modifier,
     contentPadding: PaddingValues,
     onClick: (() -> Unit)?,
     backgroundBrush: Brush,
+    contentHorizontalPadding: Dp,
+    contentVerticalPadding: Dp,
     content: @Composable (RowScope.() -> Unit),
 ) {
     val clickModifier = if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier
@@ -119,8 +126,8 @@ private fun Container(
         Row(
             modifier =
                 innerModifier.padding(
-                    horizontal = 16.dp,
-                    vertical = 18.dp
+                    horizontal = contentHorizontalPadding,
+                    vertical = contentVerticalPadding
                 ),
             verticalAlignment = Alignment.CenterVertically,
             content = content

@@ -174,6 +174,8 @@ import co.electriccoin.zcash.ui.screen.swap.info.SwapRefundAddressInfoArgs
 import co.electriccoin.zcash.ui.screen.swap.info.SwapRefundAddressInfoScreen
 import co.electriccoin.zcash.ui.screen.swap.lock.EphemeralLockArgs
 import co.electriccoin.zcash.ui.screen.swap.lock.EphemeralLockScreen
+import co.electriccoin.zcash.ui.screen.swap.mismatch.SwapQuoteMismatchArgs
+import co.electriccoin.zcash.ui.screen.swap.mismatch.SwapQuoteMismatchScreen
 import co.electriccoin.zcash.ui.screen.swap.orconfirmation.ORSwapConfirmationArgs
 import co.electriccoin.zcash.ui.screen.swap.orconfirmation.ORSwapConfirmationScreen
 import co.electriccoin.zcash.ui.screen.swap.picker.SwapAssetPickerArgs
@@ -188,6 +190,10 @@ import co.electriccoin.zcash.ui.screen.taxexport.AndroidTaxExport
 import co.electriccoin.zcash.ui.screen.taxexport.TaxExport
 import co.electriccoin.zcash.ui.screen.texunsupported.AndroidTEXUnsupported
 import co.electriccoin.zcash.ui.screen.texunsupported.TEXUnsupportedArgs
+import co.electriccoin.zcash.ui.screen.theme.darklook.ThemeDarkLookArgs
+import co.electriccoin.zcash.ui.screen.theme.darklook.ThemeDarkLookScreen
+import co.electriccoin.zcash.ui.screen.theme.settings.ThemeSettingsArgs
+import co.electriccoin.zcash.ui.screen.theme.settings.ThemeSettingsScreen
 import co.electriccoin.zcash.ui.screen.tor.optin.TorOptInArgs
 import co.electriccoin.zcash.ui.screen.tor.optin.TorOptInScreen
 import co.electriccoin.zcash.ui.screen.tor.settings.TorSettingsArgs
@@ -318,6 +324,8 @@ fun NavGraphBuilder.walletNavGraph(
         composable<AddGenericABContactArgs> { AddGenericABContactScreen(it.toRoute()) }
         composable<UpdateGenericABContactArgs> { UpdateGenericABContactScreen(it.toRoute()) }
         composable<TorSettingsArgs> { TorSettingsScreen() }
+        composable<ThemeSettingsArgs> { ThemeSettingsScreen() }
+        dialogComposable<ThemeDarkLookArgs> { ThemeDarkLookScreen(it.toRoute()) }
         composable<TorOptInArgs> { TorOptInScreen() }
         dialogComposable<ShieldedAddressInfoArgs> { ShieldedAddressInfoScreen() }
         dialogComposable<TransparentAddressInfoArgs> { TransparentAddressInfoScreen() }
@@ -328,6 +336,7 @@ fun NavGraphBuilder.walletNavGraph(
         composable<SwapDetailArgs> { SwapDetailScreen(it.toRoute()) }
         dialogComposable<SwapRefundAddressInfoArgs> { SwapRefundAddressInfoScreen(it.toRoute()) }
         dialogComposable<SwapSupportArgs> { SwapSupportScreen(it.toRoute()) }
+        dialogComposable<SwapQuoteMismatchArgs> { SwapQuoteMismatchScreen(it.toRoute()) }
         dialogComposable<EphemeralHotfixArgs> { EphemeralHotfixScreen(it.toRoute()) }
         dialogComposable<EnhancementHotfixArgs> { EnhancementHotfixScreen() }
         dialogComposable<EphemeralLockArgs> { EphemeralLockScreen() }

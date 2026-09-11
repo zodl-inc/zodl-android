@@ -113,10 +113,17 @@ internal fun VoteSubmissionBottomSection(state: VoteConfirmSubmissionState) {
                     null
                 }
             }
+        val progressNote: StringResource? =
+            if (progressTitle != null) {
+                stringRes(R.string.coinVote_confirmSubmission_submittingExplainerNote)
+            } else {
+                null
+            }
 
         if (progressTitle != null) {
             VoteSubmissionProgressCard(
                 title = progressTitle,
+                note = progressNote,
                 progress = submissionProgress,
                 ctaButton = state.ctaButton
             )
@@ -158,6 +165,7 @@ private fun VoteSubmissionProgressCard(
     title: StringResource,
     progress: Float,
     ctaButton: ButtonState,
+    note: StringResource? = null,
 ) {
     val animatedProgress by animateFloatAsState(
         targetValue = progress,
@@ -185,6 +193,14 @@ private fun VoteSubmissionProgressCard(
                 )
                 VerticalSpacer(12.dp)
                 ZashiLinearProgressIndicator(progress = animatedProgress)
+                if (note != null) {
+                    VerticalSpacer(12.dp)
+                    Text(
+                        text = note.getValue(),
+                        style = ZashiTypography.textXs,
+                        color = ZashiColors.Text.textTertiary,
+                    )
+                }
             }
             HorizontalDivider(color = ZashiColors.Surfaces.strokeSecondary)
             ZashiButton(

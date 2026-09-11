@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.common.provider
 import co.electriccoin.zcash.ui.common.model.voting.VotingConfigException
 import io.ktor.client.plugins.ResponseException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 
 internal class VotingServerFailoverException(
     val path: String,
@@ -32,10 +33,21 @@ internal suspend fun <T> withVoteServerFailover(
     for (serverUrl in normalizedServerUrls) {
         try {
             return operation(serverUrl)
-        } catch (exception: Exception) {
-            if (exception is CancellationException) {
+        } catch (exception: TimeoutCancellationException) {
+            // MOB-1811: a per-server attempt is now bounded by the caller wrapping [operation]
+            // in withTorRequestTimeoutFallback (VotingApiProvider.kt) to stop a vote server
+            // that's dropping - not refusing - Tor connections from hanging this whole failover
+            // walk. TimeoutCancellationException EXTENDS CancellationException, so it MUST be
+            // caught here, before the plain CancellationException clause below, or a deliberate
+            // per-attempt timeout would be misread as genuine outer cancellation and abort the
+            // walk instead of falling through to the next server.
+            lastError = exception
+            if (!shouldTryNext(exception)) {
                 throw exception
             }
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
             lastError = exception
             if (!shouldTryNext(exception)) {
                 throw exception
@@ -52,9 +64,17 @@ internal suspend fun <T> withVoteServerFailover(
 
 internal fun shouldTryNextVoteServer(throwable: Throwable): Boolean =
     when (throwable) {
+        // MOB-1811: must precede the plain CancellationException branch below - a
+        // TimeoutCancellationException is this attempt's own bounded deadline firing, not a
+        // reason to give up on the remaining servers.
+        is TimeoutCancellationException -> true
+
         is CancellationException -> false
+
         is VotingConfigException -> false
+
         is ResponseException -> throwable.response.status.value >= HTTP_BAD_REQUEST
+
         else -> true
     }
 

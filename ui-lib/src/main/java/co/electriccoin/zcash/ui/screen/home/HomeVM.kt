@@ -17,6 +17,7 @@ import co.electriccoin.zcash.ui.common.usecase.NavigateToNearPayUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToReceiveUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSendUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToSwapUseCase
+import co.electriccoin.zcash.ui.common.usecase.NavigateToVotingUseCase
 import co.electriccoin.zcash.ui.common.usecase.ShieldFundsFromMessageUseCase
 import co.electriccoin.zcash.ui.common.voting.VotingHomeHooks
 import co.electriccoin.zcash.ui.design.component.BigIconButtonState
@@ -27,6 +28,7 @@ import co.electriccoin.zcash.ui.screen.exchangerate.optin.ExchangeRateOptInArgs
 import co.electriccoin.zcash.ui.screen.home.backup.SeedBackupInfo
 import co.electriccoin.zcash.ui.screen.home.backup.WalletBackupDetail
 import co.electriccoin.zcash.ui.screen.home.backup.WalletBackupMessageState
+import co.electriccoin.zcash.ui.screen.home.coinholderpolling.CoinholderPollingMessageState
 import co.electriccoin.zcash.ui.screen.home.currency.EnableCurrencyConversionMessageState
 import co.electriccoin.zcash.ui.screen.home.disconnected.WalletDisconnectedInfo
 import co.electriccoin.zcash.ui.screen.home.disconnected.WalletDisconnectedMessageState
@@ -69,6 +71,7 @@ class HomeVM(
     private val navigateToSend: NavigateToSendUseCase,
     private val navigateToNearPay: NavigateToNearPayUseCase,
     private val navigateToSwap: NavigateToSwapUseCase,
+    private val navigateToVoting: NavigateToVotingUseCase,
     private val votingHomeHooks: VotingHomeHooks,
     private val migrationHomeMessageSource: MigrationHomeMessageSource,
     private val homeMessageMapper: HomeMessageMapper,
@@ -205,6 +208,7 @@ class HomeVM(
         isSyncComplete = isSyncComplete
     )
 
+    @Suppress("CyclomaticComplexMethod")
     private fun createMessageState(data: HomeMessageData?, isShieldFundsInfoEnabled: Boolean) =
         when (data) {
             is HomeMessageData.Backup -> {
@@ -231,6 +235,13 @@ class HomeVM(
                 EnableTorMessageState(
                     onClick = ::onEnableTorClick,
                     onButtonClick = ::onEnableTorClick
+                )
+            }
+
+            HomeMessageData.CoinholderPolling -> {
+                CoinholderPollingMessageState(
+                    onClick = ::onCoinholderPollingMessageClick,
+                    onButtonClick = ::onCoinholderPollingMessageClick
                 )
             }
 
@@ -317,6 +328,8 @@ class HomeVM(
     private fun onWalletResyncingMessageClick() = navigationRouter.forward(WalletResyncingInfo)
 
     private fun onEnableTorClick() = navigationRouter.forward(TorOptInArgs)
+
+    private fun onCoinholderPollingMessageClick() = viewModelScope.launch { navigateToVoting() }
 
     private fun onEnableCurrencyConversionClick() = navigationRouter.forward(ExchangeRateOptInArgs)
 

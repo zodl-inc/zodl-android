@@ -167,10 +167,30 @@ private fun RadioButtonIndicator(
     checkedContent: @Composable () -> Unit,
     uncheckedContent: @Composable () -> Unit
 ) {
+    ZashiRadioIndicator(
+        isChecked = state.isChecked,
+        checkedContent = checkedContent,
+        uncheckedContent = uncheckedContent
+    )
+}
+
+/**
+ * The animated checked/unchecked layering shared by every radio-style indicator in the design system:
+ * [uncheckedContent] is always drawn, with [checkedContent] scaling in/out on top of it as [isChecked]
+ * flips. Both are laid out at the same origin and stay stacked, so [checkedContent] must match
+ * [uncheckedContent]'s size and geometry - a filled circle covering it, or a stroked ring drawn at the very
+ * same radius. Opacity is not required; a transparent [checkedContent] only has to line up.
+ */
+@Composable
+fun ZashiRadioIndicator(
+    isChecked: Boolean,
+    checkedContent: @Composable () -> Unit,
+    uncheckedContent: @Composable () -> Unit
+) {
     Box {
         uncheckedContent()
         AnimatedVisibility(
-            visible = state.isChecked,
+            visible = isChecked,
             enter = scaleIn(spring(stiffness = Spring.StiffnessMedium, dampingRatio = Spring.DampingRatioMediumBouncy)),
             exit = scaleOut(spring(stiffness = Spring.StiffnessHigh, dampingRatio = Spring.DampingRatioMediumBouncy))
         ) {

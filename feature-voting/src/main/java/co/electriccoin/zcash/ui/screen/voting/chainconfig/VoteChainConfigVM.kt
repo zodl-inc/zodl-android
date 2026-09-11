@@ -297,7 +297,7 @@ class VoteChainConfigVM(
         current: VotingChainConfigState,
         editingId: String?
     ): StringResource? {
-        if (parsedSource == PinnedConfigSource.parse(StaticVotingConfig.BUNDLED_PINNED_SOURCE)) {
+        if (parsedSource.isBundledDefaultUrl()) {
             return stringRes(R.string.vote_chain_config_error_duplicate_default)
         }
 
@@ -419,8 +419,14 @@ private fun compactSource(raw: String): String =
     runCatching { PinnedConfigSource.parse(raw).url }
         .getOrDefault(raw)
 
-private fun PinnedConfigSource.isBundledDefaultUrl(): Boolean =
-    url == PinnedConfigSource.parse(StaticVotingConfig.BUNDLED_PINNED_SOURCE).url
+/**
+ * A pinned source counts as the bundled default when it is byte-equal (URL and checksum) to
+ * any of [StaticVotingConfig.BUNDLED_PINNED_CONFIG_SOURCES] — canonical origin or mirror. A
+ * matching URL with a *different* checksum is a deliberately re-pinned custom source and must
+ * stay custom, not silently collapse to Default.
+ */
+internal fun PinnedConfigSource.isBundledDefaultUrl(): Boolean =
+    this in StaticVotingConfig.BUNDLED_PINNED_CONFIG_SOURCES
 
 private fun EditorDraft.canSave(): Boolean =
     name.trim().length <= MAX_CUSTOM_CHAIN_NAME_LENGTH &&
