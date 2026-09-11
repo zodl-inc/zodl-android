@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.common.provider
 
 import android.util.Log
 import co.electriccoin.zcash.ui.BuildConfig
+import cash.z.ecc.android.sdk.lightwallet.client.OhttpHttpClient
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngineConfig
@@ -23,6 +24,13 @@ interface HttpClientProvider {
      * requests that must never touch clearnet (e.g. exchange-rate fetching, MOB-1378).
      */
     suspend fun createTor(): HttpClient
+
+    /**
+     * Returns an [OhttpHttpClient] for routing requests through the OHTTP gateway (Tor OFF path).
+     * The returned client can handle any URL whose hostname has a configured proxy mapping
+     * (NEAR 1click, voting config, Sapling params). Use [createTor] for Tor ON.
+     */
+    fun createOhttp(): OhttpHttpClient = OhttpHttpClient()
 
     suspend fun supportsKtorTimeouts(): Boolean = true
 }

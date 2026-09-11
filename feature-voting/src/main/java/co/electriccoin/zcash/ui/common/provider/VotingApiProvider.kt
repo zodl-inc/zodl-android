@@ -39,6 +39,7 @@ import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.votingLog
 import co.electriccoin.zcash.ui.configuration.ConfigurationEntries
+import cash.z.ecc.android.sdk.lightwallet.client.OhttpHttpClient
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpRequestRetry
@@ -652,8 +653,34 @@ class KtorVotingApiProvider(
     private suspend fun HttpClient.fetchStaticConfigBytes(
         url: String,
         supportsKtorTimeouts: Boolean
-    ): ByteArray =
-        try {
+    ): ByteArray {
+        // Privacy routing for the static voting config fetch:
+        //   Tor OFF: route through the OHTTP gateway (voting.valargroup.dev -> vote.zodl.com proxy),
+        //            so the config host never sees the device IP. The URL is content-addressed and
+        //            immutable, so the gateway cache makes repeat fetches essentially free.
+        //   Tor ON:  canHandle() is false (proxy map is only consulted when Tor is off) and the
+        //            request falls through to this Ktor client, which is already Tor-backed.
+        // Failures are surfaced as StaticVotingConfigFetchFailedException so the mirror walk in
+        // fetchStaticConfigWalk() treats them as retryable and moves on to the next source.
+        val ohttpClient = httpClientProvider.createOhttp()
+        if (ohttpClient.canHandle(url)) {
+            val response =
+                try {
+                    ohttpClient.execute(OhttpHttpClient.Request(url = url))
+                } catch (exception: Exception) {
+                    exception.rethrowIfCancellation()
+                    throw StaticVotingConfigFetchFailedException(
+                        "Static voting config fetch via OHTTP failed: ${exception.message ?: exception::class.simpleName}"
+                    )
+                }
+            if (response.status !in 200..299) {
+                throw StaticVotingConfigFetchFailedException(
+                    "Static voting config fetch via OHTTP failed: HTTP ${response.status}"
+                )
+            }
+            return response.body
+        }
+        return try {
             withTorRequestTimeoutFallback(supportsKtorTimeouts, configRequestTimeoutMillis) {
                 get(url) {
                     noCache()
@@ -675,6 +702,7 @@ class KtorVotingApiProvider(
                 "Static voting config fetch failed: ${exception.message ?: exception::class.simpleName}"
             )
         }
+    }
 
     private suspend fun fetchTrustedConfig(sources: List<PinnedConfigSource>): ResolvedVotingConfig {
         val staticConfig = fetchStaticConfig(sources)
