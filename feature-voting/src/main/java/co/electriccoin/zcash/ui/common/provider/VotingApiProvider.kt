@@ -881,7 +881,7 @@ class KtorVotingApiProvider(
      * Preserves failover semantics: OHTTP transport failures and non-2xx responses are thrown
      * as exceptions so the caller's failover logic can try the next server.
      */
-    private suspend inline fun <reified T> voteServerGet(
+    private suspend inline fun <reified T> HttpClient.voteServerGet(
         url: String,
         configureRequest: HttpRequestBuilder.() -> Unit = {}
     ): T {
@@ -907,7 +907,7 @@ class KtorVotingApiProvider(
      * Preserves failover semantics: OHTTP transport failures and non-2xx responses are thrown
      * as exceptions so the caller's failover logic can try the next server.
      */
-    private suspend fun voteServerPost(
+    private suspend fun HttpClient.voteServerPost(
         url: String,
         body: String
     ): String {
