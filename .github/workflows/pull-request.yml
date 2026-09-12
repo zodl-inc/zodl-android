@@ -164,6 +164,8 @@ jobs:
       - name: Set up companion SDK build (if SDK_COMMIT_PIN is set)
         timeout-minutes: 30
         uses: ./.github/actions/setup-sdk-companion
+        with:
+          sdk-token: ${{ secrets.SDK_COMPANION_TOKEN || secrets.ZODL_QA }}
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1
@@ -213,6 +215,8 @@ jobs:
       - name: Set up companion SDK build (if SDK_COMMIT_PIN is set)
         timeout-minutes: 30
         uses: ./.github/actions/setup-sdk-companion
+        with:
+          sdk-token: ${{ secrets.SDK_COMPANION_TOKEN || secrets.ZODL_QA }}
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1
@@ -289,6 +293,8 @@ jobs:
       - name: Set up companion SDK build (if SDK_COMMIT_PIN is set)
         timeout-minutes: 30
         uses: ./.github/actions/setup-sdk-companion
+        with:
+          sdk-token: ${{ secrets.SDK_COMPANION_TOKEN || secrets.ZODL_QA }}
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1
@@ -443,6 +449,8 @@ jobs:
       - name: Set up companion SDK build (if SDK_COMMIT_PIN is set)
         timeout-minutes: 30
         uses: ./.github/actions/setup-sdk-companion
+        with:
+          sdk-token: ${{ secrets.SDK_COMPANION_TOKEN || secrets.ZODL_QA }}
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1
