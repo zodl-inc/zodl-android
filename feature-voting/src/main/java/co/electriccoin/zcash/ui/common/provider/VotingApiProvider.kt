@@ -887,11 +887,13 @@ class KtorVotingApiProvider(
                         "Vote server GET via OHTTP failed for $url: ${exception::class.simpleName ?: "unknown error"}"
                     )
                 }
+            Twig.debug { "OHTTP GET $url -> HTTP ${response.status} (${response.body.size} bytes)" }
             if (response.status !in OHTTP_HTTP_SUCCESS) {
                 error("Vote server GET via OHTTP returned HTTP ${response.status} for $url")
             }
             return VOTE_SERVER_JSON.decodeFromString(response.body.decodeToString())
         }
+        Twig.debug { "Vote server GET $url via Tor/direct client (tor=${httpClientProvider.isTorEnabled()})" }
         return get(url) { configureRequest() }.body()
     }
 
@@ -922,6 +924,7 @@ class KtorVotingApiProvider(
                         "Vote server POST via OHTTP failed for $url: ${exception::class.simpleName ?: "unknown error"}"
                     )
                 }
+            Twig.debug { "OHTTP POST $url -> HTTP ${response.status} (${response.body.size} bytes)" }
             // 422 carries a JSON error body the caller parses (same as the Tor path below).
             val accepted =
                 response.status in OHTTP_HTTP_SUCCESS ||
@@ -932,6 +935,7 @@ class KtorVotingApiProvider(
                 error("Vote server POST via OHTTP returned HTTP ${response.status} for $url")
             }
         }
+        Twig.debug { "Vote server POST $url via Tor/direct client (tor=${httpClientProvider.isTorEnabled()})" }
         return try {
             post(url) {
                 setBody(TextContent(body, ContentType.Application.Json))
