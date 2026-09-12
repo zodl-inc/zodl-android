@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.provider
 
 import co.electriccoin.lightwallet.client.OhttpHttpClient
+import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.model.near.ErrorDto
 import co.electriccoin.zcash.ui.common.model.near.NearTokenDto
 import co.electriccoin.zcash.ui.common.model.near.QuoteRequest
@@ -18,6 +19,7 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
+import io.ktor.serialization.kotlinx.json.DefaultJson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -127,14 +129,20 @@ class KtorNearApiProvider(
             if (!httpClientProvider.isTorEnabled() && ohttpClient.canHandle(ohttpUrl)) {
                 // Tor OFF path: route through OHTTP gateway
                 val response =
-                    ohttpClient.execute(
-                        OhttpHttpClient.Request(
-                            url = ohttpUrl,
-                            method = ohttpMethod,
-                            headers = ohttpHeaders,
-                            body = ohttpBodyJson?.toByteArray(Charsets.UTF_8) ?: ByteArray(0)
+                    try {
+                        ohttpClient.execute(
+                            OhttpHttpClient.Request(
+                                url = ohttpUrl,
+                                method = ohttpMethod,
+                                headers = ohttpHeaders,
+                                body = ohttpBodyJson?.toByteArray(Charsets.UTF_8) ?: ByteArray(0)
+                            )
                         )
-                    )
+                    } catch (e: Exception) {
+                        Twig.warn(e) { "OHTTP $ohttpMethod $ohttpUrl failed" }
+                        throw e
+                    }
+                Twig.debug { "OHTTP $ohttpMethod $ohttpUrl -> HTTP ${response.status} (${response.body.size} bytes)" }
                 if (response.status !in HTTP_SUCCESS) {
                     error("OHTTP proxy returned HTTP ${response.status} for $ohttpUrl")
                 }
@@ -142,8 +150,12 @@ class KtorNearApiProvider(
                     @Suppress("UNCHECKED_CAST")
                     return@withContext Unit as T
                 }
-                @Suppress("JSON_FORMAT_REDUNDANT")
-                Json { ignoreUnknownKeys = true }.decodeFromString<T>(response.body.decodeToString())
+                try {
+                    OHTTP_JSON.decodeFromString<T>(response.body.decodeToString())
+                } catch (e: Exception) {
+                    Twig.warn(e) { "OHTTP $ohttpMethod $ohttpUrl decode failed" }
+                    throw e
+                }
             } else {
                 // Tor ON path: Tor direct (httpClientProvider.create() returns Tor client)
                 httpClientProvider.create().use {
@@ -165,6 +177,14 @@ class KtorNearApiProvider(
 
 /** HTTP status range the OHTTP proxy path treats as success. */
 private val HTTP_SUCCESS = 200..299
+
+/**
+ * Same lenient defaults as Ktor's `ContentNegotiation { json() }` used on the Tor path. The NEAR
+ * DTOs decode numbers through [co.electriccoin.zcash.ui.common.serialization.BigDecimalSerializer]
+ * (`decodeString()`), which only works with `isLenient = true`; a strict `Json {}` fails on
+ * `"price":2.37` and the swap picker shows "We couldn't load the assets".
+ */
+private val OHTTP_JSON = Json(from = DefaultJson) { ignoreUnknownKeys = true }
 
 private val JSON_HEADERS = listOf("Authorization" to AUTH_TOKEN, "Content-Type" to "application/json")
 
