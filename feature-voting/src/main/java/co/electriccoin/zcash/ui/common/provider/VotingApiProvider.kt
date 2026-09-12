@@ -822,16 +822,7 @@ class KtorVotingApiProvider(
                     OhttpHttpClient.Request(url = url.withCacheBustIfNeeded(cacheBustToken))
                 )
             } catch (exception: Exception) {
-                val reason =
-                    if (exception is TimeoutCancellationException) {
-                        "request timed out"
-                    } else {
-                        exception.rethrowIfCancellation()
-                        exception::class.simpleName ?: "unknown error"
-                    }
-                throw DynamicVotingConfigTransientException(
-                    "Dynamic voting config fetch via OHTTP failed for $url: $reason"
-                )
+                throw exception.toOhttpDynamicVotingConfigException(url)
             }
         if (response.status !in OHTTP_HTTP_SUCCESS) {
             throw DynamicVotingConfigTransientException(
@@ -892,7 +883,9 @@ class KtorVotingApiProvider(
                     ohttpClient.execute(OhttpHttpClient.Request(url = url))
                 } catch (exception: Exception) {
                     exception.rethrowIfCancellation()
-                    error("Vote server GET via OHTTP failed for $url: ${exception::class.simpleName ?: "unknown error"}")
+                    error(
+                        "Vote server GET via OHTTP failed for $url: ${exception::class.simpleName ?: "unknown error"}"
+                    )
                 }
             if (response.status !in OHTTP_HTTP_SUCCESS) {
                 error("Vote server GET via OHTTP returned HTTP ${response.status} for $url")
@@ -925,7 +918,9 @@ class KtorVotingApiProvider(
                     )
                 } catch (exception: Exception) {
                     exception.rethrowIfCancellation()
-                    error("Vote server POST via OHTTP failed for $url: ${exception::class.simpleName ?: "unknown error"}")
+                    error(
+                        "Vote server POST via OHTTP failed for $url: ${exception::class.simpleName ?: "unknown error"}"
+                    )
                 }
             // 422 carries a JSON error body the caller parses (same as the Tor path below).
             val accepted =
@@ -1252,6 +1247,26 @@ private fun Exception.toDynamicVotingConfigException(url: String): VotingConfigE
             "Dynamic voting config fetch failed for $url: ${this::class.simpleName ?: "unknown error"}"
         )
     }
+
+/**
+ * Maps a failure of the OHTTP leg of the dynamic-config fetch. Real coroutine cancellations
+ * propagate untouched; a timeout is reported as such; anything else only by its short class
+ * name (never `message`, which may contain the cache-bust token).
+ */
+private fun Exception.toOhttpDynamicVotingConfigException(url: String): DynamicVotingConfigTransientException {
+    if (this is CancellationException && this !is TimeoutCancellationException) {
+        throw this
+    }
+    val reason =
+        if (this is TimeoutCancellationException) {
+            "request timed out"
+        } else {
+            this::class.simpleName ?: "unknown error"
+        }
+    return DynamicVotingConfigTransientException(
+        "Dynamic voting config fetch via OHTTP failed for $url: $reason"
+    )
+}
 
 /**
  * Maps a static-config fetch failure to [StaticVotingConfigFetchFailedException] without

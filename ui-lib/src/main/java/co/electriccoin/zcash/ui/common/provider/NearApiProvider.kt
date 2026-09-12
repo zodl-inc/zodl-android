@@ -175,8 +175,11 @@ class KtorNearApiProvider(
         }
 }
 
+private const val HTTP_SUCCESS_MIN = 200
+private const val HTTP_SUCCESS_MAX = 299
+
 /** HTTP status range the OHTTP proxy path treats as success. */
-private val HTTP_SUCCESS = 200..299
+private val HTTP_SUCCESS = HTTP_SUCCESS_MIN..HTTP_SUCCESS_MAX
 
 /**
  * Same lenient defaults as Ktor's `ContentNegotiation { json() }` used on the Tor path. The NEAR

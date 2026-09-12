@@ -388,7 +388,9 @@ if (zcashSdkIncludedBuildPath.isNotEmpty()) {
 val lightwalletClientIncludedBuildPath = (extra.properties["LIGHTWALLET_CLIENT_INCLUDED_BUILD_PATH"] ?: "").toString()
 
 if (lightwalletClientIncludedBuildPath.isNotEmpty() && zcashSdkIncludedBuildPath.isEmpty()) {
-    logger.lifecycle("lightwallet-client will be used from $lightwalletClientIncludedBuildPath instead of Maven Central.")
+    logger.lifecycle(
+        "lightwallet-client will be used from $lightwalletClientIncludedBuildPath instead of Maven Central."
+    )
     includeBuild(lightwalletClientIncludedBuildPath) {
         dependencySubstitution {
             substitute(module("cash.z.ecc.android:lightwallet-client")).using(project(":lightwallet-client-lib"))
