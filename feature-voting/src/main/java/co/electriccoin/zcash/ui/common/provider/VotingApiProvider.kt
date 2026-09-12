@@ -146,6 +146,9 @@ interface VotingApiProvider {
     ): CommitmentTreeLeafPage
 }
 
+// The OHTTP/Tor dual-path helpers (voteServerGet/Post, *ViaOhttp) push this class over
+// detekt's LargeClass threshold; splitting the transport out is tracked separately.
+@Suppress("LargeClass")
 class KtorVotingApiProvider(
     private val httpClientProvider: HttpClientProvider,
     private val configurationRepository: ConfigurationRepository,
@@ -250,9 +253,10 @@ class KtorVotingApiProvider(
 
     override suspend fun fetchAllRounds(): RoundsListResult =
         executeWithVoteServerFailover(ROUNDS_PATH) { baseUrl ->
-            val response = voteServerGet<ChainRoundsResponse>("$baseUrl$ROUNDS_PATH") {
-                noCache()
-            }
+            val response =
+                voteServerGet<ChainRoundsResponse>("$baseUrl$ROUNDS_PATH") {
+                    noCache()
+                }
             val dtos = response.rounds.orEmpty()
             val rounds = mutableListOf<VotingRound>()
             val sessions = mutableMapOf<String, VotingSession>()
@@ -670,19 +674,13 @@ class KtorVotingApiProvider(
                     excludeFromClientRetry()
                 }.bodyAsBytes()
             }
-        } catch (responseException: ResponseException) {
-            throw StaticVotingConfigFetchFailedException(
-                "Static voting config fetch failed: HTTP ${responseException.response.status.value}"
-            )
         } catch (_: TimeoutCancellationException) {
             throw StaticVotingConfigFetchFailedException(
                 "Static voting config fetch failed: request timed out after ${configRequestTimeoutMillis}ms"
             )
         } catch (exception: Exception) {
             exception.rethrowIfCancellation()
-            throw StaticVotingConfigFetchFailedException(
-                "Static voting config fetch failed: ${exception.message ?: exception::class.simpleName}"
-            )
+            throw exception.toStaticVotingConfigFetchFailedException()
         }
     }
 
@@ -787,24 +785,7 @@ class KtorVotingApiProvider(
     ): String {
         val ohttpClient = httpClientProvider.createOhttp()
         if (!httpClientProvider.isTorEnabled() && ohttpClient.canHandle(url)) {
-            return try {
-                val response = ohttpClient.execute(OhttpHttpClient.Request(url = url.withCacheBustIfNeeded(cacheBustToken)))
-                if (response.status !in OHTTP_HTTP_SUCCESS) {
-                    throw DynamicVotingConfigTransientException(
-                        "Dynamic voting config fetch via OHTTP failed for $url: HTTP ${response.status}"
-                    )
-                }
-                response.body.decodeToString()
-            } catch (_: TimeoutCancellationException) {
-                throw DynamicVotingConfigTransientException(
-                    "Dynamic voting config fetch via OHTTP failed for $url: request timed out"
-                )
-            } catch (exception: Exception) {
-                exception.rethrowIfCancellation()
-                throw DynamicVotingConfigTransientException(
-                    "Dynamic voting config fetch via OHTTP failed for $url: ${exception::class.simpleName ?: "unknown error"}"
-                )
-            }
+            return fetchDynamicConfigBodyViaOhttp(ohttpClient, url, cacheBustToken)
         }
         return try {
             withTorRequestTimeoutFallback(supportsKtorTimeouts, configRequestTimeoutMillis) {
@@ -814,18 +795,50 @@ class KtorVotingApiProvider(
                     excludeFromClientRetry()
                 }.bodyAsText()
             }
-        } catch (responseException: ResponseException) {
-            throw responseException.toDynamicVotingConfigException()
         } catch (_: TimeoutCancellationException) {
             throw DynamicVotingConfigTransientException(
                 "Dynamic voting config fetch failed for $url: request timed out after ${configRequestTimeoutMillis}ms"
             )
         } catch (exception: Exception) {
             exception.rethrowIfCancellation()
+            throw exception.toDynamicVotingConfigException(url)
+        }
+    }
+
+    /**
+     * OHTTP leg of [fetchDynamicConfigBody]: same failure classes as the Tor leg (every
+     * transport failure and any non-2xx status is [DynamicVotingConfigTransientException], so
+     * the mirror walk moves on to the next URL). The gateway proxies to the real host, so the
+     * config origin never sees the device IP.
+     */
+    private suspend fun fetchDynamicConfigBodyViaOhttp(
+        ohttpClient: OhttpHttpClient,
+        url: String,
+        cacheBustToken: String
+    ): String {
+        val response =
+            try {
+                ohttpClient.execute(
+                    OhttpHttpClient.Request(url = url.withCacheBustIfNeeded(cacheBustToken))
+                )
+            } catch (exception: Exception) {
+                val reason =
+                    if (exception is TimeoutCancellationException) {
+                        "request timed out"
+                    } else {
+                        exception.rethrowIfCancellation()
+                        exception::class.simpleName ?: "unknown error"
+                    }
+                throw DynamicVotingConfigTransientException(
+                    "Dynamic voting config fetch via OHTTP failed for $url: $reason"
+                )
+            }
+        if (response.status !in OHTTP_HTTP_SUCCESS) {
             throw DynamicVotingConfigTransientException(
-                "Dynamic voting config fetch failed for $url: ${exception::class.simpleName ?: "unknown error"}"
+                "Dynamic voting config fetch via OHTTP failed for $url: HTTP ${response.status}"
             )
         }
+        return response.body.decodeToString()
     }
 
     private suspend fun authenticateVotingSession(session: VotingSession): VotingSession {
@@ -914,13 +927,15 @@ class KtorVotingApiProvider(
                     exception.rethrowIfCancellation()
                     error("Vote server POST via OHTTP failed for $url: ${exception::class.simpleName ?: "unknown error"}")
                 }
-            if (response.status !in OHTTP_HTTP_SUCCESS) {
-                if (response.status == HttpStatusCode.UnprocessableEntity.value) {
-                    return response.body.decodeToString()
-                }
+            // 422 carries a JSON error body the caller parses (same as the Tor path below).
+            val accepted =
+                response.status in OHTTP_HTTP_SUCCESS ||
+                    response.status == HttpStatusCode.UnprocessableEntity.value
+            return if (accepted) {
+                response.body.decodeToString()
+            } else {
                 error("Vote server POST via OHTTP returned HTTP ${response.status} for $url")
             }
-            return response.body.decodeToString()
         }
         return try {
             post(url) {
@@ -959,22 +974,6 @@ class KtorVotingApiProvider(
             )
         }
     }
-
-    private suspend fun HttpClient.postTxResult(
-        url: String,
-        body: String
-    ): TxResult =
-        try {
-            post(url) {
-                setBody(TextContent(body, ContentType.Application.Json))
-            }.bodyAsText().toTxResult()
-        } catch (responseException: ResponseException) {
-            if (responseException.response.status == HttpStatusCode.UnprocessableEntity) {
-                responseException.response.bodyAsText().toTxResult()
-            } else {
-                throw responseException
-            }
-        }
 
     private suspend inline fun <T> execute(
         crossinline block: suspend HttpClient.() -> T
@@ -1237,6 +1236,35 @@ private fun ResponseException.toDynamicVotingConfigException(): VotingConfigExce
     } else {
         VotingConfigException(message)
     }
+}
+
+/**
+ * Maps a dynamic-config fetch failure on the Tor/clearnet leg: HTTP responses are classified
+ * by status via [ResponseException.toDynamicVotingConfigException]; everything else is a
+ * transport failure and therefore transient. Message uses the clean [url] plus the exception's
+ * short class name only — never `message`, which may contain the cache-bust token.
+ */
+private fun Exception.toDynamicVotingConfigException(url: String): VotingConfigException =
+    if (this is ResponseException) {
+        toDynamicVotingConfigException()
+    } else {
+        DynamicVotingConfigTransientException(
+            "Dynamic voting config fetch failed for $url: ${this::class.simpleName ?: "unknown error"}"
+        )
+    }
+
+/**
+ * Maps a static-config fetch failure to [StaticVotingConfigFetchFailedException] without
+ * throwing, so the call site in `fetchStaticConfigBytes` stays within detekt's ThrowsCount.
+ */
+private fun Exception.toStaticVotingConfigFetchFailedException(): StaticVotingConfigFetchFailedException {
+    val reason =
+        if (this is ResponseException) {
+            "HTTP ${response.status.value}"
+        } else {
+            message ?: this::class.simpleName
+        }
+    return StaticVotingConfigFetchFailedException("Static voting config fetch failed: $reason")
 }
 
 private fun HttpRequestBuilder.noCache() {
@@ -1611,8 +1639,11 @@ private suspend fun ResponseException.isNoActiveRoundResponse(): Boolean {
     return "no active voting round" in responseText && "key not found" in responseText
 }
 
+private const val OHTTP_HTTP_SUCCESS_MIN = 200
+private const val OHTTP_HTTP_SUCCESS_MAX = 299
+
 /** HTTP status range the OHTTP proxy path treats as success. */
-private val OHTTP_HTTP_SUCCESS = 200..299
+private val OHTTP_HTTP_SUCCESS = OHTTP_HTTP_SUCCESS_MIN..OHTTP_HTTP_SUCCESS_MAX
 
 /**
  * Lenient JSON decoder for OHTTP vote-server responses. Matches Ktor's ContentNegotiation { json() }
