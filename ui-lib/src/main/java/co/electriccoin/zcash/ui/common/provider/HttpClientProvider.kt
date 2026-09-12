@@ -2,7 +2,7 @@ package co.electriccoin.zcash.ui.common.provider
 
 import android.util.Log
 import co.electriccoin.zcash.ui.BuildConfig
-import cash.z.ecc.android.sdk.lightwallet.client.OhttpHttpClient
+import co.electriccoin.lightwallet.client.OhttpHttpClient
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngineConfig

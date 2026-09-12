@@ -6,7 +6,7 @@ import co.electriccoin.zcash.ui.common.model.near.QuoteRequest
 import co.electriccoin.zcash.ui.common.model.near.QuoteResponseDto
 import co.electriccoin.zcash.ui.common.model.near.SubmitDepositTransactionRequest
 import co.electriccoin.zcash.ui.common.model.near.SwapStatusResponseDto
-import cash.z.ecc.android.sdk.lightwallet.client.OhttpHttpClient
+import co.electriccoin.lightwallet.client.OhttpHttpClient
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ResponseException
@@ -140,7 +140,7 @@ class KtorNearApiProvider(
                     @Suppress("UNCHECKED_CAST")
                     return@withContext Unit as T
                 }
-                kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+                @Suppress("JSON_FORMAT_REDUNDANT") kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
                     .decodeFromString<T>(response.body.decodeToString())
             } else {
                 // Tor ON path: Tor direct (httpClientProvider.create() returns Tor client)

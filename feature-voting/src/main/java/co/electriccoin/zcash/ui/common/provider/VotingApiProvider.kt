@@ -39,7 +39,7 @@ import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.votingLog
 import co.electriccoin.zcash.ui.configuration.ConfigurationEntries
-import cash.z.ecc.android.sdk.lightwallet.client.OhttpHttpClient
+import co.electriccoin.lightwallet.client.OhttpHttpClient
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpRequestRetry
