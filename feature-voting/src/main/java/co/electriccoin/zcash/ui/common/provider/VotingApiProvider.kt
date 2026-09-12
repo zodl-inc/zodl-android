@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.provider
 
 import android.util.Log
+import co.electriccoin.lightwallet.client.OhttpHttpClient
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.model.voting.CastVoteSignature
 import co.electriccoin.zcash.ui.common.model.voting.ChainActiveRoundResponse
@@ -39,7 +40,6 @@ import co.electriccoin.zcash.ui.common.repository.ConfigurationRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.votingLog
 import co.electriccoin.zcash.ui.configuration.ConfigurationEntries
-import co.electriccoin.lightwallet.client.OhttpHttpClient
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.HttpRequestRetry
@@ -663,21 +663,7 @@ class KtorVotingApiProvider(
         // fetchStaticConfigWalk() treats them as retryable and moves on to the next source.
         val ohttpClient = httpClientProvider.createOhttp()
         if (!httpClientProvider.isTorEnabled() && ohttpClient.canHandle(url)) {
-            val response =
-                try {
-                    ohttpClient.execute(OhttpHttpClient.Request(url = url))
-                } catch (exception: Exception) {
-                    exception.rethrowIfCancellation()
-                    throw StaticVotingConfigFetchFailedException(
-                        "Static voting config fetch via OHTTP failed: ${exception.message ?: exception::class.simpleName}"
-                    )
-                }
-            if (response.status !in 200..299) {
-                throw StaticVotingConfigFetchFailedException(
-                    "Static voting config fetch via OHTTP failed: HTTP ${response.status}"
-                )
-            }
-            return response.body
+            return fetchStaticConfigBytesViaOhttp(ohttpClient, url)
         }
         return try {
             withTorRequestTimeoutFallback(supportsKtorTimeouts, configRequestTimeoutMillis) {
@@ -701,6 +687,26 @@ class KtorVotingApiProvider(
                 "Static voting config fetch failed: ${exception.message ?: exception::class.simpleName}"
             )
         }
+    }
+
+    private suspend fun fetchStaticConfigBytesViaOhttp(
+        ohttpClient: OhttpHttpClient,
+        url: String
+    ): ByteArray {
+        val response =
+            try {
+                ohttpClient.execute(OhttpHttpClient.Request(url = url))
+            } catch (exception: Exception) {
+                exception.rethrowIfCancellation()
+                val reason = exception.message ?: exception::class.simpleName
+                throw StaticVotingConfigFetchFailedException("Static voting config fetch via OHTTP failed: $reason")
+            }
+        if (response.status !in OHTTP_HTTP_SUCCESS) {
+            throw StaticVotingConfigFetchFailedException(
+                "Static voting config fetch via OHTTP failed: HTTP ${response.status}"
+            )
+        }
+        return response.body
     }
 
     private suspend fun fetchTrustedConfig(sources: List<PinnedConfigSource>): ResolvedVotingConfig {
@@ -1508,3 +1514,6 @@ private suspend fun ResponseException.isNoActiveRoundResponse(): Boolean {
 
     return "no active voting round" in responseText && "key not found" in responseText
 }
+
+/** HTTP status range the OHTTP proxy path treats as success. */
+private val OHTTP_HTTP_SUCCESS = 200..299

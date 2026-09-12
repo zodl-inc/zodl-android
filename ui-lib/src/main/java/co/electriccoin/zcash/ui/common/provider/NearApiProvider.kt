@@ -1,12 +1,12 @@
 package co.electriccoin.zcash.ui.common.provider
 
+import co.electriccoin.lightwallet.client.OhttpHttpClient
 import co.electriccoin.zcash.ui.common.model.near.ErrorDto
 import co.electriccoin.zcash.ui.common.model.near.NearTokenDto
 import co.electriccoin.zcash.ui.common.model.near.QuoteRequest
 import co.electriccoin.zcash.ui.common.model.near.QuoteResponseDto
 import co.electriccoin.zcash.ui.common.model.near.SubmitDepositTransactionRequest
 import co.electriccoin.zcash.ui.common.model.near.SwapStatusResponseDto
-import co.electriccoin.lightwallet.client.OhttpHttpClient
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.plugins.ResponseException
@@ -20,6 +20,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
 
 typealias GetNearSupportedTokensResponse = List<NearTokenDto>
 
@@ -48,7 +49,6 @@ class ResponseWithNearErrorException(
 class KtorNearApiProvider(
     private val httpClientProvider: HttpClientProvider
 ) : NearApiProvider {
-
     // Privacy routing:
     //   Tor OFF → OHTTP proxy (1click.chaindefuser.com → near.zodl.com via gateway)
     //   Tor ON  → Tor direct (httpClientProvider.create() returns Tor client)
@@ -72,8 +72,8 @@ class KtorNearApiProvider(
             },
             ohttpUrl = "https://1click.chaindefuser.com/v0/quote",
             ohttpMethod = "POST",
-            ohttpHeaders = listOf("Authorization" to AUTH_TOKEN, "Content-Type" to "application/json"),
-            ohttpBodyJson = kotlinx.serialization.json.Json.encodeToString(QuoteRequest.serializer(), request),
+            ohttpHeaders = JSON_HEADERS,
+            ohttpBodyJson = Json.encodeToString(QuoteRequest.serializer(), request),
         )
 
     override suspend fun submitDepositTransaction(request: SubmitDepositTransactionRequest) {
@@ -87,8 +87,8 @@ class KtorNearApiProvider(
             },
             ohttpUrl = "https://1click.chaindefuser.com/v0/deposit/submit",
             ohttpMethod = "POST",
-            ohttpHeaders = listOf("Authorization" to AUTH_TOKEN, "Content-Type" to "application/json"),
-            ohttpBodyJson = kotlinx.serialization.json.Json.encodeToString(SubmitDepositTransactionRequest.serializer(), request),
+            ohttpHeaders = JSON_HEADERS,
+            ohttpBodyJson = Json.encodeToString(SubmitDepositTransactionRequest.serializer(), request),
         )
     }
 
@@ -126,23 +126,24 @@ class KtorNearApiProvider(
             // canHandle() only checks the host has a proxy mapping; the Tor preference decides the path.
             if (!httpClientProvider.isTorEnabled() && ohttpClient.canHandle(ohttpUrl)) {
                 // Tor OFF path: route through OHTTP gateway
-                val response = ohttpClient.execute(
-                    OhttpHttpClient.Request(
-                        url = ohttpUrl,
-                        method = ohttpMethod,
-                        headers = ohttpHeaders,
-                        body = ohttpBodyJson?.toByteArray(Charsets.UTF_8) ?: ByteArray(0)
+                val response =
+                    ohttpClient.execute(
+                        OhttpHttpClient.Request(
+                            url = ohttpUrl,
+                            method = ohttpMethod,
+                            headers = ohttpHeaders,
+                            body = ohttpBodyJson?.toByteArray(Charsets.UTF_8) ?: ByteArray(0)
+                        )
                     )
-                )
-                if (response.status !in 200..299) {
-                    throw IllegalStateException("OHTTP proxy returned HTTP ${response.status} for $ohttpUrl")
+                if (response.status !in HTTP_SUCCESS) {
+                    error("OHTTP proxy returned HTTP ${response.status} for $ohttpUrl")
                 }
                 if (T::class == Unit::class) {
                     @Suppress("UNCHECKED_CAST")
                     return@withContext Unit as T
                 }
-                @Suppress("JSON_FORMAT_REDUNDANT") kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
-                    .decodeFromString<T>(response.body.decodeToString())
+                @Suppress("JSON_FORMAT_REDUNDANT")
+                Json { ignoreUnknownKeys = true }.decodeFromString<T>(response.body.decodeToString())
             } else {
                 // Tor ON path: Tor direct (httpClientProvider.create() returns Tor client)
                 httpClientProvider.create().use {
@@ -161,6 +162,11 @@ class KtorNearApiProvider(
             }
         }
 }
+
+/** HTTP status range the OHTTP proxy path treats as success. */
+private val HTTP_SUCCESS = 200..299
+
+private val JSON_HEADERS = listOf("Authorization" to AUTH_TOKEN, "Content-Type" to "application/json")
 
 private const val AUTH_TOKEN =
     "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjIwMjUtMDEtMTItdjEifQ.eyJ2IjoxLCJrZXlfdHlwZSI6ImRpc3RyaWJ1dG" +
