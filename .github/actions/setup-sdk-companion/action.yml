@@ -30,7 +30,7 @@ runs:
       if: steps.pin.outputs.commit != ''
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       with:
-        repository: zodl-inc/zodl-android-wallet-sdk
+        repository: the SDK repository
         ref: ${{ steps.pin.outputs.commit }}
         path: .sdk-companion
         fetch-depth: 1
