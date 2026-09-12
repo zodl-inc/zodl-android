@@ -32,6 +32,13 @@ interface HttpClientProvider {
      */
     fun createOhttp(): OhttpHttpClient = OhttpHttpClient()
 
+    /**
+     * Whether the user has opted into Tor. Callers that offer an OHTTP path (NEAR, voting config)
+     * must consult this: with Tor ON they go Tor-direct via [create]; with Tor OFF they go through
+     * the OHTTP gateway via [createOhttp]. OHTTP on top of Tor would be a pointless double hop.
+     */
+    suspend fun isTorEnabled(): Boolean = false
+
     suspend fun supportsKtorTimeouts(): Boolean = true
 }
 
@@ -43,6 +50,8 @@ class HttpClientProviderImpl(
         if (isTorEnabledStorageProvider.get() == true) createTor() else createDirect()
 
     override suspend fun supportsKtorTimeouts(): Boolean = isTorEnabledStorageProvider.get() != true
+
+    override suspend fun isTorEnabled(): Boolean = isTorEnabledStorageProvider.get() == true
 
     override suspend fun createTor() =
         synchronizerProvider

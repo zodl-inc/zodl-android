@@ -658,12 +658,11 @@ class KtorVotingApiProvider(
         //   Tor OFF: route through the OHTTP gateway (voting.valargroup.dev -> vote.zodl.com proxy),
         //            so the config host never sees the device IP. The URL is content-addressed and
         //            immutable, so the gateway cache makes repeat fetches essentially free.
-        //   Tor ON:  canHandle() is false (proxy map is only consulted when Tor is off) and the
-        //            request falls through to this Ktor client, which is already Tor-backed.
+        //   Tor ON:  skip OHTTP and fall through to this Ktor client, which is already Tor-backed.
         // Failures are surfaced as StaticVotingConfigFetchFailedException so the mirror walk in
         // fetchStaticConfigWalk() treats them as retryable and moves on to the next source.
         val ohttpClient = httpClientProvider.createOhttp()
-        if (ohttpClient.canHandle(url)) {
+        if (!httpClientProvider.isTorEnabled() && ohttpClient.canHandle(url)) {
             val response =
                 try {
                     ohttpClient.execute(OhttpHttpClient.Request(url = url))

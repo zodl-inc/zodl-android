@@ -123,7 +123,8 @@ class KtorNearApiProvider(
         ohttpBodyJson: String? = null,
     ): T =
         withContext(Dispatchers.IO) {
-            if (ohttpClient.canHandle(ohttpUrl)) {
+            // canHandle() only checks the host has a proxy mapping; the Tor preference decides the path.
+            if (!httpClientProvider.isTorEnabled() && ohttpClient.canHandle(ohttpUrl)) {
                 // Tor OFF path: route through OHTTP gateway
                 val response = ohttpClient.execute(
                     OhttpHttpClient.Request(
