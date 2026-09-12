@@ -876,8 +876,9 @@ class KtorVotingApiProvider(
         url: String,
         configureRequest: HttpRequestBuilder.() -> Unit = {}
     ): T {
+        val torEnabled = httpClientProvider.isTorEnabled()
         val ohttpClient = httpClientProvider.createOhttp()
-        if (!httpClientProvider.isTorEnabled() && ohttpClient.canHandle(url)) {
+        if (!torEnabled && ohttpClient.canHandle(url)) {
             val response =
                 try {
                     ohttpClient.execute(OhttpHttpClient.Request(url = url))
@@ -893,7 +894,7 @@ class KtorVotingApiProvider(
             }
             return VOTE_SERVER_JSON.decodeFromString(response.body.decodeToString())
         }
-        Twig.debug { "Vote server GET $url via Tor/direct client (tor=${httpClientProvider.isTorEnabled()})" }
+        Twig.debug { "Vote server GET $url via Tor/direct client (tor=$torEnabled)" }
         return get(url) { configureRequest() }.body()
     }
 
@@ -906,8 +907,9 @@ class KtorVotingApiProvider(
         url: String,
         body: String
     ): String {
+        val torEnabled = httpClientProvider.isTorEnabled()
         val ohttpClient = httpClientProvider.createOhttp()
-        if (!httpClientProvider.isTorEnabled() && ohttpClient.canHandle(url)) {
+        if (!torEnabled && ohttpClient.canHandle(url)) {
             val response =
                 try {
                     ohttpClient.execute(
@@ -935,7 +937,7 @@ class KtorVotingApiProvider(
                 error("Vote server POST via OHTTP returned HTTP ${response.status} for $url")
             }
         }
-        Twig.debug { "Vote server POST $url via Tor/direct client (tor=${httpClientProvider.isTorEnabled()})" }
+        Twig.debug { "Vote server POST $url via Tor/direct client (tor=$torEnabled)" }
         return try {
             post(url) {
                 setBody(TextContent(body, ContentType.Application.Json))
