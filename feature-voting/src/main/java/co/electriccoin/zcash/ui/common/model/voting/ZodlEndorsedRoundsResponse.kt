@@ -18,7 +18,11 @@ data class ZodlEndorsedRoundsResponse(
                     ?.toLowerHex()
             }.toSet()
 
-    private companion object {
-        const val ROUND_ID_BYTES = 32
+    // Not private: kotlinx.serialization puts the generated serializer() on the companion, and a
+    // private companion makes `Json.decodeFromString<ZodlEndorsedRoundsResponse>()` from another
+    // class fail at runtime with IllegalAccessError (seen on the OHTTP vote-server path, 2026-09-13).
+    // Ktor's reflective ContentNegotiation path hid this.
+    companion object {
+        private const val ROUND_ID_BYTES = 32
     }
 }
