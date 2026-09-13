@@ -14,9 +14,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * MOB-1378: exchange rates must only ever be fetched over Tor. [CMCApiProvider] must ask for the
- * Tor-only client and must never use create(), which falls back to the direct (clearnet) client when
- * Tor is disabled. The same holds for the supported-currency list added in MOB-1707.
+ * MOB-1378: exchange rates must never leave over the direct (clearnet) client. With Tor ON
+ * [CMCApiProvider] must ask for the Tor-only client and must never use create(); with Tor OFF it goes
+ * through the OHTTP gateway instead (not unit-tested here: it needs the relay). The same holds for the
+ * supported-currency list added in MOB-1707.
  */
 class CMCApiProviderTest {
     @Test
@@ -77,6 +78,9 @@ private class RecordingHttpClientProvider : HttpClientProvider {
         private set
     val requestedHosts = mutableListOf<String>()
     val requestedApiKeys = mutableListOf<String>()
+
+    // These tests exercise the Tor ON path; Tor OFF routes through OHTTP (see CMCApiProviderImpl).
+    override suspend fun isTorEnabled(): Boolean = true
 
     override suspend fun create(): HttpClient {
         createCalls++
