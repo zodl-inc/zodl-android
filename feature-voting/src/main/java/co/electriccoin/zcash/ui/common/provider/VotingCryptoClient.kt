@@ -219,6 +219,20 @@ interface VotingCryptoClient {
         witnessesJson: String
     )
 
+    /**
+     * True when this bundle already has a stored witness for every note, so generating and storing
+     * them again would only repeat work an earlier run or the background stage already did.
+     *
+     * @throws RuntimeException if the native layer reports a failure.
+     */
+    @Throws(RuntimeException::class)
+    suspend fun hasCompleteWitnesses(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        notesJson: String
+    ): Boolean
+
     /** @throws RuntimeException if the native layer reports a failure. */
     @Throws(RuntimeException::class)
     suspend fun buildGovernancePczt(
@@ -757,6 +771,16 @@ class VotingCryptoClientImpl : VotingCryptoClient {
                 notesJson.toVotingNoteInfos(),
                 witnessesJson.toVotingWitnesses()
             )
+        }
+
+    override suspend fun hasCompleteWitnesses(
+        dbHandle: Long,
+        roundId: String,
+        bundleIndex: Int,
+        notesJson: String
+    ): Boolean =
+        withContext(Dispatchers.IO) {
+            session(dbHandle).hasCompleteWitnesses(roundId, bundleIndex, notesJson.toVotingNoteInfos())
         }
 
     override suspend fun buildGovernancePczt(

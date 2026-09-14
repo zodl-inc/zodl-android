@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.common.repository
 import co.electriccoin.zcash.preference.EncryptedPreferenceProvider
 import co.electriccoin.zcash.preference.api.PreferenceProvider
 import co.electriccoin.zcash.preference.model.entry.PreferenceKey
+import co.electriccoin.zcash.ui.common.model.voting.VotingBundleSetupResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
 import kotlinx.coroutines.flow.Flow
@@ -106,6 +107,25 @@ data class VotingRecoverySnapshot(
 ) {
     fun decodeHotkeySeed(): ByteArray? =
         hotkeySeedBase64?.let { encoded -> Base64.getDecoder().decode(encoded) }
+}
+
+/**
+ * The bundle setup this snapshot already carries, or null when the round was never prepared. A
+ * non-null result means round preparation ran for this account and round and got past its
+ * eligibility and scanned-height gates.
+ */
+internal fun VotingRecoverySnapshot.preparedBundleSetup(): VotingBundleSetupResult? {
+    val count = bundleCount
+    val weight = eligibleWeight
+    return if (count == null || weight == null || bundleWeights.size < count) {
+        null
+    } else {
+        VotingBundleSetupResult(
+            bundleCount = count,
+            eligibleWeight = weight,
+            bundleWeights = bundleWeights.take(count)
+        )
+    }
 }
 
 interface VotingRecoveryRepository {

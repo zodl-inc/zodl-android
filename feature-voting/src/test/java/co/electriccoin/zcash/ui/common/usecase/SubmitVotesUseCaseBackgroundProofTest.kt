@@ -79,7 +79,11 @@ class SubmitVotesUseCaseBackgroundProofTest {
         runTest {
             // A software wallet's construct step writes fresh alpha, so any background proof was
             // produced against material that no longer applies.
-            val fixture = BackgroundProofFixture(selectedAccount = softwareAccount())
+            val fixture =
+                BackgroundProofFixture(
+                    selectedAccount = softwareAccount(),
+                    initialDelegationPhase = DelegationPhase.PREPARED
+                )
 
             assertFailsWith<StoppedAfterDelegationProof> {
                 fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
@@ -87,6 +91,75 @@ class SubmitVotesUseCaseBackgroundProofTest {
 
             assertEquals(0, fixture.backgroundProofWaits)
             fixture.assertOnDemandProofCount(1)
+        }
+
+    @Test
+    fun skipsTheConstructOnceTheBundlePcztIsBuilt() =
+        runTest {
+            val fixture = BackgroundProofFixture(selectedAccount = softwareAccount())
+
+            assertFailsWith<StoppedAfterDelegationProof> {
+                fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
+            }
+
+            // The crate refuses to overwrite an intact setup, so the attempt could only have been
+            // a round trip through the JNI ending in a recovered failure.
+            coVerify(exactly = 0) {
+                fixture.crypto.buildGovernancePcztFromSeed(
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    any(),
+                    any()
+                )
+            }
+            assertEquals(1, fixture.backgroundProofWaits)
+            fixture.assertOnDemandProofCount(0)
+        }
+
+    @Test
+    fun skipsRoundPreparationWhenTheSnapshotIsAlreadyPrepared() =
+        runTest {
+            val fixture = BackgroundProofFixture()
+
+            assertFailsWith<StoppedAfterDelegationProof> {
+                fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
+            }
+
+            coVerify(exactly = 0) { fixture.prepareVotingRound(ROUND_ID) }
+        }
+
+    @Test
+    fun reusesThePirEndpointThePrecomputeAlreadyResolved() =
+        runTest {
+            val fixture = BackgroundProofFixture(preparedPirServerUrl = "https://pir-precomputed")
+
+            assertFailsWith<StoppedAfterDelegationProof> {
+                fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
+            }
+
+            coVerify(exactly = 0) { fixture.pirSnapshotResolver.resolve(any(), any()) }
+        }
+
+    @Test
+    fun skipsWitnessGenerationWhenTheBundleWitnessesAreComplete() =
+        runTest {
+            val fixture = BackgroundProofFixture(witnessesAlreadyComplete = true)
+
+            assertFailsWith<StoppedAfterDelegationProof> {
+                fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
+            }
+
+            coVerify(exactly = 0) {
+                fixture.crypto.generateNoteWitnessesJson(any(), any(), any(), any(), any(), any())
+            }
+            coVerify(exactly = 0) { fixture.crypto.storeWitnesses(any(), any(), any(), any(), any()) }
         }
 
     @Test
@@ -105,16 +178,22 @@ class SubmitVotesUseCaseBackgroundProofTest {
     private class BackgroundProofFixture(
         private val selectedAccount: WalletAccount = keystoneAccount(),
         private val backgroundProofSucceeds: Boolean = true,
-        rebuiltSinceProofBundles: Set<Int> = emptySet()
+        rebuiltSinceProofBundles: Set<Int> = emptySet(),
+        initialDelegationPhase: DelegationPhase = DelegationPhase.PCZT_BUILT,
+        private val preparedPirServerUrl: String? = null,
+        witnessesAlreadyComplete: Boolean = false
     ) {
         val crypto = mockk<VotingCryptoClient>(relaxed = true)
-        val delegationPhases = mutableListOf(DelegationPhase.PCZT_BUILT)
+        val delegationPhases = mutableListOf(initialDelegationPhase)
         var backgroundProofWaits = 0
+        val pirSnapshotResolver = mockk<PirSnapshotResolver>()
+        val prepareVotingRound = mockk<PrepareVotingRoundUseCase>()
 
         private val api = mockk<VotingApiProvider>(relaxed = true)
         private val walletSeedBytes = mockk<GetWalletSeedBytesUseCase>()
         private val accountUuid = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
         private val recoveryRepository = mockk<VotingRecoveryRepository>(relaxed = true)
+        private val witnessesComplete = witnessesAlreadyComplete
 
         // A hand-written fake rather than a mock: awaitDelegationProof returns Result, a value
         // class MockK cannot box through a stubbed suspend call.
@@ -127,6 +206,16 @@ class SubmitVotesUseCaseBackgroundProofTest {
                 override suspend fun awaitDelegationPirPrecompute(
                     key: VotingDelegationPirPrecomputeKey
                 ) = null
+
+                override fun resolvedPirServerUrl(
+                    accountUuid: String,
+                    roundId: String
+                ): String? = preparedPirServerUrl
+
+                override fun preparedNotesJson(
+                    accountUuid: String,
+                    roundId: String
+                ): String? = null
 
                 override suspend fun awaitDelegationProof(key: VotingDelegationPirPrecomputeKey): Result<Unit>? {
                     backgroundProofWaits += 1
@@ -141,10 +230,8 @@ class SubmitVotesUseCaseBackgroundProofTest {
                 override fun cancelBackgroundProofs() = Unit
             }
         private val synchronizerProvider = mockk<SynchronizerProvider>(relaxed = true)
-        private val prepareVotingRound = mockk<PrepareVotingRoundUseCase>()
         private val resolveVotingRoundSession = mockk<ResolveVotingRoundSessionUseCase>()
         private val getSelectedWalletAccount = mockk<GetSelectedWalletAccountUseCase>()
-        private val pirSnapshotResolver = mockk<PirSnapshotResolver>()
         private val hotkeySeedProvider = mockk<VotingHotkeySeedProvider>()
 
         private var recovery =
@@ -203,6 +290,7 @@ class SubmitVotesUseCaseBackgroundProofTest {
                 delegationPhases.mapIndexed { index, phase -> BundleDelegationPhase(index, phase) }
             }
             coEvery { crypto.generateNoteWitnessesJson(any(), any(), any(), any(), any(), any()) } returns "{}"
+            coEvery { crypto.hasCompleteWitnesses(any(), any(), any(), any()) } returns witnessesComplete
             coEvery { crypto.extractOrchardFvkFromUfvk(any(), any()) } returns ByteArray(32)
             coEvery {
                 crypto.buildAndProveDelegation(

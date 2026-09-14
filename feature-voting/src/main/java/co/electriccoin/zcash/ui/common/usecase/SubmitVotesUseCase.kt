@@ -42,6 +42,7 @@ import co.electriccoin.zcash.ui.common.repository.VotingRecoveryPhase
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
+import co.electriccoin.zcash.ui.common.repository.preparedBundleSetup
 import co.electriccoin.zcash.ui.common.repository.toCanonicalUuidString
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.work.VotingShareTrackingScheduler
@@ -148,31 +149,7 @@ class SubmitVotesUseCase(
             val accountUuidString = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
             val accountUuidCanonical = selectedAccount.sdkAccount.accountUuid.toCanonicalUuidString()
 
-            val preparation =
-                traceVotingStep(
-                    roundId = roundId,
-                    step = "prepareRound"
-                ) {
-                    prepareVotingRound(roundId)
-                }
-            when (preparation) {
-                is VotingRoundPreparationResult.Ready -> {
-                    Unit
-                }
-
-                is VotingRoundPreparationResult.Ineligible -> {
-                    throw VotingSubmissionRecoverableException(VotingErrors.Ineligible)
-                }
-
-                is VotingRoundPreparationResult.WalletSyncing -> {
-                    throw VotingSubmissionRecoverableException(
-                        VotingErrors.WalletSyncing(
-                            scannedHeight = preparation.scannedHeight,
-                            snapshotHeight = preparation.snapshotHeight
-                        )
-                    )
-                }
-            }
+            prepareVotingRoundIfNeeded(roundId, accountUuidString)
 
             val sessionContext = resolveVotingRoundSession(roundId)
             val session = sessionContext.session
@@ -191,15 +168,16 @@ class SubmitVotesUseCase(
                     .firstOrNull()
                     ?: throw VotingSubmissionRecoverableException(VotingErrors.MissingVotingServerUrl)
             val pirServerUrl =
-                traceVotingStep(
-                    roundId = roundId,
-                    step = "pirResolve"
-                ) {
-                    pirSnapshotResolver.resolve(
-                        endpoints = serviceConfig.pirEndpoints.map { endpoint -> endpoint.url },
-                        expectedSnapshotHeight = session.snapshotHeight
-                    )
-                }
+                votingProofPrecomputeRepository.resolvedPirServerUrl(accountUuidString, roundId)
+                    ?: traceVotingStep(
+                        roundId = roundId,
+                        step = "pirResolve"
+                    ) {
+                        pirSnapshotResolver.resolve(
+                            endpoints = serviceConfig.pirEndpoints.map { endpoint -> endpoint.url },
+                            expectedSnapshotHeight = session.snapshotHeight
+                        )
+                    }
 
             val recovery =
                 votingRecoveryRepository.get(accountUuidString, roundId)
@@ -229,17 +207,18 @@ class SubmitVotesUseCase(
             val accountUfvk = selectedAccount.sdkAccount.ufvk
             val seedFingerprint = selectedAccount.sdkAccount.seedFingerprint
             val allNotesJson =
-                traceVotingStep(
-                    roundId = roundId,
-                    step = "walletNotes"
-                ) {
-                    votingCryptoClient.getWalletNotesJson(
-                        walletDbPath = walletDbPath,
-                        snapshotHeight = session.snapshotHeight,
-                        networkId = networkId,
-                        accountUuidBytes = selectedAccount.sdkAccount.accountUuid.value
-                    )
-                }
+                votingProofPrecomputeRepository.preparedNotesJson(accountUuidString, roundId)
+                    ?: traceVotingStep(
+                        roundId = roundId,
+                        step = "walletNotes"
+                    ) {
+                        votingCryptoClient.getWalletNotesJson(
+                            walletDbPath = walletDbPath,
+                            snapshotHeight = session.snapshotHeight,
+                            networkId = networkId,
+                            accountUuidBytes = selectedAccount.sdkAccount.accountUuid.value
+                        )
+                    }
 
             val singleShare = recovery.singleShareMode ?: session.isLastMoment()
             val sortedChoices = choices.toSortedMap()
@@ -418,6 +397,47 @@ class SubmitVotesUseCase(
             }
         }
 
+    /**
+     * Runs round preparation unless this round already has a prepared bundle setup. That setup can
+     * only exist because the confirm screen's view model already ran preparation for this round,
+     * which means its eligibility and scanned-height gates both passed; neither can regress between
+     * that screen and the tap that starts the submission, so re-running them only repeats a wallet
+     * read and a full round resolve on the critical path.
+     */
+    private suspend fun prepareVotingRoundIfNeeded(
+        roundId: String,
+        accountUuidString: String
+    ) {
+        if (votingRecoveryRepository.get(accountUuidString, roundId)?.preparedBundleSetup() != null) {
+            return
+        }
+        val preparation =
+            traceVotingStep(
+                roundId = roundId,
+                step = "prepareRound"
+            ) {
+                prepareVotingRound(roundId)
+            }
+        when (preparation) {
+            is VotingRoundPreparationResult.Ready -> {
+                Unit
+            }
+
+            is VotingRoundPreparationResult.Ineligible -> {
+                throw VotingSubmissionRecoverableException(VotingErrors.Ineligible)
+            }
+
+            is VotingRoundPreparationResult.WalletSyncing -> {
+                throw VotingSubmissionRecoverableException(
+                    VotingErrors.WalletSyncing(
+                        scannedHeight = preparation.scannedHeight,
+                        snapshotHeight = preparation.snapshotHeight
+                    )
+                )
+            }
+        }
+    }
+
     private fun VotingRecoverySnapshot.needsDelegationSubmission(): Boolean =
         phase != VotingRecoveryPhase.DELEGATION_SUBMITTED &&
             phase != VotingRecoveryPhase.VOTES_SUBMITTED &&
@@ -507,6 +527,13 @@ class SubmitVotesUseCase(
             ?.phase
 
     /**
+     * True once this bundle's PCZT and alpha are persisted. The crate refuses to overwrite them in
+     * that state, so attempting the construct again can only fail and be recovered from.
+     */
+    private fun DelegationPhase?.isAtOrPastPcztBuilt(): Boolean =
+        this != null && this >= DelegationPhase.PCZT_BUILT
+
+    /**
      * Makes sure this bundle has a delegation proof, reusing a stored or background one when it
      * still matches the current alpha and proving on demand otherwise. A fresh proof also clears
      * any rebuild-since-proof flag for the bundle (see `VotingKeystoneRepository.createPcztEncoder`),
@@ -520,34 +547,11 @@ class SubmitVotesUseCase(
         ledger: SubmissionProgressLedger
     ) {
         val roundId = context.roundId
-        if (currentDelegationPhase(dbHandle, roundId, bundleIndex).let {
-                it == DelegationPhase.SUBMITTED || it == DelegationPhase.CONFIRMED
-            }
-        ) {
+        val initialPhase = currentDelegationPhase(dbHandle, roundId, bundleIndex)
+        if (initialPhase == DelegationPhase.SUBMITTED || initialPhase == DelegationPhase.CONFIRMED) {
             return
         }
-        val witnessesJson =
-            traceVotingStep(
-                roundId = roundId,
-                step = "generateNoteWitnesses",
-                bundleIndex = bundleIndex
-            ) {
-                votingCryptoClient.generateNoteWitnessesJson(
-                    dbHandle = dbHandle,
-                    roundId = roundId,
-                    bundleIndex = bundleIndex,
-                    walletDbPath = context.walletDbPath,
-                    networkId = context.networkId,
-                    notesJson = context.allNotesJson
-                )
-            }
-        votingCryptoClient.storeWitnesses(
-            dbHandle = dbHandle,
-            roundId = roundId,
-            bundleIndex = bundleIndex,
-            notesJson = context.allNotesJson,
-            witnessesJson = witnessesJson
-        )
+        storeNoteWitnessesIfMissing(context, dbHandle, bundleIndex)
 
         val precomputeResult =
             votingProofPrecomputeRepository.awaitDelegationPirPrecompute(
@@ -570,13 +574,13 @@ class SubmitVotesUseCase(
         // version treated a swallowed background-race "success" as "setup already built", which
         // is exactly what left bundle 1's alpha NULL and crashed build_and_prove_delegation).
         val setupJustBuilt =
-            if (context.isKeystone) {
+            if (context.isKeystone || initialPhase.isAtOrPastPcztBuilt()) {
                 false
             } else {
                 constructDelegationPczt(context, dbHandle, bundleIndex)
             }
 
-        if (isDelegationProofAlreadyUsable(context, dbHandle, bundleIndex, setupJustBuilt)) {
+        if (isDelegationProofAlreadyUsable(context, dbHandle, bundleIndex, setupJustBuilt, initialPhase)) {
             return
         }
 
@@ -623,6 +627,51 @@ class SubmitVotesUseCase(
             accountUuid = context.accountUuidString,
             roundId = roundId,
             bundleIndex = bundleIndex
+        )
+    }
+
+    /**
+     * Generates and stores this bundle's note witnesses unless they are already complete. An
+     * earlier run or the background stage may have stored them, and regenerating them is a full
+     * wallet-DB scan per bundle.
+     */
+    private suspend fun storeNoteWitnessesIfMissing(
+        context: VotingSubmitContext,
+        dbHandle: Long,
+        bundleIndex: Int
+    ) {
+        val roundId = context.roundId
+        val alreadyComplete =
+            votingCryptoClient.hasCompleteWitnesses(
+                dbHandle = dbHandle,
+                roundId = roundId,
+                bundleIndex = bundleIndex,
+                notesJson = context.allNotesJson
+            )
+        if (alreadyComplete) {
+            return
+        }
+        val witnessesJson =
+            traceVotingStep(
+                roundId = roundId,
+                step = "generateNoteWitnesses",
+                bundleIndex = bundleIndex
+            ) {
+                votingCryptoClient.generateNoteWitnessesJson(
+                    dbHandle = dbHandle,
+                    roundId = roundId,
+                    bundleIndex = bundleIndex,
+                    walletDbPath = context.walletDbPath,
+                    networkId = context.networkId,
+                    notesJson = context.allNotesJson
+                )
+            }
+        votingCryptoClient.storeWitnesses(
+            dbHandle = dbHandle,
+            roundId = roundId,
+            bundleIndex = bundleIndex,
+            notesJson = context.allNotesJson,
+            witnessesJson = witnessesJson
         )
     }
 
@@ -683,20 +732,25 @@ class SubmitVotesUseCase(
      * A fresh construct wrote new alpha, and a bundle rebuilt since its last proof has a stale
      * `proofs` row; in both cases any existing proof was produced against the old alpha and must be
      * disregarded, which is why nothing is reused when [setupJustBuilt] is true.
+     *
+     * [initialPhase] is the phase read once at the top of the caller. Nothing between that read and
+     * this check can advance it: a construct that succeeded sets [setupJustBuilt] and short-circuits
+     * above, and a construct the crate refused changed nothing. Only the background proof awaited
+     * below can move the phase, which is why that path re-reads it.
      */
     private suspend fun isDelegationProofAlreadyUsable(
         context: VotingSubmitContext,
         dbHandle: Long,
         bundleIndex: Int,
-        setupJustBuilt: Boolean
+        setupJustBuilt: Boolean,
+        initialPhase: DelegationPhase?
     ): Boolean {
         if (setupJustBuilt || bundleIndex in context.recovery.rebuiltSinceProofBundles) {
             return false
         }
-        val phase = currentDelegationPhase(dbHandle, context.roundId, bundleIndex)
-        return phase == DelegationPhase.PROVED ||
-            phase == DelegationPhase.SUBMITTED ||
-            phase == DelegationPhase.CONFIRMED ||
+        return initialPhase == DelegationPhase.PROVED ||
+            initialPhase == DelegationPhase.SUBMITTED ||
+            initialPhase == DelegationPhase.CONFIRMED ||
             awaitedBackgroundProofSucceeded(context, dbHandle, bundleIndex)
     }
 

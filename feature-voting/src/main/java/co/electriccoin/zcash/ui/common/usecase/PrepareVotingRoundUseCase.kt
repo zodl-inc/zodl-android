@@ -30,6 +30,7 @@ import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepositor
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
+import co.electriccoin.zcash.ui.common.repository.preparedBundleSetup
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -485,19 +486,6 @@ class PrepareVotingRoundUseCase(
             trimmedWeight = computedSetup.bundleWeights.drop(dbBundleCount).sum()
         )
         return recoveredSetup
-    }
-
-    private fun VotingRecoverySnapshot.preparedBundleSetup(): VotingBundleSetupResult? {
-        val count = bundleCount ?: return null
-        val weight = eligibleWeight ?: return null
-        if (bundleWeights.size < count) {
-            return null
-        }
-        return VotingBundleSetupResult(
-            bundleCount = count,
-            eligibleWeight = weight,
-            bundleWeights = bundleWeights.take(count)
-        )
     }
 
     private suspend fun storeRecoveredHotkeyAddress(

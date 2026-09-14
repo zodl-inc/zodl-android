@@ -316,6 +316,16 @@ class PrepareVotingRoundUseCaseTest {
                     key: VotingDelegationPirPrecomputeKey
                 ) = null
 
+                override fun resolvedPirServerUrl(
+                    accountUuid: String,
+                    roundId: String
+                ): String? = null
+
+                override fun preparedNotesJson(
+                    accountUuid: String,
+                    roundId: String
+                ): String? = null
+
                 override suspend fun awaitDelegationProof(key: VotingDelegationPirPrecomputeKey): Result<Unit>? = null
 
                 override fun cancelBackgroundProofs() {

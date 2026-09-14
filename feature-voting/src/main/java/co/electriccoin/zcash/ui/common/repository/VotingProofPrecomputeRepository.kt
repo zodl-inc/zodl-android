@@ -70,6 +70,19 @@ data class VotingDelegationPirPrecomputeRequest(
             )
 }
 
+/**
+ * Any bundle's entry for this account and round. Every bundle of a round shares the endpoints, the
+ * snapshot height and the notes they were built from, so the first match answers for the round.
+ */
+private fun <T> Map<VotingDelegationPirPrecomputeKey, T>.entryForRound(
+    accountUuid: String,
+    roundId: String
+): T? =
+    entries
+        .firstOrNull { (key, _) ->
+            key.accountUuid == accountUuid && key.roundId.equals(roundId, ignoreCase = true)
+        }?.value
+
 interface VotingProofPrecomputeRepository {
     fun warmProvingCaches()
 
@@ -78,6 +91,26 @@ interface VotingProofPrecomputeRepository {
     suspend fun awaitDelegationPirPrecompute(
         key: VotingDelegationPirPrecomputeKey
     ): Result<VotingDelegationPirPrecomputeResult>?
+
+    /**
+     * The PIR endpoint a precompute for this account and round already picked, or null when none
+     * ran. Every bundle of a round shares one endpoint and one snapshot height, so any bundle's
+     * answer is the round's answer - and reusing it spares the submission a fresh probe of every
+     * configured endpoint over Tor.
+     */
+    fun resolvedPirServerUrl(
+        accountUuid: String,
+        roundId: String
+    ): String?
+
+    /**
+     * The wallet-notes JSON a precompute for this account and round was built from, or null when
+     * none ran. It is a snapshot-height read, so it cannot have changed since.
+     */
+    fun preparedNotesJson(
+        accountUuid: String,
+        roundId: String
+    ): String?
 
     /**
      * Waits for the background delegation proof of [key]. Null means one was never scheduled - for
@@ -106,6 +139,7 @@ class VotingProofPrecomputeRepositoryImpl(
     private val delegationPirJobs =
         mutableMapOf<VotingDelegationPirPrecomputeKey, Deferred<Result<VotingDelegationPirPrecomputeResult>>>()
     private val delegationProofJobs = mutableMapOf<VotingDelegationPirPrecomputeKey, Deferred<Result<Unit>>>()
+    private val delegationNotesJson = mutableMapOf<VotingDelegationPirPrecomputeKey, String>()
     private val resolvedPirServerUrls = mutableMapOf<VotingDelegationPirPrecomputeKey, String>()
     private val liveProofMaterials = mutableSetOf<VotingDelegationProofMaterial>()
 
@@ -128,6 +162,7 @@ class VotingProofPrecomputeRepositoryImpl(
 
     override fun startDelegationPirPrecompute(request: VotingDelegationPirPrecomputeRequest) {
         synchronized(lock) {
+            delegationNotesJson[request.key] = request.notesJson
             val existing = delegationPirJobs[request.key]
             if (existing != null && !existing.isCancelled) {
                 return
@@ -146,6 +181,16 @@ class VotingProofPrecomputeRepositoryImpl(
         key: VotingDelegationPirPrecomputeKey
     ): Result<VotingDelegationPirPrecomputeResult>? =
         synchronized(lock) { delegationPirJobs[key] }?.await()
+
+    override fun resolvedPirServerUrl(
+        accountUuid: String,
+        roundId: String
+    ): String? = synchronized(lock) { resolvedPirServerUrls.entryForRound(accountUuid, roundId) }
+
+    override fun preparedNotesJson(
+        accountUuid: String,
+        roundId: String
+    ): String? = synchronized(lock) { delegationNotesJson.entryForRound(accountUuid, roundId) }
 
     override suspend fun awaitDelegationProof(key: VotingDelegationPirPrecomputeKey): Result<Unit>? {
         val job = synchronized(lock) { delegationProofJobs[key] } ?: return null
