@@ -24,8 +24,6 @@ import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.MINIMUM_EVALUATION_INTERVAL
 import co.electriccoin.zcash.ui.common.repository.MockOrchardBalanceRepository
 import co.electriccoin.zcash.ui.common.repository.MockOrchardBalanceRepositoryImpl
-import co.electriccoin.zcash.ui.common.repository.OhttpFallbackRepository
-import co.electriccoin.zcash.ui.common.repository.OhttpFallbackRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.TransactionFilterRepository
@@ -45,20 +43,6 @@ import org.koin.dsl.module
 val repositoryModule =
     module {
         singleOf(::WalletRepositoryImpl) bind WalletRepository::class
-        // Eager: it must observe the synchronizer from app start to move Automatic mode between the
-        // OHTTP gateway and the clearnet fallback tier without anyone subscribing to it.
-        single(createdAtStart = true) {
-            OhttpFallbackRepositoryImpl(
-                application = get(),
-                synchronizerProvider = get(),
-                persistableWalletProvider = get(),
-                walletRepository = get(),
-                lightWalletEndpointProvider = get(),
-                isServerSelectionAutomaticProvider = get(),
-                isOhttpFallbackActiveProvider = get(),
-                applicationStateProvider = get(),
-            )
-        } bind OhttpFallbackRepository::class
         singleOf(::ConfigurationRepositoryImpl) bind ConfigurationRepository::class
         singleOf(::ExchangeRateRepositoryImpl) bind ExchangeRateRepository::class
         singleOf(::FiatCurrencyRepositoryImpl) bind FiatCurrencyRepository::class

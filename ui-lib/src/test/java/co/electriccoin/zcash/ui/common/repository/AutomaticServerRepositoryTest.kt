@@ -3,9 +3,11 @@ package co.electriccoin.zcash.ui.common.repository
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.model.AccountBalance
 import cash.z.ecc.android.sdk.model.AccountUuid
+import cash.z.ecc.android.sdk.model.FastestServersResult
 import cash.z.ecc.android.sdk.model.PersistableWallet
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
+import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
@@ -19,6 +21,7 @@ import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -35,7 +38,8 @@ import kotlin.time.TestTimeSource
  * wallet points at a custom, non-bundled endpoint, and Automatic otherwise.
  *
  * Also covers the app-side half of the server switch hysteresis (MOB-1832): the guards and the arguments
- * handed to the SDK's `evaluateServerSwitch`, which owns the thresholds themselves, plus the resilience of
+ * handed to the SDK's fastest-server benchmark per tier (OHTTP first, clearnet only when OHTTP is down),
+ * plus the resilience of
  * the foreground lane itself.
  *
  * Note: `init()` launches the lane on an internal `Dispatchers.IO` scope, so the tests drive
@@ -44,15 +48,21 @@ import kotlin.time.TestTimeSource
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AutomaticServerRepositoryTest {
-    private val default = endpoint("zec.rocks")
-    private val known = listOf(default, endpoint("na.zec.rocks"))
+    private val gateway = endpoint("ohttp-gateway.example")
+    private val fallbacks = listOf(endpoint("zec.rocks"), endpoint("na.zec.rocks"))
+    private val known = listOf(gateway) + fallbacks
 
     private val isAutomaticProvider = mockk<IsServerSelectionAutomaticProvider>(relaxed = true)
     private val persistedWallet = MutableStateFlow<PersistableWallet?>(null)
     private val persistableWalletProvider =
         mockk<PersistableWalletProvider>(relaxed = true) { every { persistableWallet } returns persistedWallet }
     private val lightWalletEndpointProvider =
-        mockk<LightWalletEndpointProvider>(relaxed = true) { every { getEndpoints() } returns known }
+        mockk<LightWalletEndpointProvider>(relaxed = true) {
+            every { getEndpoints() } returns known
+            every { getDefaultEndpoint() } returns gateway
+            every { getFallbackEndpoints() } returns fallbacks
+            every { isOhttpGateway(any()) } answers { firstArg<LightWalletEndpoint>().host.startsWith("ohttp-gateway") }
+        }
     private val localBalances = MutableStateFlow<Map<AccountUuid, AccountBalance>?>(null)
     private val synchronizer = mockk<Synchronizer>(relaxed = true) { every { walletBalances } returns localBalances }
     private val synchronizerProvider =
@@ -90,6 +100,7 @@ class AutomaticServerRepositoryTest {
             persistableWalletProvider = persistableWalletProvider,
             lightWalletEndpointProvider = lightWalletEndpointProvider,
             isServerSelectionAutomaticProvider = isAutomaticProvider,
+            isOhttpFallbackActiveProvider = mockk<IsOhttpFallbackActiveProvider>(relaxed = true),
             evaluationInterval = EvaluationInterval(MINIMUM_EVALUATION_INTERVAL, timeSource)
         )
 
@@ -176,7 +187,7 @@ class AutomaticServerRepositoryTest {
             coEvery { isAutomaticProvider.get() } returns false
 
             assertNull(repository.evaluateServerSwitch())
-            coVerify(exactly = 0) { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { synchronizer.getFastestServers(any()) }
         }
 
     @Test
@@ -186,46 +197,62 @@ class AutomaticServerRepositoryTest {
             every { zashiProposalRepository.submitState } returns MutableStateFlow(SubmitProposalState.Submitting)
 
             assertNull(repository.evaluateServerSwitch())
-            coVerify(exactly = 0) { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) }
+            coVerify(exactly = 0) { synchronizer.getFastestServers(any()) }
         }
 
     @Test
-    fun sdkDecisionToStayIsPassedThrough() =
+    fun scenario1And2GatewayReachableStaysOnOhttpWithoutProbingClearnet() =
         runTest {
             coEvery { isAutomaticProvider.get() } returns true
-            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(known.first())
-            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns null
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = true, rankedFallbacks = fallbacks)
 
             assertNull(repository.evaluateServerSwitch())
+            // Only the OHTTP tier is benchmarked: no clearnet host learns the device IP while OHTTP works.
+            coVerify(exactly = 1) { synchronizer.getFastestServers(listOf(gateway)) }
+            coVerify(exactly = 0) { synchronizer.getFastestServers(fallbacks) }
         }
 
     @Test
-    fun sdkDecisionToSwitchIsPassedThrough() =
+    fun scenario3GatewayUnreachableFallsBackToTheBestClearnetServer() =
         runTest {
             coEvery { isAutomaticProvider.get() } returns true
-            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(known.first())
-            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns known.last()
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = listOf(known.last(), fallbacks.first()))
 
             assertEquals(known.last(), repository.evaluateServerSwitch())
+            coVerify(exactly = 1) { synchronizer.getFastestServers(listOf(gateway)) }
+            coVerify(exactly = 1) { synchronizer.getFastestServers(fallbacks) }
         }
 
     @Test
-    fun sdkIsCalledWithTheCurrentEndpointAndEveryKnownCandidate() =
+    fun scenario4GatewayBackReturnsFromTheFallback() =
         runTest {
             coEvery { isAutomaticProvider.get() } returns true
-            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(known.first())
-            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns null
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(known.last())
+            stubTiers(gatewayReachable = true, rankedFallbacks = listOf(known.last()))
 
-            repository.evaluateServerSwitch()
+            assertEquals(gateway, repository.evaluateServerSwitch())
+        }
 
-            coVerify(exactly = 1) {
-                synchronizer.evaluateServerSwitch(
-                    current = known.first(),
-                    candidates = known,
-                    fetchThreshold = 5.seconds,
-                    blocksToFetch = 1
-                )
-            }
+    @Test
+    fun scenario6TheFallbackInUseFailsSoTheNextRankedServerIsChosen() =
+        runTest {
+            coEvery { isAutomaticProvider.get() } returns true
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(known.last())
+            stubTiers(gatewayReachable = false, rankedFallbacks = listOf(fallbacks.first()))
+
+            assertEquals(fallbacks.first(), repository.evaluateServerSwitch())
+        }
+
+    @Test
+    fun scenario7NothingReachableStaysPut() =
+        runTest {
+            coEvery { isAutomaticProvider.get() } returns true
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = emptyList())
+
+            assertNull(repository.evaluateServerSwitch())
         }
 
     /**
@@ -276,8 +303,7 @@ class AutomaticServerRepositoryTest {
     fun aDeclinedSwitchIsNotConfirmedToTheSdk() =
         runTest {
             stubSwitchDecision(balances = emptyMap())
-            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns
-                endpoint("no.longer.offered")
+            stubTiers(gatewayReachable = false, rankedFallbacks = listOf(endpoint("no.longer.offered")))
 
             val foregroundEdges = MutableSharedFlow<Unit>()
             repository.observeSwitchCandidates(foregroundEdges).launchIn(backgroundScope)
@@ -294,9 +320,7 @@ class AutomaticServerRepositoryTest {
     fun aCancelledEvaluationAppliesNothing() =
         runTest {
             stubSwitchDecision(balances = emptyMap())
-            coEvery {
-                synchronizer.evaluateServerSwitch(any(), any(), any(), any())
-            } coAnswers { awaitCancellation() }
+            coEvery { synchronizer.getFastestServers(any()) } coAnswers { awaitCancellation() }
 
             val foregroundEdges = MutableSharedFlow<Unit>()
             val lane = repository.observeSwitchCandidates(foregroundEdges).launchIn(backgroundScope)
@@ -314,8 +338,7 @@ class AutomaticServerRepositoryTest {
     fun aFailedEvaluationStillCountsAgainstTheEvaluationInterval() =
         runTest {
             stubSwitchDecision(balances = emptyMap())
-            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } throws
-                IllegalStateException("benchmark failed")
+            coEvery { synchronizer.getFastestServers(any()) } throws IllegalStateException("benchmark failed")
 
             val foregroundEdges = MutableSharedFlow<Unit>()
             repository.observeSwitchCandidates(foregroundEdges).launchIn(backgroundScope)
@@ -326,15 +349,14 @@ class AutomaticServerRepositoryTest {
             foregroundEdges.emit(Unit)
             runCurrent()
 
-            coVerify(exactly = 1) { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) }
+            coVerify(exactly = 1) { synchronizer.getFastestServers(any()) }
         }
 
     @Test
     fun theLaneSurvivesAFailedEvaluationAndKeepsServingTheNextEdge() =
         runTest {
             stubSwitchDecision(balances = emptyMap())
-            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } throws
-                IllegalStateException("benchmark failed")
+            coEvery { synchronizer.getFastestServers(any()) } throws IllegalStateException("benchmark failed")
 
             val foregroundEdges = MutableSharedFlow<Unit>()
             repository.observeSwitchCandidates(foregroundEdges).launchIn(backgroundScope)
@@ -345,7 +367,7 @@ class AutomaticServerRepositoryTest {
 
             coVerify(exactly = 0) { walletRepository.updateWalletEndpoint(any()) }
 
-            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns known.last()
+            stubTiers(gatewayReachable = false, rankedFallbacks = listOf(known.last()))
             timeSource += MINIMUM_EVALUATION_INTERVAL
             foregroundEdges.emit(Unit)
             runCurrent()
@@ -373,7 +395,7 @@ class AutomaticServerRepositoryTest {
     fun aSecondForegroundEdgeInsideTheEvaluationIntervalIsNotEvaluated() =
         runTest {
             stubSwitchDecision(balances = emptyMap())
-            coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns null
+            stubTiers(gatewayReachable = true, rankedFallbacks = emptyList())
 
             val foregroundEdges = MutableSharedFlow<Unit>()
             repository.observeSwitchCandidates(foregroundEdges).launchIn(backgroundScope)
@@ -384,7 +406,7 @@ class AutomaticServerRepositoryTest {
             foregroundEdges.emit(Unit)
             runCurrent()
 
-            coVerify(exactly = 1) { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) }
+            coVerify(exactly = 1) { synchronizer.getFastestServers(any()) }
         }
 
     private fun stubSwitchDecision(balances: Map<AccountUuid, AccountBalance>?) {
@@ -393,7 +415,17 @@ class AutomaticServerRepositoryTest {
         coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet
         persistedWallet.value = wallet
         localBalances.value = balances
-        coEvery { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) } returns known.last()
+        stubTiers(gatewayReachable = false, rankedFallbacks = listOf(known.last()))
+    }
+
+    /** SDK benchmark per tier: the OHTTP tier validates the gateway or nothing; clearnet ranks as given. */
+    private fun stubTiers(gatewayReachable: Boolean, rankedFallbacks: List<LightWalletEndpoint>) {
+        coEvery { synchronizer.getFastestServers(any()) } answers {
+            val requested = firstArg<List<LightWalletEndpoint>>()
+            val isOhttpTier = requested.any { it.host.startsWith("ohttp-gateway") }
+            val servers = if (isOhttpTier) (if (gatewayReachable) listOf(gateway) else emptyList()) else rankedFallbacks
+            flowOf(FastestServersResult.Done(servers))
+        }
     }
 
     private fun wallet(walletEndpoint: LightWalletEndpoint) =

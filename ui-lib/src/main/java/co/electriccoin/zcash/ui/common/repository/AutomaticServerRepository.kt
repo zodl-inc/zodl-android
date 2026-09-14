@@ -2,11 +2,14 @@ package co.electriccoin.zcash.ui.common.repository
 
 import android.os.SystemClock
 import cash.z.ecc.android.sdk.Synchronizer
+import cash.z.ecc.android.sdk.model.FastestServersResult
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.datasource.resolveIsEndpointCustom
 import co.electriccoin.zcash.ui.common.datasource.resolveIsServerSelectionAutomatic
+import co.electriccoin.zcash.ui.common.model.ServerFallbackPolicy
 import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
+import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
@@ -17,18 +20,23 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.cancellation.CancellationException
@@ -49,6 +57,7 @@ interface AutomaticServerRepository {
     fun init()
 }
 
+@Suppress("LongParameterList", "TooManyFunctions")
 class AutomaticServerRepositoryImpl(
     private val walletRepository: WalletRepository,
     private val zashiProposalRepository: ZashiProposalRepository,
@@ -58,6 +67,7 @@ class AutomaticServerRepositoryImpl(
     private val persistableWalletProvider: PersistableWalletProvider,
     private val lightWalletEndpointProvider: LightWalletEndpointProvider,
     private val isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
+    private val isOhttpFallbackActiveProvider: IsOhttpFallbackActiveProvider,
     private val evaluationInterval: EvaluationInterval,
 ) : AutomaticServerRepository {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -118,29 +128,79 @@ class AutomaticServerRepositoryImpl(
     }
 
     override fun init() {
-        observeSwitchCandidates(applicationStateProvider.observeOnForeground()).launchIn(scope)
+        switchLane(
+            merge(
+                applicationStateProvider.observeOnForeground().map { SwitchTrigger.FOREGROUND },
+                connectivityEdges(),
+                fallbackRecoveryTicks(),
+            )
+        ).launchIn(scope)
     }
 
     /**
-     * The automatic-selection lane. Every foreground edge benchmarks the bundled servers through the SDK's
-     * hysteresis policy, and a newer edge cancels an in-flight evaluation. A switch candidate is applied
-     * only once the first local balance snapshot exists: a different endpoint rebuilds the Synchronizer,
-     * and UI consumers retain that snapshot through the replacement.
+     * The automatic-selection lane, OHTTP first (see [ServerFallbackPolicy]). Every foreground edge
+     * re-evaluates (rate limited by [evaluationInterval]); a connectivity edge - a synchronizer error or a
+     * sustained DISCONNECTED status - re-evaluates at once so the fallback to a clearnet server is not
+     * held back by the rate limit; and while a fallback is active a periodic tick checks whether the OHTTP
+     * gateway is back. A newer trigger cancels an in-flight evaluation. A switch candidate is applied only
+     * once the first local balance snapshot exists: a different endpoint rebuilds the Synchronizer, and UI
+     * consumers retain that snapshot through the replacement.
      *
-     * Nothing here may throw out of the flow, the upstream foreground signal included. This lane is
-     * launched once for the lifetime of the process on a scope with no exception handler, so a single
-     * failure - an unreachable server, a prefs read, a rejected argument - would otherwise take automatic
-     * selection down until the next process start, and reach the thread's uncaught handler on its way out.
+     * Nothing here may throw out of the flow, the upstream signals included. This lane is launched once
+     * for the lifetime of the process on a scope with no exception handler, so a single failure - an
+     * unreachable server, a prefs read, a rejected argument - would otherwise take automatic selection
+     * down until the next process start, and reach the thread's uncaught handler on its way out.
      */
-    @OptIn(ExperimentalCoroutinesApi::class)
     internal fun observeSwitchCandidates(foregroundEdges: Flow<Unit>): Flow<LightWalletEndpoint> =
-        foregroundEdges
-            .catch { Twig.error(it) { "Automatic server: the foreground signal failed" } }
-            .filter { evaluationInterval.hasElapsed() }
+        switchLane(foregroundEdges.map { SwitchTrigger.FOREGROUND })
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    internal fun switchLane(triggers: Flow<SwitchTrigger>): Flow<LightWalletEndpoint> =
+        triggers
+            .catch { Twig.error(it) { "Automatic server: a trigger signal failed" } }
+            .filter { it.bypassesInterval || evaluationInterval.hasElapsed() }
             .mapLatest { guarded("evaluate a server switch") { resolveSwitchCandidate() } }
             .filterNotNull()
             .onEach { candidate ->
                 guarded("switch to ${candidate.host}:${candidate.port}") { applyServerSwitch(candidate) }
+            }
+
+    /** A synchronizer error, or a DISCONNECTED status that lasts [DISCONNECTED_GRACE]. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun connectivityEdges(): Flow<SwitchTrigger> =
+        merge(
+            synchronizerProvider.error.filterNotNull().map { SwitchTrigger.CONNECTIVITY },
+            synchronizerProvider.synchronizer
+                .flatMapLatest { it?.status ?: emptyFlow() }
+                .mapLatest { status ->
+                    // mapLatest cancels the delay when the status changes, so only a status that STAYS
+                    // disconnected for the grace period fires.
+                    if (status == Synchronizer.Status.DISCONNECTED) {
+                        delay(DISCONNECTED_GRACE)
+                        SwitchTrigger.CONNECTIVITY
+                    } else {
+                        null
+                    }
+                }.filterNotNull()
+        )
+
+    /** While Automatic mode is on a clearnet fallback, ask periodically whether OHTTP is back. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun fallbackRecoveryTicks(): Flow<SwitchTrigger> =
+        isOhttpFallbackActiveProvider
+            .observe()
+            .distinctUntilChanged()
+            .flatMapLatest { active ->
+                if (active) {
+                    flow {
+                        while (true) {
+                            delay(FALLBACK_RECOVERY_INTERVAL)
+                            emit(SwitchTrigger.RECOVERY)
+                        }
+                    }
+                } else {
+                    emptyFlow()
+                }
             }
 
     private suspend fun <T> guarded(
@@ -174,23 +234,65 @@ class AutomaticServerRepositoryImpl(
         return candidate
     }
 
+    /**
+     * OHTTP first ([ServerFallbackPolicy]): the OHTTP gateway tier is validated with the SDK's own
+     * fastest-server benchmark (Tor-aware through `ServiceMode`); while any gateway answers it is the
+     * server, and the clearnet tier is not even probed - so no clearnet host sees the device while OHTTP
+     * works, and speed is never a reason to leave OHTTP. Only when no gateway answers is the clearnet tier
+     * benchmarked and its best validated server returned; nothing reachable at all means "stay".
+     */
     @Suppress("ReturnCount")
     internal suspend fun evaluateServerSwitch(): LightWalletEndpoint? {
         if (!isServerAutomatic() || isAppInTransactionState) return null
         val current = persistableWalletProvider.getPersistableWallet()?.endpoint ?: return null
-        val candidates = lightWalletEndpointProvider.getEndpoints()
-        if (candidates.isEmpty()) return null
+        val gateways = lightWalletEndpointProvider.getEndpoints().filter(lightWalletEndpointProvider::isOhttpGateway)
+        if (gateways.isEmpty()) return null
         val synchronizer = synchronizerProvider.getSynchronizerOrNull() ?: return null
         return try {
-            synchronizer.evaluateServerSwitch(
-                current = current,
-                candidates = candidates,
-                fetchThreshold = 5.seconds,
-                blocksToFetch = 1
-            )
+            val healthyGateways = rankValidated(synchronizer, gateways)
+            val rankedFallbacks =
+                if (healthyGateways.isEmpty()) {
+                    rankValidated(synchronizer, lightWalletEndpointProvider.getFallbackEndpoints())
+                } else {
+                    emptyList()
+                }
+            val decision =
+                ServerFallbackPolicy.decide(
+                    current = current,
+                    healthyGateways = healthyGateways,
+                    rankedFallbacks = rankedFallbacks,
+                    isOhttpGateway = lightWalletEndpointProvider::isOhttpGateway,
+                )
+            Twig.info {
+                "Automatic server: OHTTP-first current=${current.host} " +
+                    "gatewayReachable=${healthyGateways.isNotEmpty()} " +
+                    "fallbacks=${rankedFallbacks.map { it.host }} -> ${decision?.host ?: "stay"}"
+            }
+            syncFallbackFlag(decision ?: current)
+            decision
         } finally {
             evaluationInterval.markAttempted()
         }
+    }
+
+    /** Validated servers, fastest first, or empty when none of [candidates] answers. */
+    private suspend fun rankValidated(
+        synchronizer: Synchronizer,
+        candidates: List<LightWalletEndpoint>
+    ): List<LightWalletEndpoint> {
+        if (candidates.isEmpty()) return emptyList()
+        return withTimeoutOrNull(TIER_BENCHMARK_TIMEOUT) {
+            synchronizer
+                .getFastestServers(candidates)
+                .filterIsInstance<FastestServersResult.Done>()
+                .first()
+                .servers
+        }.orEmpty()
+    }
+
+    private suspend fun syncFallbackFlag(endpoint: LightWalletEndpoint) {
+        val active = ServerFallbackPolicy.isFallback(endpoint, lightWalletEndpointProvider::isOhttpGateway)
+        if (isOhttpFallbackActiveProvider.get() != active) isOhttpFallbackActiveProvider.store(active)
     }
 
     /**
@@ -208,9 +310,28 @@ class AutomaticServerRepositoryImpl(
         val synchronizer: Synchronizer? = synchronizerProvider.getSynchronizerOrNull()
         Twig.info { "Automatic server: switching to ${candidate.host}:${candidate.port}" }
         walletRepository.updateWalletEndpoint(candidate)
+        syncFallbackFlag(candidate)
         synchronizer?.confirmServerSwitch(candidate)
     }
 }
+
+/** What woke the automatic-selection lane; connectivity edges skip the foreground rate limit. */
+enum class SwitchTrigger(
+    val bypassesInterval: Boolean
+) {
+    FOREGROUND(bypassesInterval = false),
+    CONNECTIVITY(bypassesInterval = true),
+    RECOVERY(bypassesInterval = true),
+}
+
+/** How long a DISCONNECTED status must last before it counts as a connectivity edge. */
+private val DISCONNECTED_GRACE = 20.seconds
+
+/** How often, while on a clearnet fallback, to check whether the OHTTP gateway is back. */
+private val FALLBACK_RECOVERY_INTERVAL = 5.minutes
+
+/** Cap on validating one tier (the SDK benchmark itself times out per server well before this). */
+private val TIER_BENCHMARK_TIMEOUT = 90.seconds
 
 /**
  * Rate limit for the automatic-selection lane. `observeOnForeground()` fires on every foreground edge and a
