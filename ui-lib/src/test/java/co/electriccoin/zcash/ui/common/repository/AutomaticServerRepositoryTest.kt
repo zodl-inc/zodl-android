@@ -5,6 +5,7 @@ import cash.z.ecc.android.sdk.model.AccountBalance
 import cash.z.ecc.android.sdk.model.AccountUuid
 import cash.z.ecc.android.sdk.model.FastestServersResult
 import cash.z.ecc.android.sdk.model.PersistableWallet
+import cash.z.ecc.android.sdk.type.ServerValidation
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
 import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
@@ -100,6 +101,7 @@ class AutomaticServerRepositoryTest {
 
     private val repository =
         AutomaticServerRepositoryImpl(
+            application = mockk(relaxed = true),
             walletRepository = walletRepository,
             zashiProposalRepository = zashiProposalRepository,
             keystoneProposalRepository = keystoneProposalRepository,
@@ -269,11 +271,27 @@ class AutomaticServerRepositoryTest {
         }
 
     @Test
+    fun aClearnetTierThatTheBenchmarkCannotRankIsStillUsableWhenItValidates() =
+        runTest {
+            // Tor circuits can miss the benchmark's fetch thresholds; plain validation decides then.
+            coEvery { isAutomaticProvider.get() } returns true
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = emptyList())
+            coEvery { synchronizer.validateServerEndpoint(any(), fallbacks.first()) } returns
+                ServerValidation.InValid(IllegalStateException("down"))
+            coEvery { synchronizer.validateServerEndpoint(any(), known.last()) } returns ServerValidation.Valid
+
+            assertEquals(known.last(), repository.evaluateServerSwitch())
+        }
+
+    @Test
     fun scenario7NothingReachableStaysPut() =
         runTest {
             coEvery { isAutomaticProvider.get() } returns true
             coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
             stubTiers(gatewayReachable = false, rankedFallbacks = emptyList())
+            coEvery { synchronizer.validateServerEndpoint(any(), any()) } returns
+                ServerValidation.InValid(IllegalStateException("down"))
 
             assertNull(repository.evaluateServerSwitch())
         }

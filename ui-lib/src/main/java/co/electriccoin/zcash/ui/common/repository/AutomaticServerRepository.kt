@@ -1,8 +1,10 @@
 package co.electriccoin.zcash.ui.common.repository
 
+import android.app.Application
 import android.os.SystemClock
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.model.FastestServersResult
+import cash.z.ecc.android.sdk.type.ServerValidation
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.datasource.resolveIsEndpointCustom
@@ -59,6 +61,7 @@ interface AutomaticServerRepository {
 
 @Suppress("LongParameterList", "TooManyFunctions")
 class AutomaticServerRepositoryImpl(
+    private val application: Application,
     private val walletRepository: WalletRepository,
     private val zashiProposalRepository: ZashiProposalRepository,
     private val keystoneProposalRepository: KeystoneProposalRepository,
@@ -132,7 +135,7 @@ class AutomaticServerRepositoryImpl(
             merge(
                 applicationStateProvider.observeOnForeground().map { SwitchTrigger.FOREGROUND },
                 connectivityEdges(),
-                fallbackRecoveryTicks(),
+                healthTicks(),
             )
         ).launchIn(scope)
     }
@@ -184,22 +187,31 @@ class AutomaticServerRepositoryImpl(
                 }.filterNotNull()
         )
 
-    /** While Automatic mode is on a clearnet fallback, ask periodically whether OHTTP is back. */
+    /**
+     * Periodic health check while Automatic mode is on. On the gateway it runs every [GATEWAY_HEALTH_INTERVAL]:
+     * an already-synced wallet whose gateway dies never surfaces an error to Kotlin - the sync engine treats
+     * the relay/gateway 502 as transient and retries forever (seen 2026-09-14 with Tor on) - so the only
+     * reliable "OHTTP is down" signal is probing the gateway ourselves. While on a clearnet fallback it runs
+     * every [FALLBACK_RECOVERY_INTERVAL] to bring the wallet back to OHTTP as soon as the gateway answers.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
-    private fun fallbackRecoveryTicks(): Flow<SwitchTrigger> =
-        isOhttpFallbackActiveProvider
-            .observe()
-            .distinctUntilChanged()
-            .flatMapLatest { active ->
-                if (active) {
-                    flow {
-                        while (true) {
-                            delay(FALLBACK_RECOVERY_INTERVAL)
-                            emit(SwitchTrigger.RECOVERY)
-                        }
-                    }
-                } else {
+    private fun healthTicks(): Flow<SwitchTrigger> =
+        isServerAutomatic
+            .flatMapLatest { automatic ->
+                if (!automatic) {
                     emptyFlow()
+                } else {
+                    isOhttpFallbackActiveProvider
+                        .observe()
+                        .distinctUntilChanged()
+                        .flatMapLatest { fallbackActive ->
+                            flow {
+                                while (true) {
+                                    delay(if (fallbackActive) FALLBACK_RECOVERY_INTERVAL else GATEWAY_HEALTH_INTERVAL)
+                                    emit(if (fallbackActive) SwitchTrigger.RECOVERY else SwitchTrigger.HEALTH)
+                                }
+                            }
+                        }
                 }
             }
 
@@ -275,19 +287,36 @@ class AutomaticServerRepositoryImpl(
         }
     }
 
-    /** Validated servers, fastest first, or empty when none of [candidates] answers. */
+    /**
+     * Validated servers, fastest first, or empty when none of [candidates] answers. The SDK's fastest-server
+     * benchmark (latency + a timed block fetch, Tor-aware) ranks them; when it validates nothing - its
+     * fetch thresholds are tight and a slow Tor circuit can miss them even though the server is fine -
+     * fall back to plain validation (`GetLightdInfo`, also Tor-aware) in the configured order, so an
+     * outage never leaves the wallet on a dead gateway just because the ranking was too strict.
+     */
     private suspend fun rankValidated(
         synchronizer: Synchronizer,
         candidates: List<LightWalletEndpoint>
     ): List<LightWalletEndpoint> {
-        if (candidates.isEmpty()) return emptyList()
-        return withTimeoutOrNull(TIER_BENCHMARK_TIMEOUT) {
-            synchronizer
-                .getFastestServers(candidates)
-                .filterIsInstance<FastestServersResult.Done>()
-                .first()
-                .servers
-        }.orEmpty()
+        val ranked =
+            if (candidates.isEmpty()) {
+                emptyList()
+            } else {
+                withTimeoutOrNull(TIER_BENCHMARK_TIMEOUT) {
+                    synchronizer
+                        .getFastestServers(candidates)
+                        .filterIsInstance<FastestServersResult.Done>()
+                        .first()
+                        .servers
+                }.orEmpty()
+            }
+        return ranked.ifEmpty {
+            candidates.filter { candidate ->
+                withTimeoutOrNull(VALIDATION_TIMEOUT) {
+                    runCatching { synchronizer.validateServerEndpoint(application, candidate) }.getOrNull()
+                } == ServerValidation.Valid
+            }
+        }
     }
 
     private suspend fun syncFallbackFlag(endpoint: LightWalletEndpoint) {
@@ -321,8 +350,15 @@ enum class SwitchTrigger(
 ) {
     FOREGROUND(bypassesInterval = false),
     CONNECTIVITY(bypassesInterval = true),
+    HEALTH(bypassesInterval = true),
     RECOVERY(bypassesInterval = true),
 }
+
+/** How often, while on the OHTTP gateway, to confirm it still answers. */
+private val GATEWAY_HEALTH_INTERVAL = 2.minutes
+
+/** Cap on one plain validation of a fallback candidate. */
+private val VALIDATION_TIMEOUT = 20.seconds
 
 /** How long a DISCONNECTED status must last before it counts as a connectivity edge. */
 private val DISCONNECTED_GRACE = 20.seconds
