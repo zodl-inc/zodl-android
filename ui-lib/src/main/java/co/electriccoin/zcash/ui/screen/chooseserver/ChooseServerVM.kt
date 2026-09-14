@@ -75,8 +75,8 @@ class ChooseServerVM(
         local: InnerState.Local,
         persisted: InnerState.Persisted,
         fastestServers: FastestServersState,
-    ): ServerConnectionModeState {
-        return ServerConnectionModeState(
+    ): ServerConnectionModeState =
+        ServerConnectionModeState(
             automatic =
                 RadioButtonState(
                     text = stringRes(R.string.serverSetup_automatic),
@@ -117,7 +117,6 @@ class ChooseServerVM(
             automaticBadge =
                 if (fastestServers.isLoading) stringRes(R.string.serverSetup_testing) else null
         )
-    }
 
     private fun createFastest(
         local: InnerState.Local,
