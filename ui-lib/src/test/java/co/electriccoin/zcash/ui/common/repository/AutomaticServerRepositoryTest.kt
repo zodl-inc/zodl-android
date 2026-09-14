@@ -90,6 +90,14 @@ class AutomaticServerRepositoryTest {
 
     private val timeSource = TestTimeSource()
 
+    // A relaxed mock returns a bare Object for the suspend Boolean getter; back it with a real value.
+    private var fallbackActive = false
+    private val fallbackFlag =
+        mockk<IsOhttpFallbackActiveProvider>(relaxed = true) {
+            coEvery { get() } answers { fallbackActive }
+            coEvery { store(any()) } answers { fallbackActive = firstArg() }
+        }
+
     private val repository =
         AutomaticServerRepositoryImpl(
             walletRepository = walletRepository,
@@ -100,7 +108,7 @@ class AutomaticServerRepositoryTest {
             persistableWalletProvider = persistableWalletProvider,
             lightWalletEndpointProvider = lightWalletEndpointProvider,
             isServerSelectionAutomaticProvider = isAutomaticProvider,
-            isOhttpFallbackActiveProvider = mockk<IsOhttpFallbackActiveProvider>(relaxed = true),
+            isOhttpFallbackActiveProvider = fallbackFlag,
             evaluationInterval = EvaluationInterval(MINIMUM_EVALUATION_INTERVAL, timeSource)
         )
 
@@ -243,6 +251,21 @@ class AutomaticServerRepositoryTest {
             stubTiers(gatewayReachable = false, rankedFallbacks = listOf(fallbacks.first()))
 
             assertEquals(fallbacks.first(), repository.evaluateServerSwitch())
+        }
+
+    @Test
+    fun fallbackFlagFollowsTheDecision() =
+        runTest {
+            coEvery { isAutomaticProvider.get() } returns true
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = listOf(known.last()))
+            repository.evaluateServerSwitch()
+            assertEquals(true, fallbackActive)
+
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(known.last())
+            stubTiers(gatewayReachable = true, rankedFallbacks = emptyList())
+            repository.evaluateServerSwitch()
+            assertEquals(false, fallbackActive)
         }
 
     @Test
