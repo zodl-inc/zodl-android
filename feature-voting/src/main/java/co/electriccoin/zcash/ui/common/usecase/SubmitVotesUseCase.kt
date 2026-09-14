@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import android.os.SystemClock
 import android.util.Log
 import cash.z.ecc.android.sdk.ext.toHex
 import cash.z.ecc.android.sdk.model.ZcashNetwork
@@ -144,12 +145,20 @@ class SubmitVotesUseCase(
                 return@withContext VotingSubmissionResult(submittedProposalCount = 0)
             }
 
+            val submissionStartedAt = SystemClock.elapsedRealtime()
             val selectedAccount = getSelectedWalletAccount()
             val isKeystone = selectedAccount is KeystoneAccount
             val accountUuidString = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
             val accountUuidCanonical = selectedAccount.sdkAccount.accountUuid.toCanonicalUuidString()
 
-            when (val preparation = prepareVotingRound(roundId)) {
+            val preparation =
+                traceVotingStep(
+                    roundId = roundId,
+                    step = "prepareRound"
+                ) {
+                    prepareVotingRound(roundId)
+                }
+            when (preparation) {
                 is VotingRoundPreparationResult.Ready -> {
                     Unit
                 }
@@ -185,10 +194,15 @@ class SubmitVotesUseCase(
                     .firstOrNull()
                     ?: throw VotingSubmissionRecoverableException(VotingErrors.MissingVotingServerUrl)
             val pirServerUrl =
-                pirSnapshotResolver.resolve(
-                    endpoints = serviceConfig.pirEndpoints.map { endpoint -> endpoint.url },
-                    expectedSnapshotHeight = session.snapshotHeight
-                )
+                traceVotingStep(
+                    roundId = roundId,
+                    step = "pirResolve"
+                ) {
+                    pirSnapshotResolver.resolve(
+                        endpoints = serviceConfig.pirEndpoints.map { endpoint -> endpoint.url },
+                        expectedSnapshotHeight = session.snapshotHeight
+                    )
+                }
 
             val recovery =
                 votingRecoveryRepository.get(accountUuidString, roundId)
@@ -218,12 +232,17 @@ class SubmitVotesUseCase(
             val accountUfvk = selectedAccount.sdkAccount.ufvk
             val seedFingerprint = selectedAccount.sdkAccount.seedFingerprint
             val allNotesJson =
-                votingCryptoClient.getWalletNotesJson(
-                    walletDbPath = walletDbPath,
-                    snapshotHeight = session.snapshotHeight,
-                    networkId = networkId,
-                    accountUuidBytes = selectedAccount.sdkAccount.accountUuid.value
-                )
+                traceVotingStep(
+                    roundId = roundId,
+                    step = "walletNotes"
+                ) {
+                    votingCryptoClient.getWalletNotesJson(
+                        walletDbPath = walletDbPath,
+                        snapshotHeight = session.snapshotHeight,
+                        networkId = networkId,
+                        accountUuidBytes = selectedAccount.sdkAccount.accountUuid.value
+                    )
+                }
 
             val singleShare = recovery.singleShareMode ?: session.isLastMoment()
             val sortedChoices = choices.toSortedMap()
@@ -309,6 +328,7 @@ class SubmitVotesUseCase(
                         }
                 )
 
+                val delegationStartedAt = SystemClock.elapsedRealtime()
                 if (context.recovery.needsDelegationSubmission()) {
                     submitDelegationBundles(
                         context = context,
@@ -317,7 +337,9 @@ class SubmitVotesUseCase(
                         onProgress = onProgress
                     )
                 }
+                val delegationMs = SystemClock.elapsedRealtime() - delegationStartedAt
 
+                val votesStartedAt = SystemClock.elapsedRealtime()
                 val processedProposalCount =
                     submitVoteCommitmentsAndShares(
                         context = context,
@@ -328,8 +350,11 @@ class SubmitVotesUseCase(
                         unresolvedCommittedProposalIds = unresolvedCommittedProposalIds,
                         onProgress = onProgress
                     )
+                val votesMs = SystemClock.elapsedRealtime() - votesStartedAt
 
+                val sharesJoinStartedAt = SystemClock.elapsedRealtime()
                 shareDelivery.awaitAll()
+                val sharesJoinMs = SystemClock.elapsedRealtime() - sharesJoinStartedAt
 
                 val completedProposalCount =
                     votingRecoveryRepository
@@ -371,6 +396,13 @@ class SubmitVotesUseCase(
                     roundId = context.roundId
                 )
                 votingShareTrackingScheduler.schedule(context.roundId)
+
+                Log.i(
+                    TAG,
+                    "Voting submission summary round=$roundId bundles=$bundleCount " +
+                        "questions=${context.totalChoices} delegationMs=$delegationMs votesMs=$votesMs " +
+                        "sharesJoinMs=$sharesJoinMs totalMs=${SystemClock.elapsedRealtime() - submissionStartedAt}"
+                )
 
                 VotingSubmissionResult(submittedProposalCount = completedProposalCount)
             } catch (exception: CancellationException) {
@@ -498,14 +530,20 @@ class SubmitVotesUseCase(
             return
         }
         val witnessesJson =
-            votingCryptoClient.generateNoteWitnessesJson(
-                dbHandle = dbHandle,
+            traceVotingStep(
                 roundId = roundId,
-                bundleIndex = bundleIndex,
-                walletDbPath = context.walletDbPath,
-                networkId = context.networkId,
-                notesJson = context.allNotesJson
-            )
+                step = "generateNoteWitnesses",
+                bundleIndex = bundleIndex
+            ) {
+                votingCryptoClient.generateNoteWitnessesJson(
+                    dbHandle = dbHandle,
+                    roundId = roundId,
+                    bundleIndex = bundleIndex,
+                    walletDbPath = context.walletDbPath,
+                    networkId = context.networkId,
+                    notesJson = context.allNotesJson
+                )
+            }
         votingCryptoClient.storeWitnesses(
             dbHandle = dbHandle,
             roundId = roundId,
@@ -534,8 +572,79 @@ class SubmitVotesUseCase(
         // here: it's a best-effort cache warm, not a signal for whether setup is done (a prior
         // version treated a swallowed background-race "success" as "setup already built", which
         // is exactly what left bundle 1's alpha NULL and crashed build_and_prove_delegation).
+        val setupJustBuilt =
+            if (context.isKeystone) {
+                false
+            } else {
+                constructDelegationPczt(context, dbHandle, bundleIndex)
+            }
+
+        if (isDelegationProofAlreadyUsable(context, dbHandle, bundleIndex, setupJustBuilt)) {
+            return
+        }
+
+        val fvkBytes =
+            votingCryptoClient.extractOrchardFvkFromUfvk(
+                ufvk =
+                    requireNotNull(context.accountUfvk) {
+                        "Account is missing UFVK for voting bundle $bundleIndex"
+                    },
+                networkId = context.networkId
+            )
+        runVotingAuthorizationStep(context.isKeystone) {
+            traceVotingStep(
+                roundId = roundId,
+                step = "proveDelegation",
+                bundleIndex = bundleIndex
+            ) {
+                votingCryptoClient.buildAndProveDelegation(
+                    dbHandle = dbHandle,
+                    roundId = roundId,
+                    bundleIndex = bundleIndex,
+                    pirServerUrl = context.pirServerUrl,
+                    pirLayout = context.pirLayout,
+                    notesJson = context.allNotesJson,
+                    fvkBytes = fvkBytes,
+                    hotkeySeed = context.hotkeySeed,
+                    seedFingerprint =
+                        requireNotNull(context.seedFingerprint) {
+                            "Account is missing seed fingerprint for voting bundle $bundleIndex"
+                        },
+                    accountIndex = context.accountIndex,
+                    roundName = context.session.title,
+                    proofProgress = { progress ->
+                        ledger.update(
+                            bundleIndex = bundleIndex,
+                            questionIndex = 0,
+                            stage = progress * PROOF_STAGE_CEILING
+                        )
+                    }
+                )
+            }
+        }
+        votingRecoveryRepository.clearBundleRebuiltSinceProof(
+            accountUuid = context.accountUuidString,
+            roundId = roundId,
+            bundleIndex = bundleIndex
+        )
+    }
+
+    /**
+     * Writes this bundle's governance PCZT and reports whether that write actually happened. False
+     * means the crate refused to overwrite a setup that is already present and intact.
+     */
+    private suspend fun constructDelegationPczt(
+        context: VotingSubmitContext,
+        dbHandle: Long,
+        bundleIndex: Int
+    ): Boolean {
+        val roundId = context.roundId
         var setupJustBuilt = false
-        if (!context.isKeystone) {
+        traceVotingStep(
+            roundId = roundId,
+            step = "constructPczt",
+            bundleIndex = bundleIndex
+        ) {
             runCatching {
                 votingCryptoClient.buildGovernancePcztFromSeed(
                     dbHandle = dbHandle,
@@ -567,49 +676,7 @@ class SubmitVotesUseCase(
                 if (!throwable.isDelegationSetupOverwrite()) throw throwable
             }.getOrThrow()
         }
-
-        if (isDelegationProofAlreadyUsable(context, dbHandle, bundleIndex, setupJustBuilt)) {
-            return
-        }
-
-        val fvkBytes =
-            votingCryptoClient.extractOrchardFvkFromUfvk(
-                ufvk =
-                    requireNotNull(context.accountUfvk) {
-                        "Account is missing UFVK for voting bundle $bundleIndex"
-                    },
-                networkId = context.networkId
-            )
-        runVotingAuthorizationStep(context.isKeystone) {
-            votingCryptoClient.buildAndProveDelegation(
-                dbHandle = dbHandle,
-                roundId = roundId,
-                bundleIndex = bundleIndex,
-                pirServerUrl = context.pirServerUrl,
-                pirLayout = context.pirLayout,
-                notesJson = context.allNotesJson,
-                fvkBytes = fvkBytes,
-                hotkeySeed = context.hotkeySeed,
-                seedFingerprint =
-                    requireNotNull(context.seedFingerprint) {
-                        "Account is missing seed fingerprint for voting bundle $bundleIndex"
-                    },
-                accountIndex = context.accountIndex,
-                roundName = context.session.title,
-                proofProgress = { progress ->
-                    ledger.update(
-                        bundleIndex = bundleIndex,
-                        questionIndex = 0,
-                        stage = progress * PROOF_STAGE_CEILING
-                    )
-                }
-            )
-        }
-        votingRecoveryRepository.clearBundleRebuiltSinceProof(
-            accountUuid = context.accountUuidString,
-            roundId = roundId,
-            bundleIndex = bundleIndex
-        )
+        return setupJustBuilt
     }
 
     /**
@@ -648,13 +715,19 @@ class SubmitVotesUseCase(
     ): Boolean {
         val roundId = context.roundId
         val outcome =
-            votingProofPrecomputeRepository.awaitDelegationProof(
-                VotingDelegationPirPrecomputeKey(
-                    accountUuid = context.accountUuidString,
-                    roundId = roundId,
-                    bundleIndex = bundleIndex
+            traceVotingStep(
+                roundId = roundId,
+                step = "awaitDelegationProof",
+                bundleIndex = bundleIndex
+            ) {
+                votingProofPrecomputeRepository.awaitDelegationProof(
+                    VotingDelegationPirPrecomputeKey(
+                        accountUuid = context.accountUuidString,
+                        roundId = roundId,
+                        bundleIndex = bundleIndex
+                    )
                 )
-            ) ?: return false
+            } ?: return false
         outcome.onFailure { throwable ->
             Log.w(TAG, "Background voting delegation proof failed for round $roundId bundle $bundleIndex", throwable)
         }
@@ -793,8 +866,13 @@ class SubmitVotesUseCase(
                 roundId = roundId,
                 bundleIndex = bundleIndex
             ) as? VotingTxHashLookup.Present ?: return null
-        return awaitTxConfirmation(session, txHash = cachedDelegationTxHash.txHash, maxAttempts = 1)
-            ?.takeIf { it.code == 0 }
+        return awaitTxConfirmation(
+            session = session,
+            roundId = roundId,
+            txHash = cachedDelegationTxHash.txHash,
+            bundleIndex = bundleIndex,
+            maxAttempts = 1
+        )?.takeIf { it.code == 0 }
             ?.event("delegate_vote")
             ?.attribute("leaf_index")
             ?.recoverLeafIndexOrNull()
@@ -853,7 +931,13 @@ class SubmitVotesUseCase(
             val registration = submission.toDelegationRegistration()
             val result =
                 try {
-                    session.submitDelegation(registration)
+                    traceVotingStep(
+                        roundId = roundId,
+                        step = "postDelegation",
+                        bundleIndex = bundleIndex
+                    ) {
+                        session.submitDelegation(registration)
+                    }
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (exception: Exception) {
@@ -874,7 +958,7 @@ class SubmitVotesUseCase(
                 result = result,
                 bundleIndex = bundleIndex,
                 rejectionMessage = "Delegation transaction was rejected",
-                fetchTxConfirmation = session::fetchTxConfirmation,
+                fetchTxConfirmation = { txHash -> session.fetchTxConfirmation(txHash) },
                 findVanPosition = {
                     findPersistedVanPosition(
                         context = context,
@@ -899,10 +983,14 @@ class SubmitVotesUseCase(
         val confirmation =
             acceptedTransaction.confirmation
                 ?: runVotingAuthorizationStep(context.isKeystone) {
-                    awaitTxConfirmation(session, acceptedTransaction.txHash)
-                        ?: throw VotingSubmissionRecoverableException(
-                            VotingErrors.TxConfirmationTimedOut(acceptedTransaction.txHash)
-                        )
+                    awaitTxConfirmation(
+                        session = session,
+                        roundId = roundId,
+                        txHash = acceptedTransaction.txHash,
+                        bundleIndex = bundleIndex
+                    ) ?: throw VotingSubmissionRecoverableException(
+                        VotingErrors.TxConfirmationTimedOut(acceptedTransaction.txHash)
+                    )
                 }
         runVotingAuthorizationStep(context.isKeystone) {
             confirmation.requireAccepted("Delegation transaction failed")
@@ -1049,7 +1137,14 @@ class SubmitVotesUseCase(
     ) {
         val proofPermits = Semaphore(1)
         val postMutex = Mutex()
-        val coalescer = VoteTreeSyncCoalescer { syncVoteTreeOrThrow(context, dbHandle) }
+        val coalescer =
+            VoteTreeSyncCoalescer(
+                onLeaderWait = { waitMs ->
+                    Log.i(TAG, "Voting trace syncWait round=${context.roundId} ms=$waitMs")
+                }
+            ) {
+                syncVoteTreeOrThrow(context, dbHandle)
+            }
         val chainTickets = LongArray(bundleCount.coerceAtLeast(1))
 
         coroutineScope {
@@ -1179,16 +1274,21 @@ class SubmitVotesUseCase(
                 bundleIndex = bundleIndex,
                 proposalId = proposalId
             ) as? VotingTxHashLookup.Present ?: return null
-        return probeCachedTx(session, cachedVoteTxHash.txHash)
-            .also { confirmation ->
-                if (confirmation !is TxConfirmationProbeResult.Confirmed) {
-                    Log.i(
-                        TAG,
-                        "Cached vote tx ${cachedVoteTxHash.txHash} for round $roundId " +
-                            "is not reusable ($confirmation); rebuilding commitment"
-                    )
-                }
-            }.takeIf { it is TxConfirmationProbeResult.Confirmed } as? TxConfirmationProbeResult.Confirmed
+        return probeCachedTx(
+            session = session,
+            roundId = roundId,
+            txHash = cachedVoteTxHash.txHash,
+            bundleIndex = bundleIndex,
+            proposalId = proposalId
+        ).also { confirmation ->
+            if (confirmation !is TxConfirmationProbeResult.Confirmed) {
+                Log.i(
+                    TAG,
+                    "Cached vote tx ${cachedVoteTxHash.txHash} for round $roundId " +
+                        "is not reusable ($confirmation); rebuilding commitment"
+                )
+            }
+        }.takeIf { it is TxConfirmationProbeResult.Confirmed } as? TxConfirmationProbeResult.Confirmed
     }
 
     @Suppress("TooGenericExceptionCaught")
@@ -1379,12 +1479,19 @@ class SubmitVotesUseCase(
         val acceptedTransaction =
             reconcileVotingTransactionResult(
                 result =
-                    session.submitVoteCommitment(
-                        bundle = commitment.toVoteCommitmentBundle(),
-                        signature = signature
-                    ),
+                    traceVotingStep(
+                        roundId = roundId,
+                        step = "postVote",
+                        bundleIndex = bundleIndex,
+                        proposalId = proposalId
+                    ) {
+                        session.submitVoteCommitment(
+                            bundle = commitment.toVoteCommitmentBundle(),
+                            signature = signature
+                        )
+                    },
                 rejectionMessage = "Vote commitment transaction was rejected",
-                fetchTxConfirmation = session::fetchTxConfirmation
+                fetchTxConfirmation = { txHash -> session.fetchTxConfirmation(txHash) }
             )
         acceptedTransaction.confirmation?.let { recoveredConfirmation ->
             requireRecoveredCastVoteMatchesCommitment(
@@ -1431,7 +1538,13 @@ class SubmitVotesUseCase(
 
         val confirmation =
             posted.confirmation
-                ?: awaitTxConfirmation(session, posted.txHash)
+                ?: awaitTxConfirmation(
+                    session = session,
+                    roundId = roundId,
+                    txHash = posted.txHash,
+                    bundleIndex = bundleIndex,
+                    proposalId = proposalId
+                )
                 ?: throw VotingSubmissionRecoverableException(
                     VotingErrors.TxConfirmationTimedOut(posted.txHash)
                 )
@@ -1596,26 +1709,57 @@ class SubmitVotesUseCase(
      */
     private suspend fun awaitTxConfirmation(
         session: VoteChainSession,
+        roundId: String,
         txHash: String,
+        bundleIndex: Int? = null,
+        proposalId: Int? = null,
         maxAttempts: Int = TX_CONFIRMATION_RETRIES
     ): TxConfirmation? {
         require(maxAttempts >= 1) { "maxAttempts must be >= 1, was $maxAttempts" }
+        val traceContext = votingTraceContext(roundId, bundleIndex, proposalId)
+        Log.i(TAG, "Voting trace begin awaitTxConfirmation $traceContext")
+        val startedAt = SystemClock.elapsedRealtime()
         repeat(maxAttempts) { attempt ->
-            session.fetchTxConfirmation(txHash)?.let { return it }
+            session.fetchTxConfirmation(txHash)?.let { confirmation ->
+                logAwaitTxConfirmationEnd(traceContext, startedAt, attempt + 1)
+                return confirmation
+            }
             if (attempt + 1 < maxAttempts) {
                 delay(TX_CONFIRMATION_POLL_MS)
             }
         }
+        logAwaitTxConfirmationEnd(traceContext, startedAt, maxAttempts)
         return null
+    }
+
+    private fun logAwaitTxConfirmationEnd(
+        traceContext: String,
+        startedAt: Long,
+        attempts: Int
+    ) {
+        Log.i(
+            TAG,
+            "Voting trace end awaitTxConfirmation $traceContext " +
+                "ms=${SystemClock.elapsedRealtime() - startedAt} attempts=$attempts"
+        )
     }
 
     private suspend fun probeCachedTx(
         session: VoteChainSession,
-        txHash: String
+        roundId: String,
+        txHash: String,
+        bundleIndex: Int,
+        proposalId: Int
     ): TxConfirmationProbeResult {
         val confirmation =
-            awaitTxConfirmation(session, txHash, maxAttempts = 1)
-                ?: return TxConfirmationProbeResult.NotFound
+            awaitTxConfirmation(
+                session = session,
+                roundId = roundId,
+                txHash = txHash,
+                bundleIndex = bundleIndex,
+                proposalId = proposalId,
+                maxAttempts = 1
+            ) ?: return TxConfirmationProbeResult.NotFound
         return if (confirmation.code == 0) {
             TxConfirmationProbeResult.Confirmed(confirmation)
         } else {
@@ -1663,7 +1807,15 @@ class SubmitVotesUseCase(
             return
         }
 
-        val delegationResults = delegateSharesWithRetry(pendingPayloads)
+        val delegationResults =
+            traceVotingStep(
+                roundId = roundId,
+                step = "delegateShares",
+                bundleIndex = bundleIndex,
+                proposalId = proposalId
+            ) {
+                delegateSharesWithRetry(pendingPayloads)
+            }
         delegationResults.forEach { info ->
             val payload =
                 pendingPayloads.firstOrNull { candidate ->
@@ -1728,6 +1880,19 @@ class SubmitVotesUseCase(
         }
     }
 
+    private fun votingTraceContext(
+        roundId: String,
+        bundleIndex: Int?,
+        proposalId: Int?,
+        shareIndex: Int? = null
+    ): String =
+        buildString {
+            append("round=").append(roundId)
+            if (bundleIndex != null) append(" bundle=").append(bundleIndex)
+            if (proposalId != null) append(" proposal=").append(proposalId)
+            if (shareIndex != null) append(" share=").append(shareIndex)
+        }
+
     private suspend fun <T> traceVotingStep(
         roundId: String,
         step: String,
@@ -1736,20 +1901,19 @@ class SubmitVotesUseCase(
         shareIndex: Int? = null,
         block: suspend () -> T
     ): T {
-        val context =
-            buildString {
-                append("round=").append(roundId)
-                if (bundleIndex != null) append(" bundle=").append(bundleIndex)
-                if (proposalId != null) append(" proposal=").append(proposalId)
-                if (shareIndex != null) append(" share=").append(shareIndex)
-            }
+        val context = votingTraceContext(roundId, bundleIndex, proposalId, shareIndex)
         Log.i(TAG, "Voting trace begin $step $context")
+        val startedAt = SystemClock.elapsedRealtime()
         return try {
             block().also {
-                Log.i(TAG, "Voting trace end $step $context")
+                Log.i(TAG, "Voting trace end $step $context ms=${SystemClock.elapsedRealtime() - startedAt}")
             }
         } catch (exception: Exception) {
-            Log.e(TAG, "Voting trace failed $step $context", exception)
+            Log.e(
+                TAG,
+                "Voting trace failed $step $context ms=${SystemClock.elapsedRealtime() - startedAt}",
+                exception
+            )
             throw exception
         }
     }
@@ -2308,6 +2472,8 @@ internal const val SPENT_NULLIFIER_RECOVERY_POLL_MS = 1_000L
  * needing a full rebuild, so a fresh sync first waits for every chain to leave that window.
  */
 internal class VoteTreeSyncCoalescer(
+    /** Reports how long a leader waited before its sync could start. */
+    private val onLeaderWait: (waitMs: Long) -> Unit = {},
     private val sync: suspend () -> Long
 ) {
     private val mutex = Mutex()
@@ -2354,7 +2520,9 @@ internal class VoteTreeSyncCoalescer(
     @Suppress("TooGenericExceptionCaught")
     private suspend fun runLeaderSync(gate: CompletableDeferred<Long>) {
         try {
+            val waitStartedAt = SystemClock.elapsedRealtime()
             inFlightConfirmations.first { count -> count == 0 }
+            onLeaderWait(SystemClock.elapsedRealtime() - waitStartedAt)
             gate.complete(sync())
         } catch (exception: CancellationException) {
             gate.completeExceptionally(exception)
