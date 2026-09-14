@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -32,26 +33,27 @@ class VoteTreeSyncCoalescerTest {
 
     @Test
     @OptIn(ExperimentalCoroutinesApi::class)
-    fun treeSyncWaitsForInFlightConfirmationsBeforeSyncing() =
+    fun treeSyncRunsWhileASiblingChainAwaitsConfirmation() =
         runTest {
             var syncs = 0
+            val confirming = CompletableDeferred<Unit>()
             val coalescer =
                 VoteTreeSyncCoalescer {
                     syncs += 1
                     SYNCED_HEIGHT
                 }
-            // A chain whose leaf is on chain but whose position is not stored yet would make the
-            // crate rebuild the whole tree, so no sync may start while it is in that window.
-            coalescer.enterConfirmation()
+            // One chain sits between its post and its confirmation; the tree it leaves behind may
+            // need a rebuild, but a sibling chain must not wait for it.
+            val sibling = async { confirming.await() }
 
             val pending = async { coalescer.sync(storeTicket = 0) }
             runCurrent()
-            assertEquals(0, syncs)
 
-            coalescer.exitConfirmation()
-
-            assertEquals(SYNCED_HEIGHT, pending.await())
             assertEquals(1, syncs)
+            assertEquals(SYNCED_HEIGHT, pending.await())
+
+            confirming.complete(Unit)
+            sibling.await()
         }
 
     @Test

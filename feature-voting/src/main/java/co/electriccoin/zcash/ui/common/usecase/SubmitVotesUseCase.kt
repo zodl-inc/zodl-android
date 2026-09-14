@@ -58,9 +58,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.job
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
@@ -1137,14 +1134,7 @@ class SubmitVotesUseCase(
     ) {
         val proofPermits = Semaphore(1)
         val postMutex = Mutex()
-        val coalescer =
-            VoteTreeSyncCoalescer(
-                onLeaderWait = { waitMs ->
-                    Log.i(TAG, "Voting trace syncWait round=${context.roundId} ms=$waitMs")
-                }
-            ) {
-                syncVoteTreeOrThrow(context, dbHandle)
-            }
+        val coalescer = VoteTreeSyncCoalescer { syncVoteTreeOrThrow(context, dbHandle) }
         val chainTickets = LongArray(bundleCount.coerceAtLeast(1))
 
         coroutineScope {
@@ -1237,18 +1227,13 @@ class SubmitVotesUseCase(
                 }
             ledger.update(bundleIndex, questionIndex, POSTED_STAGE)
 
-            coalescer.enterConfirmation()
-            try {
-                confirmVoteBundle(
-                    context = context,
-                    dbHandle = dbHandle,
-                    posted = posted,
-                    session = session
-                )
-                chainTickets[bundleIndex] = coalescer.nextTicket()
-            } finally {
-                coalescer.exitConfirmation()
-            }
+            confirmVoteBundle(
+                context = context,
+                dbHandle = dbHandle,
+                posted = posted,
+                session = session
+            )
+            chainTickets[bundleIndex] = coalescer.nextTicket()
         }
 
         launchShareDelivery(
@@ -2465,37 +2450,25 @@ internal const val SPENT_NULLIFIER_RECOVERY_POLL_MS = 1_000L
  * Collapses the per-question vote-tree syncs of concurrent chains into one, without ever handing
  * a chain a tree that is missing its own leaf.
  *
- * Two hazards make a plain shared Deferred unsafe. A chain that stores its VAN position after a
- * cached sync started would get a tree without that leaf, so a sync is only reused when it began
- * at or after the ticket the caller took when it last stored a position. And a chain whose leaf
- * is already on chain but whose position is not yet stored makes the crate treat the tree as
- * needing a full rebuild, so a fresh sync first waits for every chain to leave that window.
+ * A chain that stores its VAN position after a cached sync started would get a tree without that
+ * leaf, so a sync is only reused when it began at or after the ticket the caller took when it last
+ * stored a position.
+ *
+ * A sync that starts while a sibling's leaf is already on chain but its position is not yet stored
+ * may make the crate rebuild the tree, which costs about a second of download. That cost is
+ * accepted - Vizor and iOS accept it too - because the alternative, waiting for the sibling's
+ * confirmation before syncing, serialized the chains and cost a whole confirmation wait per
+ * question.
  */
 internal class VoteTreeSyncCoalescer(
-    /** Reports how long a leader waited before its sync could start. */
-    private val onLeaderWait: (waitMs: Long) -> Unit = {},
     private val sync: suspend () -> Long
 ) {
     private val mutex = Mutex()
-    private val inFlightConfirmations = MutableStateFlow(0)
     private var ticketCounter = 0L
     private var current: CompletableDeferred<Long>? = null
     private var currentTicket = 0L
 
     suspend fun nextTicket(): Long = mutex.withLock { ++ticketCounter }
-
-    /**
-     * Opens the window in which this chain's leaf is on chain but its position is not stored yet.
-     * A tree sync started inside that window would make the crate rebuild the whole tree, so no
-     * fresh sync begins until every chain has left it.
-     */
-    fun enterConfirmation() {
-        inFlightConfirmations.update { count -> count + 1 }
-    }
-
-    fun exitConfirmation() {
-        inFlightConfirmations.update { count -> count - 1 }
-    }
 
     suspend fun sync(storeTicket: Long): Long {
         var gate = CompletableDeferred<Long>()
@@ -2520,9 +2493,6 @@ internal class VoteTreeSyncCoalescer(
     @Suppress("TooGenericExceptionCaught")
     private suspend fun runLeaderSync(gate: CompletableDeferred<Long>) {
         try {
-            val waitStartedAt = SystemClock.elapsedRealtime()
-            inFlightConfirmations.first { count -> count == 0 }
-            onLeaderWait(SystemClock.elapsedRealtime() - waitStartedAt)
             gate.complete(sync())
         } catch (exception: CancellationException) {
             gate.completeExceptionally(exception)
