@@ -305,7 +305,7 @@ class AutomaticServerRepositoryTest {
         runTest {
             stubSwitchDecision(balances = null)
 
-            assertNull(withTimeoutOrNull(1.seconds) { repository.resolveSwitchCandidate() })
+            assertNull(withTimeoutOrNull(1.seconds) { repository.resolveSwitchCandidate(SwitchTrigger.FOREGROUND) })
         }
 
     @Test
@@ -313,7 +313,7 @@ class AutomaticServerRepositoryTest {
         runTest {
             stubSwitchDecision(balances = emptyMap())
 
-            assertEquals(known.last(), repository.resolveSwitchCandidate())
+            assertEquals(known.last(), repository.resolveSwitchCandidate(SwitchTrigger.FOREGROUND))
         }
 
     @Test
@@ -321,7 +321,7 @@ class AutomaticServerRepositoryTest {
         runTest {
             stubSwitchDecision(balances = null)
 
-            assertEquals(known.last(), repository.resolveSwitchCandidate())
+            assertEquals(known.last(), repository.resolveSwitchCandidate(SwitchTrigger.FOREGROUND))
         }
 
     @Test
