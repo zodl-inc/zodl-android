@@ -162,12 +162,17 @@ class AutomaticServerRepositoryImpl(
      * unreachable server, a prefs read, a rejected argument - would otherwise take automatic selection
      * down until the next process start, and reach the thread's uncaught handler on its way out.
      */
-    internal fun observeSwitchCandidates(foregroundEdges: Flow<Unit>): Flow<LightWalletEndpoint> =
-        switchLane(foregroundEdges.map { SwitchTrigger.FOREGROUND })
+    internal fun observeSwitchCandidates(
+        edges: Flow<Unit>,
+        trigger: SwitchTrigger = SwitchTrigger.FOREGROUND
+    ): Flow<LightWalletEndpoint> = switchLane(edges.map { trigger })
 
-    /** Internal test hook that defaults the trigger for compatibility with existing tests. */
+    /**
+     * Internal test hook: evaluates as a connectivity edge, i.e. an outage the synchronizer already
+     * reported, so a single evaluation may leave the gateway (foreground/health need confirmation).
+     */
     internal suspend fun evaluateServerSwitch(): LightWalletEndpoint? =
-        evaluateServerSwitch(trigger = SwitchTrigger.FOREGROUND)
+        evaluateServerSwitch(trigger = SwitchTrigger.CONNECTIVITY)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     internal fun switchLane(triggers: Flow<SwitchTrigger>): Flow<LightWalletEndpoint> =

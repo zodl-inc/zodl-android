@@ -305,7 +305,7 @@ class AutomaticServerRepositoryTest {
         runTest {
             stubSwitchDecision(balances = null)
 
-            assertNull(withTimeoutOrNull(1.seconds) { repository.resolveSwitchCandidate(SwitchTrigger.FOREGROUND) })
+            assertNull(withTimeoutOrNull(1.seconds) { repository.resolveSwitchCandidate(SwitchTrigger.CONNECTIVITY) })
         }
 
     @Test
@@ -313,7 +313,7 @@ class AutomaticServerRepositoryTest {
         runTest {
             stubSwitchDecision(balances = emptyMap())
 
-            assertEquals(known.last(), repository.resolveSwitchCandidate(SwitchTrigger.FOREGROUND))
+            assertEquals(known.last(), repository.resolveSwitchCandidate(SwitchTrigger.CONNECTIVITY))
         }
 
     @Test
@@ -321,7 +321,7 @@ class AutomaticServerRepositoryTest {
         runTest {
             stubSwitchDecision(balances = null)
 
-            assertEquals(known.last(), repository.resolveSwitchCandidate(SwitchTrigger.FOREGROUND))
+            assertEquals(known.last(), repository.resolveSwitchCandidate(SwitchTrigger.CONNECTIVITY))
         }
 
     @Test
@@ -330,7 +330,7 @@ class AutomaticServerRepositoryTest {
             stubSwitchDecision(balances = emptyMap())
 
             val foregroundEdges = MutableSharedFlow<Unit>()
-            repository.observeSwitchCandidates(foregroundEdges).launchIn(backgroundScope)
+            repository.observeSwitchCandidates(foregroundEdges, SwitchTrigger.CONNECTIVITY).launchIn(backgroundScope)
             runCurrent()
 
             foregroundEdges.emit(Unit)
@@ -400,7 +400,7 @@ class AutomaticServerRepositoryTest {
             coEvery { synchronizer.getFastestServers(any()) } throws IllegalStateException("benchmark failed")
 
             val foregroundEdges = MutableSharedFlow<Unit>()
-            repository.observeSwitchCandidates(foregroundEdges).launchIn(backgroundScope)
+            repository.observeSwitchCandidates(foregroundEdges, SwitchTrigger.CONNECTIVITY).launchIn(backgroundScope)
             runCurrent()
 
             foregroundEdges.emit(Unit)
@@ -423,7 +423,7 @@ class AutomaticServerRepositoryTest {
             coEvery { walletRepository.updateWalletEndpoint(any()) } throws IllegalStateException("prefs failed")
 
             val foregroundEdges = MutableSharedFlow<Unit>()
-            repository.observeSwitchCandidates(foregroundEdges).launchIn(backgroundScope)
+            repository.observeSwitchCandidates(foregroundEdges, SwitchTrigger.CONNECTIVITY).launchIn(backgroundScope)
             runCurrent()
 
             foregroundEdges.emit(Unit)
