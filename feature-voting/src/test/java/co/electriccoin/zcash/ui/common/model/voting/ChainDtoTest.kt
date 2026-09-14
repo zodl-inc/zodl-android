@@ -68,14 +68,14 @@ class ChainDtoTest {
     fun chainRoundRejectsTooManyProposals() {
         assertFailsWith<VotingConfigException> {
             makeRound(
-                proposals = (1..16).map { index -> makeProposal(id = index) }
+                proposals = (1..51).map { index -> makeProposal(id = index) }
             ).toVotingRound()
         }
     }
 
     @Test
     fun chainRoundRejectsProposalIdsOutsideBounds() {
-        listOf(0, 16).forEach { proposalId ->
+        listOf(0, 51).forEach { proposalId ->
             assertFailsWith<VotingConfigException> {
                 makeRound(
                     proposals = listOf(makeProposal(id = proposalId))
