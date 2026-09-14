@@ -450,6 +450,87 @@ class AutomaticServerRepositoryTest {
             coVerify(exactly = 1) { synchronizer.getFastestServers(any()) }
         }
 
+    @Test
+    fun firstHealthTriggerGatewayFailureStaysOnGateway() =
+        runTest {
+            coEvery { isAutomaticProvider.get() } returns true
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = listOf(known.last()))
+
+            val result = repository.evaluateServerSwitch(SwitchTrigger.HEALTH)
+
+            assertNull(result)
+            coVerify(exactly = 1) { synchronizer.getFastestServers(listOf(gateway)) }
+            coVerify(exactly = 1) { synchronizer.getFastestServers(fallbacks) }
+        }
+
+    @Test
+    fun secondConsecutiveHealthTriggerGatewayFailureFallsBack() =
+        runTest {
+            coEvery { isAutomaticProvider.get() } returns true
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = listOf(known.last()))
+
+            // First failure: stay
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+
+            // Second consecutive failure: fall back
+            assertEquals(known.last(), repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+        }
+
+    @Test
+    fun firstForegroundTriggerGatewayFailureStaysOnGateway() =
+        runTest {
+            coEvery { isAutomaticProvider.get() } returns true
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = listOf(known.last()))
+
+            val result = repository.evaluateServerSwitch(SwitchTrigger.FOREGROUND)
+
+            assertNull(result)
+        }
+
+    @Test
+    fun gatewaySuccessBetweenFailuresResetsTheCounter() =
+        runTest {
+            coEvery { isAutomaticProvider.get() } returns true
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+
+            // First failure
+            stubTiers(gatewayReachable = false, rankedFallbacks = listOf(known.last()))
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+
+            // Success: reset counter
+            stubTiers(gatewayReachable = true, rankedFallbacks = emptyList())
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+
+            // Next failure: stays (counter was reset)
+            stubTiers(gatewayReachable = false, rankedFallbacks = listOf(known.last()))
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+        }
+
+    @Test
+    fun connectivityTriggerFallsBackImmediatelyWithoutConfirmation() =
+        runTest {
+            coEvery { isAutomaticProvider.get() } returns true
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = listOf(known.last()))
+
+            // CONNECTIVITY trigger falls back immediately on first failure
+            assertEquals(known.last(), repository.evaluateServerSwitch(SwitchTrigger.CONNECTIVITY))
+        }
+
+    @Test
+    fun onFallbackWithGatewayBackSwitchesBackImmediately() =
+        runTest {
+            coEvery { isAutomaticProvider.get() } returns true
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(known.last())
+            stubTiers(gatewayReachable = true, rankedFallbacks = listOf(known.last()))
+
+            // On a fallback, switch back to gateway immediately when it's healthy
+            assertEquals(gateway, repository.evaluateServerSwitch(SwitchTrigger.RECOVERY))
+        }
+
     private fun stubSwitchDecision(balances: Map<AccountUuid, AccountBalance>?) {
         val wallet = wallet(known.first())
         coEvery { isAutomaticProvider.get() } returns true

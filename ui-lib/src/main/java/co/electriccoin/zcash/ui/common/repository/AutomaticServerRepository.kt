@@ -75,6 +75,14 @@ class AutomaticServerRepositoryImpl(
 ) : AutomaticServerRepository {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
+    /**
+     * Consecutive gateway failures count. Reset to 0 when a gateway is healthy or when automatic mode
+     * changes. Prevents a single transient failure (e.g., Tor circuits timing out) from immediately
+     * triggering a fallback to clearnet.
+     */
+    @Volatile
+    private var consecutiveGatewayFailures = 0
+
     private val isAppInTransactionState: Boolean
         get() =
             zashiProposalRepository.transactionProposal.value != null ||
@@ -157,13 +165,18 @@ class AutomaticServerRepositoryImpl(
     internal fun observeSwitchCandidates(foregroundEdges: Flow<Unit>): Flow<LightWalletEndpoint> =
         switchLane(foregroundEdges.map { SwitchTrigger.FOREGROUND })
 
+    /** Internal test hook that defaults the trigger for compatibility with existing tests. */
+    internal suspend fun evaluateServerSwitch(): LightWalletEndpoint? =
+        evaluateServerSwitch(trigger = SwitchTrigger.FOREGROUND)
+
     @OptIn(ExperimentalCoroutinesApi::class)
     internal fun switchLane(triggers: Flow<SwitchTrigger>): Flow<LightWalletEndpoint> =
         triggers
             .catch { Twig.error(it) { "Automatic server: a trigger signal failed" } }
             .filter { it.bypassesInterval || evaluationInterval.hasElapsed() }
-            .mapLatest { guarded("evaluate a server switch") { resolveSwitchCandidate() } }
-            .filterNotNull()
+            .mapLatest { trigger ->
+                guarded("evaluate a server switch") { resolveSwitchCandidate(trigger) }
+            }.filterNotNull()
             .onEach { candidate ->
                 guarded("switch to ${candidate.host}:${candidate.port}") { applyServerSwitch(candidate) }
             }
@@ -232,8 +245,8 @@ class AutomaticServerRepositoryImpl(
      * reason no snapshot exists, so the failover that matters most cannot be gated forever on the sync it
      * is meant to repair.
      */
-    internal suspend fun resolveSwitchCandidate(): LightWalletEndpoint? {
-        val candidate = evaluateServerSwitch() ?: return null
+    internal suspend fun resolveSwitchCandidate(trigger: SwitchTrigger): LightWalletEndpoint? {
+        val candidate = evaluateServerSwitch(trigger) ?: return null
         val balances = withTimeoutOrNull(BALANCE_SNAPSHOT_TIMEOUT) { walletBalances.filterNotNull().first() }
         if (balances == null) {
             Twig.warn {
@@ -252,9 +265,13 @@ class AutomaticServerRepositoryImpl(
      * server, and the clearnet tier is not even probed - so no clearnet host sees the device while OHTTP
      * works, and speed is never a reason to leave OHTTP. Only when no gateway answers is the clearnet tier
      * benchmarked and its best validated server returned; nothing reachable at all means "stay".
+     *
+     * Consecutive failure confirmation: when the current server is a gateway and tier 0 is empty, a
+     * CONNECTIVITY trigger (synchronizer error) falls back immediately, but FOREGROUND/HEALTH triggers
+     * wait for a second consecutive failure to avoid leaving OHTTP on transient Tor circuit timeouts.
      */
-    @Suppress("ReturnCount")
-    internal suspend fun evaluateServerSwitch(): LightWalletEndpoint? {
+    @Suppress("ReturnCount", "ComplexMethod", "NestedBlockDepth")
+    internal suspend fun evaluateServerSwitch(trigger: SwitchTrigger): LightWalletEndpoint? {
         if (!isServerAutomatic() || isAppInTransactionState) return null
         val current = persistableWalletProvider.getPersistableWallet()?.endpoint ?: return null
         val gateways = lightWalletEndpointProvider.getEndpoints().filter(lightWalletEndpointProvider::isOhttpGateway)
@@ -262,12 +279,41 @@ class AutomaticServerRepositoryImpl(
         val synchronizer = synchronizerProvider.getSynchronizerOrNull() ?: return null
         return try {
             val healthyGateways = rankValidated(synchronizer, gateways)
+            val onGateway = lightWalletEndpointProvider.isOhttpGateway(current)
+
+            // Reset consecutive failures when a gateway is healthy, when on a fallback (recovering back
+            // to OHTTP), or when switching to automatic mode (implied by being on a non-gateway).
+            if (healthyGateways.isNotEmpty() || !onGateway) {
+                consecutiveGatewayFailures = 0
+            }
+
             val rankedFallbacks =
                 if (healthyGateways.isEmpty()) {
                     rankValidated(synchronizer, lightWalletEndpointProvider.getFallbackEndpoints())
                 } else {
                     emptyList()
                 }
+
+            // When on a gateway and tier 0 is empty, require confirmation before falling back, unless
+            // the trigger is CONNECTIVITY (real outage already surfaced by the synchronizer).
+            val needsConfirmation = onGateway && healthyGateways.isEmpty() && rankedFallbacks.isNotEmpty()
+            if (needsConfirmation) {
+                val shouldFallbackImmediately = trigger == SwitchTrigger.CONNECTIVITY
+                if (shouldFallbackImmediately) {
+                    logImmediateFallback(current, rankedFallbacks)
+                    consecutiveGatewayFailures = 0
+                } else {
+                    consecutiveGatewayFailures++
+                    if (consecutiveGatewayFailures < 2) {
+                        logWaitingForConfirmation(trigger)
+                        syncFallbackFlag(current)
+                        return null
+                    }
+                    logConfirmedFallback(current, rankedFallbacks)
+                    consecutiveGatewayFailures = 0
+                }
+            }
+
             val decision =
                 ServerFallbackPolicy.decide(
                     current = current,
@@ -275,15 +321,48 @@ class AutomaticServerRepositoryImpl(
                     rankedFallbacks = rankedFallbacks,
                     isOhttpGateway = lightWalletEndpointProvider::isOhttpGateway,
                 )
-            Twig.info {
-                "Automatic server: OHTTP-first current=${current.host} " +
-                    "gatewayReachable=${healthyGateways.isNotEmpty()} " +
-                    "fallbacks=${rankedFallbacks.map { it.host }} -> ${decision?.host ?: "stay"}"
+
+            // Log when not already logged above.
+            if (!onGateway || healthyGateways.isNotEmpty() || rankedFallbacks.isEmpty()) {
+                Twig.info {
+                    "Automatic server: OHTTP-first current=${current.host} " +
+                        "gatewayReachable=${healthyGateways.isNotEmpty()} " +
+                        "fallbacks=${rankedFallbacks.map { it.host }} -> ${decision?.host ?: "stay"}"
+                }
             }
+
             syncFallbackFlag(decision ?: current)
             decision
         } finally {
             evaluationInterval.markAttempted()
+        }
+    }
+
+    private fun logImmediateFallback(
+        current: LightWalletEndpoint,
+        rankedFallbacks: List<LightWalletEndpoint>
+    ) {
+        Twig.info {
+            "Automatic server: OHTTP-first current=${current.host} " +
+                "gatewayReachable=false fallbacks=${rankedFallbacks.map { it.host }} -> " +
+                "${rankedFallbacks.first().host} (CONNECTIVITY, immediate fallback)"
+        }
+    }
+
+    private fun logWaitingForConfirmation(trigger: SwitchTrigger) {
+        Twig.info {
+            "Automatic server: gateway unreachable once (trigger=$trigger), waiting for confirmation"
+        }
+    }
+
+    private fun logConfirmedFallback(
+        current: LightWalletEndpoint,
+        rankedFallbacks: List<LightWalletEndpoint>
+    ) {
+        Twig.info {
+            "Automatic server: OHTTP-first current=${current.host} " +
+                "gatewayReachable=false fallbacks=${rankedFallbacks.map { it.host }} -> " +
+                "${rankedFallbacks.first().host} (confirmed after 2 consecutive failures)"
         }
     }
 
