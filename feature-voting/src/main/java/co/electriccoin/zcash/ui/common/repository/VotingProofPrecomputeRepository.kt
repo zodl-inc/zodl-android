@@ -144,8 +144,10 @@ class VotingProofPrecomputeRepositoryImpl(
     private val liveProofMaterials = mutableSetOf<VotingDelegationProofMaterial>()
 
     /**
-     * One background proof at a time: the JNI holds the per-DB lock for the whole proof, so a second
-     * one would only queue behind the first while delaying every foreground voting DB call.
+     * One background proof at a time, so a foreground submission still gets most of the cores.
+     * `SubmitVotesUseCase` awaits the background proof of a bundle before proving that bundle
+     * itself, so a background ZKP1 and a foreground proof of the same bundle never overlap;
+     * proofs of different bundles may.
      */
     private val proofPermits = Semaphore(1)
 

@@ -44,6 +44,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import cash.z.ecc.android.sdk.model.voting.VotingBundleSetupResult as SdkVotingBundleSetupResult
 import cash.z.ecc.android.sdk.model.voting.VotingCommitmentBundleRecord as SdkVotingCommitmentBundleRecord
@@ -563,8 +564,8 @@ class VotingCryptoClientImpl : VotingCryptoClient {
     private val nextDbHandle = AtomicLong(1)
     private val sdkMutex = Mutex()
     private var sdk: VotingSdk? = null
-    private val dbPaths = mutableMapOf<Long, String>()
-    private val sessions = mutableMapOf<Long, VotingDbSession>()
+    private val dbPaths = ConcurrentHashMap<Long, String>()
+    private val sessions = ConcurrentHashMap<Long, VotingDbSession>()
 
     private suspend fun votingSdk(): VotingSdk =
         sdk ?: sdkMutex.withLock {

@@ -27,7 +27,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   A delivery that no server accepts still fails the submission, only once every vote is on chain.
 - Coinholder Polling now runs one chain per note bundle instead of taking them strictly one after
   another, so while one bundle waits for its transaction to be mined the other is already proving
-  its next vote. Proofs still run one at a time and each bundle gets its own connection.
+  its next vote. Up to two proofs now run at once, each bundle on its own connection.
 - Coinholder Polling now produces the delegation proof in the background while you are still
   answering the questions, so submission no longer starts by making you wait for it. The proof is
   discarded and redone if anything about the round changes, and leaving the poll cancels it.
