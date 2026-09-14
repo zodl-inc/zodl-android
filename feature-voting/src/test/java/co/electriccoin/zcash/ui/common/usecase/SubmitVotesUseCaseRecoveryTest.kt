@@ -672,6 +672,29 @@ class SubmitVotesUseCaseRecoveryTest {
         }
 
     @Test
+    fun delegationConfirmationPollsTheAcceptingServerUntilTheTxIsIndexed() =
+        runTest {
+            val fixture =
+                RecoveryFixture(
+                    selectedAccount = keystoneAccount(),
+                    successfulDelegations = true,
+                    acceptingServerUrl = ACCEPTING_SERVER_URL,
+                    notIndexedConfirmationAttempts = 2
+                )
+
+            assertFailsWith<ContinuationReached> {
+                fixture.newUseCase()(ROUND_ID, mapOf(1 to 0))
+            }
+
+            val bundleCalls = fixture.confirmationCalls.filter { call -> call.txHash == "bundle-0-tx" }
+            assertEquals(3, bundleCalls.size)
+            assertEquals(
+                listOf(ACCEPTING_SERVER_URL),
+                bundleCalls.map { call -> call.preferredServerUrl }.distinct()
+            )
+        }
+
+    @Test
     fun shareDeliveryFailureDoesNotBlockNextQuestion() =
         runTest {
             val fixture =
@@ -961,7 +984,7 @@ class SubmitVotesUseCaseRecoveryTest {
                 confirmVoteCommitment(firstArg())
             }
             coEvery {
-                api.fetchTxConfirmation(match { txHash -> txHash.startsWith("accepted-") }, any())
+                api.fetchTxConfirmation(match { txHash -> txHash.startsWith("accepted-") }, any<HttpClient>())
             } answers {
                 perChainClientCalls += 1
                 confirmVoteCommitment(firstArg())
@@ -1065,11 +1088,16 @@ class SubmitVotesUseCaseRecoveryTest {
     private class RecoveryFixture(
         private val selectedAccount: KeystoneAccount,
         private val bundle0Failure: Exception? = null,
-        private val successfulDelegations: Boolean = false
+        private val successfulDelegations: Boolean = false,
+        private val acceptingServerUrl: String? = null,
+        private val notIndexedConfirmationAttempts: Int = 0
     ) {
         val crypto = mockk<VotingCryptoClient>(relaxed = true)
         val api = mockk<VotingApiProvider>(relaxed = true)
         val apiCallLog = mutableListOf<String>()
+        val confirmationCalls = mutableListOf<ConfirmationCall>()
+        private val confirmationLock = Any()
+        private val confirmationAttempts = mutableMapOf<String, Int>()
         val delegationPhases = mutableListOf(DelegationPhase.PROVED, DelegationPhase.PROVED)
         val submissionCounts = mutableMapOf(0 to 0, 1 to 0)
         val storedVanPositions = mutableListOf<StoredVanPosition>()
@@ -1172,7 +1200,11 @@ class SubmitVotesUseCaseRecoveryTest {
                 apiCallLog += "post:$bundleIndex"
                 when {
                     successfulDelegations -> {
-                        TxResult(txHash = "bundle-$bundleIndex-tx", code = 0)
+                        TxResult(
+                            txHash = "bundle-$bundleIndex-tx",
+                            code = 0,
+                            acceptedByServerUrl = acceptingServerUrl
+                        )
                     }
 
                     bundleIndex == 0 && bundle0Failure != null -> {
@@ -1192,19 +1224,35 @@ class SubmitVotesUseCaseRecoveryTest {
                     }
                 }
             }
-            coEvery { api.fetchTxConfirmation(match { txHash -> txHash.startsWith("bundle-") }) } answers {
-                apiCallLog += "confirm:${firstArg<String>()}"
-                TxConfirmation(
-                    height = 20,
-                    code = 0,
-                    events =
-                        listOf(
-                            TxEvent(
-                                type = "delegate_vote",
-                                attributes = listOf(TxEventAttribute("leaf_index", "3"))
+            coEvery {
+                api.fetchTxConfirmation(match { txHash -> txHash.startsWith("bundle-") }, any<String>())
+            } answers {
+                val txHash = firstArg<String>()
+                val preferredServerUrl = secondArg<String?>()
+                // Both bundle chains answer here at once, so the bookkeeping needs its own lock.
+                val attempt =
+                    synchronized(confirmationLock) {
+                        apiCallLog += "confirm:$txHash"
+                        confirmationCalls += ConfirmationCall(txHash, preferredServerUrl)
+                        val next = confirmationAttempts.getOrDefault(txHash, 0) + 1
+                        confirmationAttempts[txHash] = next
+                        next
+                    }
+                if (attempt <= notIndexedConfirmationAttempts) {
+                    null
+                } else {
+                    TxConfirmation(
+                        height = 20,
+                        code = 0,
+                        events =
+                            listOf(
+                                TxEvent(
+                                    type = "delegate_vote",
+                                    attributes = listOf(TxEventAttribute("leaf_index", "3"))
+                                )
                             )
-                        )
-                )
+                    )
+                }
             }
             coEvery { api.fetchCommitmentTreeLatest(ROUND_ID) } returns CommitmentTreeLatest(20, 2)
             coEvery { api.fetchCommitmentTreeLeafPage(ROUND_ID, any(), 20) } answers {
@@ -1269,6 +1317,11 @@ class SubmitVotesUseCaseRecoveryTest {
         val position: Int
     )
 
+    private data class ConfirmationCall(
+        val txHash: String,
+        val preferredServerUrl: String?
+    )
+
     private class FirstRunInterrupted : CancellationException()
 
     private class ContinuationReached : CancellationException()
@@ -1278,6 +1331,7 @@ class SubmitVotesUseCaseRecoveryTest {
     private companion object {
         const val ROUND_ID = "1111111111111111111111111111111111111111111111111111111111111111"
         const val ORIGINAL_CAST_TX_HASH = "original-cast-tx"
+        const val ACCEPTING_SERVER_URL = "https://vote"
         val SPEND_AUTH_SIG = byteArrayOf(2)
         val SIGHASH = byteArrayOf(3)
         val RK = byteArrayOf(4)

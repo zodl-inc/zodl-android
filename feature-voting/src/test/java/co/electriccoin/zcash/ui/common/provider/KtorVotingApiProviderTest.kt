@@ -38,6 +38,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 
 class KtorVotingApiProviderTest {
     @Test
@@ -482,6 +483,62 @@ class KtorVotingApiProviderTest {
             assertEquals(listOf("/shielded-vote/v1/tx/tx-hash"), chainRequests)
             // The shared client only resolved the config; the request itself never touched it.
             assertFalse(sharedRequests.any { path -> path.startsWith("/shielded-vote/v1/tx/") })
+        }
+
+    @Test
+    fun notIndexedOnTheAcceptingServerEndsTheConfirmationWalk() =
+        runBlocking {
+            val confirmationHosts = mutableListOf<String>()
+            val provider =
+                KtorVotingApiProvider(
+                    httpClientProvider =
+                        object : HttpClientProvider {
+                            override suspend fun supportsKtorTimeouts(): Boolean = true
+
+                            override suspend fun createTor(): HttpClient = create()
+
+                            override suspend fun create(): HttpClient =
+                                twoVoteServerClient(confirmationHosts, HttpStatusCode.NotFound)
+                        },
+                    configurationRepository = TestConfigurationRepository(),
+                    votingChainConfigRepository = TestVotingChainConfigRepository(),
+                    votingCryptoClient = unusedVotingCryptoClient()
+                )
+
+            val confirmation =
+                provider.fetchTxConfirmation("tx-hash", preferredServerUrl = SECOND_VOTE_SERVER_URL)
+
+            // The accepting server has simply not indexed the transaction yet, so asking the other
+            // servers could only produce the same answer more slowly.
+            assertNull(confirmation)
+            assertEquals(listOf("vote-b.example.com"), confirmationHosts)
+        }
+
+    @Test
+    fun anUnreachableAcceptingServerStillFallsBackToTheOtherVoteServers() =
+        runBlocking {
+            val confirmationHosts = mutableListOf<String>()
+            val provider =
+                KtorVotingApiProvider(
+                    httpClientProvider =
+                        object : HttpClientProvider {
+                            override suspend fun supportsKtorTimeouts(): Boolean = true
+
+                            override suspend fun createTor(): HttpClient = create()
+
+                            override suspend fun create(): HttpClient =
+                                twoVoteServerClient(confirmationHosts, HttpStatusCode.BadGateway)
+                        },
+                    configurationRepository = TestConfigurationRepository(),
+                    votingChainConfigRepository = TestVotingChainConfigRepository(),
+                    votingCryptoClient = unusedVotingCryptoClient()
+                )
+
+            val confirmation =
+                provider.fetchTxConfirmation("tx-hash", preferredServerUrl = SECOND_VOTE_SERVER_URL)
+
+            assertEquals(42L, confirmation?.height)
+            assertEquals(listOf("vote-b.example.com", "vote-a.example.com"), confirmationHosts)
         }
 
     // endregion
@@ -1412,6 +1469,73 @@ private fun staticConfigJson(dynamicConfigUrl: String): String =
     """.trimIndent()
 
 private const val DYNAMIC_CONFIG_URL = "https://example.com/first-dynamic-voting-config.json"
+
+private const val FIRST_VOTE_SERVER_URL = "https://vote-a.example.com"
+
+private const val SECOND_VOTE_SERVER_URL = "https://vote-b.example.com"
+
+/**
+ * Serves the config legs plus two vote servers, where the first one confirms and the second - the
+ * one the preferred-server tests point at - answers with [preferredServerStatus].
+ */
+private fun twoVoteServerClient(
+    confirmationHosts: MutableList<String>,
+    preferredServerStatus: HttpStatusCode
+): HttpClient =
+    HttpClient(
+        MockEngine { request ->
+            val path = request.url.encodedPath
+            when {
+                path == "/static-voting-config.json" -> {
+                    respond(
+                        content = staticConfigJsonV2(listOf(DYNAMIC_CONFIG_URL)),
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, "application/json")
+                    )
+                }
+
+                path.startsWith("/shielded-vote/v1/tx/") -> {
+                    confirmationHosts += request.url.host
+                    if (request.url.host == "vote-b.example.com") {
+                        respond(content = "", status = preferredServerStatus)
+                    } else {
+                        respond(
+                            content = """{"height":42,"code":0,"log":"","events":[]}""",
+                            status = HttpStatusCode.OK,
+                            headers = headersOf(HttpHeaders.ContentType, "application/json")
+                        )
+                    }
+                }
+
+                else -> {
+                    respond(
+                        content = twoVoteServerDynamicConfigJson(),
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, "application/json")
+                    )
+                }
+            }
+        }
+    ) { expectSuccess = true }
+
+private fun twoVoteServerDynamicConfigJson(): String =
+    """
+    {
+      "config_version": 1,
+      "vote_servers": [
+        {"url": "$FIRST_VOTE_SERVER_URL", "label": "vote-a"},
+        {"url": "$SECOND_VOTE_SERVER_URL", "label": "vote-b"}
+      ],
+      "pir_endpoints": [{"url": "https://pir.example.com", "label": "pir"}],
+      "supported_versions": {
+        "pir": ["v0"],
+        "vote_protocol": "v0",
+        "tally": "v0",
+        "vote_server": "v1"
+      },
+      "rounds": {}
+    }
+    """.trimIndent()
 
 private fun configClient(requests: MutableList<String>): HttpClient =
     HttpClient(

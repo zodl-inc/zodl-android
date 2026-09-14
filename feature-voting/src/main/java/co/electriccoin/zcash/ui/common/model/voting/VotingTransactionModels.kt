@@ -26,7 +26,9 @@ data class TxConfirmation(
 data class TxResult(
     val txHash: String,
     val code: Int,
-    val log: String = ""
+    val log: String = "",
+    /** The vote server that produced this result, so its confirmation can be polled there first. */
+    val acceptedByServerUrl: String? = null
 )
 
 data class CommitmentTreeLeafBlock(

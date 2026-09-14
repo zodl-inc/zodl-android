@@ -867,6 +867,7 @@ class SubmitVotesUseCase(
             session = session,
             roundId = roundId,
             txHash = cachedDelegationTxHash.txHash,
+            preferredServerUrl = null,
             bundleIndex = bundleIndex,
             maxAttempts = 1
         )?.takeIf { it.code == 0 }
@@ -984,6 +985,7 @@ class SubmitVotesUseCase(
                         session = session,
                         roundId = roundId,
                         txHash = acceptedTransaction.txHash,
+                        preferredServerUrl = acceptedTransaction.acceptedByServerUrl,
                         bundleIndex = bundleIndex
                     ) ?: throw VotingSubmissionRecoverableException(
                         VotingErrors.TxConfirmationTimedOut(acceptedTransaction.txHash)
@@ -1507,7 +1509,8 @@ class SubmitVotesUseCase(
             bundleIndex = bundleIndex,
             proposalId = proposalId,
             txHash = acceptedTransaction.txHash,
-            confirmation = acceptedTransaction.confirmation
+            confirmation = acceptedTransaction.confirmation,
+            acceptedByServerUrl = acceptedTransaction.acceptedByServerUrl
         )
     }
 
@@ -1527,6 +1530,7 @@ class SubmitVotesUseCase(
                     session = session,
                     roundId = roundId,
                     txHash = posted.txHash,
+                    preferredServerUrl = posted.acceptedByServerUrl,
                     bundleIndex = bundleIndex,
                     proposalId = proposalId
                 )
@@ -1684,10 +1688,16 @@ class SubmitVotesUseCase(
      * Polls `fetchTxConfirmation` until a confirmation is returned or the attempt budget is
      * exhausted. Mirrors iOS `delegationTxConfirmationStatus` semantics:
      *
-     * - `maxAttempts = TX_CONFIRMATION_RETRIES` (default, 45 × 2s ≈ 90s) — fresh-submit waits.
+     * - `maxAttempts = TX_CONFIRMATION_RETRIES` (default, 120 × 750ms ≈ 90s) — fresh-submit waits.
+     *   The same budget as before at a finer grain, so a transaction that lands early is picked up
+     *   within a block time rather than up to two seconds later.
      * - `maxAttempts = 1` — single fetch, no sleep, returns null if the TX hasn't propagated.
      *   Used for the cached-delegation-hash recovery probe so a transient lookup miss does
      *   not stall the submission flow (iOS: `confirmationTimeout: 0`).
+     *
+     * [preferredServerUrl] is the server that accepted the broadcast; a fresh-submit wait polls it
+     * rather than walking every server on every attempt. The probes pass null - they have no
+     * accepting server, only a hash from a previous run.
      *
      * Returns null when the TX is not seen within the budget; callers decide whether that is
      * fatal (fresh-submit) or a fall-through signal (recovery).
@@ -1696,6 +1706,7 @@ class SubmitVotesUseCase(
         session: VoteChainSession,
         roundId: String,
         txHash: String,
+        preferredServerUrl: String?,
         bundleIndex: Int? = null,
         proposalId: Int? = null,
         maxAttempts: Int = TX_CONFIRMATION_RETRIES
@@ -1705,7 +1716,7 @@ class SubmitVotesUseCase(
         Log.i(TAG, "Voting trace begin awaitTxConfirmation $traceContext")
         val startedAt = SystemClock.elapsedRealtime()
         repeat(maxAttempts) { attempt ->
-            session.fetchTxConfirmation(txHash)?.let { confirmation ->
+            session.fetchTxConfirmation(txHash, preferredServerUrl)?.let { confirmation ->
                 logAwaitTxConfirmationEnd(traceContext, startedAt, attempt + 1)
                 return confirmation
             }
@@ -1741,6 +1752,7 @@ class SubmitVotesUseCase(
                 session = session,
                 roundId = roundId,
                 txHash = txHash,
+                preferredServerUrl = null,
                 bundleIndex = bundleIndex,
                 proposalId = proposalId,
                 maxAttempts = 1
@@ -2130,11 +2142,14 @@ class SubmitVotesUseCase(
                 votingApiProvider.submitVoteCommitment(bundle, signature, client)
             }
 
-        suspend fun fetchTxConfirmation(txHash: String): TxConfirmation? =
+        suspend fun fetchTxConfirmation(
+            txHash: String,
+            preferredServerUrl: String? = null
+        ): TxConfirmation? =
             if (client == null) {
-                votingApiProvider.fetchTxConfirmation(txHash)
+                votingApiProvider.fetchTxConfirmation(txHash, preferredServerUrl)
             } else {
-                votingApiProvider.fetchTxConfirmation(txHash, client)
+                votingApiProvider.fetchTxConfirmation(txHash, client, preferredServerUrl)
             }
 
         override fun close() {
@@ -2147,7 +2162,8 @@ class SubmitVotesUseCase(
         val bundleIndex: Int,
         val proposalId: Int,
         val txHash: String,
-        val confirmation: TxConfirmation?
+        val confirmation: TxConfirmation?,
+        val acceptedByServerUrl: String?
     )
 
     /** A delegation whose transaction hash is durable but whose confirmation is still pending. */
@@ -2158,8 +2174,8 @@ class SubmitVotesUseCase(
 
     private companion object {
         const val TAG = "SubmitVotesUseCase"
-        const val TX_CONFIRMATION_RETRIES = 45
-        const val TX_CONFIRMATION_POLL_MS = 2_000L
+        const val TX_CONFIRMATION_RETRIES = 120
+        const val TX_CONFIRMATION_POLL_MS = 750L
         const val SHARE_DELEGATION_ATTEMPTS = 3
         const val SHARE_DELEGATION_RETRY_MS = 2_000L
     }
@@ -2167,7 +2183,9 @@ class SubmitVotesUseCase(
 
 internal data class AcceptedVotingTransaction(
     val txHash: String,
-    val confirmation: TxConfirmation?
+    val confirmation: TxConfirmation?,
+    /** The vote server that accepted the broadcast; its confirmation is polled there first. */
+    val acceptedByServerUrl: String? = null
 )
 
 /** Fraction of a bundle's per-question progress a completed zero-knowledge proof accounts for. */
@@ -2271,14 +2289,22 @@ internal suspend fun reconcileVotingTransactionResult(
 
     if (result.code == 0) {
         check(result.txHash.isNotBlank()) { "Accepted voting transaction did not include tx_hash" }
-        return AcceptedVotingTransaction(result.txHash, confirmation = null)
+        return AcceptedVotingTransaction(
+            txHash = result.txHash,
+            confirmation = null,
+            acceptedByServerUrl = result.acceptedByServerUrl
+        )
     }
 
     if (result.txHash.isNotBlank() && result.log.isSpentNullifierRejection()) {
         repeat(maxRecoveryAttempts) { attempt ->
             val confirmation = fetchTxConfirmation(result.txHash)
             if (confirmation?.code == 0) {
-                return AcceptedVotingTransaction(result.txHash, confirmation)
+                return AcceptedVotingTransaction(
+                    txHash = result.txHash,
+                    confirmation = confirmation,
+                    acceptedByServerUrl = result.acceptedByServerUrl
+                )
             }
             if (confirmation != null) {
                 throw IllegalStateException(

@@ -111,12 +111,15 @@ class RefreshVotingRoundsUseCaseTest {
             excludeUrls: List<String>
         ): List<String> = error("unused")
 
-        override suspend fun fetchTxConfirmation(txHash: String): TxConfirmation? =
-            error("unused")
+        override suspend fun fetchTxConfirmation(
+            txHash: String,
+            preferredServerUrl: String?
+        ): TxConfirmation? = error("unused")
 
         override suspend fun fetchTxConfirmation(
             txHash: String,
-            client: HttpClient
+            client: HttpClient,
+            preferredServerUrl: String?
         ): TxConfirmation? = error("unused")
 
         override suspend fun fetchCommitmentTreeLatest(roundIdHex: String): CommitmentTreeLatest =
