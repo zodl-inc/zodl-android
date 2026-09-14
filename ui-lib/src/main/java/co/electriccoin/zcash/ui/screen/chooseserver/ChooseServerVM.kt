@@ -291,6 +291,7 @@ class ChooseServerVM(
         isManualSelected: Boolean,
     ): ServerState.Default {
         val defaultEndpoint = lightWalletEndpointProvider.getDefaultEndpoint()
+        val isOhttpGateway = lightWalletEndpointProvider.isOhttpGateway(endpoint)
         val isEndpointChecked =
             isManualSelected && !local.isCustomSelected && local.selectedEndpoint == endpoint
         return ServerState.Default(
@@ -300,11 +301,12 @@ class ChooseServerVM(
                     text = stringRes(R.string.choose_server_full_server_name, endpoint.host, endpoint.port),
                     isChecked = isEndpointChecked,
                     onClick = { onEndpointClicked(endpoint) },
+                    // Clearnet lightwalletd rows (the automatic fallback tier) are flagged as not private.
                     subtitle =
-                        if (endpoint == defaultEndpoint) {
-                            stringRes(R.string.serverSetup_default)
-                        } else {
-                            null
+                        when {
+                            endpoint == defaultEndpoint -> stringRes(R.string.serverSetup_ohttpPrivate)
+                            isOhttpGateway -> stringRes(R.string.serverSetup_default)
+                            else -> stringRes(R.string.serverSetup_clearnetNotPrivate)
                         },
                     hapticFeedbackType = if (isEndpointChecked) null else HapticFeedbackType.SegmentTick,
                 ),

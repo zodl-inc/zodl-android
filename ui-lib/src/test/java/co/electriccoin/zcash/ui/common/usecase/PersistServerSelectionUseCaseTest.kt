@@ -4,6 +4,7 @@ import android.app.Application
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.type.ServerValidation
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
+import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.WalletRepository
@@ -30,6 +31,7 @@ class PersistServerSelectionUseCaseTest {
     private val synchronizerProvider = mockk<SynchronizerProvider>()
     private val walletRepository = mockk<WalletRepository>(relaxed = true)
     private val isAutomaticProvider = mockk<IsServerSelectionAutomaticProvider>(relaxed = true)
+    private val isOhttpFallbackActiveProvider = mockk<IsOhttpFallbackActiveProvider>(relaxed = true)
     private val getAutomaticEndpoint = mockk<GetAutomaticEndpointUseCase>()
     private val useCase =
         PersistServerSelectionUseCase(
@@ -37,6 +39,7 @@ class PersistServerSelectionUseCaseTest {
             walletRepository = walletRepository,
             synchronizerProvider = synchronizerProvider,
             isServerSelectionAutomaticProvider = isAutomaticProvider,
+            isOhttpFallbackActiveProvider = isOhttpFallbackActiveProvider,
             getAutomaticEndpoint = getAutomaticEndpoint
         )
 
