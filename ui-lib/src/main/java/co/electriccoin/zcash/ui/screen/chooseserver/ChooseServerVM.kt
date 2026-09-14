@@ -76,7 +76,6 @@ class ChooseServerVM(
         persisted: InnerState.Persisted,
         fastestServers: FastestServersState,
     ): ServerConnectionModeState {
-        val fastestServer = fastestServers.servers?.firstOrNull()
         return ServerConnectionModeState(
             automatic =
                 RadioButtonState(
