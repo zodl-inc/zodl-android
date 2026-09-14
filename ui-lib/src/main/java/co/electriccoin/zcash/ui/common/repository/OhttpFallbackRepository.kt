@@ -36,6 +36,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 
 /**
@@ -72,7 +73,7 @@ class OhttpFallbackRepositoryImpl(
     scope: CoroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob()),
 ) : OhttpFallbackRepository {
     private val evaluationMutex = Mutex()
-    private var lastEvaluation: TimeSource.Monotonic.ValueTimeMark? = null
+    private var lastEvaluation: TimeMark? = null
 
     init {
         scope.launch {

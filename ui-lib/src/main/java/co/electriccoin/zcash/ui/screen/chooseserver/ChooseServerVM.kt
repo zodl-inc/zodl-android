@@ -87,7 +87,8 @@ class ChooseServerVM(
                                 if (persisted.isAutomatic) {
                                     persisted.endpoint
                                 } else {
-                                    getAutomaticEndpoint(fastestServer, persisted.endpoint)
+                                    // Switching from Manual to Automatic always starts from OHTTP.
+                                    getAutomaticEndpoint(isFallbackActive = false, persisted = persisted.endpoint)
                                 }
                             stringRes(
                                 R.string.choose_server_full_server_name,
