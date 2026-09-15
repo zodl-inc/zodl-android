@@ -58,7 +58,8 @@ class KtorNearApiProviderTest {
         runBlocking {
             // Valid QuoteResponseDto JSON matching the schema
             responseBody =
-                """{
+                """
+                {
                   "timestamp": "2024-01-01T00:00:00Z",
                   "quoteRequest": {
                     "dry": false,
@@ -84,7 +85,8 @@ class KtorNearApiProviderTest {
                     "minAmountOut": "1.0",
                     "deadline": "2024-01-01T00:00:00Z"
                   }
-                }""".trimIndent()
+                }
+                """.trimIndent()
 
             provider.requestQuote(quoteRequest())
 
@@ -119,7 +121,8 @@ class KtorNearApiProviderTest {
         runBlocking {
             // Valid SwapStatusResponseDto JSON matching the schema
             responseBody =
-                """{
+                """
+                {
                   "status": "PENDING_DEPOSIT",
                   "updatedAt": "2024-01-01T00:00:00Z",
                   "quoteResponse": {
@@ -149,7 +152,8 @@ class KtorNearApiProviderTest {
                       "deadline": "2024-01-01T00:00:00Z"
                     }
                   }
-                }""".trimIndent()
+                }
+                """.trimIndent()
 
             provider.checkSwapStatus(depositAddress = "deposit-address")
 
