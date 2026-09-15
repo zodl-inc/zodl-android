@@ -44,7 +44,8 @@ class KtorNearApiProviderTest {
             val request = capturedRequests.single()
             assertEquals("https://1click.chaindefuser.com/v0/tokens", request.url)
             assertEquals("GET", request.method)
-            // MOB-1520: the token list is public — the app must never send Authorization (gateway doesn't inject it either).
+            // MOB-1520: the token list is public — the app must never send Authorization
+            // (gateway doesn't inject it either).
             assertNoAuthorizationHeader(request)
             assertUsesOhttpOnly()
         }
@@ -53,7 +54,9 @@ class KtorNearApiProviderTest {
     fun requestQuoteDoesNotSendAuthorizationHeader() =
         runBlocking {
             // Minimal valid QuoteResponseDto JSON
-            responseBody = """{"refundAddress":"r","depositAddress":"d","price":1.0,"networkFee":0.1,"deadline":"2024-01-01T00:00:00Z"}"""
+            responseBody =
+                """{"refundAddress":"r","depositAddress":"d","price":1.0,"networkFee":0.1,""" +
+                    """"deadline":"2024-01-01T00:00:00Z"}"""
 
             provider.requestQuote(quoteRequest())
 
@@ -93,7 +96,10 @@ class KtorNearApiProviderTest {
 
             val request = capturedRequests.single()
             // The depositAddress is a query parameter in the URL, not a secret — still sent by the app.
-            assertTrue(request.url.contains("depositAddress=deposit-address"), "depositAddress parameter must be in URL")
+            assertTrue(
+                request.url.contains("depositAddress=deposit-address"),
+                "depositAddress parameter must be in URL"
+            )
             assertTrue(request.url.startsWith("https://1click.chaindefuser.com/v0/status"))
             assertEquals("GET", request.method)
             // MOB-1520: the app must never send Authorization (gateway injects it server-side).
