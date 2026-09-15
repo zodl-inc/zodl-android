@@ -14,6 +14,7 @@ import co.electriccoin.zcash.ui.common.model.ZcashSwapAddress
 import co.electriccoin.zcash.ui.common.model.ZcashTransparentSwapAddress
 import co.electriccoin.zcash.ui.common.model.isZCashAsset
 import co.electriccoin.zcash.ui.common.model.near.AppFee
+import co.electriccoin.zcash.ui.common.model.near.ErrorDto
 import co.electriccoin.zcash.ui.common.model.near.NearSwapAsset
 import co.electriccoin.zcash.ui.common.model.near.NearSwapQuote
 import co.electriccoin.zcash.ui.common.model.near.NearSwapQuoteStatus
@@ -26,6 +27,7 @@ import co.electriccoin.zcash.ui.common.model.near.SubmitDepositTransactionReques
 import co.electriccoin.zcash.ui.common.model.near.SwapType
 import co.electriccoin.zcash.ui.common.provider.BlockchainProvider
 import co.electriccoin.zcash.ui.common.provider.NearApiProvider
+import co.electriccoin.zcash.ui.common.provider.OhttpNearErrorException
 import co.electriccoin.zcash.ui.common.provider.ResponseWithNearErrorException
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.TokenIconProvider
@@ -127,42 +129,47 @@ class NearSwapDataSource(
                 referral = "zodl"
             )
 
+        // NEAR error bodies arrive as ResponseWithNearErrorException on the Ktor (Tor/direct) path and as
+        // OhttpNearErrorException on the OHTTP path; both carry the same ErrorDto and map identically.
+        fun Throwable.toQuoteException(error: ErrorDto): Throwable =
+            when {
+                error.message.contains("Amount is too low for bridge, try at least", true) -> {
+                    val errorAmount =
+                        error.message
+                            .split(" ")
+                            .lastOrNull()
+                            ?.toBigDecimalOrNull() ?: return this
+                    val errorAsset =
+                        when (swapMode) {
+                            SwapMode.FLEX_INPUT -> originAsset
+                            SwapMode.EXACT_INPUT -> originAsset
+                            SwapMode.EXACT_OUTPUT -> destinationAsset
+                        }
+                    QuoteLowAmountException(
+                        asset = errorAsset,
+                        amount = errorAmount,
+                        amountFormatted = errorAmount.movePointLeft(errorAsset.decimals)
+                    )
+                }
+
+                error.message.contains("No quotes found", true) -> {
+                    QuoteLowAmountException(
+                        asset = originAsset,
+                        amount = null,
+                        amountFormatted = null
+                    )
+                }
+
+                else -> this
+            }
+
         val response =
             try {
                 nearApiProvider.requestQuote(request)
             } catch (e: ResponseWithNearErrorException) {
-                when {
-                    e.error.message.contains("Amount is too low for bridge, try at least", true) -> {
-                        val errorAmount =
-                            e.error.message
-                                .split(" ")
-                                .lastOrNull()
-                                ?.toBigDecimalOrNull() ?: throw e
-                        val errorAsset =
-                            when (swapMode) {
-                                SwapMode.FLEX_INPUT -> originAsset
-                                SwapMode.EXACT_INPUT -> originAsset
-                                SwapMode.EXACT_OUTPUT -> destinationAsset
-                            }
-                        throw QuoteLowAmountException(
-                            asset = errorAsset,
-                            amount = errorAmount,
-                            amountFormatted = errorAmount.movePointLeft(errorAsset.decimals)
-                        )
-                    }
-
-                    e.error.message.contains("No quotes found", true) -> {
-                        throw QuoteLowAmountException(
-                            asset = originAsset,
-                            amount = null,
-                            amountFormatted = null
-                        )
-                    }
-
-                    else -> {
-                        throw e
-                    }
-                }
+                throw e.toQuoteException(e.error)
+            } catch (e: OhttpNearErrorException) {
+                throw e.toQuoteException(e.error)
             }
 
         return try {
