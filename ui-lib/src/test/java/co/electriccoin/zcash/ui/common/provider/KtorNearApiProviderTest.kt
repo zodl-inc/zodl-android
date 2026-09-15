@@ -57,8 +57,7 @@ class KtorNearApiProviderTest {
     fun requestQuoteDoesNotSendAuthorizationHeader() =
         runBlocking {
             // Valid QuoteResponseDto JSON matching the schema
-            responseBody =
-                """
+            responseBody = """
                 {
                   "timestamp": "2024-01-01T00:00:00Z",
                   "quoteRequest": {
@@ -86,7 +85,7 @@ class KtorNearApiProviderTest {
                     "deadline": "2024-01-01T00:00:00Z"
                   }
                 }
-                """.trimIndent()
+            """.trimIndent()
 
             provider.requestQuote(quoteRequest())
 
@@ -120,8 +119,7 @@ class KtorNearApiProviderTest {
     fun checkSwapStatusDoesNotSendAuthorizationHeaderAndSendsDepositAddressParameter() =
         runBlocking {
             // Valid SwapStatusResponseDto JSON matching the schema
-            responseBody =
-                """
+            responseBody = """
                 {
                   "status": "PENDING_DEPOSIT",
                   "updatedAt": "2024-01-01T00:00:00Z",
@@ -153,7 +151,7 @@ class KtorNearApiProviderTest {
                     }
                   }
                 }
-                """.trimIndent()
+            """.trimIndent()
 
             provider.checkSwapStatus(depositAddress = "deposit-address")
 
