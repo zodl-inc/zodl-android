@@ -155,6 +155,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # PR builds only need x86_64 for smoke testing, saving ~4x disk and build time.
+      RUST_ANDROID_ABIS: x86_64
     steps:
       - name: Checkout
         timeout-minutes: 1
@@ -207,6 +210,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # PR builds only need x86_64 for smoke testing, saving ~4x disk and build time.
+      RUST_ANDROID_ABIS: x86_64
     steps:
       - name: Checkout
         timeout-minutes: 1
@@ -268,6 +274,9 @@ jobs:
     timeout-minutes: 120
     permissions:
       contents: read
+    env:
+      # PR builds only need x86_64 for the emulator, saving ~4x disk and build time.
+      RUST_ANDROID_ABIS: x86_64
     strategy:
       fail-fast: false
       matrix:
@@ -444,6 +453,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    # No RUST_ANDROID_ABIS override here — PR artifacts are x86_64-only smoke builds for
+    # other jobs, but this one produces actual release APKs/AABs for download/Robo testing,
+    # so it compiles all four ABIs (arm, arm64, x86, x86_64).
     steps:
       - name: Checkout
         timeout-minutes: 1
