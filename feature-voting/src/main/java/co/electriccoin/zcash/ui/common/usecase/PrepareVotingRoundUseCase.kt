@@ -5,27 +5,18 @@ import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.ext.toHex
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.ZcashNetwork
-import co.electriccoin.zcash.ui.common.model.KeystoneAccount
-import co.electriccoin.zcash.ui.common.model.voting.DelegationPhase
 import co.electriccoin.zcash.ui.common.model.voting.VoteIneligibilityReason
 import co.electriccoin.zcash.ui.common.model.voting.VotingBundleSetupResult
-import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
-import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
-import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
-import co.electriccoin.zcash.ui.common.model.voting.isDelegationSetupOverwrite
-import co.electriccoin.zcash.ui.common.model.voting.requireKnownPolyLen
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
-import co.electriccoin.zcash.ui.common.repository.VotingDelegationPirPrecomputeRequest
 import co.electriccoin.zcash.ui.common.repository.VotingEligibility
 import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -36,6 +27,17 @@ import org.json.JSONArray
 import java.io.File
 import java.security.SecureRandom
 
+/**
+ * voting-4.0.0 round-driver port note: this use case is substantially simplified from its pre-4.0
+ * form for this benchmark pass (Task 8's scope-cut default — "recovery = call run() again", no
+ * persisted `VotingRecoveryPhase` state machine). Witness generation
+ * (`generateNoteWitnessesJson`/`storeWitnesses`) and the software-wallet PIR/delegation-proof
+ * background precompute optimization were both confirmed to have no direct equivalent needed here
+ * — witness generation is now fully internal to the crate's `run()` call (Task 3 finding), and the
+ * precompute optimization has no straightforward new-architecture equivalent in this pass's scope
+ * and was dropped rather than half-ported. See the port plan's Task 8/9 notes before treating this
+ * as a full replacement for the pre-4.0 implementation.
+ */
 class PrepareVotingRoundUseCase(
     private val resolveVotingRoundSession: ResolveVotingRoundSessionUseCase,
     private val votingRecoveryRepository: VotingRecoveryRepository,
@@ -86,9 +88,6 @@ class PrepareVotingRoundUseCase(
                     ?.absolutePath
                     ?: error("Unable to derive voting DB path from $walletDbPath")
             val networkId = synchronizer.network.toVotingNetworkId()
-            val recoverySnapshot = votingRecoveryRepository.get(accountUuidString, roundId)
-            var roundNotesJson: String? = null
-            val pendingPrecomputeRequests = mutableListOf<VotingDelegationPirPrecomputeRequest>()
 
             val dbHandle = votingCryptoClient.openVotingDb(votingDbPath)
             check(dbHandle != 0L) { "Failed to open voting DB at $votingDbPath" }
@@ -96,48 +95,8 @@ class PrepareVotingRoundUseCase(
             val preparationResult =
                 try {
                     votingCryptoClient.setWalletId(dbHandle, accountUuidString, networkId)
-                    var existingRoundState = votingCryptoClient.getRoundState(dbHandle, roundId)
-                    var effectiveRecoverySnapshot = recoverySnapshot
-                    // An existing round may contain an ambiguously broadcast transaction whose
-                    // accepted response was lost. In that state there is no stored tx hash, but the
-                    // bundle's alpha and van_comm_rand are still the only way to reconcile and
-                    // continue it. Unknown or incomplete state must therefore fail closed instead
-                    // of being cleared automatically.
-                    val existingRoundRecoveryAction =
-                        existingRoundState?.let {
-                            existingRoundRecoveryAction(
-                                hasPreparedRecovery = effectiveRecoverySnapshot?.preparedBundleSetup() != null,
-                                getBundleCount = {
-                                    votingCryptoClient.getBundleCount(dbHandle, roundId)
-                                }
-                            )
-                        }
-                    when (existingRoundRecoveryAction) {
-                        ExistingRoundRecoveryAction.REINITIALIZE -> {
-                            Log.i(TAG, "Reinitializing verified empty voting round $roundId")
-                            votingCryptoClient.clearRound(dbHandle, roundId)
-                            votingCryptoClient.clearRecoveryState(dbHandle, roundId)
-                            votingRecoveryRepository.clearRound(accountUuidString, roundId)
-                            existingRoundState = null
-                            effectiveRecoverySnapshot = null
-                        }
+                    val existingRoundState = votingCryptoClient.getRoundState(dbHandle, roundId)
 
-                        ExistingRoundRecoveryAction.FAIL_CLOSED -> {
-                            Log.w(TAG, "Retaining incomplete voting round $roundId for recovery")
-                            throw VotingSubmissionRecoverableException(VotingErrors.MissingBundleCount(roundId))
-                        }
-
-                        ExistingRoundRecoveryAction.RESUME,
-                        null -> {
-                            Unit
-                        }
-                    }
-                    // iOS distinguishes `noNotes` (`VotingStore+Session.swift:268`) and
-                    // `balanceTooLow` (`:282`) by checking the un-bundled note count before smart
-                    // bundling. Mirror that here: fetch the snapshot's notes up front, short-circuit
-                    // when empty so we never write a round row we'd immediately tear down, and only
-                    // bundle when there is something to bundle.
-                    var freshNotesJson: String? = null
                     val (preparedBundleCount, eligibleWeight) =
                         if (existingRoundState == null) {
                             val notesJson =
@@ -155,17 +114,16 @@ class PrepareVotingRoundUseCase(
                                     bundleCount = 0
                                 )
                             }
-                            freshNotesJson = notesJson
-                            roundNotesJson = notesJson
 
-                            votingCryptoClient.initializeRound(
+                            val treeStateBytes = synchronizer.getTreeState(BlockHeight.new(session.snapshotHeight))
+                            votingCryptoClient.ensureRound(
                                 dbHandle = dbHandle,
                                 roundId = roundId,
+                                anchorTreeStateBytes = treeStateBytes,
                                 snapshotHeight = session.snapshotHeight,
-                                eaPK = session.eaPK,
+                                eaPk = session.eaPK,
                                 ncRoot = session.ncRoot,
-                                nullifierIMTRoot = session.nullifierIMTRoot,
-                                sessionJson = null
+                                nullifierImtRoot = session.nullifierIMTRoot
                             )
 
                             votingCryptoClient
@@ -183,24 +141,18 @@ class PrepareVotingRoundUseCase(
                                     )
                                 }.let { setup -> setup.bundleCount to setup.eligibleWeight }
                         } else {
-                            val setup =
-                                effectiveRecoverySnapshot?.preparedBundleSetup()
-                                    ?: recoverExistingBundleSetup(
-                                        accountUuid = accountUuidString,
-                                        roundId = roundId,
-                                        dbHandle = dbHandle,
-                                        walletDbPath = walletDbPath,
-                                        snapshotHeight = session.snapshotHeight,
-                                        networkId = networkId,
-                                        accountUuidBytes = accountUuid.value
-                                    )
-                            setup.bundleCount to setup.eligibleWeight
+                            recoverExistingBundleSetup(
+                                accountUuid = accountUuidString,
+                                roundId = roundId,
+                                dbHandle = dbHandle,
+                                walletDbPath = walletDbPath,
+                                snapshotHeight = session.snapshotHeight,
+                                networkId = networkId,
+                                accountUuidBytes = accountUuid.value
+                            ).let { setup -> setup.bundleCount to setup.eligibleWeight }
                         }
 
                     if (eligibleWeight <= 0L) {
-                        // Notes existed (no-notes case short-circuited above; recovery path implies
-                        // notes existed when the round was first prepared) but smart bundling left
-                        // nothing eligible — this is the dust / sub-divisor case.
                         votingSessionStore.setEligibility(VotingEligibility.INELIGIBLE)
                         return@withContext VotingRoundPreparationResult.Ineligible(
                             reason = VoteIneligibilityReason.BALANCE_TOO_LOW,
@@ -209,62 +161,15 @@ class PrepareVotingRoundUseCase(
                         )
                     }
 
-                    if (existingRoundState == null) {
-                        val notesJson =
-                            freshNotesJson ?: votingCryptoClient.getWalletNotesJson(
-                                walletDbPath = walletDbPath,
-                                snapshotHeight = session.snapshotHeight,
-                                networkId = networkId,
-                                accountUuidBytes = accountUuid.value
-                            )
-                        val treeStateBytes = synchronizer.getTreeState(BlockHeight.new(session.snapshotHeight))
-                        votingCryptoClient.storeTreeState(
-                            dbHandle = dbHandle,
-                            roundId = roundId,
-                            treeStateBytes = treeStateBytes
-                        )
-                        repeat(preparedBundleCount) { bundleIndex ->
-                            val witnessesJson =
-                                votingCryptoClient.generateNoteWitnessesJson(
-                                    dbHandle = dbHandle,
-                                    roundId = roundId,
-                                    bundleIndex = bundleIndex,
-                                    walletDbPath = walletDbPath,
-                                    networkId = networkId,
-                                    notesJson = notesJson
-                                )
-                            votingCryptoClient.storeWitnesses(
-                                dbHandle = dbHandle,
-                                roundId = roundId,
-                                bundleIndex = bundleIndex,
-                                notesJson = notesJson,
-                                witnessesJson = witnessesJson
-                            )
-                        }
-                    }
-
-                    // Round-level phase can't tell "this round's bundles are all still
-                    // Prepared" apart from "bundle 0 raced ahead to Proved while bundle 1
-                    // hasn't been touched yet" (2026-08-10) — per-bundle delegation phase is
-                    // the only safe signal for "has ANY signer material already been baked
-                    // into a persisted PCZT for this round" (i.e. is the hotkey load-bearing).
-                    val hotkeyBound =
-                        existingRoundState != null &&
-                            votingCryptoClient
-                                .delegationPhases(dbHandle, roundId)
-                                .any { bundle -> bundle.phase != DelegationPhase.PREPARED }
+                    val hotkeyBound = existingRoundState?.hotkeyAddress != null
                     val hotkeySeed =
                         getOrCreateHotkeySeed(
                             accountUuid = accountUuidString,
                             roundId = roundId,
-                            recoverySnapshot = effectiveRecoverySnapshot,
                             hotkeyBound = hotkeyBound
                         )
-                    val recoveredHotkeyAddress =
-                        effectiveRecoverySnapshot?.hotkeyAddress ?: existingRoundState?.hotkeyAddress
-                    val shouldGenerateHotkey = !hotkeyBound || recoveredHotkeyAddress == null
                     val hotkeyAddress =
-                        if (shouldGenerateHotkey) {
+                        if (!hotkeyBound) {
                             val hotkey =
                                 votingCryptoClient.generateHotkey(
                                     dbHandle = dbHandle,
@@ -277,60 +182,11 @@ class PrepareVotingRoundUseCase(
                             )
                             hotkey.address
                         } else {
-                            // shouldGenerateHotkey's `recoveredHotkeyAddress == null` disjunct
-                            // guarantees non-null here (this is its else branch); check kept as
-                            // a defensive invariant, not a real fallback.
-                            val address =
-                                checkNotNull(recoveredHotkeyAddress) {
-                                    "Missing hotkey address for resumed voting round $roundId"
-                                }
-                            storeRecoveredHotkeyAddress(
-                                accountUuid = accountUuidString,
-                                roundId = roundId,
-                                hotkeyAddress = address
-                            )
-                            address
+                            checkNotNull(existingRoundState.hotkeyAddress) {
+                                "Missing hotkey address for resumed voting round $roundId"
+                            }
                         }
                     votingSessionStore.setEligibility(VotingEligibility.ELIGIBLE)
-                    if (existingRoundState == null && selectedAccount !is KeystoneAccount) {
-                        runCatching {
-                            val ufvk =
-                                requireNotNull(selectedAccount.sdkAccount.ufvk) {
-                                    "Software wallet account is missing UFVK for voting round $roundId"
-                                }
-                            val accountIndex = selectedAccount.hdAccountIndex.index.toInt()
-                            pendingPrecomputeRequests +=
-                                buildSoftwareDelegationPirPrecomputeRequests(
-                                    accountUuid = accountUuidString,
-                                    walletId = accountUuidString,
-                                    votingDbPath = votingDbPath,
-                                    roundId = roundId,
-                                    networkId = networkId,
-                                    bundleCount = preparedBundleCount,
-                                    notesJson =
-                                        requireNotNull(roundNotesJson ?: freshNotesJson) {
-                                            "Missing prepared voting notes for round $roundId"
-                                        },
-                                    dbHandle = dbHandle,
-                                    ufvk = ufvk,
-                                    accountIndex = accountIndex,
-                                    walletSeed = getWalletSeedBytes(),
-                                    hotkeySeed = hotkeySeed,
-                                    seedFingerprint =
-                                        requireNotNull(selectedAccount.sdkAccount.seedFingerprint) {
-                                            "Software wallet account is missing seed fingerprint " +
-                                                "for voting round $roundId"
-                                        },
-                                    roundName = session.title,
-                                    pirEndpoints =
-                                        sessionContext.serviceConfig.pirEndpoints.map { endpoint -> endpoint.url },
-                                    pirLayout = sessionContext.serviceConfig.pirLayout.requireKnownPolyLen(),
-                                    expectedSnapshotHeight = session.snapshotHeight
-                                )
-                        }.onFailure { throwable ->
-                            Log.w(TAG, "Skipping voting PIR precompute for round $roundId", throwable)
-                        }
-                    }
 
                     VotingRoundPreparationResult.Ready(
                         roundId = roundId,
@@ -341,7 +197,6 @@ class PrepareVotingRoundUseCase(
                 } finally {
                     votingCryptoClient.closeVotingDb(dbHandle)
                 }
-            pendingPrecomputeRequests.forEach(votingProofPrecomputeRepository::startDelegationPirPrecompute)
             preparationResult
         }
 
@@ -388,42 +243,12 @@ class PrepareVotingRoundUseCase(
         return recoveredSetup
     }
 
-    private fun VotingRecoverySnapshot.preparedBundleSetup(): VotingBundleSetupResult? {
-        val count = bundleCount ?: return null
-        val weight = eligibleWeight ?: return null
-        if (bundleWeights.size < count) {
-            return null
-        }
-        return VotingBundleSetupResult(
-            bundleCount = count,
-            eligibleWeight = weight,
-            bundleWeights = bundleWeights.take(count)
-        )
-    }
-
-    private suspend fun storeRecoveredHotkeyAddress(
-        accountUuid: String,
-        roundId: String,
-        hotkeyAddress: String
-    ) {
-        val current =
-            votingRecoveryRepository.get(accountUuid, roundId)
-                ?: VotingRecoverySnapshot(
-                    accountUuid = accountUuid,
-                    roundId = roundId
-                )
-        if (current.hotkeyAddress == hotkeyAddress) {
-            return
-        }
-        votingRecoveryRepository.store(current.copy(hotkeyAddress = hotkeyAddress))
-    }
-
     private suspend fun getOrCreateHotkeySeed(
         accountUuid: String,
         roundId: String,
-        recoverySnapshot: VotingRecoverySnapshot?,
         hotkeyBound: Boolean
     ): ByteArray {
+        val recoverySnapshot = votingRecoveryRepository.get(accountUuid, roundId)
         val legacySeed = recoverySnapshot?.decodeHotkeySeed()
         val storedSeed = votingHotkeySeedProvider.get(accountUuid)
 
@@ -432,12 +257,6 @@ class PrepareVotingRoundUseCase(
         }
 
         return legacySeed ?: storedSeed ?: run {
-            // A round is "hotkey-bound" once any bundle has a persisted PCZT (past DelegationPhase
-            // .PREPARED, per-bundle — see the call site) built with a specific hotkey; minting a
-            // fresh, different seed here would silently desync from that already-signed material.
-            // Never gate this on the round-level RoundPhase: it can't distinguish "this round's
-            // bundles are all still Prepared" from "some OTHER bundle in this round already raced
-            // ahead to Proved" (2026-08-10 multi-bundle delegation fix).
             if (hotkeyBound) {
                 error("Missing stored hotkey seed for resumed round $roundId")
             }
@@ -448,99 +267,12 @@ class PrepareVotingRoundUseCase(
         }
     }
 
-    private suspend fun buildSoftwareDelegationPirPrecomputeRequests(
-        accountUuid: String,
-        walletId: String,
-        votingDbPath: String,
-        roundId: String,
-        networkId: Int,
-        bundleCount: Int,
-        notesJson: String,
-        dbHandle: Long,
-        ufvk: String,
-        accountIndex: Int,
-        walletSeed: ByteArray,
-        hotkeySeed: ByteArray,
-        seedFingerprint: ByteArray,
-        roundName: String,
-        pirEndpoints: List<String>,
-        pirLayout: VotingPirLayout,
-        expectedSnapshotHeight: Long
-    ): List<VotingDelegationPirPrecomputeRequest> {
-        val requests = mutableListOf<VotingDelegationPirPrecomputeRequest>()
-        val phaseByBundle =
-            votingCryptoClient
-                .delegationPhases(dbHandle, roundId)
-                .associate { bundle -> bundle.bundleIndex to bundle.phase }
-        repeat(bundleCount) { bundleIndex ->
-            // Already-submitted/confirmed bundles have nothing left to construct or precompute.
-            val isAlreadyFinalized =
-                phaseByBundle[bundleIndex]?.let {
-                    it == DelegationPhase.SUBMITTED || it == DelegationPhase.CONFIRMED
-                } == true
-            if (isAlreadyFinalized) {
-                return@repeat
-            }
-            runCatching {
-                // Always attempt construct for a pending bundle rather than gating on a
-                // pre-read phase: construct is cheap (no ZKP), and the crate's own
-                // overwrite-refusal is the only reliable signal that this bundle's setup is
-                // already present and intact (round-level phase can lie — see
-                // getOrCreateHotkeySeed's doc comment above).
-                runCatching {
-                    votingCryptoClient.buildGovernancePcztFromSeed(
-                        dbHandle = dbHandle,
-                        roundId = roundId,
-                        bundleIndex = bundleIndex,
-                        ufvk = ufvk,
-                        networkId = networkId,
-                        accountIndex = accountIndex,
-                        notesJson = notesJson,
-                        walletSeed = walletSeed,
-                        hotkeySeed = hotkeySeed,
-                        seedFingerprint = seedFingerprint,
-                        roundName = roundName
-                    )
-                }.recoverCatching { throwable ->
-                    if (!throwable.isDelegationSetupOverwrite()) throw throwable
-                }.getOrThrow()
-
-                requests +=
-                    VotingDelegationPirPrecomputeRequest(
-                        accountUuid = accountUuid,
-                        walletId = walletId,
-                        votingDbPath = votingDbPath,
-                        roundId = roundId,
-                        bundleIndex = bundleIndex,
-                        pirEndpoints = pirEndpoints,
-                        pirLayout = pirLayout,
-                        expectedSnapshotHeight = expectedSnapshotHeight,
-                        networkId = networkId,
-                        notesJson = notesJson
-                    )
-            }.onFailure { throwable ->
-                // Deliberately error-level, not warn: a swallowed construct failure here is
-                // exactly what hid the original "no alpha for round=..., bundle=1" crash — the
-                // bundle silently never got precompute-registered and crashed much later at
-                // submit time instead.
-                Log.e(TAG, "Voting PIR precompute setup failed for round $roundId bundle $bundleIndex", throwable)
-            }
-        }
-        return requests
-    }
-
     private suspend fun awaitFullyScannedHeight(synchronizer: Synchronizer): Long? {
         synchronizer.fullyScannedHeight.value
             ?.value
             ?.takeIf { it > 0 }
             ?.let { return it }
 
-        // Wait for the engine to leave its boot phase before racing fullyScannedHeight against a
-        // short timeout below: under Slipstream, fullyScannedHeight is set inside the same engine
-        // tick that first flips status away from INITIALIZING (and is set first within that tick),
-        // so gating on status here means the timeout below only has to cover the gap within one
-        // tick, not the whole engine boot. Bounded because status stays INITIALIZING forever if the
-        // engine's prepare/start job fails outright.
         withTimeoutOrNull(ENGINE_BOOT_TIMEOUT_MS) {
             synchronizer.status.first { it != Synchronizer.Status.INITIALIZING }
         }
@@ -558,48 +290,8 @@ class PrepareVotingRoundUseCase(
 
     private companion object {
         const val TAG = "PrepareVotingRound"
-
-        // Under Slipstream, fullyScannedHeight (SlipstreamEngine.kt) stays null until the engine's
-        // poll loop lands a tick, which only starts once the whole engine boot sequence completes
-        // (handle creation, anchor restore, and Tor bootstrap when enabled) - on a bad network that
-        // can run well past what fullyScannedHeight's own timeout below should have to cover. This
-        // bounds ONLY the boot wait (see awaitFullyScannedHeight), so it can be generous without
-        // penalizing a wallet that is genuinely still syncing.
         const val ENGINE_BOOT_TIMEOUT_MS = 30_000L
-
-        // The legacy CompactBlockProcessor's fullyScannedHeight is a reactive DB read that's
-        // already correct once the engine has left its boot phase, so this only needs to cover the
-        // gap within a single engine tick after the boot-gate above releases.
         const val FULLY_SCANNED_HEIGHT_TIMEOUT_MS = 5_000L
         const val HOTKEY_SEED_BYTES = 64
-    }
-}
-
-internal enum class ExistingRoundRecoveryAction {
-    RESUME,
-    REINITIALIZE,
-    FAIL_CLOSED
-}
-
-internal suspend fun existingRoundRecoveryAction(
-    hasPreparedRecovery: Boolean,
-    getBundleCount: suspend () -> Int
-): ExistingRoundRecoveryAction {
-    if (hasPreparedRecovery) {
-        return ExistingRoundRecoveryAction.RESUME
-    }
-    val dbBundleCount =
-        try {
-            getBundleCount()
-        } catch (exception: CancellationException) {
-            throw exception
-        } catch (_: Exception) {
-            null
-        }
-    return when {
-        dbBundleCount == null -> ExistingRoundRecoveryAction.FAIL_CLOSED
-        dbBundleCount > 0 -> ExistingRoundRecoveryAction.RESUME
-        dbBundleCount == 0 -> ExistingRoundRecoveryAction.REINITIALIZE
-        else -> ExistingRoundRecoveryAction.FAIL_CLOSED
     }
 }

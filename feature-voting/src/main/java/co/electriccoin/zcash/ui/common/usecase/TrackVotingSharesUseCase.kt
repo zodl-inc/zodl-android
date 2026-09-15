@@ -1,11 +1,6 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import cash.z.ecc.android.sdk.model.ZcashNetwork
-import co.electriccoin.zcash.ui.common.model.voting.ShareConfirmationResult
-import co.electriccoin.zcash.ui.common.model.voting.VotingShareDelegationRecord
-import co.electriccoin.zcash.ui.common.model.voting.toEncryptedSharesJson
-import co.electriccoin.zcash.ui.common.model.voting.toSharePayloads
-import co.electriccoin.zcash.ui.common.model.voting.withSubmitAt
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
@@ -14,8 +9,6 @@ import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
-import kotlin.math.max
-import kotlin.math.min
 
 sealed interface VotingShareTrackingResult {
     data object Completed : VotingShareTrackingResult
@@ -25,6 +18,23 @@ sealed interface VotingShareTrackingResult {
     ) : VotingShareTrackingResult
 }
 
+/**
+ * voting-4.0.0 round-driver port note (Task 6): the old hand-rolled per-share polling/resubmit
+ * loop is replaced with a single [VotingCryptoClient.trackShares] call, which drives every
+ * unconfirmed share for the round to quiescence internally via the crate's own
+ * `ShareTrackingDriver` before returning.
+ *
+ * An incomplete result (missing server URLs, or a non-empty `unrecoverable`/`ambiguous` in the
+ * report) returns [VotingShareTrackingResult.Pending] with an exponentially backed-off delay --
+ * see [nextDelayMillis] -- rather than the fixed [DEFAULT_DELAY_MILLIS] every time; the delay
+ * resets once a call for that round fully [VotingShareTrackingResult.Completed]s.
+ *
+ * Out of scope: full mid-run cancellation of an in-flight `trackSharesNative` call. This is only
+ * a retry-cadence improvement, not a cancellation mechanism -- `trackSharesNative` is a
+ * session-less, standalone JNI export (no `RoundSessionHandle` a separate JNI call could reach to
+ * cancel it, unlike `runRoundNative`), a known gap documented in full in
+ * `share_tracking_driver.rs`'s module doc comment; it remains a known gap for a future task.
+ */
 class TrackVotingSharesUseCase(
     private val votingRecoveryRepository: VotingRecoveryRepository,
     private val votingCryptoClient: VotingCryptoClient,
@@ -51,11 +61,12 @@ class TrackVotingSharesUseCase(
                         }.getOrDefault(emptyList())
                     }
             if (roundVoteServerUrls.isEmpty()) {
-                return@withContext VotingShareTrackingResult.Pending(DEFAULT_DELAY_MILLIS)
+                return@withContext VotingShareTrackingResult.Pending(nextDelayMillis(roundId))
             }
 
+            val synchronizer = synchronizerProvider.getSynchronizer()
             val walletDbPath = synchronizerProvider.getVotingWalletDbPath()
-            val networkId = synchronizerProvider.getSynchronizer().network.toVotingNetworkId()
+            val networkId = synchronizer.network.toVotingNetworkId()
             val votingDbPath =
                 File(walletDbPath)
                     .parentFile
@@ -68,136 +79,26 @@ class TrackVotingSharesUseCase(
 
             try {
                 votingCryptoClient.setWalletId(dbHandle, accountUuidString, networkId)
-                val shareDelegations = votingCryptoClient.getShareDelegations(dbHandle, roundId)
-                if (shareDelegations.isEmpty()) {
-                    return@withContext VotingShareTrackingResult.Completed
-                }
-
-                val nowEpochSeconds = System.currentTimeMillis() / MILLIS_PER_SECOND
-                var nextDelayMillis = DEFAULT_DELAY_MILLIS
-
-                shareDelegations
-                    .filterNot { delegation -> delegation.confirmed }
-                    .forEach { delegation ->
-                        val firstCheckAt =
-                            delegation.submitAt
-                                .takeIf { submitAt -> submitAt > 0L }
-                                ?.plus(CHECK_GRACE_SECONDS)
-                                ?: 0L
-                        if (firstCheckAt > nowEpochSeconds) {
-                            nextDelayMillis =
-                                min(
-                                    nextDelayMillis,
-                                    ((firstCheckAt - nowEpochSeconds) * MILLIS_PER_SECOND)
-                                        .coerceAtLeast(MIN_DELAY_MILLIS)
-                                )
-                            return@forEach
-                        }
-
-                        val statusProbeUrls =
-                            delegation.sentToUrls
-                                .map { url -> url.trimEnd('/') }
-                                .filter(String::isNotEmpty)
-                                .ifEmpty { roundVoteServerUrls }
-                                .distinct()
-                        val isConfirmed =
-                            statusProbeUrls.any { helperBaseUrl ->
-                                runCatching {
-                                    votingApiProvider.fetchShareStatus(
-                                        helperBaseUrl = helperBaseUrl,
-                                        roundIdHex = roundId,
-                                        nullifierHex = delegation.nullifier.toLowerHex()
-                                    )
-                                }.getOrNull() == ShareConfirmationResult.CONFIRMED
-                            }
-
-                        if (isConfirmed) {
-                            votingCryptoClient.markShareConfirmed(
-                                dbHandle = dbHandle,
-                                roundId = roundId,
-                                bundleIndex = delegation.bundleIndex,
-                                proposalId = delegation.proposalId,
-                                shareIndex = delegation.shareIndex
-                            )
-                            return@forEach
-                        }
-
-                        val resubmitAt = delegation.resubmitAt(recovery.voteEndEpochSeconds)
-                        if (resubmitAt == null) {
-                            return@forEach
-                        }
-                        if (resubmitAt > nowEpochSeconds) {
-                            nextDelayMillis =
-                                min(
-                                    nextDelayMillis,
-                                    ((resubmitAt - nowEpochSeconds) * MILLIS_PER_SECOND).coerceAtLeast(MIN_DELAY_MILLIS)
-                                )
-                            return@forEach
-                        }
-                        if (recovery.voteEndEpochSeconds != null &&
-                            recovery.voteEndEpochSeconds <= nowEpochSeconds + RESUBMIT_CUTOFF_SECONDS
-                        ) {
-                            return@forEach
-                        }
-
-                        val proposalSelection =
-                            recovery.proposalSelections[delegation.proposalId]
-                                ?: return@forEach
-                        val commitmentRecord =
-                            votingCryptoClient.getCommitmentBundle(
-                                dbHandle = dbHandle,
-                                roundId = roundId,
-                                bundleIndex = delegation.bundleIndex,
-                                proposalId = delegation.proposalId
-                            ) ?: return@forEach
-                        if (commitmentRecord.vcTreePosition <= 0L) {
-                            return@forEach
-                        }
-
-                        val payload =
-                            votingCryptoClient
-                                .buildSharePayloadsJson(
-                                    encSharesJson = commitmentRecord.bundle.encShares.toEncryptedSharesJson(),
-                                    commitmentJson = commitmentRecord.bundleJson,
-                                    voteDecision = proposalSelection.choiceId,
-                                    numOptions = proposalSelection.numOptions,
-                                    vcTreePosition = commitmentRecord.vcTreePosition,
-                                    singleShareMode = recovery.singleShareMode == true
-                                ).toSharePayloads()
-                                .map { generated -> generated.withSubmitAt(0) }
-                                .firstOrNull { generated ->
-                                    generated.encShare.shareIndex == delegation.shareIndex
-                                } ?: return@forEach
-
-                        val acceptedServers =
-                            runCatching {
-                                votingApiProvider.resubmitShare(
-                                    payload = payload,
-                                    candidateUrls = roundVoteServerUrls,
-                                    excludeUrls = delegation.sentToUrls
-                                )
-                            }.getOrDefault(emptyList())
-
-                        if (acceptedServers.isNotEmpty()) {
-                            votingCryptoClient.addSentServers(
-                                dbHandle = dbHandle,
-                                roundId = roundId,
-                                bundleIndex = delegation.bundleIndex,
-                                proposalId = delegation.proposalId,
-                                shareIndex = delegation.shareIndex,
-                                newUrls = acceptedServers
-                            )
-                            nextDelayMillis = min(nextDelayMillis, POST_RESUBMIT_DELAY_MILLIS)
-                        }
-                    }
-
-                val hasPendingShares =
-                    votingCryptoClient
-                        .getShareDelegations(dbHandle, roundId)
-                        .any { delegation -> !delegation.confirmed }
-                if (hasPendingShares) {
-                    VotingShareTrackingResult.Pending(nextDelayMillis.coerceAtLeast(MIN_DELAY_MILLIS))
+                // TEMPORARY BENCHMARK-ONLY: same Tor-optional fallback as
+                // SubmitVotesUseCase.kt — Tor is a preference, not a hard requirement,
+                // mirroring the pre-4.0 architecture. `0L` is the SDK-side "no Tor
+                // runtime" sentinel; the Rust side falls back to its own
+                // Tor-independent executor. DO NOT ship without a real
+                // privacy-preserving transport default.
+                val torRuntime =
+                    runCatching { synchronizer.getVotingTorRuntimeHandle() }.getOrDefault(0L)
+                val report =
+                    votingCryptoClient.trackShares(
+                        dbHandle = dbHandle,
+                        roundId = roundId,
+                        torRuntime = torRuntime,
+                        helperUrls = roundVoteServerUrls,
+                        voteEndTimeSeconds = recovery.voteEndEpochSeconds ?: -1L
+                    )
+                if (report.unrecoverable.isNotEmpty() || report.ambiguous.isNotEmpty()) {
+                    VotingShareTrackingResult.Pending(nextDelayMillis(roundId))
                 } else {
+                    resetDelay(roundId)
                     VotingShareTrackingResult.Completed
                 }
             } finally {
@@ -205,39 +106,34 @@ class TrackVotingSharesUseCase(
             }
         }
 
-    private fun ByteArray.toLowerHex(): String =
-        joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and BYTE_MASK) }
-
     private companion object {
-        const val CHECK_GRACE_SECONDS = 10L
-        const val RESUBMIT_CUTOFF_SECONDS = 10L
-        const val MIN_DELAY_MILLIS = 3_000L
         const val DEFAULT_DELAY_MILLIS = 15_000L
-        const val POST_RESUBMIT_DELAY_MILLIS = 10_000L
-        const val MILLIS_PER_SECOND = 1_000L
-        const val BYTE_MASK = 0xff
+        const val MAX_DELAY_MILLIS = 120_000L
+
+        // Per-round consecutive-incomplete-attempt counter. Lives on the companion (i.e. shared
+        // by every `TrackVotingSharesUseCase` instance), not as an instance field, because Koin
+        // provides this use case via `factoryOf` (see FeatureVotingModule) rather than as a
+        // singleton -- a fresh instance is injected into each new `VotingShareTrackingWorker`
+        // WorkManager creates for a retried run, so per-instance state would not survive across
+        // those retries. `VotingShareTrackingScheduler.schedule` enqueues with
+        // `ExistingWorkPolicy.REPLACE` on a per-round unique work name, so at most one call for a
+        // given `roundId` is ever in flight at a time; a plain synchronized map is therefore
+        // enough -- no jitter or cross-process persistence needed for this cadence gap.
+        private val attemptCounts = mutableMapOf<String, Int>()
+
+        @Synchronized
+        private fun nextDelayMillis(roundId: String): Long {
+            val attempt = (attemptCounts[roundId] ?: 0) + 1
+            attemptCounts[roundId] = attempt
+            val backedOff = DEFAULT_DELAY_MILLIS * (1L shl (attempt - 1).coerceAtMost(32))
+            return backedOff.coerceIn(DEFAULT_DELAY_MILLIS, MAX_DELAY_MILLIS)
+        }
+
+        @Synchronized
+        private fun resetDelay(roundId: String) {
+            attemptCounts.remove(roundId)
+        }
     }
 }
-
-private fun VotingShareDelegationRecord.resubmitAt(voteEndEpochSeconds: Long?): Long? {
-    if (submitAt <= 0L || voteEndEpochSeconds == null) {
-        return null
-    }
-
-    val remainingAtSubmit = (voteEndEpochSeconds - submitAt).coerceAtLeast(0L)
-    val overdueThreshold =
-        max(
-            RESUBMIT_MIN_DELAY_SECONDS,
-            min(
-                RESUBMIT_MAX_DELAY_SECONDS,
-                remainingAtSubmit / OVERDUE_THRESHOLD_DIVISOR
-            )
-        )
-    return submitAt + overdueThreshold
-}
-
-private const val RESUBMIT_MIN_DELAY_SECONDS = 30L
-private const val RESUBMIT_MAX_DELAY_SECONDS = 3_600L
-private const val OVERDUE_THRESHOLD_DIVISOR = 4
 
 private fun ZcashNetwork.toVotingNetworkId() = if (isMainnet()) 1 else 0

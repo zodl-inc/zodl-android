@@ -483,6 +483,14 @@ class VoteConfirmSubmissionVM(
                         progress = progress.progress
                     )
                 }
+
+                is VotingSubmissionProgress.RunningRound -> {
+                    // The round-driver architecture doesn't expose a linear current/total count
+                    // the way the old per-bundle loop did -- see RunningRound's own doc comment
+                    // -- so this only keeps the screen out of an apparently-stuck state during
+                    // roundSession.run()'s ~minute-plus call, rather than showing real progress.
+                    VoteSubmissionStatus.Submitting(current = 0, total = 0, progress = 0f)
+                }
             }
     }
 

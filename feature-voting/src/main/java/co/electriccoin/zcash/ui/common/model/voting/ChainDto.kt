@@ -255,9 +255,9 @@ private fun ByteArray.toHexString(): String =
 
 private const val HEX_RADIX = 16
 private const val MIN_PROPOSALS = 1
-private const val MAX_PROPOSALS = 15
+private const val MAX_PROPOSALS = 50
 private const val MIN_PROPOSAL_ID = 1
-private const val MAX_PROPOSAL_ID = 15
+private const val MAX_PROPOSAL_ID = 50
 private const val MIN_OPTIONS = 2
 private const val MAX_OPTIONS = 8
 private const val DEFAULT_MISSING_OPTION_INDEX = 0
