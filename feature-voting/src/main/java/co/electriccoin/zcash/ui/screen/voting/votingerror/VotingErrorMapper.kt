@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.voting.votingerror
 
 import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
+import co.electriccoin.zcash.ui.common.usecase.VotingShareDeliveryException
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import java.util.Locale
@@ -41,11 +42,15 @@ object VotingErrorMapper {
      * Maps a voting failure to a user-facing message. A
      * [VotingSubmissionRecoverableException] is matched on its typed [VotingErrors]
      * subtype; any other throwable falls back to substring matching on its message.
+     *
+     * A [VotingShareDeliveryException] only attributes a background share delivery to its question,
+     * so it is unwrapped first and the delivery's own failure decides the message.
      */
     fun toUserFriendlyMessage(throwable: Throwable): StringResource {
+        val classified = (throwable as? VotingShareDeliveryException)?.cause ?: throwable
         val failure =
-            (throwable as? VotingSubmissionRecoverableException)?.failure
-                ?: return toUserFriendlyMessage(throwable.message.orEmpty())
+            (classified as? VotingSubmissionRecoverableException)?.failure
+                ?: return toUserFriendlyMessage(classified.message.orEmpty())
         return when (failure) {
             is VotingErrors.ConflictingProposalSelection -> {
                 stringRes(UiR.string.coinVote_store_userError_conflictingSelection)

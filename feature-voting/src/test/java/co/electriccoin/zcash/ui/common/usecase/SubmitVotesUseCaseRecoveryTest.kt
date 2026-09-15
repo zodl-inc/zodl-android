@@ -770,16 +770,93 @@ class SubmitVotesUseCaseRecoveryTest {
                 )
 
             val failure =
-                assertFailsWith<IllegalStateException> {
+                assertFailsWith<VotingShareDeliveryException> {
                     fixture.newUseCase()(ROUND_ID, mapOf(1 to 0, 2 to 0))
                 }
 
-            assertEquals("share helper unavailable", failure.message)
+            // The failure names the question whose shares never landed, and keeps its own cause.
+            assertEquals(0, failure.bundleIndex)
+            assertEquals(1, failure.proposalId)
+            assertEquals("share helper unavailable", failure.cause?.message)
             // Both votes still reached the chain, and only proposal 2's share was recorded.
             assertEquals(listOf(1, 2), fixture.submittedBundles.map { bundle -> bundle.proposalId })
             assertEquals(listOf(0), fixture.recordedShares)
             // The failure surfaces after every vote is on chain, never before the next question.
             assertEquals(VotingRecoveryPhase.VOTES_SUBMITTED, fixture.recovery.phase)
+        }
+
+    @Test
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun shareDeliveriesRunTwoAtATime() =
+        runTest {
+            val gates = (1..3).associateWith { CompletableDeferred<Unit>() }
+            val fixture =
+                CastVoteRecoveryFixture(
+                    selectedAccount = keystoneAccount(),
+                    proposalCount = 3,
+                    successfulVoteSubmissions = true,
+                    shareDeliveryGates = gates
+                )
+
+            val submission =
+                launch {
+                    fixture.newUseCase(StandardTestDispatcher(testScheduler))(
+                        ROUND_ID,
+                        mapOf(1 to 0, 2 to 0, 3 to 0)
+                    )
+                }
+            advanceUntilIdle()
+
+            // Every question has been cast, yet only two deliveries hold the window.
+            assertEquals(listOf(1, 2), fixture.startedShareDeliveries)
+            assertEquals(2, fixture.maxConcurrentShareDeliveries)
+
+            // The oldest delivery settles, and the queued one takes its permit.
+            gates.getValue(1).complete(Unit)
+            advanceUntilIdle()
+
+            assertEquals(listOf(1, 2, 3), fixture.startedShareDeliveries)
+            assertEquals(2, fixture.maxConcurrentShareDeliveries)
+
+            gates.getValue(2).complete(Unit)
+            gates.getValue(3).complete(Unit)
+            advanceUntilIdle()
+            submission.join()
+
+            assertEquals(listOf(0, 0, 0), fixture.recordedShares)
+        }
+
+    @Test
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun fullShareDeliveryWindowDoesNotStallTheVoteChain() =
+        runTest {
+            val gates = (1..3).associateWith { CompletableDeferred<Unit>() }
+            val fixture =
+                CastVoteRecoveryFixture(
+                    selectedAccount = keystoneAccount(),
+                    proposalCount = 3,
+                    successfulVoteSubmissions = true,
+                    shareDeliveryGates = gates
+                )
+
+            val submission =
+                launch {
+                    fixture.newUseCase(StandardTestDispatcher(testScheduler))(
+                        ROUND_ID,
+                        mapOf(1 to 0, 2 to 0, 3 to 0)
+                    )
+                }
+            advanceUntilIdle()
+
+            // The window is full from the second question on, and the third question still proved
+            // and cast its vote rather than waiting for a permit.
+            assertEquals(2, fixture.startedShareDeliveries.size)
+            assertEquals(listOf(1, 2, 3), fixture.builtVoteTargets.map { target -> target.second })
+            assertEquals(listOf(1, 2, 3), fixture.submittedBundles.map { bundle -> bundle.proposalId })
+
+            gates.values.forEach { gate -> gate.complete(Unit) }
+            advanceUntilIdle()
+            submission.join()
         }
 
     @Test
@@ -850,6 +927,7 @@ class SubmitVotesUseCaseRecoveryTest {
         private val rejectedConfirmationBundleIndex: Int? = null,
         private val failingShareProposalId: Int? = null,
         private val shareDeliveryGate: CompletableDeferred<Unit>? = null,
+        private val shareDeliveryGates: Map<Int, CompletableDeferred<Unit>> = emptyMap(),
         private val proofConcurrencyTarget: Int? = null,
         private val chainClientFactory: VoteChainClientFactory = VoteChainClientFactory { null }
     ) {
@@ -859,9 +937,12 @@ class SubmitVotesUseCaseRecoveryTest {
         var treeSyncCalls = 0
         var maxConcurrentProofs = 0
         var maxConcurrentPosts = 0
+        var maxConcurrentShareDeliveries = 0
         var perChainClientCalls = 0
+        val startedShareDeliveries = mutableListOf<Int>()
         private var activeProofs = 0
         private var activePosts = 0
+        private var activeShareDeliveries = 0
         private val proofConcurrencyGate = CompletableDeferred<Unit>()
         val submittedBundles = mutableListOf<VoteCommitmentBundle>()
         val submittedSignatures = mutableListOf<CastVoteSignature>()
@@ -1082,7 +1163,15 @@ class SubmitVotesUseCaseRecoveryTest {
             }
             coEvery { api.delegateShares(any()) } coAnswers {
                 val proposalId = firstArg<List<SharePayload>>().single().proposalId
-                shareDeliveryGate?.await()
+                startedShareDeliveries += proposalId
+                activeShareDeliveries += 1
+                maxConcurrentShareDeliveries = maxOf(maxConcurrentShareDeliveries, activeShareDeliveries)
+                try {
+                    shareDeliveryGate?.await()
+                    shareDeliveryGates[proposalId]?.await()
+                } finally {
+                    activeShareDeliveries -= 1
+                }
                 check(proposalId != failingShareProposalId) { "share helper unavailable" }
                 listOf(
                     DelegatedShareInfo(

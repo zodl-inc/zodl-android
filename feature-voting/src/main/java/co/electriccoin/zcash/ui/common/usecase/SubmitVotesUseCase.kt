@@ -91,6 +91,20 @@ class VotingAuthorizationException(
         cause
     )
 
+/**
+ * Attributes a background share delivery failure to the question it belongs to, so the one failure
+ * the submission surfaces names its bundle and proposal. The [cause] stays reachable because every
+ * user-facing classification is derived from it, never from this wrapper.
+ */
+internal class VotingShareDeliveryException(
+    val bundleIndex: Int,
+    val proposalId: Int,
+    cause: Exception
+) : RuntimeException(
+        "Share delivery failed for bundle $bundleIndex proposal $proposalId: ${cause.message}",
+        cause
+    )
+
 class SubmitVotesUseCase(
     private val resolveVotingRoundSession: ResolveVotingRoundSessionUseCase,
     private val votingRecoveryRepository: VotingRecoveryRepository,
@@ -1953,7 +1967,13 @@ class SubmitVotesUseCase(
                         "bundle $bundleIndex proposal $proposalId",
                     exception
                 )
-                shareDelivery.record(exception)
+                shareDelivery.record(
+                    VotingShareDeliveryException(
+                        bundleIndex = bundleIndex,
+                        proposalId = proposalId,
+                        cause = exception
+                    )
+                )
             }
         }
     }
@@ -2085,6 +2105,12 @@ class SubmitVotesUseCase(
      * Share delivery is Tor traffic to helper servers and never blocks the vote chain, so keeping it
      * off the critical path removes one network round trip per bundle per question.
      *
+     * At most [MAX_IN_FLIGHT_SHARE_DELIVERIES] of them run at once. Starting one stays
+     * non-blocking for the chain - the permit is taken inside the launched coroutine - so a full
+     * window only queues the delivery while the chain moves on to its next question. The permits
+     * are handed out first come, first served, so a queued delivery waits for the oldest one in
+     * flight rather than for an arbitrary one.
+     *
      * The jobs run on a supervisor child of the submission's own job: a delivery that fails never
      * cancels the votes still to be cast, but cancelling the submission still cancels the
      * deliveries.
@@ -2095,6 +2121,7 @@ class SubmitVotesUseCase(
     ) {
         private val supervisor = SupervisorJob(parentContext.job)
         private val scope = CoroutineScope(parentContext + supervisor + dispatcher)
+        private val inFlight = Semaphore(MAX_IN_FLIGHT_SHARE_DELIVERIES)
 
         private val mutex = Mutex()
         private val deliveredByTarget = mutableMapOf<ShareDelegationTarget, MutableSet<Int>>()
@@ -2109,7 +2136,7 @@ class SubmitVotesUseCase(
         }
 
         fun launch(block: suspend () -> Unit) {
-            lock.withLock { jobs += scope.launch { block() } }
+            lock.withLock { jobs += scope.launch { inFlight.withPermit { block() } } }
         }
 
         /**
@@ -2262,6 +2289,13 @@ class SubmitVotesUseCase(
          * proves outside the session mutex, so a second proof no longer queues behind the first.
          */
         const val MAX_CONCURRENT_PROOFS = 2
+
+        /**
+         * Background share deliveries in flight at once, the window iOS admits as well. Each one
+         * fans out 16 shares on their own isolated Tor clients, so the window caps the burst at 32
+         * circuits and keeps circuits free for the chain clients' confirmation polls.
+         */
+        const val MAX_IN_FLIGHT_SHARE_DELIVERIES = 2
         const val TX_CONFIRMATION_RETRIES = 120
         const val TX_CONFIRMATION_POLL_MS = 750L
         const val SHARE_DELEGATION_ATTEMPTS = 3
