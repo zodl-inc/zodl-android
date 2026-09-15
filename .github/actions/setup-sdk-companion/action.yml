@@ -67,7 +67,7 @@ runs:
           armv7-linux-androideabi aarch64-linux-android i686-linux-android x86_64-linux-android
     - name: Rust cache for the companion SDK build
       if: steps.pin.outputs.commit != ''
-      uses: Swatinem/rust-cache@82a92a6e8fbeee089604da2575dc567ae9ddeaff # v2.7.5
+      uses: Swatinem/rust-cache@82a92a6e8fbeee089604da2575dc567ae9ddeaab # v2.7.5
       with:
         # Cache for the companion SDK's backend-lib workspace (checked out to .sdk-companion/).
         # Auto-detects Cargo.lock and includes vendored dependencies in cache key.
