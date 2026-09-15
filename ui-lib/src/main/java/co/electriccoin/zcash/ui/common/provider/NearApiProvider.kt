@@ -51,126 +51,85 @@ class ResponseWithNearErrorException(
 class KtorNearApiProvider(
     private val httpClientProvider: HttpClientProvider
 ) : NearApiProvider {
-    // Privacy routing:
-    //   Tor OFF → OHTTP proxy (1click.chaindefuser.com → near.zodl.com via gateway)
-    //   Tor ON  → Tor direct (httpClientProvider.create() returns Tor client)
-    private val ohttpClient: OhttpHttpClient = httpClientProvider.createOhttp()
+    // Privacy routing (MOB-1520: secrets never leave app when Tor ON):
+    //   Tor OFF → OHTTP gateway (relay sees app IP, gateway injects secret)
+    //   Tor ON  → Tor→OHTTP gateway (relay sees Tor exit, gateway injects secret)
+    // The app NEVER sends the secret itself — it's stripped with a warning if present (see
+    // OhttpHttpClient.execute → stripSecretsForGateway).
 
     override suspend fun getSupportedTokens(): GetNearSupportedTokensResponse =
         execute(
-            torBlock = { get("https://1click.chaindefuser.com/v0/tokens").body() },
             ohttpUrl = "https://1click.chaindefuser.com/v0/tokens",
-            ohttpMethod = "GET",
+            ohttpMethod = "GET"
         )
 
     override suspend fun requestQuote(request: QuoteRequest): QuoteResponseDto =
         execute(
-            torBlock = {
-                post("https://1click.chaindefuser.com/v0/quote") {
-                    contentType(ContentType.Application.Json)
-                    header(HttpHeaders.Authorization, AUTH_TOKEN)
-                    setBody(request)
-                }.body()
-            },
             ohttpUrl = "https://1click.chaindefuser.com/v0/quote",
             ohttpMethod = "POST",
-            ohttpHeaders = JSON_HEADERS,
-            ohttpBodyJson = Json.encodeToString(QuoteRequest.serializer(), request),
+            ohttpHeaders = listOf("Content-Type" to "application/json"),
+            ohttpBodyJson = Json.encodeToString(QuoteRequest.serializer(), request)
         )
 
     override suspend fun submitDepositTransaction(request: SubmitDepositTransactionRequest) {
         execute<Unit>(
-            torBlock = {
-                post("https://1click.chaindefuser.com/v0/deposit/submit") {
-                    contentType(ContentType.Application.Json)
-                    header(HttpHeaders.Authorization, AUTH_TOKEN)
-                    setBody(request)
-                }.let { }
-            },
             ohttpUrl = "https://1click.chaindefuser.com/v0/deposit/submit",
             ohttpMethod = "POST",
-            ohttpHeaders = JSON_HEADERS,
-            ohttpBodyJson = Json.encodeToString(SubmitDepositTransactionRequest.serializer(), request),
+            ohttpHeaders = listOf("Content-Type" to "application/json"),
+            ohttpBodyJson = Json.encodeToString(SubmitDepositTransactionRequest.serializer(), request)
         )
     }
 
     override suspend fun checkSwapStatus(depositAddress: String): SwapStatusResponseDto =
         execute(
-            torBlock = {
-                get("https://1click.chaindefuser.com/v0/status") {
-                    contentType(ContentType.Application.Json)
-                    header(HttpHeaders.Authorization, AUTH_TOKEN)
-                    parameter("depositAddress", depositAddress)
-                }.body()
-            },
             ohttpUrl = "https://1click.chaindefuser.com/v0/status?depositAddress=$depositAddress",
-            ohttpMethod = "GET",
-            ohttpHeaders = listOf("Authorization" to AUTH_TOKEN),
+            ohttpMethod = "GET"
         )
 
     /**
-     * Executes a request, routing through OHTTP when Tor is off and through Tor when Tor is on.
-     *
-     * Tor OFF: [ohttpClient] rewrites the hostname to `near.zodl.com` and sends encrypted via
-     * relay→gateway. Chaindefuser only sees the gateway's IP.
-     * Tor ON:  [torBlock] runs with a Tor-backed Ktor client. The Tor exit IP is seen by
-     * Chaindefuser; no OHTTP wrapping (no double-hop needed).
+     * Executes a NEAR API request through OHTTP. The gateway injects the Authorization token
+     * server-side; the app no longer sends it (it's stripped if present). With Tor ON, the relay
+     * leg goes over Tor; with Tor OFF, the relay sees the app's clearnet IP.
      */
     @Suppress("TooGenericExceptionCaught")
     private suspend inline fun <reified T> execute(
-        crossinline torBlock: suspend HttpClient.() -> T,
         ohttpUrl: String,
         ohttpMethod: String = "GET",
         ohttpHeaders: List<Pair<String, String>> = emptyList(),
-        ohttpBodyJson: String? = null,
+        ohttpBodyJson: String? = null
     ): T =
         withContext(Dispatchers.IO) {
-            // canHandle() only checks the host has a proxy mapping; the Tor preference decides the path.
-            if (!httpClientProvider.isTorEnabled() && ohttpClient.canHandle(ohttpUrl)) {
-                // Tor OFF path: route through OHTTP gateway
-                val response =
-                    try {
-                        ohttpClient.execute(
-                            OhttpHttpClient.Request(
-                                url = ohttpUrl,
-                                method = ohttpMethod,
-                                headers = ohttpHeaders,
-                                body = ohttpBodyJson?.toByteArray(Charsets.UTF_8) ?: ByteArray(0)
-                            )
-                        )
-                    } catch (e: Exception) {
-                        Twig.warn(e) { "OHTTP $ohttpMethod $ohttpUrl failed" }
-                        throw e
-                    }
-                Twig.debug { "OHTTP $ohttpMethod $ohttpUrl -> HTTP ${response.status} (${response.body.size} bytes)" }
-                if (response.status !in HTTP_SUCCESS) {
-                    error("OHTTP proxy returned HTTP ${response.status} for $ohttpUrl")
-                }
-                if (T::class == Unit::class) {
-                    @Suppress("UNCHECKED_CAST")
-                    return@withContext Unit as T
-                }
+            val ohttpClient = httpClientProvider.createOhttp()
+            if (!ohttpClient.canHandle(ohttpUrl)) {
+                error("No OHTTP proxy mapping for $ohttpUrl")
+            }
+            val response =
                 try {
-                    OHTTP_JSON.decodeFromString<T>(response.body.decodeToString())
+                    ohttpClient.execute(
+                        OhttpHttpClient.Request(
+                            url = ohttpUrl,
+                            method = ohttpMethod,
+                            headers = ohttpHeaders,
+                            body = ohttpBodyJson?.toByteArray(Charsets.UTF_8) ?: ByteArray(0)
+                        )
+                    )
                 } catch (e: Exception) {
-                    Twig.warn(e) { "OHTTP $ohttpMethod $ohttpUrl decode failed" }
+                    Twig.warn(e) { "OHTTP $ohttpMethod $ohttpUrl failed" }
                     throw e
                 }
-            } else {
-                // Tor ON path: Tor direct (httpClientProvider.create() returns Tor client)
-                httpClientProvider.create().use {
-                    try {
-                        torBlock(it)
-                    } catch (e: ResponseException) {
-                        val response = e.response
-                        val error: ErrorDto? = runCatching { response.body<ErrorDto?>() }.getOrNull()
-                        if (error != null) {
-                            throw ResponseWithNearErrorException(error = error, cause = e)
-                        } else {
-                            throw e
-                        }
-                    }
-                }
+            Twig.debug { "OHTTP $ohttpMethod $ohttpUrl -> HTTP ${response.status} (${response.body.size} bytes)" }
+            if (response.status !in HTTP_SUCCESS) {
+                error("OHTTP proxy returned HTTP ${response.status} for $ohttpUrl")
+            }
+            if (T::class == Unit::class) {
+                @Suppress("UNCHECKED_CAST")
+                return@withContext Unit as T
+            }
+            try {
+                OHTTP_JSON.decodeFromString<T>(response.body.decodeToString())
+            } catch (e: Exception) {
+                Twig.warn(e) { "OHTTP $ohttpMethod $ohttpUrl decode failed" }
+                throw e
             }
         }
 }
@@ -182,18 +141,8 @@ private const val HTTP_SUCCESS_MAX = 299
 private val HTTP_SUCCESS = HTTP_SUCCESS_MIN..HTTP_SUCCESS_MAX
 
 /**
- * Same lenient defaults as Ktor's `ContentNegotiation { json() }` used on the Tor path. The NEAR
- * DTOs decode numbers through [co.electriccoin.zcash.ui.common.serialization.BigDecimalSerializer]
- * (`decodeString()`), which only works with `isLenient = true`; a strict `Json {}` fails on
- * `"price":2.37` and the swap picker shows "We couldn't load the assets".
+ * Same lenient defaults as Ktor's `ContentNegotiation { json() }`. The NEAR DTOs decode numbers
+ * through [co.electriccoin.zcash.ui.common.serialization.BigDecimalSerializer] (`decodeString()`),
+ * which only works with `isLenient = true`; a strict `Json {}` fails on `"price":2.37`.
  */
 private val OHTTP_JSON = Json(from = DefaultJson) { ignoreUnknownKeys = true }
-
-private val JSON_HEADERS = listOf("Authorization" to AUTH_TOKEN, "Content-Type" to "application/json")
-
-private const val AUTH_TOKEN =
-    "Bearer eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjIwMjUtMDEtMTItdjEifQ.eyJ2IjoxLCJrZXlfdHlwZSI6ImRpc3RyaWJ1dG" +
-        "lvbl9jaGFubmVsIiwicGFydG5lcl9pZCI6InpvZGwiLCJpYXQiOjE3NzUwMjc5MzgsImV4cCI6MTgwNjU2MzkzOH0.TwBxHbVpCZWhvREfK0" +
-        "hvQMPn4eibIqBylc9AI-dy7xR5-k519lFoDxqTaIfv70E-Oa4aswOkWv_Rx2OQUkbL41RMHxWiOU6jnn6z6gXVGfylZ-sZK5bELnvPugyucD" +
-        "-BLSRw3ia-czvTO_LDYGBNDO78J0QbjOe0-CIbg06PxA59tui8SGXQ5paGi6bHUpdjnKXOOB1PAwkIZOaZjqrlh4YoATdFhAgEfbfu9zXdNq" +
-        "jtmYfmAzn8B3_hGI_ZoyIN1sR3ka-LWa5rIaIMfaqBTvDFn2zmCdCbUCUMKhkeBijfpVAf3UmrK4gQeLgo70AQqAFSHZeIk6X0loH_AwzBag"

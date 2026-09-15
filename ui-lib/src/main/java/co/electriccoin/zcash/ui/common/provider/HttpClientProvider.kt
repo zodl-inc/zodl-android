@@ -26,11 +26,19 @@ interface HttpClientProvider {
     suspend fun createTor(): HttpClient
 
     /**
-     * Returns an [OhttpHttpClient] for routing requests through the OHTTP gateway (Tor OFF path).
-     * The returned client can handle any URL whose hostname has a configured proxy mapping
-     * (NEAR 1click, voting config, Sapling params). Use [createTor] for Tor ON.
+     * Returns an [OhttpHttpClient] for routing external API requests through the OHTTP gateway.
+     * Handles CMC, NEAR, voting config, Sapling params. With Tor ON, the relay leg goes over Tor
+     * and the gateway injects secrets server-side (the app never sends them). With Tor OFF, the
+     * relay sees the app's clearnet IP (but the gateway, which injects secrets, does not).
      */
-    fun createOhttp(): OhttpHttpClient = OhttpHttpClient()
+    suspend fun createOhttp(): OhttpHttpClient =
+        if (isTorEnabled()) {
+            // Tor ON: relay leg over isolated Tor stream; gateway injects secrets
+            OhttpHttpClient.create(viaTor = synchronizerProvider.getSynchronizer().getTorClient())
+        } else {
+            // Tor OFF: direct relay POST; gateway injects secrets
+            OhttpHttpClient.create()
+        }
 
     /**
      * Whether the user has opted into Tor. Callers that offer an OHTTP path (NEAR, voting config)
@@ -46,12 +54,34 @@ class HttpClientProviderImpl(
     private val synchronizerProvider: SynchronizerProvider,
     private val isTorEnabledStorageProvider: IsTorEnabledStorageProvider
 ) : HttpClientProvider {
+    // Lazy OHTTP client — created on first use, respecting the Tor preference at that moment
+    private var cachedOhttpClient: OhttpHttpClient? = null
+    private var cachedForTorEnabled: Boolean? = null
+
     override suspend fun create(): HttpClient =
         if (isTorEnabledStorageProvider.get() == true) createTor() else createDirect()
 
     override suspend fun supportsKtorTimeouts(): Boolean = isTorEnabledStorageProvider.get() != true
 
     override suspend fun isTorEnabled(): Boolean = isTorEnabledStorageProvider.get() == true
+
+    override suspend fun createOhttp(): OhttpHttpClient {
+        val torNow = isTorEnabled()
+        // Invalidate cache if the Tor preference changed
+        if (cachedOhttpClient != null && cachedForTorEnabled != torNow) {
+            cachedOhttpClient = null
+        }
+        if (cachedOhttpClient == null) {
+            cachedOhttpClient =
+                if (torNow) {
+                    OhttpHttpClient.create(viaTor = synchronizerProvider.getSynchronizer().getTorClient())
+                } else {
+                    OhttpHttpClient.create()
+                }
+            cachedForTorEnabled = torNow
+        }
+        return cachedOhttpClient!!
+    }
 
     override suspend fun createTor() =
         synchronizerProvider

@@ -31,55 +31,41 @@ interface CMCApiProvider {
 class CMCApiProviderImpl(
     private val httpClientProvider: HttpClientProvider
 ) : CMCApiProvider {
-    // Privacy routing for the exchange-rate provider (MOB-1378: the user's IP must never reach CMC):
-    //   Tor OFF → OHTTP: the request is HPKE-encapsulated to the relay and the gateway proxies it to
-    //             pro-api.coinmarketcap.com (via cmc.zodl.com) and injects the API key server-side.
-    //             CMC sees the gateway's IP; the relay sees only ciphertext.
-    //   Tor ON  → Tor-only Ktor client, as before (no OHTTP double hop).
-    // The direct (clearnet) client is never used for this host — HttpClientProvider keeps its backstop.
-    private val ohttpClient: OhttpHttpClient = httpClientProvider.createOhttp()
+    // Privacy routing for the exchange-rate provider (MOB-1378: the user's IP must never reach CMC;
+    // MOB-1520: secrets never leave app when Tor ON):
+    //   Tor OFF → OHTTP (relay sees app IP, gateway injects X-CMC_PRO_API_KEY)
+    //   Tor ON  → Tor→OHTTP (relay sees Tor exit, gateway injects X-CMC_PRO_API_KEY)
+    // The app NEVER sends the key itself — it's stripped with a warning if present (see
+    // OhttpHttpClient.execute → stripSecretsForGateway). The direct (clearnet) client is never
+    // used for this host — HttpClientProvider keeps its backstop.
 
     override suspend fun getExchangeRateQuote(apiKey: String, fiat: String): GetCMCQuoteResponse =
-        execute(
-            url = "https://$CMC_API_HOST/v1/cryptocurrency/quotes/latest?symbol=ZEC&convert=$fiat"
-        ) {
-            get("https://$CMC_API_HOST/v1/cryptocurrency/quotes/latest") {
-                parameter("symbol", "ZEC")
-                parameter("convert", fiat)
-                contentType(ContentType.Application.Json)
-                header("X-CMC_PRO_API_KEY", apiKey)
-            }.body()
-        }
+        execute("https://$CMC_API_HOST/v1/cryptocurrency/quotes/latest?symbol=ZEC&convert=$fiat")
 
     override suspend fun getFiatMap(apiKey: String): GetCMCFiatMapResponse =
-        execute(url = "https://$CMC_API_HOST/v1/fiat/map") {
-            get("https://$CMC_API_HOST/v1/fiat/map") {
-                contentType(ContentType.Application.Json)
-                header("X-CMC_PRO_API_KEY", apiKey)
-            }.body()
-        }
+        execute("https://$CMC_API_HOST/v1/fiat/map")
 
+    /**
+     * Executes a CMC API request through OHTTP. The gateway injects X-CMC_PRO_API_KEY server-side;
+     * the app no longer sends it (it's stripped if present). With Tor ON, the relay leg goes over
+     * Tor; with Tor OFF, the relay sees the app's clearnet IP (but CMC never does).
+     */
     @Throws(ResponseException::class)
-    private suspend inline fun <reified T> execute(
-        url: String,
-        crossinline torBlock: suspend HttpClient.() -> T
-    ): T =
+    private suspend inline fun <reified T> execute(url: String): T =
         withContext(Dispatchers.IO) {
-            if (!httpClientProvider.isTorEnabled() && ohttpClient.canHandle(url)) {
-                // The gateway adds X-CMC_PRO_API_KEY itself; the app's key is not sent over OHTTP.
-                val response =
-                    ohttpClient.execute(
-                        OhttpHttpClient.Request(url = url, headers = listOf("Accept" to "application/json"))
-                    )
-                Twig.debug { "OHTTP GET $url -> HTTP ${response.status} (${response.body.size} bytes)" }
-                if (response.status !in OHTTP_HTTP_SUCCESS) {
-                    error("CMC via OHTTP returned HTTP ${response.status} for $url")
-                }
-                CMC_JSON.decodeFromString<T>(response.body.decodeToString())
-            } else {
-                Twig.debug { "CMC GET $url via Tor client" }
-                httpClientProvider.createTor().use { torBlock(it) }
+            val ohttpClient = httpClientProvider.createOhttp()
+            if (!ohttpClient.canHandle(url)) {
+                error("No OHTTP proxy mapping for $url")
             }
+            val response =
+                ohttpClient.execute(
+                    OhttpHttpClient.Request(url = url, headers = listOf("Accept" to "application/json"))
+                )
+            Twig.debug { "OHTTP GET $url -> HTTP ${response.status} (${response.body.size} bytes)" }
+            if (response.status !in OHTTP_HTTP_SUCCESS) {
+                error("CMC via OHTTP returned HTTP ${response.status} for $url")
+            }
+            CMC_JSON.decodeFromString<T>(response.body.decodeToString())
         }
 }
 
