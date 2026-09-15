@@ -34,7 +34,7 @@ interface HttpClientProvider {
     suspend fun createOhttp(): OhttpHttpClient =
         if (isTorEnabled()) {
             // Tor ON: relay leg over isolated Tor stream; gateway injects secrets
-            OhttpHttpClient.create(viaTor = synchronizerProvider.getSynchronizer().getTorClient())
+            OhttpHttpClient.create(sender = synchronizerProvider.getSynchronizer().ohttpSenderOverTor())
         } else {
             // Tor OFF: direct relay POST; gateway injects secrets
             OhttpHttpClient.create()
@@ -74,7 +74,9 @@ class HttpClientProviderImpl(
         if (cachedOhttpClient == null) {
             cachedOhttpClient =
                 if (torNow) {
-                    OhttpHttpClient.create(viaTor = synchronizerProvider.getSynchronizer().getTorClient())
+                    OhttpHttpClient.create(
+                        sender = synchronizerProvider.getSynchronizer().ohttpSenderOverTor()
+                    )
                 } else {
                     OhttpHttpClient.create()
                 }
