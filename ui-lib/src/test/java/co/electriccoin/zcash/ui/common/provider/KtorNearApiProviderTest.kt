@@ -58,8 +58,13 @@ class KtorNearApiProviderTest {
         runBlocking {
             // Minimal valid QuoteResponseDto JSON
             responseBody =
-                """{"refundAddress":"r","depositAddress":"d","price":1.0,"networkFee":0.1,""" +
-                """"deadline":"2024-01-01T00:00:00Z"}"""
+                """{"timestamp":"2024-01-01T00:00:00Z","quoteRequest":{"dry":false,"swapType":"EXACT_INPUT",""" +
+                """"slippageTolerance":100,"originAsset":"origin","destinationAsset":"destination",""" +
+                """"amount":"1","refundTo":"refund","recipient":"recipient","deadline":"1970-01-01T00:00:00Z",""" +
+                """"appFees":[{"recipient":"affiliate","fee":75}]},"quote":{"depositAddress":"d",""" +
+                """"amountIn":"1","amountInFormatted":"1","amountInUsd":"1","minAmountIn":"1",""" +
+                """"amountOut":"1","amountOutFormatted":"1","amountOutUsd":"1","minAmountOut":"1",""" +
+                """"deadline":"2024-01-01T00:00:00Z"}}"""
 
             provider.requestQuote(quoteRequest())
 
@@ -93,7 +98,15 @@ class KtorNearApiProviderTest {
     fun checkSwapStatusDoesNotSendAuthorizationHeaderAndSendsDepositAddressParameter() =
         runBlocking {
             // Minimal valid SwapStatusResponseDto JSON
-            responseBody = """{"status":"pending"}"""
+            responseBody =
+                """{"status":"PENDING_DEPOSIT","updatedAt":"2024-01-01T00:00:00Z","quoteResponse":""" +
+                """{"timestamp":"2024-01-01T00:00:00Z","quoteRequest":{"dry":false,"swapType":"EXACT_INPUT",""" +
+                """"slippageTolerance":100,"originAsset":"origin","destinationAsset":"destination",""" +
+                """"amount":"1","refundTo":"refund","recipient":"recipient","deadline":"1970-01-01T00:00:00Z",""" +
+                """"appFees":[{"recipient":"affiliate","fee":75}]},"quote":{"depositAddress":"d",""" +
+                """"amountIn":"1","amountInFormatted":"1","amountInUsd":"1","minAmountIn":"1",""" +
+                """"amountOut":"1","amountOutFormatted":"1","amountOutUsd":"1","minAmountOut":"1",""" +
+                """"deadline":"2024-01-01T00:00:00Z"}}}"""
 
             provider.checkSwapStatus(depositAddress = "deposit-address")
 
