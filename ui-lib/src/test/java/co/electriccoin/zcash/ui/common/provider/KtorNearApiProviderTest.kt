@@ -6,6 +6,9 @@ import co.electriccoin.zcash.ui.common.model.near.QuoteRequest
 import co.electriccoin.zcash.ui.common.model.near.SubmitDepositTransactionRequest
 import co.electriccoin.zcash.ui.common.model.near.SwapType
 import io.ktor.client.HttpClient
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
 import java.math.BigDecimal
 import kotlin.test.Test
@@ -56,7 +59,7 @@ class KtorNearApiProviderTest {
             // Minimal valid QuoteResponseDto JSON
             responseBody =
                 """{"refundAddress":"r","depositAddress":"d","price":1.0,"networkFee":0.1,""" +
-                    """"deadline":"2024-01-01T00:00:00Z"}"""
+                """"deadline":"2024-01-01T00:00:00Z"}"""
 
             provider.requestQuote(quoteRequest())
 
@@ -186,27 +189,17 @@ class KtorNearApiProviderTest {
 
         override suspend fun createOhttp(): OhttpHttpClient {
             createOhttpCalls++
-            return FakeOhttpHttpClient { request ->
-                capturedRequests += request
-                OhttpHttpClient.Response(
-                    status = responseStatus,
-                    body = responseBody.toByteArray()
-                )
+            return mockk<OhttpHttpClient> {
+                every { canHandle(any()) } returns true
+                coEvery { execute(any()) } answers {
+                    val request = firstArg<OhttpHttpClient.Request>()
+                    capturedRequests += request
+                    OhttpHttpClient.Response(
+                        status = responseStatus,
+                        body = responseBody.toByteArray()
+                    )
+                }
             }
         }
     }
-}
-
-/**
- * Minimal fake [OhttpHttpClient] for testing. Invokes [handler] for each request and returns
- * the result. Production [OhttpHttpClient] lives in the SDK; tests only need the request/response
- * interface, not the full HPKE stack.
- */
-private class FakeOhttpHttpClient(
-    private val handler: (OhttpHttpClient.Request) -> OhttpHttpClient.Response
-) : OhttpHttpClient {
-    override fun canHandle(url: String): Boolean = true
-
-    override fun execute(request: OhttpHttpClient.Request): OhttpHttpClient.Response =
-        handler(request)
 }

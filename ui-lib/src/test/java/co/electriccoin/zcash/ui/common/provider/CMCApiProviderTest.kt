@@ -2,6 +2,9 @@ package co.electriccoin.zcash.ui.common.provider
 
 import co.electriccoin.lightwallet.client.OhttpHttpClient
 import io.ktor.client.HttpClient
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -105,32 +108,22 @@ private class RecordingHttpClientProvider : HttpClientProvider {
 
     override suspend fun createOhttp(): OhttpHttpClient {
         createOhttpCalls++
-        return FakeOhttpHttpClient { request ->
-            requestedUrls += request.url
-            val body =
-                if (request.url.contains(FIAT_MAP_PATH)) {
-                    FIAT_MAP_JSON
-                } else {
-                    """{"data":{"ZEC":{"quote":{"USD":{"price":$RATE}}}}}"""
-                }
-            OhttpHttpClient.Response(
-                status = 200,
-                body = body.toByteArray()
-            )
+        return mockk<OhttpHttpClient> {
+            every { canHandle(any()) } returns true
+            coEvery { execute(any()) } answers {
+                val request = firstArg<OhttpHttpClient.Request>()
+                requestedUrls += request.url
+                val body =
+                    if (request.url.contains(FIAT_MAP_PATH)) {
+                        FIAT_MAP_JSON
+                    } else {
+                        """{"data":{"ZEC":{"quote":{"USD":{"price":$RATE}}}}}"""
+                    }
+                OhttpHttpClient.Response(
+                    status = 200,
+                    body = body.toByteArray()
+                )
+            }
         }
     }
-}
-
-/**
- * Minimal fake [OhttpHttpClient] for testing. Invokes [handler] for each request and returns
- * the result. Production [OhttpHttpClient] lives in the SDK; tests only need the request/response
- * interface, not the full HPKE stack.
- */
-private class FakeOhttpHttpClient(
-    private val handler: (OhttpHttpClient.Request) -> OhttpHttpClient.Response
-) : OhttpHttpClient {
-    override fun canHandle(url: String): Boolean = true
-
-    override fun execute(request: OhttpHttpClient.Request): OhttpHttpClient.Response =
-        handler(request)
 }

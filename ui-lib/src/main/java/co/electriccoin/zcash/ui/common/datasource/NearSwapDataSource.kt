@@ -160,7 +160,9 @@ class NearSwapDataSource(
                     )
                 }
 
-                else -> this
+                else -> {
+                    this
+                }
             }
 
         val response =
