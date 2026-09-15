@@ -67,17 +67,17 @@ runs:
           armv7-linux-androideabi aarch64-linux-android i686-linux-android x86_64-linux-android
     - name: Rust cache for the companion SDK build
       if: steps.pin.outputs.commit != ''
-      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae
+      uses: Swatinem/rust-cache@82a92a6e8fbeee089604da2575dc567ae9ddeaff # v2.7.5
       with:
-        path: |
-          .sdk-companion/backend-lib/target
-          ~/.cargo/bin
-          ~/.cargo/registry/index
-          ~/.cargo/registry/cache
-          ~/.cargo/registry/src
-        key: ${{ runner.os }}-sdk-companion-rust-${{ steps.pin.outputs.commit }}
-        restore-keys: |
-          ${{ runner.os }}-sdk-companion-rust-
+        # Cache for the companion SDK's backend-lib workspace (checked out to .sdk-companion/).
+        # Auto-detects Cargo.lock and includes vendored dependencies in cache key.
+        workspaces: .sdk-companion/backend-lib
+        cache-targets: "true"
+        cache-all-crates: "true"
+        # Shared key with SDK repo's own Rust cache for potential cross-workflow warmup.
+        # The commit pin ensures cache invalidation when SDK_COMMIT_PIN changes.
+        shared-key: "android-rust-${{ steps.pin.outputs.commit }}"
+        save-if: "true"
     - name: Export SDK composite build override
       if: steps.pin.outputs.commit != ''
       shell: bash

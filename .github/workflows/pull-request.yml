@@ -173,11 +173,12 @@ jobs:
         uses: ./.github/actions/setup-gradle
         timeout-minutes: 5
       - name: Android Lint
-        # 45 rather than the usual 15: when SDK_COMMIT_PIN is set (see
+        # 120 minutes for cold-cache first run: when SDK_COMMIT_PIN is set (see
         # setup-sdk-companion), this compiles the full companion SDK's Rust dependency
-        # graph (Tor, orchard, etc.) for the first time with a cold cargo/target cache —
-        # observed at ~20-25 min alone before this step even reaches lint analysis.
-        timeout-minutes: 45
+        # graph (vendored zodl-slipstream + arti/hpke, orchard, etc.) for 4 ABIs — observed
+        # at ~45+ min alone before lint analysis. Warm-cache runs (after Swatinem/rust-cache
+        # in setup-sdk-companion seeds artifacts) complete in <30 min.
+        timeout-minutes: 120
         env:
           # Disable minify, since it makes lint run faster
           ORG_GRADLE_PROJECT_IS_MINIFY_ENABLED: false
@@ -224,10 +225,11 @@ jobs:
         uses: ./.github/actions/setup-gradle
         timeout-minutes: 5
       - name: Test
-        # 45 rather than the usual 15: when SDK_COMMIT_PIN is set (see
+        # 120 minutes for cold-cache first run: when SDK_COMMIT_PIN is set (see
         # setup-sdk-companion), compiling :ui-lib pulls in the full companion SDK's Rust
-        # dependency graph, which can take ~20-25 min alone on a cold cargo/target cache.
-        timeout-minutes: 45
+        # dependency graph (vendored zodl-slipstream + arti/hpke, etc.) for 4 ABIs — takes
+        # ~45+ min on cold cargo/target cache. Warm-cache runs complete in <30 min.
+        timeout-minutes: 120
         run: |
           ./gradlew :configuration-api-lib:check :crash-lib:check :preference-api-lib:check :spackle-lib:check :ui-design-lib:check
           ./gradlew :ui-lib:testZcashmainnetStoreDebugUnitTest
@@ -259,11 +261,11 @@ jobs:
     name: test_android_modules_emulator (${{ matrix.shard }})
     needs: [validate_gradle_wrapper]
     runs-on: ubuntu-latest
-    # 90 rather than the usual 45: the `app` shard needs the SDK compiled, and when
-    # SDK_COMMIT_PIN is set (see setup-sdk-companion) a cold cargo/target cache eats
-    # 20-25 min before the emulator/test steps even start — the emulator was previously
-    # observed dying mid-run ("device not found") once the job ran past 45 min total.
-    timeout-minutes: 90
+    # 120 minutes for cold-cache first run: the `app` shard needs the SDK compiled, and when
+    # SDK_COMMIT_PIN is set (see setup-sdk-companion) a cold cargo/target cache (vendored
+    # zodl-slipstream + arti/hpke, 4 ABIs) takes ~45+ min before emulator/test steps start.
+    # Warm-cache runs complete in <60 min. Previous 90 min caused emulator death mid-run.
+    timeout-minutes: 120
     permissions:
       contents: read
     strategy:
@@ -312,8 +314,10 @@ jobs:
         # `connectedAndroidTest` step only installs and runs against
         # already-built artifacts. The libs shard doesn't depend on feature-voting
         # (confirmed: it passes unaffected), so it skips this entirely.
+        # 120 minutes for cold-cache first run (cross-compiles vendored zodl-slipstream +
+        # arti/hpke for 4 ABIs). Warm-cache runs complete in <45 min.
         if: matrix.shard == 'app'
-        timeout-minutes: 60
+        timeout-minutes: 120
         run: |
           ./gradlew :app:assembleZcashmainnetStoreDebugAndroidTest :ui-screenshot-test:assembleAndroidTest
       - name: Enable KVM
@@ -480,11 +484,11 @@ jobs:
         run: |
           keytool -genkey -v -keystore $SIGNING_KEY_PATH -keypass android -storepass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 100000 -dname "CN=, OU=, O=Test, L=, S=, C=" -noprompt
       - name: Build Store APK
-        # 60 rather than the usual 25: when SDK_COMMIT_PIN is set (see
+        # 120 minutes for cold-cache first run: when SDK_COMMIT_PIN is set (see
         # setup-sdk-companion), this compiles the full companion SDK's Rust dependency
-        # graph for release, across both mainnet/testnet variants, with a cold
-        # cargo/target cache on the first run.
-        timeout-minutes: 60
+        # graph (vendored zodl-slipstream + arti/hpke, etc.) for release profile, 4 ABIs,
+        # across both mainnet/testnet variants. Warm-cache runs complete in <45 min.
+        timeout-minutes: 120
         env:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PATH: ${{ format('{0}/release.jks', env.home) }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEYSTORE_PASSWORD: android
