@@ -48,6 +48,18 @@ class ResponseWithNearErrorException(
         cachedResponseText = "Code: ${cause.response.status}, message: ${error.message}"
     )
 
+/**
+ * Thrown when the OHTTP path receives a non-2xx response with a parsable NEAR error body.
+ * Callers can catch this to inspect [error.message] for specific NEAR error conditions
+ * (e.g. "Amount is too low for bridge"). Analogous to [ResponseWithNearErrorException] but
+ * does not depend on Ktor HttpResponse types (OHTTP responses are just status + bytes).
+ */
+class OhttpNearErrorException(
+    val error: ErrorDto,
+    val status: Int,
+    val url: String
+) : RuntimeException("HTTP $status from $url: ${error.message}")
+
 class KtorNearApiProvider(
     private val httpClientProvider: HttpClientProvider
 ) : NearApiProvider {
@@ -119,7 +131,25 @@ class KtorNearApiProvider(
                 }
             Twig.debug { "OHTTP $ohttpMethod $ohttpUrl -> HTTP ${response.status} (${response.body.size} bytes)" }
             if (response.status !in HTTP_SUCCESS) {
-                error("OHTTP proxy returned HTTP ${response.status} for $ohttpUrl")
+                // Attempt to parse the NEAR error body for typed error handling downstream.
+                val bodyString = response.body.decodeToString()
+                val nearError =
+                    try {
+                        OHTTP_JSON.decodeFromString<ErrorDto>(bodyString)
+                    } catch (ignore: Exception) {
+                        null
+                    }
+                if (nearError != null) {
+                    // Wrap in OhttpNearErrorException so callers can catch and inspect the NEAR error message.
+                    throw OhttpNearErrorException(
+                        error = nearError,
+                        status = response.status,
+                        url = ohttpUrl
+                    )
+                } else {
+                    // Non-NEAR error body — throw generic exception with the raw body.
+                    error("OHTTP $ohttpMethod $ohttpUrl returned HTTP ${response.status}: $bodyString")
+                }
             }
             if (T::class == Unit::class) {
                 @Suppress("UNCHECKED_CAST")

@@ -1,38 +1,37 @@
 package co.electriccoin.zcash.ui.common.provider
 
+import co.electriccoin.lightwallet.client.OhttpHttpClient
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.http.HttpHeaders
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.headersOf
-import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * MOB-1378: exchange rates must never leave over the direct (clearnet) client. With Tor ON
- * [CMCApiProvider] must ask for the Tor-only client and must never use create(); with Tor OFF it goes
- * through the OHTTP gateway instead (not unit-tested here: it needs the relay). The same holds for the
- * supported-currency list added in MOB-1707.
+ * MOB-1520: CMC requests always route through OHTTP (with Tor ON the relay leg goes over Tor).
+ * The app never sends X-CMC_PRO_API_KEY — the gateway injects it server-side. These tests pin
+ * that contract: create() and createTor() must never be called, and the OHTTP path is used.
  */
 class CMCApiProviderTest {
     @Test
-    fun getExchangeRateQuoteUsesTorClientAndNeverTheDirectClient() =
+    fun getExchangeRateQuoteUsesOhttpAndNeverSendsApiKey() =
         runTest {
             val httpClientProvider = RecordingHttpClientProvider()
             val provider = CMCApiProviderImpl(httpClientProvider)
 
             val response = provider.getExchangeRateQuote(apiKey = "key", fiat = "USD")
 
-            assertEquals(1, httpClientProvider.createTorCalls, "CMC must use the Tor-only client")
+            assertEquals(1, httpClientProvider.createOhttpCalls, "CMC must use OHTTP")
             assertEquals(
                 0,
                 httpClientProvider.createCalls,
-                "CMC must never use create() (which can fall back to clearnet)"
+                "CMC must never use create() (OHTTP only)"
+            )
+            assertEquals(
+                0,
+                httpClientProvider.createTorCalls,
+                "CMC must never use createTor() (OHTTP handles routing)"
             )
             assertEquals(
                 RATE.toBigDecimal(),
@@ -41,26 +40,40 @@ class CMCApiProviderTest {
                     ?.get("USD")
                     ?.price
             )
-            assertTrue(httpClientProvider.requestedHosts.all { it == CMC_API_HOST })
+            assertTrue(httpClientProvider.requestedUrls.all { it.contains(CMC_API_HOST) })
+            // MOB-1520: the app must never send the CMC key; the gateway injects it.
+            assertFalse(
+                httpClientProvider.requestedUrls.any { it.contains("X-CMC_PRO_API_KEY") },
+                "CMC key must not be sent by the app (gateway injects it)"
+            )
         }
 
     @Test
-    fun getFiatMapUsesTorClientAndNeverTheDirectClient() =
+    fun getFiatMapUsesOhttpAndNeverSendsApiKey() =
         runTest {
             val httpClientProvider = RecordingHttpClientProvider()
             val provider = CMCApiProviderImpl(httpClientProvider)
 
             val response = provider.getFiatMap(apiKey = "key")
 
-            assertEquals(1, httpClientProvider.createTorCalls, "CMC must use the Tor-only client")
+            assertEquals(1, httpClientProvider.createOhttpCalls, "CMC must use OHTTP")
             assertEquals(
                 0,
                 httpClientProvider.createCalls,
-                "CMC must never use create() (which can fall back to clearnet)"
+                "CMC must never use create() (OHTTP only)"
+            )
+            assertEquals(
+                0,
+                httpClientProvider.createTorCalls,
+                "CMC must never use createTor() (OHTTP handles routing)"
             )
             assertEquals(listOf("USD"), response.data.map { it.symbol })
-            assertTrue(httpClientProvider.requestedHosts.all { it == CMC_API_HOST })
-            assertEquals(listOf("key"), httpClientProvider.requestedApiKeys)
+            assertTrue(httpClientProvider.requestedUrls.all { it.contains(CMC_API_HOST) })
+            // MOB-1520: the app must never send the CMC key; the gateway injects it.
+            assertFalse(
+                httpClientProvider.requestedUrls.any { it.contains("X-CMC_PRO_API_KEY") },
+                "CMC key must not be sent by the app (gateway injects it)"
+            )
         }
 }
 
@@ -76,40 +89,48 @@ private class RecordingHttpClientProvider : HttpClientProvider {
         private set
     var createTorCalls = 0
         private set
-    val requestedHosts = mutableListOf<String>()
-    val requestedApiKeys = mutableListOf<String>()
-
-    // These tests exercise the Tor ON path; Tor OFF routes through OHTTP (see CMCApiProviderImpl).
-    override suspend fun isTorEnabled(): Boolean = true
+    var createOhttpCalls = 0
+        private set
+    val requestedUrls = mutableListOf<String>()
 
     override suspend fun create(): HttpClient {
         createCalls++
-        error("CMC must never be fetched over the direct (clearnet) client")
+        error("CMC must never be fetched over the direct client (OHTTP only)")
     }
 
     override suspend fun createTor(): HttpClient {
         createTorCalls++
-        return HttpClient(
-            MockEngine { request ->
-                requestedHosts += request.url.host
-                request.headers["X-CMC_PRO_API_KEY"]?.let { requestedApiKeys += it }
-                respond(
-                    content =
-                        if (request.url.encodedPath == FIAT_MAP_PATH) {
-                            FIAT_MAP_JSON
-                        } else {
-                            """{"data":{"ZEC":{"quote":{"USD":{"price":$RATE}}}}}"""
-                        },
-                    status = HttpStatusCode.OK,
-                    headers = headersOf(HttpHeaders.ContentType, "application/json")
-                )
-            }
-        ) {
-            install(ContentNegotiation) { json() }
-        }
+        error("CMC must never be fetched over the Tor client (OHTTP handles routing)")
     }
 
-    override suspend fun createOhttp(): co.electriccoin.lightwallet.client.OhttpHttpClient {
-        error("OHTTP not used in this test")
+    override suspend fun createOhttp(): OhttpHttpClient {
+        createOhttpCalls++
+        return FakeOhttpHttpClient { request ->
+            requestedUrls += request.url
+            val body =
+                if (request.url.contains(FIAT_MAP_PATH)) {
+                    FIAT_MAP_JSON
+                } else {
+                    """{"data":{"ZEC":{"quote":{"USD":{"price":$RATE}}}}}"""
+                }
+            OhttpHttpClient.Response(
+                status = 200,
+                body = body.toByteArray()
+            )
+        }
     }
+}
+
+/**
+ * Minimal fake [OhttpHttpClient] for testing. Invokes [handler] for each request and returns
+ * the result. Production [OhttpHttpClient] lives in the SDK; tests only need the request/response
+ * interface, not the full HPKE stack.
+ */
+private class FakeOhttpHttpClient(
+    private val handler: (OhttpHttpClient.Request) -> OhttpHttpClient.Response
+) : OhttpHttpClient {
+    override fun canHandle(url: String): Boolean = true
+
+    override fun execute(request: OhttpHttpClient.Request): OhttpHttpClient.Response =
+        handler(request)
 }

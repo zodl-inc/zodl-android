@@ -453,9 +453,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    # No RUST_ANDROID_ABIS override here — PR artifacts are x86_64-only smoke builds for
-    # other jobs, but this one produces actual release APKs/AABs for download/Robo testing,
-    # so it compiles all four ABIs (arm, arm64, x86, x86_64).
+    env:
+      # PR builds only need x86_64 for smoke testing; deploy workflow refuses live SDK_COMMIT_PIN anyway.
+      RUST_ANDROID_ABIS: x86_64
     steps:
       - name: Checkout
         timeout-minutes: 1
