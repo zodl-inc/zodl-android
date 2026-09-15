@@ -56,15 +56,35 @@ class KtorNearApiProviderTest {
     @Test
     fun requestQuoteDoesNotSendAuthorizationHeader() =
         runBlocking {
-            // Minimal valid QuoteResponseDto JSON
+            // Valid QuoteResponseDto JSON matching the schema
             responseBody =
-                """{"timestamp":"2024-01-01T00:00:00Z","quoteRequest":{"dry":false,"swapType":"EXACT_INPUT",""" +
-                """"slippageTolerance":100,"originAsset":"origin","destinationAsset":"destination",""" +
-                """"amount":"1","refundTo":"refund","recipient":"recipient","deadline":"1970-01-01T00:00:00Z",""" +
-                """"appFees":[{"recipient":"affiliate","fee":75}]},"quote":{"depositAddress":"d",""" +
-                """"amountIn":"1","amountInFormatted":"1","amountInUsd":"1","minAmountIn":"1",""" +
-                """"amountOut":"1","amountOutFormatted":"1","amountOutUsd":"1","minAmountOut":"1",""" +
-                """"deadline":"2024-01-01T00:00:00Z"}}"""
+                """{
+                  "timestamp": "2024-01-01T00:00:00Z",
+                  "quoteRequest": {
+                    "dry": false,
+                    "swapType": "EXACT_INPUT",
+                    "slippageTolerance": 100,
+                    "originAsset": "origin",
+                    "destinationAsset": "destination",
+                    "amount": "1.0",
+                    "refundTo": "refund",
+                    "recipient": "recipient",
+                    "deadline": "1970-01-01T00:00:00Z",
+                    "appFees": [{"recipient": "affiliate", "fee": 75}]
+                  },
+                  "quote": {
+                    "depositAddress": "d",
+                    "amountIn": "1.0",
+                    "amountInFormatted": "1.0",
+                    "amountInUsd": "1.0",
+                    "minAmountIn": "1.0",
+                    "amountOut": "1.0",
+                    "amountOutFormatted": "1.0",
+                    "amountOutUsd": "1.0",
+                    "minAmountOut": "1.0",
+                    "deadline": "2024-01-01T00:00:00Z"
+                  }
+                }""".trimIndent()
 
             provider.requestQuote(quoteRequest())
 
@@ -97,16 +117,39 @@ class KtorNearApiProviderTest {
     @Test
     fun checkSwapStatusDoesNotSendAuthorizationHeaderAndSendsDepositAddressParameter() =
         runBlocking {
-            // Minimal valid SwapStatusResponseDto JSON
+            // Valid SwapStatusResponseDto JSON matching the schema
             responseBody =
-                """{"status":"PENDING_DEPOSIT","updatedAt":"2024-01-01T00:00:00Z","quoteResponse":""" +
-                """{"timestamp":"2024-01-01T00:00:00Z","quoteRequest":{"dry":false,"swapType":"EXACT_INPUT",""" +
-                """"slippageTolerance":100,"originAsset":"origin","destinationAsset":"destination",""" +
-                """"amount":"1","refundTo":"refund","recipient":"recipient","deadline":"1970-01-01T00:00:00Z",""" +
-                """"appFees":[{"recipient":"affiliate","fee":75}]},"quote":{"depositAddress":"d",""" +
-                """"amountIn":"1","amountInFormatted":"1","amountInUsd":"1","minAmountIn":"1",""" +
-                """"amountOut":"1","amountOutFormatted":"1","amountOutUsd":"1","minAmountOut":"1",""" +
-                """"deadline":"2024-01-01T00:00:00Z"}}}"""
+                """{
+                  "status": "PENDING_DEPOSIT",
+                  "updatedAt": "2024-01-01T00:00:00Z",
+                  "quoteResponse": {
+                    "timestamp": "2024-01-01T00:00:00Z",
+                    "quoteRequest": {
+                      "dry": false,
+                      "swapType": "EXACT_INPUT",
+                      "slippageTolerance": 100,
+                      "originAsset": "origin",
+                      "destinationAsset": "destination",
+                      "amount": "1.0",
+                      "refundTo": "refund",
+                      "recipient": "recipient",
+                      "deadline": "1970-01-01T00:00:00Z",
+                      "appFees": [{"recipient": "affiliate", "fee": 75}]
+                    },
+                    "quote": {
+                      "depositAddress": "d",
+                      "amountIn": "1.0",
+                      "amountInFormatted": "1.0",
+                      "amountInUsd": "1.0",
+                      "minAmountIn": "1.0",
+                      "amountOut": "1.0",
+                      "amountOutFormatted": "1.0",
+                      "amountOutUsd": "1.0",
+                      "minAmountOut": "1.0",
+                      "deadline": "2024-01-01T00:00:00Z"
+                    }
+                  }
+                }""".trimIndent()
 
             provider.checkSwapStatus(depositAddress = "deposit-address")
 
