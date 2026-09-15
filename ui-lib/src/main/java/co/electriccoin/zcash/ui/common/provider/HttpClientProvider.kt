@@ -31,14 +31,7 @@ interface HttpClientProvider {
      * and the gateway injects secrets server-side (the app never sends them). With Tor OFF, the
      * relay sees the app's clearnet IP (but the gateway, which injects secrets, does not).
      */
-    suspend fun createOhttp(): OhttpHttpClient =
-        if (isTorEnabled()) {
-            // Tor ON: relay leg over isolated Tor stream; gateway injects secrets
-            OhttpHttpClient.create(sender = synchronizerProvider.getSynchronizer().ohttpSenderOverTor())
-        } else {
-            // Tor OFF: direct relay POST; gateway injects secrets
-            OhttpHttpClient.create()
-        }
+    suspend fun createOhttp(): OhttpHttpClient
 
     /**
      * Whether the user has opted into Tor. Callers that offer an OHTTP path (NEAR, voting config)

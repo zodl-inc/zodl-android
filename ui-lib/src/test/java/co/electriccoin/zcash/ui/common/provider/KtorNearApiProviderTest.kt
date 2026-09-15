@@ -185,5 +185,9 @@ class KtorNearApiProviderTest {
                 expectSuccess = true
             }
         }
+
+        override suspend fun createOhttp(): co.electriccoin.lightwallet.client.OhttpHttpClient {
+            error("OHTTP not used in this test")
+        }
     }
 }

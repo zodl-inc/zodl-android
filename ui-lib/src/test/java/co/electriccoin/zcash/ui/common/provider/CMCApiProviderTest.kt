@@ -108,4 +108,8 @@ private class RecordingHttpClientProvider : HttpClientProvider {
             install(ContentNegotiation) { json() }
         }
     }
+
+    override suspend fun createOhttp(): co.electriccoin.lightwallet.client.OhttpHttpClient {
+        error("OHTTP not used in this test")
+    }
 }
