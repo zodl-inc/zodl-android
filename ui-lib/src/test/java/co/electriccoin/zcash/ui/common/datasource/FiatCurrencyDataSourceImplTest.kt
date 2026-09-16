@@ -36,15 +36,14 @@ class FiatCurrencyDataSourceImplTest {
         }
 
     @Test
-    fun blankKeyFailsWithoutCallingTheProvider() =
+    fun blankKeyStillCallsTheProviderBecauseTheGatewayInjectsTheKey() =
         runTest {
             val provider = FakeCMCApiProvider(listOf("USD"))
 
-            assertFailsWith<ExchangeRateUnavailable> {
-                dataSource(provider, apiKey = "  ").getSupportedFiatCurrencies()
-            }
+            val currencies = dataSource(provider, apiKey = "  ").getSupportedFiatCurrencies()
 
-            assertEquals(0, provider.calls)
+            assertEquals(1, provider.calls)
+            assertEquals(listOf(FiatCurrency.USD), currencies)
         }
 
     @Test

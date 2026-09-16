@@ -22,7 +22,7 @@ import kotlin.time.Clock
 
 interface ExchangeRateDataSource {
     /**
-     * Returns the exchange rate for [fiatCurrency] from CMC if [BuildConfig.ZCASH_CMC_KEY] is available.
+     * Returns the exchange rate for [fiatCurrency] from CMC through the OHTTP gateway (which injects the API key).
      *
      * @throws ExchangeRateUnavailable when exchange rate is not found or server was down
      */
@@ -59,13 +59,8 @@ class ExchangeRateDataSourceImpl(
             )
         }
 
-        val cmcKey = BuildConfig.ZCASH_CMC_KEY.takeIf { it.isNotBlank() }
-
-        return if (cmcKey != null) {
-            getCMCExchangeRate(cmcKey)
-        } else {
-            throw ExchangeRateUnavailable(message = "CMC token not present")
-        }
+        // The OHTTP gateway injects the CMC key; a build-time key is optional and is stripped anyway.
+        return getCMCExchangeRate(BuildConfig.ZCASH_CMC_KEY)
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

@@ -21,13 +21,10 @@ class FiatCurrencyDataSourceImpl(
     private val cmcApiKey: String = BuildConfig.ZCASH_CMC_KEY,
 ) : FiatCurrencyDataSource {
     override suspend fun getSupportedFiatCurrencies(): List<FiatCurrency> {
-        val apiKey =
-            cmcApiKey.takeIf { it.isNotBlank() }
-                ?: throw ExchangeRateUnavailable(message = "CMC token not present")
-
+        // The OHTTP gateway injects the CMC key; a build-time key is optional and is stripped anyway.
         val currencies =
             cmcApiProvider
-                .getFiatMap(apiKey)
+                .getFiatMap(cmcApiKey)
                 .data
                 .map { it.symbol.uppercase() }
                 .toSupportedFiatCurrencies()

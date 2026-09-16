@@ -37,7 +37,12 @@ data class VersionInfo(
                     NetworkDimension.TESTNET -> ZcashNetwork.Testnet
                 }
 
-        val IS_CMC_AVAILABLE = BuildConfig.ZCASH_CMC_KEY.takeIf { it.isNotBlank() } != null
+        /**
+         * CoinMarketCap is always reachable: requests go through the OHTTP gateway, which injects the
+         * API key server-side, so the app no longer needs `ZCASH_CMC_KEY` at build time. The property is
+         * still accepted (and stripped before the request leaves the device) for backward compatibility.
+         */
+        const val IS_CMC_AVAILABLE = true
 
         fun new(context: Context): VersionInfo {
             val packageInfo = context.packageManager.getPackageInfoCompat(context.packageName, 0L)
