@@ -166,6 +166,14 @@ androidComponents {
                 comment = "Publishable key of the CMC integration"
             )
         )
+        variant.buildConfigFields?.put(
+            "OHTTP_CLIENT_TRACE_PREFIX",
+            BuildConfigField(
+                type = "String",
+                value = "\"${project.property("ZCASH_OHTTP_TRACE_PREFIX")?.toString().orEmpty()}\"",
+                comment = "OHTTP client trace ID prefix for debug request tracking (DEBUG builds only)"
+            )
+        )
         // To configure screen orientation in runtime
         variant.buildConfigFields?.put(
             "IS_SCREEN_ROTATION_ENABLED",

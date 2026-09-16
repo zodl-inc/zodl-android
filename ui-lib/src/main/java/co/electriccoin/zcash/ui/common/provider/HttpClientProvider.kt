@@ -65,13 +65,21 @@ class HttpClientProviderImpl(
             cachedOhttpClient = null
         }
         if (cachedOhttpClient == null) {
+            // DEBUG-only: pass trace prefix for request tracking in Grafana
+            val tracePrefix =
+                if (BuildConfig.DEBUG && BuildConfig.OHTTP_CLIENT_TRACE_PREFIX.isNotBlank()) {
+                    BuildConfig.OHTTP_CLIENT_TRACE_PREFIX
+                } else {
+                    null
+                }
             cachedOhttpClient =
                 if (torNow) {
                     OhttpHttpClient.create(
-                        sender = synchronizerProvider.getSynchronizer().ohttpSenderOverTor()
+                        sender = synchronizerProvider.getSynchronizer().ohttpSenderOverTor(),
+                        ohttpClientTraceIdPrefix = tracePrefix
                     )
                 } else {
-                    OhttpHttpClient.create()
+                    OhttpHttpClient.create(ohttpClientTraceIdPrefix = tracePrefix)
                 }
             cachedForTorEnabled = torNow
         }
