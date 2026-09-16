@@ -5,10 +5,10 @@ import co.electriccoin.zcash.ui.common.model.CMCFiatCurrencyDto
 import co.electriccoin.zcash.ui.common.model.GetCMCFiatMapResponse
 import co.electriccoin.zcash.ui.common.model.GetCMCQuoteResponse
 import co.electriccoin.zcash.ui.common.provider.CMCApiProvider
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlinx.coroutines.test.runTest
 
 /**
  * MOB-1707: the supported-currency list comes from the exchange-rate provider, minus the codes
