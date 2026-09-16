@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.datasource
 
+import .FiatCurrency
 import co.electriccoin.zcash.ui.common.model.CMCFiatCurrencyDto
 import co.electriccoin.zcash.ui.common.model.GetCMCFiatMapResponse
 import co.electriccoin.zcash.ui.common.model.GetCMCQuoteResponse
