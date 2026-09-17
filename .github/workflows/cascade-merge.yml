@@ -1,0 +1,57 @@
+# Automates the forward-merge cascade documented in the zodl_an_cascade_merge
+# skill: release/vX.Y.Z (shipped) -> maint/vX.Y.x -> next maint line -> ... ->
+# main. Every leg lands as a real two-parent merge commit - never squash or
+# rebase - since a squashed cascade link poisons every cascade that follows it
+# (see the skill, §3-4, for the two times this already happened by hand).
+#
+# The repo's "Protect main and maint branches" ruleset (created 2026-08-20,
+# after the skill above was last verified) requires 1 human approval on both
+# main and maint/*, with zero bypass actors - so this cannot merge fully
+# unattended. It gets as close as GitHub's security model allows: it opens (or
+# reuses) the PR for every pending link and turns on GitHub's native
+# auto-merge, so the merge itself happens the instant a human approves - no
+# separate "click merge" step needed. The ruleset also disables squash on
+# main/maint outright, so the app's older auto-squash-on-every-PR hazard the
+# skill describes does not apply here (this repo has no auto-merge.yml).
+#
+# Runs on push to maint/**/release/** as the fast path for a normal landing,
+# and on a schedule because a merge performed by this workflow's own
+# GITHUB_TOKEN does not itself trigger a new push-based run - the schedule is
+# what carries the cascade on to its next link once a human approves one.
+name: Cascade merge
+
+on:
+  push:
+    branches:
+      - 'maint/**'
+      - 'release/**'
+  schedule:
+    - cron: '17,47 * * * *' # every 30 min, offset off the top of the hour
+  workflow_dispatch: {}
+
+concurrency:
+  group: cascade-merge
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  cascade:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout
+        timeout-minutes: 1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Cascade pending forward-merges
+        timeout-minutes: 5
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/scripts/cascade-merge.sh
