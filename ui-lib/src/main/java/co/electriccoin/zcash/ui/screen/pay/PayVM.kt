@@ -168,6 +168,13 @@ internal class PayVM(
             val asset = getPreselectedSwapAsset()
             internalState.update { if (it.asset == null) it.withAsset(asset) else it }
         }
+        viewModelScope.launch {
+            swapRepository.assets.collect { assets ->
+                val selected = internalState.value.asset ?: return@collect
+                val refreshed = assets.data?.firstOrNull { it.assetId == selected.assetId } ?: return@collect
+                internalState.update { if (it.asset?.assetId == refreshed.assetId) it.withAsset(refreshed) else it }
+            }
+        }
     }
 
     private fun onDeleteSelectedContactClick() = internalState.update { it.copy(selectedABContact = null) }

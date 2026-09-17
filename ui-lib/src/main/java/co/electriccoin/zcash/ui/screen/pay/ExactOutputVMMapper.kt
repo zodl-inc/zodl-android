@@ -353,6 +353,8 @@ internal class ExactOutputVMMapper {
                     else -> {
                         state.swapAssets.data != null &&
                             state.asset != null &&
+                            state.asset.usdPrice != null &&
+                            state.swapAssets.zecAsset?.usdPrice != null &&
                             !textField.isError &&
                             amount != null &&
                             amount > BigDecimal(0) &&

@@ -136,6 +136,15 @@ internal class SwapVM(
             val asset = getPreselectedSwapAsset()
             internalState.update { if (it.swapAsset == null) it.copy(swapAsset = asset) else it }
         }
+        viewModelScope.launch {
+            swapRepository.assets.collect { assets ->
+                val selected = internalState.value.swapAsset ?: return@collect
+                val refreshed = assets.data?.firstOrNull { it.assetId == selected.assetId } ?: return@collect
+                internalState.update {
+                    if (it.swapAsset?.assetId == refreshed.assetId) it.copy(swapAsset = refreshed) else it
+                }
+            }
+        }
     }
 
     // Stable method references — created once and reused across every state emission.

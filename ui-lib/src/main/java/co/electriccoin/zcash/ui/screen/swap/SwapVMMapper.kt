@@ -488,6 +488,8 @@ internal class SwapVMMapper {
                     else -> {
                         state.swapAssets.data != null &&
                             state.swapAsset != null &&
+                            state.swapAsset.usdPrice != null &&
+                            state.swapAssets.zecAsset?.usdPrice != null &&
                             !textField.isError &&
                             amount != null &&
                             amount > BigDecimal(0) &&
