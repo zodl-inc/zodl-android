@@ -57,7 +57,7 @@ val repositoryModule =
         singleOf(::ApplicationStateRepositoryImpl) bind ApplicationStateRepository::class
         single { EvaluationInterval(minimumInterval = MINIMUM_EVALUATION_INTERVAL) }
         singleOf(::AutomaticServerRepositoryImpl) bind AutomaticServerRepository::class
-        singleOf(::SwapRepositoryImpl) bind SwapRepository::class
+        single { SwapRepositoryImpl(get(), get()) } bind SwapRepository::class
         singleOf(::EphemeralAddressRepositoryImpl) bind EphemeralAddressRepository::class
         singleOf(::MockOrchardBalanceRepositoryImpl) bind MockOrchardBalanceRepository::class
     }

@@ -14,6 +14,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Changed:
 
+- Swap and Pay now restore asset and network choices immediately while current prices load in the background (MOB-1923).
 - Coinholder Polling accepts rounds with up to 50 questions and proposal ids up to 50, matching the
   vote chain's circuit update for the 37-question Retroactive Grants round (zcash_voting 4.0.0-rc.2).
 - Coinholder Polling now votes with at most two note bundles instead of one per five notes, so a

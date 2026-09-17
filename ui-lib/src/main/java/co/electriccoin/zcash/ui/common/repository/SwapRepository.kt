@@ -21,20 +21,19 @@ import co.electriccoin.zcash.ui.common.model.isZCashAsset
 import co.electriccoin.zcash.ui.common.model.near.requireMatchingAsset
 import co.electriccoin.zcash.ui.common.model.near.requireQuoteMatchesUserAmount
 import co.electriccoin.zcash.ui.common.model.swapQuoteMismatchSignal
+import co.electriccoin.zcash.ui.common.provider.SwapAssetCacheProvider
 import io.ktor.client.plugins.ResponseException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
-import kotlin.time.Duration.Companion.seconds
 
 interface SwapRepository {
     val assets: StateFlow<SwapAssetsData>
@@ -115,7 +114,8 @@ class SwapAssetsUnavailableException : Exception("Swap assets are unavailable")
 
 @Suppress("TooManyFunctions")
 class SwapRepositoryImpl(
-    private val swapDataSource: SwapDataSource
+    private val swapDataSource: SwapDataSource,
+    private val swapAssetCacheProvider: SwapAssetCacheProvider? = null,
 ) : SwapRepository {
     /**
      * Scope the background refresh/quote jobs run on. A test seam: unit tests replace it with a
@@ -134,13 +134,11 @@ class SwapRepositoryImpl(
     private var requestQuoteJob: Job? = null
 
     override fun requestRefreshAssets() {
-        refreshJob?.cancel()
+        if (refreshJob?.isActive == true) return
         refreshJob =
             scope.launch {
-                while (true) {
-                    refreshAssetsInternal()
-                    delay(30.seconds)
-                }
+                hydrateAssetsFromCache()
+                refreshAssetsInternal()
             }
     }
 
@@ -165,6 +163,7 @@ class SwapRepositoryImpl(
         assets.update { it.copy(isLoading = true) }
         try {
             val tokens = swapDataSource.getSupportedTokens()
+            runCatching { swapAssetCacheProvider?.store(tokens) }
             val filtered = filterSwapAssets(tokens)
             val zecAsset = findZecSwapAsset(tokens)
             assets.update {
@@ -182,6 +181,20 @@ class SwapRepositoryImpl(
                     error = e.takeIf { assets.data == null }
                 )
             }
+        }
+    }
+
+    private suspend fun hydrateAssetsFromCache() {
+        if (assets.value.data != null) return
+        val cachedAssets = runCatching { swapAssetCacheProvider?.get() }.getOrNull().orEmpty()
+        if (cachedAssets.isEmpty()) return
+        assets.update {
+            it.copy(
+                data = cachedAssets.filterNot(SwapAsset::isZCashAsset),
+                zecAsset = cachedAssets.find(SwapAsset::isZCashAsset),
+                error = null,
+                isLoading = true,
+            )
         }
     }
 

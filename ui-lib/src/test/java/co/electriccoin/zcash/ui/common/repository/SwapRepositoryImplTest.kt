@@ -13,12 +13,14 @@ import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchException
 import co.electriccoin.zcash.ui.common.model.SwapQuoteMismatchType
 import co.electriccoin.zcash.ui.common.model.SwapQuoteStatus
+import co.electriccoin.zcash.ui.common.provider.SwapAssetCacheProvider
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -480,10 +482,49 @@ class SwapRepositoryImplTest {
     fun continuousRefreshPopulatesAssets() {
         val repository = repository(dataSourceReturning(mockk()))
 
-        repository.requestRefreshAssets() // first iteration runs eagerly; the 30s delay parks the rest
+        repository.requestRefreshAssets()
 
         assertEquals(listOf(btc), repository.assets.value.data)
     }
+
+    @Test
+    fun refreshIsSingleFlight() {
+        val dataSource = mockk<SwapDataSource> { coEvery { getSupportedTokens() } coAnswers { awaitCancellation() } }
+        val repository = repository(dataSource)
+
+        repository.requestRefreshAssets()
+        repository.requestRefreshAssets()
+
+        coVerify(exactly = 1) { dataSource.getSupportedTokens() }
+    }
+
+    @Test
+    fun continuousRefreshUsesCachedMetadataWhenNetworkFails() {
+        val cachedBtc = SwapAssetTestFixture.asset(tokenTicker = "btc", chainTicker = "btc", usdPrice = null)
+        val cachedZec = SwapAssetTestFixture.asset(tokenTicker = "zec", chainTicker = "zec", usdPrice = null)
+        val dataSource = mockk<SwapDataSource> { coEvery { getSupportedTokens() } throws RuntimeException("offline") }
+        val cache = mockk<SwapAssetCacheProvider> { coEvery { get() } returns listOf(cachedZec, cachedBtc) }
+        val repository = SwapRepositoryImpl(dataSource, cache).apply { scope = testScope }
+
+        repository.requestRefreshAssets()
+
+        assertEquals(listOf(cachedBtc), repository.assets.value.data)
+        assertEquals(cachedZec, repository.assets.value.zecAsset)
+        assertFalse(repository.assets.value.isLoading)
+        assertNull(repository.assets.value.error)
+    }
+
+    @Test
+    fun successfulRefreshPersistsAssetMetadata() =
+        runTest {
+            val dataSource = mockk<SwapDataSource> { coEvery { getSupportedTokens() } returns listOf(zec, btc) }
+            val cache = mockk<SwapAssetCacheProvider>(relaxed = true)
+            val repository = SwapRepositoryImpl(dataSource, cache).apply { scope = testScope }
+
+            repository.requestRefreshAssetsOnce()
+
+            coVerify(exactly = 1) { cache.store(listOf(zec, btc)) }
+        }
 
     @Test
     fun submitDepositTransactionForwardsTxIdAndProposalDepositAddress() =
