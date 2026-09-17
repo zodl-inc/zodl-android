@@ -14,6 +14,11 @@
 # main/maint outright, so the app's older auto-squash-on-every-PR hazard the
 # skill describes does not apply here (this repo has no auto-merge.yml).
 #
+# The one exception: a release -> maint back-merge is never auto-merged, even
+# when clean - see cascade-merge.sh's cascade_pr_body for why (CHANGELOG
+# re-parenting can silently misattribute entries and a plain git merge can't
+# tell).
+#
 # Runs on push to maint/**/release/** as the fast path for a normal landing,
 # and on a schedule because a merge performed by this workflow's own
 # GITHUB_TOKEN does not itself trigger a new push-based run - the schedule is
@@ -25,6 +30,8 @@ on:
     branches:
       - 'maint/**'
       - 'release/**'
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+-[0-9]+' # a release tag lands before the next cron tick would catch it
   schedule:
     - cron: '17,47 * * * *' # every 30 min, offset off the top of the hour
   workflow_dispatch: {}
