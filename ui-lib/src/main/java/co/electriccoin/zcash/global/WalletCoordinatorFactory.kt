@@ -3,6 +3,7 @@ package co.electriccoin.zcash.global
 import android.content.Context
 import cash.z.ecc.android.sdk.OrchardMigrationSdk
 import cash.z.ecc.android.sdk.WalletCoordinator
+import co.electriccoin.zcash.ui.BuildConfig
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.provider.IsExchangeRateEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
@@ -16,8 +17,15 @@ internal operator fun WalletCoordinator.Companion.invoke(
     persistableWalletProvider: PersistableWalletProvider,
     isTorEnabledStorageProvider: IsTorEnabledStorageProvider,
     isExchangeRateEnabledStorageProvider: IsExchangeRateEnabledStorageProvider,
-): WalletCoordinator =
-    WalletCoordinator(
+): WalletCoordinator {
+    // DEBUG-only: pass trace prefix for request tracking in Grafana (bulk sync OHTTP-over-Tor path)
+    val ohttpClientTraceIdPrefix =
+        if (BuildConfig.DEBUG && BuildConfig.OHTTP_CLIENT_TRACE_PREFIX.isNotBlank()) {
+            BuildConfig.OHTTP_CLIENT_TRACE_PREFIX
+        } else {
+            null
+        }
+    return WalletCoordinator(
         context = context,
         persistableWallet = persistableWalletProvider.persistableWallet,
         accountName = context.getString(R.string.accounts_zashi),
@@ -25,7 +33,9 @@ internal operator fun WalletCoordinator.Companion.invoke(
         isTorEnabled = isTorEnabledStorageProvider.observe(),
         isExchangeRateEnabled = isExchangeRateEnabledStorageProvider.observe(),
         isSyncBlocked = isSyncBlocked(context, persistableWalletProvider),
+        ohttpClientTraceIdPrefix = ohttpClientTraceIdPrefix,
     )
+}
 
 /**
  * [OrchardMigrationSdk.new] needs the wallet's network and endpoint, which only exist once a
