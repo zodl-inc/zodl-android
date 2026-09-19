@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.ZapAttestationMemo
 import co.electriccoin.zcash.ui.design.component.BlankSurface
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ShimmerRectangle
@@ -68,15 +69,22 @@ fun TransactionDetailMemo(
                 state.memos.forEachIndexed { index, memo ->
                     val fullMemo = memo.content.getValue()
                     val fullMemoTooBig = fullMemo.length > MAX_MEMO_LENGTH
+                    val attestation = remember(fullMemo) { ZapAttestationMemo.parse(fullMemo) }
 
                     if (index > 0) {
                         Spacer(Modifier.height(8.dp))
                     }
 
-                    if (fullMemoTooBig) {
-                        ExpandableMemo(memo)
-                    } else {
-                        NonExpandableMemo(memo)
+                    when {
+                        attestation != null ->
+                            TransactionDetailZapMemo(
+                                modifier = Modifier.fillMaxWidth(),
+                                state = attestation.toTransactionDetailZapMemoState(memo.onClick)
+                            )
+
+                        fullMemoTooBig -> ExpandableMemo(memo)
+
+                        else -> NonExpandableMemo(memo)
                     }
                 }
             }
