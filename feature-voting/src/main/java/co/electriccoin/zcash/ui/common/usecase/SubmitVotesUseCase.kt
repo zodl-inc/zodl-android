@@ -253,6 +253,13 @@ class SubmitVotesUseCase(
                     // SDK/Rust change -- see Phase 4 of the production-completion design doc.
                     // Monotonic per bundle (never regresses), keyed by bundleIndex.
                     val bundleProgressLedger = mutableMapOf<Int, Float>()
+                    // Per-bundle values are monotonic, but the *minimum over the ledger* is not:
+                    // the key set grows as previously-unseen bundles report in, and a newly
+                    // added bundle's first (low) value can drag the minimum below what was
+                    // already shown, making the progress bar visibly jump backwards. Ratchet the
+                    // value actually handed to the UI so it can only ever move forward within
+                    // this submission -- same scope/lifetime as bundleProgressLedger itself.
+                    var lastReportedProgress = 0f
                     val progressListener =
                         VotingRoundDriveProgressListener { progress ->
                             progress.tally?.let { tally ->
@@ -271,11 +278,17 @@ class SubmitVotesUseCase(
                                 } else {
                                     bundleProgressLedger.values.minOrNull()
                                 }
+                            val ratchetedProgress =
+                                maxOf(
+                                    lastReportedProgress,
+                                    ledgerMin ?: progress.proofProgress ?: 0f
+                                )
+                            lastReportedProgress = ratchetedProgress
                             onProgress(
                                 VotingSubmissionProgress.RunningRound(
                                     completedProposals = lastCompletedProposals,
                                     totalProposals = lastTotalProposals,
-                                    proofProgress = ledgerMin ?: progress.proofProgress
+                                    proofProgress = ratchetedProgress
                                 )
                             )
                             // CHP_BENCH — see ChpBenchLog.kt's own note: local-only, never merge.
