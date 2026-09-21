@@ -67,9 +67,12 @@ internal fun VotingRoundRunReport.toVotingErrorOrNull(roundId: String): VotingEr
         }
 
         is VotingRoundQuiescence.NeedsDelegationSignatures -> {
+            // Deliberately makes no claim about *which* submission path produced this. Task 18
+            // routed the Keystone path through this same mapper, where this quiescence is a
+            // normal mid-flow state ("bundle N still needs a signature") rather than the
+            // non-Keystone anomaly the earlier wording asserted it always was.
             VotingErrors.UnexpectedSdkResponse(
-                "Round $roundId needs delegation signatures for bundles ${quiescence.bundles} " +
-                    "on a non-Keystone submission path"
+                "Round $roundId needs delegation signatures for bundles ${quiescence.bundles}"
             )
         }
 

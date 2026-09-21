@@ -10,6 +10,7 @@ import cash.z.ecc.android.sdk.model.voting.VotingDelegationInputs
 import cash.z.ecc.android.sdk.model.voting.VotingNextStep
 import cash.z.ecc.android.sdk.model.voting.VotingProposalRosterEntry
 import cash.z.ecc.android.sdk.model.voting.VotingRoundDriveProgressListener
+import cash.z.ecc.android.sdk.model.voting.VotingRoundRunReport
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
@@ -319,6 +320,7 @@ class SubmitVotesUseCase(
                     report.toVotingErrorOrNull(roundId)?.let { votingError ->
                         throw VotingSubmissionRecoverableException(votingError)
                     }
+                    logPartialOutcomeIfAny(roundId, report)
 
                     // Schedules VotingShareTrackingWorker unconditionally on success (matches the
                     // pre-parking-commit round-driver implementation of this call, which this
@@ -521,6 +523,7 @@ class SubmitVotesUseCase(
         report.toVotingErrorOrNull(roundId)?.let { votingError ->
             throw VotingSubmissionRecoverableException(votingError)
         }
+        logPartialOutcomeIfAny(roundId, report)
 
         // Only close on genuine success -- unlike the non-Keystone path's roundSession (freshly
         // opened and unconditionally closed every call), this session is retained across the
@@ -542,6 +545,37 @@ class SubmitVotesUseCase(
         )
 
         return VotingSubmissionResult(submittedProposalCount = report.completedProposals)
+    }
+
+    /**
+     * Diagnostic-only replacement for the blanket `report.failures.isNotEmpty()` throw that Task
+     * 12's quiescence-based mapper removed. A run can quiesce success-shaped
+     * ([cash.z.ecc.android.sdk.model.voting.VotingRoundQuiescence.NoWorkLeft] /
+     * `BackgroundShareWorkOnly`, both mapped to `null` by [toVotingErrorOrNull]) while still
+     * carrying non-empty `failures`/`skippedBundles` — the caller then reports full success and
+     * marks every proposal submitted. That partial outcome is currently invisible; this makes it
+     * greppable from logcat.
+     *
+     * Deliberately NOT an assertion/throw: `skippedBundles` is non-empty **by design** after
+     * [SkipRemainingKeystoneBundlesUseCase] (the user explicitly chose to submit only the bundles
+     * they had already signed), so a hard failure here would false-positive on a legitimate
+     * flow. Escalating this to an error needs a way to distinguish skipped-by-user from
+     * skipped-by-the-driver first.
+     */
+    private fun logPartialOutcomeIfAny(
+        roundId: String,
+        report: VotingRoundRunReport
+    ) {
+        if (report.failures.isEmpty() && report.skippedBundles.isEmpty()) {
+            return
+        }
+        Log.w(
+            "CHP_BENCH",
+            "app=zodl step=partial-outcome round=$roundId " +
+                "quiescence=${report.quiescence} completed the run with " +
+                "failures=${report.failures} skippedBundles=${report.skippedBundles} " +
+                "despite a success-shaped quiescence"
+        )
     }
 }
 
