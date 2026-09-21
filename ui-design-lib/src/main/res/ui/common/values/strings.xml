@@ -1274,6 +1274,7 @@ Your vote can no longer be submitted.</string>
     <string name="coinVote_store_userError_recoveredVoteMismatch" tools:ignore="MissingTranslation">The network reported an existing vote for this wallet that does not match this submission. If you voted from another device, check that device\'s voting status.</string>
     <string name="coinVote_store_userError_recoveredVoteUnverified" tools:ignore="MissingTranslation">An earlier vote transaction may already be on the network, but it could not be verified with the vote servers. Please try again in a moment.</string>
     <string name="coinVote_store_userError_roundNotPrepared" tools:ignore="MissingTranslation">This voting round\'s prepared data is missing on this device. Reopen the round to prepare it again.</string>
+    <string name="coinVote_store_userError_keystoneNotSupported" tools:ignore="MissingTranslation">Voting with a Keystone hardware wallet is not supported yet. Please use a software wallet account to vote.</string>
     <string name="vote_error_mapper_pir_connection" tools:ignore="MissingTranslation">Could not connect to the privacy-preserving vote server. Please check your connection and try again.</string>
     <string name="vote_error_mapper_insufficient_funds" tools:ignore="MissingTranslation">Insufficient funds to authorize your vote. A small fee is required.</string>
     <string name="coinVote_delegation_insufficientSnapshotBalance" tools:ignore="MissingTranslation">Your shielded balance at the snapshot (%1$s ZEC) is below the minimum required to vote (%2$s ZEC).</string>

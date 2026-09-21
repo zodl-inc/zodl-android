@@ -73,6 +73,10 @@ object VotingErrorMapper {
                 stringRes(UiR.string.coinVote_store_userError_commitmentTreeNotGrown)
             }
 
+            is VotingErrors.KeystoneNotSupported -> {
+                stringRes(UiR.string.coinVote_store_userError_keystoneNotSupported)
+            }
+
             // The remaining variants read correctly through the substring table
             // on their stable userMessage.
             is VotingErrors.NoSelectedAccount,

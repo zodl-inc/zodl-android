@@ -29,7 +29,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * voting-4.0.0 round-driver port note: no longer thrown by this file (Keystone signing, the old
+ * voting-5.0.0 round-driver port note: no longer thrown by this file (Keystone signing, the old
  * source of protocol-auth failures, is deferred per Task 7) — kept only because
  * `VoteConfirmSubmissionVM` still pattern-matches on this type for a specific UI status. Revisit
  * when Keystone signing is re-ported.
@@ -42,7 +42,7 @@ class VotingAuthorizationException(
     )
 
 /**
- * voting-4.0.0 round-driver port note: this is a from-scratch rewrite for the benchmark pass
+ * voting-5.0.0 round-driver port note: this is a from-scratch rewrite for the benchmark pass
  * (Task 4/5 of the port plan), not an incremental patch of the pre-4.0 implementation. The old
  * ~1700-line per-bundle-per-question loop (`runVoteChains`/`proveVoteBundle`/`postVoteBundle`/
  * `confirmVoteBundle`) is gone entirely — the crate's own `RoundExecutor`/`RoundDriver` now owns
@@ -79,8 +79,8 @@ class SubmitVotesUseCase(
             val chpBenchStart = System.currentTimeMillis()
 
             val selectedAccount = getSelectedWalletAccount()
-            check(selectedAccount !is KeystoneAccount) {
-                "Keystone voting submission is deferred for the voting-4.0.0 round-driver port (Task 7)"
+            if (selectedAccount is KeystoneAccount) {
+                throw VotingSubmissionRecoverableException(VotingErrors.KeystoneNotSupported)
             }
             val accountUuidString = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
 

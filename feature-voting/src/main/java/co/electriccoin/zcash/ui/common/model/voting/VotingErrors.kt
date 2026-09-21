@@ -72,6 +72,14 @@ sealed interface VotingErrors {
     }
 
     /**
+     * Keystone-signed voting submission is not available in this build (deferred pending a
+     * later task); the selected account is a hardware-wallet (Keystone) account.
+     */
+    data object KeystoneNotSupported : VotingErrors {
+        override val userMessage = "Keystone voting submission is not available in this build"
+    }
+
+    /**
      * A submitted transaction was not visible to the vote server within the polling budget.
      */
     data class TxConfirmationTimedOut(
