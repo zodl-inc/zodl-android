@@ -10,6 +10,8 @@ import cash.z.ecc.android.sdk.model.AccountUuid
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.voting.VotingBallotIntent
 import cash.z.ecc.android.sdk.model.voting.VotingDelegationInputs
+import cash.z.ecc.android.sdk.model.voting.VotingKeystoneSignatureBatchResult
+import cash.z.ecc.android.sdk.model.voting.VotingKeystoneSignatureInput
 import cash.z.ecc.android.sdk.model.voting.VotingNoteInfo
 import cash.z.ecc.android.sdk.model.voting.VotingNoteScope
 import cash.z.ecc.android.sdk.model.voting.VotingProposalRosterEntry
@@ -205,6 +207,24 @@ interface VotingCryptoClient {
         ceremonyStartSeconds: Long?,
         voteEndTimeSeconds: Long?
     ): VotingRoundSession
+
+    /**
+     * Atomically persists a batch of Keystone-signed delegation bundle signatures for [roundId],
+     * so a later [resetVotingSessionState] preserves those bundles instead of wiping their
+     * unsigned setup for a rebuild. VotingDb-scoped rather than round-session-scoped: it can be
+     * called independently of whether a [VotingRoundSession] is currently open.
+     *
+     * Pass `sig`/`sighash`/`rk` produced by a prior
+     * [VotingRoundSession.getKeystoneSigningRequests]-driven signing flow, not arbitrary values —
+     * see [VotingDbSession.storeKeystoneSignatures]'s own doc comment.
+     * @throws RuntimeException if the native layer reports a failure.
+     */
+    @Throws(RuntimeException::class)
+    suspend fun storeKeystoneSignatures(
+        dbHandle: Long,
+        roundId: String,
+        signatures: List<VotingKeystoneSignatureInput>
+    ): VotingKeystoneSignatureBatchResult
 
     /**
      * Opens a cancellable share-tracking session for [roundId]. See
@@ -495,6 +515,15 @@ class VotingCryptoClientImpl : VotingCryptoClient {
                     ceremonyStartSeconds,
                     voteEndTimeSeconds
                 )
+        }
+
+    override suspend fun storeKeystoneSignatures(
+        dbHandle: Long,
+        roundId: String,
+        signatures: List<VotingKeystoneSignatureInput>
+    ): VotingKeystoneSignatureBatchResult =
+        withContext(Dispatchers.IO) {
+            session(dbHandle).storeKeystoneSignatures(roundId, signatures)
         }
 
     override suspend fun openShareTrackingSession(
