@@ -135,7 +135,9 @@ class TrackVotingSharesUseCase(
                     is VotingShareTrackingQuiescence.Failing,
                     is VotingShareTrackingQuiescence.PassBudgetExhausted,
                     is VotingShareTrackingQuiescence.Unknown,
-                    null -> VotingShareTrackingResult.Pending(nextDelayMillis(roundId))
+                    null -> {
+                        VotingShareTrackingResult.Pending(nextDelayMillis(roundId))
+                    }
                 }
             } finally {
                 withContext(NonCancellable) {

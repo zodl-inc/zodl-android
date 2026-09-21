@@ -108,10 +108,14 @@ class SubmitVotesUseCase(
             }
 
             when (val preparation = prepareVotingRound(roundId)) {
-                is VotingRoundPreparationResult.Ready -> Unit
+                is VotingRoundPreparationResult.Ready -> {
+                    Unit
+                }
+
                 is VotingRoundPreparationResult.Ineligible -> {
                     throw VotingSubmissionRecoverableException(VotingErrors.Ineligible)
                 }
+
                 is VotingRoundPreparationResult.WalletSyncing -> {
                     throw VotingSubmissionRecoverableException(
                         VotingErrors.WalletSyncing(
@@ -446,7 +450,10 @@ class SubmitVotesUseCase(
                 anchorTreeStateBytes = treeStateBytes,
                 hotkeySecret = hotkeySecret,
                 pirEndpoints = sessionContext.serviceConfig.pirEndpoints.map { it.url },
-                pirDepth = sessionContext.serviceConfig.pirLayout.requireKnownPolyLen().pirDepth,
+                pirDepth =
+                    sessionContext.serviceConfig.pirLayout
+                        .requireKnownPolyLen()
+                        .pirDepth,
                 pirTier0Layers = sessionContext.serviceConfig.pirLayout.tier0Layers,
                 pirTier1Layers = sessionContext.serviceConfig.pirLayout.tier1Layers,
                 pirPolyLen = sessionContext.serviceConfig.pirLayout.polyLen,
