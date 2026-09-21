@@ -3,9 +3,11 @@ package co.electriccoin.zcash.ui.common.usecase
 import cash.z.ecc.android.sdk.VotingShareTrackingSession
 import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import cash.z.ecc.android.sdk.model.ZcashNetwork
+import cash.z.ecc.android.sdk.model.voting.VotingShareTrackingQuiescence
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
+import co.electriccoin.zcash.ui.common.repository.VotingRecoveryPhase
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import kotlinx.coroutines.Dispatchers
@@ -52,7 +54,17 @@ class TrackVotingSharesUseCase(
             val accountUuidString = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
             val recovery =
                 votingRecoveryRepository.get(accountUuidString, roundId)
-                    ?: return@withContext VotingShareTrackingResult.Completed
+                    ?: run {
+                        // No recovery snapshot exists at all -- nothing to track for this round,
+                        // before a session is even opened. Genuinely completed, same as the
+                        // AllConfirmed/NothingToTrack paths at the tail of this function below.
+                        votingRecoveryRepository.setPhase(
+                            accountUuidString,
+                            roundId,
+                            VotingRecoveryPhase.SHARES_SUBMITTED
+                        )
+                        return@withContext VotingShareTrackingResult.Completed
+                    }
             val roundVoteServerUrls =
                 recovery.voteServerUrls
                     .ifEmpty {
@@ -108,11 +120,24 @@ class TrackVotingSharesUseCase(
                         withContext(NonCancellable) { session.close() }
                     }
 
-                if (report == null || report.unrecoverable.isNotEmpty() || report.ambiguous.isNotEmpty()) {
-                    VotingShareTrackingResult.Pending(nextDelayMillis(roundId))
-                } else {
+                val completed =
+                    report != null &&
+                        report.unrecoverable.isEmpty() &&
+                        report.ambiguous.isEmpty() &&
+                        (
+                            report.quiescence is VotingShareTrackingQuiescence.AllConfirmed ||
+                                report.quiescence is VotingShareTrackingQuiescence.NothingToTrack
+                        )
+                if (completed) {
                     resetDelay(roundId)
+                    votingRecoveryRepository.setPhase(
+                        accountUuidString,
+                        roundId,
+                        VotingRecoveryPhase.SHARES_SUBMITTED
+                    )
                     VotingShareTrackingResult.Completed
+                } else {
+                    VotingShareTrackingResult.Pending(nextDelayMillis(roundId))
                 }
             } finally {
                 withContext(NonCancellable) {

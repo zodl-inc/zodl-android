@@ -21,6 +21,7 @@ import co.electriccoin.zcash.ui.common.model.voting.requireKnownPolyLen
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
+import co.electriccoin.zcash.ui.common.repository.VotingRecoveryPhase
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.toCanonicalUuidString
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
@@ -278,6 +279,15 @@ class SubmitVotesUseCase(
                     // call even when quiescence was NoWorkLeft: TrackVotingSharesUseCase's own
                     // first pass short-circuits immediately when no unconfirmed shares remain.
                     votingShareTrackingScheduler.schedule(roundId)
+
+                    // Marks the durable recovery snapshot as having successfully submitted votes
+                    // for this round -- restores the pre-rewrite phase transition that was lost
+                    // in the round-driver port (Task 9 of the production-completion plan).
+                    votingRecoveryRepository.setPhase(
+                        accountUuidString,
+                        roundId,
+                        VotingRecoveryPhase.VOTES_SUBMITTED
+                    )
 
                     // Marks this round submitted in the durable recovery snapshot -- without
                     // this, VoteCoinholderPollingVM's persisted (cross-process-restart) fallback
