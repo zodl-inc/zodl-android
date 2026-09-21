@@ -4,6 +4,7 @@ package co.electriccoin.zcash.ui.common.provider
 
 import cash.z.ecc.android.sdk.VotingDbSession
 import cash.z.ecc.android.sdk.VotingRoundSession
+import cash.z.ecc.android.sdk.VotingShareTrackingSession
 import cash.z.ecc.android.sdk.VotingSdk
 import cash.z.ecc.android.sdk.model.AccountUuid
 import cash.z.ecc.android.sdk.model.BlockHeight
@@ -206,18 +207,15 @@ interface VotingCryptoClient {
     ): VotingRoundSession
 
     /**
-     * Drives [roundId]'s unconfirmed helper shares to confirmation. Standalone and session-less
-     * (see [VotingDbSession.trackShares]'s own doc comment).
+     * Opens a cancellable share-tracking session for [roundId]. See
+     * [VotingDbSession.openShareTrackingSession]'s doc comment.
      * @throws RuntimeException if the native layer reports a failure.
      */
     @Throws(RuntimeException::class)
-    suspend fun trackShares(
+    suspend fun openShareTrackingSession(
         dbHandle: Long,
-        roundId: String,
-        torRuntime: Long,
-        helperUrls: List<String>,
-        voteEndTimeSeconds: Long
-    ): VotingShareTrackingReport
+        roundId: String
+    ): VotingShareTrackingSession
 
     /** @throws RuntimeException if the native layer reports a failure. */
     @Throws(RuntimeException::class)
@@ -499,15 +497,12 @@ class VotingCryptoClientImpl : VotingCryptoClient {
                 )
         }
 
-    override suspend fun trackShares(
+    override suspend fun openShareTrackingSession(
         dbHandle: Long,
-        roundId: String,
-        torRuntime: Long,
-        helperUrls: List<String>,
-        voteEndTimeSeconds: Long
-    ): VotingShareTrackingReport =
+        roundId: String
+    ): VotingShareTrackingSession =
         withContext(Dispatchers.IO) {
-            session(dbHandle).trackShares(roundId, torRuntime, helperUrls, voteEndTimeSeconds)
+            session(dbHandle).openShareTrackingSession(roundId)
         }
 
     override suspend fun computeShareNullifier(
