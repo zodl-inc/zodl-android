@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import cash.z.ecc.android.sdk.VotingShareTrackingSession
 import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -9,6 +10,8 @@ import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -21,21 +24,18 @@ sealed interface VotingShareTrackingResult {
 }
 
 /**
- * voting-5.0.0 round-driver port note (Task 6): the old hand-rolled per-share polling/resubmit
- * loop is replaced with a single [VotingCryptoClient.trackShares] call, which drives every
- * unconfirmed share for the round to quiescence internally via the crate's own
- * `ShareTrackingDriver` before returning.
+ * voting-5.0.0 production-completion note: `trackShares` is now a cancellable session
+ * ([VotingCryptoClient.openShareTrackingSession]), replacing the standalone JNI export that had
+ * no reachable cancel path and caused indefinite hangs under WorkManager (see Phase 1 of
+ * `2026-09-21-round-driver-production-completion-design.md`). [cancel] lets
+ * [co.electriccoin.zcash.work.VotingShareTrackingWorker.onStopped] interrupt an in-flight
+ * [invoke] call for the same [roundId] within seconds rather than leaving an orphaned native
+ * thread running for the full WorkManager execution-time-limit window.
  *
- * An incomplete result (missing server URLs, or a non-empty `unrecoverable`/`ambiguous` in the
- * report) returns [VotingShareTrackingResult.Pending] with an exponentially backed-off delay --
- * see [nextDelayMillis] -- rather than the fixed [DEFAULT_DELAY_MILLIS] every time; the delay
- * resets once a call for that round fully [VotingShareTrackingResult.Completed]s.
- *
- * Out of scope: full mid-run cancellation of an in-flight `trackSharesNative` call. This is only
- * a retry-cadence improvement, not a cancellation mechanism -- `trackSharesNative` is a
- * session-less, standalone JNI export (no `RoundSessionHandle` a separate JNI call could reach to
- * cancel it, unlike `runRoundNative`), a known gap documented in full in
- * `share_tracking_driver.rs`'s module doc comment; it remains a known gap for a future task.
+ * `activeSessions` is a companion-scoped map (not an instance field) for the same reason
+ * `attemptCounts` below is: Koin provides this use case via `factoryOf`, so a fresh instance
+ * backs every retried `VotingShareTrackingWorker` run, but `cancel()` must be able to reach a
+ * session opened by a *different* instance's still-in-flight [invoke] call.
  */
 class TrackVotingSharesUseCase(
     private val votingRecoveryRepository: VotingRecoveryRepository,
@@ -91,15 +91,22 @@ class TrackVotingSharesUseCase(
                     } catch (e: TorUnavailableException) {
                         0L
                     }
+
+                val session = votingCryptoClient.openShareTrackingSession(dbHandle, roundId)
+                registerSession(roundId, session)
                 val report =
-                    votingCryptoClient.trackShares(
-                        dbHandle = dbHandle,
-                        roundId = roundId,
-                        torRuntime = torRuntime,
-                        helperUrls = roundVoteServerUrls,
-                        voteEndTimeSeconds = recovery.voteEndEpochSeconds ?: -1L
-                    )
-                if (report.unrecoverable.isNotEmpty() || report.ambiguous.isNotEmpty()) {
+                    try {
+                        session.run(
+                            torRuntime = torRuntime,
+                            helperUrls = roundVoteServerUrls,
+                            voteEndTimeSeconds = recovery.voteEndEpochSeconds ?: -1L
+                        )
+                    } finally {
+                        unregisterSession(roundId, session)
+                        withContext(NonCancellable) { session.close() }
+                    }
+
+                if (report == null || report.unrecoverable.isNotEmpty() || report.ambiguous.isNotEmpty()) {
                     VotingShareTrackingResult.Pending(nextDelayMillis(roundId))
                 } else {
                     resetDelay(roundId)
@@ -112,9 +119,37 @@ class TrackVotingSharesUseCase(
             }
         }
 
+    /**
+     * Cancels [roundId]'s in-flight [invoke] call, if one opened a session on this or another
+     * `TrackVotingSharesUseCase` instance. A no-op if none is active -- this must be safe to call
+     * unconditionally from [co.electriccoin.zcash.work.VotingShareTrackingWorker.onStopped],
+     * which cannot know whether `invoke` had reached the session-open point yet when the stop
+     * signal arrived.
+     */
+    suspend fun cancel(roundId: String) {
+        activeSessionsMutex.withLock { activeSessions[roundId] }?.cancel()
+    }
+
+    private suspend fun registerSession(
+        roundId: String,
+        session: VotingShareTrackingSession
+    ) = activeSessionsMutex.withLock { activeSessions[roundId] = session }
+
+    private suspend fun unregisterSession(
+        roundId: String,
+        session: VotingShareTrackingSession
+    ) = activeSessionsMutex.withLock {
+        if (activeSessions[roundId] === session) {
+            activeSessions.remove(roundId)
+        }
+    }
+
     private companion object {
         const val DEFAULT_DELAY_MILLIS = 15_000L
         const val MAX_DELAY_MILLIS = 120_000L
+
+        private val activeSessionsMutex = Mutex()
+        private val activeSessions = mutableMapOf<String, VotingShareTrackingSession>()
 
         // Per-round consecutive-incomplete-attempt counter. Lives on the companion (i.e. shared
         // by every `TrackVotingSharesUseCase` instance), not as an instance field, because Koin
