@@ -9,7 +9,9 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.ContextCompat
 import co.electriccoin.zcash.ui.design.util.AndroidQrCodeImageGenerator
 import co.electriccoin.zcash.ui.design.util.JvmQrCodeGenerator
+import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.createConfiguration
+import co.electriccoin.zcash.ui.design.util.getString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -20,8 +22,8 @@ class ShareQRUseCase(
     @Suppress("MagicNumber")
     suspend operator fun invoke(
         qrData: String,
-        shareText: String,
-        sharePickerText: String,
+        shareText: StringResource,
+        sharePickerText: StringResource,
         filenamePrefix: String,
         @DrawableRes centerIcon: Int? = null
     ) = withContext(Dispatchers.Default) {
@@ -60,8 +62,8 @@ class ShareQRUseCase(
                 },
             filePrefix = filenamePrefix,
             fileSuffix = ".png",
-            shareText = shareText,
-            sharePickerText = sharePickerText,
+            shareText = shareText.getString(context),
+            sharePickerText = sharePickerText.getString(context),
         )
     }
 
