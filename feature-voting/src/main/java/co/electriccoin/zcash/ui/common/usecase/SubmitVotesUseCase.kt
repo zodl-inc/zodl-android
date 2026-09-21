@@ -7,6 +7,7 @@ import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import cash.z.ecc.android.sdk.model.voting.VotingBallotIntent
 import cash.z.ecc.android.sdk.model.voting.VotingDelegationInputs
+import cash.z.ecc.android.sdk.model.voting.VotingNextStep
 import cash.z.ecc.android.sdk.model.voting.VotingProposalRosterEntry
 import cash.z.ecc.android.sdk.model.voting.VotingRoundDriveProgressListener
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
@@ -230,6 +231,12 @@ class SubmitVotesUseCase(
                     // doc comment for why a per-event bundle/proposal id was dropped instead.
                     var lastCompletedProposals: Int? = null
                     var lastTotalProposals: Int? = null
+                    // Per-bundle progress ledger, mirroring the old 4.0.0 SubmissionProgressLedger's
+                    // "report the slowest bundle" semantics: RoundDriveEventView's CastVote step
+                    // already carries bundleIndex (confirmed live in logcat), so this needs no
+                    // SDK/Rust change -- see Phase 4 of the production-completion design doc.
+                    // Monotonic per bundle (never regresses), keyed by bundleIndex.
+                    val bundleProgressLedger = mutableMapOf<Int, Float>()
                     val progressListener =
                         VotingRoundDriveProgressListener { progress ->
                             progress.tally?.let { tally ->
@@ -238,11 +245,21 @@ class SubmitVotesUseCase(
                                 lastTotalProposals =
                                     maxOf(lastTotalProposals ?: 0, tally.totalProposals)
                             }
+                            val bundleIndex = (progress.step as? VotingNextStep.CastVote)?.bundleIndex
+                            val proofProgress = progress.proofProgress
+                            val ledgerMin =
+                                if (bundleIndex != null && proofProgress != null) {
+                                    bundleProgressLedger[bundleIndex] =
+                                        maxOf(bundleProgressLedger[bundleIndex] ?: 0f, proofProgress)
+                                    bundleProgressLedger.values.minOrNull()
+                                } else {
+                                    bundleProgressLedger.values.minOrNull()
+                                }
                             onProgress(
                                 VotingSubmissionProgress.RunningRound(
                                     completedProposals = lastCompletedProposals,
                                     totalProposals = lastTotalProposals,
-                                    proofProgress = progress.proofProgress
+                                    proofProgress = ledgerMin ?: progress.proofProgress
                                 )
                             )
                             // CHP_BENCH — see ChpBenchLog.kt's own note: local-only, never merge.
