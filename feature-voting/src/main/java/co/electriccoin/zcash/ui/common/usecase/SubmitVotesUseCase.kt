@@ -35,9 +35,9 @@ import java.io.File
 
 /**
  * voting-5.0.0 round-driver port note: no longer thrown by this file (Keystone signing, the old
- * source of protocol-auth failures, is deferred per Task 7) — kept only because
- * `VoteConfirmSubmissionVM` still pattern-matches on this type for a specific UI status. Revisit
- * when Keystone signing is re-ported.
+ * source of protocol-auth failures, was deferred per Task 7 but is now routed through
+ * [VotingKeystoneSessionHolder.runToCompletion] as of Task 18) — kept only because
+ * `VoteConfirmSubmissionVM` still pattern-matches on this type for a specific UI status.
  */
 class VotingAuthorizationException(
     cause: Exception
@@ -54,10 +54,12 @@ class VotingAuthorizationException(
  * that sequencing internally behind [VotingCryptoClient.openRoundSession] + one
  * [cash.z.ecc.android.sdk.VotingRoundSession.run] call.
  *
- * Scope cut for this pass (see the port plan's "Scope cut" section): Keystone accounts are
- * rejected outright (Task 7 deferred); there is no persisted recovery snapshot — resuming a round
- * means calling this again, which re-derives everything from the round's own on-disk/on-chain
- * state via [VotingRoundSession.run] rather than a local state machine (Task 8 default); errors
+ * Scope cut for this pass (see the port plan's "Scope cut" section): Keystone accounts are now
+ * routed through [VotingKeystoneSessionHolder.runToCompletion] instead of this method's own
+ * open/run sequence (Task 18) rather than rejected outright; there is no persisted recovery
+ * snapshot — resuming a round means calling this again, which re-derives everything from the
+ * round's own on-disk/on-chain state via [VotingRoundSession.run] rather than a local state
+ * machine (Task 8 default); errors
  * are passed through as one generic [VotingErrors.UnexpectedSdkResponse] rather than mapped
  * per-failure-type (Task 9-lite). Do not treat this as a full replacement for the pre-4.0
  * implementation's UI-facing error granularity.
@@ -371,11 +373,21 @@ class SubmitVotesUseCase(
      * [accountUuidString] (the hex account-scope id) is still what the hotkey seed provider and the
      * recovery-repository calls key on, same as everywhere else in this file.
      *
+     * [VotingKeystoneSessionHolder.ensureDelegationPipeline] is called here even though the
+     * session is normally already open from the Sign/Scan flow -- it's a no-op in that common
+     * case, but re-establishes the pipeline if a prior attempt's failure left it closed, which is
+     * what makes it safe below to only close the retained session on genuine success rather than
+     * unconditionally in a `finally`. [VotingRecoveryRepository.storeProposalSelections] +
+     * [VotingKeystoneSessionHolder.setBallotIntents] are called next, mirroring the non-Keystone
+     * path's identical sequence exactly -- without them the round has no cast draft for any
+     * proposal and [VotingRoundSession.run] quiesces `NeedsBallot` instead of casting anything;
+     * nothing else in the Keystone flow (the Sign/Scan screens only sign bundles) ever sets them.
+     *
      * Progress reporting here is intentionally simpler than the non-Keystone path's per-bundle
      * ledger (tally-only, no per-bundle-index floor) -- see this task's report for why that
      * inconsistency was left in place rather than ported over.
      */
-    @Suppress("LongParameterList")
+    @Suppress("LongMethod", "LongParameterList")
     private suspend fun submitKeystoneVotes(
         roundId: String,
         choices: Map<Int, Int>,
@@ -386,11 +398,30 @@ class SubmitVotesUseCase(
         val sessionContext = resolveVotingRoundSession(roundId)
         val session = sessionContext.session
         val walletDbPath = synchronizerProvider.getVotingWalletDbPath()
+        val votingDbPath =
+            File(walletDbPath)
+                .parentFile
+                ?.resolve("voting.sqlite3")
+                ?.absolutePath
+                ?: error("Unable to derive voting DB path from $walletDbPath")
         val synchronizer = synchronizerProvider.getSynchronizer()
+        val networkId = synchronizer.network.toVotingNetworkId()
         val treeStateBytes = synchronizer.getTreeState(BlockHeight.new(session.snapshotHeight))
         val hotkeySecret =
-            checkNotNull(votingHotkeySeedProvider.get(accountUuidString)) {
-                "Missing hotkey seed for Keystone round $roundId"
+            votingHotkeySeedProvider.get(accountUuidString)
+                ?: throw VotingSubmissionRecoverableException(VotingErrors.MissingHotkeySeed(roundId))
+        val voteServerUrls =
+            sessionContext.serviceConfig.voteServers
+                .map { endpoint -> endpoint.url.trimEnd('/') }
+                .distinct()
+        // Same Tor policy as the non-Keystone path above: `0L` is the SDK's "no Tor runtime"
+        // sentinel, only used when Tor is genuinely disabled; TorInitializationErrorException
+        // (Tor is ON but failed to bootstrap) must propagate.
+        val torRuntime =
+            try {
+                synchronizer.getVotingTorRuntimeHandle()
+            } catch (e: TorUnavailableException) {
+                0L
             }
 
         val delegationInputs =
@@ -414,6 +445,43 @@ class SubmitVotesUseCase(
                 nullifierImtRoot = session.nullifierIMTRoot
             )
 
+        votingKeystoneSessionHolder.ensureDelegationPipeline(
+            roundId = roundId,
+            votingDbPath = votingDbPath,
+            accountUuidString = accountUuidString,
+            networkId = networkId,
+            torRuntime = torRuntime,
+            proposals =
+                session.proposals.map { proposal ->
+                    VotingProposalRosterEntry(proposalId = proposal.id, numOptions = proposal.options.size)
+                },
+            hotkeySecret = hotkeySecret,
+            chainEndpoints = voteServerUrls,
+            ceremonyStartSeconds = session.ceremonyStart.epochSecond,
+            voteEndTimeSeconds = session.voteEndTime.epochSecond,
+            delegationInputs = delegationInputs
+        )
+
+        votingRecoveryRepository.storeProposalSelections(
+            accountUuid = accountUuidString,
+            roundId = roundId,
+            proposalSelections =
+                choices.mapValues { (proposalId, choiceId) ->
+                    val numOptions =
+                        session.proposals
+                            .first { proposal -> proposal.id == proposalId }
+                            .options.size
+                    VotingProposalSelection(
+                        choiceId = choiceId,
+                        numOptions = numOptions
+                    )
+                }
+        )
+        votingKeystoneSessionHolder.setBallotIntents(
+            roundId = roundId,
+            intents = choices.map { (proposalId, choiceId) -> VotingBallotIntent(proposalId, choiceId) }
+        )
+
         var lastCompletedProposals: Int? = null
         var lastTotalProposals: Int? = null
         val progressListener =
@@ -432,18 +500,22 @@ class SubmitVotesUseCase(
             }
 
         val report =
-            try {
-                votingKeystoneSessionHolder.runToCompletion(roundId, delegationInputs, progressListener)
-                    ?: throw VotingSubmissionRecoverableException(
-                        VotingErrors.UnexpectedSdkResponse("Keystone round session run() returned no report")
-                    )
-            } finally {
-                withContext(NonCancellable) { votingKeystoneSessionHolder.close(roundId) }
-            }
+            votingKeystoneSessionHolder.runToCompletion(roundId, delegationInputs, progressListener)
+                ?: throw VotingSubmissionRecoverableException(
+                    VotingErrors.UnexpectedSdkResponse("Keystone round session run() returned no report")
+                )
 
         report.toVotingErrorOrNull(roundId)?.let { votingError ->
             throw VotingSubmissionRecoverableException(votingError)
         }
+
+        // Only close on genuine success -- unlike the non-Keystone path's roundSession (freshly
+        // opened and unconditionally closed every call), this session is retained across the
+        // Sign/Scan flow and must survive a transient failure here (e.g. a network blip mid
+        // chain-submission) so a retry can resume the same session via ensureDelegationPipeline's
+        // no-op path above instead of hitting a "no open session" checkNotNull with no way back
+        // in (the Sign screen refuses to re-open once every bundle is already signed).
+        withContext(NonCancellable) { votingKeystoneSessionHolder.close(roundId) }
 
         votingShareTrackingScheduler.schedule(roundId)
         votingRecoveryRepository.setPhase(accountUuidString, roundId, VotingRecoveryPhase.VOTES_SUBMITTED)

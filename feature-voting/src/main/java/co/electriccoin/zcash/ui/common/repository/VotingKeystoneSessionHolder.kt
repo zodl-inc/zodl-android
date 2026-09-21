@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.repository
 
 import cash.z.ecc.android.sdk.VotingRoundSession
+import cash.z.ecc.android.sdk.model.voting.VotingBallotIntent
 import cash.z.ecc.android.sdk.model.voting.VotingDelegationInputs
 import cash.z.ecc.android.sdk.model.voting.VotingKeystoneSigningRequest
 import cash.z.ecc.android.sdk.model.voting.VotingProposalRosterEntry
@@ -121,6 +122,26 @@ class VotingKeystoneSessionHolder(
                 }
             session.getKeystoneSigningRequests(bundleIndices)
         }
+
+    /**
+     * Records ballot decisions on the retained session -- the only call site of
+     * [VotingRoundSession.setBallotIntents] for the Keystone path, mirroring exactly what
+     * `SubmitVotesUseCase`'s non-Keystone path calls directly on its own freshly-opened session.
+     * Without this, the round has no cast draft for any proposal and [VotingRoundSession.run]
+     * quiesces `NeedsBallot` instead of casting anything -- there is no other place in the
+     * Keystone flow (Sign/Scan screens only sign bundles, they never set ballot intents) where
+     * this can happen.
+     */
+    suspend fun setBallotIntents(
+        roundId: String,
+        intents: List<VotingBallotIntent>
+    ) = mutex.withLock {
+        val session =
+            checkNotNull(roundSession?.takeIf { openRoundId == roundId }) {
+                "No open Keystone signing session for round $roundId"
+            }
+        session.setBallotIntents(intents)
+    }
 
     /** Continues driving [roundId] to quiescence after every bundle is signed. */
     suspend fun runToCompletion(
