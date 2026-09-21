@@ -7,7 +7,6 @@ import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import cash.z.ecc.android.sdk.model.voting.VotingBallotIntent
 import cash.z.ecc.android.sdk.model.voting.VotingDelegationInputs
-import cash.z.ecc.android.sdk.model.voting.VotingNextStep
 import cash.z.ecc.android.sdk.model.voting.VotingProposalRosterEntry
 import cash.z.ecc.android.sdk.model.voting.VotingRoundDriveProgressListener
 import cash.z.ecc.android.sdk.model.voting.VotingRoundQuiescence
@@ -24,6 +23,7 @@ import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
 import co.electriccoin.zcash.ui.common.repository.toCanonicalUuidString
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
+import co.electriccoin.zcash.work.VotingShareTrackingScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
@@ -66,6 +66,7 @@ class SubmitVotesUseCase(
     private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
     private val getWalletSeedBytes: GetWalletSeedBytesUseCase,
     private val prepareVotingRound: PrepareVotingRoundUseCase,
+    private val votingShareTrackingScheduler: VotingShareTrackingScheduler,
 ) {
     @Suppress("LongMethod")
     suspend operator fun invoke(
@@ -198,21 +199,30 @@ class SubmitVotesUseCase(
                         )
 
                     val chpBenchRunStart = System.currentTimeMillis()
+                    // Ratchet, not overwrite: the round-driver interleaves several bundles
+                    // concurrently (confirmed on-device -- a Delegate-phase event with no tally
+                    // update for bundle B can arrive between two CastVote events for bundle A),
+                    // so the last event received is not necessarily the most complete state.
+                    // completedProposals/totalProposals come from PlanRefreshed's own tally --
+                    // a stable "N of M" measured against the run's first plan (see
+                    // VotingRoundWorkTally's doc comment) -- and only ever move forward here,
+                    // the same fix Vizor Wallet's own zcash_voting v5.0.0 integration uses for
+                    // the identical interleaving. See VotingSubmissionProgress.RunningRound's
+                    // doc comment for why a per-event bundle/proposal id was dropped instead.
+                    var lastCompletedProposals: Int? = null
+                    var lastTotalProposals: Int? = null
                     val progressListener =
                         VotingRoundDriveProgressListener { progress ->
-                            val proposalId =
-                                when (val step = progress.step) {
-                                    is VotingNextStep.CastVote -> step.proposalId
-                                    is VotingNextStep.AdvanceVote -> step.proposalId
-                                    is VotingNextStep.AdvanceVoteBatch -> step.proposalId
-                                    is VotingNextStep.SubmitShares -> step.proposalId
-                                    is VotingNextStep.ConfirmShare -> step.proposalId
-                                    else -> null
-                                }
+                            progress.tally?.let { tally ->
+                                lastCompletedProposals =
+                                    maxOf(lastCompletedProposals ?: 0, tally.completedProposals)
+                                lastTotalProposals =
+                                    maxOf(lastTotalProposals ?: 0, tally.totalProposals)
+                            }
                             onProgress(
                                 VotingSubmissionProgress.RunningRound(
-                                    bundleIndex = progress.step?.bundleIndex,
-                                    proposalId = proposalId,
+                                    completedProposals = lastCompletedProposals,
+                                    totalProposals = lastTotalProposals,
                                     proofProgress = progress.proofProgress
                                 )
                             )
@@ -259,6 +269,13 @@ class SubmitVotesUseCase(
                                 )
                             )
                     }
+
+                    // Schedules VotingShareTrackingWorker unconditionally on success (matches the
+                    // pre-parking-commit round-driver implementation of this call, which this
+                    // rewrite lost -- see git history for the exact prior call site). Safe to
+                    // call even when quiescence was NoWorkLeft: TrackVotingSharesUseCase's own
+                    // first pass short-circuits immediately when no unconfirmed shares remain.
+                    votingShareTrackingScheduler.schedule(roundId)
 
                     VotingSubmissionResult(submittedProposalCount = report.completedProposals)
                 } finally {
