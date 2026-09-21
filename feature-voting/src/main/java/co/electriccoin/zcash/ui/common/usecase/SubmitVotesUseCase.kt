@@ -21,6 +21,7 @@ import co.electriccoin.zcash.ui.common.model.voting.requireKnownPolyLen
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
+import co.electriccoin.zcash.ui.common.repository.VotingKeystoneSessionHolder
 import co.electriccoin.zcash.ui.common.repository.VotingProposalSelection
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryPhase
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
@@ -71,6 +72,7 @@ class SubmitVotesUseCase(
     private val prepareVotingRound: PrepareVotingRoundUseCase,
     private val votingShareTrackingScheduler: VotingShareTrackingScheduler,
     private val votingRecoveryRepository: VotingRecoveryRepository,
+    private val votingKeystoneSessionHolder: VotingKeystoneSessionHolder,
 ) {
     @Suppress("LongMethod")
     suspend operator fun invoke(
@@ -85,10 +87,22 @@ class SubmitVotesUseCase(
             val chpBenchStart = System.currentTimeMillis()
 
             val selectedAccount = getSelectedWalletAccount()
-            if (selectedAccount is KeystoneAccount) {
-                throw VotingSubmissionRecoverableException(VotingErrors.KeystoneNotSupported)
-            }
             val accountUuidString = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
+            if (selectedAccount is KeystoneAccount) {
+                // Every bundle already carries a persisted Keystone signature by the time
+                // submission reaches this point -- the Sign screen only navigates back to
+                // VoteConfirmSubmission once ScanKeystoneVotingPCZTViewModel.onScanned's
+                // isFinished branch fires for the last bundle. What remains is exactly what
+                // VotingKeystoneSessionHolder's already-open, already-delegation-satisfied
+                // session needs: one more run() call to advance vote casting to completion.
+                return@withContext submitKeystoneVotes(
+                    roundId = roundId,
+                    choices = choices,
+                    accountUuidString = accountUuidString,
+                    canonicalAccountUuid = selectedAccount.sdkAccount.accountUuid.toCanonicalUuidString(),
+                    onProgress = onProgress
+                )
+            }
 
             when (val preparation = prepareVotingRound(roundId)) {
                 is VotingRoundPreparationResult.Ready -> Unit
@@ -341,6 +355,109 @@ class SubmitVotesUseCase(
                 chpBenchLog("total", roundId, System.currentTimeMillis() - chpBenchStart)
             }
         }
+
+    /**
+     * Continues a Keystone round to completion on the already-open, already-delegation-satisfied
+     * session [votingKeystoneSessionHolder] retained across the Sign/Scan flow -- every bundle
+     * already carries a persisted Keystone signature by the time this is reached (the Sign screen
+     * only navigates back to VoteConfirmSubmission once every bundle is signed), so this is one
+     * more [VotingKeystoneSessionHolder.runToCompletion] call rather than a fresh
+     * [VotingCryptoClient.openRoundSession] the way the non-Keystone path above opens one.
+     *
+     * [canonicalAccountUuid] (not [accountUuidString]) is what [VotingDelegationInputs.accountUuid]
+     * needs -- the native side parses it with `uuid::Uuid::parse_str` to look the account up in the
+     * wallet database, matching the derivation already established by the non-Keystone path above
+     * and by [co.electriccoin.zcash.ui.common.repository.VotingKeystoneRepositoryImpl.createPcztEncoder].
+     * [accountUuidString] (the hex account-scope id) is still what the hotkey seed provider and the
+     * recovery-repository calls key on, same as everywhere else in this file.
+     *
+     * Progress reporting here is intentionally simpler than the non-Keystone path's per-bundle
+     * ledger (tally-only, no per-bundle-index floor) -- see this task's report for why that
+     * inconsistency was left in place rather than ported over.
+     */
+    @Suppress("LongParameterList")
+    private suspend fun submitKeystoneVotes(
+        roundId: String,
+        choices: Map<Int, Int>,
+        accountUuidString: String,
+        canonicalAccountUuid: String,
+        onProgress: (VotingSubmissionProgress) -> Unit
+    ): VotingSubmissionResult {
+        val sessionContext = resolveVotingRoundSession(roundId)
+        val session = sessionContext.session
+        val walletDbPath = synchronizerProvider.getVotingWalletDbPath()
+        val synchronizer = synchronizerProvider.getSynchronizer()
+        val treeStateBytes = synchronizer.getTreeState(BlockHeight.new(session.snapshotHeight))
+        val hotkeySecret =
+            checkNotNull(votingHotkeySeedProvider.get(accountUuidString)) {
+                "Missing hotkey seed for Keystone round $roundId"
+            }
+
+        val delegationInputs =
+            VotingDelegationInputs(
+                walletDbPath = walletDbPath,
+                accountUuid = canonicalAccountUuid,
+                anchorTreeStateBytes = treeStateBytes,
+                hotkeySecret = hotkeySecret,
+                pirEndpoints = sessionContext.serviceConfig.pirEndpoints.map { it.url },
+                pirDepth = sessionContext.serviceConfig.pirLayout.requireKnownPolyLen().pirDepth,
+                pirTier0Layers = sessionContext.serviceConfig.pirLayout.tier0Layers,
+                pirTier1Layers = sessionContext.serviceConfig.pirLayout.tier1Layers,
+                pirPolyLen = sessionContext.serviceConfig.pirLayout.polyLen,
+                keystone = true,
+                softwareSeed = null,
+                keystoneSig = null,
+                keystoneSighash = null,
+                snapshotHeight = session.snapshotHeight,
+                eaPk = session.eaPK,
+                ncRoot = session.ncRoot,
+                nullifierImtRoot = session.nullifierIMTRoot
+            )
+
+        var lastCompletedProposals: Int? = null
+        var lastTotalProposals: Int? = null
+        val progressListener =
+            VotingRoundDriveProgressListener { progress ->
+                progress.tally?.let { tally ->
+                    lastCompletedProposals = maxOf(lastCompletedProposals ?: 0, tally.completedProposals)
+                    lastTotalProposals = maxOf(lastTotalProposals ?: 0, tally.totalProposals)
+                }
+                onProgress(
+                    VotingSubmissionProgress.RunningRound(
+                        completedProposals = lastCompletedProposals,
+                        totalProposals = lastTotalProposals,
+                        proofProgress = progress.proofProgress
+                    )
+                )
+            }
+
+        val report =
+            try {
+                votingKeystoneSessionHolder.runToCompletion(roundId, delegationInputs, progressListener)
+                    ?: throw VotingSubmissionRecoverableException(
+                        VotingErrors.UnexpectedSdkResponse("Keystone round session run() returned no report")
+                    )
+            } finally {
+                withContext(NonCancellable) { votingKeystoneSessionHolder.close(roundId) }
+            }
+
+        report.toVotingErrorOrNull(roundId)?.let { votingError ->
+            throw VotingSubmissionRecoverableException(votingError)
+        }
+
+        votingShareTrackingScheduler.schedule(roundId)
+        votingRecoveryRepository.setPhase(accountUuidString, roundId, VotingRecoveryPhase.VOTES_SUBMITTED)
+        choices.keys.forEach { proposalId ->
+            votingRecoveryRepository.markProposalSubmitted(accountUuidString, roundId, proposalId)
+        }
+        votingRecoveryRepository.storeSubmittedAt(
+            accountUuidString,
+            roundId,
+            System.currentTimeMillis() / MILLIS_PER_SECOND
+        )
+
+        return VotingSubmissionResult(submittedProposalCount = report.completedProposals)
+    }
 }
 
 private fun ZcashNetwork.toVotingNetworkId() = if (isMainnet()) 1 else 0

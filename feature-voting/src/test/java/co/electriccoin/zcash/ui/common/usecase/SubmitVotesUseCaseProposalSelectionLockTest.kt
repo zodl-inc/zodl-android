@@ -20,6 +20,7 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableE
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
+import co.electriccoin.zcash.ui.common.repository.VotingKeystoneSessionHolder
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.work.VotingShareTrackingScheduler
 import io.mockk.coEvery
@@ -69,6 +70,7 @@ class SubmitVotesUseCaseProposalSelectionLockTest {
             val votingCryptoClient = mockk<VotingCryptoClient>(relaxed = true)
             val votingHotkeySeedProvider = mockk<VotingHotkeySeedProvider>()
             val votingShareTrackingScheduler = mockk<VotingShareTrackingScheduler>(relaxed = true)
+            val votingKeystoneSessionHolder = mockk<VotingKeystoneSessionHolder>(relaxed = true)
             val synchronizerProvider = mockk<SynchronizerProvider>()
             val getSelectedWalletAccount = mockk<GetSelectedWalletAccountUseCase>()
             val getWalletSeedBytes = mockk<GetWalletSeedBytesUseCase>()
@@ -130,7 +132,8 @@ class SubmitVotesUseCaseProposalSelectionLockTest {
                     getWalletSeedBytes = getWalletSeedBytes,
                     prepareVotingRound = prepareVotingRound,
                     votingShareTrackingScheduler = votingShareTrackingScheduler,
-                    votingRecoveryRepository = votingRecoveryRepository
+                    votingRecoveryRepository = votingRecoveryRepository,
+                    votingKeystoneSessionHolder = votingKeystoneSessionHolder
                 )
 
             val exception =

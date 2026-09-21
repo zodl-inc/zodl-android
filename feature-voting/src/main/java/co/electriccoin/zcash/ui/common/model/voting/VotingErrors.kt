@@ -72,8 +72,13 @@ sealed interface VotingErrors {
     }
 
     /**
-     * Keystone-signed voting submission is not available in this build (deferred pending a
-     * later task); the selected account is a hardware-wallet (Keystone) account.
+     * Keystone-signed voting submission is not available in this build; the selected account is
+     * a hardware-wallet (Keystone) account.
+     *
+     * No longer thrown as of the round-driver production-completion port's Task 18 --
+     * `SubmitVotesUseCase` now routes Keystone accounts through
+     * `VotingKeystoneSessionHolder.runToCompletion` instead of gating them here. Left defined
+     * (not deleted) since removing a sealed-interface case is a larger, unrelated cleanup.
      */
     data object KeystoneNotSupported : VotingErrors {
         override val userMessage = "Keystone voting submission is not available in this build"
