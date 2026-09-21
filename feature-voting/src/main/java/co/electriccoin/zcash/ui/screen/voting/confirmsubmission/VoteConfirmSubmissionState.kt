@@ -21,6 +21,19 @@ sealed class VoteSubmissionStatus {
         val progress: Float
     ) : VoteSubmissionStatus()
 
+    /**
+     * The round-driver's single `roundSession.run()` call is in flight. Unlike [Submitting],
+     * there is no linear current/total count to show (see
+     * `VotingSubmissionProgress.RunningRound`'s doc comment) -- kept as its own state rather
+     * than reusing `Submitting(0, 0, ...)` so the UI never renders a literal "0 of 0".
+     * [proposalId]/[proofProgress] are `null` when the current step doesn't carry them (e.g. a
+     * `Delegate` step has no proposal id).
+     */
+    data class RunningRound(
+        val proposalId: Int?,
+        val proofProgress: Float?
+    ) : VoteSubmissionStatus()
+
     data object Completed : VoteSubmissionStatus()
 
     data class LocalAuthFailed(
@@ -40,7 +53,8 @@ sealed class VoteSubmissionStatus {
 internal fun VoteSubmissionStatus.isInFlight() =
     this is VoteSubmissionStatus.LocalAuthorizing ||
         this is VoteSubmissionStatus.Authorizing ||
-        this is VoteSubmissionStatus.Submitting
+        this is VoteSubmissionStatus.Submitting ||
+        this is VoteSubmissionStatus.RunningRound
 
 internal fun VoteSubmissionStatus.isFailure() =
     this is VoteSubmissionStatus.LocalAuthFailed ||

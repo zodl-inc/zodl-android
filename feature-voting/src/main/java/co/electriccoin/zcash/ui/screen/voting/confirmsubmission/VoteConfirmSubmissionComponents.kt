@@ -109,6 +109,15 @@ internal fun VoteSubmissionBottomSection(state: VoteConfirmSubmissionState) {
                     )
                 }
 
+                is VoteSubmissionStatus.RunningRound -> {
+                    val proposalId = status.proposalId
+                    if (proposalId != null) {
+                        stringRes(R.string.coinVote_confirmSubmission_progressSubmittingProposal, proposalId)
+                    } else {
+                        stringRes(R.string.coinVote_submission_continuedProcessingTitle)
+                    }
+                }
+
                 else -> {
                     null
                 }
@@ -152,6 +161,16 @@ private fun VoteConfirmSubmissionState.submissionProgress(): Float {
         is VoteSubmissionStatus.Submitting -> {
             val offset = if (includesAuthorizationProgress) delegationWeight else 0f
             (offset + status.progress * (1f - offset)).coerceIn(0f, 1f)
+        }
+
+        is VoteSubmissionStatus.RunningRound -> {
+            // proofProgress is per-step (e.g. one proposal's proving pass), not a whole-round
+            // fraction, but it's real, live movement rather than a frozen bar -- falls back to
+            // parking at the delegation-phase boundary when the current step doesn't carry one
+            // (e.g. between steps, or a Delegate step with no proof_progress payload).
+            val offset = if (includesAuthorizationProgress) delegationWeight else 0f
+            val stepProgress = status.proofProgress ?: 0f
+            (offset + stepProgress * (1f - offset)).coerceIn(0f, 1f)
         }
 
         else -> {

@@ -7,6 +7,7 @@ import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import cash.z.ecc.android.sdk.model.voting.VotingBallotIntent
 import cash.z.ecc.android.sdk.model.voting.VotingDelegationInputs
+import cash.z.ecc.android.sdk.model.voting.VotingNextStep
 import cash.z.ecc.android.sdk.model.voting.VotingProposalRosterEntry
 import cash.z.ecc.android.sdk.model.voting.VotingRoundDriveProgressListener
 import cash.z.ecc.android.sdk.model.voting.VotingRoundQuiescence
@@ -198,8 +199,23 @@ class SubmitVotesUseCase(
 
                     val chpBenchRunStart = System.currentTimeMillis()
                     val progressListener =
-                        VotingRoundDriveProgressListener { step, detail ->
-                            onProgress(VotingSubmissionProgress.RunningRound(step, detail))
+                        VotingRoundDriveProgressListener { progress ->
+                            val proposalId =
+                                when (val step = progress.step) {
+                                    is VotingNextStep.CastVote -> step.proposalId
+                                    is VotingNextStep.AdvanceVote -> step.proposalId
+                                    is VotingNextStep.AdvanceVoteBatch -> step.proposalId
+                                    is VotingNextStep.SubmitShares -> step.proposalId
+                                    is VotingNextStep.ConfirmShare -> step.proposalId
+                                    else -> null
+                                }
+                            onProgress(
+                                VotingSubmissionProgress.RunningRound(
+                                    bundleIndex = progress.step?.bundleIndex,
+                                    proposalId = proposalId,
+                                    proofProgress = progress.proofProgress
+                                )
+                            )
                             // CHP_BENCH — see ChpBenchLog.kt's own note: local-only, never merge.
                             // Not routed through chpBenchLog() itself (that helper's signature is
                             // timing-specific, elapsedMs required); this is the same "CHP_BENCH"
@@ -207,7 +223,7 @@ class SubmitVotesUseCase(
                             // silently stuck for its ~100-second-plus run.
                             Log.d(
                                 "CHP_BENCH",
-                                "app=zodl step=progress round=$roundId detail=$step:$detail"
+                                "app=zodl step=progress round=$roundId detail=$progress"
                             )
                         }
                     val report =
