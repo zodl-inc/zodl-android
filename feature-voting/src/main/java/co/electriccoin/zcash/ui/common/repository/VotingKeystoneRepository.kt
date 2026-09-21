@@ -251,17 +251,38 @@ class VotingKeystoneRepositoryImpl(
                 ?: error("Voting round $roundId has no prepared bundle count")
 
         val signedPcztBytes = keystoneSDKProvider.parsePczt(signedPcztUr)
-        val (spendAuthSig, scannedSighash) =
-            extractSpendAuthSignatureAndSighash(
-                signedPcztBytes = signedPcztBytes,
-                actionIndex = actionIndex
-            )
+
+        // Sighash first, mismatch check second, signature last -- the order the pre-rewrite
+        // implementation used (c62038c3a:331-343), and worth preserving: extractSpendAuthSig
+        // throws on a PCZT that carries no signed action, which is exactly what a wrong-device
+        // scan looks like. Pulling the signature before rejectMismatchedKeystoneSighash would
+        // surface that case as a generic RuntimeException (-> ScanValidationState.INVALID)
+        // instead of the WRONG_SIGNATURE notice this class's detection exists to produce.
+        // Neither order can accept a bad signature; only the error the user sees differs.
+        //
+        // Nothing about the PCZT binary format is parsed app-side: both helpers are stateless SDK
+        // calls wrapping `zcash_voting::action::extract_pczt_sighash`/`extract_spend_auth_sig`,
+        // which do a real `pczt::Pczt::parse` -- hand-rolling that byte layout in Kotlin could
+        // silently yield a wrong-but-well-formed signature.
+        val scannedSighash = votingCryptoClient.extractPcztSighash(signedPcztBytes)
 
         rejectMismatchedKeystoneSighash(
             scannedSighash = scannedSighash,
             pendingBundleIndex = pendingRequest.bundleIndex,
             requests = knownSighashRequests(recovery, pendingRequest, bundleCount)
         )
+
+        // extractSpendAuthSig tries actionIndex first and otherwise scans every action, which
+        // stays unambiguous because a governance PCZT has exactly one signable action; the
+        // actionIndex assertion above makes that fallback a belt-and-braces path, not the normal
+        // one. Shape note versus the task brief: the brief specified `Pair<sig, rk>`, but `rk` is
+        // never recoverable from the signed PCZT -- Keystone redacts it. `rk` is the crate's own
+        // value, carried on VotingKeystoneSigningRequest.rk and persisted in the pending request.
+        val spendAuthSig =
+            votingCryptoClient.extractSpendAuthSig(
+                signedPcztBytes = signedPcztBytes,
+                actionIndex = actionIndex
+            )
 
         // Persist the signature crate-side first, so it is protected by
         // `resetVotingSessionState`'s preservation guard even if the local recovery-repository
@@ -289,41 +310,6 @@ class VotingKeystoneRepositoryImpl(
             sighash = scannedSighash,
             rk = pendingRequest.decodeExpectedRk()
         )
-    }
-
-    /**
-     * Extracts the 64-byte RedPallas spend-auth signature and the 32-byte PCZT sighash out of the
-     * Keystone-returned signed PCZT.
-     *
-     * Both values come straight out of the SDK's stateless crypto helpers, which wrap
-     * `zcash_voting::action::extract_spend_auth_sig`/`extract_pczt_sighash`. Nothing about the
-     * PCZT binary format is parsed app-side: the crate does a real `pczt::Pczt::parse` and reads
-     * `ironwood().actions()[actionIndex].spend().spend_auth_sig()`, and hand-rolling that byte
-     * layout in Kotlin could silently yield a wrong-but-well-formed signature.
-     *
-     * [VotingCryptoClient.extractSpendAuthSig] falls back to scanning every action when
-     * [actionIndex] carries no signature, which stays unambiguous because a governance PCZT has
-     * exactly one signable action. The caller has already asserted [actionIndex] against the
-     * stored pending request, so the fallback is a belt-and-braces path, not the normal one.
-     *
-     * Shape note versus the task brief: the brief specified
-     * `extractSpendAuthSignatureAndRk(UR): Pair<sig, rk>`, but `rk` is never recoverable from the
-     * signed PCZT — Keystone redacts it. `rk` is the crate's own value, carried on
-     * [VotingKeystoneSigningRequest.rk] and persisted in the pending request; the second value
-     * that genuinely must come out of the scanned PCZT is the sighash, which the
-     * duplicate/wrong-signature check needs.
-     */
-    private suspend fun extractSpendAuthSignatureAndSighash(
-        signedPcztBytes: ByteArray,
-        actionIndex: Int
-    ): Pair<ByteArray, ByteArray> {
-        val spendAuthSig =
-            votingCryptoClient.extractSpendAuthSig(
-                signedPcztBytes = signedPcztBytes,
-                actionIndex = actionIndex
-            )
-        val sighash = votingCryptoClient.extractPcztSighash(signedPcztBytes)
-        return spendAuthSig to sighash
     }
 
     /**
