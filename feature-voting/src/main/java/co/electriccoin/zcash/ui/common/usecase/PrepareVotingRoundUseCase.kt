@@ -29,7 +29,7 @@ import java.io.File
 import java.security.SecureRandom
 
 /**
- * voting-4.0.0 round-driver port note: this use case is substantially simplified from its pre-4.0
+ * voting-5.0.0 round-driver port note: this use case is substantially simplified from its pre-4.0
  * form for this benchmark pass (Task 8's scope-cut default — "recovery = call run() again", no
  * persisted `VotingRecoveryPhase` state machine). Witness generation
  * (`generateNoteWitnessesJson`/`storeWitnesses`) and the software-wallet PIR/delegation-proof

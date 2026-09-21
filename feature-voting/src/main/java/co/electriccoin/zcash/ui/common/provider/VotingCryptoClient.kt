@@ -41,7 +41,7 @@ import cash.z.ecc.android.sdk.model.voting.VotingHotkey as SdkVotingHotkey
  * per-round [VotingDbSession] handles. All failures surface as [RuntimeException] from the
  * native layer - every method below is annotated accordingly.
  *
- * **voting-4.0.0 round-driver port note:** this interface used to expose ~45 granular per-step
+ * **voting-5.0.0 round-driver port note:** this interface used to expose ~45 granular per-step
  * methods (build a PCZT, extract a sighash, build a vote commitment, store a tx hash, ...). The
  * SDK's own `RoundExecutor`/`RoundDriver`/`DelegationPipeline` now owns that sequencing
  * internally (see [openRoundSession]/[VotingRoundSession.run]) — every one of those old methods

@@ -21,7 +21,7 @@ sealed interface VotingShareTrackingResult {
 }
 
 /**
- * voting-4.0.0 round-driver port note (Task 6): the old hand-rolled per-share polling/resubmit
+ * voting-5.0.0 round-driver port note (Task 6): the old hand-rolled per-share polling/resubmit
  * loop is replaced with a single [VotingCryptoClient.trackShares] call, which drives every
  * unconfirmed share for the round to quiescence internally via the crate's own
  * `ShareTrackingDriver` before returning.

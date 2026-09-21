@@ -43,7 +43,7 @@ class VotingKeystoneWrongSignatureException(
     )
 
 /**
- * voting-4.0.0 round-driver port note: Keystone signing (Task 7 of the app-side port plan) is
+ * voting-5.0.0 round-driver port note: Keystone signing (Task 7 of the app-side port plan) is
  * deliberately DEFERRED for this benchmark pass — the new session-based signing flow
  * (`VotingRoundSession.getKeystoneSigningRequests`, batch, produced from a cached delegation
  * pipeline) needs an explicit session-lifetime design across the multi-screen signing UI before
@@ -72,7 +72,7 @@ class VotingKeystoneRepositoryImpl : VotingKeystoneRepository {
         roundId: String
     ): VotingKeystoneSigningBundle =
         error(
-            "Keystone voting signing is deferred for the voting-4.0.0 round-driver port " +
+            "Keystone voting signing is deferred for the voting-5.0.0 round-driver port " +
                 "(Task 7) — not available in this build."
         )
 
@@ -84,7 +84,7 @@ class VotingKeystoneRepositoryImpl : VotingKeystoneRepository {
         signedPcztUr: UR
     ): Unit =
         error(
-            "Keystone voting signing is deferred for the voting-4.0.0 round-driver port " +
+            "Keystone voting signing is deferred for the voting-5.0.0 round-driver port " +
                 "(Task 7) — not available in this build."
         )
 }
