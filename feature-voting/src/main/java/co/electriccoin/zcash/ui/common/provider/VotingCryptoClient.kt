@@ -4,8 +4,8 @@ package co.electriccoin.zcash.ui.common.provider
 
 import cash.z.ecc.android.sdk.VotingDbSession
 import cash.z.ecc.android.sdk.VotingRoundSession
-import cash.z.ecc.android.sdk.VotingShareTrackingSession
 import cash.z.ecc.android.sdk.VotingSdk
+import cash.z.ecc.android.sdk.VotingShareTrackingSession
 import cash.z.ecc.android.sdk.model.AccountUuid
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.voting.VotingBallotIntent
@@ -19,7 +19,6 @@ import cash.z.ecc.android.sdk.model.voting.VotingRoundPhase
 import cash.z.ecc.android.sdk.model.voting.VotingRoundPlan
 import cash.z.ecc.android.sdk.model.voting.VotingRoundRunReport
 import cash.z.ecc.android.sdk.model.voting.VotingRoundState
-import cash.z.ecc.android.sdk.model.voting.VotingShareTrackingReport
 import cash.z.ecc.android.sdk.model.voting.VotingWitness
 import co.electriccoin.zcash.ui.common.model.voting.RoundPhase
 import co.electriccoin.zcash.ui.common.model.voting.RoundStateInfo
