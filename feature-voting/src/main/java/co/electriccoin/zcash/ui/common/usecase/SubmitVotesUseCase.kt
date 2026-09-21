@@ -9,7 +9,6 @@ import cash.z.ecc.android.sdk.model.voting.VotingBallotIntent
 import cash.z.ecc.android.sdk.model.voting.VotingDelegationInputs
 import cash.z.ecc.android.sdk.model.voting.VotingProposalRosterEntry
 import cash.z.ecc.android.sdk.model.voting.VotingRoundDriveProgressListener
-import cash.z.ecc.android.sdk.model.voting.VotingRoundQuiescence
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
@@ -263,31 +262,16 @@ class SubmitVotesUseCase(
                             )
                     chpBenchLog("run", roundId, System.currentTimeMillis() - chpBenchRunStart)
 
-                    if (report.failures.isNotEmpty()) {
-                        throw VotingSubmissionRecoverableException(
-                            VotingErrors.UnexpectedSdkResponse(
-                                "Voting round $roundId run() reported ${report.failures.size} failure(s): " +
-                                    report.failures.joinToString(separator = "; ") { failure -> failure.message }
-                            )
-                        )
-                    }
-
                     // Task 4's acceptance criterion: PersistedChainTerminal must surface to the
                     // user immediately, never be silently retried. This single-shot call never
                     // retries anything on its own, so that criterion is satisfied structurally —
-                    // but it must still fall through to the generic failure below, not be
-                    // mistaken for success. Unknown is explicitly NOT treated as success either
-                    // (Task 9-lite requirement, a defect the lost plan's own review caught once
-                    // already).
-                    when (report.quiescence) {
-                        is VotingRoundQuiescence.NoWorkLeft,
-                        is VotingRoundQuiescence.BackgroundShareWorkOnly -> Unit
-                        else ->
-                            throw VotingSubmissionRecoverableException(
-                                VotingErrors.UnexpectedSdkResponse(
-                                    "Voting round $roundId did not reach quiescence: ${report.quiescence}"
-                                )
-                            )
+                    // but it must still fall through to a mapped error below, not be mistaken for
+                    // success. Unknown is explicitly NOT treated as success either (Task 9-lite
+                    // requirement, a defect the lost plan's own review caught once already). See
+                    // VotingRoundQuiescenceMapper.kt for the full quiescence/failure -> VotingErrors
+                    // mapping (Task 12).
+                    report.toVotingErrorOrNull(roundId)?.let { votingError ->
+                        throw VotingSubmissionRecoverableException(votingError)
                     }
 
                     // Schedules VotingShareTrackingWorker unconditionally on success (matches the
