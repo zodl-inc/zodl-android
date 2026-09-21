@@ -16,10 +16,13 @@ import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneBundleSignature
+import co.electriccoin.zcash.ui.common.repository.VotingKeystoneSessionHolder
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.repository.withRemainingKeystoneBundlesSkipped
+import io.mockk.coVerify
+import io.mockk.mockk
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,13 +46,20 @@ class SkipRemainingKeystoneBundlesUseCaseTest {
                     snapshot = recoverySnapshot(accountUuid = accountUuid, roundId = roundId)
                 )
             val cryptoClient = FakeVotingCryptoClient()
+            val sessionHolder = mockk<VotingKeystoneSessionHolder>(relaxed = true)
 
             val result =
                 useCase(
                     selectedAccount = selectedAccount,
                     cryptoClient = cryptoClient.client,
-                    recoveryRepository = recoveryRepository
+                    recoveryRepository = recoveryRepository,
+                    sessionHolder = sessionHolder
                 )(accountUuid, roundId)
+
+            // The retained Keystone session must be invalidated by this destructive DB mutation,
+            // otherwise the next ensureDelegationPipeline call reuses a pipeline built against
+            // the pre-truncation bundle set.
+            coVerify(exactly = 1) { sessionHolder.close(roundId) }
 
             assertEquals(
                 SkippedKeystoneBundles(
@@ -131,12 +141,14 @@ class SkipRemainingKeystoneBundlesUseCaseTest {
     private fun useCase(
         selectedAccount: WalletAccount,
         cryptoClient: VotingCryptoClient,
-        recoveryRepository: FakeVotingRecoveryRepository
+        recoveryRepository: FakeVotingRecoveryRepository,
+        sessionHolder: VotingKeystoneSessionHolder = mockk(relaxed = true)
     ) = SkipRemainingKeystoneBundlesUseCase(
         getSelectedWalletAccount = GetSelectedWalletAccountUseCase(FakeAccountDataSource(selectedAccount)),
         synchronizerProvider = FakeSynchronizerProvider("/tmp/wallet/data.sqlite3"),
         votingCryptoClient = cryptoClient,
-        votingRecoveryRepository = recoveryRepository.repository
+        votingRecoveryRepository = recoveryRepository.repository,
+        votingKeystoneSessionHolder = sessionHolder
     )
 
     private fun keystoneAccount(): KeystoneAccount =

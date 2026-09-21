@@ -3,9 +3,11 @@ package co.electriccoin.zcash.ui.common.usecase
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
+import co.electriccoin.zcash.ui.common.repository.VotingKeystoneSessionHolder
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -13,7 +15,8 @@ class SkipRemainingKeystoneBundlesUseCase(
     private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
     private val synchronizerProvider: SynchronizerProvider,
     private val votingCryptoClient: VotingCryptoClient,
-    private val votingRecoveryRepository: VotingRecoveryRepository
+    private val votingRecoveryRepository: VotingRecoveryRepository,
+    private val votingKeystoneSessionHolder: VotingKeystoneSessionHolder
 ) {
     suspend operator fun invoke(
         accountUuid: String,
@@ -68,6 +71,19 @@ class SkipRemainingKeystoneBundlesUseCase(
                 )
             } finally {
                 votingCryptoClient.closeVotingDb(dbHandle)
+            }
+
+            // The delete above truncated this round's native bundle rows, but
+            // VotingKeystoneSessionHolder may still be retaining a VotingRoundSession (and the
+            // DelegationPipeline cached inside it) that was built against the *pre-truncation*
+            // bundle set. ensureDelegationPipeline no-ops while that session is still open for
+            // this round, so without this close() the next submission would drive the round
+            // through a pipeline that still expects bundles >= keepCount to exist. Closing here
+            // forces the next ensureDelegationPipeline call to rebuild against the truncated set.
+            // NonCancellable so a cancellation racing this skip cannot leave the stale session
+            // retained (the destructive DB mutation above has already happened).
+            withContext(NonCancellable) {
+                votingKeystoneSessionHolder.close(roundId)
             }
 
             val updatedRecovery =
