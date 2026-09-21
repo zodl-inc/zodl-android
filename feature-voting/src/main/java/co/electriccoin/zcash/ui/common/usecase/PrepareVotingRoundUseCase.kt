@@ -63,6 +63,12 @@ class PrepareVotingRoundUseCase(
                 "Round $roundId does not match active session $sessionRoundId"
             }
 
+            votingRecoveryRepository.storeVoteEndEpochSeconds(
+                accountUuid = getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId(),
+                roundId = roundId,
+                voteEndEpochSeconds = session.voteEndTime.epochSecond
+            )
+
             val synchronizer = synchronizerProvider.getSynchronizer()
             val scannedHeight = awaitFullyScannedHeight(synchronizer)
             if (scannedHeight == null || scannedHeight < session.snapshotHeight) {
