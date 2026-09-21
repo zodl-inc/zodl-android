@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
@@ -7,6 +8,7 @@ import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -79,14 +81,16 @@ class TrackVotingSharesUseCase(
 
             try {
                 votingCryptoClient.setWalletId(dbHandle, accountUuidString, networkId)
-                // TEMPORARY BENCHMARK-ONLY: same Tor-optional fallback as
-                // SubmitVotesUseCase.kt — Tor is a preference, not a hard requirement,
-                // mirroring the pre-4.0 architecture. `0L` is the SDK-side "no Tor
-                // runtime" sentinel; the Rust side falls back to its own
-                // Tor-independent executor. DO NOT ship without a real
-                // privacy-preserving transport default.
+                // Same Tor-optional fallback as SubmitVotesUseCase.kt -- Tor is a
+                // preference, not a hard requirement. Only TorUnavailableException
+                // (Tor disabled) falls back to 0L; TorInitializationErrorException
+                // (Tor is ON but failed to bootstrap) must propagate.
                 val torRuntime =
-                    runCatching { synchronizer.getVotingTorRuntimeHandle() }.getOrDefault(0L)
+                    try {
+                        synchronizer.getVotingTorRuntimeHandle()
+                    } catch (e: TorUnavailableException) {
+                        0L
+                    }
                 val report =
                     votingCryptoClient.trackShares(
                         dbHandle = dbHandle,
@@ -102,7 +106,9 @@ class TrackVotingSharesUseCase(
                     VotingShareTrackingResult.Completed
                 }
             } finally {
-                votingCryptoClient.closeVotingDb(dbHandle)
+                withContext(NonCancellable) {
+                    votingCryptoClient.closeVotingDb(dbHandle)
+                }
             }
         }
 

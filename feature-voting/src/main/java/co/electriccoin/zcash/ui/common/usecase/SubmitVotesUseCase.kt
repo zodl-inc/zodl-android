@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import android.util.Log
+import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import cash.z.ecc.android.sdk.ext.toHex
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.ZcashNetwork
@@ -23,6 +24,7 @@ import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
 import co.electriccoin.zcash.ui.common.repository.toCanonicalUuidString
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -134,8 +136,15 @@ class SubmitVotesUseCase(
             // Tor routing (`SessionRoute::Tor`, see round_session.rs) for this
             // session's whole lifetime -- plain HTTP is only the explicit fallback
             // when Tor is disabled/unavailable, never a silent downgrade while it's on.
+            // Only TorUnavailableException (Tor disabled) falls back to 0L;
+            // TorInitializationErrorException (Tor is ON but failed to bootstrap) must
+            // propagate rather than silently deanonymizing this submission.
             val torRuntime =
-                runCatching { synchronizer.getVotingTorRuntimeHandle() }.getOrDefault(0L)
+                try {
+                    synchronizer.getVotingTorRuntimeHandle()
+                } catch (e: TorUnavailableException) {
+                    0L
+                }
 
             val dbHandle = votingCryptoClient.openVotingDb(votingDbPath)
             check(dbHandle != 0L) { "Failed to open voting DB at $votingDbPath" }
@@ -237,10 +246,18 @@ class SubmitVotesUseCase(
 
                     VotingSubmissionResult(submittedProposalCount = report.completedProposals)
                 } finally {
-                    roundSession.close()
+                    // withContext(Dispatchers.IO) here (used internally by roundSession.close())
+                    // throws immediately instead of running when the parent Job is already
+                    // cancelled (e.g. the user backed out mid round-drive) -- NonCancellable lets
+                    // the native round session actually get closed instead of leaking its handle.
+                    withContext(NonCancellable) {
+                        roundSession.close()
+                    }
                 }
             } finally {
-                votingCryptoClient.closeVotingDb(dbHandle)
+                withContext(NonCancellable) {
+                    votingCryptoClient.closeVotingDb(dbHandle)
+                }
                 chpBenchLog("total", roundId, System.currentTimeMillis() - chpBenchStart)
             }
         }

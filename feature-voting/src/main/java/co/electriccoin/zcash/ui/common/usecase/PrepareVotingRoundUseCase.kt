@@ -18,6 +18,7 @@ import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -195,7 +196,9 @@ class PrepareVotingRoundUseCase(
                         hotkeyAddress = hotkeyAddress
                     )
                 } finally {
-                    votingCryptoClient.closeVotingDb(dbHandle)
+                    withContext(NonCancellable) {
+                        votingCryptoClient.closeVotingDb(dbHandle)
+                    }
                 }
             preparationResult
         }

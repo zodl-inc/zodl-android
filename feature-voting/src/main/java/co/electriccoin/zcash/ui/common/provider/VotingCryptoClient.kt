@@ -288,7 +288,18 @@ class VotingCryptoClientImpl : VotingCryptoClient {
 
     private suspend fun votingSdk(): VotingSdk =
         sdk ?: sdkMutex.withLock {
-            sdk ?: VotingSdk.new().also { sdk = it }
+            sdk ?: VotingSdk.new().also {
+                // configureVoting() fixes the process-wide proving-pool policy and must run
+                // exactly once, before any warmProvingCaches()/round-session call -- see its
+                // own doc comment. Every native call in this class funnels through votingSdk(),
+                // so doing it here, still under sdkMutex right after construction and before
+                // the new instance is published to `sdk`, is the one place that can guarantee
+                // "before the first real call" for every caller (openRoundSession,
+                // warmProvingCaches, precomputeDelegationPir, ...) without each of them having
+                // to remember to call it themselves.
+                it.configureVoting()
+                sdk = it
+            }
         }
 
     private fun session(dbHandle: Long): VotingDbSession =
