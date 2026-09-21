@@ -295,6 +295,29 @@ interface VotingCryptoClient {
     /** @throws RuntimeException if the native layer reports a failure. */
     @Throws(RuntimeException::class)
     suspend fun verifyWitness(witness: VotingWitness): Boolean
+
+    /**
+     * Extracts the 32-byte ZIP-244 shielded sighash from finalized PCZT bytes. Stateless — needs
+     * neither a DB handle nor an open round session. Used by the Keystone signing flow to recover
+     * the sighash a hardware wallet actually signed over, once the signed PCZT is scanned back.
+     * @throws RuntimeException if [pcztBytes] is not a parseable PCZT.
+     */
+    @Throws(RuntimeException::class)
+    suspend fun extractPcztSighash(pcztBytes: ByteArray): ByteArray
+
+    /**
+     * Extracts the 64-byte RedPallas spend-authorization signature from a Keystone-signed PCZT.
+     * Stateless, like [extractPcztSighash]. [actionIndex] is the expected action index; the
+     * backend tries it first and otherwise scans every action, which stays unambiguous because a
+     * governance PCZT has exactly one signable action.
+     * @throws RuntimeException if [signedPcztBytes] is not a parseable PCZT or carries no signed
+     * action.
+     */
+    @Throws(RuntimeException::class)
+    suspend fun extractSpendAuthSig(
+        signedPcztBytes: ByteArray,
+        actionIndex: Int
+    ): ByteArray
 }
 
 class VotingCryptoClientImpl : VotingCryptoClient {
@@ -585,6 +608,19 @@ class VotingCryptoClientImpl : VotingCryptoClient {
     override suspend fun verifyWitness(witness: VotingWitness): Boolean =
         withContext(Dispatchers.IO) {
             votingSdk().verifyWitness(witness)
+        }
+
+    override suspend fun extractPcztSighash(pcztBytes: ByteArray): ByteArray =
+        withContext(Dispatchers.IO) {
+            votingSdk().extractPcztSighash(pcztBytes)
+        }
+
+    override suspend fun extractSpendAuthSig(
+        signedPcztBytes: ByteArray,
+        actionIndex: Int
+    ): ByteArray =
+        withContext(Dispatchers.IO) {
+            votingSdk().extractSpendAuthSig(signedPcztBytes, actionIndex)
         }
 }
 

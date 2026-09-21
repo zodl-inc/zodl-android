@@ -295,46 +295,36 @@ class VotingKeystoneRepositoryImpl(
      * Extracts the 64-byte RedPallas spend-auth signature and the 32-byte PCZT sighash out of the
      * Keystone-returned signed PCZT.
      *
-     * **BLOCKED — needs an SDK-side API that no longer exists.** The pre-round-driver
-     * implementation (commit `c62038c3a`, `VotingKeystoneRepository.kt:330-343`) did this with
-     * `votingCryptoClient.extractPcztSighash(signedPcztBytes)` +
-     * `votingCryptoClient.extractSpendAuthSignatureFromSignedPczt(signedPcztBytes, actionIndex)`,
-     * which bottomed out in `VotingSdk.extractPcztSighash`/`extractSpendAuthSig` and, below
-     * those, the `extractPcztSighashNative`/`extractSpendAuthSigNative` JNI exports wrapping
-     * `zcash_voting::action::extract_pczt_sighash`/`extract_spend_auth_sig`.
+     * Both values come straight out of the SDK's stateless crypto helpers, which wrap
+     * `zcash_voting::action::extract_spend_auth_sig`/`extract_pczt_sighash`. Nothing about the
+     * PCZT binary format is parsed app-side: the crate does a real `pczt::Pczt::parse` and reads
+     * `ironwood().actions()[actionIndex].spend().spend_auth_sig()`, and hand-rolling that byte
+     * layout in Kotlin could silently yield a wrong-but-well-formed signature.
      *
-     * Both JNI exports and both Kotlin wrappers were deleted from the SDK by the round-driver
-     * port (`zcash-android-wallet-sdk` commits `c7b9cc99` and `5f5795b9`), with no replacement:
-     * there is no public API on the current SDK branch that turns a signed PCZT into its
-     * spend-auth signature. The underlying crate functions DO still exist upstream
-     * (`zcash_voting` rev `c2c99eb5`, `zcash_voting/src/action.rs:799` and `:850`), so the fix is
-     * re-exposing them, not reimplementing anything.
+     * [VotingCryptoClient.extractSpendAuthSig] falls back to scanning every action when
+     * [actionIndex] carries no signature, which stays unambiguous because a governance PCZT has
+     * exactly one signable action. The caller has already asserted [actionIndex] against the
+     * stored pending request, so the fallback is a belt-and-braces path, not the normal one.
      *
-     * This is deliberately NOT reimplemented in Kotlin: the crate-side body is a full
-     * `pczt::Pczt::parse` of the PCZT v5 binary format followed by
-     * `ironwood().actions()[i].spend().spend_auth_sig()` — hand-rolling that byte layout in
-     * Kotlin would be exactly the kind of guessed cryptographic parsing that can silently yield
-     * a wrong-but-well-formed signature.
-     *
-     * Note the shape correction versus the task brief: the brief specified
+     * Shape note versus the task brief: the brief specified
      * `extractSpendAuthSignatureAndRk(UR): Pair<sig, rk>`, but `rk` is never recoverable from the
      * signed PCZT — Keystone redacts it. `rk` is the crate's own value, carried on
      * [VotingKeystoneSigningRequest.rk] and persisted in the pending request; the second value
      * that genuinely must come out of the scanned PCZT is the sighash, which the
      * duplicate/wrong-signature check needs.
      */
-    @Suppress("UNUSED_PARAMETER")
-    private fun extractSpendAuthSignatureAndSighash(
+    private suspend fun extractSpendAuthSignatureAndSighash(
         signedPcztBytes: ByteArray,
         actionIndex: Int
-    ): Pair<ByteArray, ByteArray> =
-        error(
-            "Keystone voting signature extraction needs VotingSdk.extractSpendAuthSig/" +
-                "extractPcztSighash, both removed from the SDK by the round-driver port " +
-                "(zcash-android-wallet-sdk c7b9cc99/5f5795b9). Re-expose " +
-                "zcash_voting::action::extract_spend_auth_sig/extract_pczt_sighash through the " +
-                "voting JNI layer before enabling Keystone voting."
-        )
+    ): Pair<ByteArray, ByteArray> {
+        val spendAuthSig =
+            votingCryptoClient.extractSpendAuthSig(
+                signedPcztBytes = signedPcztBytes,
+                actionIndex = actionIndex
+            )
+        val sighash = votingCryptoClient.extractPcztSighash(signedPcztBytes)
+        return spendAuthSig to sighash
+    }
 
     /**
      * The sighash-bearing requests this device can compare a freshly scanned signature against:
