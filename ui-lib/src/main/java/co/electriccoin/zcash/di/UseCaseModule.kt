@@ -55,6 +55,7 @@ import co.electriccoin.zcash.ui.common.usecase.GetTransactionDetailByIdUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetTransactionFiltersUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetTransactionMetadataUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetTransactionsUseCase
+import co.electriccoin.zcash.ui.common.usecase.GetVKUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetWalletAccountsUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetWalletRestoringStateUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetWalletSeedBytesUseCase
@@ -283,6 +284,7 @@ val useCaseModule =
         factoryOf(::SaveORSwapUseCase)
         factoryOf(::GetReloadableSwapQuoteUseCase)
         factoryOf(::ShareQRUseCase)
+        factoryOf(::GetVKUseCase)
         factoryOf(::GetActivitiesUseCase)
         factoryOf(::GetResyncDataFromHeightUseCase)
         factoryOf(::NavigateToExportPrivateDataUseCase)
