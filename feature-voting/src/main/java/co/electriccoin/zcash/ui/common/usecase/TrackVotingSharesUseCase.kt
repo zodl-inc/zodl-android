@@ -110,24 +110,32 @@ class TrackVotingSharesUseCase(
                         withContext(NonCancellable) { session.close() }
                     }
 
-                val completed =
-                    report != null &&
-                        report.unrecoverable.isEmpty() &&
-                        report.ambiguous.isEmpty() &&
-                        (
-                            report.quiescence is VotingShareTrackingQuiescence.AllConfirmed ||
-                                report.quiescence is VotingShareTrackingQuiescence.NothingToTrack
+                when (report?.quiescence) {
+                    is VotingShareTrackingQuiescence.NothingToTrack,
+                    is VotingShareTrackingQuiescence.AllConfirmed -> {
+                        resetDelay(roundId)
+                        votingRecoveryRepository.setPhase(
+                            accountUuidString,
+                            roundId,
+                            VotingRecoveryPhase.SHARES_SUBMITTED
                         )
-                if (completed) {
-                    resetDelay(roundId)
-                    votingRecoveryRepository.setPhase(
-                        accountUuidString,
-                        roundId,
-                        VotingRecoveryPhase.SHARES_SUBMITTED
-                    )
-                    VotingShareTrackingResult.Completed
-                } else {
-                    VotingShareTrackingResult.Pending(nextDelayMillis(roundId))
+                        VotingShareTrackingResult.Completed
+                    }
+
+                    is VotingShareTrackingQuiescence.VoteEndReached -> {
+                        // The vote window closed with shares still outstanding -- nothing left
+                        // to usefully retry; treat as terminal-complete rather than looping
+                        // forever past a round that can no longer accept share deliveries.
+                        resetDelay(roundId)
+                        VotingShareTrackingResult.Completed
+                    }
+
+                    is VotingShareTrackingQuiescence.Cancelled,
+                    is VotingShareTrackingQuiescence.AlreadyDriving,
+                    is VotingShareTrackingQuiescence.Failing,
+                    is VotingShareTrackingQuiescence.PassBudgetExhausted,
+                    is VotingShareTrackingQuiescence.Unknown,
+                    null -> VotingShareTrackingResult.Pending(nextDelayMillis(roundId))
                 }
             } finally {
                 withContext(NonCancellable) {
