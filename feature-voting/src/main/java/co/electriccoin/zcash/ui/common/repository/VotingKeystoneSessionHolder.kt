@@ -45,7 +45,7 @@ class VotingKeystoneSessionHolder(
      * signing flow (e.g. from [VotingKeystoneRepositoryImpl.createPcztEncoder]'s first call for a
      * round), not before every [getKeystoneSigningRequests] call.
      */
-    @Suppress("LongParameterList")
+    @Suppress("LongParameterList", "TooGenericExceptionCaught")
     suspend fun ensureDelegationPipeline(
         roundId: String,
         votingDbPath: String,
@@ -66,28 +66,44 @@ class VotingKeystoneSessionHolder(
 
         val handle = votingCryptoClient.openVotingDb(votingDbPath)
         check(handle != 0L) { "Failed to open voting DB at $votingDbPath" }
-        votingCryptoClient.setWalletId(handle, accountUuidString, networkId)
 
-        val session =
-            votingCryptoClient.openRoundSession(
-                dbHandle = handle,
-                torRuntime = torRuntime,
-                roundId = roundId,
-                proposals = proposals,
-                hotkeySecret = hotkeySecret,
-                chainEndpoints = chainEndpoints,
-                operationEpoch = 0L,
-                configuredHelperUrls = chainEndpoints,
-                voteTreeNodeUrls = chainEndpoints,
-                ceremonyStartSeconds = ceremonyStartSeconds,
-                voteEndTimeSeconds = voteEndTimeSeconds
-            )
-        // A delegation-enabled run() call caches the DelegationPipeline this session's
-        // getKeystoneSigningRequests needs -- see VotingRoundSession.run's doc comment. This
-        // call may also fully advance/confirm the round's non-Keystone obligations if any exist,
-        // which is fine: the caller's next getKeystoneSigningRequests call only asks for the
-        // Keystone-specific bundle indices it still needs signed.
-        session.run(delegationInputs = delegationInputs, progressListener = null)
+        // setWalletId/openRoundSession/session.run below are all documented to surface a
+        // RuntimeException from the native layer, and this whole sequence sits behind a
+        // user-paced hardware-wallet signing flow -- plenty of wall-clock time for a transient
+        // failure (e.g. a network blip inside run()'s delegation pass) to hit mid-sequence. The
+        // class's dbHandle/roundSession/openRoundId fields are only assigned once every step has
+        // fully succeeded (below), so a failure here would otherwise leak whatever was already
+        // opened -- closeLocked() on a later call finds the fields still null and has nothing to
+        // close. Catch broadly, tear down exactly what this attempt actually opened, and rethrow.
+        var session: VotingRoundSession? = null
+        try {
+            votingCryptoClient.setWalletId(handle, accountUuidString, networkId)
+
+            session =
+                votingCryptoClient.openRoundSession(
+                    dbHandle = handle,
+                    torRuntime = torRuntime,
+                    roundId = roundId,
+                    proposals = proposals,
+                    hotkeySecret = hotkeySecret,
+                    chainEndpoints = chainEndpoints,
+                    operationEpoch = 0L,
+                    configuredHelperUrls = chainEndpoints,
+                    voteTreeNodeUrls = chainEndpoints,
+                    ceremonyStartSeconds = ceremonyStartSeconds,
+                    voteEndTimeSeconds = voteEndTimeSeconds
+                )
+            // A delegation-enabled run() call caches the DelegationPipeline this session's
+            // getKeystoneSigningRequests needs -- see VotingRoundSession.run's doc comment. This
+            // call may also fully advance/confirm the round's non-Keystone obligations if any
+            // exist, which is fine: the caller's next getKeystoneSigningRequests call only asks
+            // for the Keystone-specific bundle indices it still needs signed.
+            session.run(delegationInputs = delegationInputs, progressListener = null)
+        } catch (t: Throwable) {
+            session?.close()
+            votingCryptoClient.closeVotingDb(handle)
+            throw t
+        }
 
         dbHandle = handle
         roundSession = session
