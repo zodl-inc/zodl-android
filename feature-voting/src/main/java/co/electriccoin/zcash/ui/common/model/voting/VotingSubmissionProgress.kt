@@ -12,18 +12,19 @@ sealed interface VotingSubmissionProgress {
     ) : VotingSubmissionProgress
 
     /**
-     * One `RoundDriveEvent` fired during [SubmitVotesUseCase]'s `roundSession.run()` call --
-     * the round-driver architecture doesn't expose a linear current/total count the way
-     * [Submitting] does (`RoundDriveEvent` interleaves several bundles' steps rather than
-     * counting through one fixed sequence). [bundleIndex]/[proposalId] name which bundle/
-     * proposal the event belongs to (from `VotingRoundDriveProgress.step`, when the event names
-     * one), and [proofProgress] is the 0..1 proving fraction when the crate reported one --
-     * both `null` when the event doesn't carry that information (e.g. a `PlanRefreshed` or
-     * `Delegate` step has no `proposalId`).
+     * One `RoundDriveEvent` fired during [SubmitVotesUseCase]'s `roundSession.run()` call.
+     * [completedProposals]/[totalProposals] are the run's own proposal-completion tally (see
+     * `VotingRoundWorkTally`'s doc comment) -- a stable "N of M" measured against the run's
+     * first plan, unlike a per-event bundle/proposal id, which names whichever of several
+     * concurrently-interleaved bundles happened to report last and flickers between bundles
+     * with and without a proposal id. `null` until the first `PlanRefreshed` event arrives.
+     * [proofProgress] is the 0..1 proving fraction of whichever step most recently reported
+     * one, purely to give the progress bar smoother in-between movement; `null` when the most
+     * recent event didn't carry one.
      */
     data class RunningRound(
-        val bundleIndex: Int?,
-        val proposalId: Int?,
+        val completedProposals: Int?,
+        val totalProposals: Int?,
         val proofProgress: Float?
     ) : VotingSubmissionProgress
 }

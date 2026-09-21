@@ -22,15 +22,15 @@ sealed class VoteSubmissionStatus {
     ) : VoteSubmissionStatus()
 
     /**
-     * The round-driver's single `roundSession.run()` call is in flight. Unlike [Submitting],
-     * there is no linear current/total count to show (see
-     * `VotingSubmissionProgress.RunningRound`'s doc comment) -- kept as its own state rather
-     * than reusing `Submitting(0, 0, ...)` so the UI never renders a literal "0 of 0".
-     * [proposalId]/[proofProgress] are `null` when the current step doesn't carry them (e.g. a
-     * `Delegate` step has no proposal id).
+     * The round-driver's single `roundSession.run()` call is in flight. [completedProposals]/
+     * [totalProposals] are the run's own ratcheted proposal tally (see
+     * `VotingSubmissionProgress.RunningRound`'s doc comment) -- `null` until the round-driver's
+     * first `PlanRefreshed` event arrives. [proofProgress] is the most recently reported 0..1
+     * proving fraction, `null` when the most recent event didn't carry one.
      */
     data class RunningRound(
-        val proposalId: Int?,
+        val completedProposals: Int?,
+        val totalProposals: Int?,
         val proofProgress: Float?
     ) : VoteSubmissionStatus()
 

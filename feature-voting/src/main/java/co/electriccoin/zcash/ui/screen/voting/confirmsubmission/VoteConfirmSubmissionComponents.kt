@@ -110,9 +110,13 @@ internal fun VoteSubmissionBottomSection(state: VoteConfirmSubmissionState) {
                 }
 
                 is VoteSubmissionStatus.RunningRound -> {
-                    val proposalId = status.proposalId
-                    if (proposalId != null) {
-                        stringRes(R.string.coinVote_confirmSubmission_progressSubmittingProposal, proposalId)
+                    val total = status.totalProposals
+                    if (total != null && total > 0) {
+                        stringRes(
+                            R.string.coinVote_confirmSubmission_progressSubmittingVoteCount,
+                            status.completedProposals ?: 0,
+                            total
+                        )
                     } else {
                         stringRes(R.string.coinVote_submission_continuedProcessingTitle)
                     }
@@ -164,13 +168,23 @@ private fun VoteConfirmSubmissionState.submissionProgress(): Float {
         }
 
         is VoteSubmissionStatus.RunningRound -> {
-            // proofProgress is per-step (e.g. one proposal's proving pass), not a whole-round
-            // fraction, but it's real, live movement rather than a frozen bar -- falls back to
-            // parking at the delegation-phase boundary when the current step doesn't carry one
-            // (e.g. between steps, or a Delegate step with no proof_progress payload).
             val offset = if (includesAuthorizationProgress) delegationWeight else 0f
-            val stepProgress = status.proofProgress ?: 0f
-            (offset + stepProgress * (1f - offset)).coerceIn(0f, 1f)
+            val total = status.totalProposals
+            val wholeRoundProgress =
+                if (total != null && total > 0) {
+                    // completedProposals + the current step's own proving fraction gives smooth
+                    // in-between movement rather than jumping only when a whole proposal
+                    // finishes -- a single proposal's proof can take tens of seconds on its own.
+                    val completed = (status.completedProposals ?: 0).toFloat()
+                    val stepProgress = status.proofProgress ?: 0f
+                    ((completed + stepProgress) / total).coerceIn(0f, 1f)
+                } else {
+                    // No tally yet (before the round-driver's first PlanRefreshed event) --
+                    // park at the delegation-phase boundary rather than implying progress this
+                    // status can't yet measure.
+                    0f
+                }
+            (offset + wholeRoundProgress * (1f - offset)).coerceIn(0f, 1f)
         }
 
         else -> {
