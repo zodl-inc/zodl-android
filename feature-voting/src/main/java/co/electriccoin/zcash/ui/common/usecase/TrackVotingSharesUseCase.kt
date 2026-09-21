@@ -127,6 +127,17 @@ class TrackVotingSharesUseCase(
      * unconditionally from [co.electriccoin.zcash.work.VotingShareTrackingWorker]'s stop-signal
      * handling, which cannot know whether `invoke` had reached the session-open point yet when
      * the stop signal arrived.
+     *
+     * Known, accepted race: this is keyed purely by [roundId] (the only thing a caller like the
+     * worker's stop-signal handling has), not by a specific session reference, so it cannot
+     * distinguish "the session I meant to cancel" from "whatever session currently owns this
+     * roundId". Under `VotingShareTrackingScheduler`'s `ExistingWorkPolicy.REPLACE`, at most one
+     * worker run is normally in flight per round, but if a stale run's [cancel] call is suspended
+     * on [activeSessionsMutex] at the exact moment a *new* run for the same [roundId] calls
+     * [registerSession] first, the stale call could cancel the new session instead of a
+     * stale/absent one. The window is narrow (a single mutex-acquisition race) and not closed
+     * here -- fixing it would need session-identity-aware cancellation (e.g. cancel tokens), which
+     * is more machinery than this task's scope warrants.
      */
     suspend fun cancel(roundId: String) {
         activeSessionsMutex.withLock { activeSessions[roundId] }?.cancel()

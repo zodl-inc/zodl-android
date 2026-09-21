@@ -7,8 +7,10 @@ import androidx.work.WorkerParameters
 import co.electriccoin.zcash.ui.common.usecase.TrackVotingSharesUseCase
 import co.electriccoin.zcash.ui.common.usecase.VotingShareTrackingResult
 import co.electriccoin.zcash.voting.VOTING_ENABLED
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -44,30 +46,42 @@ class VotingShareTrackingWorker(
      * returned on its own, which is the exact indefinite hang this task exists to fix.
      *
      * [isStopped] (public, stable, and exactly the documented escape hatch for this scenario now
-     * that `onStopped()` is sealed off) is polled from a sibling coroutine racing alongside the
+     * that `onStopped()` is sealed off) is polled from a watcher coroutine racing alongside the
      * actual [track] call; the moment it flips, [TrackVotingSharesUseCase.cancel] is called
      * directly, reaching the native session within one poll interval instead of leaving it
      * running for the rest of the WorkManager execution-time-limit window.
+     *
+     * The watcher deliberately runs on its own [CoroutineScope] backed by a [SupervisorJob] --
+     * NOT as a structural child of this `doWork()` call's own coroutine `Job` (confirmed via
+     * `javap` on `ListenableWorker.class`: `stop(int)` flips the `isStopped`-backing flag via a
+     * plain `AtomicInteger` CAS, wholly independent of whatever separately cancels the `Job`
+     * behind the `ListenableFuture` `startWork()` returns). A plain `launch` child of that same
+     * Job would spend nearly all of its time parked in [delay], a cancellable suspension point;
+     * if the surrounding Job's cancellation reaches it while asleep there, `delay` throws
+     * `CancellationException` immediately and unwinds the loop WITHOUT ever reaching the
+     * `isStopped` check below, so [TrackVotingSharesUseCase.cancel] would silently never run --
+     * reintroducing the exact indefinite-hang failure mode this task exists to fix, in precisely
+     * the real-stop-signal scenario that matters most. An independent scope's own cancellation is
+     * driven solely by the explicit `watcherScope.cancel()` in the `finally` block below, so it is
+     * immune to that race.
      */
-    private suspend fun trackCancellably(roundId: String): Result =
-        coroutineScope {
-            val trackingResult = async { track(roundId) }
-            val stopWatcher =
-                launch {
-                    while (isActive) {
-                        if (isStopped) {
-                            trackVotingShares.cancel(roundId)
-                            break
-                        }
-                        delay(STOP_POLL_INTERVAL_MILLIS)
-                    }
+    private suspend fun trackCancellably(roundId: String): Result {
+        val watcherScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        watcherScope.launch {
+            while (isActive) {
+                if (isStopped) {
+                    trackVotingShares.cancel(roundId)
+                    break
                 }
-            try {
-                trackingResult.await()
-            } finally {
-                stopWatcher.cancel()
+                delay(STOP_POLL_INTERVAL_MILLIS)
             }
         }
+        return try {
+            track(roundId)
+        } finally {
+            watcherScope.cancel()
+        }
+    }
 
     private suspend fun track(roundId: String): Result =
         runCatching {
