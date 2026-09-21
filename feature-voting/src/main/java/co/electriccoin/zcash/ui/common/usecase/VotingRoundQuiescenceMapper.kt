@@ -37,11 +37,11 @@ internal fun VotingRoundRunReport.toVotingErrorOrNull(roundId: String): VotingEr
             VotingErrors.MissingBundleCount(roundId)
 
         is VotingRoundQuiescence.NeedsBallot ->
-            VotingErrors.OmittedCommittedProposal(
-                roundId = roundId,
-                proposalId = quiescence.openProposals.firstOrNull()
-                    ?: quiescence.unrosteredIntents.first()
-            )
+            (quiescence.openProposals.firstOrNull() ?: quiescence.unrosteredIntents.firstOrNull())
+                ?.let { proposalId -> VotingErrors.OmittedCommittedProposal(roundId = roundId, proposalId = proposalId) }
+                ?: VotingErrors.UnexpectedSdkResponse(
+                    "Round $roundId reported NeedsBallot with no open proposals or unrostered intents"
+                )
 
         is VotingRoundQuiescence.ChainRecoveryStalled ->
             VotingErrors.TxConfirmationTimedOut(txHash = quiescence.outcome)

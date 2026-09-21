@@ -52,6 +52,15 @@ class VotingRoundQuiescenceMapperTest {
     }
 
     @Test
+    fun `NeedsBallot with both lists empty maps to UnexpectedSdkResponse instead of throwing`() {
+        val error =
+            reportWith(
+                VotingRoundQuiescence.NeedsBallot(openProposals = emptyList(), unrosteredIntents = emptyList())
+            ).toVotingErrorOrNull("round-1")
+        assertIs<VotingErrors.UnexpectedSdkResponse>(error)
+    }
+
+    @Test
     fun `ChainRecoveryStalled maps to TxConfirmationTimedOut`() {
         val error =
             reportWith(VotingRoundQuiescence.ChainRecoveryStalled(step = null, outcome = "Tracking { .. }"))
