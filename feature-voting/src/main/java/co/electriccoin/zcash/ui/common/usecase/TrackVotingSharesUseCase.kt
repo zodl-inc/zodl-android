@@ -54,17 +54,7 @@ class TrackVotingSharesUseCase(
             val accountUuidString = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
             val recovery =
                 votingRecoveryRepository.get(accountUuidString, roundId)
-                    ?: run {
-                        // No recovery snapshot exists at all -- nothing to track for this round,
-                        // before a session is even opened. Genuinely completed, same as the
-                        // AllConfirmed/NothingToTrack paths at the tail of this function below.
-                        votingRecoveryRepository.setPhase(
-                            accountUuidString,
-                            roundId,
-                            VotingRecoveryPhase.SHARES_SUBMITTED
-                        )
-                        return@withContext VotingShareTrackingResult.Completed
-                    }
+                    ?: return@withContext VotingShareTrackingResult.Completed
             val roundVoteServerUrls =
                 recovery.voteServerUrls
                     .ifEmpty {
