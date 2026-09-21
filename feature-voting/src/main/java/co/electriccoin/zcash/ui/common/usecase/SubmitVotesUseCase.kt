@@ -21,6 +21,7 @@ import co.electriccoin.zcash.ui.common.model.voting.requireKnownPolyLen
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
+import co.electriccoin.zcash.ui.common.repository.VotingProposalSelection
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryPhase
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.toCanonicalUuidString
@@ -176,6 +177,22 @@ class SubmitVotesUseCase(
                         voteEndTimeSeconds = session.voteEndTime.epochSecond
                     )
                 try {
+                    votingRecoveryRepository.storeProposalSelections(
+                        accountUuid = accountUuidString,
+                        roundId = roundId,
+                        proposalSelections =
+                            choices.mapValues { (proposalId, choiceId) ->
+                                val numOptions =
+                                    session.proposals
+                                        .first { proposal -> proposal.id == proposalId }
+                                        .options.size
+                                VotingProposalSelection(
+                                    choiceId = choiceId,
+                                    numOptions = numOptions
+                                )
+                            }
+                    )
+
                     roundSession.setBallotIntents(
                         choices.map { (proposalId, choiceId) -> VotingBallotIntent(proposalId, choiceId) }
                     )
