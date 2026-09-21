@@ -1,11 +1,13 @@
 # Changelog
-
 All notable changes to this application will be documented in this file.
-
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this application adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
 ## [Unreleased]
+
+### Added:
+
+- ZAP1 and legacy NSM1 transaction memos display event labels and commitment hashes. These cards
+  classify memo text without verifying the attestation (#2172).
 
 ## [3.14.0 (2738)] - 2026-09-16
 

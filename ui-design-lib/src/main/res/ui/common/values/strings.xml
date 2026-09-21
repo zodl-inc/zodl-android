@@ -1535,4 +1535,7 @@ Your vote can no longer be submitted.</string>
     <string name="migrationHome_residueTitle">%1$s left in Orchard</string>
     <string name="migrationHome_residueSubtitle">Tap to decide what happens to it</string>
 
+    <string name="transactionDetail_zapAttestation">ZAP1 attestation (not verified)</string>
+    <string name="transactionDetail_zapAttestationLegacy">NSM1 attestation (legacy, not verified)</string>
+    <string name="transactionDetail_zapAttestationHash">Commitment hash</string>
 </resources>
