@@ -21,6 +21,7 @@ import co.electriccoin.zcash.ui.common.model.voting.requireKnownPolyLen
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
+import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.toCanonicalUuidString
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.work.VotingShareTrackingScheduler
@@ -67,6 +68,7 @@ class SubmitVotesUseCase(
     private val getWalletSeedBytes: GetWalletSeedBytesUseCase,
     private val prepareVotingRound: PrepareVotingRoundUseCase,
     private val votingShareTrackingScheduler: VotingShareTrackingScheduler,
+    private val votingRecoveryRepository: VotingRecoveryRepository,
 ) {
     @Suppress("LongMethod")
     suspend operator fun invoke(
@@ -277,6 +279,23 @@ class SubmitVotesUseCase(
                     // first pass short-circuits immediately when no unconfirmed shares remain.
                     votingShareTrackingScheduler.schedule(roundId)
 
+                    // Marks this round submitted in the durable recovery snapshot -- without
+                    // this, VoteCoinholderPollingVM's persisted (cross-process-restart) fallback
+                    // never sees a submitted round (VotingSessionStore's in-memory record is the
+                    // only thing that currently works, and only within the same process), so a
+                    // freshly relaunched app always shows an already-voted round as still
+                    // ACTIVE/enterable rather than VOTED. markProposalSubmitted per proposal is
+                    // also what getRoundIdsRequiringShareTracking's submittedProposalIds check
+                    // depends on. Lost in the same rewrite as the scheduler call above.
+                    choices.keys.forEach { proposalId ->
+                        votingRecoveryRepository.markProposalSubmitted(accountUuidString, roundId, proposalId)
+                    }
+                    votingRecoveryRepository.storeSubmittedAt(
+                        accountUuidString,
+                        roundId,
+                        System.currentTimeMillis() / MILLIS_PER_SECOND
+                    )
+
                     VotingSubmissionResult(submittedProposalCount = report.completedProposals)
                 } finally {
                     // withContext(Dispatchers.IO) here (used internally by roundSession.close())
@@ -297,3 +316,5 @@ class SubmitVotesUseCase(
 }
 
 private fun ZcashNetwork.toVotingNetworkId() = if (isMainnet()) 1 else 0
+
+private const val MILLIS_PER_SECOND = 1000L
