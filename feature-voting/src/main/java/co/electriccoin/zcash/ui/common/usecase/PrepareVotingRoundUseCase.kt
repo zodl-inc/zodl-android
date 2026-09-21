@@ -63,10 +63,25 @@ class PrepareVotingRoundUseCase(
                 "Round $roundId does not match active session $sessionRoundId"
             }
 
+            val recoveryAccountUuid =
+                getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId()
             votingRecoveryRepository.storeVoteEndEpochSeconds(
-                accountUuid = getSelectedWalletAccount().sdkAccount.accountUuid.toVotingAccountScopeId(),
+                accountUuid = recoveryAccountUuid,
                 roundId = roundId,
                 voteEndEpochSeconds = session.voteEndTime.epochSecond
+            )
+            // Without this, `recovery.voteServerUrls` is always empty and TrackVotingSharesUseCase
+            // falls back to re-fetching the service config on every share-tracking pass -- the
+            // ~15s timeout/self-cancel/reschedule loop seen under poor connectivity. Same
+            // derivation SubmitVotesUseCase uses to build its own VotingDelegationInputs
+            // chainEndpoints, so the persisted list matches what submission actually drove.
+            votingRecoveryRepository.storeVoteServerUrls(
+                accountUuid = recoveryAccountUuid,
+                roundId = roundId,
+                voteServerUrls =
+                    sessionContext.serviceConfig.voteServers
+                        .map { endpoint -> endpoint.url.trimEnd('/') }
+                        .distinct()
             )
 
             val synchronizer = synchronizerProvider.getSynchronizer()
