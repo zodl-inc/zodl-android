@@ -1,0 +1,159 @@
+package co.electriccoin.zcash.ui.screen.exportvk
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
+import co.electriccoin.zcash.ui.design.component.ButtonState
+import co.electriccoin.zcash.ui.design.component.ZashiButton
+import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
+import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
+import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.ZodlRadioOptionCard
+import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
+import co.electriccoin.zcash.ui.design.component.zashiFrostSource
+import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
+import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
+import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
+import co.electriccoin.zcash.ui.design.theme.AppearanceMode
+import co.electriccoin.zcash.ui.design.theme.ZcashTheme
+import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
+import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
+import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.scaffoldPadding
+import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.design.util.styledStringResource
+import co.electriccoin.zcash.ui.screen.common.ScreenLogoHeader
+
+private val CONTENT_TOP_SPACING = 28.dp
+
+@Composable
+internal fun ExportVKView(state: ExportVKState) {
+    val hazeState = rememberZashiFrostState()
+    BlankBgScaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            ZashiSmallTopAppBar(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedHeader(hazeState),
+                navigationAction = {
+                    ZashiTopAppBarBackNavigation(onBack = state.onBack)
+                },
+                colors =
+                    ZcashTheme.colors.topAppBarColors.copyColors(
+                        containerColor = Color.Transparent
+                    ),
+            )
+        },
+        bottomBar = {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .zashiFrostedFooter(hazeState)
+                        .padding(horizontal = ZashiDimensions.Spacing.spacing3xl)
+            ) {
+                ZashiButton(
+                    modifier = Modifier.fillMaxWidth(),
+                    state = state.continueButton,
+                    defaultPrimaryColors = ZashiButtonDefaults.primaryColors(),
+                )
+                Spacer(modifier = Modifier.height(ZashiDimensions.Spacing.spacing3xl))
+                Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
+            }
+        }
+    ) { paddingValues ->
+        Box(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .zashiFrostSource(hazeState)
+        ) {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .scaffoldPadding(
+                            paddingValues = paddingValues,
+                            top = paddingValues.calculateTopPadding() + CONTENT_TOP_SPACING
+                        )
+            ) {
+                ScreenLogoHeader(icon = R.drawable.ic_advanced_settings_viewing_key)
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = stringResource(R.string.exportViewingKey_title),
+                    style = ZashiTypography.header6,
+                    fontWeight = FontWeight.SemiBold,
+                    color = ZashiColors.Text.textPrimary,
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = state.description.getValue(),
+                    style = ZashiTypography.textSm,
+                    color = ZashiColors.Text.textTertiary,
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Column(modifier = Modifier.selectableGroup()) {
+                    state.options.forEachIndexed { index, option ->
+                        if (index > 0) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                        ZodlRadioOptionCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            isChecked = option.isChecked,
+                            title = option.title.getValue(),
+                            subtitle = option.subtitle.getValue(),
+                            onClick = option.onClick
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Suppress("UnusedPrivateMember")
+@PreviewScreens
+@Composable
+private fun ExportVKPreview() =
+    ZcashTheme {
+        ExportVKView(state = ExportVKState.preview)
+    }
+
+@Suppress("UnusedPrivateMember")
+@PreviewScreens
+@Composable
+private fun ExportVKSelectedPreview() =
+    ZcashTheme {
+        ExportVKView(state = ExportVKState.previewSelected)
+    }
+
+@Suppress("UnusedPrivateMember")
+@PreviewScreens
+@Composable
+private fun ExportVKDarkPreview() =
+    ZcashTheme(appearanceMode = AppearanceMode.DARK) {
+        ExportVKView(state = ExportVKState.previewSelected)
+    }

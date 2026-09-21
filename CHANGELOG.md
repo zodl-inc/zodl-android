@@ -7,6 +7,11 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Added:
+
+- Export Viewing Key in Advanced Settings: share the selected account's Incoming or Full Viewing Key
+  as a QR code or key string, revealed behind biometrics and behind a consent sheet for the Full key.
+
 ## [3.14.0 (2738)] - 2026-09-16
 
 ### Added:
