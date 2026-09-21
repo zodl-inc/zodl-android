@@ -378,7 +378,15 @@ class VotingRecoveryRepositoryImpl(
             )
         store(
             current.copy(
-                phase = VotingRecoveryPhase.BUNDLES_PREPARED,
+                // Monotonic: only ever advance the phase, never rewind it.
+                // PrepareVotingRoundUseCase.recoverExistingBundleSetup calls this on EVERY
+                // PrepareVotingRoundUseCase invocation -- i.e. on every entry into the Confirm
+                // and proposal-list screens -- so an unconditional BUNDLES_PREPARED write would
+                // silently undo a later setPhase(VOTES_SUBMITTED)/setPhase(SHARES_SUBMITTED),
+                // defeating the kill-mid-submission auto-resume those phases exist for.
+                // VotingRecoveryPhase is declared in progression order, so enum ordinal
+                // comparison (Kotlin enums are Comparable) is the ordering.
+                phase = maxOf(current.phase, VotingRecoveryPhase.BUNDLES_PREPARED),
                 bundleCount = bundleCount,
                 eligibleWeight = eligibleWeight,
                 bundleWeights = bundleWeights,
