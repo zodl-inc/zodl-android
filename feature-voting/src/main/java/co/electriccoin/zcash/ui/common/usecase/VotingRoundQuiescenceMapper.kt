@@ -31,78 +31,97 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
 internal fun VotingRoundRunReport.toVotingErrorOrNull(roundId: String): VotingErrors? =
     when (val quiescence = quiescence) {
         is VotingRoundQuiescence.NoWorkLeft,
-        is VotingRoundQuiescence.BackgroundShareWorkOnly -> null
+        is VotingRoundQuiescence.BackgroundShareWorkOnly -> {
+            null
+        }
 
-        is VotingRoundQuiescence.NeedsBundleSetup ->
+        is VotingRoundQuiescence.NeedsBundleSetup -> {
             VotingErrors.MissingBundleCount(roundId)
+        }
 
-        is VotingRoundQuiescence.NeedsBallot ->
+        is VotingRoundQuiescence.NeedsBallot -> {
             (quiescence.openProposals.firstOrNull() ?: quiescence.unrosteredIntents.firstOrNull())
-                ?.let { proposalId -> VotingErrors.OmittedCommittedProposal(roundId = roundId, proposalId = proposalId) }
+                ?.let { proposalId ->
+                    VotingErrors.OmittedCommittedProposal(roundId = roundId, proposalId = proposalId)
+                }
                 ?: VotingErrors.UnexpectedSdkResponse(
                     "Round $roundId reported NeedsBallot with no open proposals or unrostered intents"
                 )
+        }
 
-        is VotingRoundQuiescence.ChainRecoveryStalled ->
+        is VotingRoundQuiescence.ChainRecoveryStalled -> {
             VotingErrors.TxConfirmationTimedOut(txHash = quiescence.outcome)
+        }
 
-        is VotingRoundQuiescence.Failures ->
+        is VotingRoundQuiescence.Failures -> {
             failures.firstOrNull()?.toVotingErrorOrDefault(roundId)
                 ?: VotingErrors.UnexpectedSdkResponse("Round $roundId reported failures with no detail")
+        }
 
-        is VotingRoundQuiescence.PersistedChainTerminal ->
+        is VotingRoundQuiescence.PersistedChainTerminal -> {
             VotingErrors.UnexpectedSdkResponse("Round $roundId ended in a persisted chain-terminal state")
+        }
 
-        is VotingRoundQuiescence.ChainTerminal ->
+        is VotingRoundQuiescence.ChainTerminal -> {
             VotingErrors.UnexpectedSdkResponse("Round $roundId chain submission ended: ${quiescence.outcome}")
+        }
 
-        is VotingRoundQuiescence.NeedsDelegationSignatures ->
+        is VotingRoundQuiescence.NeedsDelegationSignatures -> {
             VotingErrors.UnexpectedSdkResponse(
                 "Round $roundId needs delegation signatures for bundles ${quiescence.bundles} " +
                     "on a non-Keystone submission path"
             )
+        }
 
-        is VotingRoundQuiescence.Cancelled ->
+        is VotingRoundQuiescence.Cancelled -> {
             VotingErrors.UnexpectedSdkResponse("Round $roundId was cancelled")
+        }
 
-        is VotingRoundQuiescence.PassBudgetExhausted ->
+        is VotingRoundQuiescence.PassBudgetExhausted -> {
             VotingErrors.UnexpectedSdkResponse(
                 "Round $roundId exhausted its per-dispatch budget with ${quiescence.remaining.size} step(s) remaining"
             )
+        }
 
-        is VotingRoundQuiescence.Unknown ->
+        is VotingRoundQuiescence.Unknown -> {
             VotingErrors.UnexpectedSdkResponse(
                 "Round $roundId reached an unrecognized quiescence kind: ${quiescence.kind}"
             )
+        }
     }
 
 private fun VotingRoundStepFailure.toVotingErrorOrDefault(roundId: String): VotingErrors {
     val lowerMessage = message.lowercase()
     val lowerKind = kind.lowercase()
     return when {
-        "spent" in lowerMessage && "nullifier" in lowerMessage ->
+        "spent" in lowerMessage && "nullifier" in lowerMessage -> {
             VotingErrors.TxConfirmationTimedOut(txHash = message)
+        }
 
-        "tree" in lowerKind || "sync" in lowerMessage ->
+        "tree" in lowerKind || "sync" in lowerMessage -> {
             VotingErrors.VoteTreeSyncFailed(roundId = roundId)
+        }
 
-        "commitment" in lowerMessage && "mismatch" in lowerMessage ->
+        "commitment" in lowerMessage && "mismatch" in lowerMessage -> {
             VotingErrors.RecoveredVoteCommitmentMismatch(
                 roundId = roundId,
                 bundleIndex = bundleIndex ?: -1,
                 proposalId = -1
             )
+        }
 
-        "verif" in lowerMessage ->
+        "verif" in lowerMessage -> {
             VotingErrors.RecoveredVoteVerificationUnavailable(
                 roundId = roundId,
                 bundleIndex = bundleIndex ?: -1,
                 proposalId = -1
             )
+        }
 
-        else ->
+        else -> {
             VotingErrors.UnexpectedSdkResponse(
                 "Round $roundId bundle ${bundleIndex ?: "?"} failure ($kind): $message"
             )
+        }
     }
 }
