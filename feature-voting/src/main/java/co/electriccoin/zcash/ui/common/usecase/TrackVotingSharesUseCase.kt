@@ -28,9 +28,11 @@ sealed interface VotingShareTrackingResult {
  * ([VotingCryptoClient.openShareTrackingSession]), replacing the standalone JNI export that had
  * no reachable cancel path and caused indefinite hangs under WorkManager (see Phase 1 of
  * `2026-09-21-round-driver-production-completion-design.md`). [cancel] lets
- * [co.electriccoin.zcash.work.VotingShareTrackingWorker.onStopped] interrupt an in-flight
- * [invoke] call for the same [roundId] within seconds rather than leaving an orphaned native
- * thread running for the full WorkManager execution-time-limit window.
+ * [co.electriccoin.zcash.work.VotingShareTrackingWorker] interrupt an in-flight [invoke] call for
+ * the same [roundId] within seconds rather than leaving an orphaned native thread running for the
+ * full WorkManager execution-time-limit window. (The worker reaches this from a coroutine that
+ * polls `isStopped`, not from an overridden `onStopped()` -- `CoroutineWorker.onStopped()` is
+ * `final` on the androidx.work version this app resolves; see the worker's KDoc for detail.)
  *
  * `activeSessions` is a companion-scoped map (not an instance field) for the same reason
  * `attemptCounts` below is: Koin provides this use case via `factoryOf`, so a fresh instance
@@ -122,9 +124,9 @@ class TrackVotingSharesUseCase(
     /**
      * Cancels [roundId]'s in-flight [invoke] call, if one opened a session on this or another
      * `TrackVotingSharesUseCase` instance. A no-op if none is active -- this must be safe to call
-     * unconditionally from [co.electriccoin.zcash.work.VotingShareTrackingWorker.onStopped],
-     * which cannot know whether `invoke` had reached the session-open point yet when the stop
-     * signal arrived.
+     * unconditionally from [co.electriccoin.zcash.work.VotingShareTrackingWorker]'s stop-signal
+     * handling, which cannot know whether `invoke` had reached the session-open point yet when
+     * the stop signal arrived.
      */
     suspend fun cancel(roundId: String) {
         activeSessionsMutex.withLock { activeSessions[roundId] }?.cancel()
