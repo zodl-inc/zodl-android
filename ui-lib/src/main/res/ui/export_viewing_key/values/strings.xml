@@ -4,7 +4,6 @@
     <string name="exportViewingKey_topBar">Export Viewing Key</string>
     <string name="exportViewingKey_title">Export Viewing Key</string>
     <string name="exportViewingKey_description">Sharing a viewing key lets others monitor your <xliff:g id="app_name" example="Zodl">%1$s</xliff:g> wallet activity. Never share with anyone you don\'t trust.</string>
-    <string name="exportViewingKey_description_app">Zodl</string>
     <string name="exportViewingKey_option_incoming">Incoming Viewing Key</string>
     <string name="exportViewingKey_option_incoming_desc">Lets others see incoming transactions only. Safe for accountants and payment verification.</string>
     <string name="exportViewingKey_option_full">Full Viewing Key</string>

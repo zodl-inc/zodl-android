@@ -1,11 +1,23 @@
 package co.electriccoin.zcash.ui.screen.exportvk
 
+import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavBackStackEntry
+import cash.z.ecc.android.sdk.model.Account
 import co.electriccoin.zcash.ui.BaseNavigationCommand
 import co.electriccoin.zcash.ui.NavigationCommand
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.VKType
+import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.usecase.GetVKUseCase
+import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
+import co.electriccoin.zcash.ui.design.util.StyledStringStyle
+import co.electriccoin.zcash.ui.design.util.imageRes
+import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.design.util.styledStringResource
+import co.electriccoin.zcash.ui.design.util.withStyle
 import co.electriccoin.zcash.ui.screen.exportvk.confirm.ExportVKConfirmArgs
 import co.electriccoin.zcash.ui.screen.exportvk.detail.VKDetailArgs
 import io.mockk.every
@@ -34,7 +46,8 @@ import kotlin.test.assertTrue
 /**
  * The Export Viewing Key chooser (MOB-1883): exactly one of Incoming/Full can be selected, Continue stays
  * disabled until a selection whose key the account actually has, Incoming goes straight to the export screen
- * and Full goes through the consent sheet first.
+ * and Full goes through the consent sheet first. The header logo and the bold wallet name in the description
+ * follow the selected account, so a Keystone wallet gets Keystone branding (MOB-1892).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ExportVKVMTest {
@@ -134,6 +147,24 @@ class ExportVKVMTest {
         }
 
     @Test
+    fun zodlWalletBrandsTheHeaderAndDescriptionAsZodl() =
+        runTest(dispatcher) {
+            val state = requireNotNull(startedVm(account = zashiAccount()).state.value)
+
+            assertEquals(imageRes(R.drawable.ic_item_zashi), state.logo)
+            assertEquals(descriptionFor(R.string.accounts_zashi), state.description)
+        }
+
+    @Test
+    fun keystoneWalletBrandsTheHeaderAndDescriptionAsKeystone() =
+        runTest(dispatcher) {
+            val state = requireNotNull(startedVm(account = keystoneAccount()).state.value)
+
+            assertEquals(imageRes(R.drawable.ic_item_keystone), state.logo)
+            assertEquals(descriptionFor(R.string.accounts_keystone), state.description)
+        }
+
+    @Test
     fun backNavigatesBack() =
         runTest(dispatcher) {
             val router = FakeNavigationRouter()
@@ -149,16 +180,56 @@ class ExportVKVMTest {
         type: VKType
     ) = requireNotNull(vm.state.value).options.first { it.type == type }
 
+    private fun descriptionFor(walletName: Int) =
+        styledStringResource(
+            R.string.exportViewingKey_description,
+            stringRes(walletName) withStyle StyledStringStyle(fontWeight = FontWeight.Bold)
+        )
+
+    private fun zashiAccount() =
+        ZashiAccount(
+            sdkAccount = mockk<Account>(relaxed = true),
+            unifiedAddress = "unified",
+            transparentAddress = "transparent",
+            saplingAddress = "sapling",
+            orchardBalance = null,
+            saplingBalance = null,
+            ironwoodBalance = null,
+            transparentBalance = null,
+            isSelected = true,
+        )
+
+    private fun keystoneAccount() =
+        KeystoneAccount(
+            sdkAccount = mockk<Account>(relaxed = true),
+            unifiedAddress = "unified",
+            transparentAddress = "transparent",
+            orchardBalance = null,
+            ironwoodBalance = null,
+            transparentBalance = null,
+            isSelected = true,
+        )
+
     private fun TestScope.startedVm(
         availability: Map<VKType, Boolean> =
             mapOf(VKType.INCOMING to true, VKType.FULL to true),
+        account: WalletAccount = zashiAccount(),
         router: FakeNavigationRouter = FakeNavigationRouter(),
     ): ExportVKVM {
         val getVK =
             mockk<GetVKUseCase> {
                 every { observeAvailability() } returns flowOf(availability)
             }
-        val vm = ExportVKVM(getVK = getVK, navigationRouter = router)
+        val observeSelectedWalletAccount =
+            mockk<ObserveSelectedWalletAccountUseCase> {
+                every { require() } returns flowOf(account)
+            }
+        val vm =
+            ExportVKVM(
+                getVK = getVK,
+                observeSelectedWalletAccount = observeSelectedWalletAccount,
+                navigationRouter = router
+            )
         backgroundScope.launch { vm.state.collect { } }
         advanceUntilIdle()
         return vm

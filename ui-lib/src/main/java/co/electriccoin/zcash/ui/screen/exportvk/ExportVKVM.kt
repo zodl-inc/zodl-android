@@ -7,11 +7,15 @@ import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.VKType
+import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.usecase.GetVKUseCase
+import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.StyledStringStyle
+import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.styledStringResource
+import co.electriccoin.zcash.ui.design.util.withStyle
 import co.electriccoin.zcash.ui.screen.exportvk.confirm.ExportVKConfirmArgs
 import co.electriccoin.zcash.ui.screen.exportvk.detail.VKDetailArgs
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,13 +27,18 @@ import kotlinx.coroutines.flow.update
 
 internal class ExportVKVM(
     getVK: GetVKUseCase,
+    observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase,
     private val navigationRouter: NavigationRouter,
 ) : ViewModel() {
     private val selected = MutableStateFlow<VKType?>(null)
 
     val state =
-        combine(selected, getVK.observeAvailability()) { selected, availability ->
-            createState(selected, availability)
+        combine(
+            selected,
+            getVK.observeAvailability(),
+            observeSelectedWalletAccount.require()
+        ) { selected, availability, account ->
+            createState(selected, availability, account)
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
@@ -38,15 +47,14 @@ internal class ExportVKVM(
 
     private fun createState(
         selected: VKType?,
-        availability: Map<VKType, Boolean>
+        availability: Map<VKType, Boolean>,
+        account: WalletAccount,
     ) = ExportVKState(
+        logo = imageRes(account.icon),
         description =
             styledStringResource(
                 R.string.exportViewingKey_description,
-                styledStringResource(
-                    R.string.exportViewingKey_description_app,
-                    StyledStringStyle(fontWeight = FontWeight.SemiBold)
-                )
+                account.name withStyle StyledStringStyle(fontWeight = FontWeight.Bold)
             ),
         options =
             VKType.entries.map { type ->

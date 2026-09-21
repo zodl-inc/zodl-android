@@ -100,7 +100,7 @@ internal fun ExportVKView(state: ExportVKState) {
                             top = paddingValues.calculateTopPadding() + CONTENT_TOP_SPACING
                         )
             ) {
-                ScreenLogoHeader(icon = R.drawable.ic_advanced_settings_viewing_key)
+                ScreenLogoHeader(icon = R.drawable.ic_advanced_settings_viewing_key, logo = state.logo)
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = stringResource(R.string.exportViewingKey_title),
@@ -134,7 +134,6 @@ internal fun ExportVKView(state: ExportVKState) {
     }
 }
 
-@Suppress("UnusedPrivateMember")
 @PreviewScreens
 @Composable
 private fun ExportVKPreview() =
@@ -142,7 +141,6 @@ private fun ExportVKPreview() =
         ExportVKView(state = ExportVKState.preview)
     }
 
-@Suppress("UnusedPrivateMember")
 @PreviewScreens
 @Composable
 private fun ExportVKSelectedPreview() =
@@ -150,7 +148,13 @@ private fun ExportVKSelectedPreview() =
         ExportVKView(state = ExportVKState.previewSelected)
     }
 
-@Suppress("UnusedPrivateMember")
+@PreviewScreens
+@Composable
+private fun ExportVKKeystonePreview() =
+    ZcashTheme {
+        ExportVKView(state = ExportVKState.previewKeystone)
+    }
+
 @PreviewScreens
 @Composable
 private fun ExportVKDarkPreview() =
