@@ -11,8 +11,8 @@ import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
 import co.electriccoin.zcash.ui.common.usecase.CreateFlexaTransactionUseCase
 import co.electriccoin.zcash.ui.common.usecase.CreateIncreaseEphemeralGapLimitProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.CreateKeystoneAccountUseCase
-import co.electriccoin.zcash.ui.common.usecase.CreateLedgerAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.CreateKeystoneProposalPCZTEncoderUseCase
+import co.electriccoin.zcash.ui.common.usecase.CreateLedgerAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.CreateOrUpdateTransactionNoteUseCase
 import co.electriccoin.zcash.ui.common.usecase.CreateProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.DeleteABContactUseCase
@@ -96,6 +96,7 @@ import co.electriccoin.zcash.ui.common.usecase.ObserveABContactPickedUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveClearSendUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveContactByAddressUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveFastestServersUseCase
+import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSeedMismatchUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
@@ -106,11 +107,10 @@ import co.electriccoin.zcash.ui.common.usecase.OnUserSavedWalletBackupUseCase
 import co.electriccoin.zcash.ui.common.usecase.OnZip321ScannedUseCase
 import co.electriccoin.zcash.ui.common.usecase.OptInExchangeRateAndTorUseCase
 import co.electriccoin.zcash.ui.common.usecase.OptInExchangeRateUseCase
+import co.electriccoin.zcash.ui.common.usecase.PairLedgerDeviceUseCase
 import co.electriccoin.zcash.ui.common.usecase.ParseKeystonePCZTUseCase
 import co.electriccoin.zcash.ui.common.usecase.ParseKeystoneSignInRequestUseCase
 import co.electriccoin.zcash.ui.common.usecase.ParseKeystoneUrToZashiAccountsUseCase
-import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
-import co.electriccoin.zcash.ui.common.usecase.PairLedgerDeviceUseCase
 import co.electriccoin.zcash.ui.common.usecase.PersistServerSelectionUseCase
 import co.electriccoin.zcash.ui.common.usecase.PrefillSendUseCase
 import co.electriccoin.zcash.ui.common.usecase.ProcessSwapTransactionUseCase

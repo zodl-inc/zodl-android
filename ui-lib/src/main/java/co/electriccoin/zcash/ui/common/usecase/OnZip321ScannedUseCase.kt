@@ -72,7 +72,9 @@ class OnZip321ScannedUseCase(
                         result
                     }
 
-                    is LedgerAccount -> throw LedgerOperationUnsupportedException()
+                    is LedgerAccount -> {
+                        throw LedgerOperationUnsupportedException()
+                    }
 
                     is ZashiAccount -> {
                         zashiProposalRepository.createZip321Proposal(zip321.zip321Uri)
@@ -122,7 +124,9 @@ class OnZip321ScannedUseCase(
                         result
                     }
 
-                    is LedgerAccount -> throw LedgerOperationUnsupportedException()
+                    is LedgerAccount -> {
+                        throw LedgerOperationUnsupportedException()
+                    }
 
                     is ZashiAccount -> {
                         zashiProposalRepository.createZip321Proposal(zip321.zip321Uri)

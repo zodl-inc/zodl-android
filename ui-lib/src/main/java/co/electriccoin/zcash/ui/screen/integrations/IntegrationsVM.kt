@@ -68,8 +68,10 @@ class IntegrationsVM(
         disabledInfo =
             when {
                 isRestoring -> stringRes(R.string.integrations_disabled_info)
+
                 selectedAccount is KeystoneAccount ||
                     selectedAccount is LedgerAccount -> stringRes(R.string.integrations_disabled_info_flexa)
+
                 else -> null
             },
         onBack = ::onBack,

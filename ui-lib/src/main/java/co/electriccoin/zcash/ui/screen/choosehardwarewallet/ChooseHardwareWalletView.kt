@@ -139,7 +139,9 @@ private fun HardwareWalletCard(state: HardwareWalletCardState) {
 
 private const val CARD_HEIGHT = 180
 
-private val CARD_BACKGROUND = Color(0xFF231F20)
+private const val CARD_BACKGROUND_ARGB = 0xFF231F20
+
+private val CARD_BACKGROUND = Color(CARD_BACKGROUND_ARGB)
 
 @PreviewScreens
 @Composable

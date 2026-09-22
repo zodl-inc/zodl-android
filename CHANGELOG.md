@@ -12,6 +12,9 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - Export Viewing Key in Advanced Settings: share the selected account's Incoming or Full Viewing Key
   as a QR code or key string, revealed behind biometrics and behind a consent sheet for the Full key.
   The chooser carries the logo and name of the selected wallet, Zodl or Keystone.
+- You can now connect a Ledger hardware wallet over Bluetooth: pair a Ledger account, then see it
+  in the new Wallets & Hardware picker, on Home and on Receive. Sending from a Ledger account
+  follows in a later release.
 
 ## [3.14.0 (2738)] - 2026-09-16
 

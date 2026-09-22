@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.common.datasource
 
 import android.content.Context
 import cash.z.ecc.android.sdk.Synchronizer
+import cash.z.ecc.android.sdk.ledger.LedgerAccountPairing
 import cash.z.ecc.android.sdk.model.Account
 import cash.z.ecc.android.sdk.model.AccountBalance
 import cash.z.ecc.android.sdk.model.AccountImportSetup
@@ -11,7 +12,6 @@ import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.UnifiedAddressRequest
 import cash.z.ecc.android.sdk.model.UnifiedFullViewingKey
 import cash.z.ecc.android.sdk.model.Zip32AccountIndex
-import cash.z.ecc.android.sdk.ledger.LedgerAccountPairing
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
@@ -297,7 +297,7 @@ class AccountDataSourceImpl(
         ledgerBinding: LedgerAccountBindingData?
     ): WalletAccount =
         when {
-            isLedgerAccount(sdkAccount) ->
+            isLedgerAccount(sdkAccount) -> {
                 LedgerAccount(
                     sdkAccount = sdkAccount,
                     unifiedAddress = snapshot.unifiedAddress,
@@ -309,8 +309,9 @@ class AccountDataSourceImpl(
                     deviceIdentity = ledgerBinding?.deviceIdentityEncoding,
                     zip32AccountIndex = ledgerBinding?.zip32AccountIndex ?: Zip32AccountIndex.new(0),
                 )
+            }
 
-            isKeystoneAccount(sdkAccount) ->
+            isKeystoneAccount(sdkAccount) -> {
                 KeystoneAccount(
                     sdkAccount = sdkAccount,
                     unifiedAddress = snapshot.unifiedAddress,
@@ -320,8 +321,9 @@ class AccountDataSourceImpl(
                     transparentBalance = snapshot.balance?.unshielded,
                     isSelected = snapshot.isSelected,
                 )
+            }
 
-            else ->
+            else -> {
                 ZashiAccount(
                     sdkAccount = sdkAccount,
                     unifiedAddress = snapshot.unifiedAddress,
@@ -333,6 +335,7 @@ class AccountDataSourceImpl(
                     transparentBalance = snapshot.balance?.unshielded,
                     isSelected = snapshot.isSelected,
                 )
+            }
         }
 
     private fun observeLedgerBinding(sdkAccount: Account): Flow<LedgerAccountBindingData?> =

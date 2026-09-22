@@ -8,8 +8,8 @@ import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.SwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
-import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.repository.BiometricRepository
 import co.electriccoin.zcash.ui.common.repository.BiometricRequest
@@ -76,7 +76,9 @@ class SubmitProposalUseCase(
                     navigationRouter.replace(SignKeystoneTransactionArgs)
                 }
 
-                is LedgerAccount -> throw LedgerOperationUnsupportedException()
+                is LedgerAccount -> {
+                    throw LedgerOperationUnsupportedException()
+                }
 
                 is ZashiAccount -> {
                     swapRepository.clear()

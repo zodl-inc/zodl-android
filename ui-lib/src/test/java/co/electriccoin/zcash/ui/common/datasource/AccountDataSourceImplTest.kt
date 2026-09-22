@@ -6,7 +6,13 @@ import cash.z.ecc.android.sdk.model.AccountBalance
 import cash.z.ecc.android.sdk.model.AccountUuid
 import cash.z.ecc.android.sdk.model.WalletBalance
 import cash.z.ecc.android.sdk.model.Zatoshi
+import cash.z.ecc.android.sdk.model.Zip32AccountIndex
+import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccountBindingData
+import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.provider.LedgerAccountBindingProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SelectedAccountUUIDProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -20,6 +26,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
@@ -49,11 +56,13 @@ class AccountDataSourceImplTest {
         )
 
     private fun dataSource(
-        walletBalances: MutableStateFlow<Map<AccountUuid, AccountBalance>?>
+        walletBalances: MutableStateFlow<Map<AccountUuid, AccountBalance>?>,
+        sdkAccount: Account = account,
+        ledgerBinding: LedgerAccountBindingData? = null,
     ): AccountDataSourceImpl {
         val synchronizer =
             mockk<Synchronizer> {
-                every { accountsFlow } returns MutableStateFlow(listOf(account))
+                every { accountsFlow } returns MutableStateFlow(listOf(sdkAccount))
                 every { this@mockk.walletBalances } returns walletBalances
                 coEvery { getCustomUnifiedAddress(any(), any()) } returns "unified-address"
                 coEvery { getTransparentAddress(any()) } returns "transparent-address"
@@ -71,10 +80,15 @@ class AccountDataSourceImplTest {
             mockk<PersistableWalletProvider> {
                 every { persistableWallet } returns MutableStateFlow(mockk(relaxed = true))
             }
+        val ledgerAccountBindingProvider =
+            mockk<LedgerAccountBindingProvider> {
+                every { observe(any()) } returns MutableStateFlow(ledgerBinding)
+            }
         return AccountDataSourceImpl(
             synchronizerProvider = synchronizerProvider,
             selectedAccountUUIDProvider = selectedAccountUUIDProvider,
             persistableWalletProvider = persistableWalletProvider,
+            ledgerAccountBindingProvider = ledgerAccountBindingProvider,
             context = mockk(relaxed = true),
         )
     }
@@ -126,4 +140,124 @@ class AccountDataSourceImplTest {
             assertEquals(Zatoshi(750_000L), zashiAccount.totalBalance)
             assertEquals(Zatoshi(500_000L), zashiAccount.spendableShieldedBalance)
         }
+
+    @Test
+    fun ledgerKeySourceMapsToLedgerAccountCarryingItsStoredBinding() =
+        runBlocking {
+            val ledgerAccount =
+                mockk<Account> {
+                    every { accountUuid } returns this@AccountDataSourceImplTest.accountUuid
+                    every { keySource } returns "ledger"
+                    every { ufvk } returns null
+                    every { hdAccountIndex } returns null
+                }
+            val dataSource =
+                dataSource(
+                    walletBalances =
+                        MutableStateFlow(accountBalance(available = 100L, unshielded = 0L)),
+                    sdkAccount = ledgerAccount,
+                    ledgerBinding =
+                        LedgerAccountBindingData(
+                            deviceIdentityEncoding = "tpk0-deadbeef",
+                            zip32AccountIndex = Zip32AccountIndex.new(3L),
+                        ),
+                )
+
+            val accounts = withTimeout(5_000) { dataSource.allAccounts.filterNotNull().first() }
+
+            val account = accounts.single() as LedgerAccount
+            assertEquals("tpk0-deadbeef", account.deviceIdentity)
+            assertEquals(Zip32AccountIndex.new(3L), account.hdAccountIndex)
+            assertNull(account.saplingAddress)
+            assertNull(account.saplingBalance)
+            assertEquals(Zatoshi(100L), account.spendableShieldedBalance)
+        }
+
+    @Test
+    fun ledgerAccountWithoutStoredBindingStillDisplaysAtIndexZero() =
+        runBlocking {
+            val ledgerAccount =
+                mockk<Account> {
+                    every { accountUuid } returns this@AccountDataSourceImplTest.accountUuid
+                    every { keySource } returns "ledger"
+                    every { ufvk } returns null
+                    every { hdAccountIndex } returns null
+                }
+            val dataSource =
+                dataSource(
+                    walletBalances = MutableStateFlow(null),
+                    sdkAccount = ledgerAccount,
+                    ledgerBinding = null,
+                )
+
+            val accounts = withTimeout(5_000) { dataSource.allAccounts.filterNotNull().first() }
+
+            val account = accounts.single() as LedgerAccount
+            assertNull(account.deviceIdentity)
+            assertEquals(Zip32AccountIndex.new(0L), account.hdAccountIndex)
+        }
+
+    @Test
+    fun accountsSortDescendingAsZodlThenKeystoneThenLedger() {
+        val zashi =
+            ZashiAccount(
+                sdkAccount = account,
+                unifiedAddress = "u",
+                transparentAddress = "t",
+                saplingAddress = "s",
+                orchardBalance = null,
+                saplingBalance = null,
+                ironwoodBalance = null,
+                transparentBalance = null,
+                isSelected = true,
+            )
+        val keystone =
+            KeystoneAccount(
+                sdkAccount = account,
+                unifiedAddress = "u",
+                transparentAddress = "t",
+                orchardBalance = null,
+                ironwoodBalance = null,
+                transparentBalance = null,
+                isSelected = false,
+            )
+        val ledger =
+            LedgerAccount(
+                sdkAccount = account,
+                unifiedAddress = "u",
+                transparentAddress = "t",
+                orchardBalance = null,
+                ironwoodBalance = null,
+                transparentBalance = null,
+                isSelected = false,
+                deviceIdentity = null,
+                zip32AccountIndex = Zip32AccountIndex.new(0L),
+            )
+
+        val sorted = listOf<WalletAccount>(ledger, keystone, zashi).sortedDescending()
+
+        assertEquals(listOf(zashi, keystone, ledger), sorted)
+    }
+
+    @Test
+    fun ledgerAccountToStringDoesNotLeakTheDeviceIdentity() {
+        val ledger =
+            LedgerAccount(
+                sdkAccount = account,
+                unifiedAddress = "u1secretaddress",
+                transparentAddress = "t1secretaddress",
+                orchardBalance = null,
+                ironwoodBalance = null,
+                transparentBalance = null,
+                isSelected = false,
+                deviceIdentity = "tpk0-deadbeef",
+                zip32AccountIndex = Zip32AccountIndex.new(0L),
+            )
+
+        val printed = ledger.toString()
+
+        assertFalse(printed.contains("tpk0-deadbeef"))
+        assertFalse(printed.contains("u1secretaddress"))
+        assertFalse(printed.contains("t1secretaddress"))
+    }
 }

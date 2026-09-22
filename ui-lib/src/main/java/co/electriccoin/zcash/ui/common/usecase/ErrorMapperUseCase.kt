@@ -35,10 +35,14 @@ class ErrorMapperUseCase(
                 },
             message =
                 when {
-                    isLedgerUnsupported -> stringRes(co.electriccoin.zcash.ui.R.string.ledger_unsupported_message)
-                    else ->
+                    isLedgerUnsupported -> {
+                        stringRes(co.electriccoin.zcash.ui.R.string.ledger_unsupported_message)
+                    }
+
+                    else -> {
                         message
                             ?: stringRes(co.electriccoin.zcash.ui.design.R.string.swapAndPay_failure_laterDesc)
+                    }
                 },
             primaryStyle = primaryStyle,
         )

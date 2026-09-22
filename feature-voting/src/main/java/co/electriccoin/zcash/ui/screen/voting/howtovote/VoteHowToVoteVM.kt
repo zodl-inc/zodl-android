@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
-import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.LceState
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteKeystoneStorageProvider
 import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteStorageProvider
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase

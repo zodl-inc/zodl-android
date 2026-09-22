@@ -98,11 +98,9 @@ fun LedgerConnectView(state: LedgerConnectState) {
                     fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(Modifier.height(8.dp))
-                InstructionRow(1, stringResource(R.string.ledger_connect_step1))
-                InstructionRow(2, stringResource(R.string.ledger_connect_step2))
-                InstructionRow(3, stringResource(R.string.ledger_connect_step3))
-                InstructionRow(4, stringResource(R.string.ledger_connect_step4))
-                InstructionRow(5, stringResource(R.string.ledger_connect_step5))
+                INSTRUCTION_STEPS.forEachIndexed { index, step ->
+                    InstructionRow(number = index + 1, label = stringResource(step))
+                }
                 Spacer(Modifier.height(24.dp))
                 Spacer(Modifier.weight(1f))
                 ZashiButton(
@@ -117,6 +115,15 @@ fun LedgerConnectView(state: LedgerConnectState) {
         }
     }
 }
+
+private val INSTRUCTION_STEPS =
+    listOf(
+        R.string.ledger_connect_step1,
+        R.string.ledger_connect_step2,
+        R.string.ledger_connect_step3,
+        R.string.ledger_connect_step4,
+        R.string.ledger_connect_step5,
+    )
 
 @Composable
 private fun InstructionRow(number: Int, label: String) {

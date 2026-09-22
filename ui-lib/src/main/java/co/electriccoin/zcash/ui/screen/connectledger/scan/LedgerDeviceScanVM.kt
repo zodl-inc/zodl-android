@@ -109,13 +109,14 @@ class LedgerDeviceScanVM(
 
     private fun createPrimaryButton(internal: LedgerScanInternalState, hasDevices: Boolean) =
         when {
-            internal.phase == LedgerScanPhase.IDLE ->
+            internal.phase == LedgerScanPhase.IDLE -> {
                 ButtonState(
                     text = stringRes(R.string.ledger_scan_retry_cta),
                     onClick = ::onTryAgainClick,
                 )
+            }
 
-            hasDevices ->
+            hasDevices -> {
                 ButtonState(
                     text = stringRes(R.string.ledger_scan_select_cta),
                     isEnabled =
@@ -123,33 +124,40 @@ class LedgerDeviceScanVM(
                     isLoading = internal.phase == LedgerScanPhase.PAIRING,
                     onClick = ::onConnectClick,
                 )
+            }
 
-            else ->
+            else -> {
                 ButtonState(
                     text = stringRes(R.string.ledger_scan_searching_cta),
                     isEnabled = false,
                     isLoading = internal.phase == LedgerScanPhase.SCANNING,
                 )
+            }
         }
 
     private fun createErrorSheet(error: LedgerScanError): LedgerErrorSheetState =
         when (error) {
-            is LedgerScanError.NoDevices ->
+            is LedgerScanError.NoDevices -> {
                 retrySheet(R.string.ledger_error_noDevices_title, R.string.ledger_error_noDevices_message)
+            }
 
-            is LedgerScanError.Locked ->
+            is LedgerScanError.Locked -> {
                 retrySheet(R.string.ledger_error_locked_title, R.string.ledger_error_locked_message)
+            }
 
-            is LedgerScanError.PairingFailed ->
+            is LedgerScanError.PairingFailed -> {
                 retrySheet(R.string.ledger_error_pairingFailed_title, R.string.ledger_error_pairingFailed_message)
+            }
 
-            is LedgerScanError.ImportRejected ->
+            is LedgerScanError.ImportRejected -> {
                 retrySheet(R.string.ledger_error_importRejected_title, R.string.ledger_error_importRejected_message)
+            }
 
-            is LedgerScanError.Disconnected ->
+            is LedgerScanError.Disconnected -> {
                 retrySheet(R.string.ledger_error_disconnected_title, R.string.ledger_error_disconnected_message)
+            }
 
-            is LedgerScanError.Permissions ->
+            is LedgerScanError.Permissions -> {
                 LedgerErrorSheetState(
                     title = stringRes(R.string.ledger_error_permissions_title),
                     message = stringRes(R.string.ledger_error_permissions_message),
@@ -161,8 +169,9 @@ class LedgerDeviceScanVM(
                     secondary = null,
                     onBack = ::onSheetDismissed,
                 )
+            }
 
-            is LedgerScanError.AlreadyAdded ->
+            is LedgerScanError.AlreadyAdded -> {
                 LedgerErrorSheetState(
                     title = stringRes(R.string.ledger_error_alreadyAdded_title),
                     message = stringRes(R.string.ledger_error_alreadyAdded_message),
@@ -178,6 +187,7 @@ class LedgerDeviceScanVM(
                         ),
                     onBack = ::onSheetDismissed,
                 )
+            }
         }
 
     private fun retrySheet(title: Int, message: Int) =
@@ -338,29 +348,44 @@ private fun LedgerException.toScanError(): LedgerScanError? =
         is LedgerException.PairingRefused,
         is LedgerException.ConnectionFailed,
         is LedgerException.DeviceNotFound,
-        is LedgerException.Timeout -> LedgerScanError.PairingFailed
+        is LedgerException.Timeout -> {
+            LedgerScanError.PairingFailed
+        }
 
         is LedgerException.WrongApp,
         is LedgerException.DeviceRefused,
         is LedgerException.DerivationBudgetExhausted,
-        is LedgerException.AppTooOld -> LedgerScanError.Locked
+        is LedgerException.AppTooOld -> {
+            LedgerScanError.Locked
+        }
 
-        is LedgerException.UserRejected -> LedgerScanError.ImportRejected
+        is LedgerException.UserRejected -> {
+            LedgerScanError.ImportRejected
+        }
 
-        is LedgerException.Disconnected -> LedgerScanError.Disconnected
+        is LedgerException.Disconnected -> {
+            LedgerScanError.Disconnected
+        }
 
-        is LedgerException.BluetoothDisabled -> LedgerScanError.Permissions(openBluetoothSettings = true)
+        is LedgerException.BluetoothDisabled -> {
+            LedgerScanError.Permissions(openBluetoothSettings = true)
+        }
 
-        is LedgerException.BluetoothUnauthorized -> LedgerScanError.Permissions(openBluetoothSettings = false)
+        is LedgerException.BluetoothUnauthorized -> {
+            LedgerScanError.Permissions(openBluetoothSettings = false)
+        }
 
-        is LedgerException.BluetoothUnavailable ->
+        is LedgerException.BluetoothUnavailable -> {
             if (scanErrorCode != null) {
                 LedgerScanError.NoDevices
             } else {
                 LedgerScanError.Permissions(openBluetoothSettings = true)
             }
+        }
 
-        else -> null
+        else -> {
+            null
+        }
     }
 
 private data class LedgerScanInternalState(

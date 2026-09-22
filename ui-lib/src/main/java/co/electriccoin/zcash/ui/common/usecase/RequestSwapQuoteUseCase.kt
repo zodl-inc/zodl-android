@@ -10,8 +10,8 @@ import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.InsufficientFundsException
 import co.electriccoin.zcash.ui.common.datasource.TexUnsupportedOnKSException
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
-import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_INPUT
 import co.electriccoin.zcash.ui.common.model.SwapMode.EXACT_OUTPUT
@@ -161,7 +161,7 @@ class RequestSwapQuoteUseCase(
         }
     }
 
-    @Suppress("TooGenericExceptionCaught")
+    @Suppress("TooGenericExceptionCaught", "ThrowsCount")
     private suspend fun createProposal(quote: SwapQuote) {
         val send =
             ZecSend(
@@ -181,7 +181,9 @@ class RequestSwapQuoteUseCase(
                 keystoneProposalRepository.createPCZTFromProposal()
             }
 
-            is LedgerAccount -> throw LedgerOperationUnsupportedException()
+            is LedgerAccount -> {
+                throw LedgerOperationUnsupportedException()
+            }
 
             is ZashiAccount -> {
                 when (quote.mode) {

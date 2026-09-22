@@ -15,8 +15,8 @@ import co.electriccoin.zcash.ui.screen.advancedsettings.debug.orchardbalance.Deb
 import co.electriccoin.zcash.ui.screen.balances.BalanceWidgetVM
 import co.electriccoin.zcash.ui.screen.balances.breakdown.BalanceBreakdownVM
 import co.electriccoin.zcash.ui.screen.balances.spendable.SpendableBalanceVM
-import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerVM
 import co.electriccoin.zcash.ui.screen.choosehardwarewallet.ChooseHardwareWalletVM
+import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerVM
 import co.electriccoin.zcash.ui.screen.connectkeystone.connect.KeystoneConnectVM
 import co.electriccoin.zcash.ui.screen.connectkeystone.date.KeystoneDateVM
 import co.electriccoin.zcash.ui.screen.connectkeystone.estimation.KeystoneEstimationVM
