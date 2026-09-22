@@ -13,25 +13,50 @@ import cash.z.ecc.android.sdk.model.voting.VotingNextStep
  * crate (`voting_progress_presentation.dart`'s `fractionSum` term) without replicating its exact
  * "finished" bookkeeping.
  *
+ * Also tracks delegation-phase progress separately, per BUNDLE rather than per proposal:
+ * [VotingNextStep.Delegate]/[VotingNextStep.AdvanceDelegation]/
+ * [VotingNextStep.AdvanceImportedDelegation] carry no proposal id (a bundle packs many
+ * proposals' votes together, so delegation is inherently bundle-scoped), but the crate does
+ * report `proof_progress` for these steps too. Without this, a round dominated by delegation
+ * work for many bundles reports genuinely zero progress signal until the first proposal starts
+ * casting -- observed live: "0 of 37" sat motionless, then jumped straight to "37 of 37" at the
+ * very end. A delegating bundle's contribution is excluded from the sum once that same bundle
+ * index appears in a proposal-scoped (casting) step, so a bundle's progress is never counted
+ * twice as it transitions from delegating to casting.
+ *
  * [record] never regresses a single bundle's own stored contribution, and [fraction] never
  * returns a lower value than it has already returned -- both are monotonic for this tracker's
  * lifetime, matching [SubmitVotesUseCase]'s existing per-submission ratchet discipline.
  */
 internal class VotingRoundProgressTracker {
     private val bundleProgressByProposal = mutableMapOf<Int, MutableMap<Int, Float>>()
+    private val delegationProgressByBundle = mutableMapOf<Int, Float>()
     private var lastFraction = 0f
     private var lastEstimatedCompleted = 0
 
-    /** Records one step's proving progress. A safe no-op for steps with no [proposalId][proposalIdOf]. */
+    /**
+     * Records one step's proving progress. Proposal-scoped steps (see [proposalIdOf]) bucket by
+     * proposal id; delegation steps (see [isDelegationStep]) bucket by `bundleIndex` instead,
+     * since they carry no proposal id. Any other step kind (e.g. [VotingNextStep.Unknown]) is a
+     * safe no-op -- its semantics aren't known to this SDK yet.
+     */
     fun record(
         step: VotingNextStep?,
         proofProgress: Float?
     ) {
         if (step == null || proofProgress == null) return
-        val proposalId = proposalIdOf(step) ?: return
-        val bundleIndex = step.bundleIndex
-        val bundleProgress = bundleProgressByProposal.getOrPut(proposalId) { mutableMapOf() }
-        bundleProgress[bundleIndex] = maxOf(bundleProgress[bundleIndex] ?: 0f, proofProgress)
+        if (isDelegationStep(step)) {
+            val bundleIndex = step.bundleIndex
+            delegationProgressByBundle[bundleIndex] =
+                maxOf(delegationProgressByBundle[bundleIndex] ?: 0f, proofProgress)
+        } else {
+            val proposalId = proposalIdOf(step)
+            if (proposalId != null) {
+                val bundleIndex = step.bundleIndex
+                val bundleProgress = bundleProgressByProposal.getOrPut(proposalId) { mutableMapOf() }
+                bundleProgress[bundleIndex] = maxOf(bundleProgress[bundleIndex] ?: 0f, proofProgress)
+            }
+        }
     }
 
     /**
@@ -39,6 +64,13 @@ internal class VotingRoundProgressTracker {
      * (callers should show an indeterminate indicator in that case, per Vizor's own "a count
      * that reads as a flicker is worse than no count" rationale, rather than a determinate bar
      * pinned at or near empty).
+     *
+     * Delegation progress is ADDED to the casting-side `max(measured, tally)` term, not folded
+     * into that same max: a delegating bundle and an already-casting proposal represent
+     * non-overlapping units of work happening concurrently on different bundles, so both must
+     * count. A bundle already reflected on the casting side (its index appears in
+     * [bundleProgressByProposal]) is excluded from the delegation sum, so a single bundle's
+     * progress is never counted on both sides as it transitions from delegating to casting.
      */
     fun fraction(
         completedProposals: Int?,
@@ -51,7 +83,14 @@ internal class VotingRoundProgressTracker {
                 (bundleProgress.values.minOrNull() ?: 0f).toDouble()
             }
         val measuredFraction = fractionSum.toFloat() / total
-        val combined = maxOf(measuredFraction, tallyFraction).coerceIn(0f, 1f)
+        val castingBundleIndexes = bundleProgressByProposal.values.flatMapTo(mutableSetOf()) { it.keys }
+        val delegationFractionSum =
+            delegationProgressByBundle
+                .filterKeys { it !in castingBundleIndexes }
+                .values
+                .sumOf { it.toDouble() }
+        val delegationFraction = delegationFractionSum.toFloat() / total
+        val combined = (maxOf(measuredFraction, tallyFraction) + delegationFraction).coerceIn(0f, 1f)
         lastFraction = maxOf(lastFraction, combined)
         return lastFraction.takeIf { it > 0f }
     }
@@ -97,5 +136,13 @@ internal class VotingRoundProgressTracker {
             is VotingNextStep.SubmitShares -> step.proposalId
             is VotingNextStep.ConfirmShare -> step.proposalId
             else -> null
+        }
+
+    private fun isDelegationStep(step: VotingNextStep): Boolean =
+        when (step) {
+            is VotingNextStep.Delegate -> true
+            is VotingNextStep.AdvanceDelegation -> true
+            is VotingNextStep.AdvanceImportedDelegation -> true
+            else -> false
         }
 }

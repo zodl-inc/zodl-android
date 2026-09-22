@@ -116,13 +116,108 @@ class VotingRoundProgressTrackerTest {
         assertEquals(3f / 37f, fraction)
     }
 
+    // --- delegation-phase progress (bundle-scoped, no proposal id) ---
+    //
+    // Delegate/AdvanceDelegation/AdvanceImportedDelegation steps carry no proposal id -- a bundle
+    // packs many proposals' votes together, so delegation is inherently bundle-scoped -- but the
+    // crate DOES report proof_progress for them (confirmed against the vendored crate's
+    // RoundStepProgressView doc comment, and independently confirmed this SDK's own
+    // parseRoundDriveProgress mapper already forwards proof_progress generically regardless of
+    // step kind). Without tracking this, a round dominated by delegation work for many bundles
+    // reports genuinely zero progress signal until the first proposal starts casting -- this was
+    // observed live: "0 of 37" sat motionless, then jumped straight to "37 of 37" at the end.
+
     @Test
-    fun `a step with no proposal id is ignored`() {
+    fun `a Delegate step's progress contributes via bundle-scoped tracking`() {
         val tracker = VotingRoundProgressTracker()
 
         tracker.record(VotingNextStep.Delegate(bundleIndex = 0), proofProgress = 0.5f)
 
-        assertNull(tracker.fraction(completedProposals = 0, totalProposals = 37))
+        val fraction = tracker.fraction(completedProposals = 0, totalProposals = 37)
+        assertEquals(0.5f / 37f, fraction)
+    }
+
+    @Test
+    fun `AdvanceDelegation and AdvanceImportedDelegation steps also contribute via bundle-scoped tracking`() {
+        val advanceDelegationTracker = VotingRoundProgressTracker()
+        advanceDelegationTracker.record(VotingNextStep.AdvanceDelegation(bundleIndex = 0), proofProgress = 0.4f)
+        assertEquals(0.4f / 37f, advanceDelegationTracker.fraction(completedProposals = 0, totalProposals = 37))
+
+        val advanceImportedTracker = VotingRoundProgressTracker()
+        advanceImportedTracker.record(VotingNextStep.AdvanceImportedDelegation(bundleIndex = 0), proofProgress = 0.6f)
+        assertEquals(0.6f / 37f, advanceImportedTracker.fraction(completedProposals = 0, totalProposals = 37))
+    }
+
+    @Test
+    fun `distinct delegating bundles sum rather than only tracking one`() {
+        val tracker = VotingRoundProgressTracker()
+
+        tracker.record(VotingNextStep.Delegate(bundleIndex = 0), proofProgress = 1.0f)
+        tracker.record(VotingNextStep.Delegate(bundleIndex = 1), proofProgress = 0.5f)
+
+        val fraction = tracker.fraction(completedProposals = 0, totalProposals = 37)
+        assertEquals((1.0f + 0.5f) / 37f, fraction)
+    }
+
+    @Test
+    fun `delegation progress for the same bundle is monotonic`() {
+        val tracker = VotingRoundProgressTracker()
+
+        tracker.record(VotingNextStep.Delegate(bundleIndex = 0), proofProgress = 0.8f)
+        // A later, lower value for the SAME bundle must not drag its stored contribution back down.
+        tracker.record(VotingNextStep.Delegate(bundleIndex = 0), proofProgress = 0.1f)
+
+        val fraction = tracker.fraction(completedProposals = 0, totalProposals = 37)
+        assertEquals(0.8f / 37f, fraction)
+    }
+
+    @Test
+    fun `delegation progress on one bundle adds to casting progress on a different bundle`() {
+        val tracker = VotingRoundProgressTracker()
+
+        // Bundle 0 is still delegating; bundle 1's proposal 5 is already casting. These are
+        // non-overlapping units of work and must both count, not just the larger of the two.
+        tracker.record(VotingNextStep.Delegate(bundleIndex = 0), proofProgress = 0.4f)
+        tracker.record(castVote(bundleIndex = 1, proposalId = 5), proofProgress = 0.9f)
+
+        val fraction = tracker.fraction(completedProposals = 0, totalProposals = 37)
+        assertEquals((0.9f + 0.4f) / 37f, fraction)
+    }
+
+    @Test
+    fun `once a bundle starts casting its earlier delegation progress no longer double-counts`() {
+        val tracker = VotingRoundProgressTracker()
+
+        // Bundle 0 finishes delegating, then starts casting proposal 1. Once a CastVote step for
+        // bundle 0 is recorded, bundle 0's delegation contribution must drop out of the
+        // delegation sum -- its progress is now represented by the casting side instead, or the
+        // combined total would count the same bundle's completion twice.
+        tracker.record(VotingNextStep.Delegate(bundleIndex = 0), proofProgress = 1.0f)
+        tracker.record(castVote(bundleIndex = 0, proposalId = 1), proofProgress = 0.3f)
+
+        val fraction = tracker.fraction(completedProposals = 0, totalProposals = 37)
+        // Only the casting contribution (0.3) counts now -- not 1.0 (stale delegation) + 0.3.
+        assertEquals(0.3f / 37f, fraction)
+    }
+
+    @Test
+    fun `the ratchet prevents a visible regression when a bundle transitions from delegation to casting`() {
+        val tracker = VotingRoundProgressTracker()
+
+        tracker.record(VotingNextStep.Delegate(bundleIndex = 0), proofProgress = 1.0f)
+        val whileDelegating = tracker.fraction(completedProposals = 0, totalProposals = 37)
+        checkNotNull(whileDelegating)
+
+        // Bundle 0 now starts casting at a low proof progress -- the raw combined value would
+        // momentarily dip (delegation contribution drops out, casting hasn't caught up yet), but
+        // the displayed fraction must never move backwards.
+        tracker.record(castVote(bundleIndex = 0, proposalId = 1), proofProgress = 0.1f)
+        val afterTransition = tracker.fraction(completedProposals = 0, totalProposals = 37)
+        checkNotNull(afterTransition)
+        assertTrue(
+            afterTransition >= whileDelegating,
+            "fraction regressed from $whileDelegating to $afterTransition"
+        )
     }
 
     @Test
