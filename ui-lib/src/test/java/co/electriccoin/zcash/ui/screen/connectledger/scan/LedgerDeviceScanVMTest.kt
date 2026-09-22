@@ -6,6 +6,7 @@ import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
 import cash.z.ecc.android.sdk.ledger.LedgerDeviceModel
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
 import co.electriccoin.zcash.ui.common.usecase.PairLedgerDeviceResult
@@ -17,6 +18,7 @@ import co.electriccoin.zcash.ui.screen.connecthardware.HardwareWalletEnrollment
 import co.electriccoin.zcash.ui.screen.connecthardware.neworactive.HardwareNewOrActiveArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -316,6 +318,71 @@ class LedgerDeviceScanVMTest {
             assertEquals(ButtonStyle.SECONDARY, secondary.style)
         }
 
+    @Test
+    fun goToAccountSelectsTheExistingAccountAndUnwindsToTheRoot() =
+        runTest(dispatcher) {
+            val existing = mockk<WalletAccount>(relaxed = true)
+            val selectWalletAccount = mockk<SelectWalletAccountUseCase>(relaxed = true)
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+            val pairLedgerDevice =
+                mockk<PairLedgerDeviceUseCase> {
+                    coEvery { this@mockk.invoke(any()) } returns PairLedgerDeviceResult.AlreadyAdded(existing)
+                }
+            val vm =
+                vm(
+                    pairLedgerDevice = pairLedgerDevice,
+                    selectWalletAccount = selectWalletAccount,
+                    navigationRouter = navigationRouter,
+                )
+            collect(vm)
+
+            vm.state.value.onPermissionsGranted()
+            devices.value = listOf(device("AA"))
+            runCurrent()
+            vm.state.value.devices
+                .first()
+                .onClick()
+            runCurrent()
+            vm.state.value.primaryButton
+                .onClick()
+            runCurrent()
+
+            assertNotNull(vm.state.value.errorSheet)
+                .primary
+                .onClick()
+            runCurrent()
+
+            coVerify(exactly = 1) { selectWalletAccount.invoke(existing) }
+            verify(exactly = 1) { navigationRouter.backToRoot() }
+        }
+
+    @Test
+    fun leavingTheScreenStopsTheScanAndReleasesAnyPendingPairing() =
+        runTest(dispatcher) {
+            val ledgerPairingRepository = mockk<LedgerPairingRepository>(relaxed = true)
+            val observeLedgerDevices =
+                mockk<ObserveLedgerDevicesUseCase> {
+                    every { this@mockk.invoke() } returns devices
+                }
+            val vm =
+                vm(
+                    observeLedgerDevices = observeLedgerDevices,
+                    ledgerPairingRepository = ledgerPairingRepository,
+                )
+            collect(vm)
+            vm.state.value.onPermissionsGranted()
+            runCurrent()
+            assertTrue(vm.state.value.isScanning)
+
+            vm.triggerOnCleared()
+            runCurrent()
+
+            verify(exactly = 1) { ledgerPairingRepository.clear() }
+            devices.value = listOf(device("AA"))
+            runCurrent()
+            assertEquals(emptyList(), vm.state.value.devices)
+        }
+
     private fun TestScope.pairedWithFailure(
         exception: LedgerException,
         navigateToError: NavigateToErrorUseCase = mockk(relaxed = true),
@@ -352,6 +419,17 @@ class LedgerDeviceScanVMTest {
     }
 
     private fun StringResource.resourceId(): Int = (this as StringResource.ByResource).resource
+
+    /**
+     * `onCleared` is protected on `ViewModel`, and the test needs the real disposal path rather
+     * than a stand-in for it.
+     */
+    private fun LedgerDeviceScanVM.triggerOnCleared() {
+        LedgerDeviceScanVM::class.java
+            .getDeclaredMethod("onCleared")
+            .apply { isAccessible = true }
+            .invoke(this)
+    }
 
     private fun TestScope.collect(vm: LedgerDeviceScanVM) {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect { } }

@@ -20,6 +20,7 @@ import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 /**
  * A pairing with no birthday imports from the chain tip and goes straight to the success screen; a
@@ -68,8 +69,9 @@ class CreateLedgerAccountUseCaseTest {
                 }
             val useCase = useCase(accountDataSource, ledgerPairingRepository, mockk(relaxed = true))
 
-            assertFailsWith<LedgerPairingMissingException> { useCase(birthday = null) }
+            val thrown = assertFailsWith<LedgerPairingMissingException> { useCase(birthday = null) }
 
+            assertTrue(thrown.message.orEmpty().contains("paired again"))
             coVerify(exactly = 0) { accountDataSource.importLedgerAccount(any(), any()) }
         }
 

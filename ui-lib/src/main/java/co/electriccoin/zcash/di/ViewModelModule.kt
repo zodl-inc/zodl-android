@@ -23,6 +23,7 @@ import co.electriccoin.zcash.ui.screen.connecthardware.height.HardwareHeightVM
 import co.electriccoin.zcash.ui.screen.connecthardware.neworactive.HardwareNewOrActiveVM
 import co.electriccoin.zcash.ui.screen.connectkeystone.connect.KeystoneConnectVM
 import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectVM
+import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedVM
 import co.electriccoin.zcash.ui.screen.connectledger.scan.LedgerDeviceScanVM
 import co.electriccoin.zcash.ui.screen.contact.AddGenericABContactVM
 import co.electriccoin.zcash.ui.screen.contact.AddZashiABContactVM
@@ -217,6 +218,7 @@ val viewModelModule =
         viewModelOf(::HardwareHeightVM)
         viewModelOf(::ChooseHardwareWalletVM)
         viewModelOf(::LedgerConnectVM)
+        viewModelOf(::LedgerConnectedVM)
         viewModelOf(::LedgerDeviceScanVM)
         viewModelOf(::KeepOpenVM)
     }

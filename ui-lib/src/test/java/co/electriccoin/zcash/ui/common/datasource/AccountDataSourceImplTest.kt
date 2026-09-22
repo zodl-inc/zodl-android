@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.datasource
 
 import cash.z.ecc.android.sdk.Synchronizer
+import cash.z.ecc.android.sdk.ledger.LedgerAccountPairing
 import cash.z.ecc.android.sdk.model.Account
 import cash.z.ecc.android.sdk.model.AccountBalance
 import cash.z.ecc.android.sdk.model.AccountUuid
@@ -325,6 +326,123 @@ class AccountDataSourceImplTest {
 
             assertEquals(bindingFailure.message, thrown.message)
         }
+
+    @Test
+    fun aSuccessfulImportStoresTheBindingForTheNewAccount() =
+        runBlocking {
+            val importedUuid = AccountUuid.new(ByteArray(16) { (it + 1).toByte() })
+            val imported = mockk<Account> { every { accountUuid } returns importedUuid }
+            val synchronizer =
+                mockk<Synchronizer>(relaxed = true) {
+                    every { accountsFlow } returns MutableStateFlow(listOf(account))
+                    every { walletBalances } returns MutableStateFlow(null)
+                    coEvery { importAccountByUfvk(any()) } returns imported
+                }
+            val ledgerAccountBindingProvider =
+                mockk<LedgerAccountBindingProvider>(relaxed = true) {
+                    every { observe(any()) } returns MutableStateFlow(null)
+                }
+            val pairing =
+                mockk<LedgerAccountPairing>(relaxed = true) {
+                    every { binding } returns
+                        mockk(relaxed = true) {
+                            every { deviceIdentity } returns mockk { every { encoding } returns "tpk0-deadbeef" }
+                            every { zip32AccountIndex } returns Zip32AccountIndex.new(4L)
+                        }
+                }
+
+            dataSource(synchronizer, ledgerAccountBindingProvider)
+                .importLedgerAccount(pairing = pairing, birthday = null)
+
+            coVerify(exactly = 1) {
+                ledgerAccountBindingProvider.save(importedUuid, "tpk0-deadbeef", 4L)
+            }
+            coVerify(exactly = 0) { synchronizer.deleteAccount(any()) }
+        }
+
+    @Test
+    fun deletingALedgerAccountAlsoDropsItsStoredBinding() =
+        runBlocking {
+            val synchronizer =
+                mockk<Synchronizer>(relaxed = true) {
+                    every { accountsFlow } returns MutableStateFlow(listOf(account))
+                    every { walletBalances } returns MutableStateFlow(null)
+                    coEvery { deleteAccount(any()) } returns true
+                }
+            val ledgerAccountBindingProvider =
+                mockk<LedgerAccountBindingProvider>(relaxed = true) {
+                    every { observe(any()) } returns MutableStateFlow(null)
+                }
+            val ledger = ledgerAccount()
+
+            dataSource(synchronizer, ledgerAccountBindingProvider).deleteAccount(ledger)
+
+            coVerify(exactly = 1) { ledgerAccountBindingProvider.clear(accountUuid) }
+        }
+
+    @Test
+    fun aBindingThatCannotBeClearedDoesNotFailAnAlreadyCompletedDeletion() =
+        runBlocking {
+            val synchronizer =
+                mockk<Synchronizer>(relaxed = true) {
+                    every { accountsFlow } returns MutableStateFlow(listOf(account))
+                    every { walletBalances } returns MutableStateFlow(null)
+                    coEvery { deleteAccount(any()) } returns true
+                }
+            val ledgerAccountBindingProvider =
+                mockk<LedgerAccountBindingProvider>(relaxed = true) {
+                    every { observe(any()) } returns MutableStateFlow(null)
+                    coEvery { clear(any()) } throws RuntimeException("keystore unavailable")
+                }
+
+            dataSource(synchronizer, ledgerAccountBindingProvider).deleteAccount(ledgerAccount())
+
+            coVerify(exactly = 1) { synchronizer.deleteAccount(accountUuid) }
+        }
+
+    @Test
+    fun deletingASoftwareAccountNeverTouchesTheLedgerBindingStore() =
+        runBlocking {
+            val synchronizer =
+                mockk<Synchronizer>(relaxed = true) {
+                    every { accountsFlow } returns MutableStateFlow(listOf(account))
+                    every { walletBalances } returns MutableStateFlow(null)
+                    coEvery { deleteAccount(any()) } returns true
+                }
+            val ledgerAccountBindingProvider =
+                mockk<LedgerAccountBindingProvider>(relaxed = true) {
+                    every { observe(any()) } returns MutableStateFlow(null)
+                }
+            val zashi =
+                ZashiAccount(
+                    sdkAccount = account,
+                    unifiedAddress = "u",
+                    transparentAddress = "t",
+                    saplingAddress = "s",
+                    orchardBalance = null,
+                    saplingBalance = null,
+                    ironwoodBalance = null,
+                    transparentBalance = null,
+                    isSelected = false,
+                )
+
+            dataSource(synchronizer, ledgerAccountBindingProvider).deleteAccount(zashi)
+
+            coVerify(exactly = 0) { ledgerAccountBindingProvider.clear(any()) }
+        }
+
+    private fun ledgerAccount() =
+        LedgerAccount(
+            sdkAccount = account,
+            unifiedAddress = "u",
+            transparentAddress = "t",
+            orchardBalance = null,
+            ironwoodBalance = null,
+            transparentBalance = null,
+            isSelected = false,
+            deviceIdentity = "tpk0-deadbeef",
+            zip32AccountIndex = Zip32AccountIndex.new(0L),
+        )
 
     private fun dataSource(
         synchronizer: Synchronizer,
