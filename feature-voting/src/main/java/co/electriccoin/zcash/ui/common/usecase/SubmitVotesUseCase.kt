@@ -5,9 +5,7 @@ import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import cash.z.ecc.android.sdk.ext.toHex
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.ZcashNetwork
-import cash.z.ecc.android.sdk.model.voting.VotingBallotIntent
 import cash.z.ecc.android.sdk.model.voting.VotingDelegationInputs
-import cash.z.ecc.android.sdk.model.voting.VotingNextStep
 import cash.z.ecc.android.sdk.model.voting.VotingProposalRosterEntry
 import cash.z.ecc.android.sdk.model.voting.VotingRoundDriveProgressListener
 import cash.z.ecc.android.sdk.model.voting.VotingRoundRunReport
@@ -214,9 +212,7 @@ class SubmitVotesUseCase(
                             }
                     )
 
-                    roundSession.setBallotIntents(
-                        choices.map { (proposalId, choiceId) -> VotingBallotIntent(proposalId, choiceId) }
-                    )
+                    roundSession.setBallotIntents(buildBallotIntents(session.proposals, choices))
 
                     val delegationInputs =
                         VotingDelegationInputs(
@@ -252,19 +248,14 @@ class SubmitVotesUseCase(
                     // doc comment for why a per-event bundle/proposal id was dropped instead.
                     var lastCompletedProposals: Int? = null
                     var lastTotalProposals: Int? = null
-                    // Per-bundle progress ledger, mirroring the old 4.0.0 SubmissionProgressLedger's
-                    // "report the slowest bundle" semantics: RoundDriveEventView's CastVote step
-                    // already carries bundleIndex (confirmed live in logcat), so this needs no
-                    // SDK/Rust change -- see Phase 4 of the production-completion design doc.
-                    // Monotonic per bundle (never regresses), keyed by bundleIndex.
-                    val bundleProgressLedger = mutableMapOf<Int, Float>()
-                    // Per-bundle values are monotonic, but the *minimum over the ledger* is not:
-                    // the key set grows as previously-unseen bundles report in, and a newly
-                    // added bundle's first (low) value can drag the minimum below what was
-                    // already shown, making the progress bar visibly jump backwards. Ratchet the
-                    // value actually handed to the UI so it can only ever move forward within
-                    // this submission -- same scope/lifetime as bundleProgressLedger itself.
-                    var lastReportedProgress = 0f
+                    // Per-proposal progress tracker (each proposal's own fraction is the minimum
+                    // across that proposal's own bundles, summed across every proposal currently
+                    // in flight) -- moves visibly even in a many-proposal round, unlike tracking
+                    // only the slowest bundle of a single proposal. Returns null (show an
+                    // indeterminate indicator) until real progress exists. See Phase 4 of the
+                    // production-completion design doc and VotingRoundProgressTracker's own doc
+                    // comment for the Vizor Wallet precedent this mirrors.
+                    val progressTracker = VotingRoundProgressTracker()
                     val progressListener =
                         VotingRoundDriveProgressListener { progress ->
                             progress.tally?.let { tally ->
@@ -273,27 +264,16 @@ class SubmitVotesUseCase(
                                 lastTotalProposals =
                                     maxOf(lastTotalProposals ?: 0, tally.totalProposals)
                             }
-                            val bundleIndex = (progress.step as? VotingNextStep.CastVote)?.bundleIndex
-                            val proofProgress = progress.proofProgress
-                            val ledgerMin =
-                                if (bundleIndex != null && proofProgress != null) {
-                                    bundleProgressLedger[bundleIndex] =
-                                        maxOf(bundleProgressLedger[bundleIndex] ?: 0f, proofProgress)
-                                    bundleProgressLedger.values.minOrNull()
-                                } else {
-                                    bundleProgressLedger.values.minOrNull()
-                                }
-                            val ratchetedProgress =
-                                maxOf(
-                                    lastReportedProgress,
-                                    ledgerMin ?: progress.proofProgress ?: 0f
-                                )
-                            lastReportedProgress = ratchetedProgress
+                            progressTracker.record(progress.step, progress.proofProgress)
                             onProgress(
                                 VotingSubmissionProgress.RunningRound(
-                                    completedProposals = lastCompletedProposals,
+                                    completedProposals =
+                                        progressTracker.estimatedCompletedProposals(
+                                            lastCompletedProposals,
+                                            lastTotalProposals
+                                        ),
                                     totalProposals = lastTotalProposals,
-                                    proofProgress = ratchetedProgress
+                                    proofProgress = progressTracker.fraction(lastCompletedProposals, lastTotalProposals)
                                 )
                             )
                             // CHP_BENCH — see ChpBenchLog.kt's own note: local-only, never merge.
@@ -501,22 +481,25 @@ class SubmitVotesUseCase(
         )
         votingKeystoneSessionHolder.setBallotIntents(
             roundId = roundId,
-            intents = choices.map { (proposalId, choiceId) -> VotingBallotIntent(proposalId, choiceId) }
+            intents = buildBallotIntents(session.proposals, choices)
         )
 
         var lastCompletedProposals: Int? = null
         var lastTotalProposals: Int? = null
+        val progressTracker = VotingRoundProgressTracker()
         val progressListener =
             VotingRoundDriveProgressListener { progress ->
                 progress.tally?.let { tally ->
                     lastCompletedProposals = maxOf(lastCompletedProposals ?: 0, tally.completedProposals)
                     lastTotalProposals = maxOf(lastTotalProposals ?: 0, tally.totalProposals)
                 }
+                progressTracker.record(progress.step, progress.proofProgress)
                 onProgress(
                     VotingSubmissionProgress.RunningRound(
-                        completedProposals = lastCompletedProposals,
+                        completedProposals =
+                            progressTracker.estimatedCompletedProposals(lastCompletedProposals, lastTotalProposals),
                         totalProposals = lastTotalProposals,
-                        proofProgress = progress.proofProgress
+                        proofProgress = progressTracker.fraction(lastCompletedProposals, lastTotalProposals)
                     )
                 )
             }

@@ -169,21 +169,11 @@ private fun VoteConfirmSubmissionState.submissionProgress(): Float {
 
         is VoteSubmissionStatus.RunningRound -> {
             val offset = if (includesAuthorizationProgress) delegationWeight else 0f
-            val total = status.totalProposals
-            val wholeRoundProgress =
-                if (total != null && total > 0) {
-                    // completedProposals + the current step's own proving fraction gives smooth
-                    // in-between movement rather than jumping only when a whole proposal
-                    // finishes -- a single proposal's proof can take tens of seconds on its own.
-                    val completed = (status.completedProposals ?: 0).toFloat()
-                    val stepProgress = status.proofProgress ?: 0f
-                    ((completed + stepProgress) / total).coerceIn(0f, 1f)
-                } else {
-                    // No tally yet (before the round-driver's first PlanRefreshed event) --
-                    // park at the delegation-phase boundary rather than implying progress this
-                    // status can't yet measure.
-                    0f
-                }
+            // status.proofProgress is already a 0..1 fraction of the WHOLE round's remaining
+            // work (VotingRoundProgressTracker sums every proposal currently in flight, not
+            // just the current step's own bundle) -- null only before anything measurable
+            // exists yet, parked at the delegation-phase boundary in that case.
+            val wholeRoundProgress = status.proofProgress ?: 0f
             (offset + wholeRoundProgress * (1f - offset)).coerceIn(0f, 1f)
         }
 
