@@ -5,82 +5,54 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.usecase.GetWalletAccountsUseCase
 import co.electriccoin.zcash.ui.common.usecase.SelectWalletAccountUseCase
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.ButtonState
-import co.electriccoin.zcash.ui.design.component.listitem.ListItemState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByAddress
-import co.electriccoin.zcash.ui.screen.ExternalUrl
-import co.electriccoin.zcash.ui.screen.connectkeystone.connect.ConnectKeystoneArgs
+import co.electriccoin.zcash.ui.screen.choosehardwarewallet.ChooseHardwareWalletArgs
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlin.collections.map
 
 class AccountListVM(
     getWalletAccounts: GetWalletAccountsUseCase,
     private val selectWalletAccount: SelectWalletAccountUseCase,
     private val navigationRouter: NavigationRouter,
 ) : ViewModel() {
-    @Suppress("SpreadOperator")
     val state =
         getWalletAccounts
             .observe()
             .map { accounts ->
-                val items =
-                    listOfNotNull(
-                        *accounts
-                            .orEmpty()
-                            .map<WalletAccount, AccountListItem> { account ->
-                                AccountListItem.Account(
-                                    ZashiAccountListItemState(
-                                        title = account.name,
-                                        subtitle = stringResByAddress(account.unifiedAddress),
-                                        icon =
-                                            when (account) {
-                                                is KeystoneAccount -> R.drawable.ic_item_keystone
-                                                is ZashiAccount -> R.drawable.ic_item_zashi
-                                            },
-                                        isSelected = account.isSelected,
-                                        onClick = { onAccountClicked(account) }
-                                    )
-                                )
-                            }.toTypedArray(),
-                        AccountListItem
-                            .Other(
-                                ListItemState(
-                                    title =
-                                        stringRes(
-                                            co.electriccoin.zcash.ui.R.string.keystone_drawer_banner_title,
-                                        ),
-                                    subtitle =
-                                        stringRes(
-                                            co.electriccoin.zcash.ui.R.string.keystone_drawer_banner_desc,
-                                        ),
-                                    onClick = ::onShowKeystonePromoClicked
-                                )
-                            ).takeIf {
-                                accounts.orEmpty().none { it is KeystoneAccount }
-                            }
-                    )
-
                 AccountListState(
-                    items = items,
+                    items =
+                        accounts?.map { account ->
+                            ZashiAccountListItemState(
+                                title = account.name,
+                                subtitle = stringResByAddress(account.unifiedAddress),
+                                icon =
+                                    when (account) {
+                                        is KeystoneAccount -> R.drawable.ic_item_keystone
+                                        is LedgerAccount -> R.drawable.ic_item_ledger
+                                        is ZashiAccount -> R.drawable.ic_item_zashi
+                                    },
+                                isSelected = account.isSelected,
+                                onClick = { onAccountClicked(account) }
+                            )
+                        },
                     isLoading = accounts == null,
                     onBack = ::onBack,
                     addWalletButton =
                         ButtonState(
                             text = stringRes(co.electriccoin.zcash.ui.R.string.keystone_connect),
                             onClick = ::onAddWalletButtonClicked
-                        ).takeIf {
-                            accounts.orEmpty().none { it is KeystoneAccount }
-                        }
+                        ).takeIf { hasUnconnectedHardwareVendor(accounts) }
                 )
             }.stateIn(
                 scope = viewModelScope,
@@ -88,15 +60,19 @@ class AccountListVM(
                 initialValue = null
             )
 
-    private fun onShowKeystonePromoClicked() =
-        navigationRouter.replace(ExternalUrl("https://keyst.one/shop/products/keystone-3-pro?discount=Zodl"))
+    /**
+     * The call to action disappears only once every supported vendor is connected; the Figma
+     * "maxed out" variant is exactly the Zodl + Keystone + Ledger case.
+     */
+    private fun hasUnconnectedHardwareVendor(accounts: List<WalletAccount>?) =
+        accounts.orEmpty().none { it is KeystoneAccount } || accounts.orEmpty().none { it is LedgerAccount }
 
     private fun onAccountClicked(account: WalletAccount) =
         viewModelScope.launch {
             selectWalletAccount(account)
         }
 
-    private fun onAddWalletButtonClicked() = navigationRouter.forward(ConnectKeystoneArgs)
+    private fun onAddWalletButtonClicked() = navigationRouter.forward(ChooseHardwareWalletArgs)
 
     private fun onBack() = navigationRouter.back()
 }
