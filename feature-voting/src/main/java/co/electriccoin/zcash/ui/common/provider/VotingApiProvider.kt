@@ -651,6 +651,7 @@ class KtorVotingApiProvider(
             StaticVotingConfig.decodeAndVerify(data = bytes, expectedSHA256 = source.sha256)
         }
 
+    @Suppress("ThrowsCount") // OHTTP-05 fail-closed + unsupported-destination check = 3 throws
     private suspend fun HttpClient.fetchStaticConfigBytes(
         url: String,
         supportsKtorTimeouts: Boolean
@@ -784,6 +785,7 @@ class KtorVotingApiProvider(
      * Ktor timeout/connect failure that message can contain the full busted request URL,
      * including the cache-bust token.
      */
+    @Suppress("ThrowsCount") // OHTTP-05 fail-closed + unsupported-destination check = 3 throws
     private suspend fun HttpClient.fetchDynamicConfigBody(
         url: String,
         cacheBustToken: String,

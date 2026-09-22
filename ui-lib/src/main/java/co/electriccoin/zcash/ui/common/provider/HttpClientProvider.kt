@@ -67,6 +67,8 @@ class HttpClientProviderImpl(
 
     override suspend fun createOhttp(): OhttpHttpClient {
         val torNow = isTorEnabled()
+        // Fetch sender outside critical section to avoid suspending inside synchronized
+        val senderForTor = if (torNow) synchronizerProvider.getSynchronizer().ohttpSenderOverTor() else null
         synchronized(lock) {
             // Invalidate cache if the Tor preference changed
             if (cachedOhttpClient != null && cachedForTorEnabled != torNow) {
@@ -84,7 +86,7 @@ class HttpClientProviderImpl(
                 cachedOhttpClient =
                     if (torNow) {
                         OhttpHttpClient.create(
-                            sender = synchronizerProvider.getSynchronizer().ohttpSenderOverTor(),
+                            sender = senderForTor!!,
                             ohttpClientTraceIdPrefix = tracePrefix
                         )
                     } else {
