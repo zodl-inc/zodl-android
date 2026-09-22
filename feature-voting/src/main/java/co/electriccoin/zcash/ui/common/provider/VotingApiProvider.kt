@@ -663,8 +663,14 @@ class KtorVotingApiProvider(
         // Failures are surfaced as StaticVotingConfigFetchFailedException so the mirror walk in
         // fetchStaticConfigWalk() treats them as retryable and moves on to the next source.
         val ohttpClient = httpClientProvider.createOhttp()
-        if (!httpClientProvider.isTorEnabled() && ohttpClient.canHandle(url)) {
+        val torEnabled = httpClientProvider.isTorEnabled()
+        if (!torEnabled && ohttpClient.canHandle(url)) {
             return fetchStaticConfigBytesViaOhttp(ohttpClient, url)
+        }
+        if (!torEnabled && !ohttpClient.canHandle(url)) {
+            throw UnsupportedPrivateDestinationException(
+                "Cannot fetch static voting config from unsupported destination $url with Tor disabled"
+            )
         }
         return try {
             withTorRequestTimeoutFallback(supportsKtorTimeouts, configRequestTimeoutMillis) {
@@ -784,8 +790,14 @@ class KtorVotingApiProvider(
         supportsKtorTimeouts: Boolean
     ): String {
         val ohttpClient = httpClientProvider.createOhttp()
-        if (!httpClientProvider.isTorEnabled() && ohttpClient.canHandle(url)) {
+        val torEnabled = httpClientProvider.isTorEnabled()
+        if (!torEnabled && ohttpClient.canHandle(url)) {
             return fetchDynamicConfigBodyViaOhttp(ohttpClient, url, cacheBustToken)
+        }
+        if (!torEnabled && !ohttpClient.canHandle(url)) {
+            throw UnsupportedPrivateDestinationException(
+                "Cannot fetch dynamic voting config from unsupported destination $url with Tor disabled"
+            )
         }
         return try {
             withTorRequestTimeoutFallback(supportsKtorTimeouts, configRequestTimeoutMillis) {
@@ -819,7 +831,10 @@ class KtorVotingApiProvider(
         val response =
             try {
                 ohttpClient.execute(
-                    OhttpHttpClient.Request(url = url.withCacheBustIfNeeded(cacheBustToken))
+                    OhttpHttpClient.Request(
+                        url = url.withCacheBustIfNeeded(cacheBustToken),
+                        headers = listOf("Cache-Control" to "no-cache")
+                    )
                 )
             } catch (exception: Exception) {
                 throw exception.toOhttpDynamicVotingConfigException(url)
@@ -881,7 +896,12 @@ class KtorVotingApiProvider(
         if (!torEnabled && ohttpClient.canHandle(url)) {
             val response =
                 try {
-                    ohttpClient.execute(OhttpHttpClient.Request(url = url))
+                    ohttpClient.execute(
+                        OhttpHttpClient.Request(
+                            url = url,
+                            headers = listOf("Cache-Control" to "no-cache")
+                        )
+                    )
                 } catch (exception: Exception) {
                     exception.rethrowIfCancellation()
                     error(
@@ -893,6 +913,9 @@ class KtorVotingApiProvider(
                 error("Vote server GET via OHTTP returned HTTP ${response.status} for $url")
             }
             return VOTE_SERVER_JSON.decodeFromString(response.body.decodeToString())
+        }
+        if (!torEnabled && !ohttpClient.canHandle(url)) {
+            error("Cannot reach vote server at unsupported destination $url with Tor disabled")
         }
         Twig.debug { "Vote server GET $url via Tor/direct client (tor=$torEnabled)" }
         return get(url) { configureRequest() }.body()
@@ -916,7 +939,10 @@ class KtorVotingApiProvider(
                         OhttpHttpClient.Request(
                             url = url,
                             method = "POST",
-                            headers = listOf("Content-Type" to "application/json"),
+                            headers = listOf(
+                                "Content-Type" to "application/json",
+                                "Cache-Control" to "no-cache"
+                            ),
                             body = body.toByteArray(Charsets.UTF_8)
                         )
                     )
@@ -936,6 +962,9 @@ class KtorVotingApiProvider(
             } else {
                 error("Vote server POST via OHTTP returned HTTP ${response.status} for $url")
             }
+        }
+        if (!torEnabled && !ohttpClient.canHandle(url)) {
+            error("Cannot reach vote server at unsupported destination $url with Tor disabled")
         }
         Twig.debug { "Vote server POST $url via Tor/direct client (tor=$torEnabled)" }
         return try {
@@ -1222,6 +1251,15 @@ internal class DynamicVotingConfigTransientException(
 
 internal fun isRetryableDynamicVotingConfigFailure(throwable: Throwable): Boolean =
     throwable is DynamicVotingConfigTransientException
+
+/**
+ * Thrown when a voting API destination cannot be reached via the required privacy transport
+ * (OHTTP when Tor is OFF). Prevents silent fallback to direct connections that would expose
+ * the device IP.
+ */
+internal class UnsupportedPrivateDestinationException(
+    message: String
+) : VotingConfigException(message)
 
 /**
  * Classifies a dynamic-config fetch's non-2xx response without throwing, so the single `throw`
