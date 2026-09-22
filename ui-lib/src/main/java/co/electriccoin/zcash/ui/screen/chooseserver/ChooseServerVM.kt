@@ -42,6 +42,7 @@ class ChooseServerVM(
     observeFastestServers: ObserveFastestServersUseCase,
     getSelectedEndpoint: GetSelectedEndpointUseCase,
     isServerAutomatic: IsServerAutomaticUseCase,
+    private val preselectFastestClearnet: Boolean,
     private val lightWalletEndpointProvider: LightWalletEndpointProvider,
     private val refreshFastestServersUseCase: RefreshFastestServersUseCase,
     private val persistServerSelection: PersistServerSelectionUseCase,
@@ -63,6 +64,11 @@ class ChooseServerVM(
                 other = createOther(local, persisted, fastestServers),
                 saveButton = createSaveButton(local, persisted),
                 dialogState = inner.dialogState,
+                explanatoryMessage = if (preselectFastestClearnet) {
+                    stringRes(R.string.choose_server_clearnet_preselection_message)
+                } else {
+                    null
+                },
                 onBack = ::onBack
             )
         }.stateIn(
@@ -211,6 +217,28 @@ class ChooseServerVM(
                     )
                 }
             }.launchIn(viewModelScope)
+
+        if (preselectFastestClearnet) {
+            refreshFastestServersUseCase()
+            observeFastestServers().onEach { fastestServers ->
+                if (!fastestServers.isLoading && fastestServers.servers != null) {
+                    val clearnetEndpoints = lightWalletEndpointProvider.getFallbackEndpoints()
+                    val fastestClearnet = fastestServers.servers.firstOrNull { it in clearnetEndpoints }
+                    if (fastestClearnet != null) {
+                        innerState.update { inner ->
+                            inner.local?.let {
+                                inner.copy(
+                                    local = it.copy(
+                                        isAutomatic = false,
+                                        selectedEndpoint = fastestClearnet
+                                    )
+                                )
+                            } ?: inner
+                        }
+                    }
+                }
+            }.launchIn(viewModelScope)
+        }
     }
 
     private fun createInitialLocalState(persisted: InnerState.Persisted): InnerState.Local {

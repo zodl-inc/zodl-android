@@ -241,7 +241,7 @@ fun NavGraphBuilder.walletNavGraph(
         composable<IronwoodAnnouncementArgs> { IronwoodAnnouncementScreen() }
         composable<MoreArgs> { MoreScreen() }
         composable<AdvancedSettingsArgs> { AdvancedSettingsScreen() }
-        composable<ChooseServerArgs> { ChooseServerScreen() }
+        composable<ChooseServerArgs> { ChooseServerScreen(it.toRoute()) }
         composable<WalletBackup> { AndroidWalletBackup(it.toRoute()) }
         composable<FeedbackArgs> { FeedbackScreen() }
         composable<ResetZashiArgs> { ResetZashiScreen() }

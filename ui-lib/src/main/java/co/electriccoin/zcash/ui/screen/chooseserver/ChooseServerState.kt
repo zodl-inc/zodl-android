@@ -13,6 +13,7 @@ data class ChooseServerState(
     val other: ServerListState.Other,
     val saveButton: ButtonState,
     val dialogState: ServerDialogState?,
+    val explanatoryMessage: StringResource?,
     val onBack: () -> Unit
 )
 
