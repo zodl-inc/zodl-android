@@ -688,6 +688,7 @@ private fun ChooseServerPreview(
                         onClick = {},
                     ),
                 dialogState = dialogState,
+                explanatoryMessage = null,
                 onBack = {}
             ),
     )

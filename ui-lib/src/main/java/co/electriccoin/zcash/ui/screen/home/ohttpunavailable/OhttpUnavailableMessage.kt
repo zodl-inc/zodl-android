@@ -10,9 +10,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import co.electriccoin.zcash.ui.design.component.TextButton
-import co.electriccoin.zcash.ui.design.component.TextButtonState
+import co.electriccoin.zcash.ui.design.component.ButtonState
+import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
+import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.HomeMessageState
 
 data class OhttpUnavailableMessageState(
@@ -47,10 +48,10 @@ internal fun OhttpUnavailableMessage(
                 color = ZcashTheme.colors.textSecondary,
                 modifier = Modifier.padding(top = ZcashTheme.dimens.spacing.spacing8)
             )
-            TextButton(
+            ZashiButton(
                 state =
-                    TextButtonState(
-                        text = "Choose server",
+                    ButtonState(
+                        text = stringRes("Choose server"),
                         onClick = state.onChooseServer
                     ),
                 modifier = Modifier.padding(top = ZcashTheme.dimens.spacing.spacing12)

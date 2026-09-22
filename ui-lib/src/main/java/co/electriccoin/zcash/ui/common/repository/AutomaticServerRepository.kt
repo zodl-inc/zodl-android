@@ -321,7 +321,7 @@ class AutomaticServerRepositoryImpl(
                 ServerFallbackPolicy.decide(
                     current = current,
                     healthyGateways = healthyGateways,
-                    rankedFallbacks = rankedFallbacks,
+                    rankedFallbacks = emptyList(),
                     isOhttpGateway = lightWalletEndpointProvider::isOhttpGateway,
                 )
 
