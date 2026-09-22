@@ -9,6 +9,8 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.ProposalDataSource
 import co.electriccoin.zcash.ui.common.datasource.ZashiSpendingKeyDataSource
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.groupLce
@@ -322,6 +324,9 @@ class MigrationCompleteVM(
     }
 
     private suspend fun submitMigrateAnyway(proposal: Proposal, amountZatoshi: Zatoshi) {
+        if (getSelectedWalletAccount() is LedgerAccount) {
+            throw LedgerOperationUnsupportedException()
+        }
         if (getSelectedWalletAccount() is KeystoneAccount) {
             // Keystone can't sign in-process — adopt the already-built send-max proposal into the
             // app's existing generic external-signer pipeline exactly as an ordinary Keystone send

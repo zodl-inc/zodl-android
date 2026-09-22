@@ -11,10 +11,14 @@ import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.UnifiedAddressRequest
 import cash.z.ecc.android.sdk.model.UnifiedFullViewingKey
 import cash.z.ecc.android.sdk.model.Zip32AccountIndex
+import cash.z.ecc.android.sdk.ledger.LedgerAccountPairing
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccountBindingData
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.provider.LedgerAccountBindingProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SelectedAccountUUIDProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -75,6 +79,15 @@ interface AccountDataSource {
         birthday: BlockHeight? = null
     ): Account
 
+    /**
+     * Imports the account a Ledger device just exported and persists its binding next to it, so a
+     * later signing session knows which device and ZIP 32 account to sign with.
+     */
+    suspend fun importLedgerAccount(
+        pairing: LedgerAccountPairing,
+        birthday: BlockHeight? = null
+    ): Account
+
     suspend fun requestNextShieldedAddress(): String
 
     suspend fun deleteAccount(account: WalletAccount)
@@ -85,6 +98,7 @@ class AccountDataSourceImpl(
     private val synchronizerProvider: SynchronizerProvider,
     private val selectedAccountUUIDProvider: SelectedAccountUUIDProvider,
     private val persistableWalletProvider: PersistableWalletProvider,
+    private val ledgerAccountBindingProvider: LedgerAccountBindingProvider,
     private val context: Context,
 ) : AccountDataSource {
     private val log = loggableNot("AccountDataSource")
@@ -110,41 +124,30 @@ class AccountDataSourceImpl(
                         allSdkAccounts
                             .map { sdkAccount ->
                                 combine(
-                                    observeAccountBalance(synchronizer, sdkAccount),
-                                    observeUnifiedAddress(synchronizer, sdkAccount),
-                                    observeTransparentAddress(synchronizer, sdkAccount),
-                                    observeSaplingAddress(synchronizer, sdkAccount),
-                                    observeIsSelected(sdkAccount, allSdkAccounts),
-                                ) {
-                                    balance,
-                                    unifiedAddress,
-                                    transparentAddress,
-                                    saplingAddress,
-                                    isSelected,
-                                    ->
-                                    if (isKeystoneAccount(sdkAccount)) {
-                                        KeystoneAccount(
-                                            sdkAccount = sdkAccount,
+                                    combine(
+                                        observeAccountBalance(synchronizer, sdkAccount),
+                                        observeUnifiedAddress(synchronizer, sdkAccount),
+                                        observeTransparentAddress(synchronizer, sdkAccount),
+                                        observeSaplingAddress(synchronizer, sdkAccount),
+                                        observeIsSelected(sdkAccount, allSdkAccounts),
+                                    ) {
+                                        balance,
+                                        unifiedAddress,
+                                        transparentAddress,
+                                        saplingAddress,
+                                        isSelected,
+                                        ->
+                                        AccountSnapshot(
+                                            balance = balance,
                                             unifiedAddress = unifiedAddress,
                                             transparentAddress = transparentAddress,
-                                            orchardBalance = balance?.orchard,
-                                            ironwoodBalance = balance?.ironwood,
-                                            transparentBalance = balance?.unshielded,
+                                            saplingAddress = saplingAddress,
                                             isSelected = isSelected,
                                         )
-                                    } else {
-                                        ZashiAccount(
-                                            sdkAccount = sdkAccount,
-                                            unifiedAddress = unifiedAddress,
-                                            transparentAddress = transparentAddress,
-                                            saplingAddress = saplingAddress!!,
-                                            orchardBalance = balance?.orchard,
-                                            saplingBalance = balance?.sapling,
-                                            ironwoodBalance = balance?.ironwood,
-                                            transparentBalance = balance?.unshielded,
-                                            isSelected = isSelected,
-                                        )
-                                    }
+                                    },
+                                    observeLedgerBinding(sdkAccount),
+                                ) { snapshot, ledgerBinding ->
+                                    createWalletAccount(sdkAccount, snapshot, ledgerBinding)
                                 }
                             }.combineToFlow()
                     }
@@ -207,6 +210,28 @@ class AccountDataSourceImpl(
                 )
         }
 
+    override suspend fun importLedgerAccount(
+        pairing: LedgerAccountPairing,
+        birthday: BlockHeight?
+    ): Account =
+        withContext(Dispatchers.IO) {
+            val created =
+                synchronizerProvider
+                    .getSynchronizer()
+                    .importAccountByUfvk(
+                        pairing.accountImportSetup(
+                            accountName = context.getString(R.string.accounts_ledger),
+                            birthday = birthday,
+                        )
+                    )
+            ledgerAccountBindingProvider.save(
+                accountUuid = created.accountUuid,
+                deviceIdentityEncoding = pairing.binding.deviceIdentity.encoding,
+                zip32AccountIndex = pairing.binding.zip32AccountIndex.index,
+            )
+            created
+        }
+
     @Suppress("TooGenericExceptionCaught")
     override suspend fun requestNextShieldedAddress(): String {
         var result: String? = null
@@ -246,6 +271,7 @@ class AccountDataSourceImpl(
                 if (!deleted) {
                     throw AccountDeletionException("Failed to delete account")
                 }
+                ledgerAccountBindingProvider.clear(account.sdkAccount.accountUuid)
             } catch (e: Exception) {
                 // Re-throw as specific exception
                 throw AccountDeletionException("Failed to delete account: ${e.message}", e)
@@ -254,11 +280,73 @@ class AccountDataSourceImpl(
 
     private fun isKeystoneAccount(sdkAccount: Account) = sdkAccount.keySource?.lowercase() == KEYSTONE_KEYSOURCE
 
+    private fun isLedgerAccount(sdkAccount: Account) =
+        sdkAccount.keySource?.lowercase() == Account.LEDGER_KEY_SOURCE
+
+    private fun isHardwareAccount(sdkAccount: Account) =
+        isKeystoneAccount(sdkAccount) || isLedgerAccount(sdkAccount)
+
+    /**
+     * A Ledger account with no stored binding (the write never landed, or the account predates the
+     * binding store) still displays; it just cannot sign, which the Ledger arms of the send paths
+     * refuse anyway.
+     */
+    private fun createWalletAccount(
+        sdkAccount: Account,
+        snapshot: AccountSnapshot,
+        ledgerBinding: LedgerAccountBindingData?
+    ): WalletAccount =
+        when {
+            isLedgerAccount(sdkAccount) ->
+                LedgerAccount(
+                    sdkAccount = sdkAccount,
+                    unifiedAddress = snapshot.unifiedAddress,
+                    transparentAddress = snapshot.transparentAddress,
+                    orchardBalance = snapshot.balance?.orchard,
+                    ironwoodBalance = snapshot.balance?.ironwood,
+                    transparentBalance = snapshot.balance?.unshielded,
+                    isSelected = snapshot.isSelected,
+                    deviceIdentity = ledgerBinding?.deviceIdentityEncoding,
+                    zip32AccountIndex = ledgerBinding?.zip32AccountIndex ?: Zip32AccountIndex.new(0),
+                )
+
+            isKeystoneAccount(sdkAccount) ->
+                KeystoneAccount(
+                    sdkAccount = sdkAccount,
+                    unifiedAddress = snapshot.unifiedAddress,
+                    transparentAddress = snapshot.transparentAddress,
+                    orchardBalance = snapshot.balance?.orchard,
+                    ironwoodBalance = snapshot.balance?.ironwood,
+                    transparentBalance = snapshot.balance?.unshielded,
+                    isSelected = snapshot.isSelected,
+                )
+
+            else ->
+                ZashiAccount(
+                    sdkAccount = sdkAccount,
+                    unifiedAddress = snapshot.unifiedAddress,
+                    transparentAddress = snapshot.transparentAddress,
+                    saplingAddress = snapshot.saplingAddress!!,
+                    orchardBalance = snapshot.balance?.orchard,
+                    saplingBalance = snapshot.balance?.sapling,
+                    ironwoodBalance = snapshot.balance?.ironwood,
+                    transparentBalance = snapshot.balance?.unshielded,
+                    isSelected = snapshot.isSelected,
+                )
+        }
+
+    private fun observeLedgerBinding(sdkAccount: Account): Flow<LedgerAccountBindingData?> =
+        if (isLedgerAccount(sdkAccount)) {
+            ledgerAccountBindingProvider.observe(sdkAccount.accountUuid)
+        } else {
+            flowOf(null)
+        }
+
     private fun observeIsSelected(sdkAccount: Account, allAccounts: List<Account>) =
         selectedAccountUUIDProvider
             .uuid
             .map { uuid ->
-                if (isKeystoneAccount(sdkAccount)) {
+                if (isHardwareAccount(sdkAccount)) {
                     sdkAccount.accountUuid == uuid || allAccounts.size == 1
                 } else {
                     uuid == null || sdkAccount.accountUuid == uuid || allAccounts.size == 1
@@ -271,7 +359,7 @@ class AccountDataSourceImpl(
             log("deriving unified address for ${sdkAccount.accountUuid}")
 
             val addressRequest =
-                if (isKeystoneAccount(sdkAccount)) {
+                if (isHardwareAccount(sdkAccount)) {
                     UnifiedAddressRequest.Orchard
                 } else {
                     UnifiedAddressRequest.shielded
@@ -338,7 +426,7 @@ class AccountDataSourceImpl(
         }
 
     private fun observeSaplingAddress(synchronizer: Synchronizer, sdkAccount: Account): Flow<String?> =
-        if (isKeystoneAccount(sdkAccount)) {
+        if (isHardwareAccount(sdkAccount)) {
             flowOf(null)
         } else {
             flow {
@@ -353,6 +441,18 @@ class AccountDataSourceImpl(
 private data class AddressRequest(
     val accountUuid: AccountUuid,
     val responseChannel: Channel<String>
+)
+
+/**
+ * Everything one account's per-field flows contribute, bundled so the Ledger binding can be
+ * combined in as a sixth source (kotlinx's typed [combine] tops out at five).
+ */
+private data class AccountSnapshot(
+    val balance: AccountBalance?,
+    val unifiedAddress: String,
+    val transparentAddress: String,
+    val saplingAddress: String?,
+    val isSelected: Boolean,
 )
 
 private const val RETRY_DELAY = 3L

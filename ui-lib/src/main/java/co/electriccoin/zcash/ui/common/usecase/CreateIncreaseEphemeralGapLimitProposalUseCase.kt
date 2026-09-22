@@ -6,6 +6,8 @@ import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZecSend
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.repository.EphemeralAddressRepository
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
@@ -35,6 +37,8 @@ class CreateIncreaseEphemeralGapLimitProposalUseCase(
                     keystoneProposalRepository.createProposal(normalized)
                     keystoneProposalRepository.createPCZTFromProposal()
                 }
+
+                is LedgerAccount -> throw LedgerOperationUnsupportedException()
 
                 is ZashiAccount -> {
                     zashiProposalRepository.createProposal(normalized)

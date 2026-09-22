@@ -10,6 +10,7 @@ import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
 import co.electriccoin.zcash.ui.common.migration.MigrationDebugActions
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.model.toStorageKeyId
 import co.electriccoin.zcash.ui.common.provider.DebugForceBackgroundExecutionUnavailable
@@ -149,6 +150,7 @@ class DebugVM(
                         when (account) {
                             is ZashiAccount -> "Zashi"
                             is KeystoneAccount -> "Keystone"
+                            is LedgerAccount -> "Ledger"
                         }
                     "$label\n${account.unifiedAddress}"
                 }

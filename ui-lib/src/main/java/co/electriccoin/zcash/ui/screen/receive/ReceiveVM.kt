@@ -7,6 +7,7 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.NavigationTargets
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
@@ -85,6 +86,7 @@ class ReceiveVM(
         icon =
             when (account) {
                 is KeystoneAccount -> co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone
+                is LedgerAccount -> co.electriccoin.zcash.ui.design.R.drawable.ic_item_ledger
                 is ZashiAccount -> R.drawable.ic_zec_round_full
             },
         title =
@@ -94,6 +96,14 @@ class ReceiveVM(
                         stringRes(R.string.accounts_keystone_shieldedAddress)
                     } else {
                         stringRes(R.string.accounts_keystone_transparentAddress)
+                    }
+                }
+
+                is LedgerAccount -> {
+                    if (type == Unified) {
+                        stringRes(R.string.accounts_ledger_shieldedAddress)
+                    } else {
+                        stringRes(R.string.accounts_ledger_transparentAddress)
                     }
                 }
 
@@ -119,6 +129,7 @@ class ReceiveVM(
         colorMode =
             when (account) {
                 is KeystoneAccount -> if (type == Unified) KEYSTONE else DEFAULT
+                is LedgerAccount -> if (type == Unified) KEYSTONE else DEFAULT
                 is ZashiAccount -> if (type == Unified) ZASHI else DEFAULT
             },
         infoIconButton =
@@ -128,6 +139,7 @@ class ReceiveVM(
                     Unified -> {
                         when (account) {
                             is KeystoneAccount -> R.drawable.ic_receive_ks_shielded_info
+                            is LedgerAccount -> R.drawable.ic_receive_ks_shielded_info
                             is ZashiAccount -> R.drawable.ic_receive_zashi_shielded_info
                         }
                     }

@@ -6,6 +6,7 @@ import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
@@ -67,7 +68,8 @@ class IntegrationsVM(
         disabledInfo =
             when {
                 isRestoring -> stringRes(R.string.integrations_disabled_info)
-                selectedAccount is KeystoneAccount -> stringRes(R.string.integrations_disabled_info_flexa)
+                selectedAccount is KeystoneAccount ||
+                    selectedAccount is LedgerAccount -> stringRes(R.string.integrations_disabled_info_flexa)
                 else -> null
             },
         onBack = ::onBack,

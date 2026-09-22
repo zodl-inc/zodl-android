@@ -4,6 +4,8 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.repository.BiometricRepository
@@ -44,6 +46,8 @@ class SubmitIncreaseEphemeralGapLimitUseCase(
                 is KeystoneAccount -> {
                     navigationRouter.replace(SignKeystoneTransactionArgs)
                 }
+
+                is LedgerAccount -> throw LedgerOperationUnsupportedException()
 
                 is ZashiAccount -> {
                     submitZashiProposal()

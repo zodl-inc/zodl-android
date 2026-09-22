@@ -6,6 +6,8 @@ import co.electriccoin.zcash.ui.common.datasource.InsufficientFundsException
 import co.electriccoin.zcash.ui.common.datasource.TexUnsupportedOnKSException
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposalNotCreatedException
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
@@ -70,6 +72,8 @@ class OnZip321ScannedUseCase(
                         result
                     }
 
+                    is LedgerAccount -> throw LedgerOperationUnsupportedException()
+
                     is ZashiAccount -> {
                         zashiProposalRepository.createZip321Proposal(zip321.zip321Uri)
                     }
@@ -117,6 +121,8 @@ class OnZip321ScannedUseCase(
                         keystoneProposalRepository.createPCZTFromProposal()
                         result
                     }
+
+                    is LedgerAccount -> throw LedgerOperationUnsupportedException()
 
                     is ZashiAccount -> {
                         zashiProposalRepository.createZip321Proposal(zip321.zip321Uri)

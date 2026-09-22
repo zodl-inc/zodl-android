@@ -13,6 +13,8 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.ZashiSpendingKeyDataSource
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.LceState
 import co.electriccoin.zcash.ui.common.model.groupLce
 import co.electriccoin.zcash.ui.common.model.guardLoading
@@ -356,6 +358,9 @@ class MigrationReviewVM(
         }
 
     private suspend fun confirmAutomatic(sched: MigrationSchedule) {
+        if (getSelectedWalletAccount() is LedgerAccount) {
+            throw LedgerOperationUnsupportedException()
+        }
         if (getSelectedWalletAccount() is KeystoneAccount) {
             // Keystone can't sign in-process — hand the unsigned schedule off to the QR
             // sign/scan detour; FinalizeMigrationScheduleUseCase runs after a successful scan
@@ -446,6 +451,9 @@ class MigrationReviewVM(
     // migration-sweep "…migrated to Ironwood" copy). No migration-specific screen or handoff.
     private fun onConfirmImmediate(proposal: Proposal, amountZatoshi: Zatoshi) =
         confirmLce.execute {
+            if (getSelectedWalletAccount() is LedgerAccount) {
+                throw LedgerOperationUnsupportedException()
+            }
             if (getSelectedWalletAccount() is KeystoneAccount) {
                 // Keystone can't sign in-process — adopt the already-built send-max proposal into the
                 // app's existing generic external-signer pipeline exactly as an ordinary Keystone

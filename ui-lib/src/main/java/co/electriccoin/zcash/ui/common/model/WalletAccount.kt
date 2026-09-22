@@ -33,7 +33,8 @@ sealed interface WalletAccount : Comparable<WalletAccount> {
     val orchardBalance: WalletBalance?
 
     /**
-     * Null for Keystone accounts, and while the balance snapshot has not loaded yet.
+     * Null for hardware-wallet accounts (Keystone, Ledger), and while the balance snapshot has not
+     * loaded yet.
      */
     val saplingBalance: WalletBalance?
 
@@ -202,6 +203,7 @@ data class ZashiAccount(
     override fun compareTo(other: WalletAccount) =
         when (other) {
             is KeystoneAccount -> 1
+            is LedgerAccount -> 1
             is ZashiAccount -> 0
         }
 }
@@ -250,8 +252,82 @@ data class KeystoneAccount(
     override fun compareTo(other: WalletAccount) =
         when (other) {
             is KeystoneAccount -> 0
+            is LedgerAccount -> 1
             is ZashiAccount -> -1
         }
+}
+
+/**
+ * An account whose spend authority lives on a Ledger hardware wallet, paired over Bluetooth LE.
+ *
+ * Like [KeystoneAccount] it has no Sapling address or balance. Unlike every other account its
+ * SDK-side [Account.hdAccountIndex] is null — the device never reveals its seed fingerprint — so
+ * the ZIP 32 account index comes from the binding the app persisted at pairing time.
+ *
+ * @param deviceIdentity The paired device's identity encoding, or null when no binding is stored
+ *        yet. Privacy-sensitive: it is linkable to the account's first transparent address, so it
+ *        must never be logged or printed.
+ * @param zip32AccountIndex The account's ZIP 32 index on the paired device.
+ */
+data class LedgerAccount(
+    override val sdkAccount: Account,
+    override val unifiedAddress: String,
+    override val transparentAddress: String,
+    override val orchardBalance: WalletBalance?,
+    override val ironwoodBalance: WalletBalance?,
+    override val transparentBalance: Zatoshi?,
+    override val isSelected: Boolean,
+    val deviceIdentity: String?,
+    val zip32AccountIndex: Zip32AccountIndex,
+) : WalletAccount {
+    override val icon: Int
+        get() = R.drawable.ic_item_ledger
+
+    override val name: StringResource
+        get() = stringRes(co.electriccoin.zcash.ui.R.string.accounts_ledger)
+
+    override val saplingAddress: String? = null
+
+    override val saplingBalance: WalletBalance? = null
+
+    override val hdAccountIndex: Zip32AccountIndex
+        get() = zip32AccountIndex
+
+    override val totalBalance: Zatoshi?
+        get() {
+            val unifiedTotal = unifiedBalance?.total ?: return null
+            val transparent = transparentBalance ?: return null
+            return unifiedTotal + transparent
+        }
+
+    override val totalShieldedBalance: Zatoshi?
+        get() = unifiedBalance?.total
+
+    override val totalTransparentBalance: Zatoshi?
+        get() = transparentBalance
+
+    override val spendableShieldedBalance: Zatoshi?
+        get() = unifiedBalance?.available
+
+    override val pendingShieldedBalance: Zatoshi?
+        get() {
+            val unified = unifiedBalance ?: return null
+            return unified.changePending + unified.valuePending
+        }
+
+    override fun compareTo(other: WalletAccount) =
+        when (other) {
+            is KeystoneAccount -> -1
+            is LedgerAccount -> 0
+            is ZashiAccount -> -1
+        }
+
+    /**
+     * Overridden to keep the device identity and the addresses out of logs.
+     */
+    override fun toString() =
+        "LedgerAccount(sdkAccount=$sdkAccount, deviceIdentity=***, " +
+            "zip32AccountIndex=$zip32AccountIndex, isSelected=$isSelected)"
 }
 
 /**

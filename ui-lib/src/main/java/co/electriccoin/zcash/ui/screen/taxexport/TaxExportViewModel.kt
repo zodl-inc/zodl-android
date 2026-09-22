@@ -6,12 +6,16 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.WalletAccount
-import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.usecase.ExportTaxUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.error.ErrorArgs
+import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
@@ -22,6 +26,7 @@ import kotlinx.coroutines.launch
 class TaxExportViewModel(
     getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
     private val exportTax: ExportTaxUseCase,
+    private val navigateToError: NavigateToErrorUseCase,
     private val navigationRouter: NavigationRouter,
 ) : ViewModel() {
     val state: StateFlow<TaxExportState> =
@@ -47,17 +52,21 @@ class TaxExportViewModel(
             text =
                 stringRes(
                     R.string.taxExport_desc,
-                    if (selectedAccount is ZashiAccount) {
-                        stringRes(R.string.accounts_zashi)
-                    } else {
-                        stringRes(R.string.accounts_keystone)
+                    when (selectedAccount) {
+                        is KeystoneAccount -> stringRes(R.string.accounts_keystone)
+                        is LedgerAccount -> stringRes(R.string.accounts_ledger)
+                        else -> stringRes(R.string.accounts_zashi)
                     }
                 )
         )
 
     private fun onExportClick() =
         viewModelScope.launch {
-            exportTax()
+            try {
+                exportTax()
+            } catch (e: LedgerOperationUnsupportedException) {
+                navigateToError(ErrorArgs.General(e))
+            }
         }
 
     private fun onBack() {

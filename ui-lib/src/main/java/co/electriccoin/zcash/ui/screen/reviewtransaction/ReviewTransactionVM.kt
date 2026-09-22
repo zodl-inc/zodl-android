@@ -10,6 +10,7 @@ import co.electriccoin.zcash.ui.common.datasource.ExactOutputSwapTransactionProp
 import co.electriccoin.zcash.ui.common.datasource.SendTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.Zip321TransactionProposal
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.repository.EnhancedABContact
@@ -147,6 +148,7 @@ class ReviewTransactionVM(
         title =
             when (selectedWallet) {
                 is KeystoneAccount -> stringRes(R.string.send_review)
+                is LedgerAccount -> stringRes(R.string.send_review)
                 is ZashiAccount -> stringRes(R.string.send_confirmationTitle)
             },
         items =
@@ -194,6 +196,7 @@ class ReviewTransactionVM(
                 text =
                     when (selectedWallet) {
                         is KeystoneAccount -> stringRes(R.string.keystone_confirm)
+                        is LedgerAccount -> stringRes(R.string.ledger_confirm)
                         is ZashiAccount -> stringRes(R.string.tabs_send)
                     },
                 style = orchardPrivacyWarningButtonStyle(transactionProposal.proposal.usesOrchardInputs()),
@@ -266,6 +269,7 @@ class ReviewTransactionVM(
                 text =
                     when (selectedWallet) {
                         is KeystoneAccount -> stringRes(R.string.keystone_confirm)
+                        is LedgerAccount -> stringRes(R.string.ledger_confirm)
                         is ZashiAccount -> stringRes(R.string.tabs_send)
                     },
                 onClick = ::onConfirmClick
