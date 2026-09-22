@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<resources>
+
+    <!-- Choose hardware wallet -->
+    <string name="chooseHardwareWallet_title">Conectar Billetera de Hardware</string>
+    <string name="chooseHardwareWallet_subtitle">¿Qué billetera de hardware quieres conectar? Selecciona tu dispositivo para empezar.</string>
+
+    <!-- Ledger connect instructions -->
+    <string name="ledger_connect_title">Conectar Billetera de Hardware</string>
+    <string name="ledger_connect_subtitle">Sigue estos pasos para vincular tu Ledger por Bluetooth.</string>
+    <string name="ledger_connect_instructions">Instrucciones:</string>
+    <string name="ledger_connect_step1">Desbloquea tu dispositivo Ledger</string>
+    <string name="ledger_connect_step2">Instala y abre la aplicación Zcash</string>
+    <string name="ledger_connect_step3">Activa el Bluetooth</string>
+    <string name="ledger_connect_step4">Confirma el dispositivo Ledger</string>
+    <string name="ledger_connect_step5">Verifica el código de vinculación Bluetooth</string>
+    <string name="ledger_connect_cta">Conectar</string>
+
+    <!-- Device scan and selection -->
+    <string name="ledger_scan_searching_title">Buscando dispositivos…</string>
+    <string name="ledger_scan_searching_subtitle">Asegúrate de que tu Ledger esté desbloqueado y el Bluetooth activado.</string>
+    <string name="ledger_scan_searching_cta">Buscando</string>
+    <string name="ledger_scan_select_title">Selecciona tu dispositivo</string>
+    <string name="ledger_scan_select_subtitle">Selecciona el dispositivo Ledger que quieres conectar.</string>
+    <string name="ledger_scan_select_cta">Conectar</string>
+    <string name="ledger_scan_retry_cta">Intentar de nuevo</string>
+
+    <!-- Error sheets -->
+    <string name="ledger_error_tryAgain">Intentar de nuevo</string>
+    <string name="ledger_error_noDevices_title">No se encontraron dispositivos</string>
+    <string name="ledger_error_noDevices_message">No encontramos ningún dispositivo Ledger cerca. Asegúrate de que tu Ledger esté desbloqueado y el Bluetooth activado.</string>
+    <string name="ledger_error_locked_title">Desbloquea tu Ledger</string>
+    <string name="ledger_error_locked_message">Desbloquea tu Ledger y abre la aplicación Zcash en el dispositivo para continuar.</string>
+    <string name="ledger_error_pairingFailed_title">Error de vinculación</string>
+    <string name="ledger_error_pairingFailed_message">No pudimos vincularnos con tu Ledger. Inténtalo de nuevo desde los ajustes de tu dispositivo.</string>
+    <string name="ledger_error_importRejected_title">Importación rechazada</string>
+    <string name="ledger_error_importRejected_message">Rechazaste la solicitud en tu Ledger. Aprueba la exportación de la cuenta en tu dispositivo para continuar.</string>
+    <string name="ledger_error_disconnected_title">Ledger desconectado</string>
+    <string name="ledger_error_disconnected_message">Tu Ledger se desconectó durante la configuración. Comprueba la conexión e inténtalo de nuevo.</string>
+    <string name="ledger_error_permissions_title">Se requiere acceso a Bluetooth</string>
+    <string name="ledger_error_permissions_message">Zodl necesita acceso a Bluetooth para conectarse a tu Ledger. Activa el Bluetooth en Ajustes para continuar.</string>
+    <string name="ledger_error_permissions_cta">Abrir ajustes del sistema</string>
+    <string name="ledger_error_alreadyAdded_title">La cuenta ya fue añadida</string>
+    <string name="ledger_error_alreadyAdded_message">Esta cuenta ya está conectada a Zodl.</string>
+    <string name="ledger_error_alreadyAdded_primary">Ir a la cuenta</string>
+    <string name="ledger_error_alreadyAdded_secondary">Cancelar</string>
+
+    <!-- New or active device -->
+    <string name="ledger_deviceQuestion">¿Dispositivo nuevo o activo?</string>
+    <string name="ledger_deviceDesc">Dinos si este es un dispositivo Ledger nuevo o uno que ya has usado, para sincronizar tu billetera correctamente.</string>
+    <string name="ledger_connectNew">Conectar dispositivo nuevo</string>
+    <string name="ledger_connectActive">Conectar dispositivo activo</string>
+    <string name="ledger_enterManually">Introducir la altura de bloque manualmente</string>
+
+    <!-- Connected -->
+    <string name="ledger_connected_title">¡Conectado!</string>
+    <string name="ledger_connected_message">Tu Ledger está conectado y listo para usar.</string>
+    <string name="ledger_connected_cta">Cerrar</string>
+
+    <!-- Send paths -->
+    <string name="ledger_confirm">Confirmar con Ledger</string>
+    <string name="ledger_unsupported_title">Todavía no disponible</string>
+    <string name="ledger_unsupported_message">Esta acción todavía no está disponible para una billetera Ledger.</string>
+
+    <!-- Receive -->
+    <string name="accounts_ledger_shieldedAddress">Dirección protegida de Zcash</string>
+    <string name="accounts_ledger_transparentAddress">Dirección transparente de Zcash</string>
+
+</resources>
