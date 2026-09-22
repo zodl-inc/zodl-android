@@ -15,6 +15,8 @@ import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 interface HttpClientProvider {
     suspend fun create(): HttpClient
@@ -56,7 +58,7 @@ class HttpClientProviderImpl(
 
     @Volatile
     private var policyGeneration = 0
-    private val lock = Any()
+    private val lock = Mutex()
 
     override suspend fun create(): HttpClient =
         if (isTorEnabledStorageProvider.get() == true) createTor() else createDirect()
@@ -65,17 +67,18 @@ class HttpClientProviderImpl(
 
     override suspend fun isTorEnabled(): Boolean = isTorEnabledStorageProvider.get() == true
 
-    override suspend fun createOhttp(): OhttpHttpClient {
-        val torNow = isTorEnabled()
-        // Fetch sender outside critical section to avoid suspending inside synchronized
-        val senderForTor = if (torNow) synchronizerProvider.getSynchronizer().ohttpSenderOverTor() else null
-        synchronized(lock) {
+    override suspend fun createOhttp(): OhttpHttpClient =
+        lock.withLock {
+            // OHTTP-06: Atomically read Tor state, fetch sender, and publish client to ensure
+            // a concurrent Tor toggle cannot leave a stale-policy sender cached or returned.
+            val torNow = isTorEnabled()
             // Invalidate cache if the Tor preference changed
             if (cachedOhttpClient != null && cachedForTorEnabled != torNow) {
                 cachedOhttpClient = null
                 policyGeneration++
             }
             if (cachedOhttpClient == null) {
+                val senderForTor = if (torNow) synchronizerProvider.getSynchronizer().ohttpSenderOverTor() else null
                 // DEBUG-only: pass trace prefix for request tracking in Grafana
                 val tracePrefix =
                     if (BuildConfig.DEBUG && BuildConfig.OHTTP_CLIENT_TRACE_PREFIX.isNotBlank()) {
@@ -94,9 +97,8 @@ class HttpClientProviderImpl(
                     }
                 cachedForTorEnabled = torNow
             }
-            return cachedOhttpClient!!
+            cachedOhttpClient!!
         }
-    }
 
     override suspend fun createTor() =
         synchronizerProvider
