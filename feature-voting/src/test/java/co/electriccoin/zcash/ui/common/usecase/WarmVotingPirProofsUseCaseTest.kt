@@ -4,14 +4,19 @@ import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.fixture.AccountFixture
 import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
 import cash.z.ecc.android.sdk.fixture.WalletBalanceFixture
-import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.voting.Proposal
+import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
+import co.electriccoin.zcash.ui.common.model.voting.VoteOption
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
+import co.electriccoin.zcash.ui.common.model.voting.VotingRound
 import co.electriccoin.zcash.ui.common.model.voting.VotingServiceConfig
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
+import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
+import co.electriccoin.zcash.ui.common.repository.VotingApiSnapshot
 import co.electriccoin.zcash.ui.common.repository.VotingConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingConfigSnapshot
 import co.electriccoin.zcash.ui.common.repository.VotingConfigSource
@@ -25,10 +30,11 @@ import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
+import java.time.Instant
 
 class WarmVotingPirProofsUseCaseTest {
     @Test
-    fun `invoke starts PIR warmup with the resolved config and wallet notes`() =
+    fun `invoke starts PIR warmup keyed on an active round's snapshot height`() =
         runTest {
             val env = environment()
             coEvery { env.votingConfigRepository.get() } returns
@@ -36,7 +42,7 @@ class WarmVotingPirProofsUseCaseTest {
             coEvery {
                 env.votingCryptoClient.getWalletNotesJson(
                     walletDbPath = "/wallet/db",
-                    snapshotHeight = 500L,
+                    snapshotHeight = ROUND_SNAPSHOT_HEIGHT,
                     networkId = 0,
                     accountUuidBytes = env.account.sdkAccount.accountUuid.value
                 )
@@ -44,13 +50,16 @@ class WarmVotingPirProofsUseCaseTest {
 
             env.useCase()
 
+            // Must resolve against the active round's own fixed snapshot height -- NOT a live,
+            // continuously-changing wallet scan tip -- since PirSnapshotResolver requires an
+            // exact height match against what a PIR server currently serves.
             coVerify(exactly = 1) {
                 env.votingProofPrecomputeRepository.startPirWarmup(
                     VotingPirWarmupRequest(
                         accountUuid = env.accountUuidString,
                         walletId = env.accountUuidString,
                         votingDbPath = "/wallet/voting.sqlite3",
-                        snapshotHeight = 500L,
+                        snapshotHeight = ROUND_SNAPSHOT_HEIGHT,
                         pirEndpoints = listOf("https://pir-a", "https://pir-b"),
                         pirLayout = VotingPirLayout(pirDepth = 3, tier0Layers = 1, tier1Layers = 2, polyLen = 2048),
                         networkId = 0,
@@ -58,6 +67,39 @@ class WarmVotingPirProofsUseCaseTest {
                     )
                 )
             }
+        }
+
+    @Test
+    fun `invoke is a no-op when no round is active yet`() =
+        runTest {
+            val env = environment(rounds = emptyList())
+            coEvery { env.votingConfigRepository.get() } returns
+                VotingConfigSnapshot(serviceConfig = env.serviceConfig(), source = VotingConfigSource.REMOTE)
+
+            env.useCase()
+
+            coVerify(exactly = 0) { env.votingProofPrecomputeRepository.startPirWarmup(any()) }
+            // Gracefully no-ops without even reading the config -- "nothing to warm yet" is
+            // resolved from the round list alone.
+            coVerify(exactly = 0) { env.votingConfigRepository.get() }
+        }
+
+    @Test
+    fun `invoke ignores non-active rounds when picking snapshot heights`() =
+        runTest {
+            val env =
+                environment(
+                    rounds =
+                        listOf(
+                            round(id = "closed-round", snapshotHeight = 999L, status = SessionStatus.TALLYING)
+                        )
+                )
+            coEvery { env.votingConfigRepository.get() } returns
+                VotingConfigSnapshot(serviceConfig = env.serviceConfig(), source = VotingConfigSource.REMOTE)
+
+            env.useCase()
+
+            coVerify(exactly = 0) { env.votingProofPrecomputeRepository.startPirWarmup(any()) }
         }
 
     @Test
@@ -87,20 +129,7 @@ class WarmVotingPirProofsUseCaseTest {
         }
 
     @Test
-    fun `invoke is a no-op when the wallet has not fully scanned yet`() =
-        runTest {
-            val env = environment()
-            coEvery { env.votingConfigRepository.get() } returns
-                VotingConfigSnapshot(serviceConfig = env.serviceConfig(), source = VotingConfigSource.REMOTE)
-            every { env.synchronizer.fullyScannedHeight } returns MutableStateFlow(null)
-
-            env.useCase()
-
-            coVerify(exactly = 0) { env.votingProofPrecomputeRepository.startPirWarmup(any()) }
-        }
-
-    @Test
-    fun `invoke is a no-op when the wallet has no spendable notes`() =
+    fun `invoke is a no-op when the wallet has no spendable notes at the round's snapshot`() =
         runTest {
             val env = environment()
             coEvery { env.votingConfigRepository.get() } returns
@@ -127,6 +156,7 @@ class WarmVotingPirProofsUseCaseTest {
         }
 
     private class Environment(
+        val votingApiRepository: VotingApiRepository,
         val votingConfigRepository: VotingConfigRepository,
         val votingCryptoClient: VotingCryptoClient,
         val synchronizerProvider: SynchronizerProvider,
@@ -147,7 +177,8 @@ class WarmVotingPirProofsUseCaseTest {
             )
     }
 
-    private fun environment(): Environment {
+    private fun environment(rounds: List<VotingRound> = listOf(round())): Environment {
+        val votingApiRepository = mockk<VotingApiRepository>()
         val votingConfigRepository = mockk<VotingConfigRepository>()
         val votingCryptoClient = mockk<VotingCryptoClient>()
         val synchronizerProvider = mockk<SynchronizerProvider>()
@@ -167,8 +198,9 @@ class WarmVotingPirProofsUseCaseTest {
                 isSelected = true
             )
 
+        every { votingApiRepository.snapshot } returns MutableStateFlow(VotingApiSnapshot(rounds = rounds))
+
         val synchronizer = mockk<Synchronizer>()
-        every { synchronizer.fullyScannedHeight } returns MutableStateFlow(BlockHeight.new(500L))
         every { synchronizer.network } returns ZcashNetwork.Testnet
 
         coEvery { synchronizerProvider.getSynchronizer() } returns synchronizer
@@ -177,6 +209,7 @@ class WarmVotingPirProofsUseCaseTest {
 
         val useCase =
             WarmVotingPirProofsUseCase(
+                votingApiRepository = votingApiRepository,
                 votingConfigRepository = votingConfigRepository,
                 votingCryptoClient = votingCryptoClient,
                 synchronizerProvider = synchronizerProvider,
@@ -185,6 +218,7 @@ class WarmVotingPirProofsUseCaseTest {
             )
 
         return Environment(
+            votingApiRepository = votingApiRepository,
             votingConfigRepository = votingConfigRepository,
             votingCryptoClient = votingCryptoClient,
             synchronizerProvider = synchronizerProvider,
@@ -194,5 +228,40 @@ class WarmVotingPirProofsUseCaseTest {
             accountUuidString = account.sdkAccount.accountUuid.toVotingAccountScopeId(),
             useCase = useCase
         )
+    }
+
+    private fun round(
+        id: String = ROUND_ID,
+        snapshotHeight: Long = ROUND_SNAPSHOT_HEIGHT,
+        status: SessionStatus = SessionStatus.ACTIVE
+    ) = VotingRound(
+        id = id,
+        title = "Round title",
+        description = "Round description",
+        discussionUrl = null,
+        createdAtHeight = 1,
+        snapshotHeight = snapshotHeight,
+        snapshotDate = Instant.parse("2026-09-01T00:00:00Z"),
+        votingStart = Instant.parse("2026-09-01T00:00:00Z"),
+        votingEnd = Instant.parse("2026-09-08T00:00:00Z"),
+        proposals =
+            listOf(
+                Proposal(
+                    id = 1,
+                    title = "Proposal",
+                    description = "Proposal description",
+                    options =
+                        listOf(
+                            VoteOption(id = 0, label = "No"),
+                            VoteOption(id = 1, label = "Yes")
+                        )
+                )
+            ),
+        status = status
+    )
+
+    private companion object {
+        const val ROUND_ID = "round-id"
+        const val ROUND_SNAPSHOT_HEIGHT = 500L
     }
 }

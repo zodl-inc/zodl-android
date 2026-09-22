@@ -2,8 +2,10 @@ package co.electriccoin.zcash.ui.common.usecase
 
 import android.util.Log
 import cash.z.ecc.android.sdk.model.ZcashNetwork
+import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
+import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
 import co.electriccoin.zcash.ui.common.repository.VotingConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingPirWarmupRequest
 import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepository
@@ -19,18 +21,33 @@ import java.io.File
  * best-effort background step, mirroring Vizor's poll-list/proposal-detail screen-entry warm-up
  * (`voting_polls_screen.dart:75`, `voting_proposal_detail_screen.dart:93`).
  *
- * Deliberately round-independent: unlike [PrecomputeVotingSnapshotBundlesUseCase], this needs no
- * `roundId` -- it warms the cache for the wallet's currently spendable notes at the current fully
- * scanned height, which is exactly what the SDK call itself does not require a round selection
- * for. Safe to call from a screen where no round has been chosen yet (poll list).
+ * **Height source (fixed after review):** an earlier version of this use case resolved the PIR
+ * server against the wallet's live `fullyScannedHeight`, which is a continuously-changing scan
+ * tip. [co.electriccoin.zcash.ui.common.provider.PirSnapshotResolver.resolve] requires an EXACT
+ * height match against what a configured PIR server currently reports (`NoMatchingEndpoint`
+ * otherwise) -- every other caller in this codebase
+ * ([PrepareVotingRoundUseCase], [SubmitVotesUseCase], [PrecomputeVotingSnapshotBundlesUseCase])
+ * resolves against a specific ROUND's fixed `snapshotHeight`, never a live/rolling height, which
+ * is strong evidence PIR servers serve fixed round-snapshot roots rather than a rolling tip. Using
+ * the live scan tip would make `resolve()` throw on effectively every call, silently swallowed by
+ * the `runCatching` below -- permanently inert code with no visible symptom. Fixed: warm the cache
+ * for every currently ACTIVE round's own `snapshotHeight` instead, mirroring
+ * [PrecomputeVotingSnapshotBundlesUseCase]'s already-correct pattern.
  *
- * Never throws: every failure (no cached config yet, wallet still syncing, no notes, PIR proof
+ * Deliberately still callable with no `roundId` argument (unlike
+ * [PrecomputeVotingSnapshotBundlesUseCase]): the caller (poll list, proposal detail) doesn't pick
+ * a specific round -- this resolves every active round's snapshot height itself, from whatever
+ * [VotingApiRepository] has already loaded, and no-ops gracefully if no active round is known yet
+ * at the moment this fires (a real "nothing to warm yet" state, not a failure).
+ *
+ * Never throws: every failure (no cached config yet, no active rounds yet, no notes, PIR proof
  * fetch failure, ...) is caught and logged -- this is a pure optimization and must never fail or
  * delay the screen that triggered it. The actual PIR round-trip work is fire-and-forget and
  * deduped inside [VotingProofPrecomputeRepository.startPirWarmup]; this use case's own job is
  * just resolving that call's parameters, so failures here are just as harmless to swallow.
  */
 class WarmVotingPirProofsUseCase(
+    private val votingApiRepository: VotingApiRepository,
     private val votingConfigRepository: VotingConfigRepository,
     private val votingCryptoClient: VotingCryptoClient,
     private val synchronizerProvider: SynchronizerProvider,
@@ -40,12 +57,16 @@ class WarmVotingPirProofsUseCase(
     suspend operator fun invoke() {
         runCatching {
             withContext(Dispatchers.IO) {
+                val activeSnapshotHeights =
+                    votingApiRepository.snapshot.value.rounds
+                        .filter { round -> round.status == SessionStatus.ACTIVE }
+                        .map { round -> round.snapshotHeight }
+                        .distinct()
+                if (activeSnapshotHeights.isEmpty()) return@withContext
+
                 val serviceConfig = votingConfigRepository.get()?.serviceConfig ?: return@withContext
                 val pirEndpoints = serviceConfig.pirEndpoints.map { endpoint -> endpoint.url }
                 if (pirEndpoints.isEmpty()) return@withContext
-
-                val synchronizer = synchronizerProvider.getSynchronizer()
-                val snapshotHeight = synchronizer.fullyScannedHeight.value?.value?.takeIf { it > 0 } ?: return@withContext
 
                 val selectedAccount = getSelectedWalletAccount()
                 val accountUuid = selectedAccount.sdkAccount.accountUuid
@@ -57,29 +78,31 @@ class WarmVotingPirProofsUseCase(
                         ?.resolve("voting.sqlite3")
                         ?.absolutePath
                         ?: return@withContext
-                val networkId = synchronizer.network.toVotingNetworkId()
+                val networkId = synchronizerProvider.getSynchronizer().network.toVotingNetworkId()
 
-                val notesJson =
-                    votingCryptoClient.getWalletNotesJson(
-                        walletDbPath = walletDbPath,
-                        snapshotHeight = snapshotHeight,
-                        networkId = networkId,
-                        accountUuidBytes = accountUuid.value
-                    )
-                if (JSONArray(notesJson).length() == 0) return@withContext
+                activeSnapshotHeights.forEach { snapshotHeight ->
+                    val notesJson =
+                        votingCryptoClient.getWalletNotesJson(
+                            walletDbPath = walletDbPath,
+                            snapshotHeight = snapshotHeight,
+                            networkId = networkId,
+                            accountUuidBytes = accountUuid.value
+                        )
+                    if (JSONArray(notesJson).length() == 0) return@forEach
 
-                votingProofPrecomputeRepository.startPirWarmup(
-                    VotingPirWarmupRequest(
-                        accountUuid = accountUuidString,
-                        walletId = accountUuidString,
-                        votingDbPath = votingDbPath,
-                        snapshotHeight = snapshotHeight,
-                        pirEndpoints = pirEndpoints,
-                        pirLayout = serviceConfig.pirLayout,
-                        networkId = networkId,
-                        notesJson = notesJson
+                    votingProofPrecomputeRepository.startPirWarmup(
+                        VotingPirWarmupRequest(
+                            accountUuid = accountUuidString,
+                            walletId = accountUuidString,
+                            votingDbPath = votingDbPath,
+                            snapshotHeight = snapshotHeight,
+                            pirEndpoints = pirEndpoints,
+                            pirLayout = serviceConfig.pirLayout,
+                            networkId = networkId,
+                            notesJson = notesJson
+                        )
                     )
-                )
+                }
             }
         }.onFailure { throwable ->
             Log.w(TAG, "PIR proof warmup request could not be built", throwable)
