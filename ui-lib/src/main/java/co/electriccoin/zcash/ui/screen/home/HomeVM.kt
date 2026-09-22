@@ -345,7 +345,9 @@ class HomeVM(
 
     private fun onOhttpUnavailableChooseServerClick() =
         navigationRouter
-            .forward(co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerArgs(preselectFastestClearnet = true))
+            .forward(
+                co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerArgs(preselectFastestClearnet = true)
+            )
 
     private fun onWalletBackupMessageClick() = navigationRouter.forward(SeedBackupInfo)
 
