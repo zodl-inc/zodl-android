@@ -56,6 +56,8 @@ class LedgerDeviceScanVM(
 
     private var pairJob: Job? = null
 
+    private var scanTimeoutJob: Job? = null
+
     val state: StateFlow<LedgerDeviceScanState> =
         internalState
             .map { createState(it) }
@@ -66,8 +68,7 @@ class LedgerDeviceScanVM(
             )
 
     override fun onCleared() {
-        scanJob?.cancel()
-        scanJob = null
+        stopScan()
         pairJob?.cancel()
         pairJob = null
         super.onCleared()
@@ -284,7 +285,7 @@ class LedgerDeviceScanVM(
     private fun startScan() {
         pairJob?.cancel()
         pairJob = null
-        scanJob?.cancel()
+        stopScan()
         internalState.update {
             it.copy(
                 phase = LedgerScanPhase.SCANNING,
@@ -294,18 +295,17 @@ class LedgerDeviceScanVM(
             )
         }
         scanJob = viewModelScope.launch { scan() }
+        scanTimeoutJob =
+            viewModelScope.launch {
+                delay(SCAN_TIMEOUT)
+                if (internalState.value.devices.isEmpty()) {
+                    showError(LedgerScanError.NoDevices)
+                }
+            }
     }
 
     @Suppress("TooGenericExceptionCaught")
     private suspend fun scan() {
-        viewModelScope.launch {
-            delay(SCAN_TIMEOUT)
-            if (internalState.value.devices.isEmpty() && internalState.value.phase == LedgerScanPhase.SCANNING) {
-                showError(LedgerScanError.NoDevices)
-                scanJob?.cancel()
-                scanJob = null
-            }
-        }
         try {
             observeLedgerDevices().collect { devices ->
                 internalState.update { current ->
@@ -328,9 +328,15 @@ class LedgerDeviceScanVM(
         }
     }
 
+    /**
+     * Cancels the scan and the timer together: a timer left running from an earlier session would
+     * otherwise fire into the next one and report "no devices" while it is still searching.
+     */
     private fun stopScan() {
         scanJob?.cancel()
         scanJob = null
+        scanTimeoutJob?.cancel()
+        scanTimeoutJob = null
     }
 
     private fun showError(error: LedgerScanError) {
