@@ -726,6 +726,7 @@ private fun ExplanatoryMessage(message: StringResource) {
     }
 }
 
+@Suppress("UnusedPrivateMember")
 @Composable
 private fun ChooseServerPreviewLoading() =
     ZcashTheme {

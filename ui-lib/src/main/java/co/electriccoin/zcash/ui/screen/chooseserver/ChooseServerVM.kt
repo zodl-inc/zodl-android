@@ -64,11 +64,12 @@ class ChooseServerVM(
                 other = createOther(local, persisted, fastestServers),
                 saveButton = createSaveButton(local, persisted),
                 dialogState = inner.dialogState,
-                explanatoryMessage = if (preselectFastestClearnet) {
-                    stringRes(R.string.choose_server_clearnet_preselection_message)
-                } else {
-                    null
-                },
+                explanatoryMessage =
+                    if (preselectFastestClearnet) {
+                        stringRes(R.string.choose_server_clearnet_preselection_message)
+                    } else {
+                        null
+                    },
                 onBack = ::onBack
             )
         }.stateIn(
@@ -220,24 +221,27 @@ class ChooseServerVM(
 
         if (preselectFastestClearnet) {
             refreshFastestServersUseCase()
-            observeFastestServers().onEach { fastestServers ->
-                if (!fastestServers.isLoading && fastestServers.servers != null) {
-                    val clearnetEndpoints = lightWalletEndpointProvider.getFallbackEndpoints()
-                    val fastestClearnet = fastestServers.servers.firstOrNull { it in clearnetEndpoints }
-                    if (fastestClearnet != null) {
-                        innerState.update { inner ->
-                            inner.local?.let {
-                                inner.copy(
-                                    local = it.copy(
-                                        isAutomatic = false,
-                                        selectedEndpoint = fastestClearnet
-                                    )
-                                )
-                            } ?: inner
+            observeFastestServers()
+                .onEach { fastestServers ->
+                    if (!fastestServers.isLoading && fastestServers.servers != null) {
+                        val clearnetEndpoints = lightWalletEndpointProvider.getFallbackEndpoints()
+                        val fastestClearnet = fastestServers.servers.firstOrNull { it in clearnetEndpoints }
+                        if (fastestClearnet != null) {
+                            innerState.update { inner ->
+                                inner.local?.let {
+                                    inner
+                                        .copy(
+                                            local =
+                                                it.copy(
+                                                    isAutomatic = false,
+                                                    selectedEndpoint = fastestClearnet
+                                                )
+                                        )
+                                } ?: inner
+                            }
                         }
                     }
-                }
-            }.launchIn(viewModelScope)
+                }.launchIn(viewModelScope)
         }
     }
 

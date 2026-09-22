@@ -335,6 +335,7 @@ class AutomaticServerRepositoryImpl(
                     syncFallbackFlag(decision.endpoint)
                     decision.endpoint
                 }
+
                 is ServerFallbackPolicy.DecisionResult.ReturnToGateway -> {
                     _ohttpUnavailable.value = false
                     Twig.info {
@@ -344,6 +345,7 @@ class AutomaticServerRepositoryImpl(
                     syncFallbackFlag(decision.endpoint)
                     decision.endpoint
                 }
+
                 is ServerFallbackPolicy.DecisionResult.StayAndReportGatewayUnavailable -> {
                     _ohttpUnavailable.value = true
                     Twig.info {
@@ -353,6 +355,7 @@ class AutomaticServerRepositoryImpl(
                     syncFallbackFlag(current)
                     null
                 }
+
                 is ServerFallbackPolicy.DecisionResult.Stay -> {
                     // Gateway reachable and already on it, or on manual clearnet fallback with gateway still down
                     if (healthyGateways.isNotEmpty()) {
