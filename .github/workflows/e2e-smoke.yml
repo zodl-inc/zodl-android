@@ -35,6 +35,8 @@ jobs:
         uses: ./.github/actions/setup-sdk-companion
         with:
           sdk-token: ${{ secrets.SDK_COMPANION_TOKEN || secrets.ZODL_QA }}
+          cargo-app-id: ${{ secrets.CARGO_PRIVATE_APP_ID }}
+          cargo-app-private-key: ${{ secrets.CARGO_PRIVATE_APP_KEY }}
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4

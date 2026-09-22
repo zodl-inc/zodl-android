@@ -16,6 +16,14 @@ inputs:
     description: Token with contents:read on the SDK repository (SDK_COMMIT_PIN checkout)
     required: false
     default: ''
+  cargo-app-id:
+    description: GitHub App ID for private slipstream-internal git dependency (companion SDK Rust build)
+    required: false
+    default: ''
+  cargo-app-private-key:
+    description: GitHub App private key for private slipstream-internal git dependency (companion SDK Rust build)
+    required: false
+    default: ''
 
 runs:
   using: "composite"
@@ -65,6 +73,23 @@ runs:
         rustup default "${CHANNEL}"
         rustup target add --toolchain "${CHANNEL}" \
           armv7-linux-androideabi aarch64-linux-android i686-linux-android x86_64-linux-android
+    - name: Authorize cargo against the private slipstream repositories (companion SDK)
+      if: steps.pin.outputs.commit != '' && inputs.cargo-app-id != '' && inputs.cargo-app-private-key != ''
+      id: slipstream-token
+      uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1
+      with:
+        app-id: ${{ inputs.cargo-app-id }}
+        private-key: ${{ inputs.cargo-app-private-key }}
+        owner: zodl-inc
+        repositories: slipstream,slipstream-internal
+    - name: Point cargo git fetches at the App token (companion SDK)
+      if: steps.pin.outputs.commit != '' && steps.slipstream-token.outputs.token != ''
+      shell: bash
+      env:
+        SLIPSTREAM_TOKEN: ${{ steps.slipstream-token.outputs.token }}
+      run: |
+        git config --global url."https://x-access-token:${SLIPSTREAM_TOKEN}@github.com/zodl-inc/".insteadOf "https://github.com/zodl-inc/"
+        echo "CARGO_NET_GIT_FETCH_WITH_CLI=true" >> "$GITHUB_ENV"
     - name: Free disk space before companion SDK Rust build
       if: steps.pin.outputs.commit != ''
       shell: bash
