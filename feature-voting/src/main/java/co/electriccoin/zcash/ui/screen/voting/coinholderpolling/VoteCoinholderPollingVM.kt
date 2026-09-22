@@ -33,6 +33,7 @@ import co.electriccoin.zcash.ui.common.usecase.RefreshVotingRoundsUseCase
 import co.electriccoin.zcash.ui.common.usecase.RefreshVotingServiceConfigUseCase
 import co.electriccoin.zcash.ui.common.usecase.TrackVotingSharesUseCase
 import co.electriccoin.zcash.ui.common.usecase.VotingShareTrackingResult
+import co.electriccoin.zcash.ui.common.usecase.WarmVotingPirProofsUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
@@ -76,6 +77,7 @@ class VoteCoinholderPollingVM(
     private val navigationRouter: NavigationRouter,
     private val errorStateMapper: ErrorMapperUseCase,
     private val trackVotingShares: TrackVotingSharesUseCase,
+    private val warmVotingPirProofs: WarmVotingPirProofsUseCase,
     observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase,
 ) : ViewModel() {
     private val roundsLce = mutableLce<List<VotingRound>>(Lce(loading = true))
@@ -359,6 +361,11 @@ class VoteCoinholderPollingVM(
             refreshVotingDataInternal(resetVisibleConfigError = true, softRefresh = true)
         }
         screenRefreshPending.value = false
+        // voting-5.0.0 background-precompute port (Task 4): mirrors Vizor's poll-list screen-init
+        // PIR proof cache warm-up (voting_polls_screen.dart:75) -- fire-and-forget, deduped inside
+        // the repository, never blocks or fails this screen. Safe here even before any round is
+        // selected, since the underlying SDK call is bundle- and round-independent.
+        viewModelScope.launch { warmVotingPirProofs() }
     }
 
     fun onScreenExited() {

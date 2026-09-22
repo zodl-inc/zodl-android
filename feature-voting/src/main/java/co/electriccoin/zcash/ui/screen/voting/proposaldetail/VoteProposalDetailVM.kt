@@ -19,6 +19,8 @@ import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
+import co.electriccoin.zcash.ui.common.usecase.PrecomputeVotingSnapshotBundlesUseCase
+import co.electriccoin.zcash.ui.common.usecase.WarmVotingPirProofsUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ZashiConfirmationState
@@ -47,6 +49,8 @@ class VoteProposalDetailVM(
     private val votingRecoveryRepository: VotingRecoveryRepository,
     private val votingSessionStore: VotingSessionStore,
     private val navigationRouter: NavigationRouter,
+    private val warmVotingPirProofs: WarmVotingPirProofsUseCase,
+    private val precomputeVotingSnapshotBundles: PrecomputeVotingSnapshotBundlesUseCase,
     observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase,
 ) : ViewModel() {
     private val unansweredSheet = MutableStateFlow<ZashiConfirmationState?>(null)
@@ -55,6 +59,21 @@ class VoteProposalDetailVM(
         observeSelectedWalletAccount
             .require()
             .map { account -> account.sdkAccount.accountUuid.toVotingAccountScopeId() }
+
+    init {
+        // voting-5.0.0 background-precompute port (Task 4): mirrors Vizor's proposal-detail
+        // screen-init PIR warm-up (voting_proposal_detail_screen.dart:93). Fire-and-forget,
+        // deduped inside VotingProofPrecomputeRepository -- never blocks or fails this screen.
+        viewModelScope.launch { warmVotingPirProofs() }
+        // Snapshot-bundle precompute mirrors Vizor's eligibility-gated trigger
+        // (voting_proposal_detail_screen.dart:444-473, "gated on eligibility confirmed"). Reaching
+        // this screen non-read-only means the proposal list's PrepareVotingRoundUseCase gate
+        // (VOTING mode) already confirmed eligibility; a read-only visit (VOTED, or REVIEW opened
+        // from an already-submitted round) has nothing left to precompute for.
+        if (!args.isReadOnly) {
+            viewModelScope.launch { precomputeVotingSnapshotBundles(args.roundId) }
+        }
+    }
 
     val state: StateFlow<LceState<VoteProposalDetailState>> =
         combine(

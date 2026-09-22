@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.common.repository
 
-import co.electriccoin.zcash.ui.common.model.voting.VotingDelegationPirPrecomputeResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.provider.PirSnapshotResolver
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
@@ -13,11 +12,18 @@ import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 
+/**
+ * voting-5.0.0 background-precompute port (Task 4): the old per-bundle
+ * `startDelegationPirPrecompute`/`awaitDelegationPirPrecompute` mechanism this test used to cover
+ * had zero production callers (confirmed by repo-wide grep) and is superseded by
+ * `precomputeSnapshotBundles` (Task 2's SDK call, a verified strict superset). Replaced with
+ * coverage for the two new fire-and-forget background-warmup entry points below, which follow the
+ * same dedup-by-key/scope.launch shape the old delegation methods and `warmProvingCaches` used.
+ */
 class VotingProofPrecomputeRepositoryTest {
     @Test
-    fun precomputeResolvesPirServerAndRunsAgainstVotingDb() =
+    fun pirWarmupResolvesPirServerAndRunsAgainstVotingDb() =
         runBlocking {
             val cryptoClient = FakeVotingCryptoClient()
             val pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example")
@@ -28,15 +34,12 @@ class VotingProofPrecomputeRepositoryTest {
                     pirSnapshotResolver = pirSnapshotResolver,
                     scope = scope
                 )
-            val request = precomputeRequest()
+            val request = pirWarmupRequest()
 
-            repository.startDelegationPirPrecompute(request)
+            repository.startPirWarmup(request)
+            yield()
+            yield()
 
-            val result =
-                requireNotNull(repository.awaitDelegationPirPrecompute(request.key))
-                    .getOrThrow()
-
-            assertEquals(VotingDelegationPirPrecomputeResult(cachedCount = 2, fetchedCount = 3), result)
             assertEquals(
                 listOf(
                     ResolveCall(
@@ -50,10 +53,8 @@ class VotingProofPrecomputeRepositoryTest {
                 listOf(
                     CryptoCall.OpenVotingDb("/tmp/voting.sqlite3"),
                     CryptoCall.SetWalletId(dbHandle = DB_HANDLE, walletId = "wallet-id", networkId = 0),
-                    CryptoCall.PrecomputeDelegationPir(
+                    CryptoCall.PrecomputePirProofs(
                         dbHandle = DB_HANDLE,
-                        roundId = "round-id",
-                        bundleIndex = 1,
                         pirServerUrl = "https://pir.example",
                         pirLayout = VotingPirLayout(),
                         notesJson = "[notes]"
@@ -67,10 +68,9 @@ class VotingProofPrecomputeRepositoryTest {
         }
 
     @Test
-    fun precomputeFailureIsReturnedAsResultAndClosesVotingDb() =
+    fun pirWarmupIsDedupedForTheSameKey() =
         runBlocking {
-            val failure = IllegalStateException("pir failed")
-            val cryptoClient = FakeVotingCryptoClient(precomputeFailure = failure)
+            val cryptoClient = FakeVotingCryptoClient()
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
@@ -78,27 +78,23 @@ class VotingProofPrecomputeRepositoryTest {
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
                     scope = scope
                 )
-            val request = precomputeRequest()
+            val request = pirWarmupRequest()
 
-            repository.startDelegationPirPrecompute(request)
+            repository.startPirWarmup(request)
+            repository.startPirWarmup(request)
+            repository.startPirWarmup(request)
+            yield()
+            yield()
 
-            val result = requireNotNull(repository.awaitDelegationPirPrecompute(request.key))
-            val thrown =
-                assertFailsWith<IllegalStateException> {
-                    result.getOrThrow()
-                }
-
-            assertEquals(failure, thrown)
-            assertEquals(CryptoCall.CloseVotingDb(DB_HANDLE), cryptoClient.calls.last())
+            assertEquals(1, cryptoClient.calls.count { it is CryptoCall.PrecomputePirProofs })
 
             scope.cancel()
         }
 
     @Test
-    fun phaseRegressionPrecomputeFailureIsReturnedAsResultAndClosesVotingDb() =
+    fun pirWarmupFailureIsSwallowedAndStillClosesVotingDb() =
         runBlocking {
-            val failure = IllegalStateException("refusing to regress round phase from PROVED to DELEGATION")
-            val cryptoClient = FakeVotingCryptoClient(precomputeFailure = failure)
+            val cryptoClient = FakeVotingCryptoClient(pirWarmupFailure = IllegalStateException("pir failed"))
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
@@ -106,29 +102,110 @@ class VotingProofPrecomputeRepositoryTest {
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
                     scope = scope
                 )
-            val request = precomputeRequest()
 
-            repository.startDelegationPirPrecompute(request)
+            // Must not throw / must not cancel the caller -- fire-and-forget precompute is never
+            // allowed to fail the triggering screen.
+            repository.startPirWarmup(pirWarmupRequest())
+            yield()
+            yield()
 
-            val result = requireNotNull(repository.awaitDelegationPirPrecompute(request.key))
-            val thrown =
-                assertFailsWith<IllegalStateException> {
-                    result.getOrThrow()
-                }
-
-            // A phase-regression-flavored failure during precompute is no longer swallowed into
-            // a fake success (see VotingProofPrecomputeRepositoryImpl.runPrecompute) - it now
-            // surfaces as a plain Result.failure, same as any other precompute failure, while
-            // still closing the voting DB.
-            assertEquals(failure, thrown)
             assertEquals(CryptoCall.CloseVotingDb(DB_HANDLE), cryptoClient.calls.last())
 
             scope.cancel()
         }
 
     @Test
-    fun warmProvingCachesStartsOnlyOnce() =
+    fun snapshotBundlePrecomputeResolvesPirServerAndRunsAgainstVotingDb() =
         runBlocking {
+            val cryptoClient = FakeVotingCryptoClient()
+            val pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example")
+            val scope = CoroutineScope(coroutineContext + SupervisorJob())
+            val repository =
+                VotingProofPrecomputeRepositoryImpl(
+                    votingCryptoClient = cryptoClient.client,
+                    pirSnapshotResolver = pirSnapshotResolver,
+                    scope = scope
+                )
+            val request = snapshotBundlePrecomputeRequest()
+
+            repository.startSnapshotBundlePrecompute(request)
+            yield()
+            yield()
+
+            assertEquals(
+                listOf(
+                    CryptoCall.OpenVotingDb("/tmp/voting.sqlite3"),
+                    CryptoCall.SetWalletId(dbHandle = DB_HANDLE, walletId = "wallet-id", networkId = 0),
+                    CryptoCall.PrecomputeSnapshotBundles(
+                        dbHandle = DB_HANDLE,
+                        roundId = "round-id",
+                        pirServerUrl = "https://pir.example",
+                        pirLayout = VotingPirLayout(),
+                        notesJson = "[notes]"
+                    ),
+                    CryptoCall.CloseVotingDb(DB_HANDLE)
+                ),
+                cryptoClient.calls
+            )
+
+            scope.cancel()
+        }
+
+    @Test
+    fun snapshotBundlePrecomputeIsDedupedPerRoundKey() =
+        runBlocking {
+            val cryptoClient = FakeVotingCryptoClient()
+            val scope = CoroutineScope(coroutineContext + SupervisorJob())
+            val repository =
+                VotingProofPrecomputeRepositoryImpl(
+                    votingCryptoClient = cryptoClient.client,
+                    pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+                    scope = scope
+                )
+            val request = snapshotBundlePrecomputeRequest()
+
+            repository.startSnapshotBundlePrecompute(request)
+            repository.startSnapshotBundlePrecompute(request)
+            yield()
+            yield()
+            // A different round is not deduped against the first.
+            repository.startSnapshotBundlePrecompute(request.copy(roundId = "round-id-2"))
+            yield()
+            yield()
+
+            assertEquals(2, cryptoClient.calls.count { it is CryptoCall.PrecomputeSnapshotBundles })
+
+            scope.cancel()
+        }
+
+    @Test
+    fun snapshotBundlePrecomputeFailureIsSwallowedAndStillClosesVotingDb() =
+        runBlocking {
+            val cryptoClient =
+                FakeVotingCryptoClient(snapshotBundlePrecomputeFailure = IllegalStateException("bundle plan failed"))
+            val scope = CoroutineScope(coroutineContext + SupervisorJob())
+            val repository =
+                VotingProofPrecomputeRepositoryImpl(
+                    votingCryptoClient = cryptoClient.client,
+                    pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+                    scope = scope
+                )
+
+            repository.startSnapshotBundlePrecompute(snapshotBundlePrecomputeRequest())
+            yield()
+            yield()
+
+            assertEquals(CryptoCall.CloseVotingDb(DB_HANDLE), cryptoClient.calls.last())
+
+            scope.cancel()
+        }
+
+    @Test
+    fun warmProvingCachesCallsThroughOnEveryInvocation() =
+        runBlocking {
+            // Task 3: the crate's own start_proving_cache_warmup() now dedupes for free, so this
+            // wrapper no longer needs its own AtomicBoolean gate -- every call is forwarded
+            // directly and the crate is responsible for making repeat calls cheap.
             val cryptoClient = FakeVotingCryptoClient()
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
@@ -141,19 +218,31 @@ class VotingProofPrecomputeRepositoryTest {
             repository.warmProvingCaches()
             repository.warmProvingCaches()
             yield()
+            yield()
 
-            assertEquals(1, cryptoClient.warmupCount)
+            assertEquals(2, cryptoClient.warmupCount)
 
             scope.cancel()
         }
 
-    private fun precomputeRequest() =
-        VotingDelegationPirPrecomputeRequest(
+    private fun pirWarmupRequest() =
+        VotingPirWarmupRequest(
+            accountUuid = "account",
+            walletId = "wallet-id",
+            votingDbPath = "/tmp/voting.sqlite3",
+            snapshotHeight = 123L,
+            pirEndpoints = listOf("https://pir-a", "https://pir-b"),
+            pirLayout = VotingPirLayout(),
+            networkId = 0,
+            notesJson = "[notes]"
+        )
+
+    private fun snapshotBundlePrecomputeRequest() =
+        VotingSnapshotBundlePrecomputeRequest(
             accountUuid = "account",
             walletId = "wallet-id",
             votingDbPath = "/tmp/voting.sqlite3",
             roundId = "round-id",
-            bundleIndex = 1,
             pirEndpoints = listOf("https://pir-a", "https://pir-b"),
             pirLayout = VotingPirLayout(),
             expectedSnapshotHeight = 123L,
@@ -183,7 +272,8 @@ private class FakePirSnapshotResolver(
 }
 
 private class FakeVotingCryptoClient(
-    private val precomputeFailure: Exception? = null
+    private val pirWarmupFailure: Exception? = null,
+    private val snapshotBundlePrecomputeFailure: Exception? = null
 ) {
     val calls = mutableListOf<CryptoCall>()
     var warmupCount = 0
@@ -209,18 +299,29 @@ private class FakeVotingCryptoClient(
                     Unit
                 }
 
-                "precomputeDelegationPir" -> {
+                "precomputePirProofs" -> {
                     calls +=
-                        CryptoCall.PrecomputeDelegationPir(
+                        CryptoCall.PrecomputePirProofs(
+                            dbHandle = args.valueAt(0),
+                            pirServerUrl = args.valueAt(1),
+                            pirLayout = args.valueAt(2),
+                            notesJson = args.valueAt(3)
+                        )
+                    pirWarmupFailure?.let { throw it }
+                    fakePirWarmupResult()
+                }
+
+                "precomputeSnapshotBundles" -> {
+                    calls +=
+                        CryptoCall.PrecomputeSnapshotBundles(
                             dbHandle = args.valueAt(0),
                             roundId = args.valueAt(1),
-                            bundleIndex = args.valueAt(2),
-                            pirServerUrl = args.valueAt(3),
-                            pirLayout = args.valueAt(4),
-                            notesJson = args.valueAt(5)
+                            pirServerUrl = args.valueAt(2),
+                            pirLayout = args.valueAt(3),
+                            notesJson = args.valueAt(4)
                         )
-                    precomputeFailure?.let { throw it }
-                    VotingDelegationPirPrecomputeResult(cachedCount = 2, fetchedCount = 3)
+                    snapshotBundlePrecomputeFailure?.let { throw it }
+                    fakeSnapshotBundlePrecomputeResult()
                 }
 
                 "closeVotingDb" -> {
@@ -240,6 +341,20 @@ private class FakeVotingCryptoClient(
         } as VotingCryptoClient
 }
 
+private fun fakePirWarmupResult() =
+    co.electriccoin.zcash.ui.common.model.voting.VotingPirWarmupResult(
+        cachedCount = 2,
+        fetchedCount = 3,
+        servedRoot = ByteArray(32)
+    )
+
+private fun fakeSnapshotBundlePrecomputeResult() =
+    co.electriccoin.zcash.ui.common.model.voting.VotingSnapshotBundlePrecomputeResult(
+        bundleCount = 1,
+        eligibleWeight = 100L,
+        bundleReports = emptyList()
+    )
+
 private data class ResolveCall(
     val endpoints: List<String>,
     val expectedSnapshotHeight: Long
@@ -256,10 +371,16 @@ private sealed interface CryptoCall {
         val networkId: Int
     ) : CryptoCall
 
-    data class PrecomputeDelegationPir(
+    data class PrecomputePirProofs(
+        val dbHandle: Long,
+        val pirServerUrl: String,
+        val pirLayout: VotingPirLayout,
+        val notesJson: String
+    ) : CryptoCall
+
+    data class PrecomputeSnapshotBundles(
         val dbHandle: Long,
         val roundId: String,
-        val bundleIndex: Int,
         val pirServerUrl: String,
         val pirLayout: VotingPirLayout,
         val notesJson: String

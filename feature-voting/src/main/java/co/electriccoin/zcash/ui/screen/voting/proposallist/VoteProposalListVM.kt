@@ -22,6 +22,7 @@ import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
 import co.electriccoin.zcash.ui.common.repository.effectiveChoices
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
+import co.electriccoin.zcash.ui.common.usecase.PrecomputeVotingSnapshotBundlesUseCase
 import co.electriccoin.zcash.ui.common.usecase.PrepareVotingRoundUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
@@ -58,6 +59,7 @@ class VoteProposalListVM(
     private val votingApiRepository: VotingApiRepository,
     private val votingRecoveryRepository: VotingRecoveryRepository,
     private val prepareVotingRound: PrepareVotingRoundUseCase,
+    private val precomputeVotingSnapshotBundles: PrecomputeVotingSnapshotBundlesUseCase,
     private val navigationRouter: NavigationRouter,
     observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase,
 ) : ViewModel() {
@@ -93,6 +95,15 @@ class VoteProposalListVM(
 
     init {
         prepareForVoting()
+        // voting-5.0.0 background-precompute port (Task 4): mirrors Vizor's review-screen entry
+        // snapshot-bundle precompute (voting_review_screen.dart:137-169), the same
+        // eligibility-gated trigger as VoteProposalDetailVM's. REVIEW is only reachable after the
+        // VOTING flow's PrepareVotingRoundUseCase gate above already confirmed eligibility for
+        // this round, so no extra gating is needed here beyond the mode check itself.
+        // Fire-and-forget, deduped inside VotingProofPrecomputeRepository.
+        if (args.mode == VoteProposalListMode.REVIEW && args.roundId.isNotEmpty()) {
+            viewModelScope.launch { precomputeVotingSnapshotBundles(args.roundId) }
+        }
     }
 
     private val selectedAccountUuid: Flow<String> =

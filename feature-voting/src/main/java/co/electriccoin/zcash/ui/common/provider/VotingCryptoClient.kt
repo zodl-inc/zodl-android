@@ -26,6 +26,8 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingBundleSetupResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingDelegationPirPrecomputeResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingHotkey
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
+import co.electriccoin.zcash.ui.common.model.voting.VotingPirWarmupResult
+import co.electriccoin.zcash.ui.common.model.voting.VotingSnapshotBundlePrecomputeResult
 import co.electriccoin.zcash.ui.common.model.voting.requireKnownPolyLen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -37,6 +39,8 @@ import java.util.concurrent.atomic.AtomicLong
 import cash.z.ecc.android.sdk.model.voting.VotingBundleSetupResult as SdkVotingBundleSetupResult
 import cash.z.ecc.android.sdk.model.voting.VotingDelegationPirPrecomputeResult as SdkVotingDelegationPirPrecomputeResult
 import cash.z.ecc.android.sdk.model.voting.VotingHotkey as SdkVotingHotkey
+import cash.z.ecc.android.sdk.model.voting.VotingPirPrecomputeResult as SdkVotingPirPrecomputeResult
+import cash.z.ecc.android.sdk.model.voting.VotingSnapshotBundlePrecomputeReport as SdkVotingSnapshotBundlePrecomputeReport
 
 /**
  * Kotlin surface over the voting-crypto backend, delegating to the public [VotingSdk] and its
@@ -178,6 +182,40 @@ interface VotingCryptoClient {
         pirLayout: VotingPirLayout,
         notesJson: String
     ): VotingDelegationPirPrecomputeResult
+
+    /**
+     * Warms the bundle- and round-independent PIR proof cache for [notesJson]'s nullifiers, so a
+     * later [precomputeDelegationPir]/[precomputeSnapshotBundles] call (or vote construction)
+     * finds proofs already cached instead of paying PIR latency synchronously. Not scoped to a
+     * round or bundle -- safe to call as a background pre-warming step before any round is
+     * selected, whenever wallet notes are available.
+     * @throws RuntimeException if the native layer reports a failure.
+     */
+    @Throws(RuntimeException::class)
+    suspend fun precomputePirProofs(
+        dbHandle: Long,
+        pirServerUrl: String,
+        pirLayout: VotingPirLayout,
+        notesJson: String
+    ): VotingPirWarmupResult
+
+    /**
+     * Persists (or validates) [roundId]'s canonical bundle plan for [notesJson] and warms PIR for
+     * every bundle in that plan -- the whole-round background pre-warming entry point,
+     * complementing [precomputePirProofs] (round-independent, no bundle layout) and
+     * [precomputeDelegationPir] (one already-persisted bundle at a time). Verified strict
+     * superset of [precomputeDelegationPir] -- prefer this over per-bundle calls whenever the
+     * round's full snapshot note set is available.
+     * @throws RuntimeException if the native layer reports a failure.
+     */
+    @Throws(RuntimeException::class)
+    suspend fun precomputeSnapshotBundles(
+        dbHandle: Long,
+        roundId: String,
+        pirServerUrl: String,
+        pirLayout: VotingPirLayout,
+        notesJson: String
+    ): VotingSnapshotBundlePrecomputeResult
 
     /**
      * Opens a round-driver session: binds a `RoundExecutor` to [roundId]'s roster and hotkey,
@@ -510,6 +548,44 @@ class VotingCryptoClientImpl : VotingCryptoClient {
                 ).toAppModel()
         }
 
+    override suspend fun precomputePirProofs(
+        dbHandle: Long,
+        pirServerUrl: String,
+        pirLayout: VotingPirLayout,
+        notesJson: String
+    ): VotingPirWarmupResult =
+        withContext(Dispatchers.IO) {
+            session(dbHandle)
+                .precomputePirProofs(
+                    pirServerUrl,
+                    pirLayout.pirDepth,
+                    pirLayout.tier0Layers,
+                    pirLayout.tier1Layers,
+                    pirLayout.requireKnownPolyLen().polyLen,
+                    notesJson.toVotingNoteInfos()
+                ).toAppModel()
+        }
+
+    override suspend fun precomputeSnapshotBundles(
+        dbHandle: Long,
+        roundId: String,
+        pirServerUrl: String,
+        pirLayout: VotingPirLayout,
+        notesJson: String
+    ): VotingSnapshotBundlePrecomputeResult =
+        withContext(Dispatchers.IO) {
+            session(dbHandle)
+                .precomputeSnapshotBundles(
+                    roundId,
+                    pirServerUrl,
+                    pirLayout.pirDepth,
+                    pirLayout.tier0Layers,
+                    pirLayout.tier1Layers,
+                    pirLayout.requireKnownPolyLen().polyLen,
+                    notesJson.toVotingNoteInfos()
+                ).toAppModel()
+        }
+
     override suspend fun openRoundSession(
         dbHandle: Long,
         torRuntime: Long,
@@ -678,6 +754,26 @@ private fun SdkVotingDelegationPirPrecomputeResult.toAppModel() =
     VotingDelegationPirPrecomputeResult(
         cachedCount = cachedCount,
         fetchedCount = fetchedCount
+    )
+
+private fun SdkVotingPirPrecomputeResult.toAppModel() =
+    VotingPirWarmupResult(
+        cachedCount = cachedCount,
+        fetchedCount = fetchedCount,
+        servedRoot = servedRoot.copyOf()
+    )
+
+private fun SdkVotingSnapshotBundlePrecomputeReport.toAppModel() =
+    VotingSnapshotBundlePrecomputeResult(
+        bundleCount = layout.bundleCount,
+        eligibleWeight = layout.eligibleWeightZatoshi,
+        bundleReports =
+            bundles.map { report ->
+                VotingDelegationPirPrecomputeResult(
+                    cachedCount = report.cachedCount,
+                    fetchedCount = report.fetchedCount
+                )
+            }
     )
 
 private const val HEX_BYTE_CHARS = 2
