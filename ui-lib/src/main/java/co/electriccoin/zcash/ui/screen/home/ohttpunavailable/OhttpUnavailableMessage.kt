@@ -13,6 +13,8 @@ import androidx.compose.ui.Modifier
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
+import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
+import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.home.HomeMessageState
 
@@ -31,22 +33,22 @@ internal fun OhttpUnavailableMessage(
             innerModifier
                 .fillMaxWidth()
                 .padding(contentPadding)
-                .padding(horizontal = ZcashTheme.dimens.spacing.spacing16)
+                .padding(horizontal = ZcashTheme.dimens.spacingDefault)
     ) {
         Column {
             Text(
                 text = "Private connection unavailable",
-                style = ZcashTheme.typography.textMd,
-                color = ZcashTheme.colors.textPrimary
+                style = ZashiTypography.textMd,
+                color = ZashiColors.Text.textPrimary
             )
             Text(
                 text =
                     "Zodl couldn't reach its private (OHTTP) servers. " +
                         "You can keep waiting or choose a public server in Settings › Server. " +
                         "Public servers can see your IP address.",
-                style = ZcashTheme.typography.textSm,
-                color = ZcashTheme.colors.textSecondary,
-                modifier = Modifier.padding(top = ZcashTheme.dimens.spacing.spacing8)
+                style = ZashiTypography.textSm,
+                color = ZashiColors.Text.textSecondary,
+                modifier = Modifier.padding(top = ZcashTheme.dimens.spacingSmall)
             )
             ZashiButton(
                 state =
@@ -54,7 +56,7 @@ internal fun OhttpUnavailableMessage(
                         text = stringRes("Choose server"),
                         onClick = state.onChooseServer
                     ),
-                modifier = Modifier.padding(top = ZcashTheme.dimens.spacing.spacing12)
+                modifier = Modifier.padding(top = ZcashTheme.dimens.spacingMid)
             )
         }
     }
