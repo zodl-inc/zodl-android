@@ -7,6 +7,9 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class VotingRoundProgressTrackerTest {
+    /** Mirrors the private `DELEGATION_PHASE_WEIGHT` constant in the class under test. */
+    private val delegationPhaseWeight = 0.5f
+
     @Test
     fun `fraction is null when total is unknown`() {
         val tracker = VotingRoundProgressTracker()
@@ -128,24 +131,30 @@ class VotingRoundProgressTrackerTest {
     // observed live: "0 of 37" sat motionless, then jumped straight to "37 of 37" at the end.
 
     @Test
-    fun `a Delegate step's progress contributes via bundle-scoped tracking`() {
+    fun `a Delegate step's progress contributes via bundle-scoped tracking, at the delegation phase weight`() {
         val tracker = VotingRoundProgressTracker()
 
         tracker.record(VotingNextStep.Delegate(bundleIndex = 0), proofProgress = 0.5f)
 
         val fraction = tracker.fraction(completedProposals = 0, totalProposals = 37)
-        assertEquals(0.5f / 37f, fraction)
+        assertEquals((0.5f / 37f) * delegationPhaseWeight, fraction)
     }
 
     @Test
     fun `AdvanceDelegation and AdvanceImportedDelegation steps also contribute via bundle-scoped tracking`() {
         val advanceDelegationTracker = VotingRoundProgressTracker()
         advanceDelegationTracker.record(VotingNextStep.AdvanceDelegation(bundleIndex = 0), proofProgress = 0.4f)
-        assertEquals(0.4f / 37f, advanceDelegationTracker.fraction(completedProposals = 0, totalProposals = 37))
+        assertEquals(
+            (0.4f / 37f) * delegationPhaseWeight,
+            advanceDelegationTracker.fraction(completedProposals = 0, totalProposals = 37)
+        )
 
         val advanceImportedTracker = VotingRoundProgressTracker()
         advanceImportedTracker.record(VotingNextStep.AdvanceImportedDelegation(bundleIndex = 0), proofProgress = 0.6f)
-        assertEquals(0.6f / 37f, advanceImportedTracker.fraction(completedProposals = 0, totalProposals = 37))
+        assertEquals(
+            (0.6f / 37f) * delegationPhaseWeight,
+            advanceImportedTracker.fraction(completedProposals = 0, totalProposals = 37)
+        )
     }
 
     @Test
@@ -156,7 +165,7 @@ class VotingRoundProgressTrackerTest {
         tracker.record(VotingNextStep.Delegate(bundleIndex = 1), proofProgress = 0.5f)
 
         val fraction = tracker.fraction(completedProposals = 0, totalProposals = 37)
-        assertEquals((1.0f + 0.5f) / 37f, fraction)
+        assertEquals(((1.0f + 0.5f) / 37f) * delegationPhaseWeight, fraction)
     }
 
     @Test
@@ -168,7 +177,7 @@ class VotingRoundProgressTrackerTest {
         tracker.record(VotingNextStep.Delegate(bundleIndex = 0), proofProgress = 0.1f)
 
         val fraction = tracker.fraction(completedProposals = 0, totalProposals = 37)
-        assertEquals(0.8f / 37f, fraction)
+        assertEquals((0.8f / 37f) * delegationPhaseWeight, fraction)
     }
 
     @Test
@@ -176,12 +185,14 @@ class VotingRoundProgressTrackerTest {
         val tracker = VotingRoundProgressTracker()
 
         // Bundle 0 is still delegating; bundle 1's proposal 5 is already casting. These are
-        // non-overlapping units of work and must both count, not just the larger of the two.
+        // non-overlapping units of work and must both count, not just the larger of the two --
+        // but only the casting contribution counts at full weight, since only
+        // estimatedCompletedProposals-relevant (real, per-proposal) progress does that.
         tracker.record(VotingNextStep.Delegate(bundleIndex = 0), proofProgress = 0.4f)
         tracker.record(castVote(bundleIndex = 1, proposalId = 5), proofProgress = 0.9f)
 
         val fraction = tracker.fraction(completedProposals = 0, totalProposals = 37)
-        assertEquals((0.9f + 0.4f) / 37f, fraction)
+        assertEquals((0.9f / 37f) + (0.4f / 37f) * delegationPhaseWeight, fraction)
     }
 
     @Test
@@ -196,8 +207,25 @@ class VotingRoundProgressTrackerTest {
         tracker.record(castVote(bundleIndex = 0, proposalId = 1), proofProgress = 0.3f)
 
         val fraction = tracker.fraction(completedProposals = 0, totalProposals = 37)
-        // Only the casting contribution (0.3) counts now -- not 1.0 (stale delegation) + 0.3.
+        // Only the casting contribution (0.3) counts now -- not (1.0 stale delegation) + 0.3.
         assertEquals(0.3f / 37f, fraction)
+    }
+
+    @Test
+    fun `delegation progress alone can never push the fraction to 1, even in the worst-case bundle packing`() {
+        val tracker = VotingRoundProgressTracker()
+
+        // Worst case: every bundle represents exactly one proposal (numBundles == total), and
+        // every single one is fully delegated with NOTHING cast yet. Without a bounded weight,
+        // this would sum to totalProposals/totalProposals == 1.0, misreporting the round as done.
+        repeat(4) { bundleIndex ->
+            tracker.record(VotingNextStep.Delegate(bundleIndex = bundleIndex), proofProgress = 1.0f)
+        }
+
+        val fraction = tracker.fraction(completedProposals = 0, totalProposals = 4)
+        checkNotNull(fraction)
+        assertEquals(delegationPhaseWeight, fraction)
+        assertTrue(fraction < 1.0f, "delegation-only progress must never reach 1.0, was $fraction")
     }
 
     @Test
@@ -327,5 +355,37 @@ class VotingRoundProgressTrackerTest {
         // The tally jumped to 3 of 4 in one batch; nothing was locally measured at all.
         val estimate = tracker.estimatedCompletedProposals(completedProposals = 3, totalProposals = 4)
         assertEquals(3, estimate)
+    }
+
+    @Test
+    fun `estimated count ignores delegation-only progress with nothing cast`() {
+        val tracker = VotingRoundProgressTracker()
+
+        // A single bundle covering both of this round's proposals finishes delegating -- but
+        // nothing has actually been cast. The count must NOT claim a proposal is complete just
+        // because its bundle finished delegating; only fraction() (the visual bar) may move here.
+        tracker.record(VotingNextStep.Delegate(bundleIndex = 0), proofProgress = 1.0f)
+
+        val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 2)
+        assertNull(estimate)
+
+        // The bar, in contrast, is allowed to show some motion from the same delegation progress.
+        val fraction = tracker.fraction(completedProposals = 0, totalProposals = 2)
+        assertTrue(fraction != null && fraction > 0f, "fraction should still reflect delegation progress")
+    }
+
+    @Test
+    fun `estimated count starts moving only once real per-proposal progress exists, even alongside delegation`() {
+        val tracker = VotingRoundProgressTracker()
+
+        // Bundle 0 is fully delegated (no proposal credited for it); proposal 1 in a different
+        // bundle is fully cast (this one IS credited).
+        tracker.record(VotingNextStep.Delegate(bundleIndex = 0), proofProgress = 1.0f)
+        tracker.record(castVote(bundleIndex = 1, proposalId = 1), proofProgress = 1.0f)
+
+        val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 4)
+        // 1 of 4 proposals genuinely measured as fully cast; the delegating bundle contributes
+        // nothing to this count, no matter how far its own delegation has progressed.
+        assertEquals(1, estimate)
     }
 }

@@ -24,6 +24,13 @@ import cash.z.ecc.android.sdk.model.voting.VotingNextStep
  * index appears in a proposal-scoped (casting) step, so a bundle's progress is never counted
  * twice as it transitions from delegating to casting.
  *
+ * Delegation progress is deliberately kept OUT of [estimatedCompletedProposals] entirely --
+ * that count only ever moves from real per-proposal signal (see [proposalCompletionFraction]),
+ * so it can never claim a proposal is done purely because its bundle is still delegating. It is
+ * folded into [fraction] (the visual bar only) at a fixed, capped weight
+ * ([DELEGATION_PHASE_WEIGHT]) specifically so that delegation activity alone -- even across every
+ * bundle in the round -- can never drive the bar to look fully done.
+ *
  * [record] never regresses a single bundle's own stored contribution, and [fraction] never
  * returns a lower value than it has already returned -- both are monotonic for this tracker's
  * lifetime, matching [SubmitVotesUseCase]'s existing per-submission ratchet discipline.
@@ -32,6 +39,7 @@ internal class VotingRoundProgressTracker {
     private val bundleProgressByProposal = mutableMapOf<Int, MutableMap<Int, Float>>()
     private val delegationProgressByBundle = mutableMapOf<Int, Float>()
     private var lastFraction = 0f
+    private var lastProposalFraction = 0f
     private var lastEstimatedCompleted = 0
 
     /**
@@ -65,52 +73,49 @@ internal class VotingRoundProgressTracker {
      * that reads as a flicker is worse than no count" rationale, rather than a determinate bar
      * pinned at or near empty).
      *
-     * Delegation progress is ADDED to the casting-side `max(measured, tally)` term, not folded
-     * into that same max: a delegating bundle and an already-casting proposal represent
-     * non-overlapping units of work happening concurrently on different bundles, so both must
-     * count. A bundle already reflected on the casting side (its index appears in
-     * [bundleProgressByProposal]) is excluded from the delegation sum, so a single bundle's
-     * progress is never counted on both sides as it transitions from delegating to casting.
+     * `= `[proposalCompletionFraction]` + `[DELEGATION_PHASE_WEIGHT]`-weighted delegation
+     * progress`. The two terms are ADDED, not maxed: a delegating bundle and an already-casting
+     * proposal represent non-overlapping units of work happening concurrently on different
+     * bundles, so both must count. The weight exists specifically so that delegation progress
+     * alone can never push this to 1.0: in the worst case every bundle in the round represents
+     * only a single proposal (`numBundles == total`) and every one of them fully delegates with
+     * nothing yet cast -- the delegation term still tops out at [DELEGATION_PHASE_WEIGHT] itself
+     * (`(total/total) * DELEGATION_PHASE_WEIGHT`), leaving `1 - DELEGATION_PHASE_WEIGHT` of real
+     * headroom that only [proposalCompletionFraction] can fill.
      */
     fun fraction(
         completedProposals: Int?,
         totalProposals: Int?
     ): Float? {
         val total = totalProposals?.takeIf { it > 0 } ?: return null
-        val tallyFraction = (completedProposals ?: 0).toFloat() / total
-        val fractionSum =
-            bundleProgressByProposal.values.sumOf { bundleProgress ->
-                (bundleProgress.values.minOrNull() ?: 0f).toDouble()
-            }
-        val measuredFraction = fractionSum.toFloat() / total
-        val castingBundleIndexes = bundleProgressByProposal.values.flatMapTo(mutableSetOf()) { it.keys }
-        val delegationFractionSum =
-            delegationProgressByBundle
-                .filterKeys { it !in castingBundleIndexes }
-                .values
-                .sumOf { it.toDouble() }
-        val delegationFraction = delegationFractionSum.toFloat() / total
-        val combined = (maxOf(measuredFraction, tallyFraction) + delegationFraction).coerceIn(0f, 1f)
+        val combined =
+            (proposalCompletionFraction(completedProposals, total) + delegationFraction(total)).coerceIn(0f, 1f)
         lastFraction = maxOf(lastFraction, combined)
         return lastFraction.takeIf { it > 0f }
     }
 
     /**
-     * An ESTIMATE of how many proposals are complete, derived from [fraction] rather than
-     * waiting for the crate's own batched tally -- moves as soon as any proposal's own bundles
-     * are cast/proven, not only when the crate confirms a batch. This is an approximation, not
-     * an authoritative count: reaching full per-bundle proof progress on a `CastVote` step means
-     * that vote was DISPATCHED, not that it is chain-confirmed (true confirmation is a separate,
-     * later `AdvanceVote`/`AdvanceVoteBatch` outcome the wire events don't cleanly expose -- see
-     * this class's own investigation notes). A dispatched vote can still be rejected and need a
-     * retry, so this estimate can run ahead of what is later confirmed.
+     * An ESTIMATE of how many proposals are complete, derived from [proposalCompletionFraction]
+     * -- deliberately NOT from [fraction], which also includes delegation-phase progress. A
+     * proposal is only ever credited here once real per-proposal signal exists for it (its own
+     * bundle(s) proving/casting, or the authoritative tally advancing) -- a bundle that is merely
+     * delegating, with nothing cast yet, can move the visual bar a little but must never move
+     * this count, since "N of M proposals complete" is a literal claim a user reasonably expects
+     * to mean N whole proposals actually finished, not "N/M of the way through the round overall."
+     *
+     * This is an approximation, not an authoritative count: reaching full per-bundle proof
+     * progress on a `CastVote` step means that vote was DISPATCHED, not that it is
+     * chain-confirmed (true confirmation is a separate, later `AdvanceVote`/`AdvanceVoteBatch`
+     * outcome the wire events don't cleanly expose -- see this class's own investigation notes).
+     * A dispatched vote can still be rejected and need a retry, so this estimate can run ahead of
+     * what is later confirmed.
      *
      * Two safeguards keep that approximation from ever contradicting the authoritative tally:
      * it never returns [totalProposals] itself until [completedProposals] genuinely reaches it
      * (so it can never claim the round is fully done before the crate confirms that), and it
      * never returns a lower value than [completedProposals] itself (so it can never fall behind
-     * the authoritative count either). Like [fraction], the returned value never regresses across
-     * calls, and is `null` under the same "nothing measurable yet" condition.
+     * the authoritative count either). The returned value never regresses across calls, and is
+     * `null` under the same "nothing measured yet" condition as [fraction].
      */
     fun estimatedCompletedProposals(
         completedProposals: Int?,
@@ -122,10 +127,41 @@ internal class VotingRoundProgressTracker {
             lastEstimatedCompleted = total
             return total
         }
-        val fraction = fraction(completedProposals, totalProposals) ?: return null
-        val estimate = (fraction * total).toInt().coerceIn(0, total - 1)
+        lastProposalFraction = maxOf(lastProposalFraction, proposalCompletionFraction(completedProposals, total))
+        if (lastProposalFraction <= 0f) return null
+        val estimate = (lastProposalFraction * total).toInt().coerceIn(0, total - 1)
         lastEstimatedCompleted = maxOf(lastEstimatedCompleted, maxOf(estimate, authoritative))
         return lastEstimatedCompleted
+    }
+
+    /** The authoritative tally's fraction, or the locally-measured per-proposal fraction -- whichever is further. */
+    private fun proposalCompletionFraction(
+        completedProposals: Int?,
+        total: Int
+    ): Float {
+        val tallyFraction = (completedProposals ?: 0).toFloat() / total
+        val fractionSum =
+            bundleProgressByProposal.values.sumOf { bundleProgress ->
+                (bundleProgress.values.minOrNull() ?: 0f).toDouble()
+            }
+        val measuredFraction = fractionSum.toFloat() / total
+        return maxOf(measuredFraction, tallyFraction)
+    }
+
+    /**
+     * [DELEGATION_PHASE_WEIGHT]-weighted sum of every currently-delegating bundle's own progress,
+     * excluding any bundle already reflected on the casting side ([bundleProgressByProposal]) so
+     * a bundle's progress is never counted on both sides as it transitions from delegating to
+     * casting.
+     */
+    private fun delegationFraction(total: Int): Float {
+        val castingBundleIndexes = bundleProgressByProposal.values.flatMapTo(mutableSetOf()) { it.keys }
+        val delegationFractionSum =
+            delegationProgressByBundle
+                .filterKeys { it !in castingBundleIndexes }
+                .values
+                .sumOf { it.toDouble() }
+        return (delegationFractionSum.toFloat() / total) * DELEGATION_PHASE_WEIGHT
     }
 
     private fun proposalIdOf(step: VotingNextStep?): Int? =
@@ -145,4 +181,16 @@ internal class VotingRoundProgressTracker {
             is VotingNextStep.AdvanceImportedDelegation -> true
             else -> false
         }
+
+    private companion object {
+        /**
+         * How much of a bundle's total round-drive lifecycle delegation is assumed to represent,
+         * relative to casting -- a deliberately conservative estimate (the crate exposes no
+         * authoritative per-phase timing split), chosen so that delegation progress alone, even
+         * across every bundle in the round in the worst case (one bundle per proposal, all fully
+         * delegated, nothing yet cast), can never push [fraction] to 1.0 or credit a completed
+         * proposal in [estimatedCompletedProposals] -- see both functions' own doc comments.
+         */
+        const val DELEGATION_PHASE_WEIGHT = 0.5f
+    }
 }
