@@ -22,6 +22,7 @@ import co.electriccoin.zcash.ui.common.usecase.ShieldFundsFromMessageUseCase
 import co.electriccoin.zcash.ui.common.voting.VotingHomeHooks
 import co.electriccoin.zcash.ui.design.component.BigIconButtonState
 import co.electriccoin.zcash.ui.design.util.stringRes
+import ChooseServerArgs
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.screen.exchangerate.optin.ExchangeRateOptInArgs
@@ -346,7 +347,7 @@ class HomeVM(
     private fun onOhttpUnavailableChooseServerClick() =
         navigationRouter
             .forward(
-                co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerArgs(preselectFastestClearnet = true)
+                ChooseServerArgs(preselectFastestClearnet = true)
             )
 
     private fun onWalletBackupMessageClick() = navigationRouter.forward(SeedBackupInfo)
