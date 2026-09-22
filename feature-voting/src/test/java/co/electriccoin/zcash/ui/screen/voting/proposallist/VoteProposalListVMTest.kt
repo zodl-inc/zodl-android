@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.voting.proposallist
 
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingSessionStore
@@ -87,6 +88,7 @@ class VoteProposalListVMTest {
         votingRecoveryRepository: VotingRecoveryRepository = mockk(relaxed = true),
         prepareVotingRound: PrepareVotingRoundUseCase = mockk(relaxed = true),
         navigationRouter: NavigationRouter = mockk(relaxed = true),
+        getVersionInfo: GetVersionInfoProvider = mockk(relaxed = true),
         observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase = mockk(relaxed = true),
     ) = VoteProposalListVM(
         votingSessionStore = votingSessionStore,
@@ -96,6 +98,7 @@ class VoteProposalListVMTest {
         prepareVotingRound = prepareVotingRound,
         precomputeVotingSnapshotBundles = precomputeVotingSnapshotBundles,
         navigationRouter = navigationRouter,
+        getVersionInfo = getVersionInfo,
         observeSelectedWalletAccount = observeSelectedWalletAccount,
     )
 

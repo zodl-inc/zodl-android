@@ -15,6 +15,7 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingRound
 import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
 import co.electriccoin.zcash.ui.common.model.voting.voteBadgeInfo
+import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoverySnapshot
@@ -35,11 +36,13 @@ import co.electriccoin.zcash.ui.screen.voting.confirmsubmission.VoteConfirmSubmi
 import co.electriccoin.zcash.ui.screen.voting.polldescription.VotePollDescriptionArgs
 import co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailArgs
 import co.electriccoin.zcash.ui.screen.voting.votingerror.VotingErrorMapper
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -54,13 +57,14 @@ import co.electriccoin.zcash.ui.common.model.voting.VoteIneligibilityReason as M
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class VoteProposalListVM(
-    votingSessionStore: VotingSessionStore,
+    private val votingSessionStore: VotingSessionStore,
     private val args: VoteProposalListArgs,
     private val votingApiRepository: VotingApiRepository,
     private val votingRecoveryRepository: VotingRecoveryRepository,
     private val prepareVotingRound: PrepareVotingRoundUseCase,
     private val precomputeVotingSnapshotBundles: PrecomputeVotingSnapshotBundlesUseCase,
     private val navigationRouter: NavigationRouter,
+    private val getVersionInfo: GetVersionInfoProvider,
     observeSelectedWalletAccount: ObserveSelectedWalletAccountUseCase,
 ) : ViewModel() {
     private val preparationErrorSheet = MutableStateFlow<ZashiConfirmationState?>(null)
@@ -388,7 +392,54 @@ class VoteProposalListVM(
             proposals = proposals.map { buildProposalRow(it, displayedChoices, round.id) },
             ctaButton = buildCtaButton(mode, proposals, displayedChoices, round.id),
             onBack = ::onBack,
+            onRoundTitleLongClick =
+                if (mode == VoteProposalListMode.VOTING && getVersionInfo().isDebuggable) {
+                    { fillAllProposalsWithFirstOption(round.id, proposals) }
+                } else {
+                    null
+                },
         )
+    }
+
+    /**
+     * Debug-only testing shortcut (see [VoteProposalListState.onRoundTitleLongClick]): sets
+     * every proposal in the round to its own first option, replacing whatever was drafted
+     * before, then persists the result exactly like a real per-proposal answer would be --
+     * mirrors [co.electriccoin.zcash.ui.screen.voting.proposaldetail.VoteProposalDetailVM]'s own
+     * `persistDraftsForCurrentRound` so a fast-filled round survives navigation/process death the
+     * same way a manually-answered one does.
+     */
+    private fun fillAllProposalsWithFirstOption(
+        roundId: String,
+        proposals: List<Proposal>
+    ) {
+        viewModelScope.launch {
+            val accountUuid = selectedAccountUuid.first()
+            val allFirstOption = proposals.associate { proposal -> proposal.id to proposal.options.first().id }
+            votingSessionStore.restoreDraftVotes(accountUuid, roundId, allFirstOption)
+            persistDraftsForCurrentRound(accountUuid, roundId)
+        }
+    }
+
+    private fun persistDraftsForCurrentRound(
+        accountUuid: String,
+        roundId: String
+    ) {
+        if (roundId.isEmpty()) return
+        val snapshot = votingSessionStore.state.value.draftVotesFor(accountUuid, roundId)
+        viewModelScope.launch {
+            try {
+                votingRecoveryRepository.storeDraftChoices(
+                    accountUuid = accountUuid,
+                    roundId = roundId,
+                    draftChoices = snapshot
+                )
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (throwable: Throwable) {
+                Log.e("VoteProposalList", "Failed to persist fast-filled drafts for round $roundId", throwable)
+            }
+        }
     }
 
     private fun buildProposalRow(

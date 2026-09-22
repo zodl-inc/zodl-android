@@ -28,6 +28,13 @@ data class VoteProposalListState(
     val proposals: List<VoteProposalRowState>?,
     val ctaButton: ButtonState?,
     val onBack: () -> Unit,
+    /**
+     * Debug-only shortcut: long-pressing the round title fills every proposal with its own
+     * first option, for fast manual testing of many-proposal rounds. `null` outside VOTING mode
+     * and on non-debuggable builds -- the View attaches no gesture at all when this is `null`,
+     * so there is nothing to discover or trigger accidentally in a release build.
+     */
+    val onRoundTitleLongClick: (() -> Unit)? = null,
 ) {
     companion object {
         val preview =

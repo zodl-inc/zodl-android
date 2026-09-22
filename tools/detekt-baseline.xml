@@ -84,6 +84,7 @@
     <ID>TooGenericExceptionCaught:VoteChainConfigVM.kt$VoteChainConfigVM$throwable: Throwable</ID>
     <ID>TooGenericExceptionCaught:VoteCoinholderPollingVM.kt$VoteCoinholderPollingVM$throwable: Throwable</ID>
     <ID>TooGenericExceptionCaught:VoteProposalDetailVM.kt$VoteProposalDetailVM$throwable: Throwable</ID>
+    <ID>TooGenericExceptionCaught:VoteProposalListVM.kt$VoteProposalListVM$throwable: Throwable</ID>
     <ID>TooGenericExceptionCaught:VotingApiProvider.kt$KtorVotingApiProvider$exception: Exception</ID>
     <ID>TooGenericExceptionCaught:VotingApiProvider.kt$KtorVotingApiProvider$throwable: Throwable</ID>
     <ID>TooGenericExceptionCaught:VotingServerFailoverException.kt$exception: Exception</ID>
