@@ -23,10 +23,14 @@ object ServerFallbackPolicy {
         data object StayAndReportGatewayUnavailable : DecisionResult
 
         /** Use the given OHTTP gateway. */
-        data class UseGateway(val endpoint: LightWalletEndpoint) : DecisionResult
+        data class UseGateway(
+            val endpoint: LightWalletEndpoint
+        ) : DecisionResult
 
         /** Return to the OHTTP gateway from a clearnet fallback (manual selection recovery). */
-        data class ReturnToGateway(val endpoint: LightWalletEndpoint) : DecisionResult
+        data class ReturnToGateway(
+            val endpoint: LightWalletEndpoint
+        ) : DecisionResult
 
         /** Stay on the current endpoint (no change). */
         data object Stay : DecisionResult
@@ -50,10 +54,12 @@ object ServerFallbackPolicy {
         return when {
             // OHTTP reachable: stay if already on a gateway, otherwise return to it.
             gateway != null && onGateway -> DecisionResult.Stay
+
             gateway != null && !onGateway -> DecisionResult.ReturnToGateway(gateway)
 
             // OHTTP unreachable and on gateway: report unavailability (no auto-fallback).
             !onGateway && gateway == null -> DecisionResult.Stay
+
             onGateway && gateway == null -> DecisionResult.StayAndReportGatewayUnavailable
 
             // Nothing reachable: stay put.
@@ -66,5 +72,4 @@ object ServerFallbackPolicy {
         endpoint: LightWalletEndpoint,
         isOhttpGateway: (LightWalletEndpoint) -> Boolean,
     ): Boolean = !isOhttpGateway(endpoint)
-
 }

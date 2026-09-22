@@ -341,10 +341,10 @@ class HomeVM(
     private fun onEnableCurrencyConversionClick() = navigationRouter.forward(ExchangeRateOptInArgs)
 
     private fun onWalletDisconnectedMessageClick() =
+        navigationRouter.forward(WalletDisconnectedInfo)
 
     private fun onOhttpUnavailableChooseServerClick() =
         navigationRouter.forward(co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerArgs)
-        navigationRouter.forward(WalletDisconnectedInfo)
 
     private fun onWalletBackupMessageClick() = navigationRouter.forward(SeedBackupInfo)
 

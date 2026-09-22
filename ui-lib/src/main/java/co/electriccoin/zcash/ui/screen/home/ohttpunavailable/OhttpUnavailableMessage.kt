@@ -26,10 +26,11 @@ internal fun OhttpUnavailableMessage(
     innerModifier: Modifier = Modifier
 ) {
     Box(
-        modifier = innerModifier
-            .fillMaxWidth()
-            .padding(contentPadding)
-            .padding(horizontal = ZcashTheme.dimens.spacing.spacing16)
+        modifier =
+            innerModifier
+                .fillMaxWidth()
+                .padding(contentPadding)
+                .padding(horizontal = ZcashTheme.dimens.spacing.spacing16)
     ) {
         Column {
             Text(
@@ -38,18 +39,20 @@ internal fun OhttpUnavailableMessage(
                 color = ZcashTheme.colors.textPrimary
             )
             Text(
-                text = "Zodl couldn't reach its private (OHTTP) servers. " +
-                    "You can keep waiting or choose a public server in Settings › Server. " +
-                    "Public servers can see your IP address.",
+                text =
+                    "Zodl couldn't reach its private (OHTTP) servers. " +
+                        "You can keep waiting or choose a public server in Settings › Server. " +
+                        "Public servers can see your IP address.",
                 style = ZcashTheme.typography.textSm,
                 color = ZcashTheme.colors.textSecondary,
                 modifier = Modifier.padding(top = ZcashTheme.dimens.spacing.spacing8)
             )
             TextButton(
-                state = TextButtonState(
-                    text = "Choose server",
-                    onClick = state.onChooseServer
-                ),
+                state =
+                    TextButtonState(
+                        text = "Choose server",
+                        onClick = state.onChooseServer
+                    ),
                 modifier = Modifier.padding(top = ZcashTheme.dimens.spacing.spacing12)
             )
         }

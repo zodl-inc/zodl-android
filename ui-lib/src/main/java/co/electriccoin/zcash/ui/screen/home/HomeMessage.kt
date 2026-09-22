@@ -234,59 +234,11 @@ fun HomeMessage(
                 }
 
                 is MigrationMessageState -> {
-
-                is OhttpUnavailableMessageState -> {
-                    OhttpUnavailableMessage(
-                        innerModifier = innerModifier,
-                        state = normalizedState as OhttpUnavailableMessageState,
-                        contentPadding = contentPadding
-                    )
-                }
                     MigrationMessage(
-
-                is OhttpUnavailableMessageState -> {
-                    OhttpUnavailableMessage(
-                        innerModifier = innerModifier,
-                        state = normalizedState as OhttpUnavailableMessageState,
-                        contentPadding = contentPadding
-                    )
-                }
                         contentPadding = contentPadding,
-
-                is OhttpUnavailableMessageState -> {
-                    OhttpUnavailableMessage(
-                        innerModifier = innerModifier,
-                        state = normalizedState as OhttpUnavailableMessageState,
-                        contentPadding = contentPadding
-                    )
-                }
                         state = normalizedState as MigrationMessageState,
-
-                is OhttpUnavailableMessageState -> {
-                    OhttpUnavailableMessage(
-                        innerModifier = innerModifier,
-                        state = normalizedState as OhttpUnavailableMessageState,
-                        contentPadding = contentPadding
-                    )
-                }
                         innerModifier = innerModifier
-
-                is OhttpUnavailableMessageState -> {
-                    OhttpUnavailableMessage(
-                        innerModifier = innerModifier,
-                        state = normalizedState as OhttpUnavailableMessageState,
-                        contentPadding = contentPadding
                     )
-                }
-                    )
-
-                is OhttpUnavailableMessageState -> {
-                    OhttpUnavailableMessage(
-                        innerModifier = innerModifier,
-                        state = normalizedState as OhttpUnavailableMessageState,
-                        contentPadding = contentPadding
-                    )
-                }
                 }
 
                 is OhttpUnavailableMessageState -> {
