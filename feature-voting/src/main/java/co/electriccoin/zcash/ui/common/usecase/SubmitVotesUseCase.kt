@@ -8,6 +8,7 @@ import cash.z.ecc.android.sdk.model.ZcashNetwork
 import cash.z.ecc.android.sdk.model.voting.VotingDelegationInputs
 import cash.z.ecc.android.sdk.model.voting.VotingProposalRosterEntry
 import cash.z.ecc.android.sdk.model.voting.VotingRoundDriveProgressListener
+import cash.z.ecc.android.sdk.model.voting.VotingRoundQuiescence
 import cash.z.ecc.android.sdk.model.voting.VotingRoundRunReport
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
@@ -30,6 +31,7 @@ import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import co.electriccoin.zcash.work.VotingShareTrackingScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -310,18 +312,20 @@ class SubmitVotesUseCase(
                             )
                         }
                     val report =
-                        roundSession.run(delegationInputs, progressListener)
-                            ?: throw VotingSubmissionRecoverableException(
-                                VotingErrors.UnexpectedSdkResponse("Round session run() returned no report")
-                            )
+                        runRoundWithBundleFailureRetry(roundId) {
+                            roundSession.run(delegationInputs, progressListener)
+                        }
                     chpBenchLog("run", roundId, System.currentTimeMillis() - chpBenchRunStart)
 
                     // Task 4's acceptance criterion: PersistedChainTerminal must surface to the
-                    // user immediately, never be silently retried. This single-shot call never
-                    // retries anything on its own, so that criterion is satisfied structurally —
-                    // but it must still fall through to a mapped error below, not be mistaken for
-                    // success. Unknown is explicitly NOT treated as success either (Task 9-lite
-                    // requirement, a defect the lost plan's own review caught once already). See
+                    // user immediately, never be silently retried -- unaffected by
+                    // runRoundWithBundleFailureRetry above, which only ever re-invokes this call
+                    // for the disjoint Failures-with-isolated-bundle-transport-errors case (see
+                    // its own doc comment); every other quiescence, PersistedChainTerminal
+                    // included, still falls straight through to the mapped error below on the
+                    // very first report. Unknown is explicitly NOT treated as success either
+                    // (Task 9-lite requirement, a defect the lost plan's own review caught once
+                    // already). See
                     // VotingRoundQuiescenceMapper.kt for the full quiescence/failure -> VotingErrors
                     // mapping (Task 12).
                     report.toVotingErrorOrNull(roundId)?.let { votingError ->
@@ -530,10 +534,12 @@ class SubmitVotesUseCase(
             }
 
         val report =
-            votingKeystoneSessionHolder.runToCompletion(roundId, delegationInputs, progressListener)
-                ?: throw VotingSubmissionRecoverableException(
-                    VotingErrors.UnexpectedSdkResponse("Keystone round session run() returned no report")
-                )
+            runRoundWithBundleFailureRetry(
+                roundId,
+                unexpectedResponseMessage = "Keystone round session run() returned no report"
+            ) {
+                votingKeystoneSessionHolder.runToCompletion(roundId, delegationInputs, progressListener)
+            }
 
         report.toVotingErrorOrNull(roundId)?.let { votingError ->
             throw VotingSubmissionRecoverableException(votingError)
@@ -592,8 +598,82 @@ class SubmitVotesUseCase(
                 "despite a success-shaped quiescence"
         )
     }
+
+    /**
+     * Re-invokes [runRound] up to [MAX_BUNDLE_FAILURE_RETRIES] additional times when the report
+     * it returns ended in [VotingRoundQuiescence.Failures] with every recorded failure classified
+     * as a transient, bundle-isolated kind (see [hasOnlyRetryableBundleFailures]) -- confirmed
+     * live on a 13-bundle wallet where one bundle's delegation failed on a bare PIR transport
+     * error (`RoundStepFailureKind::Transport`; the crate's default `FailureIsolation::SkipBundle`
+     * skips just that bundle with zero in-crate retry of its own). A manual retry there succeeded
+     * in ~73s versus the original ~12-minute run: the other already-cast bundles resumed
+     * idempotently (never redone -- `NextStep::CastVote`'s own doc comment: a submitted bundle's
+     * authority has moved on-chain and is never re-planned), only the failed one was retried. This
+     * automates exactly that manual retry instead of surfacing the error and making the voter
+     * press submit again.
+     *
+     * Deliberately narrow: [VotingRoundQuiescence.PersistedChainTerminal]/
+     * [VotingRoundQuiescence.ChainTerminal] and every other quiescence are untouched -- only
+     * [VotingRoundQuiescence.Failures] whose failures are ALL transient/bundle-isolated kinds
+     * triggers a retry. A single non-retryable failure kind (e.g. `DelegationTargetMismatch`,
+     * which the crate's own doc comment says retrying never fixes) or any other quiescence
+     * returns the report as-is on the very first call, preserving the acceptance criterion that a
+     * chain-terminal outcome always surfaces immediately (see this function's call sites).
+     */
+    private suspend fun runRoundWithBundleFailureRetry(
+        roundId: String,
+        unexpectedResponseMessage: String = "Round session run() returned no report",
+        runRound: suspend () -> VotingRoundRunReport?
+    ): VotingRoundRunReport {
+        suspend fun freshReport() =
+            runRound() ?: throw VotingSubmissionRecoverableException(
+                VotingErrors.UnexpectedSdkResponse(unexpectedResponseMessage)
+            )
+
+        var report = freshReport()
+        var attempt = 0
+        while (report.hasOnlyRetryableBundleFailures() && attempt < MAX_BUNDLE_FAILURE_RETRIES) {
+            attempt++
+            Log.w(
+                "CHP_BENCH",
+                "app=zodl step=bundle-failure-retry round=$roundId " +
+                    "attempt=$attempt/$MAX_BUNDLE_FAILURE_RETRIES failures=${report.failures}"
+            )
+            delay(BUNDLE_FAILURE_RETRY_DELAY_MS)
+            report = freshReport()
+        }
+        return report
+    }
+
+    /**
+     * True only for a [VotingRoundQuiescence.Failures] report whose every recorded failure is a
+     * transient, bundle-isolated kind ([RETRYABLE_BUNDLE_FAILURE_KINDS]) -- a raw crate debug
+     * string per [cash.z.ecc.android.sdk.model.voting.VotingRoundStepFailure.kind]'s own doc
+     * comment, matched case-insensitively the same way [toVotingErrorOrDefault] already does.
+     * `false` for an empty failure list (nothing to classify as retryable) or any failure kind
+     * outside the safe set, so a single logical/permanent failure alongside otherwise-transient
+     * ones still blocks the retry.
+     */
+    private fun VotingRoundRunReport.hasOnlyRetryableBundleFailures(): Boolean =
+        quiescence is VotingRoundQuiescence.Failures &&
+            failures.isNotEmpty() &&
+            failures.all { it.kind.lowercase() in RETRYABLE_BUNDLE_FAILURE_KINDS }
 }
 
 private fun ZcashNetwork.toVotingNetworkId() = if (isMainnet()) 1 else 0
 
 private const val MILLIS_PER_SECOND = 1000L
+
+/** See [SubmitVotesUseCase.runRoundWithBundleFailureRetry]'s own doc comment. */
+private const val MAX_BUNDLE_FAILURE_RETRIES = 2
+private const val BUNDLE_FAILURE_RETRY_DELAY_MS = 2_000L
+
+/**
+ * `RoundStepFailureKind` variants safe to retry automatically -- deliberately narrow. `Transport`
+ * and `Busy` are resource/network-level and expected to clear on their own; every other kind
+ * (`InvalidInput`, `InsufficientEligibility`, `NoSpendableNotes`, `Storage`,
+ * `InvariantViolation`, `Protocol`, `ProofFailed`, `Signing`, `HelperDeliveryIncomplete`,
+ * `VoteEnded`, `DelegationTargetMismatch`) is either a logical/permanent condition retrying can
+ * never fix, or not yet confirmed safe to retry blindly -- left alone rather than guessed at.
+ */
+private val RETRYABLE_BUNDLE_FAILURE_KINDS = setOf("transport", "busy")
