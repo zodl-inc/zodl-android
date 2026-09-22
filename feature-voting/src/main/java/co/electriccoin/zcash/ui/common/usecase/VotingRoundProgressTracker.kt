@@ -182,7 +182,10 @@ internal class VotingRoundProgressTracker {
         }
         lastProposalFraction = maxOf(lastProposalFraction, proposalCompletionFraction(completedProposals, total))
         if (lastProposalFraction <= 0f) return null
-        val estimate = (lastProposalFraction * total).toInt().coerceIn(0, total - 1)
+        // See PROPOSAL_ESTIMATE_EPSILON's own doc comment: absorbs Float round-trip error that
+        // would otherwise truncate a genuinely fully-measured proposal count short by one for
+        // many non-power-of-2 totals.
+        val estimate = (lastProposalFraction * total + PROPOSAL_ESTIMATE_EPSILON).toInt().coerceIn(0, total - 1)
         lastEstimatedCompleted = maxOf(lastEstimatedCompleted, maxOf(estimate, authoritative))
         return lastEstimatedCompleted
     }
@@ -283,5 +286,15 @@ internal class VotingRoundProgressTracker {
          * proposal in [estimatedCompletedProposals] -- see both functions' own doc comments.
          */
         const val DELEGATION_PHASE_WEIGHT = 0.5f
+
+        /**
+         * Absorbs Float32 round-trip error in [estimatedCompletedProposals]'s
+         * `lastProposalFraction * total` product -- e.g. for `total = 41`, `1f / 41f * 41f`
+         * evaluates to `0.9999999f` rather than exactly `1.0f` in single precision, which would
+         * otherwise truncate a genuinely fully-measured proposal count one short. Comfortably
+         * larger than any realistic Float32 round-trip error yet far too small to round up
+         * genuine partial progress into the next whole proposal.
+         */
+        const val PROPOSAL_ESTIMATE_EPSILON = 1e-4f
     }
 }

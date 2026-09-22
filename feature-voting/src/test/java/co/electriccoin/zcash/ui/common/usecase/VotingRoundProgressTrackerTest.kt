@@ -597,6 +597,26 @@ class VotingRoundProgressTrackerTest {
     }
 
     /**
+     * Regression test for a Float32 round-trip truncation bug: for `total = 41` (and many other
+     * non-power-of-2 totals, e.g. 37, 47, 55, 61), `1f / 41f * 41f` does not recover exactly
+     * `1.0f` in single precision -- it lands at `0.9999999f` -- so a plain `.toInt()` truncated a
+     * genuinely fully-measured single proposal down to 0 instead of 1. The fix adds a small
+     * epsilon before truncating.
+     */
+    @Test
+    fun `a single fully-measured proposal out of 41 is not truncated to zero by float rounding`() {
+        val tracker = VotingRoundProgressTracker()
+
+        // One bundle, fully cast one proposal's worth of work -- the authoritative tally hasn't
+        // confirmed it yet (completedProposals = 0), but the tracker has genuinely, fully
+        // measured 1/41 of the round.
+        tracker.record(castVote(bundleIndex = 0, proposalId = 1), proofProgress = 1.0f)
+
+        val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 41)
+        assertEquals(1, estimate)
+    }
+
+    /**
      * Regression test for the SAME live 13-bundle test, a second bug found after the first fix:
      * `fraction()` (the visual progress bar/ring, distinct from the "N of M" text
      * [estimatedCompletedProposals] fixes above) filled all the way to 1.0 once only 2 of 13
