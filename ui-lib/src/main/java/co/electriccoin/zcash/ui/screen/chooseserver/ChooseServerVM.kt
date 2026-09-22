@@ -43,6 +43,7 @@ class ChooseServerVM(
     getSelectedEndpoint: GetSelectedEndpointUseCase,
     isServerAutomatic: IsServerAutomaticUseCase,
     private val preselectFastestClearnet: Boolean,
+    private val autoStartProbing: Boolean,
     private val lightWalletEndpointProvider: LightWalletEndpointProvider,
     private val refreshFastestServersUseCase: RefreshFastestServersUseCase,
     private val persistServerSelection: PersistServerSelectionUseCase,
@@ -145,7 +146,12 @@ class ChooseServerVM(
             isLoading = fastestServers.isLoading,
             retryButton =
                 ButtonState(
-                    text = stringRes(R.string.serverSetup_refresh),
+                    text =
+                        if (preselectFastestClearnet && !autoStartProbing && fastestServers.servers == null) {
+                            stringRes(R.string.serverSetup_measure_servers)
+                        } else {
+                            stringRes(R.string.serverSetup_refresh)
+                        },
                     isEnabled = !local.isSaveInProgress,
                     onClick = ::onRefreshClicked
                 )
@@ -220,7 +226,9 @@ class ChooseServerVM(
             }.launchIn(viewModelScope)
 
         if (preselectFastestClearnet) {
-            refreshFastestServersUseCase()
+            if (autoStartProbing) {
+                refreshFastestServersUseCase()
+            }
             observeFastestServers()
                 .onEach { fastestServers ->
                     if (!fastestServers.isLoading && fastestServers.servers != null) {

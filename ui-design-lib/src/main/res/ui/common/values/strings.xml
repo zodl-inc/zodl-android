@@ -218,6 +218,7 @@
     <string name="serverSetup_otherServers">Other servers</string>
     <string name="serverSetup_allServers">Browse all servers</string>
     <string name="serverSetup_refresh">Refresh</string>
+    <string name="serverSetup_measure_servers">Measure servers</string>
     <string name="serverSetup_active">Active</string>
     <string name="serverSetup_testing">Testing</string>
     <string name="choose_server_multi_server_info">We may use multiple servers to optimize performance. To reduce metadata exposure, choose Manual connection mode to select your single server of choice, and ensure Tor is enabled in Advanced Settings.</string>

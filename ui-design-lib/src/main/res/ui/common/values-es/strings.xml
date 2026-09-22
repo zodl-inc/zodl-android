@@ -210,6 +210,7 @@
     <string name="serverSetup_otherServers">Otros servidores</string>
     <string name="serverSetup_allServers">Explorar todos los servidores</string>
     <string name="serverSetup_refresh">Actualizar</string>
+    <!-- TODO translate --><string name="serverSetup_measure_servers">Measure servers</string>
     <string name="serverSetup_active">Activo</string>
     <string name="serverSetup_testing">Probando</string>
     <string name="serverSetup_default">Predeterminado</string>

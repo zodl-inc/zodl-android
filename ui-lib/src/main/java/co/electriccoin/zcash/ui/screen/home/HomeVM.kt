@@ -347,7 +347,7 @@ class HomeVM(
     private fun onOhttpUnavailableChooseServerClick() =
         navigationRouter
             .forward(
-                ChooseServerArgs(preselectFastestClearnet = true)
+                ChooseServerArgs(preselectFastestClearnet = true, autoStartProbing = false)
             )
 
     private fun onWalletBackupMessageClick() = navigationRouter.forward(SeedBackupInfo)

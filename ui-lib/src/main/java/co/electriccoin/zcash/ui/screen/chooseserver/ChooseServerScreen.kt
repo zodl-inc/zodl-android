@@ -12,7 +12,10 @@ import org.koin.core.parameter.parametersOf
 
 @Composable
 internal fun ChooseServerScreen(args: ChooseServerArgs) {
-    val vm = koinViewModel<ChooseServerVM> { parametersOf(args.preselectFastestClearnet) }
+    val vm =
+        koinViewModel<ChooseServerVM> {
+            parametersOf(args.preselectFastestClearnet, args.autoStartProbing)
+        }
     val state by vm.state.collectAsStateWithLifecycle()
     BackHandler(state != null) { state?.onBack() }
     ChooseServerView(state = state)
@@ -20,5 +23,6 @@ internal fun ChooseServerScreen(args: ChooseServerArgs) {
 
 @Serializable
 data class ChooseServerArgs(
-    val preselectFastestClearnet: Boolean = false
+    val preselectFastestClearnet: Boolean = false,
+    val autoStartProbing: Boolean = true
 )
