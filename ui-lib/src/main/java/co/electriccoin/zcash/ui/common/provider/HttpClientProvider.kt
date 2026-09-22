@@ -48,8 +48,13 @@ class HttpClientProviderImpl(
     private val isTorEnabledStorageProvider: IsTorEnabledStorageProvider
 ) : HttpClientProvider {
     // Lazy OHTTP client — created on first use, respecting the Tor preference at that moment
+    @Volatile
     private var cachedOhttpClient: OhttpHttpClient? = null
+    @Volatile
     private var cachedForTorEnabled: Boolean? = null
+    @Volatile
+    private var policyGeneration = 0
+    private val lock = Any()
 
     override suspend fun create(): HttpClient =
         if (isTorEnabledStorageProvider.get() == true) createTor() else createDirect()
@@ -60,30 +65,33 @@ class HttpClientProviderImpl(
 
     override suspend fun createOhttp(): OhttpHttpClient {
         val torNow = isTorEnabled()
-        // Invalidate cache if the Tor preference changed
-        if (cachedOhttpClient != null && cachedForTorEnabled != torNow) {
-            cachedOhttpClient = null
+        synchronized(lock) {
+            // Invalidate cache if the Tor preference changed
+            if (cachedOhttpClient != null && cachedForTorEnabled != torNow) {
+                cachedOhttpClient = null
+                policyGeneration++
+            }
+            if (cachedOhttpClient == null) {
+                // DEBUG-only: pass trace prefix for request tracking in Grafana
+                val tracePrefix =
+                    if (BuildConfig.DEBUG && BuildConfig.OHTTP_CLIENT_TRACE_PREFIX.isNotBlank()) {
+                        BuildConfig.OHTTP_CLIENT_TRACE_PREFIX
+                    } else {
+                        null
+                    }
+                cachedOhttpClient =
+                    if (torNow) {
+                        OhttpHttpClient.create(
+                            sender = synchronizerProvider.getSynchronizer().ohttpSenderOverTor(),
+                            ohttpClientTraceIdPrefix = tracePrefix
+                        )
+                    } else {
+                        OhttpHttpClient.create(ohttpClientTraceIdPrefix = tracePrefix)
+                    }
+                cachedForTorEnabled = torNow
+            }
+            return cachedOhttpClient!!
         }
-        if (cachedOhttpClient == null) {
-            // DEBUG-only: pass trace prefix for request tracking in Grafana
-            val tracePrefix =
-                if (BuildConfig.DEBUG && BuildConfig.OHTTP_CLIENT_TRACE_PREFIX.isNotBlank()) {
-                    BuildConfig.OHTTP_CLIENT_TRACE_PREFIX
-                } else {
-                    null
-                }
-            cachedOhttpClient =
-                if (torNow) {
-                    OhttpHttpClient.create(
-                        sender = synchronizerProvider.getSynchronizer().ohttpSenderOverTor(),
-                        ohttpClientTraceIdPrefix = tracePrefix
-                    )
-                } else {
-                    OhttpHttpClient.create(ohttpClientTraceIdPrefix = tracePrefix)
-                }
-            cachedForTorEnabled = torNow
-        }
-        return cachedOhttpClient!!
     }
 
     override suspend fun createTor() =
