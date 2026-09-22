@@ -18,7 +18,7 @@ data class OhttpUnavailableMessageState(
 ) : HomeMessageState
 
 @Composable
-fun OhttpUnavailableMessage(
+internal fun OhttpUnavailableMessage(
     state: OhttpUnavailableMessageState,
     contentPadding: PaddingValues,
     innerModifier: Modifier = Modifier
@@ -36,7 +36,9 @@ fun OhttpUnavailableMessage(
                 color = ZcashTheme.colors.textPrimary
             )
             Text(
-                text = "Zodl couldn't reach its private (OHTTP) servers. You can keep waiting or choose a public server in Settings › Server. Public servers can see your IP address.",
+                text = "Zodl couldn't reach its private (OHTTP) servers. " +
+                    "You can keep waiting or choose a public server in Settings › Server. " +
+                    "Public servers can see your IP address.",
                 style = ZcashTheme.typography.textSm,
                 color = ZcashTheme.colors.textSecondary,
                 modifier = Modifier.padding(top = ZcashTheme.dimens.spacing.spacing8)

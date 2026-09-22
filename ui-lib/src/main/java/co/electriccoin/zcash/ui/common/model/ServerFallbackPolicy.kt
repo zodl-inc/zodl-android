@@ -42,7 +42,7 @@ object ServerFallbackPolicy {
     fun decide(
         current: LightWalletEndpoint,
         healthyGateways: List<LightWalletEndpoint>,
-        rankedFallbacks: List<LightWalletEndpoint>,
+        @Suppress("UNUSED_PARAMETER") rankedFallbacks: List<LightWalletEndpoint>,
         isOhttpGateway: (LightWalletEndpoint) -> Boolean,
     ): DecisionResult {
         val gateway = healthyGateways.firstOrNull()
@@ -67,6 +67,4 @@ object ServerFallbackPolicy {
         isOhttpGateway: (LightWalletEndpoint) -> Boolean,
     ): Boolean = !isOhttpGateway(endpoint)
 
-    private fun LightWalletEndpoint.isSameServer(other: LightWalletEndpoint): Boolean =
-        host.equals(other.host, ignoreCase = true) && port == other.port
 }

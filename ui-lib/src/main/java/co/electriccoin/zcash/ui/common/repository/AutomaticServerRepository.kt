@@ -326,21 +326,23 @@ class AutomaticServerRepositoryImpl(
                 )
 
             when (decision) {
-                is ServerFallbackPolicy.DecisionResult.UseGateway,
-                is ServerFallbackPolicy.DecisionResult.ReturnToGateway -> {
-                    val endpoint =
-                        when (decision) {
-                            is ServerFallbackPolicy.DecisionResult.UseGateway -> decision.endpoint
-                            is ServerFallbackPolicy.DecisionResult.ReturnToGateway -> decision.endpoint
-                            else -> throw IllegalStateException()
-                        }
+                is ServerFallbackPolicy.DecisionResult.UseGateway -> {
                     _ohttpUnavailable.value = false
                     Twig.info {
                         "Automatic server: OHTTP-first current=${current.host} " +
-                            "gatewayReachable=${healthyGateways.isNotEmpty()} -> ${endpoint.host}"
+                            "gatewayReachable=${healthyGateways.isNotEmpty()} -> ${decision.endpoint.host}"
                     }
-                    syncFallbackFlag(endpoint)
-                    endpoint
+                    syncFallbackFlag(decision.endpoint)
+                    decision.endpoint
+                }
+                is ServerFallbackPolicy.DecisionResult.ReturnToGateway -> {
+                    _ohttpUnavailable.value = false
+                    Twig.info {
+                        "Automatic server: OHTTP-first current=${current.host} " +
+                            "gatewayReachable=${healthyGateways.isNotEmpty()} -> ${decision.endpoint.host}"
+                    }
+                    syncFallbackFlag(decision.endpoint)
+                    decision.endpoint
                 }
                 is ServerFallbackPolicy.DecisionResult.StayAndReportGatewayUnavailable -> {
                     _ohttpUnavailable.value = true

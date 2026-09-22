@@ -157,45 +157,45 @@ class GetHomeMessageUseCase(
             ) { sf, mig, acc, ws, ohttpUnavailable ->
                 RuntimeMessageInputs(sf, mig, acc, ws, ohttpUnavailable)
             }.collect { inputs ->
-                    val shieldFundsMessage = inputs.shieldFunds
-                    val migrationMessage = inputs.migration
-                    val account = inputs.account
-                    val walletSnapshot = inputs.walletSnapshot
-                    val isOhttpUnavailable = inputs.isOhttpUnavailable
+                val shieldFundsMessage = inputs.shieldFunds
+                val migrationMessage = inputs.migration
+                val account = inputs.account
+                val walletSnapshot = inputs.walletSnapshot
+                val isOhttpUnavailable = inputs.isOhttpUnavailable
 
-                    if (walletSnapshot.status in
-                        listOf(
-                            Synchronizer.Status.STOPPED,
-                            Synchronizer.Status.INITIALIZING
-                        )
-                    ) {
-                        return@collect
-                    }
-
-                    // Priority order: disconnected -> ohttp unavailable -> synchronizer error -> syncing -> migration
-                    // -> shield funds. Connectivity/sync issues now lead the chain — a user can't
-                    // act on the migration banner while the wallet is disconnected, erroring, or
-                    // still syncing, so those states take priority over it.
-                    val message =
-                        createDisconnectedMessage(walletSnapshot)
-                            ?: createOhttpUnavailableMessage(isOhttpUnavailable)
-                            ?: createSynchronizerErrorMessage(walletSnapshot)
-                            ?: createSyncingMessage(
-                                walletSnapshot,
-                                syncMessageShownBefore = firstSyncingMessage != null,
-                                someBalance = (account?.spendableShieldedBalance?.value ?: 0) > 0
-                            )
-                            ?: migrationMessage
-                            ?: shieldFundsMessage
-
-                    if (message is HomeMessageData.Syncing && firstSyncingMessage == null) {
-                        firstSyncingMessage = message
-                    } else if (message !is HomeMessageData.Syncing) {
-                        firstSyncingMessage = null
-                    }
-
-                    send(message)
+                if (walletSnapshot.status in
+                    listOf(
+                        Synchronizer.Status.STOPPED,
+                        Synchronizer.Status.INITIALIZING
+                    )
+                ) {
+                    return@collect
                 }
+
+                // Priority order: disconnected -> ohttp unavailable -> synchronizer error -> syncing -> migration
+                // -> shield funds. Connectivity/sync issues now lead the chain — a user can't
+                // act on the migration banner while the wallet is disconnected, erroring, or
+                // still syncing, so those states take priority over it.
+                val message =
+                    createDisconnectedMessage(walletSnapshot)
+                        ?: createOhttpUnavailableMessage(isOhttpUnavailable)
+                        ?: createSynchronizerErrorMessage(walletSnapshot)
+                        ?: createSyncingMessage(
+                            walletSnapshot,
+                            syncMessageShownBefore = firstSyncingMessage != null,
+                            someBalance = (account?.spendableShieldedBalance?.value ?: 0) > 0
+                        )
+                        ?: migrationMessage
+                        ?: shieldFundsMessage
+
+                if (message is HomeMessageData.Syncing && firstSyncingMessage == null) {
+                    firstSyncingMessage = message
+                } else if (message !is HomeMessageData.Syncing) {
+                    firstSyncingMessage = null
+                }
+
+                send(message)
+            }
         }
     }
 
