@@ -52,6 +52,8 @@ import kotlin.time.TimeSource
 interface AutomaticServerRepository {
     val isServerAutomatic: Flow<Boolean>
 
+    val ohttpUnavailable: Flow<Boolean>
+
     suspend fun isServerAutomatic(): Boolean
 
     suspend fun isServerCustom(): Boolean
@@ -74,6 +76,9 @@ class AutomaticServerRepositoryImpl(
     private val evaluationInterval: EvaluationInterval,
 ) : AutomaticServerRepository {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    private val _ohttpUnavailable = kotlinx.coroutines.flow.MutableStateFlow(false)
+    override val ohttpUnavailable: Flow<Boolean> = _ohttpUnavailable
 
     /**
      * Consecutive gateway failures count. Reset to 0 when a gateway is healthy or when automatic mode
@@ -292,31 +297,24 @@ class AutomaticServerRepositoryImpl(
                 consecutiveGatewayFailures = 0
             }
 
-            val rankedFallbacks =
-                if (healthyGateways.isEmpty()) {
-                    rankValidated(synchronizer, lightWalletEndpointProvider.getFallbackEndpoints())
-                } else {
-                    emptyList()
-                }
-
-            // When on a gateway and tier 0 is empty, require confirmation before falling back, unless
-            // the trigger is CONNECTIVITY (real outage already surfaced by the synchronizer).
-            val needsConfirmation = onGateway && healthyGateways.isEmpty() && rankedFallbacks.isNotEmpty()
-            if (needsConfirmation) {
-                val shouldFallbackImmediately = trigger == SwitchTrigger.CONNECTIVITY
-                if (shouldFallbackImmediately) {
-                    logImmediateFallback(current, rankedFallbacks)
-                    consecutiveGatewayFailures = 0
-                } else {
-                    consecutiveGatewayFailures++
-                    if (consecutiveGatewayFailures < 2) {
-                        logWaitingForConfirmation(trigger)
-                        syncFallbackFlag(current)
-                        return null
+            // When on a gateway and it's unreachable, require confirmation before reporting unavailability,
+            // unless the trigger is CONNECTIVITY (real outage already surfaced by the synchronizer).
+            val needsConfirmation = onGateway && healthyGateways.isEmpty()
+            if (needsConfirmation && trigger != SwitchTrigger.CONNECTIVITY) {
+                consecutiveGatewayFailures++
+                if (consecutiveGatewayFailures < 2) {
+                    Twig.info {
+                        "Automatic server: gateway unreachable once (trigger=$trigger), waiting for confirmation"
                     }
-                    logConfirmedFallback(current, rankedFallbacks)
-                    consecutiveGatewayFailures = 0
+                    syncFallbackFlag(current)
+                    return null
                 }
+                Twig.info {
+                    "Automatic server: gateway unavailability confirmed after 2 consecutive failures"
+                }
+                consecutiveGatewayFailures = 0
+            } else if (needsConfirmation) {
+                consecutiveGatewayFailures = 0
             }
 
             val decision =
@@ -327,48 +325,51 @@ class AutomaticServerRepositoryImpl(
                     isOhttpGateway = lightWalletEndpointProvider::isOhttpGateway,
                 )
 
-            // Log when not already logged above.
-            if (!onGateway || healthyGateways.isNotEmpty() || rankedFallbacks.isEmpty()) {
-                Twig.info {
-                    "Automatic server: OHTTP-first current=${current.host} " +
-                        "gatewayReachable=${healthyGateways.isNotEmpty()} " +
-                        "fallbacks=${rankedFallbacks.map { it.host }} -> ${decision?.host ?: "stay"}"
+            when (decision) {
+                is ServerFallbackPolicy.DecisionResult.UseGateway,
+                is ServerFallbackPolicy.DecisionResult.ReturnToGateway -> {
+                    val endpoint =
+                        when (decision) {
+                            is ServerFallbackPolicy.DecisionResult.UseGateway -> decision.endpoint
+                            is ServerFallbackPolicy.DecisionResult.ReturnToGateway -> decision.endpoint
+                            else -> throw IllegalStateException()
+                        }
+                    _ohttpUnavailable.value = false
+                    Twig.info {
+                        "Automatic server: OHTTP-first current=${current.host} " +
+                            "gatewayReachable=${healthyGateways.isNotEmpty()} -> ${endpoint.host}"
+                    }
+                    syncFallbackFlag(endpoint)
+                    endpoint
+                }
+                is ServerFallbackPolicy.DecisionResult.StayAndReportGatewayUnavailable -> {
+                    _ohttpUnavailable.value = true
+                    Twig.info {
+                        "Automatic server: OHTTP-first current=${current.host} " +
+                            "gatewayReachable=false -> stay (gateway unavailable, awaiting manual server selection)"
+                    }
+                    syncFallbackFlag(current)
+                    null
+                }
+                is ServerFallbackPolicy.DecisionResult.Stay -> {
+                    // Gateway reachable and already on it, or on manual clearnet fallback with gateway still down
+                    if (healthyGateways.isNotEmpty()) {
+                        _ohttpUnavailable.value = false
+                    }
+                    Twig.info {
+                        "Automatic server: OHTTP-first current=${current.host} " +
+                            "gatewayReachable=${healthyGateways.isNotEmpty()} -> stay"
+                    }
+                    syncFallbackFlag(current)
+                    null
                 }
             }
-
-            syncFallbackFlag(decision ?: current)
-            decision
         } finally {
             evaluationInterval.markAttempted()
         }
     }
 
-    private fun logImmediateFallback(
-        current: LightWalletEndpoint,
-        rankedFallbacks: List<LightWalletEndpoint>
-    ) {
-        Twig.info {
-            "Automatic server: OHTTP-first current=${current.host} " +
-                "gatewayReachable=false fallbacks=${rankedFallbacks.map { it.host }} -> " +
-                "${rankedFallbacks.first().host} (CONNECTIVITY, immediate fallback)"
-        }
-    }
 
-    private fun logWaitingForConfirmation(trigger: SwitchTrigger) {
-        Twig.info {
-            "Automatic server: gateway unreachable once (trigger=$trigger), waiting for confirmation"
-        }
-    }
-
-    private fun logConfirmedFallback(
-        current: LightWalletEndpoint,
-        rankedFallbacks: List<LightWalletEndpoint>
-    ) {
-        Twig.info {
-            "Automatic server: OHTTP-first current=${current.host} " +
-                "gatewayReachable=false fallbacks=${rankedFallbacks.map { it.host }} -> " +
-                "${rankedFallbacks.first().host} (confirmed after 2 consecutive failures)"
-        }
     }
 
     /**
