@@ -4,10 +4,10 @@ import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 /**
- * OHTTP first, clearnet lightwalletd only as a fallback (E2E scenarios 1–9 of the fallback spec).
+ * OHTTP first, no automatic clearnet fallback (product decision 2026-09-22). Gateway unavailability
+ * is reported to the UI; clearnet servers require manual selection.
  */
 class ServerFallbackPolicyTest {
     private val gateway = endpoint("ohttp-gateway.example")
@@ -19,64 +19,84 @@ class ServerFallbackPolicyTest {
 
     @Test
     fun `scenario 1 - OHTTP available - stays on the gateway`() {
-        assertNull(decide(current = gateway, gateways = listOf(gateway), fallbacks = emptyList()))
+        assertEquals(
+            ServerFallbackPolicy.DecisionResult.Stay,
+            decide(current = gateway, gateways = listOf(gateway), fallbacks = emptyList())
+        )
     }
 
     @Test
     fun `scenario 2 - OHTTP available and clearnet servers available - clearnet is never preferred`() {
         // Even if the clearnet tier was benchmarked (it should not be) and looks faster, OHTTP wins.
-        assertNull(decide(current = gateway, gateways = listOf(gateway), fallbacks = listOf(naZecRocks, zecRocks)))
+        assertEquals(
+            ServerFallbackPolicy.DecisionResult.Stay,
+            decide(current = gateway, gateways = listOf(gateway), fallbacks = listOf(naZecRocks, zecRocks))
+        )
     }
 
     @Test
-    fun `scenario 3 - OHTTP down - falls back to the best validated clearnet server`() {
+    fun `scenario 3 - OHTTP down on gateway - reports unavailability instead of automatic fallback`() {
         assertEquals(
-            naZecRocks,
+            ServerFallbackPolicy.DecisionResult.StayAndReportGatewayUnavailable,
             decide(current = gateway, gateways = emptyList(), fallbacks = listOf(naZecRocks, zecRocks))
         )
     }
 
     @Test
-    fun `scenario 4 - OHTTP back - returns to the gateway from a fallback`() {
-        assertEquals(gateway, decide(current = naZecRocks, gateways = listOf(gateway), fallbacks = emptyList()))
-    }
-
-    @Test
-    fun `scenario 4b - a working fallback does not become the new default once OHTTP is back`() {
-        assertEquals(gateway, decide(current = naZecRocks, gateways = listOf(gateway), fallbacks = listOf(naZecRocks)))
-    }
-
-    @Test
-    fun `scenario 5 - multiple clearnet servers - the ranking decides`() {
+    fun `scenario 4 - OHTTP back - returns to the gateway from a clearnet fallback`() {
         assertEquals(
-            stardust,
-            decide(current = gateway, gateways = emptyList(), fallbacks = listOf(stardust, zecRocks, naZecRocks))
+            ServerFallbackPolicy.DecisionResult.ReturnToGateway(gateway),
+            decide(current = naZecRocks, gateways = listOf(gateway), fallbacks = emptyList())
         )
     }
 
     @Test
-    fun `scenario 6 - the selected fallback fails validation - the next ranked server is used`() {
-        // na.zec.rocks (current) is absent from the ranking because it failed; zec.rocks is next.
+    fun `scenario 4b - a working fallback does not become the default once OHTTP is back`() {
+        // Recovery from manual clearnet selection: gateway healthy → return to it.
         assertEquals(
-            zecRocks,
-            decide(current = naZecRocks, gateways = emptyList(), fallbacks = listOf(zecRocks, stardust))
+            ServerFallbackPolicy.DecisionResult.ReturnToGateway(gateway),
+            decide(current = naZecRocks, gateways = listOf(gateway), fallbacks = listOf(naZecRocks))
         )
     }
 
     @Test
-    fun `scenario 6b - staying on the fallback that is still the best avoids a useless rebuild`() {
-        assertNull(decide(current = naZecRocks, gateways = emptyList(), fallbacks = listOf(naZecRocks, zecRocks)))
+    fun `scenario 5 - manual clearnet with gateway still down - stays put`() {
+        // User manually selected stardust; gateway still unreachable → no change.
+        assertEquals(
+            ServerFallbackPolicy.DecisionResult.Stay,
+            decide(current = stardust, gateways = emptyList(), fallbacks = listOf(stardust, zecRocks))
+        )
     }
 
     @Test
-    fun `scenario 7 - everything down - no switch and no inconsistent state`() {
-        assertNull(decide(current = gateway, gateways = emptyList(), fallbacks = emptyList()))
-        assertNull(decide(current = naZecRocks, gateways = emptyList(), fallbacks = emptyList()))
+    fun `scenario 6 - everything down on gateway - reports unavailability`() {
+        assertEquals(
+            ServerFallbackPolicy.DecisionResult.StayAndReportGatewayUnavailable,
+            decide(current = gateway, gateways = emptyList(), fallbacks = emptyList())
+        )
+    }
+
+    @Test
+    fun `scenario 7 - everything down on clearnet fallback - stays put`() {
+        assertEquals(
+            ServerFallbackPolicy.DecisionResult.Stay,
+            decide(current = naZecRocks, gateways = emptyList(), fallbacks = emptyList())
+        )
+    }
+
+    @Test
+    fun `decision never returns a tier-1 endpoint as UseGateway`() {
+        // The only endpoints ever returned in UseGateway/ReturnToGateway are gateways.
+        val result = decide(current = gateway, gateways = emptyList(), fallbacks = listOf(zecRocks))
+        assertEquals(ServerFallbackPolicy.DecisionResult.StayAndReportGatewayUnavailable, result)
     }
 
     @Test
     fun `host comparison is case-insensitive`() {
-        assertNull(decide(current = endpoint("NA.zec.rocks"), gateways = emptyList(), fallbacks = listOf(naZecRocks)))
+        assertEquals(
+            ServerFallbackPolicy.DecisionResult.Stay,
+            decide(current = endpoint("NA.zec.rocks"), gateways = emptyList(), fallbacks = listOf(naZecRocks))
+        )
     }
 
     @Test

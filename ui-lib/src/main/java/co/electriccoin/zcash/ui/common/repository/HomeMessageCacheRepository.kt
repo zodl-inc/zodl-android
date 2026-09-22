@@ -60,6 +60,8 @@ sealed interface HomeMessageData {
 
     data object Disconnected : RuntimeMessage()
 
+    data object OhttpUnavailable : RuntimeMessage()
+
     data class Restoring(
         val isSpendable: Boolean,
         val progress: Float

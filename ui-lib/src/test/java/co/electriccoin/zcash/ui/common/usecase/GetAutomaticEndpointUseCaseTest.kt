@@ -11,7 +11,7 @@ import kotlin.test.assertEquals
 /**
  * Automatic-mode endpoint: the OHTTP gateway is the default, always. The benchmarked fastest
  * clearnet server is never preferred over it. The only clearnet result is a bundled fallback that
- * is currently active because the gateway was unreachable (see OhttpFallbackRepository).
+ * was manually selected while the gateway was unreachable (no automatic fallback since 2026-09-22).
  */
 class GetAutomaticEndpointUseCaseTest {
     private val gateway = endpoint("ohttp-gateway.example")

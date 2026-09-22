@@ -51,6 +51,7 @@ class GetHomeMessageUseCase(
     private val isTorEnabledStorageProvider: IsTorEnabledStorageProvider,
     private val migrationHomeMessageSource: MigrationHomeMessageSource,
     private val votingHomeMessageSource: VotingHomeMessageSource,
+    private val automaticServerRepository: co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository,
 ) {
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     fun observe(): Flow<HomeMessageData?> =
@@ -128,7 +129,8 @@ class GetHomeMessageUseCase(
         val shieldFunds: HomeMessageData.ShieldFunds?,
         val migration: MigrationHomeMessage?,
         val account: WalletAccount?,
-        val walletSnapshot: WalletSnapshot
+        val walletSnapshot: WalletSnapshot,
+        val isOhttpUnavailable: Boolean
     )
 
     /**
@@ -150,13 +152,16 @@ class GetHomeMessageUseCase(
                 observeShieldFundsMessage(),
                 migrationHomeMessageSource.observe(),
                 accountDataSource.selectedAccount,
-                walletSnapshotDataSource.observe().filterNotNull()
-            ) { sf, mig, acc, ws -> RuntimeMessageInputs(sf, mig, acc, ws) }
-                .collect { inputs ->
+                walletSnapshotDataSource.observe().filterNotNull(),
+                automaticServerRepository.ohttpUnavailable
+            ) { sf, mig, acc, ws, ohttpUnavailable ->
+                RuntimeMessageInputs(sf, mig, acc, ws, ohttpUnavailable)
+            }.collect { inputs ->
                     val shieldFundsMessage = inputs.shieldFunds
                     val migrationMessage = inputs.migration
                     val account = inputs.account
                     val walletSnapshot = inputs.walletSnapshot
+                    val isOhttpUnavailable = inputs.isOhttpUnavailable
 
                     if (walletSnapshot.status in
                         listOf(
@@ -167,12 +172,13 @@ class GetHomeMessageUseCase(
                         return@collect
                     }
 
-                    // Priority order: disconnected -> synchronizer error -> syncing -> migration
+                    // Priority order: disconnected -> ohttp unavailable -> synchronizer error -> syncing -> migration
                     // -> shield funds. Connectivity/sync issues now lead the chain — a user can't
                     // act on the migration banner while the wallet is disconnected, erroring, or
                     // still syncing, so those states take priority over it.
                     val message =
                         createDisconnectedMessage(walletSnapshot)
+                            ?: createOhttpUnavailableMessage(isOhttpUnavailable)
                             ?: createSynchronizerErrorMessage(walletSnapshot)
                             ?: createSyncingMessage(
                                 walletSnapshot,
@@ -242,6 +248,13 @@ class GetHomeMessageUseCase(
     private fun createDisconnectedMessage(walletSnapshot: WalletSnapshot): HomeMessageData.Disconnected? =
         if (walletSnapshot.status == Synchronizer.Status.DISCONNECTED) {
             HomeMessageData.Disconnected
+        } else {
+            null
+        }
+
+    private fun createOhttpUnavailableMessage(isOhttpUnavailable: Boolean): HomeMessageData.OhttpUnavailable? =
+        if (isOhttpUnavailable) {
+            HomeMessageData.OhttpUnavailable
         } else {
             null
         }
