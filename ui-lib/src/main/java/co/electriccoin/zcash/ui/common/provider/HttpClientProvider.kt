@@ -50,8 +50,10 @@ class HttpClientProviderImpl(
     // Lazy OHTTP client — created on first use, respecting the Tor preference at that moment
     @Volatile
     private var cachedOhttpClient: OhttpHttpClient? = null
+
     @Volatile
     private var cachedForTorEnabled: Boolean? = null
+
     @Volatile
     private var policyGeneration = 0
     private val lock = Any()

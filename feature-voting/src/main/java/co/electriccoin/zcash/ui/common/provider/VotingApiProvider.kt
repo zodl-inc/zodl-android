@@ -939,10 +939,11 @@ class KtorVotingApiProvider(
                         OhttpHttpClient.Request(
                             url = url,
                             method = "POST",
-                            headers = listOf(
-                                "Content-Type" to "application/json",
-                                "Cache-Control" to "no-cache"
-                            ),
+                            headers =
+                                listOf(
+                                    "Content-Type" to "application/json",
+                                    "Cache-Control" to "no-cache"
+                                ),
                             body = body.toByteArray(Charsets.UTF_8)
                         )
                     )
