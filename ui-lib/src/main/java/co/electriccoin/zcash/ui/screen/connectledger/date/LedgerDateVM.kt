@@ -10,6 +10,7 @@ import co.electriccoin.zcash.ui.common.model.VersionInfo
 import co.electriccoin.zcash.ui.common.model.mutableLce
 import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.withLce
+import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.IconButtonState
@@ -27,13 +28,26 @@ import java.time.YearMonth
 import java.time.ZoneId
 import kotlin.time.toKotlinInstant
 
+/**
+ * Picks the month a Ledger account first transacted in, then estimates its birthday height.
+ *
+ * The pending pairing lives in memory only, so a flow resumed after process death has nothing left
+ * to import; the init block returns to the wallet root rather than offering a dead form.
+ */
 class LedgerDateVM(
+    private val ledgerPairingRepository: LedgerPairingRepository,
     private val navigationRouter: NavigationRouter,
     private val application: Application,
     private val errorStateMapper: ErrorMapperUseCase,
 ) : ViewModel() {
     private val selection = MutableStateFlow(WalletFixture.SAPLING_ACTIVATION_YEAR_MONTH)
     private val estimateLce = mutableLce<Unit>()
+
+    init {
+        if (ledgerPairingRepository.get() == null) {
+            navigationRouter.backToRoot()
+        }
+    }
 
     val state: StateFlow<LceState<BirthdayPickerState>> =
         combine(selection, estimateLce.state) { yearMonth, estimate ->

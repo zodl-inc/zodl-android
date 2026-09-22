@@ -210,25 +210,37 @@ class AccountDataSourceImpl(
                 )
         }
 
+    /**
+     * A Ledger account with no binding can never sign, so the import and the binding write are
+     * all-or-nothing: if the binding cannot be stored, the just-imported account is deleted again
+     * before the failure propagates. The rollback is best-effort — a failure to undo must not
+     * replace the exception that says what actually went wrong.
+     */
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun importLedgerAccount(
         pairing: LedgerAccountPairing,
         birthday: BlockHeight?
     ): Account =
         withContext(Dispatchers.IO) {
+            val synchronizer = synchronizerProvider.getSynchronizer()
             val created =
-                synchronizerProvider
-                    .getSynchronizer()
-                    .importAccountByUfvk(
-                        pairing.accountImportSetup(
-                            accountName = context.getString(R.string.accounts_ledger),
-                            birthday = birthday,
-                        )
+                synchronizer.importAccountByUfvk(
+                    pairing.accountImportSetup(
+                        accountName = context.getString(R.string.accounts_ledger),
+                        birthday = birthday,
                     )
-            ledgerAccountBindingProvider.save(
-                accountUuid = created.accountUuid,
-                deviceIdentityEncoding = pairing.binding.deviceIdentity.encoding,
-                zip32AccountIndex = pairing.binding.zip32AccountIndex.index,
-            )
+                )
+            try {
+                ledgerAccountBindingProvider.save(
+                    accountUuid = created.accountUuid,
+                    deviceIdentityEncoding = pairing.binding.deviceIdentity.encoding,
+                    zip32AccountIndex = pairing.binding.zip32AccountIndex.index,
+                )
+            } catch (e: Exception) {
+                runCatching { synchronizer.deleteAccount(created.accountUuid) }
+                    .onFailure { log("failed to roll back the Ledger account import", it) }
+                throw e
+            }
             created
         }
 
@@ -258,6 +270,12 @@ class AccountDataSourceImpl(
         }
     }
 
+    /**
+     * Clearing a Ledger account's stored binding happens after the deletion has already succeeded,
+     * and only best-effort: the account is gone by then, so reporting a failure would tell the user
+     * to retry something that cannot be retried. An orphaned binding is keyed by an account UUID
+     * that no longer resolves.
+     */
     @Suppress("TooGenericExceptionCaught")
     override suspend fun deleteAccount(account: WalletAccount) =
         withContext(Dispatchers.IO) {
@@ -271,10 +289,13 @@ class AccountDataSourceImpl(
                 if (!deleted) {
                     throw AccountDeletionException("Failed to delete account")
                 }
-                ledgerAccountBindingProvider.clear(account.sdkAccount.accountUuid)
             } catch (e: Exception) {
                 // Re-throw as specific exception
                 throw AccountDeletionException("Failed to delete account: ${e.message}", e)
+            }
+            if (account is LedgerAccount) {
+                runCatching { ledgerAccountBindingProvider.clear(account.sdkAccount.accountUuid) }
+                    .onFailure { log("failed to clear the Ledger binding of a deleted account", it) }
             }
         }
 

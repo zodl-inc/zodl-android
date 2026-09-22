@@ -17,6 +17,7 @@ import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SelectedAccountUUIDProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +27,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -259,5 +261,92 @@ class AccountDataSourceImplTest {
         assertFalse(printed.contains("tpk0-deadbeef"))
         assertFalse(printed.contains("u1secretaddress"))
         assertFalse(printed.contains("t1secretaddress"))
+    }
+
+    @Test
+    fun aBindingThatCannotBeStoredRollsBackTheImportInsteadOfKeepingAnUnsignableAccount() =
+        runBlocking {
+            val importedUuid = AccountUuid.new(ByteArray(16) { (it + 1).toByte() })
+            val imported =
+                mockk<Account> {
+                    every { accountUuid } returns importedUuid
+                }
+            val synchronizer =
+                mockk<Synchronizer>(relaxed = true) {
+                    every { accountsFlow } returns MutableStateFlow(listOf(account))
+                    every { walletBalances } returns MutableStateFlow(null)
+                    coEvery { importAccountByUfvk(any()) } returns imported
+                    coEvery { deleteAccount(importedUuid) } returns true
+                }
+            val bindingFailure = RuntimeException("keystore unavailable")
+            val ledgerAccountBindingProvider =
+                mockk<LedgerAccountBindingProvider> {
+                    every { observe(any()) } returns MutableStateFlow(null)
+                    coEvery { save(any(), any(), any()) } throws bindingFailure
+                }
+            val dataSource = dataSource(synchronizer, ledgerAccountBindingProvider)
+
+            val thrown =
+                assertFailsWith<RuntimeException> {
+                    dataSource.importLedgerAccount(pairing = mockk(relaxed = true), birthday = null)
+                }
+
+            assertEquals(bindingFailure.message, thrown.message)
+            coVerify(exactly = 1) { synchronizer.deleteAccount(importedUuid) }
+        }
+
+    @Test
+    fun aRollbackThatAlsoFailsStillReportsTheOriginalBindingFailure() =
+        runBlocking {
+            val importedUuid = AccountUuid.new(ByteArray(16) { (it + 1).toByte() })
+            val imported =
+                mockk<Account> {
+                    every { accountUuid } returns importedUuid
+                }
+            val synchronizer =
+                mockk<Synchronizer>(relaxed = true) {
+                    every { accountsFlow } returns MutableStateFlow(listOf(account))
+                    every { walletBalances } returns MutableStateFlow(null)
+                    coEvery { importAccountByUfvk(any()) } returns imported
+                    coEvery { deleteAccount(importedUuid) } throws RuntimeException("delete failed too")
+                }
+            val bindingFailure = RuntimeException("keystore unavailable")
+            val ledgerAccountBindingProvider =
+                mockk<LedgerAccountBindingProvider> {
+                    every { observe(any()) } returns MutableStateFlow(null)
+                    coEvery { save(any(), any(), any()) } throws bindingFailure
+                }
+            val dataSource = dataSource(synchronizer, ledgerAccountBindingProvider)
+
+            val thrown =
+                assertFailsWith<RuntimeException> {
+                    dataSource.importLedgerAccount(pairing = mockk(relaxed = true), birthday = null)
+                }
+
+            assertEquals(bindingFailure.message, thrown.message)
+        }
+
+    private fun dataSource(
+        synchronizer: Synchronizer,
+        ledgerAccountBindingProvider: LedgerAccountBindingProvider,
+    ): AccountDataSourceImpl {
+        val synchronizerProvider =
+            mockk<SynchronizerProvider> {
+                every { this@mockk.synchronizer } returns MutableStateFlow(synchronizer)
+                coEvery { getSynchronizer() } returns synchronizer
+            }
+        return AccountDataSourceImpl(
+            synchronizerProvider = synchronizerProvider,
+            selectedAccountUUIDProvider =
+                mockk {
+                    every { uuid } returns MutableStateFlow(null)
+                },
+            persistableWalletProvider =
+                mockk {
+                    every { persistableWallet } returns MutableStateFlow(mockk(relaxed = true))
+                },
+            ledgerAccountBindingProvider = ledgerAccountBindingProvider,
+            context = mockk(relaxed = true),
+        )
     }
 }

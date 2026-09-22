@@ -93,7 +93,6 @@ class LedgerDeviceScanVM(
             devices =
                 internal.devices.map { device ->
                     LedgerDeviceItemState(
-                        identifier = device.identifier,
                         name = stringRes(device.name ?: device.model.productName),
                         isSelected = device.identifier == internal.selectedIdentifier,
                         isEnabled = internal.phase != LedgerScanPhase.PAIRING,
@@ -156,6 +155,20 @@ class LedgerDeviceScanVM(
 
             is LedgerScanError.Disconnected -> {
                 retrySheet(R.string.ledger_error_disconnected_title, R.string.ledger_error_disconnected_message)
+            }
+
+            is LedgerScanError.Unavailable -> {
+                LedgerErrorSheetState(
+                    title = stringRes(R.string.ledger_error_unavailable_title),
+                    message = stringRes(R.string.ledger_error_unavailable_message),
+                    primary =
+                        ButtonState(
+                            text = stringRes(R.string.ledger_error_unavailable_cta),
+                            onClick = ::onBack,
+                        ),
+                    secondary = null,
+                    onBack = ::onBack,
+                )
             }
 
             is LedgerScanError.Permissions -> {
@@ -234,12 +247,23 @@ class LedgerDeviceScanVM(
         pairJob = viewModelScope.launch { pair(device) }
     }
 
+    /**
+     * A successful pairing leaves the screen idle rather than pairing: backing out of the birthday
+     * screens returns here, and a screen still stuck in [LedgerScanPhase.PAIRING] would show
+     * disabled rows and a spinning Connect with no way out.
+     */
     @Suppress("TooGenericExceptionCaught")
     private suspend fun pair(device: LedgerBluetoothDevice) {
         try {
             when (val result = pairLedgerDevice(device)) {
-                is PairLedgerDeviceResult.Paired -> navigationRouter.forward(LedgerNewOrActiveArgs)
-                is PairLedgerDeviceResult.AlreadyAdded -> showError(LedgerScanError.AlreadyAdded(result.account))
+                is PairLedgerDeviceResult.Paired -> {
+                    navigationRouter.forward(LedgerNewOrActiveArgs)
+                    internalState.update { it.copy(phase = LedgerScanPhase.IDLE) }
+                }
+
+                is PairLedgerDeviceResult.AlreadyAdded -> {
+                    showError(LedgerScanError.AlreadyAdded(result.account))
+                }
             }
         } catch (e: CancellationException) {
             throw e
@@ -263,8 +287,13 @@ class LedgerDeviceScanVM(
             navigationRouter.backToRoot()
         }
 
+    /**
+     * Back to [LedgerScanPhase.PERMISSION], not IDLE: the screen's ON_RESUME hook only starts a
+     * scan from that phase, and returning from Settings with the permission granted has to start
+     * one without another tap.
+     */
     private fun onOpenSettingsClick(openBluetoothSettings: Boolean) {
-        internalState.update { it.copy(error = null, phase = LedgerScanPhase.IDLE) }
+        internalState.update { it.copy(error = null, phase = LedgerScanPhase.PERMISSION) }
         val intent =
             if (openBluetoothSettings) {
                 Intent(Settings.ACTION_BLUETOOTH_SETTINGS).apply { flags = SettingsUtil.FLAGS }
@@ -348,6 +377,9 @@ class LedgerDeviceScanVM(
 /**
  * The sheet a [LedgerException] maps to, or null when it has no Ledger-specific copy and belongs
  * in the generic error dialog instead.
+ *
+ * A [LedgerException.BluetoothUnavailable] carrying a scan error code means the scan itself failed
+ * to start; without one the phone has no Bluetooth LE at all, which no settings screen can fix.
  */
 private fun LedgerException.toScanError(): LedgerScanError? =
     when (this) {
@@ -385,7 +417,7 @@ private fun LedgerException.toScanError(): LedgerScanError? =
             if (scanErrorCode != null) {
                 LedgerScanError.NoDevices
             } else {
-                LedgerScanError.Permissions(openBluetoothSettings = true)
+                LedgerScanError.Unavailable
             }
         }
 
@@ -410,6 +442,8 @@ private enum class LedgerScanPhase {
 
 private sealed interface LedgerScanError {
     data object NoDevices : LedgerScanError
+
+    data object Unavailable : LedgerScanError
 
     data object Locked : LedgerScanError
 

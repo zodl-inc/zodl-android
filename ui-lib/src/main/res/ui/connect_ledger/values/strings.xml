@@ -37,6 +37,9 @@
     <string name="ledger_error_importRejected_message">You declined the request on your Ledger. Approve the account export on your device to continue.</string>
     <string name="ledger_error_disconnected_title">Ledger Disconnected</string>
     <string name="ledger_error_disconnected_message">Your Ledger disconnected during setup. Check the connection and try again.</string>
+    <string name="ledger_error_unavailable_title">Bluetooth Not Available</string>
+    <string name="ledger_error_unavailable_message">This phone does not support Bluetooth LE, which is needed to connect a Ledger.</string>
+    <string name="ledger_error_unavailable_cta">Close</string>
     <string name="ledger_error_permissions_title">Bluetooth Access Required</string>
     <string name="ledger_error_permissions_message">Zodl needs Bluetooth access to connect to your Ledger. Turn on Bluetooth in Settings to continue.</string>
     <string name="ledger_error_permissions_cta">Open System Settings</string>

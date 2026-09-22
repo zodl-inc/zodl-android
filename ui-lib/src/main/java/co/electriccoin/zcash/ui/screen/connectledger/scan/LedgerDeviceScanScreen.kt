@@ -6,7 +6,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -16,6 +19,12 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.serialization.Serializable
 import org.koin.androidx.compose.koinViewModel
 
+/**
+ * A permanently denied Bluetooth permission answers the request immediately and leaves both
+ * `allPermissionsGranted` and `shouldShowRationale` false, so the result callback is the only
+ * signal that the user was asked at all — hence `isRequestAnswered`, without which the first
+ * resume would report a denial before the request had been answered.
+ */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun LedgerDeviceScanScreen() {
@@ -27,24 +36,33 @@ fun LedgerDeviceScanScreen() {
         return
     }
 
-    val permissionsState = rememberMultiplePermissionsState(remember { bluetoothPermissions() })
+    var isRequestAnswered by rememberSaveable { mutableStateOf(false) }
+
+    val permissionsState =
+        rememberMultiplePermissionsState(
+            permissions = remember { bluetoothPermissions() },
+            onPermissionsResult = { result ->
+                isRequestAnswered = true
+                if (result.values.all { it }) {
+                    state.onPermissionsGranted()
+                } else {
+                    state.onPermissionsDenied()
+                }
+            },
+        )
 
     LaunchedEffect(Unit) {
-        if (!permissionsState.allPermissionsGranted) {
-            permissionsState.launchMultiplePermissionRequest()
-        }
-    }
-
-    LaunchedEffect(permissionsState.allPermissionsGranted) {
         if (permissionsState.allPermissionsGranted) {
             state.onPermissionsGranted()
+        } else {
+            permissionsState.launchMultiplePermissionRequest()
         }
     }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         if (permissionsState.allPermissionsGranted) {
             state.onPermissionsGranted()
-        } else if (permissionsState.shouldShowRationale) {
+        } else if (isRequestAnswered) {
             state.onPermissionsDenied()
         }
     }

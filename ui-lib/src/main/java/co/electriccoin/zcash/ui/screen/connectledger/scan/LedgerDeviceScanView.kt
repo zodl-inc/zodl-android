@@ -111,7 +111,7 @@ fun LedgerDeviceScanView(state: LedgerDeviceScanState) {
                         if (index != 0) {
                             Spacer(Modifier.height(12.dp))
                         }
-                        DeviceRow(device)
+                        DeviceRow(state = device, index = index)
                     }
                 }
                 Spacer(Modifier.height(24.dp))
@@ -165,7 +165,7 @@ private fun DeviceSkeletons(isShimmering: Boolean) {
 }
 
 @Composable
-private fun DeviceRow(state: LedgerDeviceItemState) {
+private fun DeviceRow(state: LedgerDeviceItemState, index: Int) {
     Row(
         modifier =
             Modifier
@@ -180,7 +180,7 @@ private fun DeviceRow(state: LedgerDeviceItemState) {
                     }
                 ).clickable(enabled = state.isEnabled, onClick = state.onClick)
                 .padding(horizontal = 16.dp, vertical = 12.dp)
-                .testTag(LedgerDeviceScanTag.DEVICE_ROW_PREFIX + state.identifier),
+                .testTag(LedgerDeviceScanTag.DEVICE_ROW_PREFIX + index),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(
@@ -348,14 +348,12 @@ private fun SelectPreview() =
                     devices =
                         listOf(
                             LedgerDeviceItemState(
-                                identifier = "1",
                                 name = stringRes("Ledger Device 1"),
                                 isSelected = true,
                                 isEnabled = true,
                                 onClick = {},
                             ),
                             LedgerDeviceItemState(
-                                identifier = "2",
                                 name = stringRes("Ledger Device 2"),
                                 isSelected = false,
                                 isEnabled = true,

@@ -1,12 +1,12 @@
 package co.electriccoin.zcash.ui.common.usecase
 
-import cash.z.ecc.android.sdk.exception.InitializeException
 import cash.z.ecc.android.sdk.ledger.LedgerAccountPairing
 import cash.z.ecc.android.sdk.model.Account
 import cash.z.ecc.android.sdk.model.AccountUuid
 import cash.z.ecc.android.sdk.model.BlockHeight
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
+import co.electriccoin.zcash.ui.common.model.LedgerPairingMissingException
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
 import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedArgs
@@ -68,7 +68,7 @@ class CreateLedgerAccountUseCaseTest {
                 }
             val useCase = useCase(accountDataSource, ledgerPairingRepository, mockk(relaxed = true))
 
-            assertFailsWith<InitializeException.NoAccountLoaded> { useCase(birthday = null) }
+            assertFailsWith<LedgerPairingMissingException> { useCase(birthday = null) }
 
             coVerify(exactly = 0) { accountDataSource.importLedgerAccount(any(), any()) }
         }

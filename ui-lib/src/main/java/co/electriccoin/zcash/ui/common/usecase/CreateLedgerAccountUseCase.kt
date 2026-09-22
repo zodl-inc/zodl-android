@@ -4,6 +4,7 @@ import cash.z.ecc.android.sdk.exception.InitializeException
 import cash.z.ecc.android.sdk.model.BlockHeight
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
+import co.electriccoin.zcash.ui.common.model.LedgerPairingMissingException
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
 import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedArgs
@@ -17,12 +18,12 @@ class CreateLedgerAccountUseCase(
     private val navigationRouter: NavigationRouter,
 ) {
     /**
-     * @throws InitializeException.NoAccountLoaded if the pending pairing is gone — the flow was
-     *         resumed after process death, and the device has to be paired again.
+     * @throws LedgerPairingMissingException if the pending pairing is gone — the flow was resumed
+     *         after process death, and the device has to be paired again.
      */
     @Throws(InitializeException.ImportAccountException::class)
     suspend operator fun invoke(birthday: BlockHeight? = null) {
-        val pairing = ledgerPairingRepository.get() ?: throw InitializeException.NoAccountLoaded
+        val pairing = ledgerPairingRepository.get() ?: throw LedgerPairingMissingException()
         val createdAccount = accountDataSource.importLedgerAccount(pairing, birthday)
         accountDataSource.selectAccount(createdAccount)
         ledgerPairingRepository.clear()

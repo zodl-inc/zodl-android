@@ -97,6 +97,57 @@ class LedgerDeviceScanVMTest {
         }
 
     @Test
+    fun aSuccessfulPairingLeavesTheScreenRetryableInsteadOfStuckInPairing() =
+        runTest(dispatcher) {
+            val pairLedgerDevice =
+                mockk<PairLedgerDeviceUseCase> {
+                    coEvery { this@mockk.invoke(any()) } returns PairLedgerDeviceResult.Paired
+                }
+            val vm = vm(pairLedgerDevice = pairLedgerDevice)
+            collect(vm)
+
+            vm.state.value.onPermissionsGranted()
+            devices.value = listOf(device("AA"))
+            runCurrent()
+            vm.state.value.devices
+                .first()
+                .onClick()
+            runCurrent()
+            vm.state.value.primaryButton
+                .onClick()
+            runCurrent()
+
+            val button = vm.state.value.primaryButton
+            assertEquals(R.string.ledger_scan_retry_cta, button.text.resourceId())
+            assertTrue(button.isEnabled)
+            assertFalse(button.isLoading)
+            assertTrue(
+                vm.state.value.devices
+                    .all { it.isEnabled }
+            )
+        }
+
+    @Test
+    fun aBluetoothUnavailableWithoutAScanCodeShowsTheUnavailableSheetWhichOnlyCloses() =
+        runTest(dispatcher) {
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+            val exception =
+                mockk<LedgerException.BluetoothUnavailable>(relaxed = true) {
+                    every { scanErrorCode } returns null
+                }
+            val vm = pairedWithFailure(exception, navigationRouter = navigationRouter)
+
+            val sheet = vm.state.value.errorSheet
+            assertNotNull(sheet)
+            assertEquals(R.string.ledger_error_unavailable_title, sheet.title.resourceId())
+            assertNull(sheet.secondary)
+
+            sheet.primary.onClick()
+
+            verify(exactly = 1) { navigationRouter.back() }
+        }
+
+    @Test
     fun aScanThatFindsNothingWithinThirtySecondsShowsTheNoDevicesSheet() =
         runTest(dispatcher) {
             val vm = vm()
@@ -233,12 +284,18 @@ class LedgerDeviceScanVMTest {
     private fun TestScope.pairedWithFailure(
         exception: LedgerException,
         navigateToError: NavigateToErrorUseCase = mockk(relaxed = true),
+        navigationRouter: NavigationRouter = mockk(relaxed = true),
     ): LedgerDeviceScanVM {
         val pairLedgerDevice =
             mockk<PairLedgerDeviceUseCase> {
                 coEvery { this@mockk.invoke(any()) } throws exception
             }
-        val vm = vm(pairLedgerDevice = pairLedgerDevice, navigateToError = navigateToError)
+        val vm =
+            vm(
+                pairLedgerDevice = pairLedgerDevice,
+                navigateToError = navigateToError,
+                navigationRouter = navigationRouter,
+            )
         collect(vm)
         vm.state.value.onPermissionsGranted()
         devices.value = listOf(device("AA"))

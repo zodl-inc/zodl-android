@@ -10,6 +10,7 @@ import co.electriccoin.zcash.ui.common.model.guardLoading
 import co.electriccoin.zcash.ui.common.model.mutableLce
 import co.electriccoin.zcash.ui.common.model.stateIn
 import co.electriccoin.zcash.ui.common.model.withLce
+import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
 import co.electriccoin.zcash.ui.common.usecase.CreateLedgerAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -21,13 +22,26 @@ import co.electriccoin.zcash.ui.screen.heightinfo.HeightInfoArgs
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 
+/**
+ * Confirms the estimated birthday height and imports the paired Ledger account at it.
+ *
+ * The pending pairing lives in memory only, so a flow resumed after process death has nothing left
+ * to import; the init block returns to the wallet root rather than offering a dead form.
+ */
 class LedgerEstimationVM(
     private val args: LedgerEstimationArgs,
     private val createLedgerAccount: CreateLedgerAccountUseCase,
+    private val ledgerPairingRepository: LedgerPairingRepository,
     private val navigationRouter: NavigationRouter,
     private val errorStateMapper: ErrorMapperUseCase,
 ) : ViewModel() {
     private val createAccountLce = mutableLce<Unit>()
+
+    init {
+        if (ledgerPairingRepository.get() == null) {
+            navigationRouter.backToRoot()
+        }
+    }
 
     val state: StateFlow<LceState<EstimatedBlockHeightState>> =
         createAccountLce.state
