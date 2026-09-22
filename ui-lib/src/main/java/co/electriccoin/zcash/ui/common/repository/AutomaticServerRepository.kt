@@ -371,9 +371,6 @@ class AutomaticServerRepositoryImpl(
         }
     }
 
-
-    }
-
     /**
      * Validated servers, fastest first, or empty when none of [candidates] answers. The SDK's fastest-server
      * benchmark (latency + a timed block fetch, Tor-aware) ranks them; when it validates nothing - its

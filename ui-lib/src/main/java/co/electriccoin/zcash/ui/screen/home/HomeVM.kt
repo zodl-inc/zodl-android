@@ -32,8 +32,8 @@ import co.electriccoin.zcash.ui.screen.home.coinholderpolling.CoinholderPollingM
 import co.electriccoin.zcash.ui.screen.home.currency.EnableCurrencyConversionMessageState
 import co.electriccoin.zcash.ui.screen.home.disconnected.WalletDisconnectedInfo
 import co.electriccoin.zcash.ui.screen.home.disconnected.WalletDisconnectedMessageState
-import co.electriccoin.zcash.ui.screen.home.ohttpunavailable.OhttpUnavailableMessageState
 import co.electriccoin.zcash.ui.screen.home.error.WalletErrorMessageState
+import co.electriccoin.zcash.ui.screen.home.ohttpunavailable.OhttpUnavailableMessageState
 import co.electriccoin.zcash.ui.screen.home.reporting.CrashReportMessageState
 import co.electriccoin.zcash.ui.screen.home.reporting.CrashReportOptIn
 import co.electriccoin.zcash.ui.screen.home.restoring.WalletRestoringInfo
