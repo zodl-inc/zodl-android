@@ -45,7 +45,7 @@ class KtorNearApiProviderTest {
             provider.getSupportedTokens()
 
             val request = capturedRequests.single()
-            assertEquals("https://1click.chaindefuser.com/v0/tokens", request.url)
+            assertEquals("https://near.zodl.com/v0/tokens", request.url)
             assertEquals("GET", request.method)
             // MOB-1520: the token list is public — the app must never send Authorization
             // (gateway doesn't inject it either).
@@ -91,7 +91,7 @@ class KtorNearApiProviderTest {
             provider.requestQuote(quoteRequest())
 
             val request = capturedRequests.single()
-            assertEquals("https://1click.chaindefuser.com/v0/quote", request.url)
+            assertEquals("https://near.zodl.com/v0/quote", request.url)
             assertEquals("POST", request.method)
             assertTrue(request.headers.any { it.first == "Content-Type" && it.second == "application/json" })
             // MOB-1520: the app must never send Authorization (gateway injects it server-side).
@@ -109,7 +109,7 @@ class KtorNearApiProviderTest {
             )
 
             val request = capturedRequests.single()
-            assertEquals("https://1click.chaindefuser.com/v0/deposit/submit", request.url)
+            assertEquals("https://near.zodl.com/v0/deposit/submit", request.url)
             assertEquals("POST", request.method)
             // MOB-1520: the app must never send Authorization (gateway injects it server-side).
             assertNoAuthorizationHeader(request)
@@ -163,7 +163,7 @@ class KtorNearApiProviderTest {
                 request.url.contains("depositAddress=deposit-address"),
                 "depositAddress parameter must be in URL"
             )
-            assertTrue(request.url.startsWith("https://1click.chaindefuser.com/v0/status"))
+            assertTrue(request.url.startsWith("https://near.zodl.com/v0/status"))
             assertEquals("GET", request.method)
             // MOB-1520: the app must never send Authorization (gateway injects it server-side).
             assertNoAuthorizationHeader(request)

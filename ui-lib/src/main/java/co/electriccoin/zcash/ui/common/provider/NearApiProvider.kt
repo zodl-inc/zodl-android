@@ -71,13 +71,13 @@ class KtorNearApiProvider(
 
     override suspend fun getSupportedTokens(): GetNearSupportedTokensResponse =
         execute(
-            ohttpUrl = "https://1click.chaindefuser.com/v0/tokens",
+            ohttpUrl = "https://near.zodl.com/v0/tokens",
             ohttpMethod = "GET"
         )
 
     override suspend fun requestQuote(request: QuoteRequest): QuoteResponseDto =
         execute(
-            ohttpUrl = "https://1click.chaindefuser.com/v0/quote",
+            ohttpUrl = "https://near.zodl.com/v0/quote",
             ohttpMethod = "POST",
             ohttpHeaders = listOf("Content-Type" to "application/json"),
             ohttpBodyJson = Json.encodeToString(QuoteRequest.serializer(), request)
@@ -85,7 +85,7 @@ class KtorNearApiProvider(
 
     override suspend fun submitDepositTransaction(request: SubmitDepositTransactionRequest) {
         execute<Unit>(
-            ohttpUrl = "https://1click.chaindefuser.com/v0/deposit/submit",
+            ohttpUrl = "https://near.zodl.com/v0/deposit/submit",
             ohttpMethod = "POST",
             ohttpHeaders = listOf("Content-Type" to "application/json"),
             ohttpBodyJson = Json.encodeToString(SubmitDepositTransactionRequest.serializer(), request)
@@ -94,7 +94,7 @@ class KtorNearApiProvider(
 
     override suspend fun checkSwapStatus(depositAddress: String): SwapStatusResponseDto =
         execute(
-            ohttpUrl = "https://1click.chaindefuser.com/v0/status?depositAddress=$depositAddress",
+            ohttpUrl = "https://near.zodl.com/v0/status?depositAddress=$depositAddress",
             ohttpMethod = "GET"
         )
 
