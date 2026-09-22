@@ -207,15 +207,37 @@ internal class VotingRoundProgressTracker {
         }
     }
 
-    /** The authoritative tally's fraction, or the locally-measured per-proposal fraction -- whichever is further. */
+    /**
+     * The authoritative tally's fraction, or the locally-measured per-proposal fraction --
+     * whichever is further.
+     *
+     * **Many-bundle correctness (added after a live 13-bundle test showed this bar filling to
+     * 100% once only 2 of 13 bundles had raced through every proposal, while
+     * [estimatedCompletedProposals] correctly still read "0 of 37"):** each proposal's own
+     * contribution used to be the minimum progress among whichever bundles happened to have
+     * reported on it SO FAR -- correct when that set is every bundle carrying the ballot, wrong
+     * once it is a small subset of a much larger required count, since bundles that have not
+     * reported yet were silently absent from the minimum rather than counted as their true (zero)
+     * contribution. Scaling that minimum by `reportingBundles / requiredBundles` fixes this while
+     * leaving every existing single/few-bundle behavior unchanged: when every carrying bundle has
+     * already reported (`reportingBundles == requiredBundles`, the common case), the scale factor
+     * is exactly `1` and this reduces to the original minimum-only formula.
+     */
     private fun proposalCompletionFraction(
         completedProposals: Int?,
         total: Int
     ): Float {
         val tallyFraction = (completedProposals ?: 0).toFloat() / total
+        val observedBundleIndexes = bundleProgressByProposal.values.flatMapTo(mutableSetOf()) { it.keys }
+        val requiredBundles = (planVoteCarryingBundleIndexes + observedBundleIndexes).size
         val fractionSum =
-            bundleProgressByProposal.values.sumOf { bundleProgress ->
-                (bundleProgress.values.minOrNull() ?: 0f).toDouble()
+            if (requiredBundles <= 0) {
+                0.0
+            } else {
+                bundleProgressByProposal.values.sumOf { bundleProgress ->
+                    val minProgress = (bundleProgress.values.minOrNull() ?: 0f).toDouble()
+                    (minProgress * bundleProgress.size / requiredBundles).coerceAtMost(1.0)
+                }
             }
         val measuredFraction = fractionSum.toFloat() / total
         return maxOf(measuredFraction, tallyFraction)

@@ -588,4 +588,55 @@ class VotingRoundProgressTrackerTest {
         val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 37)
         assertEquals(1, estimate)
     }
+
+    /**
+     * Regression test for the SAME live 13-bundle test, a second bug found after the first fix:
+     * `fraction()` (the visual progress bar/ring, distinct from the "N of M" text
+     * [estimatedCompletedProposals] fixes above) filled all the way to 1.0 once only 2 of 13
+     * bundles had raced through every proposal, while the text correctly still read "0 of 37" --
+     * a visibly contradictory combination the user caught live. Root cause: unlike
+     * [estimatedCompletedProposals], [fraction]'s own [proposalCompletionFraction] never checked
+     * the required bundle count at all -- a proposal's contribution was the minimum progress
+     * among whichever bundles HAD reported, silently ignoring the other 11 bundles that had not
+     * reported yet rather than counting their absence as zero.
+     */
+    @Test
+    fun `fraction does not reach 100 percent when only a few of many carrying bundles have finished`() {
+        val tracker = VotingRoundProgressTracker()
+        tracker.recordPlan((0 until 13).toList())
+
+        // Bundles 0 and 1 (2 of the 13 required) have raced through every proposal in the round;
+        // the other 11 bundles haven't reported anything at all yet -- exactly the live scenario.
+        for (proposalId in 1..37) {
+            tracker.record(castVote(bundleIndex = 0, proposalId = proposalId), proofProgress = 1.0f)
+            tracker.record(castVote(bundleIndex = 1, proposalId = proposalId), proofProgress = 1.0f)
+        }
+
+        val fraction = tracker.fraction(completedProposals = 0, totalProposals = 37)
+        checkNotNull(fraction)
+        // Roughly 2/13 of the round's total casting work is actually done (2 of 13 bundles, every
+        // proposal) -- nowhere near 1.0, and specifically not the ~1.0 the old minimum-only
+        // formula would have produced by crediting each proposal in full the moment just these
+        // two bundles finished it.
+        assertTrue(
+            fraction < 0.3f,
+            "fraction should reflect roughly 2/13 of total work, not fill up from only 2 of 13 bundles, was $fraction"
+        )
+        assertTrue(fraction > 0f, "fraction should still show real, non-zero progress")
+    }
+
+    @Test
+    fun `fraction still reaches 100 percent once every carrying bundle has finished`() {
+        val tracker = VotingRoundProgressTracker()
+        tracker.recordPlan(listOf(0, 1, 2))
+
+        for (proposalId in 1..37) {
+            for (bundleIndex in 0..2) {
+                tracker.record(castVote(bundleIndex = bundleIndex, proposalId = proposalId), proofProgress = 1.0f)
+            }
+        }
+
+        val fraction = tracker.fraction(completedProposals = 37, totalProposals = 37)
+        assertEquals(1f, fraction)
+    }
 }
