@@ -21,6 +21,7 @@ import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneSessionHolder
+import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepository
 import co.electriccoin.zcash.ui.common.repository.VotingProposalSelection
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryPhase
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
@@ -74,6 +75,7 @@ class SubmitVotesUseCase(
     private val votingShareTrackingScheduler: VotingShareTrackingScheduler,
     private val votingRecoveryRepository: VotingRecoveryRepository,
     private val votingKeystoneSessionHolder: VotingKeystoneSessionHolder,
+    private val votingProofPrecomputeRepository: VotingProofPrecomputeRepository,
 ) {
     @Suppress("LongMethod")
     suspend operator fun invoke(
@@ -89,6 +91,20 @@ class SubmitVotesUseCase(
 
             val selectedAccount = getSelectedWalletAccount()
             val accountUuidString = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
+
+            // Important #1 (final whole-plan review): review-screen entry can start a
+            // background precompute job (PrecomputeVotingSnapshotBundlesUseCase /
+            // WarmVotingPirProofsUseCase) seconds before the user taps Submit. Both paths below
+            // -- Keystone (via VotingKeystoneSessionHolder.ensureDelegationPipeline) and
+            // non-Keystone (opening votingCryptoClient's own DB session directly) -- would
+            // otherwise contend with that job for the shared native (dbPath, walletId) lock,
+            // parking the progress UI the exact same way Task 6 already fixed for a different
+            // cause. Cancelling and awaiting termination here, before either path opens its own
+            // session, guarantees the lock is free by the time either one needs it. This is the
+            // single entry point both submission paths funnel through, so one call site here
+            // covers both.
+            votingProofPrecomputeRepository.cancelAndAwaitPrecompute(accountUuidString, roundId)
+
             if (selectedAccount is KeystoneAccount) {
                 // Every bundle already carries a persisted Keystone signature by the time
                 // submission reaches this point -- the Sign screen only navigates back to

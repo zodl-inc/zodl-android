@@ -77,11 +77,14 @@ internal class VotingRoundProgressTracker {
      * progress`. The two terms are ADDED, not maxed: a delegating bundle and an already-casting
      * proposal represent non-overlapping units of work happening concurrently on different
      * bundles, so both must count. The weight exists specifically so that delegation progress
-     * alone can never push this to 1.0: in the worst case every bundle in the round represents
-     * only a single proposal (`numBundles == total`) and every one of them fully delegates with
-     * nothing yet cast -- the delegation term still tops out at [DELEGATION_PHASE_WEIGHT] itself
-     * (`(total/total) * DELEGATION_PHASE_WEIGHT`), leaving `1 - DELEGATION_PHASE_WEIGHT` of real
-     * headroom that only [proposalCompletionFraction] can fill.
+     * alone can never push this to 1.0: even in the worst case, where the wallet's note set
+     * produces MORE bundles than there are proposals in the round (bundle count is driven by
+     * `ceil(note_count / 5)` in the crate, independent of proposal count -- NOT guaranteed
+     * `numBundles <= total`) and every one of them fully delegates with nothing yet cast, the
+     * delegation term still tops out at [DELEGATION_PHASE_WEIGHT] itself -- see
+     * [delegationFraction]'s own doc comment for the denominator fix that guarantees this --
+     * leaving `1 - DELEGATION_PHASE_WEIGHT` of real headroom that only
+     * [proposalCompletionFraction] can fill.
      */
     fun fraction(
         completedProposals: Int?,
@@ -153,6 +156,21 @@ internal class VotingRoundProgressTracker {
      * excluding any bundle already reflected on the casting side ([bundleProgressByProposal]) so
      * a bundle's progress is never counted on both sides as it transitions from delegating to
      * casting.
+     *
+     * **Denominator (fixed, Important #2 of the final whole-plan review):** this used to divide
+     * by bare [total] (a count of PROPOSALS) under the assumption `numBundles <= total`, but that
+     * is not actually guaranteed by the crate -- bundle count is driven by the wallet's note set
+     * (`ceil(note_count / 5)`, independent of proposal count). A 1-proposal round whose note set
+     * produces 2 bundles, both fully delegating with nothing cast, would compute
+     * `(2.0/1) * DELEGATION_PHASE_WEIGHT == 1.0` -- the bar would read 100% complete with zero
+     * votes cast. Normalizing by `maxOf(total, delegationProgressByBundle.size +
+     * castingBundleIndexes.size)` instead -- never smaller than the actual number of bundles
+     * being summed -- preserves today's behavior whenever bundles <= proposals (the common case,
+     * where this maxOf is a no-op) and caps the delegation term at [DELEGATION_PHASE_WEIGHT]
+     * whenever bundle count exceeds proposal count, instead of letting it exceed that cap. Does
+     * not change [proposalCompletionFraction]'s own division by [total], nor
+     * [estimatedCompletedProposals]'s existing decoupling from delegation entirely -- both keep
+     * using the proposal-scoped [total] unchanged.
      */
     private fun delegationFraction(total: Int): Float {
         val castingBundleIndexes = bundleProgressByProposal.values.flatMapTo(mutableSetOf()) { it.keys }
@@ -161,7 +179,8 @@ internal class VotingRoundProgressTracker {
                 .filterKeys { it !in castingBundleIndexes }
                 .values
                 .sumOf { it.toDouble() }
-        return (delegationFractionSum.toFloat() / total) * DELEGATION_PHASE_WEIGHT
+        val bundleCountFloor = delegationProgressByBundle.size + castingBundleIndexes.size
+        return (delegationFractionSum.toFloat() / maxOf(total, bundleCountFloor)) * DELEGATION_PHASE_WEIGHT
     }
 
     private fun proposalIdOf(step: VotingNextStep?): Int? =

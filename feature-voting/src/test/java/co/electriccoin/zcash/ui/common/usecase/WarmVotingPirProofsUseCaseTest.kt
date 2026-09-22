@@ -63,9 +63,75 @@ class WarmVotingPirProofsUseCaseTest {
                         pirEndpoints = listOf("https://pir-a", "https://pir-b"),
                         pirLayout = VotingPirLayout(pirDepth = 3, tier0Layers = 1, tier1Layers = 2, polyLen = 2048),
                         networkId = 0,
-                        notesJson = "[{\"note\":1}]"
+                        notesJson = "[{\"note\":1}]",
+                        torRuntime = 0L
                     )
                 )
+            }
+        }
+
+    @Test
+    fun `invoke resolves a real Tor runtime handle and threads it through the warmup request`() =
+        runTest {
+            val env = environment()
+            coEvery { env.votingConfigRepository.get() } returns
+                VotingConfigSnapshot(serviceConfig = env.serviceConfig(), source = VotingConfigSource.REMOTE)
+            coEvery {
+                env.votingCryptoClient.getWalletNotesJson(any(), any(), any(), any())
+            } returns "[{\"note\":1}]"
+            coEvery { env.synchronizer.getVotingTorRuntimeHandle() } returns TOR_RUNTIME_HANDLE
+
+            env.useCase()
+
+            coVerify(exactly = 1) {
+                env.votingProofPrecomputeRepository.startPirWarmup(
+                    match { request -> request.torRuntime == TOR_RUNTIME_HANDLE }
+                )
+            }
+        }
+
+    /**
+     * Regression test for Important #3 of the final whole-plan review: fetching wallet notes for
+     * a round the wallet hasn't fully scanned to yet throws (a normal state for a newer active
+     * round). Before this fix, one shared runCatching around the whole loop meant that failure
+     * aborted warmup for every OTHER active round too. Each round's own iteration must now be
+     * isolated so a fully-scanned, genuinely-votable round still gets warmed.
+     */
+    @Test
+    fun `invoke still warms a second active round when the first round's note fetch throws`() =
+        runTest {
+            val unscannedRound = round(id = "unscanned-round", snapshotHeight = 900L)
+            val scannedRound = round(id = "scanned-round", snapshotHeight = 500L)
+            val env = environment(rounds = listOf(unscannedRound, scannedRound))
+            coEvery { env.votingConfigRepository.get() } returns
+                VotingConfigSnapshot(serviceConfig = env.serviceConfig(), source = VotingConfigSource.REMOTE)
+            coEvery {
+                env.votingCryptoClient.getWalletNotesJson(
+                    walletDbPath = "/wallet/db",
+                    snapshotHeight = 900L,
+                    networkId = 0,
+                    accountUuidBytes = env.account.sdkAccount.accountUuid.value
+                )
+            } throws IllegalStateException("wallet not scanned to height 900 yet")
+            coEvery {
+                env.votingCryptoClient.getWalletNotesJson(
+                    walletDbPath = "/wallet/db",
+                    snapshotHeight = 500L,
+                    networkId = 0,
+                    accountUuidBytes = env.account.sdkAccount.accountUuid.value
+                )
+            } returns "[{\"note\":1}]"
+
+            // Must not throw -- and must still warm the round that succeeded.
+            env.useCase()
+
+            coVerify(exactly = 1) {
+                env.votingProofPrecomputeRepository.startPirWarmup(
+                    match { request -> request.snapshotHeight == 500L }
+                )
+            }
+            coVerify(exactly = 0) {
+                env.votingProofPrecomputeRepository.startPirWarmup(match { request -> request.snapshotHeight == 900L })
             }
         }
 
@@ -202,6 +268,7 @@ class WarmVotingPirProofsUseCaseTest {
 
         val synchronizer = mockk<Synchronizer>()
         every { synchronizer.network } returns ZcashNetwork.Testnet
+        coEvery { synchronizer.getVotingTorRuntimeHandle() } returns 0L
 
         coEvery { synchronizerProvider.getSynchronizer() } returns synchronizer
         coEvery { synchronizerProvider.getVotingWalletDbPath() } returns "/wallet/db"
@@ -263,5 +330,6 @@ class WarmVotingPirProofsUseCaseTest {
     private companion object {
         const val ROUND_ID = "round-id"
         const val ROUND_SNAPSHOT_HEIGHT = 500L
+        const val TOR_RUNTIME_HANDLE = 42L
     }
 }

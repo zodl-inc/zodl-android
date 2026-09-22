@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import android.util.Log
+import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -54,6 +55,12 @@ class WarmVotingPirProofsUseCase(
     private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
     private val votingProofPrecomputeRepository: VotingProofPrecomputeRepository
 ) {
+    // SwallowedException: TorUnavailableException means the user has Tor turned off -- an
+    // expected configuration, not an error worth propagating or logging. Matches
+    // VotingKeystoneRepositoryImpl.createPcztEncoder's identical suppression for the identical
+    // pattern. The failure mode that MUST propagate (TorInitializationErrorException) is
+    // deliberately not caught here.
+    @Suppress("SwallowedException")
     suspend operator fun invoke() {
         runCatching {
             withContext(Dispatchers.IO) {
@@ -78,30 +85,54 @@ class WarmVotingPirProofsUseCase(
                         ?.resolve("voting.sqlite3")
                         ?.absolutePath
                         ?: return@withContext
-                val networkId = synchronizerProvider.getSynchronizer().network.toVotingNetworkId()
+                val synchronizer = synchronizerProvider.getSynchronizer()
+                val networkId = synchronizer.network.toVotingNetworkId()
+                // Same Tor-optional fallback as SubmitVotesUseCase.kt -- Tor is a preference, not
+                // a hard requirement. Only TorUnavailableException (Tor disabled) falls back to
+                // 0L; TorInitializationErrorException (Tor is ON but failed to bootstrap) must
+                // propagate, same as every other caller of this handle.
+                val torRuntime =
+                    try {
+                        synchronizer.getVotingTorRuntimeHandle()
+                    } catch (e: TorUnavailableException) {
+                        0L
+                    }
 
+                // Important #3 (final whole-plan review): each round's own iteration body gets
+                // its own runCatching, rather than sharing the outer one. Fetching wallet notes
+                // for a round the wallet hasn't fully scanned to yet is a normal state (a newer
+                // active round the wallet hasn't caught up to) and throws -- with a single shared
+                // try/catch around the whole loop, that would abort warmup for every OTHER
+                // active round too, recurring on every screen visit for as long as the newer
+                // round stays unscanned, silently starving an older, fully-scanned, genuinely
+                // votable round of its warmup.
                 activeSnapshotHeights.forEach { snapshotHeight ->
-                    val notesJson =
-                        votingCryptoClient.getWalletNotesJson(
-                            walletDbPath = walletDbPath,
-                            snapshotHeight = snapshotHeight,
-                            networkId = networkId,
-                            accountUuidBytes = accountUuid.value
-                        )
-                    if (JSONArray(notesJson).length() == 0) return@forEach
+                    runCatching {
+                        val notesJson =
+                            votingCryptoClient.getWalletNotesJson(
+                                walletDbPath = walletDbPath,
+                                snapshotHeight = snapshotHeight,
+                                networkId = networkId,
+                                accountUuidBytes = accountUuid.value
+                            )
+                        if (JSONArray(notesJson).length() == 0) return@runCatching
 
-                    votingProofPrecomputeRepository.startPirWarmup(
-                        VotingPirWarmupRequest(
-                            accountUuid = accountUuidString,
-                            walletId = accountUuidString,
-                            votingDbPath = votingDbPath,
-                            snapshotHeight = snapshotHeight,
-                            pirEndpoints = pirEndpoints,
-                            pirLayout = serviceConfig.pirLayout,
-                            networkId = networkId,
-                            notesJson = notesJson
+                        votingProofPrecomputeRepository.startPirWarmup(
+                            VotingPirWarmupRequest(
+                                accountUuid = accountUuidString,
+                                walletId = accountUuidString,
+                                votingDbPath = votingDbPath,
+                                snapshotHeight = snapshotHeight,
+                                pirEndpoints = pirEndpoints,
+                                pirLayout = serviceConfig.pirLayout,
+                                networkId = networkId,
+                                notesJson = notesJson,
+                                torRuntime = torRuntime
+                            )
                         )
-                    )
+                    }.onFailure { throwable ->
+                        Log.w(TAG, "PIR proof warmup failed for snapshot height $snapshotHeight", throwable)
+                    }
                 }
             }
         }.onFailure { throwable ->

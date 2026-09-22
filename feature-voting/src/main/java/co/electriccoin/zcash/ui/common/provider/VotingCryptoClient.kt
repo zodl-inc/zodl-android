@@ -189,11 +189,24 @@ interface VotingCryptoClient {
      * finds proofs already cached instead of paying PIR latency synchronously. Not scoped to a
      * round or bundle -- safe to call as a background pre-warming step before any round is
      * selected, whenever wallet notes are available.
+     *
+     * [torRuntime] follows the same contract as [openRoundSession]'s own `torRuntime` parameter --
+     * obtain it from `Synchronizer.getVotingTorRuntimeHandle()`, pass `0` when no live Tor runtime
+     * is available (Tor disabled); this degrades to plain HTTP rather than failing the call, never
+     * fail-closed.
+     *
+     * **Shared native DB lock**: holds the shared native database lock for [dbHandle]'s
+     * `(dbPath, walletId)` for the full call duration, including all PIR network round-trips,
+     * non-cancellably once the native call starts. Other operations on the same database queue
+     * behind it. Background/browse-time callers should be prepared to cancel or coordinate with
+     * it before opening a round session for real vote submission -- see
+     * [co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepository.cancelAndAwaitPrecompute].
      * @throws RuntimeException if the native layer reports a failure.
      */
     @Throws(RuntimeException::class)
     suspend fun precomputePirProofs(
         dbHandle: Long,
+        torRuntime: Long,
         pirServerUrl: String,
         pirLayout: VotingPirLayout,
         notesJson: String
@@ -206,11 +219,15 @@ interface VotingCryptoClient {
      * [precomputeDelegationPir] (one already-persisted bundle at a time). Verified strict
      * superset of [precomputeDelegationPir] -- prefer this over per-bundle calls whenever the
      * round's full snapshot note set is available.
+     *
+     * [torRuntime] and the shared-database-lock contract are the same as [precomputePirProofs]
+     * above -- see that doc comment.
      * @throws RuntimeException if the native layer reports a failure.
      */
     @Throws(RuntimeException::class)
     suspend fun precomputeSnapshotBundles(
         dbHandle: Long,
+        torRuntime: Long,
         roundId: String,
         pirServerUrl: String,
         pirLayout: VotingPirLayout,
@@ -361,6 +378,15 @@ class VotingCryptoClientImpl : VotingCryptoClient {
     private val nextDbHandle = AtomicLong(1)
     private val sdkMutex = Mutex()
     private var sdk: VotingSdk? = null
+
+    // Minor (final whole-plan review): these were plain unsynchronized mutableMapOf()s on a
+    // singleton -- pre-existing, but VoteProposalDetailVM.init now launches two DB-opening jobs
+    // concurrently (Task 4), increasing real exposure to a torn/corrupted map under concurrent
+    // structural mutation (put/remove from different coroutines). Guarded with a Mutex (this
+    // team's established rule -- Mutex, not synchronized, in suspend code) rather than swapping
+    // to a concurrent collection type, so the lock scope stays small and explicit: only the map
+    // reads/writes themselves are held under lock, never the slow native calls around them.
+    private val mapsMutex = Mutex()
     private val dbPaths = mutableMapOf<Long, String>()
     private val sessions = mutableMapOf<Long, VotingDbSession>()
 
@@ -380,21 +406,23 @@ class VotingCryptoClientImpl : VotingCryptoClient {
             }
         }
 
-    private fun session(dbHandle: Long): VotingDbSession =
-        checkNotNull(sessions[dbHandle]) {
-            "Voting DB handle is not open: $dbHandle"
+    private suspend fun session(dbHandle: Long): VotingDbSession =
+        mapsMutex.withLock {
+            checkNotNull(sessions[dbHandle]) {
+                "Voting DB handle is not open: $dbHandle"
+            }
         }
 
     override suspend fun openVotingDb(dbPath: String): Long {
         val handle = nextDbHandle.getAndIncrement()
-        dbPaths[handle] = dbPath
+        mapsMutex.withLock { dbPaths[handle] = dbPath }
         return handle
     }
 
     override suspend fun closeVotingDb(dbHandle: Long) {
         withContext(Dispatchers.IO) {
-            sessions.remove(dbHandle)?.close()
-            dbPaths.remove(dbHandle)
+            val removedSession = mapsMutex.withLock { sessions.remove(dbHandle).also { dbPaths.remove(dbHandle) } }
+            removedSession?.close()
         }
     }
 
@@ -405,11 +433,18 @@ class VotingCryptoClientImpl : VotingCryptoClient {
     ) =
         withContext(Dispatchers.IO) {
             val dbPath =
-                checkNotNull(dbPaths[dbHandle]) {
-                    "Voting DB handle is not registered: $dbHandle"
+                mapsMutex.withLock {
+                    checkNotNull(dbPaths[dbHandle]) {
+                        "Voting DB handle is not registered: $dbHandle"
+                    }
                 }
-            sessions.remove(dbHandle)?.close()
-            sessions[dbHandle] = votingSdk().openDb(dbPath, walletId, networkId)
+            val previousSession = mapsMutex.withLock { sessions.remove(dbHandle) }
+            previousSession?.close()
+            // The slow native openDb() call runs OUTSIDE the lock, deliberately -- holding
+            // mapsMutex here would fully serialize concurrent DB opens across every dbHandle,
+            // defeating the point of the two concurrent jobs this fix is guarding against.
+            val newSession = votingSdk().openDb(dbPath, walletId, networkId)
+            mapsMutex.withLock { sessions[dbHandle] = newSession }
         }
 
     override suspend fun ensureRound(
@@ -550,6 +585,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
 
     override suspend fun precomputePirProofs(
         dbHandle: Long,
+        torRuntime: Long,
         pirServerUrl: String,
         pirLayout: VotingPirLayout,
         notesJson: String
@@ -557,6 +593,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         withContext(Dispatchers.IO) {
             session(dbHandle)
                 .precomputePirProofs(
+                    torRuntime,
                     pirServerUrl,
                     pirLayout.pirDepth,
                     pirLayout.tier0Layers,
@@ -568,6 +605,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
 
     override suspend fun precomputeSnapshotBundles(
         dbHandle: Long,
+        torRuntime: Long,
         roundId: String,
         pirServerUrl: String,
         pirLayout: VotingPirLayout,
@@ -576,6 +614,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         withContext(Dispatchers.IO) {
             session(dbHandle)
                 .precomputeSnapshotBundles(
+                    torRuntime,
                     roundId,
                     pirServerUrl,
                     pirLayout.pirDepth,

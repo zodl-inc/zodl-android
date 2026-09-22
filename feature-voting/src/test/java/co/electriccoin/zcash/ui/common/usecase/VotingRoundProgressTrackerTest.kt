@@ -229,6 +229,30 @@ class VotingRoundProgressTrackerTest {
     }
 
     @Test
+    fun `delegation progress is still bounded when the wallet's note set produces more bundles than proposals`() {
+        val tracker = VotingRoundProgressTracker()
+
+        // Important #2 (final whole-plan review): a 1-proposal round whose wallet note set
+        // produces 2 bundles (plausible -- bundle count is ceil(note_count / 5) in the crate,
+        // independent of proposal count, NOT guaranteed numBundles <= totalProposals). Both
+        // bundles fully delegate with nothing cast. Before the fix, dividing by bare
+        // totalProposals (1) gave (2.0/1) * 0.5 == 1.0 -- a fully-filled bar with zero votes
+        // cast. The fix must keep this bounded at DELEGATION_PHASE_WEIGHT.
+        tracker.record(VotingNextStep.Delegate(bundleIndex = 0), proofProgress = 1.0f)
+        tracker.record(VotingNextStep.Delegate(bundleIndex = 1), proofProgress = 1.0f)
+
+        val fraction = tracker.fraction(completedProposals = 0, totalProposals = 1)
+        checkNotNull(fraction)
+        assertTrue(
+            fraction <= delegationPhaseWeight,
+            "delegation-only progress with more bundles than proposals must stay bounded, was $fraction"
+        )
+        // The count itself must remain unaffected by this fix -- still zero, since nothing real
+        // has been cast (the existing decoupling from delegation must not change).
+        assertNull(tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 1))
+    }
+
+    @Test
     fun `the ratchet prevents a visible regression when a bundle transitions from delegation to casting`() {
         val tracker = VotingRoundProgressTracker()
 
