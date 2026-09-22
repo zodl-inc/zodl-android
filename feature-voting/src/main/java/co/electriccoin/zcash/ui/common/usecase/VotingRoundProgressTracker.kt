@@ -10,8 +10,9 @@ import cash.z.ecc.android.sdk.model.voting.VotingNextStep
  * every in-flight proposal's own partial credit moves the bar meaningfully even in a
  * many-proposal round, where a single proposal's own contribution is a tiny fraction of the
  * total. Mirrors the core idea of Vizor Wallet's `chp-benchmark-v5main` integration for the same
- * crate (`voting_progress_presentation.dart`'s `fractionSum` term) without replicating its exact
- * "finished" bookkeeping.
+ * crate (`voting_progress_presentation.dart`'s `fractionSum` term) for [fraction], and now also
+ * its "finished" bookkeeping for [estimatedCompletedProposals] -- see [recordPlan] and
+ * [truePerBundleCompletedCount].
  *
  * Also tracks delegation-phase progress separately, per BUNDLE rather than per proposal:
  * [VotingNextStep.Delegate]/[VotingNextStep.AdvanceDelegation]/
@@ -38,6 +39,7 @@ import cash.z.ecc.android.sdk.model.voting.VotingNextStep
 internal class VotingRoundProgressTracker {
     private val bundleProgressByProposal = mutableMapOf<Int, MutableMap<Int, Float>>()
     private val delegationProgressByBundle = mutableMapOf<Int, Float>()
+    private val planVoteCarryingBundleIndexes = mutableSetOf<Int>()
     private var lastFraction = 0f
     private var lastProposalFraction = 0f
     private var lastEstimatedCompleted = 0
@@ -88,6 +90,22 @@ internal class VotingRoundProgressTracker {
     fun currentProposalId(): Int? = lastObservedProposalId
 
     /**
+     * Folds in one `PlanRefreshed` event's `voteCarryingBundleIndexes`
+     * (`VotingRoundDriveProgress.voteCarryingBundleIndexes`) -- every bundle the round's live
+     * plan still owes a vote-family step for. Union-only (never cleared): a bundle that finishes
+     * casting drops out of the plan's own list on the next refresh, but must stay counted as a
+     * bundle this ballot is carried in -- mirrors Vizor Wallet's
+     * `votingBallotCarryingBundleCount`'s own union-with-observed rationale. A `null` or empty
+     * list (no `PlanRefreshed` event yet, or the plan has not reached vote steps yet) is a safe
+     * no-op.
+     */
+    fun recordPlan(voteCarryingBundleIndexes: List<Int>?) {
+        if (voteCarryingBundleIndexes != null) {
+            planVoteCarryingBundleIndexes += voteCarryingBundleIndexes
+        }
+    }
+
+    /**
      * A 0..1 fraction of the round's total work, or `null` when nothing measurable exists yet
      * (callers should show an indeterminate indicator in that case, per Vizor's own "a count
      * that reads as a flicker is worse than no count" rationale, rather than a determinate bar
@@ -133,6 +151,16 @@ internal class VotingRoundProgressTracker {
      * A dispatched vote can still be rejected and need a retry, so this estimate can run ahead of
      * what is later confirmed.
      *
+     * **Multi-bundle correctness (added after a live 13-bundle test showed the display sitting at
+     * "36 of 37" for most of the run):** a proposal is only counted here once EVERY bundle
+     * carrying the ballot has reported it at full progress -- see [truePerBundleCompletedCount].
+     * Requiring every bundle to agree, rather than crediting a proposal the moment the single
+     * fastest bundle finishes it, is exactly Vizor Wallet's own fix for this
+     * (`voting_progress_presentation.dart`'s `votingBallotProgress`/`entriesByProposal`/
+     * `finishedByProposal`, gated on `seenEntries >= carryingBundles`) -- without it, a
+     * many-bundle round's fastest bundle alone would make almost every proposal look "done" long
+     * before the other bundles have even started casting it.
+     *
      * Two safeguards keep that approximation from ever contradicting the authoritative tally:
      * it never returns [totalProposals] itself until [completedProposals] genuinely reaches it
      * (so it can never claim the round is fully done before the crate confirms that), and it
@@ -152,9 +180,31 @@ internal class VotingRoundProgressTracker {
         }
         lastProposalFraction = maxOf(lastProposalFraction, proposalCompletionFraction(completedProposals, total))
         if (lastProposalFraction <= 0f) return null
-        val estimate = (lastProposalFraction * total).toInt().coerceIn(0, total - 1)
+        val estimate = truePerBundleCompletedCount().coerceIn(0, total - 1)
         lastEstimatedCompleted = maxOf(lastEstimatedCompleted, maxOf(estimate, authoritative))
         return lastEstimatedCompleted
+    }
+
+    /**
+     * How many proposals have been cast to full progress in EVERY bundle carrying the ballot, not
+     * just the fastest one. The required bundle count is [planVoteCarryingBundleIndexes] (this
+     * round's live plan, folded in via [recordPlan]) unioned with every bundle index this tracker
+     * has itself observed reporting proposal-scoped progress ([bundleProgressByProposal]'s own
+     * keys) -- the same union Vizor Wallet's `votingBallotCarryingBundleCount` computes, and for
+     * the same reason: a bundle that has already finished casting drops off the live plan's own
+     * list, but must not drop out of this denominator. A proposal only one of several bundles has
+     * reached is correctly excluded rather than counted early; a bundle this tracker has never
+     * observed reporting a given proposal simply has no entry in [bundleProgressByProposal] for
+     * it, which is why a proposal only counts once its recorded bundle count reaches the required
+     * total AND every one of those recorded bundles is itself at full progress.
+     */
+    private fun truePerBundleCompletedCount(): Int {
+        val observedBundleIndexes = bundleProgressByProposal.values.flatMapTo(mutableSetOf()) { it.keys }
+        val requiredBundles = (planVoteCarryingBundleIndexes + observedBundleIndexes).size
+        if (requiredBundles <= 0) return 0
+        return bundleProgressByProposal.count { (_, perBundle) ->
+            perBundle.size >= requiredBundles && perBundle.values.all { it >= 1f }
+        }
     }
 
     /** The authoritative tally's fraction, or the locally-measured per-proposal fraction -- whichever is further. */

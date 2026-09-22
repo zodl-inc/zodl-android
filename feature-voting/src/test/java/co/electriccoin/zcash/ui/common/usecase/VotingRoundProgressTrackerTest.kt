@@ -490,4 +490,102 @@ class VotingRoundProgressTrackerTest {
         // nothing to this count, no matter how far its own delegation has progressed.
         assertEquals(1, estimate)
     }
+
+    // --- recordPlan / multi-bundle "every carrying bundle must agree" (live 13-bundle finding) ---
+    //
+    // A round with several bundles casts the SAME 37-proposal ballot once per bundle. Before this
+    // fix, a proposal was credited the moment the SINGLE FASTEST bundle finished it -- with many
+    // bundles racing at different paces, that made the display sit at a near-total count (e.g.
+    // "36 of 37", observed live) for most of the run while 12 of 13 bundles had barely started.
+    // Mirrors Vizor Wallet's `votingBallotProgress`'s `entriesByProposal`/`finishedByProposal`
+    // gated on `seenEntries >= carryingBundles`.
+
+    @Test
+    fun `a proposal is not counted complete until every carrying bundle has reported it`() {
+        val tracker = VotingRoundProgressTracker()
+        tracker.recordPlan(listOf(0, 1))
+
+        // Only bundle 0 has finished proposal 1; bundle 1 hasn't reported it at all yet.
+        tracker.record(castVote(bundleIndex = 0, proposalId = 1), proofProgress = 1.0f)
+
+        // Real signal exists (bundle 0's own progress), so this is a determinate zero, not the
+        // indeterminate null reserved for "nothing measured at all" -- it must just not credit a
+        // whole proposal complete while a sibling bundle hasn't reported on it yet.
+        val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 37)
+        assertEquals(0, estimate, "must not credit a proposal only one of two carrying bundles finished")
+    }
+
+    @Test
+    fun `a proposal counts complete once every carrying bundle has reported it at full progress`() {
+        val tracker = VotingRoundProgressTracker()
+        tracker.recordPlan(listOf(0, 1))
+
+        tracker.record(castVote(bundleIndex = 0, proposalId = 1), proofProgress = 1.0f)
+        tracker.record(castVote(bundleIndex = 1, proposalId = 1), proofProgress = 1.0f)
+
+        val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 37)
+        assertEquals(1, estimate)
+    }
+
+    @Test
+    fun `a bundle dropping out of the plan after finishing does not shrink the carrying count`() {
+        val tracker = VotingRoundProgressTracker()
+
+        // First refresh: both bundles still owe vote work.
+        tracker.recordPlan(listOf(0, 1))
+        tracker.record(castVote(bundleIndex = 0, proposalId = 1), proofProgress = 1.0f)
+        tracker.record(castVote(bundleIndex = 1, proposalId = 1), proofProgress = 1.0f)
+
+        // Bundle 0 finished casting and the plan no longer lists it -- recordPlan is a union, so
+        // this must not un-count bundle 0 for proposals already attributed to it.
+        tracker.recordPlan(listOf(1))
+
+        val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 37)
+        assertEquals(1, estimate)
+    }
+
+    @Test
+    fun `bundles this tracker has itself observed are unioned in even without a matching plan refresh`() {
+        val tracker = VotingRoundProgressTracker()
+
+        // No recordPlan call at all -- carryingBundleCount() falls back entirely to observed
+        // bundle indices, exactly like the pre-existing single-bundle tests rely on.
+        tracker.record(castVote(bundleIndex = 0, proposalId = 1), proofProgress = 1.0f)
+        tracker.record(castVote(bundleIndex = 1, proposalId = 1), proofProgress = 1.0f)
+
+        val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 37)
+        assertEquals(1, estimate)
+    }
+
+    @Test
+    fun `a null or empty recordPlan call is a safe no-op`() {
+        val tracker = VotingRoundProgressTracker()
+        tracker.recordPlan(null)
+        tracker.recordPlan(emptyList())
+
+        tracker.record(castVote(bundleIndex = 0, proposalId = 1), proofProgress = 1.0f)
+
+        val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 37)
+        assertEquals(1, estimate)
+    }
+
+    @Test
+    fun `many bundles at different paces only credit proposals every one of them has finished`() {
+        val tracker = VotingRoundProgressTracker()
+        tracker.recordPlan((0 until 13).toList())
+
+        // Bundle 0 (the fastest) has raced through proposals 1-36; every other bundle has only
+        // reached proposal 1 so far -- reproduces the live 13-bundle observation.
+        for (proposalId in 1..36) {
+            tracker.record(castVote(bundleIndex = 0, proposalId = proposalId), proofProgress = 1.0f)
+        }
+        for (bundleIndex in 1 until 13) {
+            tracker.record(castVote(bundleIndex = bundleIndex, proposalId = 1), proofProgress = 1.0f)
+        }
+
+        // Proposal 1 is the only one all 13 bundles agree on; proposals 2-36 are each missing
+        // 12 of their 13 bundles and must not be counted, no matter how far bundle 0 got.
+        val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 37)
+        assertEquals(1, estimate)
+    }
 }

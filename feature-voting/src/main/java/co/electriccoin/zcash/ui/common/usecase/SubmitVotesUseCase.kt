@@ -285,6 +285,7 @@ class SubmitVotesUseCase(
                                 progress.proofProgress,
                                 progress.voteCommitProposalId
                             )
+                            progressTracker.recordPlan(progress.voteCarryingBundleIndexes)
                             onProgress(
                                 VotingSubmissionProgress.RunningRound(
                                     completedProposals =
@@ -516,6 +517,7 @@ class SubmitVotesUseCase(
                     lastTotalProposals = maxOf(lastTotalProposals ?: 0, tally.totalProposals)
                 }
                 progressTracker.record(progress.step, progress.proofProgress, progress.voteCommitProposalId)
+                progressTracker.recordPlan(progress.voteCarryingBundleIndexes)
                 onProgress(
                     VotingSubmissionProgress.RunningRound(
                         completedProposals =
