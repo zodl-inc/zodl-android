@@ -6,10 +6,12 @@ import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
 import cash.z.ecc.android.sdk.ledger.LedgerDeviceModel
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
 import co.electriccoin.zcash.ui.common.usecase.PairLedgerDeviceResult
 import co.electriccoin.zcash.ui.common.usecase.PairLedgerDeviceUseCase
 import co.electriccoin.zcash.ui.common.usecase.SelectWalletAccountUseCase
+import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.screen.connecthardware.HardwareWalletEnrollment
 import co.electriccoin.zcash.ui.screen.connecthardware.neworactive.HardwareNewOrActiveArgs
@@ -124,10 +126,38 @@ class LedgerDeviceScanVMTest {
             assertEquals(R.string.ledger_scan_retry_cta, button.text.resourceId())
             assertTrue(button.isEnabled)
             assertFalse(button.isLoading)
-            assertTrue(
-                vm.state.value.devices
-                    .all { it.isEnabled }
+            assertEquals(emptyList(), vm.state.value.devices)
+            assertEquals(
+                R.string.ledger_scan_searching_title,
+                vm.state.value.title
+                    .resourceId()
             )
+        }
+
+    @Test
+    fun aSoftDenialOffersAnotherInAppRequestAndAPermanentOneOffersSettings() =
+        runTest(dispatcher) {
+            val soft = vm()
+            collect(soft)
+            soft.state.value.onPermissionsDenied(true)
+            runCurrent()
+            val softSheet = assertNotNull(soft.state.value.errorSheet)
+            assertEquals(R.string.ledger_error_permissions_title, softSheet.title.resourceId())
+            assertEquals(R.string.ledger_error_tryAgain, softSheet.primary.text.resourceId())
+
+            val nonceBefore = soft.state.value.permissionRequestNonce
+            softSheet.primary
+                .onClick()
+            runCurrent()
+            assertNull(soft.state.value.errorSheet)
+            assertEquals(nonceBefore + 1, soft.state.value.permissionRequestNonce)
+
+            val permanent = vm()
+            collect(permanent)
+            permanent.state.value.onPermissionsDenied(false)
+            runCurrent()
+            val permanentSheet = assertNotNull(permanent.state.value.errorSheet)
+            assertEquals(R.string.ledger_error_permissions_cta, permanentSheet.primary.text.resourceId())
         }
 
     @Test
@@ -248,7 +278,7 @@ class LedgerDeviceScanVMTest {
             val vm = vm(observeLedgerDevices = observeLedgerDevices)
             collect(vm)
 
-            vm.state.value.onPermissionsDenied()
+            vm.state.value.onPermissionsDenied(false)
             runCurrent()
 
             assertSheetTitle(vm, R.string.ledger_error_permissions_title)
@@ -278,10 +308,12 @@ class LedgerDeviceScanVMTest {
             runCurrent()
 
             assertSheetTitle(vm, R.string.ledger_error_alreadyAdded_title)
-            assertNotNull(
-                vm.state.value.errorSheet
-                    ?.secondary
-            )
+            val secondary =
+                assertNotNull(
+                    vm.state.value.errorSheet
+                        ?.secondary
+                )
+            assertEquals(ButtonStyle.SECONDARY, secondary.style)
         }
 
     private fun TestScope.pairedWithFailure(
@@ -340,6 +372,7 @@ class LedgerDeviceScanVMTest {
             },
         pairLedgerDevice: PairLedgerDeviceUseCase = mockk(relaxed = true),
         selectWalletAccount: SelectWalletAccountUseCase = mockk(relaxed = true),
+        ledgerPairingRepository: LedgerPairingRepository = mockk(relaxed = true),
         navigateToError: NavigateToErrorUseCase = mockk(relaxed = true),
         navigationRouter: NavigationRouter = mockk(relaxed = true),
     ) = LedgerDeviceScanVM(
@@ -347,6 +380,7 @@ class LedgerDeviceScanVMTest {
         observeLedgerDevices = observeLedgerDevices,
         pairLedgerDevice = pairLedgerDevice,
         selectWalletAccount = selectWalletAccount,
+        ledgerPairingRepository = ledgerPairingRepository,
         navigateToError = navigateToError,
         navigationRouter = navigationRouter,
     )

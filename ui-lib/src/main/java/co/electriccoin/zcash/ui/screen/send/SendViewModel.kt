@@ -6,6 +6,7 @@ import cash.z.ecc.android.sdk.model.ZecSend
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.repository.ExchangeRateRepository
 import co.electriccoin.zcash.ui.common.usecase.CreateProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetWalletAccountsUseCase
@@ -13,6 +14,8 @@ import co.electriccoin.zcash.ui.common.usecase.NavigateToSelectRecipientUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveABContactPickedUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveContactByAddressUseCase
 import co.electriccoin.zcash.ui.screen.contact.AddZashiABContactArgs
+import co.electriccoin.zcash.ui.screen.error.ErrorArgs
+import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.screen.send.model.AmountField
 import co.electriccoin.zcash.ui.screen.send.model.AmountState
 import co.electriccoin.zcash.ui.screen.send.model.RecipientAddressState
@@ -39,6 +42,7 @@ class SendViewModel(
     private val createProposal: CreateProposalUseCase,
     private val observeWalletAccounts: GetWalletAccountsUseCase,
     private val navigateToSelectRecipient: NavigateToSelectRecipientUseCase,
+    private val navigateToError: NavigateToErrorUseCase,
     private val navigationRouter: NavigationRouter,
 ) : ViewModel() {
     val recipientAddressState = MutableStateFlow(RecipientAddressState.new("", null))
@@ -142,6 +146,8 @@ class SendViewModel(
             viewModelScope.launch {
                 try {
                     createProposal(newZecSend, amountState.lastFieldChangedByUser == AmountField.FIAT)
+                } catch (e: LedgerOperationUnsupportedException) {
+                    navigateToError(ErrorArgs.General(e))
                 } catch (e: Exception) {
                     setSendStage(SendStage.SendFailure(e.cause?.message ?: e.message ?: ""))
                     Twig.error(e) { "Error creating proposal" }

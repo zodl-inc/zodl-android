@@ -445,6 +445,7 @@
     <string name="keepZodlOpenInstructionsHWWallet">Zodl está escaneando la cadena de bloques para recuperar tus transacciones. Las billeteras más antiguas pueden tardar horas en completar la sincronización. Sigue estos pasos para evitar interrupciones:</string>
     <string name="keepZodlOpenSubtitleHWWallet">Tu billetera se está sincronizando.</string>
     <string name="keep_open_keystone_warning">No podrás usar tus fondos de Zodl hasta que tu billetera Keystone esté sincronizada.</string>
+    <string name="keep_open_hw_wallet_warning">No podrás usar los fondos de esta billetera hasta que termine la sincronización.</string>
     <string name="keepScreenOnSyncing">Mantener la pantalla encendida mientras se sincroniza</string>
     <string name="keepZodlOpenInstructionsResyncing">Zodl está escaneando la cadena de bloques para recuperar tus transacciones. Las billeteras más antiguas pueden tardar horas en resincronizarse. Sigue estos pasos para evitar interrupciones:</string>
     <string name="keepZodlOpenSubtitleResync">Tu billetera se está resincronizando.</string>

@@ -64,8 +64,10 @@ class AccountListVM(
      * The call to action disappears only once every supported vendor is connected; the Figma
      * "maxed out" variant is exactly the Zodl + Keystone + Ledger case.
      */
-    private fun hasUnconnectedHardwareVendor(accounts: List<WalletAccount>?) =
-        accounts.orEmpty().none { it is KeystoneAccount } || accounts.orEmpty().none { it is LedgerAccount }
+    private fun hasUnconnectedHardwareVendor(accounts: List<WalletAccount>?): Boolean {
+        val loaded = accounts ?: return false
+        return loaded.none { it is KeystoneAccount } || loaded.none { it is LedgerAccount }
+    }
 
     private fun onAccountClicked(account: WalletAccount) =
         viewModelScope.launch {

@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -132,36 +133,68 @@ fun LedgerDeviceScanView(state: LedgerDeviceScanState) {
 
 @Composable
 private fun DeviceSkeletons(isShimmering: Boolean) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        repeat(SKELETON_ROWS) {
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .then(if (isShimmering) Modifier.shimmer(rememberZashiShimmer()) else Modifier)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(ZashiColors.Surfaces.bgSecondary)
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
+    Box {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            repeat(SKELETON_ROWS) {
+                Row(
                     modifier =
                         Modifier
-                            .size(40.dp)
-                            .background(ZashiColors.Surfaces.bgTertiary, CircleShape)
-                )
-                Spacer(Modifier.width(16.dp))
-                Box(
-                    modifier =
-                        Modifier
-                            .height(12.dp)
-                            .weight(1f)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(ZashiColors.Surfaces.bgTertiary)
-                )
+                            .fillMaxWidth()
+                            .then(if (isShimmering) Modifier.shimmer(rememberZashiShimmer()) else Modifier)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(ZashiColors.Surfaces.bgPrimary)
+                            .border(
+                                BorderStroke(1.dp, ZashiColors.Surfaces.strokeSecondary),
+                                RoundedCornerShape(12.dp)
+                            ).padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(32.dp)
+                                .background(ZashiColors.Surfaces.bgTertiary, CircleShape)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        SkeletonBar(widthFraction = SKELETON_TITLE_WIDTH)
+                        SkeletonBar(widthFraction = SKELETON_SUBTITLE_WIDTH)
+                    }
+                    Spacer(Modifier.weight(1f))
+                    Spacer(Modifier.width(12.dp))
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(20.dp)
+                                .background(ZashiColors.Surfaces.bgTertiary, CircleShape)
+                    )
+                }
             }
         }
+        Box(
+            modifier =
+                Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Transparent,
+                            1f to ZashiColors.Surfaces.bgPrimary,
+                        )
+                    )
+        )
     }
+}
+
+@Composable
+private fun SkeletonBar(widthFraction: Float) {
+    Box(
+        modifier =
+            Modifier
+                .height(10.dp)
+                .width(SKELETON_BAR_BASE_WIDTH.dp * widthFraction)
+                .clip(RoundedCornerShape(5.dp))
+                .background(ZashiColors.Surfaces.bgTertiary)
+    )
 }
 
 @Composable
@@ -185,10 +218,10 @@ private fun DeviceRow(state: LedgerDeviceItemState, index: Int) {
     ) {
         Image(
             modifier = Modifier.size(40.dp),
-            painter = painterResource(R.drawable.ic_ledger_device),
+            painter = painterResource(co.electriccoin.zcash.ui.design.R.drawable.ic_item_ledger),
             contentDescription = null,
         )
-        Spacer(Modifier.width(16.dp))
+        Spacer(Modifier.width(12.dp))
         Text(
             modifier = Modifier.weight(1f),
             text = state.name.getValue(),
@@ -228,7 +261,7 @@ private fun SelectionIndicator(isSelected: Boolean) {
                 .clip(CircleShape)
                 .background(
                     if (isSelected) {
-                        ZashiColors.Text.textPrimary
+                        ZashiColors.Checkboxes.boxOnBg
                     } else {
                         Color.Transparent
                     }
@@ -236,9 +269,9 @@ private fun SelectionIndicator(isSelected: Boolean) {
                     BorderStroke(
                         1.dp,
                         if (isSelected) {
-                            ZashiColors.Text.textPrimary
+                            ZashiColors.Checkboxes.boxOnBg
                         } else {
-                            ZashiColors.Surfaces.strokeSecondary
+                            ZashiColors.Checkboxes.boxOffStroke
                         }
                     ),
                     CircleShape
@@ -247,10 +280,10 @@ private fun SelectionIndicator(isSelected: Boolean) {
     ) {
         if (isSelected) {
             Icon(
-                modifier = Modifier.size(12.dp),
+                modifier = Modifier.size(14.dp),
                 painter = painterResource(R.drawable.ic_ledger_check),
                 contentDescription = null,
-                tint = ZashiColors.Surfaces.bgPrimary,
+                tint = ZashiColors.Checkboxes.boxOnFg,
             )
         }
     }
@@ -276,7 +309,7 @@ private fun LedgerErrorSheet(state: LedgerErrorSheetState?) {
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    modifier = Modifier.size(24.dp),
+                    modifier = Modifier.size(20.dp),
                     painter = painterResource(R.drawable.ic_ledger_alert_circle),
                     contentDescription = null,
                     tint = ZashiColors.Text.textPrimary,
@@ -290,20 +323,20 @@ private fun LedgerErrorSheet(state: LedgerErrorSheetState?) {
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(4.dp))
             Text(
                 text = sheetState.message.getValue(),
                 style = ZashiTypography.textSm,
                 color = ZashiColors.Text.textTertiary,
                 textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(24.dp))
             ZashiButton(
                 state = sheetState.primary,
                 modifier = Modifier.fillMaxWidth(),
             )
             sheetState.secondary?.let { secondary ->
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(12.dp))
                 ZashiButton(
                     state = secondary,
                     modifier = Modifier.fillMaxWidth(),
@@ -314,6 +347,12 @@ private fun LedgerErrorSheet(state: LedgerErrorSheetState?) {
 }
 
 private const val SKELETON_ROWS = 3
+
+private const val SKELETON_BAR_BASE_WIDTH = 160
+
+private const val SKELETON_TITLE_WIDTH = 1f
+
+private const val SKELETON_SUBTITLE_WIDTH = 0.6f
 
 @PreviewScreens
 @Composable
@@ -328,6 +367,7 @@ private fun ScanningPreview() =
                     devices = emptyList(),
                     primaryButton = ButtonState(stringRes("Searching"), isEnabled = false, isLoading = true),
                     errorSheet = null,
+                    permissionRequestNonce = 0,
                     onPermissionsGranted = {},
                     onPermissionsDenied = {},
                     onBack = {},
@@ -362,6 +402,7 @@ private fun SelectPreview() =
                         ),
                     primaryButton = ButtonState(stringRes("Connect")),
                     errorSheet = null,
+                    permissionRequestNonce = 0,
                     onPermissionsGranted = {},
                     onPermissionsDenied = {},
                     onBack = {},

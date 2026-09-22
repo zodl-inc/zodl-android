@@ -77,7 +77,14 @@ class KeepOpenVM(
                 KeepOpenState(
                     description = stringRes(R.string.keepZodlOpenInstructionsHWWallet),
                     subtitle = stringRes(R.string.keepZodlOpenSubtitleHWWallet),
-                    disclaimer = getDisclaimer(R.string.keep_open_keystone_warning),
+                    disclaimer =
+                        getDisclaimer(
+                            if (flow == KeepOpenFlow.LEDGER) {
+                                R.string.keep_open_hw_wallet_warning
+                            } else {
+                                R.string.keep_open_keystone_warning
+                            }
+                        ),
                     checkboxLabel = stringRes(R.string.keepScreenOnSyncing),
                     isChecked = isChecked,
                     onCheckedChange = { onChecked() },

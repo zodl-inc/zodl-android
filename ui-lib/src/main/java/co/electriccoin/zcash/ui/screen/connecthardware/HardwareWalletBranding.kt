@@ -47,15 +47,20 @@ private val KEYSTONE_BRANDING =
         blockHeightFieldTestTag = HardwareWalletEnrollmentTag.KEYSTONE_BLOCK_HEIGHT_FIELD,
     )
 
+/**
+ * Every enrollment text the Keystone flow already had is vendor-neutral — none of them names
+ * Keystone — so Ledger reuses the same resources rather than carrying translated duplicates. Only
+ * the logo and the test tags actually differ today.
+ */
 private val LEDGER_BRANDING =
     HardwareWalletBranding(
         logo = R.drawable.ic_ledger_wordmark,
-        deviceQuestion = stringRes(R.string.ledger_deviceQuestion),
-        deviceDescription = stringRes(R.string.ledger_deviceDesc),
-        connectNewDevice = stringRes(R.string.ledger_connectNew),
-        connectActiveDevice = stringRes(R.string.ledger_connectActive),
-        enterBlockHeightManually = stringRes(R.string.ledger_enterManually),
-        connect = stringRes(R.string.ledger_connect_cta),
+        deviceQuestion = stringRes(R.string.keystone_addHWWallet_deviceQuestion),
+        deviceDescription = stringRes(R.string.keystone_addHWWallet_deviceDesc),
+        connectNewDevice = stringRes(R.string.keystone_addHWWallet_connectNew),
+        connectActiveDevice = stringRes(R.string.keystone_addHWWallet_connectActive),
+        enterBlockHeightManually = stringRes(R.string.keystone_addHWWallet_enterManually),
+        connect = stringRes(R.string.keystone_addHWWallet_connect),
         newDeviceTestTag = HardwareWalletEnrollmentTag.LEDGER_NEW_DEVICE,
         activeDeviceTestTag = HardwareWalletEnrollmentTag.LEDGER_ACTIVE_DEVICE,
         enterManuallyTestTag = HardwareWalletEnrollmentTag.LEDGER_ENTER_MANUALLY_BTN,

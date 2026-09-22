@@ -49,16 +49,16 @@
     <string name="ledger_error_alreadyAdded_secondary">Cancel</string>
 
     <!-- New or active device -->
-    <string name="ledger_deviceQuestion">New or active device?</string>
-    <string name="ledger_deviceDesc">Let us know if this is a brand new Ledger device or one that has already been used, so we can sync your wallet correctly.</string>
-    <string name="ledger_connectNew">Connect new device</string>
-    <string name="ledger_connectActive">Connect active device</string>
-    <string name="ledger_enterManually">Enter block height manually</string>
 
     <!-- Connected -->
     <string name="ledger_connected_title">Connected!</string>
     <string name="ledger_connected_message">Your Ledger is connected and ready to use.</string>
     <string name="ledger_connected_cta">Close</string>
+
+    <!-- Disconnect and integrations -->
+    <string name="ledger_disconnect_title">Disconnect Ledger</string>
+    <string name="ledgerHW">Ledger Hardware</string>
+    <string name="integrations_disabled_info_flexa_ledger">Switch from Ledger to Zodl to use Flexa.</string>
 
     <!-- Send paths -->
     <string name="ledger_confirm">Confirm with Ledger</string>

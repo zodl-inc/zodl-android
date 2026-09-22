@@ -1,7 +1,9 @@
 package co.electriccoin.zcash.ui.screen.choosehardwarewallet
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -82,7 +85,7 @@ fun ChooseHardwareWalletView(state: ChooseHardwareWalletState) {
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = state.subtitle.getValue(),
-                    style = ZashiTypography.textSm,
+                    style = ZashiTypography.textMd,
                     color = ZashiColors.Text.textTertiary,
                 )
                 Spacer(Modifier.height(24.dp))
@@ -103,9 +106,9 @@ private fun HardwareWalletCard(state: HardwareWalletCardState) {
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(CARD_HEIGHT.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(CARD_BACKGROUND)
+                .border(BorderStroke(1.dp, ZashiColors.Surfaces.strokeSecondary), RoundedCornerShape(16.dp))
                 .clickable(onClick = state.onClick)
                 .testTag(state.testTag),
         contentAlignment = Alignment.Center,
@@ -115,6 +118,7 @@ private fun HardwareWalletCard(state: HardwareWalletCardState) {
             painter = painterResource(state.background),
             contentDescription = state.contentDescription.getValue(),
             contentScale = ContentScale.Crop,
+            alpha = CARD_PHOTO_ALPHA,
         )
         Box(
             modifier =
@@ -128,16 +132,21 @@ private fun HardwareWalletCard(state: HardwareWalletCardState) {
                     )
         )
         if (state.wordmark != null) {
-            Image(
+            Icon(
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 32.dp),
                 painter = painterResource(state.wordmark),
                 contentDescription = null,
+                tint = Color.White,
             )
+        } else {
+            Spacer(Modifier.height(CARD_MIN_CONTENT_HEIGHT.dp))
         }
     }
 }
 
-private const val CARD_HEIGHT = 180
+private const val CARD_MIN_CONTENT_HEIGHT = 104
+
+private const val CARD_PHOTO_ALPHA = 0.48f
 
 private const val CARD_BACKGROUND_ARGB = 0xFF231F20
 
@@ -163,7 +172,7 @@ private fun Preview() =
                             ),
                             HardwareWalletCardState(
                                 background = R.drawable.img_ledger_card,
-                                wordmark = R.drawable.ic_ledger_wordmark_light,
+                                wordmark = R.drawable.ic_ledger_wordmark,
                                 contentDescription = stringRes("Ledger"),
                                 testTag = ChooseHardwareWalletTag.LEDGER_CARD,
                                 onClick = {},

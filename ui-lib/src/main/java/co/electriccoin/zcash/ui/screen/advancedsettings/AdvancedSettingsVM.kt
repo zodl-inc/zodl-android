@@ -80,7 +80,11 @@ class AdvancedSettingsVM(
         accounts: List<WalletAccount>?,
         isRestartAvailable: Boolean,
     ): AdvancedSettingsState {
-        val hasKeystoneAccount = accounts?.any { it is co.electriccoin.zcash.ui.common.model.KeystoneAccount } == true
+        val hasHardwareWalletAccount =
+            accounts?.any {
+                it is co.electriccoin.zcash.ui.common.model.KeystoneAccount ||
+                    it is co.electriccoin.zcash.ui.common.model.LedgerAccount
+            } == true
         val restoring = walletRestoringState == WalletRestoringState.RESTORING
         return AdvancedSettingsState(
             onBack = ::onBack,
@@ -139,7 +143,7 @@ class AdvancedSettingsVM(
                         title = stringRes(R.string.disconnectHWWallet_cta),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_disconnect_hw),
                         onClick = ::onDisconnectHwWalletClick
-                    ).takeIf { hasKeystoneAccount },
+                    ).takeIf { hasHardwareWalletAccount },
                     ListItemState(
                         title = stringRes(co.electriccoin.zcash.ui.design.R.string.restartMigration_settingsItem),
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_restart_migration),

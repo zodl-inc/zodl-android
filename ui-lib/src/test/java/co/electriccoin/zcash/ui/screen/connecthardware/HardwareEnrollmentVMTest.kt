@@ -37,6 +37,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -64,7 +65,7 @@ class HardwareEnrollmentVMTest {
     }
 
     @Test
-    fun brandingResolvesPerVendorAndNeverMixes() {
+    fun theVendorNeutralEnrollmentTextsAreOneStringForBothVendors() {
         val keystone = brandingOf(HardwareWalletEnrollment.Keystone(ur = "ur"))
         val ledger = brandingOf(HardwareWalletEnrollment.Ledger)
 
@@ -73,16 +74,25 @@ class HardwareEnrollmentVMTest {
         assertEquals(R.string.keystone_addHWWallet_connectActive, keystone.connectActiveDevice.resourceId())
         assertEquals(R.string.keystone_addHWWallet_connect, keystone.connect.resourceId())
         assertEquals(R.string.keystone_addHWWallet_enterManually, keystone.enterBlockHeightManually.resourceId())
+
+        assertEquals(keystone.deviceQuestion, ledger.deviceQuestion)
+        assertEquals(keystone.deviceDescription, ledger.deviceDescription)
+        assertEquals(keystone.connectNewDevice, ledger.connectNewDevice)
+        assertEquals(keystone.connectActiveDevice, ledger.connectActiveDevice)
+        assertEquals(keystone.enterBlockHeightManually, ledger.enterBlockHeightManually)
+        assertEquals(keystone.connect, ledger.connect)
+    }
+
+    @Test
+    fun theLogoAndTestTagsAreWhatActuallyDifferPerVendor() {
+        val keystone = brandingOf(HardwareWalletEnrollment.Keystone(ur = "ur"))
+        val ledger = brandingOf(HardwareWalletEnrollment.Ledger)
+
         assertEquals(HardwareWalletEnrollmentTag.KEYSTONE_NEW_DEVICE, keystone.newDeviceTestTag)
         assertEquals(HardwareWalletEnrollmentTag.KEYSTONE_CONNECT_BTN, keystone.connectTestTag)
-
-        assertEquals(R.string.ledger_deviceQuestion, ledger.deviceQuestion.resourceId())
-        assertEquals(R.string.ledger_connectNew, ledger.connectNewDevice.resourceId())
-        assertEquals(R.string.ledger_connectActive, ledger.connectActiveDevice.resourceId())
-        assertEquals(R.string.ledger_connect_cta, ledger.connect.resourceId())
-        assertEquals(R.string.ledger_enterManually, ledger.enterBlockHeightManually.resourceId())
         assertEquals(HardwareWalletEnrollmentTag.LEDGER_NEW_DEVICE, ledger.newDeviceTestTag)
         assertEquals(HardwareWalletEnrollmentTag.LEDGER_CONNECT_BTN, ledger.connectTestTag)
+        assertNotEquals(keystone.logo, ledger.logo)
     }
 
     @Test

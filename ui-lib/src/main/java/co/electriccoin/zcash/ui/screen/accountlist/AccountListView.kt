@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.accountlist
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -169,12 +170,8 @@ private fun ZashiAccountListItem(
                 contentDescription = state.title.getValue()
             )
         },
-        color =
-            if (state.isSelected) {
-                ZashiColors.Surfaces.bgPrimary
-            } else {
-                Color.Transparent
-            },
+        color = ZashiColors.Surfaces.bgPrimary,
+        border = BorderStroke(1.dp, ZashiColors.Surfaces.strokeSecondary),
         onClick = state.onClick
     )
 }

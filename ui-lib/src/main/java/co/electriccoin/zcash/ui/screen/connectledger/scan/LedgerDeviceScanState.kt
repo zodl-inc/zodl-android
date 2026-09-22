@@ -11,8 +11,13 @@ data class LedgerDeviceScanState(
     val devices: List<LedgerDeviceItemState>,
     val primaryButton: ButtonState,
     val errorSheet: LedgerErrorSheetState?,
+    /**
+     * Bumped whenever the view model wants the screen to launch the runtime permission request
+     * again; the screen keys its request effect on it.
+     */
+    val permissionRequestNonce: Int,
     val onPermissionsGranted: () -> Unit,
-    val onPermissionsDenied: () -> Unit,
+    val onPermissionsDenied: (canRequestAgain: Boolean) -> Unit,
     val onBack: () -> Unit,
 )
 

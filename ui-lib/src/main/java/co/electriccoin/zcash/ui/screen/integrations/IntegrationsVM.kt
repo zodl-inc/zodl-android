@@ -67,12 +67,21 @@ class IntegrationsVM(
     ) = IntegrationsState(
         disabledInfo =
             when {
-                isRestoring -> stringRes(R.string.integrations_disabled_info)
+                isRestoring -> {
+                    stringRes(R.string.integrations_disabled_info)
+                }
 
-                selectedAccount is KeystoneAccount ||
-                    selectedAccount is LedgerAccount -> stringRes(R.string.integrations_disabled_info_flexa)
+                selectedAccount is KeystoneAccount -> {
+                    stringRes(R.string.integrations_disabled_info_flexa)
+                }
 
-                else -> null
+                selectedAccount is LedgerAccount -> {
+                    stringRes(R.string.integrations_disabled_info_flexa_ledger)
+                }
+
+                else -> {
+                    null
+                }
             },
         onBack = ::onBack,
         items =

@@ -47,7 +47,7 @@ class ChooseHardwareWalletVM(
                     ).takeIf { accounts.orEmpty().none { account -> account is KeystoneAccount } },
                     HardwareWalletCardState(
                         background = R.drawable.img_ledger_card,
-                        wordmark = R.drawable.ic_ledger_wordmark_light,
+                        wordmark = R.drawable.ic_ledger_wordmark,
                         contentDescription = stringRes(R.string.accounts_ledger),
                         testTag = ChooseHardwareWalletTag.LEDGER_CARD,
                         onClick = ::onLedgerClick,

@@ -11,11 +11,13 @@ import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
 import co.electriccoin.zcash.ui.common.usecase.PairLedgerDeviceResult
 import co.electriccoin.zcash.ui.common.usecase.PairLedgerDeviceUseCase
 import co.electriccoin.zcash.ui.common.usecase.SelectWalletAccountUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
+import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connecthardware.HardwareWalletEnrollment
 import co.electriccoin.zcash.ui.screen.connecthardware.neworactive.HardwareNewOrActiveArgs
@@ -48,6 +50,7 @@ class LedgerDeviceScanVM(
     private val observeLedgerDevices: ObserveLedgerDevicesUseCase,
     private val pairLedgerDevice: PairLedgerDeviceUseCase,
     private val selectWalletAccount: SelectWalletAccountUseCase,
+    private val ledgerPairingRepository: LedgerPairingRepository,
     private val navigateToError: NavigateToErrorUseCase,
     private val navigationRouter: NavigationRouter,
 ) : AndroidViewModel(application) {
@@ -68,10 +71,15 @@ class LedgerDeviceScanVM(
                 initialValue = createState(internalState.value)
             )
 
+    /**
+     * This screen sits under the birthday screens and is popped when the flow is abandoned or
+     * finished, so its disposal is where an unused pairing stops being held.
+     */
     override fun onCleared() {
         stopScan()
         pairJob?.cancel()
         pairJob = null
+        ledgerPairingRepository.clear()
         super.onCleared()
     }
 
@@ -102,6 +110,7 @@ class LedgerDeviceScanVM(
                 },
             primaryButton = createPrimaryButton(internal, hasDevices),
             errorSheet = internal.error?.let { createErrorSheet(it) },
+            permissionRequestNonce = internal.permissionRequestNonce,
             onPermissionsGranted = ::onPermissionsGranted,
             onPermissionsDenied = ::onPermissionsDenied,
             onBack = ::onBack,
@@ -177,10 +186,17 @@ class LedgerDeviceScanVM(
                     title = stringRes(R.string.ledger_error_permissions_title),
                     message = stringRes(R.string.ledger_error_permissions_message),
                     primary =
-                        ButtonState(
-                            text = stringRes(R.string.ledger_error_permissions_cta),
-                            onClick = { onOpenSettingsClick(error.openBluetoothSettings) },
-                        ),
+                        if (error.canRequestAgain) {
+                            ButtonState(
+                                text = stringRes(R.string.ledger_error_tryAgain),
+                                onClick = ::onRequestPermissionsAgainClick,
+                            )
+                        } else {
+                            ButtonState(
+                                text = stringRes(R.string.ledger_error_permissions_cta),
+                                onClick = { onOpenSettingsClick(error.openBluetoothSettings) },
+                            )
+                        },
                     secondary = null,
                     onBack = ::onSheetDismissed,
                 )
@@ -198,6 +214,7 @@ class LedgerDeviceScanVM(
                     secondary =
                         ButtonState(
                             text = stringRes(R.string.ledger_error_alreadyAdded_secondary),
+                            style = ButtonStyle.SECONDARY,
                             onClick = ::onSheetDismissed,
                         ),
                     onBack = ::onSheetDismissed,
@@ -224,12 +241,26 @@ class LedgerDeviceScanVM(
         }
     }
 
-    private fun onPermissionsDenied() {
+    private fun onPermissionsDenied(canRequestAgain: Boolean) {
         stopScan()
         internalState.update {
             it.copy(
                 phase = LedgerScanPhase.IDLE,
-                error = LedgerScanError.Permissions(openBluetoothSettings = false),
+                error = LedgerScanError.Permissions(canRequestAgain = canRequestAgain),
+            )
+        }
+    }
+
+    /**
+     * Re-launches the runtime request the screen owns. A permission that can still be asked for
+     * deserves another in-app prompt rather than a trip through Settings.
+     */
+    private fun onRequestPermissionsAgainClick() {
+        internalState.update {
+            it.copy(
+                error = null,
+                phase = LedgerScanPhase.PERMISSION,
+                permissionRequestNonce = it.permissionRequestNonce + 1,
             )
         }
     }
@@ -259,7 +290,13 @@ class LedgerDeviceScanVM(
             when (val result = pairLedgerDevice(device)) {
                 is PairLedgerDeviceResult.Paired -> {
                     navigationRouter.forward(HardwareNewOrActiveArgs(HardwareWalletEnrollment.Ledger))
-                    internalState.update { it.copy(phase = LedgerScanPhase.IDLE) }
+                    internalState.update {
+                        it.copy(
+                            phase = LedgerScanPhase.IDLE,
+                            devices = emptyList(),
+                            selectedIdentifier = null,
+                        )
+                    }
                 }
 
                 is PairLedgerDeviceResult.AlreadyAdded -> {
@@ -411,7 +448,7 @@ private fun LedgerException.toScanError(): LedgerScanError? =
         }
 
         is LedgerException.BluetoothUnauthorized -> {
-            LedgerScanError.Permissions(openBluetoothSettings = false)
+            LedgerScanError.Permissions(canRequestAgain = false)
         }
 
         is LedgerException.BluetoothUnavailable -> {
@@ -432,6 +469,7 @@ private data class LedgerScanInternalState(
     val devices: List<LedgerBluetoothDevice> = emptyList(),
     val selectedIdentifier: String? = null,
     val error: LedgerScanError? = null,
+    val permissionRequestNonce: Int = 0,
 )
 
 private enum class LedgerScanPhase {
@@ -455,7 +493,8 @@ private sealed interface LedgerScanError {
     data object Disconnected : LedgerScanError
 
     data class Permissions(
-        val openBluetoothSettings: Boolean
+        val canRequestAgain: Boolean = false,
+        val openBluetoothSettings: Boolean = false,
     ) : LedgerScanError
 
     data class AlreadyAdded(
