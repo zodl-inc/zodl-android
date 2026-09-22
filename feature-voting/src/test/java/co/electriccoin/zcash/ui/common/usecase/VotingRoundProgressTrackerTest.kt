@@ -491,39 +491,43 @@ class VotingRoundProgressTrackerTest {
         assertEquals(1, estimate)
     }
 
-    // --- recordPlan / multi-bundle "every carrying bundle must agree" (live 13-bundle finding) ---
+    // --- recordPlan / multi-bundle proportional credit (live 13-bundle finding) ---
     //
-    // A round with several bundles casts the SAME 37-proposal ballot once per bundle. Before this
-    // fix, a proposal was credited the moment the SINGLE FASTEST bundle finished it -- with many
-    // bundles racing at different paces, that made the display sit at a near-total count (e.g.
-    // "36 of 37", observed live) for most of the run while 12 of 13 bundles had barely started.
-    // Mirrors Vizor Wallet's `votingBallotProgress`'s `entriesByProposal`/`finishedByProposal`
-    // gated on `seenEntries >= carryingBundles`.
+    // A round with several bundles casts the SAME ballot once per bundle. An earlier version of
+    // this required EVERY carrying bundle to report a proposal at full progress before counting
+    // it at all -- correct in the strict sense, but for a many-bundle round that froze this at 0
+    // for nearly the whole run while `fraction()` (fed by the same underlying data) visibly
+    // climbed, a contradictory pairing a live tester immediately (and correctly) rejected: the
+    // tracker already knows the real, granular proportion of work done at every moment, so a
+    // frozen count instead of that known proportion was never actually "expected" behavior, just
+    // a worse design choice. `recordPlan`'s carrying-bundle-count now scales each proposal's
+    // OWN contribution proportionally instead of gating it behind unanimous full-progress
+    // agreement -- see `proposalCompletionFraction`'s own doc comment.
 
     @Test
-    fun `a proposal is not counted complete until every carrying bundle has reported it`() {
+    fun `a proposal contributes only partial credit before every carrying bundle has reported it`() {
         val tracker = VotingRoundProgressTracker()
         tracker.recordPlan(listOf(0, 1))
 
-        // Only bundle 0 has finished proposal 1; bundle 1 hasn't reported it at all yet.
+        // Only bundle 0 (of the 2 required) has finished proposals 1 and 2; bundle 1 hasn't
+        // reported either yet. Each is worth half credit until bundle 1 catches up -- two
+        // half-credited proposals round down to 1 whole proposal, not 2.
         tracker.record(castVote(bundleIndex = 0, proposalId = 1), proofProgress = 1.0f)
+        tracker.record(castVote(bundleIndex = 0, proposalId = 2), proofProgress = 1.0f)
 
-        // Real signal exists (bundle 0's own progress), so this is a determinate zero, not the
-        // indeterminate null reserved for "nothing measured at all" -- it must just not credit a
-        // whole proposal complete while a sibling bundle hasn't reported on it yet.
-        val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 37)
-        assertEquals(0, estimate, "must not credit a proposal only one of two carrying bundles finished")
+        val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 4)
+        assertEquals(1, estimate, "two proposals at half credit (1 of 2 carrying bundles) should round to 1, not 2")
     }
 
     @Test
-    fun `a proposal counts complete once every carrying bundle has reported it at full progress`() {
+    fun `a proposal counts as fully complete once every carrying bundle has reported it at full progress`() {
         val tracker = VotingRoundProgressTracker()
         tracker.recordPlan(listOf(0, 1))
 
         tracker.record(castVote(bundleIndex = 0, proposalId = 1), proofProgress = 1.0f)
         tracker.record(castVote(bundleIndex = 1, proposalId = 1), proofProgress = 1.0f)
 
-        val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 37)
+        val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 4)
         assertEquals(1, estimate)
     }
 
@@ -537,10 +541,11 @@ class VotingRoundProgressTrackerTest {
         tracker.record(castVote(bundleIndex = 1, proposalId = 1), proofProgress = 1.0f)
 
         // Bundle 0 finished casting and the plan no longer lists it -- recordPlan is a union, so
-        // this must not un-count bundle 0 for proposals already attributed to it.
+        // this must not un-count bundle 0 for proposals already attributed to it (which would
+        // otherwise inflate the denominator down to 1 and double-credit this proposal).
         tracker.recordPlan(listOf(1))
 
-        val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 37)
+        val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 4)
         assertEquals(1, estimate)
     }
 
@@ -548,12 +553,12 @@ class VotingRoundProgressTrackerTest {
     fun `bundles this tracker has itself observed are unioned in even without a matching plan refresh`() {
         val tracker = VotingRoundProgressTracker()
 
-        // No recordPlan call at all -- carryingBundleCount() falls back entirely to observed
+        // No recordPlan call at all -- the carrying-bundle count falls back entirely to observed
         // bundle indices, exactly like the pre-existing single-bundle tests rely on.
         tracker.record(castVote(bundleIndex = 0, proposalId = 1), proofProgress = 1.0f)
         tracker.record(castVote(bundleIndex = 1, proposalId = 1), proofProgress = 1.0f)
 
-        val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 37)
+        val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 4)
         assertEquals(1, estimate)
     }
 
@@ -563,30 +568,32 @@ class VotingRoundProgressTrackerTest {
         tracker.recordPlan(null)
         tracker.recordPlan(emptyList())
 
+        // Only ever one bundle observed, so it alone is the full carrying count -- full credit.
         tracker.record(castVote(bundleIndex = 0, proposalId = 1), proofProgress = 1.0f)
 
-        val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 37)
+        val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 4)
         assertEquals(1, estimate)
     }
 
     @Test
-    fun `many bundles at different paces only credit proposals every one of them has finished`() {
+    fun `many bundles at different paces produce a proportional estimate, not a frozen zero`() {
         val tracker = VotingRoundProgressTracker()
         tracker.recordPlan((0 until 13).toList())
 
-        // Bundle 0 (the fastest) has raced through proposals 1-36; every other bundle has only
-        // reached proposal 1 so far -- reproduces the live 13-bundle observation.
-        for (proposalId in 1..36) {
+        // Bundle 0 (the fastest) has raced through every proposal; the other 12 of 13 required
+        // bundles haven't reported anything at all yet -- reproduces the live 13-bundle
+        // observation. The old strict-agreement rule froze this at 0 the whole time despite the
+        // tracker already knowing roughly 1 of 13 bundles' worth of the round's total work is
+        // genuinely done.
+        for (proposalId in 1..37) {
             tracker.record(castVote(bundleIndex = 0, proposalId = proposalId), proofProgress = 1.0f)
         }
-        for (bundleIndex in 1 until 13) {
-            tracker.record(castVote(bundleIndex = bundleIndex, proposalId = 1), proofProgress = 1.0f)
-        }
 
-        // Proposal 1 is the only one all 13 bundles agree on; proposals 2-36 are each missing
-        // 12 of their 13 bundles and must not be counted, no matter how far bundle 0 got.
         val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 37)
-        assertEquals(1, estimate)
+        checkNotNull(estimate)
+        // Roughly 37/13 ~= 2-3 proposals' worth -- moving and honest, neither stuck at 0 nor
+        // claiming anywhere near the 37 bundle 0 alone raced through.
+        assertTrue(estimate in 1..4, "expected a proportional estimate around 37/13 ~= 2-3, was $estimate")
     }
 
     /**

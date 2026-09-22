@@ -151,15 +151,17 @@ internal class VotingRoundProgressTracker {
      * A dispatched vote can still be rejected and need a retry, so this estimate can run ahead of
      * what is later confirmed.
      *
-     * **Multi-bundle correctness (added after a live 13-bundle test showed the display sitting at
-     * "36 of 37" for most of the run):** a proposal is only counted here once EVERY bundle
-     * carrying the ballot has reported it at full progress -- see [truePerBundleCompletedCount].
-     * Requiring every bundle to agree, rather than crediting a proposal the moment the single
-     * fastest bundle finishes it, is exactly Vizor Wallet's own fix for this
-     * (`voting_progress_presentation.dart`'s `votingBallotProgress`/`entriesByProposal`/
-     * `finishedByProposal`, gated on `seenEntries >= carryingBundles`) -- without it, a
-     * many-bundle round's fastest bundle alone would make almost every proposal look "done" long
-     * before the other bundles have even started casting it.
+     * **Many-bundle behavior (revised after live testing on a 13-bundle round):** an earlier
+     * version of this required EVERY bundle carrying the ballot to report a proposal at full
+     * progress before counting it -- correct in the strict sense, but for a many-bundle round
+     * that meant this sat frozen at 0 for nearly the whole run while [fraction] (fed by the same
+     * underlying data via [proposalCompletionFraction]) visibly climbed, a contradictory pairing
+     * a live tester immediately caught and rejected: the tracker DOES know the real, granular
+     * proportion of work done at every moment, so showing a frozen count instead of that known
+     * proportion was indefensible, not "expected." This estimate is now [proposalCompletionFraction]
+     * itself, scaled to a proposal count -- exactly in step with the bar, using every bundle's
+     * real contribution (already correctly weighted by how many of the required bundles have
+     * reported) rather than requiring unanimous full-progress agreement first.
      *
      * Two safeguards keep that approximation from ever contradicting the authoritative tally:
      * it never returns [totalProposals] itself until [completedProposals] genuinely reaches it
@@ -180,31 +182,9 @@ internal class VotingRoundProgressTracker {
         }
         lastProposalFraction = maxOf(lastProposalFraction, proposalCompletionFraction(completedProposals, total))
         if (lastProposalFraction <= 0f) return null
-        val estimate = truePerBundleCompletedCount().coerceIn(0, total - 1)
+        val estimate = (lastProposalFraction * total).toInt().coerceIn(0, total - 1)
         lastEstimatedCompleted = maxOf(lastEstimatedCompleted, maxOf(estimate, authoritative))
         return lastEstimatedCompleted
-    }
-
-    /**
-     * How many proposals have been cast to full progress in EVERY bundle carrying the ballot, not
-     * just the fastest one. The required bundle count is [planVoteCarryingBundleIndexes] (this
-     * round's live plan, folded in via [recordPlan]) unioned with every bundle index this tracker
-     * has itself observed reporting proposal-scoped progress ([bundleProgressByProposal]'s own
-     * keys) -- the same union Vizor Wallet's `votingBallotCarryingBundleCount` computes, and for
-     * the same reason: a bundle that has already finished casting drops off the live plan's own
-     * list, but must not drop out of this denominator. A proposal only one of several bundles has
-     * reached is correctly excluded rather than counted early; a bundle this tracker has never
-     * observed reporting a given proposal simply has no entry in [bundleProgressByProposal] for
-     * it, which is why a proposal only counts once its recorded bundle count reaches the required
-     * total AND every one of those recorded bundles is itself at full progress.
-     */
-    private fun truePerBundleCompletedCount(): Int {
-        val observedBundleIndexes = bundleProgressByProposal.values.flatMapTo(mutableSetOf()) { it.keys }
-        val requiredBundles = (planVoteCarryingBundleIndexes + observedBundleIndexes).size
-        if (requiredBundles <= 0) return 0
-        return bundleProgressByProposal.count { (_, perBundle) ->
-            perBundle.size >= requiredBundles && perBundle.values.all { it >= 1f }
-        }
     }
 
     /**
