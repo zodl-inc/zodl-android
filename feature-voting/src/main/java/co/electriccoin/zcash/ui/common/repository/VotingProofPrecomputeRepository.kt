@@ -4,11 +4,13 @@ import android.util.Log
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.provider.PirSnapshotResolver
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -113,7 +115,11 @@ interface VotingProofPrecomputeRepository {
 class VotingProofPrecomputeRepositoryImpl(
     private val votingCryptoClient: VotingCryptoClient,
     private val pirSnapshotResolver: PirSnapshotResolver,
-    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
+    // Injectable so tests exercising the "one failure is enough" dedup-key behavior (Important
+    // #4) aren't forced to actually wait out real backoff delays -- see withPirFetchRetry's own
+    // doc comment for why the default matches Vizor Wallet's own delay schedule.
+    private val pirFetchRetryDelaysMs: LongArray = DEFAULT_PIR_FETCH_RETRY_DELAYS_MS
 ) : VotingProofPrecomputeRepository {
     private val lock = Any()
     private val pirWarmupJobs = mutableMapOf<VotingPirWarmupKey, Job>()
@@ -214,13 +220,15 @@ class VotingProofPrecomputeRepositoryImpl(
 
             try {
                 votingCryptoClient.setWalletId(dbHandle, request.walletId, request.networkId)
-                votingCryptoClient.precomputePirProofs(
-                    dbHandle = dbHandle,
-                    torRuntime = request.torRuntime,
-                    pirServerUrl = pirServerUrl,
-                    pirLayout = request.pirLayout,
-                    notesJson = request.notesJson
-                )
+                withPirFetchRetry("PIR proof warmup for account ${request.accountUuid}") {
+                    votingCryptoClient.precomputePirProofs(
+                        dbHandle = dbHandle,
+                        torRuntime = request.torRuntime,
+                        pirServerUrl = pirServerUrl,
+                        pirLayout = request.pirLayout,
+                        notesJson = request.notesJson
+                    )
+                }
             } finally {
                 // Important #1 (final whole-plan review): cancelAndAwaitPrecompute cancels this
                 // job while it may be blocked inside the native, non-cancellable precompute call
@@ -265,14 +273,16 @@ class VotingProofPrecomputeRepositoryImpl(
 
             try {
                 votingCryptoClient.setWalletId(dbHandle, request.walletId, request.networkId)
-                votingCryptoClient.precomputeSnapshotBundles(
-                    dbHandle = dbHandle,
-                    torRuntime = request.torRuntime,
-                    roundId = request.roundId,
-                    pirServerUrl = pirServerUrl,
-                    pirLayout = request.pirLayout,
-                    notesJson = request.notesJson
-                )
+                withPirFetchRetry("Snapshot bundle precompute for round ${request.roundId}") {
+                    votingCryptoClient.precomputeSnapshotBundles(
+                        dbHandle = dbHandle,
+                        torRuntime = request.torRuntime,
+                        roundId = request.roundId,
+                        pirServerUrl = pirServerUrl,
+                        pirLayout = request.pirLayout,
+                        notesJson = request.notesJson
+                    )
+                }
             } finally {
                 // See runPirWarmup's identical comment above (Important #1) -- same reasoning.
                 withContext(NonCancellable) {
@@ -291,7 +301,62 @@ class VotingProofPrecomputeRepositoryImpl(
         }
     }
 
+    /**
+     * Retries a PIR-fetching precompute call with the same exponential backoff Vizor Wallet
+     * applies to its own background delegation-proof precompute (`voting_retry.dart`'s
+     * `withVotingRetry`, `_delegationSetupRetryPolicy`: 100/200/400/800ms, 4 attempts total) --
+     * added after a live 13-bundle round test showed 3 of 13 bundles fail their LIVE delegation
+     * step with a bare PIR transport error (connection/body-read failures against
+     * `stage.pir.valargroup.org`) and get permanently skipped for that run
+     * (`FailureIsolation::SkipBundle`, the crate's default -- see `round_session.rs`'s own doc
+     * comment). The crate's live delegation dispatch consults the SAME on-disk PIR cache this
+     * warm-up fills (`VotingDb::precompute_delegation_pir`, `zcash_voting::precompute::
+     * warm_delegation_pir`/`observe_delegation_pir`), so a bundle whose proof this warm-up
+     * already cached never needs to hit the network again during the live run -- making this
+     * retry a genuine fix for that failure class, not just a cosmetic one.
+     *
+     * Retries unconditionally on any non-cancellation failure, unlike Vizor's own gate on a
+     * crate-reported `retryable` flag -- this SDK does not currently classify precompute
+     * failures that way, and retrying blindly is safe here specifically because both callers are
+     * already fire-and-forget, best-effort, read-only cache fills with no side effects beyond
+     * populating the cache: a wasted retry on a genuinely non-transient failure costs at most
+     * ~1.5s of background time before falling through to the existing swallow-and-log behavior,
+     * never something the triggering screen can observe.
+     */
+    private suspend fun <T> withPirFetchRetry(
+        label: String,
+        operation: suspend () -> T
+    ): T {
+        for (attempt in pirFetchRetryDelaysMs.indices) {
+            try {
+                return operation()
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (throwable: Throwable) {
+                val totalAttempts = pirFetchRetryDelaysMs.size + 1
+                Log.w(TAG, "$label failed on attempt ${attempt + 1}/$totalAttempts, retrying", throwable)
+                delay(pirFetchRetryDelaysMs[attempt])
+            }
+        }
+        return operation()
+    }
+
     private companion object {
         const val TAG = "VotingProofPrecompute"
+
+        // Matches Vizor Wallet's own `_delegationSetupRetryPolicy` delay schedule
+        // (`voting_session_provider.dart`) for the equivalent background delegation-proof
+        // precompute retry -- see withPirFetchRetry's own doc comment for why.
+        private const val PIR_FETCH_RETRY_DELAY_1_MS = 100L
+        private const val PIR_FETCH_RETRY_DELAY_2_MS = 200L
+        private const val PIR_FETCH_RETRY_DELAY_3_MS = 400L
+        private const val PIR_FETCH_RETRY_DELAY_4_MS = 800L
+        val DEFAULT_PIR_FETCH_RETRY_DELAYS_MS =
+            longArrayOf(
+                PIR_FETCH_RETRY_DELAY_1_MS,
+                PIR_FETCH_RETRY_DELAY_2_MS,
+                PIR_FETCH_RETRY_DELAY_3_MS,
+                PIR_FETCH_RETRY_DELAY_4_MS
+            )
     }
 }

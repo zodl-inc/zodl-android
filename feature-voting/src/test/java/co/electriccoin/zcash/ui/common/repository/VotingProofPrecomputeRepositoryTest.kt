@@ -103,7 +103,10 @@ class VotingProofPrecomputeRepositoryTest {
                 VotingProofPrecomputeRepositoryImpl(
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
-                    scope = scope
+                    scope = scope,
+                    // No retry backoff to wait out -- this test is about the swallow/cleanup
+                    // behavior, not the new retry mechanism (see its own dedicated tests below).
+                    pirFetchRetryDelaysMs = LongArray(0)
                 )
 
             // Must not throw / must not cancel the caller -- fire-and-forget precompute is never
@@ -132,7 +135,11 @@ class VotingProofPrecomputeRepositoryTest {
                 VotingProofPrecomputeRepositoryImpl(
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
-                    scope = scope
+                    scope = scope,
+                    // This test counts PrecomputePirProofs calls per startPirWarmup invocation --
+                    // disable the new in-call retry (its own dedicated tests below) so that count
+                    // stays 1 per call, same as before that mechanism existed.
+                    pirFetchRetryDelaysMs = LongArray(0)
                 )
             val request = pirWarmupRequest()
 
@@ -149,6 +156,47 @@ class VotingProofPrecomputeRepositoryTest {
             yield()
 
             assertEquals(2, cryptoClient.calls.count { it is CryptoCall.PrecomputePirProofs })
+
+            scope.cancel()
+        }
+
+    /**
+     * Vizor Wallet's own fix for the live 13-bundle finding (`voting_retry.dart`'s
+     * `withVotingRetry`): a bundle's own delegation dispatch fails outright on a bare PIR
+     * transport error and gets permanently skipped for that run
+     * (`FailureIsolation::SkipBundle`), with zero in-crate retry -- see
+     * [VotingProofPrecomputeRepositoryImpl.withPirFetchRetry]'s own doc comment. This warm-up
+     * call now retries a bounded number of times before giving up, same as Vizor's own
+     * background delegation-proof precompute.
+     */
+    @Test
+    fun pirWarmupRetriesOnFailureBeforeGivingUp() =
+        runBlocking {
+            val cryptoClient = FakeVotingCryptoClient(pirWarmupFailure = IllegalStateException("pir failed"))
+            val scope = CoroutineScope(coroutineContext + SupervisorJob())
+            val repository =
+                VotingProofPrecomputeRepositoryImpl(
+                    votingCryptoClient = cryptoClient.client,
+                    pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+                    scope = scope,
+                    pirFetchRetryDelaysMs = longArrayOf(1L, 1L)
+                )
+
+            repository.startPirWarmup(pirWarmupRequest())
+
+            withTimeout(TIMEOUT_MS) {
+                while (cryptoClient.calls.count { it is CryptoCall.PrecomputePirProofs } < 3) {
+                    yield()
+                }
+            }
+            // 1 initial attempt + 2 retries (pirFetchRetryDelaysMs has 2 entries) -- neither
+            // retrying forever nor stopping early would be correct.
+            assertEquals(3, cryptoClient.calls.count { it is CryptoCall.PrecomputePirProofs })
+
+            // Still swallowed and cleaned up, same as before this mechanism existed -- exhausting
+            // every retry is not a reason to leave the native DB handle open or throw.
+            yield()
+            assertEquals(CryptoCall.CloseVotingDb(DB_HANDLE), cryptoClient.calls.last())
 
             scope.cancel()
         }
@@ -228,7 +276,9 @@ class VotingProofPrecomputeRepositoryTest {
                 VotingProofPrecomputeRepositoryImpl(
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
-                    scope = scope
+                    scope = scope,
+                    // See pirWarmupFailureIsSwallowedAndStillClosesVotingDb's identical comment.
+                    pirFetchRetryDelaysMs = LongArray(0)
                 )
 
             repository.startSnapshotBundlePrecompute(snapshotBundlePrecomputeRequest())
@@ -251,7 +301,9 @@ class VotingProofPrecomputeRepositoryTest {
                 VotingProofPrecomputeRepositoryImpl(
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
-                    scope = scope
+                    scope = scope,
+                    // See pirWarmupRetriesAfterAPreviousFailure's identical comment.
+                    pirFetchRetryDelaysMs = LongArray(0)
                 )
             val request = snapshotBundlePrecomputeRequest()
 
@@ -269,6 +321,36 @@ class VotingProofPrecomputeRepositoryTest {
             yield()
 
             assertEquals(2, cryptoClient.calls.count { it is CryptoCall.PrecomputeSnapshotBundles })
+
+            scope.cancel()
+        }
+
+    /** See pirWarmupRetriesOnFailureBeforeGivingUp's doc comment -- same fix, same mechanism. */
+    @Test
+    fun snapshotBundlePrecomputeRetriesOnFailureBeforeGivingUp() =
+        runBlocking {
+            val cryptoClient =
+                FakeVotingCryptoClient(snapshotBundlePrecomputeFailure = IllegalStateException("bundle plan failed"))
+            val scope = CoroutineScope(coroutineContext + SupervisorJob())
+            val repository =
+                VotingProofPrecomputeRepositoryImpl(
+                    votingCryptoClient = cryptoClient.client,
+                    pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+                    scope = scope,
+                    pirFetchRetryDelaysMs = longArrayOf(1L, 1L)
+                )
+
+            repository.startSnapshotBundlePrecompute(snapshotBundlePrecomputeRequest())
+
+            withTimeout(TIMEOUT_MS) {
+                while (cryptoClient.calls.count { it is CryptoCall.PrecomputeSnapshotBundles } < 3) {
+                    yield()
+                }
+            }
+            assertEquals(3, cryptoClient.calls.count { it is CryptoCall.PrecomputeSnapshotBundles })
+
+            yield()
+            assertEquals(CryptoCall.CloseVotingDb(DB_HANDLE), cryptoClient.calls.last())
 
             scope.cancel()
         }

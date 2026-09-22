@@ -87,6 +87,7 @@
     <ID>TooGenericExceptionCaught:VoteProposalListVM.kt$VoteProposalListVM$throwable: Throwable</ID>
     <ID>TooGenericExceptionCaught:VotingApiProvider.kt$KtorVotingApiProvider$exception: Exception</ID>
     <ID>TooGenericExceptionCaught:VotingApiProvider.kt$KtorVotingApiProvider$throwable: Throwable</ID>
+    <ID>TooGenericExceptionCaught:VotingProofPrecomputeRepository.kt$VotingProofPrecomputeRepositoryImpl$throwable: Throwable</ID>
     <ID>TooGenericExceptionCaught:VotingServerFailoverException.kt$exception: Exception</ID>
     <ID>TooGenericExceptionThrown:MigrationKeystoneSignVMTest.kt$MigrationKeystoneSignVMTest$throw RuntimeException("first attempt fails")</ID>
     <ID>TooManyFunctions:MigrationDriveOnce.kt$MigrationDriveOnce</ID>
