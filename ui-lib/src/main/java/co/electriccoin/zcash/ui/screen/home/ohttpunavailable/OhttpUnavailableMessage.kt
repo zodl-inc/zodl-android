@@ -1,3 +1,5 @@
+@file:Suppress("MatchingDeclarationName")
+
 package co.electriccoin.zcash.ui.screen.home.ohttpunavailable
 
 import androidx.compose.foundation.layout.Box
