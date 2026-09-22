@@ -6,6 +6,8 @@ import co.electriccoin.zcash.ui.common.datasource.ExchangeRateDataSource
 import co.electriccoin.zcash.ui.common.datasource.ExchangeRateDataSourceImpl
 import co.electriccoin.zcash.ui.common.datasource.FiatCurrencyDataSource
 import co.electriccoin.zcash.ui.common.datasource.FiatCurrencyDataSourceImpl
+import co.electriccoin.zcash.ui.common.datasource.LedgerDeviceDataSource
+import co.electriccoin.zcash.ui.common.datasource.LedgerDeviceDataSourceImpl
 import co.electriccoin.zcash.ui.common.datasource.MessageAvailabilityDataSource
 import co.electriccoin.zcash.ui.common.datasource.MessageAvailabilityDataSourceImpl
 import co.electriccoin.zcash.ui.common.datasource.NearSwapDataSource
@@ -25,6 +27,7 @@ import org.koin.dsl.module
 val dataSourceModule =
     module {
         singleOf(::AccountDataSourceImpl) bind AccountDataSource::class
+        singleOf(::LedgerDeviceDataSourceImpl) bind LedgerDeviceDataSource::class
         singleOf(::ZashiSpendingKeyDataSourceImpl) bind ZashiSpendingKeyDataSource::class
         singleOf(::ProposalDataSourceImpl) bind ProposalDataSource::class
         singleOf(::RestoreTimestampDataSourceImpl) bind RestoreTimestampDataSource::class

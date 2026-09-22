@@ -16,11 +16,18 @@ import co.electriccoin.zcash.ui.screen.balances.BalanceWidgetVM
 import co.electriccoin.zcash.ui.screen.balances.breakdown.BalanceBreakdownVM
 import co.electriccoin.zcash.ui.screen.balances.spendable.SpendableBalanceVM
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerVM
+import co.electriccoin.zcash.ui.screen.choosehardwarewallet.ChooseHardwareWalletVM
 import co.electriccoin.zcash.ui.screen.connectkeystone.connect.KeystoneConnectVM
 import co.electriccoin.zcash.ui.screen.connectkeystone.date.KeystoneDateVM
 import co.electriccoin.zcash.ui.screen.connectkeystone.estimation.KeystoneEstimationVM
 import co.electriccoin.zcash.ui.screen.connectkeystone.height.KeystoneHeightVM
 import co.electriccoin.zcash.ui.screen.connectkeystone.neworactive.KeystoneNewOrActiveVM
+import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectVM
+import co.electriccoin.zcash.ui.screen.connectledger.date.LedgerDateVM
+import co.electriccoin.zcash.ui.screen.connectledger.estimation.LedgerEstimationVM
+import co.electriccoin.zcash.ui.screen.connectledger.height.LedgerHeightVM
+import co.electriccoin.zcash.ui.screen.connectledger.neworactive.LedgerNewOrActiveVM
+import co.electriccoin.zcash.ui.screen.connectledger.scan.LedgerDeviceScanVM
 import co.electriccoin.zcash.ui.screen.contact.AddGenericABContactVM
 import co.electriccoin.zcash.ui.screen.contact.AddZashiABContactVM
 import co.electriccoin.zcash.ui.screen.contact.UpdateGenericABContactVM
@@ -212,5 +219,12 @@ val viewModelModule =
         viewModelOf(::KeystoneDateVM)
         viewModelOf(::KeystoneEstimationVM)
         viewModelOf(::KeystoneHeightVM)
+        viewModelOf(::ChooseHardwareWalletVM)
+        viewModelOf(::LedgerConnectVM)
+        viewModelOf(::LedgerDeviceScanVM)
+        viewModelOf(::LedgerNewOrActiveVM)
+        viewModelOf(::LedgerDateVM)
+        viewModelOf(::LedgerEstimationVM)
+        viewModelOf(::LedgerHeightVM)
         viewModelOf(::KeepOpenVM)
     }

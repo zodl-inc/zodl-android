@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.design.component.ZashiDisclaimerState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.common.KeepOpenState
 import co.electriccoin.zcash.ui.screen.connectkeystone.connected.KeystoneConnectedArgs
+import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedArgs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
@@ -71,7 +72,8 @@ class KeepOpenVM(
                 )
             }
 
-            KeepOpenFlow.KEYSTONE -> {
+            KeepOpenFlow.KEYSTONE,
+            KeepOpenFlow.LEDGER -> {
                 KeepOpenState(
                     description = stringRes(R.string.keepZodlOpenInstructionsHWWallet),
                     subtitle = stringRes(R.string.keepZodlOpenSubtitleHWWallet),
@@ -101,6 +103,7 @@ class KeepOpenVM(
         when (flow) {
             KeepOpenFlow.RESTORE, KeepOpenFlow.RESYNC -> navigationRouter.backToRoot()
             KeepOpenFlow.KEYSTONE -> navigationRouter.forward(KeystoneConnectedArgs)
+            KeepOpenFlow.LEDGER -> navigationRouter.forward(LedgerConnectedArgs)
         }
     }
 }

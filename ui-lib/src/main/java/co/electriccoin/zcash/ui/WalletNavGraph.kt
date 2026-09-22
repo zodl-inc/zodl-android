@@ -36,6 +36,22 @@ import co.electriccoin.zcash.ui.screen.balances.spendable.SpendableBalanceArgs
 import co.electriccoin.zcash.ui.screen.balances.spendable.SpendableBalanceScreen
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerArgs
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerScreen
+import co.electriccoin.zcash.ui.screen.choosehardwarewallet.ChooseHardwareWalletArgs
+import co.electriccoin.zcash.ui.screen.choosehardwarewallet.ChooseHardwareWalletScreen
+import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectArgs
+import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectScreen
+import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedArgs
+import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedScreen
+import co.electriccoin.zcash.ui.screen.connectledger.date.LedgerDateArgs
+import co.electriccoin.zcash.ui.screen.connectledger.date.LedgerFirstTransactionScreen
+import co.electriccoin.zcash.ui.screen.connectledger.estimation.LedgerEstimationArgs
+import co.electriccoin.zcash.ui.screen.connectledger.estimation.LedgerFirstTransactionEstimationScreen
+import co.electriccoin.zcash.ui.screen.connectledger.height.LedgerHeightArgs
+import co.electriccoin.zcash.ui.screen.connectledger.height.LedgerWBHScreen
+import co.electriccoin.zcash.ui.screen.connectledger.neworactive.LedgerNewOrActiveArgs
+import co.electriccoin.zcash.ui.screen.connectledger.neworactive.LedgerNewOrActiveScreen
+import co.electriccoin.zcash.ui.screen.connectledger.scan.LedgerDeviceScanArgs
+import co.electriccoin.zcash.ui.screen.connectledger.scan.LedgerDeviceScanScreen
 import co.electriccoin.zcash.ui.screen.connectkeystone.connect.ConnectKeystoneArgs
 import co.electriccoin.zcash.ui.screen.connectkeystone.connect.ConnectKeystoneScreen
 import co.electriccoin.zcash.ui.screen.connectkeystone.connected.KeystoneConnectedArgs
@@ -284,6 +300,14 @@ fun NavGraphBuilder.walletNavGraph(
         }
         composable<RequestArgs> { RequestScreen(it.toRoute()) }
         composable<ConnectKeystoneArgs> { ConnectKeystoneScreen() }
+        composable<ChooseHardwareWalletArgs> { ChooseHardwareWalletScreen() }
+        composable<LedgerConnectArgs> { LedgerConnectScreen() }
+        composable<LedgerDeviceScanArgs> { LedgerDeviceScanScreen() }
+        composable<LedgerNewOrActiveArgs> { LedgerNewOrActiveScreen() }
+        composable<LedgerDateArgs> { LedgerFirstTransactionScreen() }
+        composable<LedgerEstimationArgs> { LedgerFirstTransactionEstimationScreen(it.toRoute()) }
+        composable<LedgerHeightArgs> { LedgerWBHScreen() }
+        composable<LedgerConnectedArgs> { LedgerConnectedScreen() }
         dialogComposable<KeystoneExplainerScreenArgs> { KeystoneExplainerScreen() }
         composable<KeystoneNewOrActiveArgs> { KeystoneNewOrActiveScreen(it.toRoute()) }
         composable<KeystoneDateArgs> { KeystoneFirstTransactionScreen(it.toRoute()) }
