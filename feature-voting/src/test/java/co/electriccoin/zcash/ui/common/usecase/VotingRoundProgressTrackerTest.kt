@@ -297,6 +297,84 @@ class VotingRoundProgressTrackerTest {
         choice: Int = 0
     ) = VotingNextStep.CastVote(bundleIndex = bundleIndex, proposalId = proposalId, choice = choice)
 
+    // --- voteCommitProposalId (the crate's real per-draft identity) ---
+    //
+    // A CastVote *step* names only whichever proposal the crate happened to SELECT the whole
+    // bundle-casting step with -- fixed for that step's entire lifetime, since `run_cast_vote`
+    // casts every draft of a bundle as one unit. `voteCommitProposalId` is the crate's own
+    // per-draft `VoteCommit` progress payload instead, which changes as each draft in the batch
+    // actually proceeds -- see VotingRoundDriveProgress's own doc comment. Before this, every
+    // in-batch record() call shared the step's one fixed proposal id, so bundleProgressByProposal
+    // could never grow past a single entry for an entire many-proposal casting phase -- exactly
+    // the "stuck at 1/37, then jumps to 37/37" behavior observed live.
+
+    @Test
+    fun `distinct voteCommitProposalId values are tracked as distinct proposals, even under one fixed step id`() {
+        val tracker = VotingRoundProgressTracker()
+
+        // All three calls share the SAME step (as the crate's step_selected/step_finished
+        // lifetime actually behaves for one CastVote-batch step), but each carries a DIFFERENT
+        // voteCommitProposalId, as the crate's VoteCommit payload actually does.
+        val step = castVote(bundleIndex = 0, proposalId = 1)
+        tracker.record(step, proofProgress = 1.0f, voteCommitProposalId = 1)
+        tracker.record(step, proofProgress = 1.0f, voteCommitProposalId = 2)
+        tracker.record(step, proofProgress = 0.5f, voteCommitProposalId = 3)
+
+        // Without voteCommitProposalId, this would have collapsed to one entry (proposal 1) at
+        // 0.5/37 (the last write wins on a single bucket). With it, three distinct proposals are
+        // tracked and summed.
+        val fraction = tracker.fraction(completedProposals = 0, totalProposals = 37)
+        assertEquals((1.0f + 1.0f + 0.5f) / 37f, fraction)
+    }
+
+    @Test
+    fun `voteCommitProposalId takes priority over the step's own fixed proposal id when both are present`() {
+        val tracker = VotingRoundProgressTracker()
+
+        tracker.record(castVote(bundleIndex = 0, proposalId = 1), proofProgress = 1.0f, voteCommitProposalId = 9)
+
+        // Bucketed under 9 (the real draft), not 1 (the step's fixed representative id) -- proven
+        // by a second real draft (proposal 9 again vs. a fresh id) accumulating correctly.
+        tracker.record(castVote(bundleIndex = 0, proposalId = 1), proofProgress = 1.0f, voteCommitProposalId = 10)
+
+        val fraction = tracker.fraction(completedProposals = 0, totalProposals = 37)
+        assertEquals((1.0f + 1.0f) / 37f, fraction)
+    }
+
+    @Test
+    fun `a null voteCommitProposalId falls back to the step's own proposal id, unchanged from before`() {
+        val tracker = VotingRoundProgressTracker()
+
+        tracker.record(castVote(bundleIndex = 0, proposalId = 5), proofProgress = 0.5f, voteCommitProposalId = null)
+
+        val fraction = tracker.fraction(completedProposals = 0, totalProposals = 37)
+        assertEquals(0.5f / 37f, fraction)
+    }
+
+    // --- currentProposalId ---
+
+    @Test
+    fun `currentProposalId is null until any proposal-scoped progress is recorded`() {
+        val tracker = VotingRoundProgressTracker()
+
+        assertNull(tracker.currentProposalId())
+
+        tracker.record(VotingNextStep.Delegate(bundleIndex = 0), proofProgress = 0.5f)
+        assertNull(tracker.currentProposalId(), "a delegation-only step has no proposal id")
+    }
+
+    @Test
+    fun `currentProposalId reflects the most recently observed real draft`() {
+        val tracker = VotingRoundProgressTracker()
+
+        val step = castVote(bundleIndex = 0, proposalId = 1)
+        tracker.record(step, proofProgress = 1.0f, voteCommitProposalId = 1)
+        assertEquals(1, tracker.currentProposalId())
+
+        tracker.record(step, proofProgress = 0.05f, voteCommitProposalId = 2)
+        assertEquals(2, tracker.currentProposalId())
+    }
+
     // --- estimatedCompletedProposals ---
 
     @Test

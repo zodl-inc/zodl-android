@@ -280,7 +280,11 @@ class SubmitVotesUseCase(
                                 lastTotalProposals =
                                     maxOf(lastTotalProposals ?: 0, tally.totalProposals)
                             }
-                            progressTracker.record(progress.step, progress.proofProgress)
+                            progressTracker.record(
+                                progress.step,
+                                progress.proofProgress,
+                                progress.voteCommitProposalId
+                            )
                             onProgress(
                                 VotingSubmissionProgress.RunningRound(
                                     completedProposals =
@@ -289,7 +293,9 @@ class SubmitVotesUseCase(
                                             lastTotalProposals
                                         ),
                                     totalProposals = lastTotalProposals,
-                                    proofProgress = progressTracker.fraction(lastCompletedProposals, lastTotalProposals)
+                                    proofProgress =
+                                        progressTracker.fraction(lastCompletedProposals, lastTotalProposals),
+                                    currentProposalId = progressTracker.currentProposalId()
                                 )
                             )
                             // CHP_BENCH — see ChpBenchLog.kt's own note: local-only, never merge.
@@ -509,13 +515,14 @@ class SubmitVotesUseCase(
                     lastCompletedProposals = maxOf(lastCompletedProposals ?: 0, tally.completedProposals)
                     lastTotalProposals = maxOf(lastTotalProposals ?: 0, tally.totalProposals)
                 }
-                progressTracker.record(progress.step, progress.proofProgress)
+                progressTracker.record(progress.step, progress.proofProgress, progress.voteCommitProposalId)
                 onProgress(
                     VotingSubmissionProgress.RunningRound(
                         completedProposals =
                             progressTracker.estimatedCompletedProposals(lastCompletedProposals, lastTotalProposals),
                         totalProposals = lastTotalProposals,
-                        proofProgress = progressTracker.fraction(lastCompletedProposals, lastTotalProposals)
+                        proofProgress = progressTracker.fraction(lastCompletedProposals, lastTotalProposals),
+                        currentProposalId = progressTracker.currentProposalId()
                     )
                 )
             }

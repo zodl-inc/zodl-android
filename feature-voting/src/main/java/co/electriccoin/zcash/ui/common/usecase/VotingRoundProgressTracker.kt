@@ -41,16 +41,26 @@ internal class VotingRoundProgressTracker {
     private var lastFraction = 0f
     private var lastProposalFraction = 0f
     private var lastEstimatedCompleted = 0
+    private var lastObservedProposalId: Int? = null
 
     /**
      * Records one step's proving progress. Proposal-scoped steps (see [proposalIdOf]) bucket by
      * proposal id; delegation steps (see [isDelegationStep]) bucket by `bundleIndex` instead,
      * since they carry no proposal id. Any other step kind (e.g. [VotingNextStep.Unknown]) is a
      * safe no-op -- its semantics aren't known to this SDK yet.
+     *
+     * [voteCommitProposalId], when non-null, is the crate's own real per-draft identity from a
+     * `VoteCommit` progress payload (`VotingRoundDriveProgress.voteCommitProposalId`) -- preferred
+     * over [step]'s own (fixed-for-the-whole-batch) proposal id, since a single `CastVote` step
+     * casts every draft of its bundle as one unit (`run_cast_vote`'s own doc comment) while this
+     * value changes as each draft's own proof actually proceeds. `null` for every step kind that
+     * doesn't report one (delegation steps, and any `StepProgress` payload that isn't
+     * `VoteCommit`), in which case [step]'s own id is used exactly as before.
      */
     fun record(
         step: VotingNextStep?,
-        proofProgress: Float?
+        proofProgress: Float?,
+        voteCommitProposalId: Int? = null
     ) {
         if (step == null || proofProgress == null) return
         if (isDelegationStep(step)) {
@@ -58,14 +68,24 @@ internal class VotingRoundProgressTracker {
             delegationProgressByBundle[bundleIndex] =
                 maxOf(delegationProgressByBundle[bundleIndex] ?: 0f, proofProgress)
         } else {
-            val proposalId = proposalIdOf(step)
+            val proposalId = voteCommitProposalId ?: proposalIdOf(step)
             if (proposalId != null) {
+                lastObservedProposalId = proposalId
                 val bundleIndex = step.bundleIndex
                 val bundleProgress = bundleProgressByProposal.getOrPut(proposalId) { mutableMapOf() }
                 bundleProgress[bundleIndex] = maxOf(bundleProgress[bundleIndex] ?: 0f, proofProgress)
             }
         }
     }
+
+    /**
+     * The most recent real per-draft proposal id observed via [record]'s `voteCommitProposalId`
+     * parameter -- i.e. which proposal's proof the crate is actually working on right now, for a
+     * "currently on question N" display. `null` until at least one `VoteCommit` progress payload
+     * has carried one; never regresses to `null` afterward (the last-known draft stays displayed
+     * between events, exactly like [fraction]/[estimatedCompletedProposals]'s own ratchet).
+     */
+    fun currentProposalId(): Int? = lastObservedProposalId
 
     /**
      * A 0..1 fraction of the round's total work, or `null` when nothing measurable exists yet

@@ -27,15 +27,22 @@ sealed interface VotingSubmissionProgress {
      * summing every proposal currently in flight so the bar moves visibly even in a
      * many-proposal round, rather than tracking only the slowest bundle of a single proposal.
      * Both are `null` until any progress has been measured at all; callers may show an
-     * indeterminate indicator in that case. Unlike either of these, a per-event bundle/proposal
-     * id was deliberately dropped from this model entirely: it names whichever of several
+     * indeterminate indicator in that case. A `CastVote` *step*'s own bundle/proposal id was
+     * deliberately dropped from this model entirely: it names whichever of several
      * concurrently-interleaved bundles happened to report last and flickers between bundles with
-     * and without a proposal id.
+     * and without a proposal id -- see `VotingRoundDriveProgress.step`'s own doc comment.
+     * [currentProposalId], in contrast, is safe to show: it comes from the crate's real per-draft
+     * `VoteCommit` progress payload (`VotingRoundDriveProgress.voteCommitProposalId`), which
+     * `VotingRoundProgressTracker.currentProposalId()` exposes as "whichever proposal's proof the
+     * crate is actually working on right now" -- proofs are serialized one at a time
+     * (`max_proof_concurrency: 1`), so this does not flicker the way the step-level id does.
+     * `null` until the first such payload arrives; never regresses to `null` afterward.
      */
     data class RunningRound(
         val completedProposals: Int?,
         val totalProposals: Int?,
-        val proofProgress: Float?
+        val proofProgress: Float?,
+        val currentProposalId: Int? = null
     ) : VotingSubmissionProgress
 }
 
