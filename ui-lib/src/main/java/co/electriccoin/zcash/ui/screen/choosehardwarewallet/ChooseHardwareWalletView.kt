@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.choosehardwarewallet
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -13,7 +14,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,8 +38,10 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.Compose
 import co.electriccoin.zcash.ui.design.util.ImageResource
+import co.electriccoin.zcash.ui.design.util.PressMorphDefaults
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.imageRes
+import co.electriccoin.zcash.ui.design.util.pressMorph
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 
@@ -78,13 +83,13 @@ fun ChooseHardwareWalletView(state: ChooseHardwareWalletState) {
                     color = ZashiColors.Text.textPrimary,
                     fontWeight = FontWeight.SemiBold,
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(4.dp))
                 Text(
                     text = state.subtitle.getValue(),
                     style = ZashiTypography.textMd,
                     color = ZashiColors.Text.textTertiary,
                 )
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(32.dp))
                 state.cards.forEachIndexed { index, card ->
                     if (index != 0) {
                         Spacer(Modifier.height(12.dp))
@@ -99,14 +104,19 @@ fun ChooseHardwareWalletView(state: ChooseHardwareWalletState) {
 @Composable
 private fun HardwareWalletCard(state: HardwareWalletCardState) {
     val image = state.image
+    val interactionSource = remember { MutableInteractionSource() }
     if (image is ImageResource.ByDrawable) {
         image.Compose(
             modifier =
                 Modifier
                     .fillMaxWidth()
+                    .pressMorph(interactionSource, PressMorphDefaults.PRESSED_SCALE_SUBTLE)
                     .clip(RoundedCornerShape(16.dp))
-                    .clickable(onClick = state.onClick)
-                    .testTag(state.testTag),
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = ripple(),
+                        onClick = state.onClick,
+                    ).testTag(state.testTag),
             contentDescription = state.contentDescription.getValue(),
             contentScale = ContentScale.FillWidth,
         )
