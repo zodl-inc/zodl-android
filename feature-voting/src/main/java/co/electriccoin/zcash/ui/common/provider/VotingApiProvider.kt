@@ -552,65 +552,68 @@ class KtorVotingApiProvider(
                 val isCustom = isCustomVoteServer()
                 val ohttpClient = httpClientProvider.createOhttp()
 
-                for (baseUrl in serverUrls) {
-                    val url = "$baseUrl${txConfirmationPath(txHash)}"
-                    try {
-                        val responseText =
-                            when (val route = resolveVoteRoute(baseUrl, torEnabled, isCustom, ohttpClient)) {
-                                is VoteRoute.Ohttp -> {
-                                    val response =
-                                        try {
-                                            route.client.execute(
-                                                OhttpHttpClient.Request(
-                                                    url = url,
-                                                    headers = listOf("Cache-Control" to "no-cache"),
-                                                ),
-                                            )
-                                        } catch (exception: Exception) {
-                                            exception.rethrowIfCancellation()
-                                            continue
-                                        }
-                                    Twig.debug { "OHTTP GET $url -> HTTP ${response.status}" }
-                                    if (response.status == 404) {
-                                        continue
-                                    } else if (response.status == 422) {
-                                        return@execute response.body.decodeToString().toTxConfirmation()
-                                    } else if (response.status !in OHTTP_HTTP_SUCCESS) {
-                                        continue
-                                    }
-                                    response.body.decodeToString()
-                                }
-
-                                is VoteRoute.Direct -> {
-                                    Twig.debug { "Tx confirmation GET $url ${route.description}" }
-                                    get(url).bodyAsText()
-                                }
-                            }
-
-                        return@execute responseText.toTxConfirmation()
-                    } catch (responseException: ResponseException) {
-                        when (responseException.response.status) {
-                            HttpStatusCode.NotFound -> {
-                                Unit
-                            }
-
-                            HttpStatusCode.UnprocessableEntity -> {
-                                return@execute responseException.response.bodyAsText().toTxConfirmation()
-                            }
-
-                            else -> {
-                                Unit
-                            }
-                        }
-                    } catch (exception: Exception) {
-                        if (exception is CancellationException) {
-                            throw exception
-                        }
-                    }
+                serverUrls.firstNotNullOfOrNull { baseUrl ->
+                    tryFetchTxConfirmationFromServer(baseUrl, txHash, torEnabled, isCustom, ohttpClient)
                 }
-                null
             }
         }
+
+    @Suppress("ReturnCount")
+    private suspend fun HttpClient.tryFetchTxConfirmationFromServer(
+        baseUrl: String,
+        txHash: String,
+        torEnabled: Boolean,
+        isCustom: Boolean,
+        ohttpClient: OhttpHttpClient?,
+    ): TxConfirmation? {
+        val url = "$baseUrl${txConfirmationPath(txHash)}"
+        return try {
+            val responseText =
+                when (val route = resolveVoteRoute(baseUrl, torEnabled, isCustom, ohttpClient)) {
+                    is VoteRoute.Ohttp -> {
+                        val response =
+                            try {
+                                route.client.execute(
+                                    OhttpHttpClient.Request(
+                                        url = url,
+                                        headers = listOf("Cache-Control" to "no-cache"),
+                                    ),
+                                )
+                            } catch (exception: Exception) {
+                                exception.rethrowIfCancellation()
+                                return null
+                            }
+                        Twig.debug { "OHTTP GET $url -> HTTP ${response.status}" }
+                        when {
+                            response.status == HttpStatusCode.NotFound.value -> return null
+                            response.status == HttpStatusCode.UnprocessableEntity.value ->
+                                return response.body.decodeToString().toTxConfirmation()
+                            response.status !in OHTTP_HTTP_SUCCESS -> return null
+                            else -> response.body.decodeToString()
+                        }
+                    }
+
+                    is VoteRoute.Direct -> {
+                        Twig.debug { "Tx confirmation GET $url ${route.description}" }
+                        get(url).bodyAsText()
+                    }
+                }
+
+            responseText.toTxConfirmation()
+        } catch (responseException: ResponseException) {
+            when (responseException.response.status) {
+                HttpStatusCode.NotFound -> null
+                HttpStatusCode.UnprocessableEntity ->
+                    responseException.response.bodyAsText().toTxConfirmation()
+                else -> null
+            }
+        } catch (exception: Exception) {
+            if (exception is CancellationException) {
+                throw exception
+            }
+            null
+        }
+    }
 
     override suspend fun fetchCommitmentTreeLatest(roundIdHex: String): CommitmentTreeLatest {
         val path = commitmentTreeLatestPath(roundIdHex)
@@ -1211,59 +1214,58 @@ class KtorVotingApiProvider(
         val ohttpClient = httpClientProvider.createOhttp()
         val url = "$serverUrl/shielded-vote/v1/shares"
 
-        return try {
-            when (val route = resolveVoteRoute(serverUrl, torEnabled, isCustom, ohttpClient)) {
-                is VoteRoute.Ohttp -> {
-                    val response =
-                        try {
-                            route.client.execute(
-                                OhttpHttpClient.Request(
-                                    url = url,
-                                    method = "POST",
-                                    headers =
-                                        listOf(
-                                            "Content-Type" to "application/json",
-                                            "Cache-Control" to "no-cache",
-                                        ),
-                                    body = body.toByteArray(Charsets.UTF_8),
-                                ),
-                            )
-                        } catch (exception: Exception) {
-                            exception.rethrowIfCancellation()
-                            serverHealthTracker.recordFailure(serverUrl)
-                            return false
-                        }
-                    Twig.debug { "OHTTP POST $url -> HTTP ${response.status}" }
-                    if (response.status !in OHTTP_HTTP_SUCCESS) {
-                        serverHealthTracker.recordFailure(serverUrl)
-                        return false
+        val success =
+            try {
+                when (val route = resolveVoteRoute(serverUrl, torEnabled, isCustom, ohttpClient)) {
+                    is VoteRoute.Ohttp -> {
+                        val response =
+                            try {
+                                route.client.execute(
+                                    OhttpHttpClient.Request(
+                                        url = url,
+                                        method = "POST",
+                                        headers =
+                                            listOf(
+                                                "Content-Type" to "application/json",
+                                                "Cache-Control" to "no-cache",
+                                            ),
+                                        body = body.toByteArray(Charsets.UTF_8),
+                                    ),
+                                )
+                            } catch (exception: Exception) {
+                                exception.rethrowIfCancellation()
+                                null
+                            }
+                        Twig.debug { "OHTTP POST $url -> HTTP ${response?.status}" }
+                        response != null && response.status in OHTTP_HTTP_SUCCESS
                     }
-                    serverHealthTracker.recordSuccess(serverUrl)
-                    true
-                }
 
-                is VoteRoute.Direct -> {
-                    Twig.debug { "Share POST $url ${route.description}" }
-                    withTorRequestTimeoutFallback(supportsKtorTimeouts, shareRequestTimeoutMillis) {
-                        post(url) {
-                            setBody(TextContent(body, ContentType.Application.Json))
-                            helperRequestTimeout(supportsKtorTimeouts)
+                    is VoteRoute.Direct -> {
+                        Twig.debug { "Share POST $url ${route.description}" }
+                        withTorRequestTimeoutFallback(supportsKtorTimeouts, shareRequestTimeoutMillis) {
+                            post(url) {
+                                setBody(TextContent(body, ContentType.Application.Json))
+                                helperRequestTimeout(supportsKtorTimeouts)
+                            }
                         }
+                        true
                     }
-                    serverHealthTracker.recordSuccess(serverUrl)
-                    true
                 }
+            } catch (_: TimeoutCancellationException) {
+                false
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (throwable: Throwable) {
+                votingLog("postShare FAILED server=$serverUrl", throwable)
+                false
             }
-        } catch (_: TimeoutCancellationException) {
+
+        if (success) {
+            serverHealthTracker.recordSuccess(serverUrl)
+        } else {
             serverHealthTracker.recordFailure(serverUrl)
-            false
-        } catch (cancellation: CancellationException) {
-            throw cancellation
-        } catch (throwable: Throwable) {
-            votingLog("postShare FAILED server=$serverUrl", throwable)
-            serverHealthTracker.recordFailure(serverUrl)
-            false
         }
+        return success
     }
 }
 

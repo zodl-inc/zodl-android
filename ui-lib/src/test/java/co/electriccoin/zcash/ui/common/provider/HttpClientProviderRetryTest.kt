@@ -211,7 +211,11 @@ class HttpClientProviderRetryTest {
         // It may retry the outer HTTPS POST to the relay on connection errors, but that's
         // different from retrying the inner (encapsulated) request.
 
-        val votingApiFile = File("feature-voting/src/main/java/co/electriccoin/zcash/ui/common/provider/VotingApiProvider.kt")
+        val votingApiFile =
+            File(
+                "feature-voting/src/main/java/co/electriccoin/zcash/ui/common/provider/" +
+                    "VotingApiProvider.kt"
+            )
         if (votingApiFile.exists()) {
             val source = votingApiFile.readText()
 
