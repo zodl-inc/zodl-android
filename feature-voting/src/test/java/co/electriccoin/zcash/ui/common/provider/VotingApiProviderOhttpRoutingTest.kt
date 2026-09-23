@@ -254,12 +254,13 @@ class VotingApiProviderOhttpRoutingTest {
             return OhttpHttpClient.Response(
                 status = 200,
                 headers = emptyList(),
-                body = when {
-                    request.url.contains("/share-status") -> """{"status":"confirmed"}""".toByteArray()
-                    request.url.contains("/shielded-vote/v1/shares") -> "{}".toByteArray()
-                    request.url.contains("/tx/") -> """{"height":12,"code":0,"log":"","events":[]}""".toByteArray()
-                    else -> "{}".toByteArray()
-                }
+                body =
+                    when {
+                        request.url.contains("/share-status") -> """{"status":"confirmed"}""".toByteArray()
+                        request.url.contains("/shielded-vote/v1/shares") -> "{}".toByteArray()
+                        request.url.contains("/tx/") -> """{"height":12,"code":0,"log":"","events":[]}""".toByteArray()
+                        else -> "{}".toByteArray()
+                    }
             )
         }
     }

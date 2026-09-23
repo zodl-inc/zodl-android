@@ -1,8 +1,8 @@
 package co.electriccoin.zcash.ui.common.provider
 
-import org.junit.Test
-import org.junit.Assert.assertTrue
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
 import java.io.File
 
 /**
@@ -22,7 +22,6 @@ import java.io.File
  * endpoints that might route through OHTTP are never retried by Ktor's HttpRequestRetry plugin.
  */
 class HttpClientProviderRetryTest {
-
     /**
      * Test that isVotingPath() excludes all voting POST endpoints from retry.
      * This includes both helper endpoints and direct voting POSTs.
@@ -84,21 +83,21 @@ class HttpClientProviderRetryTest {
         assertTrue(
             "retryIf condition must exclude isVotingPath()",
             source.contains("retryIf { request, response ->") &&
-            source.contains("!request.url.toString().isVotingPath()")
+                source.contains("!request.url.toString().isVotingPath()")
         )
 
         // Verify retryOnExceptionIf condition excludes voting paths
         assertTrue(
             "retryOnExceptionIf condition must exclude isVotingPath()",
             source.contains("retryOnExceptionIf { request, _ ->") &&
-            source.contains("!request.url.toString().isVotingPath()")
+                source.contains("!request.url.toString().isVotingPath()")
         )
 
         // Verify maxRetries is 4 (unchanged)
         assertTrue(
             "maxRetries should be 4 (unchanged by C-08 fix, we only exclude voting paths)",
             source.contains("maxRetries = MAX_RETRIES") &&
-            source.contains("private const val MAX_RETRIES = 4")
+                source.contains("private const val MAX_RETRIES = 4")
         )
     }
 
@@ -151,7 +150,7 @@ class HttpClientProviderRetryTest {
         assertTrue(
             "createDirect() must install HttpRequestRetry plugin",
             source.contains("private fun createDirect()") &&
-            source.contains("install(HttpRequestRetry)")
+                source.contains("install(HttpRequestRetry)")
         )
 
         // Verify the retry conditions exclude voting paths
@@ -219,13 +218,13 @@ class HttpClientProviderRetryTest {
             assertTrue(
                 "VoteRoute.Ohttp must use OhttpHttpClient.execute, not HttpClient.post",
                 source.contains("is VoteRoute.Ohttp ->") &&
-                source.contains("route.client.execute(")
+                    source.contains("route.client.execute(")
             )
 
             assertTrue(
                 "VoteRoute.Direct must use HttpClient.post",
                 source.contains("is VoteRoute.Direct ->") &&
-                source.contains("post(url)")
+                    source.contains("post(url)")
             )
         } else {
             // Test is informational; passing if file is not found (may be in a different module)
