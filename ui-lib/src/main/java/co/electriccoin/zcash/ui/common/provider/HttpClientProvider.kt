@@ -131,12 +131,12 @@ class HttpClientProviderImpl(
             install(HttpRequestRetry) {
                 maxRetries = MAX_RETRIES
                 retryIf { request, response ->
-                    !request.url.toString().isVotingHelperPath() &&
+                    !request.url.toString().isVotingPath() &&
                         !request.url.host.isExchangeRateHost() &&
                         response.status.value in 500..599
                 }
                 retryOnExceptionIf { request, _ ->
-                    !request.url.toString().isVotingHelperPath() &&
+                    !request.url.toString().isVotingPath() &&
                         !request.url.host.isExchangeRateHost()
                 }
                 exponentialDelay()
@@ -175,9 +175,15 @@ private class KtorLogger : Logger {
     }
 }
 
-private fun String.isVotingHelperPath(): Boolean =
+// C-08 fix: Exclude all voting POSTs from retry — they carry OHTTP-encapsulated ciphertext
+// that must be sent exactly once (gateway replay cache returns 409 on duplicate nonce).
+// Covers both helper endpoints (/shares, /share-status) and direct voting POSTs
+// (/delegate-vote, /cast-vote) which can route through OHTTP when Tor is OFF.
+private fun String.isVotingPath(): Boolean =
     contains("/shielded-vote/v1/shares") ||
-        contains("/shielded-vote/v1/share-status/")
+        contains("/shielded-vote/v1/share-status/") ||
+        contains("/shielded-vote/v1/delegate-vote") ||
+        contains("/shielded-vote/v1/cast-vote")
 
 // MOB-1378: the CMC quote API is the exchange-rate provider; requests to it must never leave over the
 // direct (clearnet) client. Matched on the host (not a substring of the full URL) so a path or query

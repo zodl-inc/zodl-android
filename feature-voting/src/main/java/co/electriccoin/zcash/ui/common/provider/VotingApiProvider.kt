@@ -445,15 +445,50 @@ class KtorVotingApiProvider(
     ): ShareConfirmationResult =
         executeWithKtorTimeoutSupport { supportsKtorTimeouts ->
             val normalizedHelperBaseUrl = helperBaseUrl.trimEnd('/')
+            val url = "$normalizedHelperBaseUrl/shielded-vote/v1/share-status/$roundIdHex/$nullifierHex"
+            val torEnabled = httpClientProvider.isTorEnabled()
+            val isCustom = isCustomVoteServer()
+            val ohttpClient = httpClientProvider.createOhttp()
+
             try {
                 val responseJson =
-                    get(
-                        "$normalizedHelperBaseUrl/shielded-vote/v1/share-status/$roundIdHex/$nullifierHex",
-                    ) {
-                        header("Accept", "application/json")
-                        header("X-Helper-Token", "voting-helper")
-                        helperRequestTimeout(supportsKtorTimeouts)
-                    }.bodyAsText()
+                    when (val route = resolveVoteRoute(normalizedHelperBaseUrl, torEnabled, isCustom, ohttpClient)) {
+                        is VoteRoute.Ohttp -> {
+                            val response =
+                                try {
+                                    route.client.execute(
+                                        OhttpHttpClient.Request(
+                                            url = url,
+                                            headers =
+                                                listOf(
+                                                    "Accept" to "application/json",
+                                                    "X-Helper-Token" to "voting-helper",
+                                                    "Cache-Control" to "no-cache",
+                                                ),
+                                        ),
+                                    )
+                                } catch (exception: Exception) {
+                                    exception.rethrowIfCancellation()
+                                    val errorType = exception::class.simpleName ?: "unknown error"
+                                    error("Share status GET via OHTTP failed for $url: $errorType")
+                                }
+                            Twig.debug { "OHTTP GET $url -> HTTP ${response.status}" }
+                            if (response.status !in OHTTP_HTTP_SUCCESS) {
+                                error("Share status GET via OHTTP returned HTTP ${response.status} for $url")
+                            }
+                            response.body.decodeToString()
+                        }
+
+                        is VoteRoute.Direct -> {
+                            Twig.debug { "Share status GET $url ${route.description}" }
+                            get(url) {
+                                header("Accept", "application/json")
+                                header("X-Helper-Token", "voting-helper")
+                                helperRequestTimeout(supportsKtorTimeouts)
+                            }.bodyAsText()
+                        }
+                    }
+
                 serverHealthTracker.recordSuccess(normalizedHelperBaseUrl)
                 when (JSONObject(responseJson).optString("status")) {
                     "confirmed" -> ShareConfirmationResult.CONFIRMED
@@ -513,11 +548,46 @@ class KtorVotingApiProvider(
     override suspend fun fetchTxConfirmation(txHash: String): TxConfirmation? =
         configuredVoteServerUrls().let { serverUrls ->
             execute {
+                val torEnabled = httpClientProvider.isTorEnabled()
+                val isCustom = isCustomVoteServer()
+                val ohttpClient = httpClientProvider.createOhttp()
+
                 for (baseUrl in serverUrls) {
+                    val url = "$baseUrl${txConfirmationPath(txHash)}"
                     try {
-                        return@execute get("$baseUrl${txConfirmationPath(txHash)}")
-                            .bodyAsText()
-                            .toTxConfirmation()
+                        val responseText =
+                            when (val route = resolveVoteRoute(baseUrl, torEnabled, isCustom, ohttpClient)) {
+                                is VoteRoute.Ohttp -> {
+                                    val response =
+                                        try {
+                                            route.client.execute(
+                                                OhttpHttpClient.Request(
+                                                    url = url,
+                                                    headers = listOf("Cache-Control" to "no-cache"),
+                                                ),
+                                            )
+                                        } catch (exception: Exception) {
+                                            exception.rethrowIfCancellation()
+                                            continue
+                                        }
+                                    Twig.debug { "OHTTP GET $url -> HTTP ${response.status}" }
+                                    if (response.status == 404) {
+                                        continue
+                                    } else if (response.status == 422) {
+                                        return@execute response.body.decodeToString().toTxConfirmation()
+                                    } else if (response.status !in OHTTP_HTTP_SUCCESS) {
+                                        continue
+                                    }
+                                    response.body.decodeToString()
+                                }
+
+                                is VoteRoute.Direct -> {
+                                    Twig.debug { "Tx confirmation GET $url ${route.description}" }
+                                    get(url).bodyAsText()
+                                }
+                            }
+
+                        return@execute responseText.toTxConfirmation()
                     } catch (responseException: ResponseException) {
                         when (responseException.response.status) {
                             HttpStatusCode.NotFound -> {
@@ -1126,54 +1196,75 @@ class KtorVotingApiProvider(
                 .filterNotNull()
         }
 
+    /**
+     * Routes a share POST through OHTTP when Tor is OFF for predefined servers, or direct
+     * (Tor/clearnet) otherwise. Preserves all existing timeout, cancellation, and health-tracking
+     * behavior.
+     */
     private suspend fun HttpClient.postShare(
         serverUrl: String,
         body: String,
         supportsKtorTimeouts: Boolean,
-    ): Boolean =
-        try {
-            // MOB-1808: observed live (see the "slow window" trace) that a single share hitting a
-            // vote server with a flaky/dropping Tor connection could hang far past every other
-            // share's latency — helperRequestTimeout() is a Ktor-level timeout that's a no-op
-            // under Tor (installTimeouts = false, same blind spot MOB-1809 already fixed for the
-            // config-fetch legs), so nothing was actually bounding this attempt when
-            // supportsKtorTimeouts is false. Wrapping in withTorRequestTimeoutFallback fails this
-            // one attempt fast instead of stalling the whole delegateShares() batch (awaitAll())
-            // on its slowest share.
-            withTorRequestTimeoutFallback(supportsKtorTimeouts, shareRequestTimeoutMillis) {
-                post("$serverUrl/shielded-vote/v1/shares") {
-                    setBody(TextContent(body, ContentType.Application.Json))
-                    helperRequestTimeout(supportsKtorTimeouts)
+    ): Boolean {
+        val torEnabled = httpClientProvider.isTorEnabled()
+        val isCustom = isCustomVoteServer()
+        val ohttpClient = httpClientProvider.createOhttp()
+        val url = "$serverUrl/shielded-vote/v1/shares"
+
+        return try {
+            when (val route = resolveVoteRoute(serverUrl, torEnabled, isCustom, ohttpClient)) {
+                is VoteRoute.Ohttp -> {
+                    val response =
+                        try {
+                            route.client.execute(
+                                OhttpHttpClient.Request(
+                                    url = url,
+                                    method = "POST",
+                                    headers =
+                                        listOf(
+                                            "Content-Type" to "application/json",
+                                            "Cache-Control" to "no-cache",
+                                        ),
+                                    body = body.toByteArray(Charsets.UTF_8),
+                                ),
+                            )
+                        } catch (exception: Exception) {
+                            exception.rethrowIfCancellation()
+                            serverHealthTracker.recordFailure(serverUrl)
+                            return false
+                        }
+                    Twig.debug { "OHTTP POST $url -> HTTP ${response.status}" }
+                    if (response.status !in OHTTP_HTTP_SUCCESS) {
+                        serverHealthTracker.recordFailure(serverUrl)
+                        return false
+                    }
+                    serverHealthTracker.recordSuccess(serverUrl)
+                    true
+                }
+
+                is VoteRoute.Direct -> {
+                    Twig.debug { "Share POST $url ${route.description}" }
+                    withTorRequestTimeoutFallback(supportsKtorTimeouts, shareRequestTimeoutMillis) {
+                        post(url) {
+                            setBody(TextContent(body, ContentType.Application.Json))
+                            helperRequestTimeout(supportsKtorTimeouts)
+                        }
+                    }
+                    serverHealthTracker.recordSuccess(serverUrl)
+                    true
                 }
             }
-            serverHealthTracker.recordSuccess(serverUrl)
-            true
         } catch (_: TimeoutCancellationException) {
-            // Our own withTorRequestTimeoutFallback deadline firing, NOT a genuine outer
-            // cancellation (see that function's TRAP doc) — treat exactly like any other failed
-            // attempt so the caller's fallback-target loop still runs, instead of the catch
-            // below misidentifying it as delegateShares' sibling-cancellation signal. This catch
-            // clause MUST stay ordered before the plain CancellationException one below —
-            // TimeoutCancellationException extends it, so Kotlin's first-match catch ordering
-            // requires the more specific type first.
             serverHealthTracker.recordFailure(serverUrl)
             false
         } catch (cancellation: CancellationException) {
-            // MOB-1808: delegateShares() now cancels sibling shares via coroutineScope on the
-            // first failing share. Without this rethrow, a cancelled share's suspended post()
-            // call would swallow its own CancellationException here, fall through to the
-            // fallback-target loop, and fire MORE requests after the batch already failed —
-            // plus wrongly recordFailure() a server that was never actually rejected, risking
-            // tripping its circuit breaker. Matches the same rethrow already used correctly in
-            // this file's fetchTxConfirmation. A dedicated catch clause (rather than an `is`
-            // check inside a broader Throwable catch) so detekt's InstanceOfCheckForException
-            // rule doesn't flag it.
             throw cancellation
         } catch (throwable: Throwable) {
             votingLog("postShare FAILED server=$serverUrl", throwable)
             serverHealthTracker.recordFailure(serverUrl)
             false
         }
+    }
 }
 
 private class VotingServerHealthTracker {
