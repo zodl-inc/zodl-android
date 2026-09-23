@@ -162,11 +162,5 @@ private fun InstructionRow(number: Int, label: String) {
 @Composable
 private fun Preview() =
     ZcashTheme {
-        LedgerConnectView(
-            state =
-                LedgerConnectState(
-                    onBackClick = {},
-                    onContinueClick = {},
-                )
-        )
+        LedgerConnectView(state = LedgerConnectState.preview)
     }

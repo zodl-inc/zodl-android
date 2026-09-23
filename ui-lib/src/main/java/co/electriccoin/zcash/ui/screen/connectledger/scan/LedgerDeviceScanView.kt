@@ -207,13 +207,8 @@ private fun DeviceRow(state: LedgerDeviceItemState, index: Int) {
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
                 .background(ZashiColors.Surfaces.bgPrimary)
-                .then(
-                    if (state.isSelected) {
-                        Modifier.selectedBorder()
-                    } else {
-                        Modifier.unselectedBorder()
-                    }
-                ).clickable(enabled = state.isEnabled, onClick = state.onClick)
+                .selectionBorder(state.isSelected)
+                .clickable(enabled = state.isEnabled, onClick = state.onClick)
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .testTag(LedgerDeviceScanTag.DEVICE_ROW_PREFIX + index),
         verticalAlignment = Alignment.CenterVertically,
@@ -236,20 +231,19 @@ private fun DeviceRow(state: LedgerDeviceItemState, index: Int) {
     }
 }
 
+/**
+ * The selected row is drawn with a heavier, darker stroke; selection is carried by the border and
+ * the filled selector together, as in the Figma frames.
+ */
 @Composable
-private fun Modifier.selectedBorder() =
+private fun Modifier.selectionBorder(isSelected: Boolean) =
     this.then(
         Modifier.border(
-            BorderStroke(2.dp, ZashiColors.Text.textPrimary),
-            RoundedCornerShape(12.dp)
-        )
-    )
-
-@Composable
-private fun Modifier.unselectedBorder() =
-    this.then(
-        Modifier.border(
-            BorderStroke(1.dp, ZashiColors.Surfaces.strokeSecondary),
+            if (isSelected) {
+                BorderStroke(2.dp, ZashiColors.Text.textPrimary)
+            } else {
+                BorderStroke(1.dp, ZashiColors.Surfaces.strokeSecondary)
+            },
             RoundedCornerShape(12.dp)
         )
     )
@@ -291,63 +285,6 @@ private fun SelectionIndicator(isSelected: Boolean) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun LedgerErrorSheet(state: LedgerErrorSheetState?) {
-    ZashiInScreenModalBottomSheet(state = state) { sheetState ->
-        Column(
-            modifier =
-                Modifier
-                    .weight(1f, false)
-                    .padding(horizontal = 24.dp)
-                    .testTag(LedgerDeviceScanTag.ERROR_SHEET),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(44.dp)
-                        .background(ZashiColors.Surfaces.bgSecondary, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    modifier = Modifier.size(20.dp),
-                    painter = painterResource(R.drawable.ic_ledger_alert_circle),
-                    contentDescription = null,
-                    tint = ZashiColors.Text.textPrimary,
-                )
-            }
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = sheetState.title.getValue(),
-                style = ZashiTypography.textXl,
-                color = ZashiColors.Text.textPrimary,
-                fontWeight = FontWeight.SemiBold,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = sheetState.message.getValue(),
-                style = ZashiTypography.textSm,
-                color = ZashiColors.Text.textTertiary,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.height(24.dp))
-            ZashiButton(
-                state = sheetState.primary,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            sheetState.secondary?.let { secondary ->
-                Spacer(Modifier.height(12.dp))
-                ZashiButton(
-                    state = secondary,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-    }
-}
-
 private const val SKELETON_ROWS = 3
 
 private const val SKELETON_BAR_BASE_WIDTH = 160
@@ -360,56 +297,26 @@ private const val SKELETON_SUBTITLE_WIDTH = 0.6f
 @Composable
 private fun ScanningPreview() =
     ZcashTheme {
-        LedgerDeviceScanView(
-            state =
-                LedgerDeviceScanState(
-                    title = stringRes("Searching for Devices…"),
-                    subtitle = stringRes("Make sure your Ledger is unlocked and Bluetooth is enabled."),
-                    isScanning = true,
-                    showDeviceSkeletons = true,
-                    devices = emptyList(),
-                    primaryButton = ButtonState(stringRes("Searching"), isEnabled = false, isLoading = true),
-                    errorSheet = null,
-                    permissionRequestNonce = 0,
-                    onPermissionsGranted = {},
-                    onPermissionsDenied = {},
-                    onBack = {},
-                )
-        )
+        LedgerDeviceScanView(state = LedgerDeviceScanState.previewSearching)
     }
 
 @PreviewScreens
 @Composable
 private fun SelectPreview() =
     ZcashTheme {
-        LedgerDeviceScanView(
-            state =
-                LedgerDeviceScanState(
-                    title = stringRes("Select Your Device"),
-                    subtitle = stringRes("Select the Ledger device you'd like to connect."),
-                    isScanning = false,
-                    showDeviceSkeletons = false,
-                    devices =
-                        listOf(
-                            LedgerDeviceItemState(
-                                name = stringRes("Ledger Device 1"),
-                                isSelected = true,
-                                isEnabled = true,
-                                onClick = {},
-                            ),
-                            LedgerDeviceItemState(
-                                name = stringRes("Ledger Device 2"),
-                                isSelected = false,
-                                isEnabled = true,
-                                onClick = {},
-                            ),
-                        ),
-                    primaryButton = ButtonState(stringRes("Connect")),
-                    errorSheet = null,
-                    permissionRequestNonce = 0,
-                    onPermissionsGranted = {},
-                    onPermissionsDenied = {},
-                    onBack = {},
-                )
-        )
+        LedgerDeviceScanView(state = LedgerDeviceScanState.previewSelect)
+    }
+
+@PreviewScreens
+@Composable
+private fun PairingPreview() =
+    ZcashTheme {
+        LedgerDeviceScanView(state = LedgerDeviceScanState.previewPairing)
+    }
+
+@PreviewScreens
+@Composable
+private fun ErrorPreview() =
+    ZcashTheme {
+        LedgerDeviceScanView(state = LedgerDeviceScanState.previewError)
     }

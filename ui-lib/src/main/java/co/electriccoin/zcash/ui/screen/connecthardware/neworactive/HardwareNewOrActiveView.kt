@@ -109,19 +109,14 @@ fun HardwareNewOrActiveView(state: HardwareNewOrActiveState) {
 
 @PreviewScreens
 @Composable
-private fun Preview() =
+private fun KeystonePreview() =
     ZcashTheme {
-        HardwareNewOrActiveView(
-            state =
-                HardwareNewOrActiveState(
-                    logo = co.electriccoin.zcash.ui.design.R.drawable.image_keystone,
-                    subtitle = stringRes("New or active device?"),
-                    message = stringRes("Select whether this is a new device or an active one."),
-                    newDevice = ButtonState(stringRes("New device")) {},
-                    activeDevice = ButtonState(stringRes("Active device")) {},
-                    newDeviceTestTag = HardwareWalletEnrollmentTag.KEYSTONE_NEW_DEVICE,
-                    activeDeviceTestTag = HardwareWalletEnrollmentTag.KEYSTONE_ACTIVE_DEVICE,
-                    onBack = {},
-                )
-        )
+        HardwareNewOrActiveView(state = HardwareNewOrActiveState.previewKeystone)
+    }
+
+@PreviewScreens
+@Composable
+private fun LedgerPreview() =
+    ZcashTheme {
+        HardwareNewOrActiveView(state = HardwareNewOrActiveState.previewLedger)
     }

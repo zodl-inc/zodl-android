@@ -180,24 +180,7 @@ private fun ZashiAccountListItem(
 @Composable
 private fun Preview() =
     ZcashTheme {
-        AccountListView(
-            state =
-                AccountListState(
-                    items =
-                        listOf(
-                            ZashiAccountListItemState(
-                                title = stringRes("Zodl"),
-                                subtitle = stringResByAddress("u1078r23uvtj8xj6dpdx..."),
-                                icon = R.drawable.ic_item_zashi,
-                                isSelected = true,
-                                onClick = {}
-                            )
-                        ),
-                    isLoading = false,
-                    onBack = {},
-                    addWalletButton = ButtonState(stringRes("Connect Hardware Wallet"))
-                )
-        )
+        AccountListView(state = AccountListState.preview)
     }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -205,36 +188,13 @@ private fun Preview() =
 @Composable
 private fun HardwareWalletAddedPreview() =
     ZcashTheme {
-        AccountListView(
-            state =
-                AccountListState(
-                    items =
-                        listOf(
-                            ZashiAccountListItemState(
-                                title = stringRes("Zodl"),
-                                subtitle = stringResByAddress("u1078r23uvtj8xj6dpdx..."),
-                                icon = R.drawable.ic_item_zashi,
-                                isSelected = false,
-                                onClick = {}
-                            ),
-                            ZashiAccountListItemState(
-                                title = stringRes("Keystone"),
-                                subtitle = stringResByAddress("uR3vXiqpNwqisJqK88de..."),
-                                icon = R.drawable.ic_item_keystone,
-                                isSelected = false,
-                                onClick = {}
-                            ),
-                            ZashiAccountListItemState(
-                                title = stringRes("Ledger"),
-                                subtitle = stringResByAddress("u18EgiqpBzgfeFqB6cde..."),
-                                icon = R.drawable.ic_item_ledger,
-                                isSelected = true,
-                                onClick = {}
-                            ),
-                        ),
-                    isLoading = false,
-                    onBack = {},
-                    addWalletButton = null
-                )
-        )
+        AccountListView(state = AccountListState.previewMaxed)
+    }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@PreviewScreens
+@Composable
+private fun LoadingPreview() =
+    ZcashTheme {
+        AccountListView(state = AccountListState.previewLoading)
     }

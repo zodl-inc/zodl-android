@@ -127,27 +127,12 @@ private fun HardwareWalletCard(state: HardwareWalletCardState) {
 @Composable
 private fun Preview() =
     ZcashTheme {
-        ChooseHardwareWalletView(
-            state =
-                ChooseHardwareWalletState(
-                    title = stringRes("Connect Hardware Wallet"),
-                    subtitle = stringRes("Which hardware wallet would you like to connect?"),
-                    cards =
-                        listOf(
-                            HardwareWalletCardState(
-                                image = imageRes(R.drawable.img_hardware_wallet_keystone),
-                                contentDescription = stringRes("Keystone"),
-                                testTag = ChooseHardwareWalletTag.KEYSTONE_CARD,
-                                onClick = {},
-                            ),
-                            HardwareWalletCardState(
-                                image = imageRes(R.drawable.img_hardware_wallet_ledger),
-                                contentDescription = stringRes("Ledger"),
-                                testTag = ChooseHardwareWalletTag.LEDGER_CARD,
-                                onClick = {},
-                            ),
-                        ),
-                    onBack = {},
-                )
-        )
+        ChooseHardwareWalletView(state = ChooseHardwareWalletState.preview)
+    }
+
+@PreviewScreens
+@Composable
+private fun LedgerOnlyPreview() =
+    ZcashTheme {
+        ChooseHardwareWalletView(state = ChooseHardwareWalletState.previewLedgerOnly)
     }

@@ -92,7 +92,5 @@ private const val GRADIENT_OFFSET = 0.4f
 @Composable
 private fun Preview() =
     ZcashTheme {
-        LedgerConnectedView(
-            state = LedgerConnectedState(onClose = {})
-        )
+        LedgerConnectedView(state = LedgerConnectedState.preview)
     }
