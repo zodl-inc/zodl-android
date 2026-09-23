@@ -15,12 +15,12 @@ import co.electriccoin.zcash.ui.screen.advancedsettings.debug.orchardbalance.Deb
 import co.electriccoin.zcash.ui.screen.balances.BalanceWidgetVM
 import co.electriccoin.zcash.ui.screen.balances.breakdown.BalanceBreakdownVM
 import co.electriccoin.zcash.ui.screen.balances.spendable.SpendableBalanceVM
-import co.electriccoin.zcash.ui.screen.choosehardwarewallet.ChooseHardwareWalletVM
+import co.electriccoin.zcash.ui.screen.choosehwwallet.ChooseHWWalletVM
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerVM
-import co.electriccoin.zcash.ui.screen.connecthardware.date.HardwareDateVM
-import co.electriccoin.zcash.ui.screen.connecthardware.estimation.HardwareEstimationVM
-import co.electriccoin.zcash.ui.screen.connecthardware.height.HardwareHeightVM
-import co.electriccoin.zcash.ui.screen.connecthardware.neworactive.HardwareNewOrActiveVM
+import co.electriccoin.zcash.ui.screen.connecthw.date.HWDateVM
+import co.electriccoin.zcash.ui.screen.connecthw.estimation.HWEstimationVM
+import co.electriccoin.zcash.ui.screen.connecthw.height.HWHeightVM
+import co.electriccoin.zcash.ui.screen.connecthw.neworactive.HWNewOrActiveVM
 import co.electriccoin.zcash.ui.screen.connectkeystone.connect.KeystoneConnectVM
 import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectVM
 import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedVM
@@ -212,11 +212,11 @@ val viewModelModule =
         viewModelOf(::ResetZashiVM)
         viewModelOf(::DisconnectVM)
         viewModelOf(::KeystoneConnectVM)
-        viewModelOf(::HardwareNewOrActiveVM)
-        viewModelOf(::HardwareDateVM)
-        viewModelOf(::HardwareEstimationVM)
-        viewModelOf(::HardwareHeightVM)
-        viewModelOf(::ChooseHardwareWalletVM)
+        viewModelOf(::HWNewOrActiveVM)
+        viewModelOf(::HWDateVM)
+        viewModelOf(::HWEstimationVM)
+        viewModelOf(::HWHeightVM)
+        viewModelOf(::ChooseHWWalletVM)
         viewModelOf(::LedgerConnectVM)
         viewModelOf(::LedgerConnectedVM)
         viewModelOf(::LedgerDeviceScanVM)

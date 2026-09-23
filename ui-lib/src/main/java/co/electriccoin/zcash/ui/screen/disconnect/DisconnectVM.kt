@@ -33,7 +33,7 @@ class DisconnectVM(
 
     init {
         initLce.execute {
-            val account = disconnect.getHardwareWalletAccount(args.accountStorageKeyId)
+            val account = disconnect.getHWWalletAccount(args.accountStorageKeyId)
             if (account == null) navigationRouter.back()
             account ?: error("No hardware wallet account")
         }
@@ -41,8 +41,8 @@ class DisconnectVM(
 
     private val screenStateFlow =
         combine(initLce.state, confirmationDialogFlow, disconnectLce.state) { init, confirmationDialog, lce ->
-            init.success?.let { hardwareAccount ->
-                createState(hardwareAccount, confirmationDialog, lce.loading)
+            init.success?.let { hwAccount ->
+                createState(hwAccount, confirmationDialog, lce.loading)
             }
         }
 
@@ -52,20 +52,20 @@ class DisconnectVM(
                 errorStateMapper.mapToState(
                     error = it,
                     title = stringRes(R.string.disconnectHWWallet_failureTitle),
-                    message = stringRes(R.string.disconnect_hardware_wallet_error_message),
+                    message = stringRes(R.string.disconnect_hw_wallet_error_message),
                     primaryStyle = ButtonStyle.DESTRUCTIVE2,
                 )
             }.stateIn(this)
 
     private fun createState(
-        hardwareAccount: WalletAccount,
+        hwAccount: WalletAccount,
         confirmationDialog: ZashiConfirmationState?,
         isLoading: Boolean,
     ): DisconnectState =
         DisconnectState(
             header = stringRes(R.string.disconnectHWWallet_title),
             title =
-                if (hardwareAccount is LedgerAccount) {
+                if (hwAccount is LedgerAccount) {
                     stringRes(R.string.ledger_disconnect_title)
                 } else {
                     stringRes(R.string.deleteKeystoneTitle)
@@ -79,7 +79,7 @@ class DisconnectVM(
                     stringRes(R.string.disconnectHWWallet_bullet3),
                 ),
             connectedTitle =
-                if (hardwareAccount is LedgerAccount) {
+                if (hwAccount is LedgerAccount) {
                     stringRes(R.string.ledgerHW)
                 } else {
                     stringRes(R.string.keystoneHW)
@@ -91,7 +91,7 @@ class DisconnectVM(
                     text = stringRes(R.string.disconnectHWWallet_title),
                     style = ButtonStyle.DESTRUCTIVE1,
                     isLoading = isLoading,
-                    onClick = { onDisconnectClick(hardwareAccount) }
+                    onClick = { onDisconnectClick(hwAccount) }
                 ),
             confirmationDialog = confirmationDialog,
             onBack = ::onBack,
@@ -99,24 +99,24 @@ class DisconnectVM(
 
     private fun onBack() = navigationRouter.back()
 
-    private fun onDisconnectClick(hardwareAccount: WalletAccount) {
-        confirmationDialogFlow.value = createConfirmationState(hardwareAccount)
+    private fun onDisconnectClick(hwAccount: WalletAccount) {
+        confirmationDialogFlow.value = createConfirmationState(hwAccount)
     }
 
-    private fun createConfirmationState(hardwareAccount: WalletAccount): ZashiConfirmationState =
+    private fun createConfirmationState(hwAccount: WalletAccount): ZashiConfirmationState =
         ZashiConfirmationState.destructive(
             title = stringRes(R.string.deleteWallet_sheet_title),
             message = stringRes(R.string.disconnectHWWallet_sheetDesc),
             primaryText = stringRes(R.string.disconnectHWWallet_title),
             secondaryText = stringRes(co.electriccoin.zcash.ui.design.R.string.general_cancel),
-            onPrimary = { onConfirmDisconnect(hardwareAccount) },
+            onPrimary = { onConfirmDisconnect(hwAccount) },
             onBack = ::onCancelConfirmation,
         )
 
-    private fun onConfirmDisconnect(hardwareAccount: WalletAccount) {
+    private fun onConfirmDisconnect(hwAccount: WalletAccount) {
         confirmationDialogFlow.value = null
         disconnectLce.execute {
-            disconnect(hardwareAccount)
+            disconnect(hwAccount)
             navigationRouter.backToRoot()
         }
     }

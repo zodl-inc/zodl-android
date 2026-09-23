@@ -14,8 +14,8 @@ import co.electriccoin.zcash.ui.common.usecase.PairLedgerDeviceUseCase
 import co.electriccoin.zcash.ui.common.usecase.SelectWalletAccountUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.StringResource
-import co.electriccoin.zcash.ui.screen.connecthardware.HardwareWalletEnrollment
-import co.electriccoin.zcash.ui.screen.connecthardware.neworactive.HardwareNewOrActiveArgs
+import co.electriccoin.zcash.ui.screen.connecthw.HWWalletEnrollment
+import co.electriccoin.zcash.ui.screen.connecthw.neworactive.HWNewOrActiveArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -100,7 +100,7 @@ class LedgerDeviceScanVMTest {
             runCurrent()
 
             verify(exactly = 1) {
-                navigationRouter.forward(HardwareNewOrActiveArgs(HardwareWalletEnrollment.Ledger))
+                navigationRouter.forward(HWNewOrActiveArgs(HWWalletEnrollment.Ledger))
             }
         }
 

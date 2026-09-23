@@ -9,7 +9,7 @@ import co.electriccoin.zcash.ui.common.usecase.CancelSwapUseCase
 import co.electriccoin.zcash.ui.common.usecase.ConfirmResyncUseCase
 import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
 import co.electriccoin.zcash.ui.common.usecase.CreateFlexaTransactionUseCase
-import co.electriccoin.zcash.ui.common.usecase.CreateHardwareWalletAccountUseCase
+import co.electriccoin.zcash.ui.common.usecase.CreateHWWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.CreateIncreaseEphemeralGapLimitProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.CreateKeystoneAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.CreateKeystoneProposalPCZTEncoderUseCase
@@ -197,7 +197,7 @@ val useCaseModule =
         factoryOf(::ObserveSelectedWalletAccountUseCase)
         factoryOf(::ObserveZashiAccountUseCase)
         factoryOf(::GetZashiAccountUseCase)
-        factoryOf(::CreateHardwareWalletAccountUseCase)
+        factoryOf(::CreateHWWalletAccountUseCase)
         factoryOf(::CreateKeystoneAccountUseCase)
         factoryOf(::CreateLedgerAccountUseCase)
         factoryOf(::ObserveLedgerDevicesUseCase)

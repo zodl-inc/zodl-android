@@ -83,7 +83,7 @@ class AdvancedSettingsVM(
         accounts: List<WalletAccount>?,
         isRestartAvailable: Boolean,
     ): AdvancedSettingsState {
-        val hardwareWalletAccounts = accounts.orEmpty().filterIsInstance<HWWalletAccount>()
+        val hwWalletAccounts = accounts.orEmpty().filterIsInstance<HWWalletAccount>()
         val restoring = walletRestoringState == WalletRestoringState.RESTORING
         return AdvancedSettingsState(
             onBack = ::onBack,
@@ -138,7 +138,7 @@ class AdvancedSettingsVM(
                         bigIcon = imageRes(R.drawable.ic_advanced_settings_crash_reporting),
                         onClick = ::onCrashReportingClick
                     ).takeIf { versionInfo.distribution == DistributionDimension.STORE },
-                    *hardwareWalletAccounts
+                    *hwWalletAccounts
                         .map { account ->
                             ListItemState(
                                 title =

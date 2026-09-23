@@ -135,7 +135,7 @@ class SignKeystoneVotingVM(
                             title = wallet.name,
                             subtitle = stringRes("${wallet.unifiedAddress.take(ADDRESS_MAX_LENGTH)}...")
                         ),
-                    badgeText = stringRes(R.string.keystone_signWith_hardware),
+                    badgeText = stringRes(R.string.keystone_signWith_hw),
                     qrData = qrData,
                     generateNextQrCode = { currentQrPart.update { signingBundle?.encoder?.nextPart() } },
                     currentBundleNumber = bundle.bundleIndex + 1,

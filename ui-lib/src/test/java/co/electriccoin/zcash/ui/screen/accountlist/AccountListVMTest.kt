@@ -11,7 +11,7 @@ import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.usecase.GetWalletAccountsUseCase
 import co.electriccoin.zcash.ui.common.usecase.SelectWalletAccountUseCase
 import co.electriccoin.zcash.ui.design.R
-import co.electriccoin.zcash.ui.screen.choosehardwarewallet.ChooseHardwareWalletArgs
+import co.electriccoin.zcash.ui.screen.choosehwwallet.ChooseHWWalletArgs
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
@@ -111,7 +111,7 @@ class AccountListVMTest {
 
             assertNotNull(vm.state.value?.addWalletButton).onClick()
 
-            verify(exactly = 1) { navigationRouter.forward(ChooseHardwareWalletArgs) }
+            verify(exactly = 1) { navigationRouter.forward(ChooseHWWalletArgs) }
         }
 
     @Test

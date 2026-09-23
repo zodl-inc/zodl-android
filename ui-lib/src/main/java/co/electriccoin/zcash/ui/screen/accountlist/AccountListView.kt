@@ -186,7 +186,7 @@ private fun Preview() =
 @OptIn(ExperimentalMaterial3Api::class)
 @PreviewScreens
 @Composable
-private fun HardwareWalletAddedPreview() =
+private fun HWWalletAddedPreview() =
     ZcashTheme {
         AccountListView(state = AccountListState.previewMaxed)
     }

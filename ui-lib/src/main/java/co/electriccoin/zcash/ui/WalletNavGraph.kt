@@ -34,19 +34,19 @@ import co.electriccoin.zcash.ui.screen.balances.breakdown.BalanceBreakdownArgs
 import co.electriccoin.zcash.ui.screen.balances.breakdown.BalanceBreakdownScreen
 import co.electriccoin.zcash.ui.screen.balances.spendable.SpendableBalanceArgs
 import co.electriccoin.zcash.ui.screen.balances.spendable.SpendableBalanceScreen
-import co.electriccoin.zcash.ui.screen.choosehardwarewallet.ChooseHardwareWalletArgs
-import co.electriccoin.zcash.ui.screen.choosehardwarewallet.ChooseHardwareWalletScreen
+import co.electriccoin.zcash.ui.screen.choosehwwallet.ChooseHWWalletArgs
+import co.electriccoin.zcash.ui.screen.choosehwwallet.ChooseHWWalletScreen
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerArgs
 import co.electriccoin.zcash.ui.screen.chooseserver.ChooseServerScreen
-import co.electriccoin.zcash.ui.screen.connecthardware.HardwareWalletEnrollmentNavType
-import co.electriccoin.zcash.ui.screen.connecthardware.date.HardwareDateArgs
-import co.electriccoin.zcash.ui.screen.connecthardware.date.HardwareFirstTransactionScreen
-import co.electriccoin.zcash.ui.screen.connecthardware.estimation.HardwareEstimationArgs
-import co.electriccoin.zcash.ui.screen.connecthardware.estimation.HardwareFirstTransactionEstimationScreen
-import co.electriccoin.zcash.ui.screen.connecthardware.height.HardwareHeightArgs
-import co.electriccoin.zcash.ui.screen.connecthardware.height.HardwareWBHScreen
-import co.electriccoin.zcash.ui.screen.connecthardware.neworactive.HardwareNewOrActiveArgs
-import co.electriccoin.zcash.ui.screen.connecthardware.neworactive.HardwareNewOrActiveScreen
+import co.electriccoin.zcash.ui.screen.connecthw.HWWalletEnrollmentNavType
+import co.electriccoin.zcash.ui.screen.connecthw.date.HWDateArgs
+import co.electriccoin.zcash.ui.screen.connecthw.date.HWFirstTransactionScreen
+import co.electriccoin.zcash.ui.screen.connecthw.estimation.HWEstimationArgs
+import co.electriccoin.zcash.ui.screen.connecthw.estimation.HWFirstTransactionEstimationScreen
+import co.electriccoin.zcash.ui.screen.connecthw.height.HWHeightArgs
+import co.electriccoin.zcash.ui.screen.connecthw.height.HWWBHScreen
+import co.electriccoin.zcash.ui.screen.connecthw.neworactive.HWNewOrActiveArgs
+import co.electriccoin.zcash.ui.screen.connecthw.neworactive.HWNewOrActiveScreen
 import co.electriccoin.zcash.ui.screen.connectkeystone.connect.ConnectKeystoneArgs
 import co.electriccoin.zcash.ui.screen.connectkeystone.connect.ConnectKeystoneScreen
 import co.electriccoin.zcash.ui.screen.connectkeystone.connected.KeystoneConnectedArgs
@@ -293,22 +293,22 @@ fun NavGraphBuilder.walletNavGraph(
         }
         composable<RequestArgs> { RequestScreen(it.toRoute()) }
         composable<ConnectKeystoneArgs> { ConnectKeystoneScreen() }
-        composable<ChooseHardwareWalletArgs> { ChooseHardwareWalletScreen() }
+        composable<ChooseHWWalletArgs> { ChooseHWWalletScreen() }
         composable<LedgerConnectArgs> { LedgerConnectScreen() }
         composable<LedgerDeviceScanArgs> { LedgerDeviceScanScreen() }
         composable<LedgerConnectedArgs> { LedgerConnectedScreen() }
         dialogComposable<KeystoneExplainerScreenArgs> { KeystoneExplainerScreen() }
-        composable<HardwareNewOrActiveArgs>(typeMap = HardwareWalletEnrollmentNavType.typeMap) {
-            HardwareNewOrActiveScreen(it.toRoute())
+        composable<HWNewOrActiveArgs>(typeMap = HWWalletEnrollmentNavType.typeMap) {
+            HWNewOrActiveScreen(it.toRoute())
         }
-        composable<HardwareDateArgs>(typeMap = HardwareWalletEnrollmentNavType.typeMap) {
-            HardwareFirstTransactionScreen(it.toRoute())
+        composable<HWDateArgs>(typeMap = HWWalletEnrollmentNavType.typeMap) {
+            HWFirstTransactionScreen(it.toRoute())
         }
-        composable<HardwareEstimationArgs>(typeMap = HardwareWalletEnrollmentNavType.typeMap) {
-            HardwareFirstTransactionEstimationScreen(it.toRoute())
+        composable<HWEstimationArgs>(typeMap = HWWalletEnrollmentNavType.typeMap) {
+            HWFirstTransactionEstimationScreen(it.toRoute())
         }
-        composable<HardwareHeightArgs>(typeMap = HardwareWalletEnrollmentNavType.typeMap) {
-            HardwareWBHScreen(it.toRoute())
+        composable<HWHeightArgs>(typeMap = HWWalletEnrollmentNavType.typeMap) {
+            HWWBHScreen(it.toRoute())
         }
         composable<KeystoneConnectedArgs> { KeystoneConnectedScreen() }
         composable<KeepOpenArgs> { KeepOpenScreen(it.toRoute()) }

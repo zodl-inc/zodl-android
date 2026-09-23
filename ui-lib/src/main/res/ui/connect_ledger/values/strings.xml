@@ -2,8 +2,8 @@
 <resources>
 
     <!-- Choose hardware wallet -->
-    <string name="chooseHardwareWallet_title">Connect Hardware Wallet</string>
-    <string name="chooseHardwareWallet_subtitle">Which hardware wallet would you like to connect? Select your device to get started.</string>
+    <string name="chooseHWWallet_title">Connect Hardware Wallet</string>
+    <string name="chooseHWWallet_subtitle">Which hardware wallet would you like to connect? Select your device to get started.</string>
 
     <!-- Ledger connect instructions -->
     <string name="ledger_connect_title">Connect Hardware Wallet</string>

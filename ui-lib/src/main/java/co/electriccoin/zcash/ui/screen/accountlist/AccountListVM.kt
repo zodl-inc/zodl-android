@@ -15,7 +15,7 @@ import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByAddress
-import co.electriccoin.zcash.ui.screen.choosehardwarewallet.ChooseHardwareWalletArgs
+import co.electriccoin.zcash.ui.screen.choosehwwallet.ChooseHWWalletArgs
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.map
@@ -53,7 +53,7 @@ class AccountListVM(
                         ButtonState(
                             text = stringRes(co.electriccoin.zcash.ui.R.string.keystone_connect),
                             onClick = ::onAddWalletButtonClicked
-                        ).takeIf { hasUnconnectedHardwareVendor(accounts) }
+                        ).takeIf { hasUnconnectedHWVendor(accounts) }
                 )
             }.stateIn(
                 scope = viewModelScope,
@@ -65,9 +65,9 @@ class AccountListVM(
      * The call to action disappears only once every supported vendor is connected; the Figma
      * "maxed out" variant is exactly the Zodl + Keystone + Ledger case.
      */
-    private fun hasUnconnectedHardwareVendor(accounts: List<WalletAccount>?): Boolean {
+    private fun hasUnconnectedHWVendor(accounts: List<WalletAccount>?): Boolean {
         val loaded = accounts ?: return false
-        return loaded.count { it is HWWalletAccount } < SUPPORTED_HARDWARE_VENDORS
+        return loaded.count { it is HWWalletAccount } < SUPPORTED_HW_VENDORS
     }
 
     private fun onAccountClicked(account: WalletAccount) =
@@ -75,9 +75,9 @@ class AccountListVM(
             selectWalletAccount(account)
         }
 
-    private fun onAddWalletButtonClicked() = navigationRouter.forward(ChooseHardwareWalletArgs)
+    private fun onAddWalletButtonClicked() = navigationRouter.forward(ChooseHWWalletArgs)
 
     private fun onBack() = navigationRouter.back()
 }
 
-private const val SUPPORTED_HARDWARE_VENDORS = 2
+private const val SUPPORTED_HW_VENDORS = 2

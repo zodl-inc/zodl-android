@@ -13,8 +13,8 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.listitem.checkbox.ZashiExpandedCheckboxListItemState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByAddress
-import co.electriccoin.zcash.ui.screen.connecthardware.HardwareWalletEnrollment
-import co.electriccoin.zcash.ui.screen.connecthardware.neworactive.HardwareNewOrActiveArgs
+import co.electriccoin.zcash.ui.screen.connecthw.HWWalletEnrollment
+import co.electriccoin.zcash.ui.screen.connecthw.neworactive.HWNewOrActiveArgs
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.screen.selectkeystoneaccount.SelectKeystoneAccount
@@ -122,5 +122,5 @@ class SelectKeystoneAccountViewModel(
     private fun onBackClick() = navigationRouter.backToRoot()
 
     private fun onConfirmClick() =
-        navigationRouter.forward(HardwareNewOrActiveArgs(HardwareWalletEnrollment.Keystone(args.ur)))
+        navigationRouter.forward(HWNewOrActiveArgs(HWWalletEnrollment.Keystone(args.ur)))
 }

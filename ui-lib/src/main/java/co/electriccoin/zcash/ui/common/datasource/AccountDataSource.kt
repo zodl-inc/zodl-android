@@ -304,7 +304,7 @@ class AccountDataSourceImpl(
     private fun isLedgerAccount(sdkAccount: Account) =
         sdkAccount.keySource?.lowercase() == Account.LEDGER_KEY_SOURCE
 
-    private fun isHardwareAccount(sdkAccount: Account) =
+    private fun isHWAccount(sdkAccount: Account) =
         isKeystoneAccount(sdkAccount) || isLedgerAccount(sdkAccount)
 
     /**
@@ -369,7 +369,7 @@ class AccountDataSourceImpl(
         selectedAccountUUIDProvider
             .uuid
             .map { uuid ->
-                if (isHardwareAccount(sdkAccount)) {
+                if (isHWAccount(sdkAccount)) {
                     sdkAccount.accountUuid == uuid || allAccounts.size == 1
                 } else {
                     uuid == null || sdkAccount.accountUuid == uuid || allAccounts.size == 1
@@ -382,7 +382,7 @@ class AccountDataSourceImpl(
             log("deriving unified address for ${sdkAccount.accountUuid}")
 
             val addressRequest =
-                if (isHardwareAccount(sdkAccount)) {
+                if (isHWAccount(sdkAccount)) {
                     UnifiedAddressRequest.Orchard
                 } else {
                     UnifiedAddressRequest.shielded
@@ -449,7 +449,7 @@ class AccountDataSourceImpl(
         }
 
     private fun observeSaplingAddress(synchronizer: Synchronizer, sdkAccount: Account): Flow<String?> =
-        if (isHardwareAccount(sdkAccount)) {
+        if (isHWAccount(sdkAccount)) {
             flowOf(null)
         } else {
             flow {

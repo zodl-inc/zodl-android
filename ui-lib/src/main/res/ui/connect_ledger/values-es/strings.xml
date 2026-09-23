@@ -2,8 +2,8 @@
 <resources>
 
     <!-- Choose hardware wallet -->
-    <string name="chooseHardwareWallet_title">Conectar Billetera de Hardware</string>
-    <string name="chooseHardwareWallet_subtitle">¿Qué billetera de hardware quieres conectar? Selecciona tu dispositivo para empezar.</string>
+    <string name="chooseHWWallet_title">Conectar Billetera de Hardware</string>
+    <string name="chooseHWWallet_subtitle">¿Qué billetera de hardware quieres conectar? Selecciona tu dispositivo para empezar.</string>
 
     <!-- Ledger connect instructions -->
     <string name="ledger_connect_title">Conectar Billetera de Hardware</string>

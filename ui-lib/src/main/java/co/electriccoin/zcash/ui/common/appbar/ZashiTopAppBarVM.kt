@@ -107,8 +107,8 @@ class ZashiTopAppBarVM(
         viewModelScope.launch {
             if (getVersionInfo().distribution == DistributionDimension.FOSS) {
                 val isFlexaAvailable = configurationRepository.isFlexaAvailable()
-                val isHardwareWalletConnected = accounts.orEmpty().any { it is HWWalletAccount }
-                if (!isFlexaAvailable && isHardwareWalletConnected) {
+                val isHWWalletConnected = accounts.orEmpty().any { it is HWWalletAccount }
+                if (!isFlexaAvailable && isHWWalletConnected) {
                     navigationRouter.forward(MoreArgs)
                 } else {
                     navigationRouter.forward(IntegrationsArgs)

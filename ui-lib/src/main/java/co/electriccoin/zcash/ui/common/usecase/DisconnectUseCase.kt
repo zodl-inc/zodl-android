@@ -27,16 +27,16 @@ class DisconnectUseCase(
      * is never left pointing at an account that is gone.
      */
     @Suppress("TooGenericExceptionCaught")
-    suspend operator fun invoke(hardwareAccount: WalletAccount) =
+    suspend operator fun invoke(hwAccount: WalletAccount) =
         withContext(Dispatchers.IO) {
             biometricRepository.requestBiometrics(
-                BiometricRequest(message = stringRes(R.string.disconnect_hardware_wallet_biometric_message))
+                BiometricRequest(message = stringRes(R.string.disconnect_hw_wallet_biometric_message))
             )
 
-            migrationAppHooks.cancelMigrationWork(hardwareAccount.sdkAccount.accountUuid.toStorageKeyId())
+            migrationAppHooks.cancelMigrationWork(hwAccount.sdkAccount.accountUuid.toStorageKeyId())
 
-            logger("deleteAccount $hardwareAccount")
-            accountDataSource.deleteAccount(hardwareAccount)
+            logger("deleteAccount $hwAccount")
+            accountDataSource.deleteAccount(hwAccount)
 
             logger("deleteAccount success")
 
@@ -49,7 +49,7 @@ class DisconnectUseCase(
      * is deliberately no fallback: with two vendors connected, picking "the first one" would
      * silently disconnect a device the user did not choose.
      */
-    suspend fun getHardwareWalletAccount(accountStorageKeyId: String): WalletAccount? =
+    suspend fun getHWWalletAccount(accountStorageKeyId: String): WalletAccount? =
         accountDataSource
             .getAllAccounts()
             .firstOrNull { it is HWWalletAccount && it.sdkAccount.accountUuid.toStorageKeyId() == accountStorageKeyId }

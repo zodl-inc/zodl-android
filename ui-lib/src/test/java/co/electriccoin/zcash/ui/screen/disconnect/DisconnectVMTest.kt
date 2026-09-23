@@ -114,14 +114,14 @@ class DisconnectVMTest {
         }
 
     @Test
-    fun eachHardwareAccountIsReachableByItsOwnTargetWithBothConnected() =
+    fun eachHWAccountIsReachableByItsOwnTargetWithBothConnected() =
         runTest {
             val keystone = keystone(uuid = KEYSTONE_UUID)
             val ledger = ledger(uuid = LEDGER_UUID)
             val useCase = useCase(listOf(zashi(isSelected = true), keystone, ledger))
 
-            assertEquals(keystone, useCase.getHardwareWalletAccount(keystone.storageKeyId()))
-            assertEquals(ledger, useCase.getHardwareWalletAccount(ledger.storageKeyId()))
+            assertEquals(keystone, useCase.getHWWalletAccount(keystone.storageKeyId()))
+            assertEquals(ledger, useCase.getHWWalletAccount(ledger.storageKeyId()))
         }
 
     @Test
@@ -130,7 +130,7 @@ class DisconnectVMTest {
             val keystone = keystone(uuid = KEYSTONE_UUID)
             val useCase = useCase(listOf(zashi(isSelected = true), keystone))
 
-            assertNull(useCase.getHardwareWalletAccount(LEDGER_UUID.toStorageKeyId()))
+            assertNull(useCase.getHWWalletAccount(LEDGER_UUID.toStorageKeyId()))
         }
 
     @Test
@@ -139,7 +139,7 @@ class DisconnectVMTest {
             val zashi = zashi(isSelected = true)
             val useCase = useCase(listOf(zashi, keystone(uuid = KEYSTONE_UUID)))
 
-            assertNull(useCase.getHardwareWalletAccount(zashi.storageKeyId()))
+            assertNull(useCase.getHWWalletAccount(zashi.storageKeyId()))
         }
 
     private fun useCase(accounts: List<WalletAccount>) =
@@ -156,7 +156,7 @@ class DisconnectVMTest {
 
     private fun useCase(account: WalletAccount) =
         mockk<DisconnectUseCase>(relaxed = true) {
-            coEvery { getHardwareWalletAccount(any()) } returns account
+            coEvery { getHWWalletAccount(any()) } returns account
         }
 
     private fun vm(

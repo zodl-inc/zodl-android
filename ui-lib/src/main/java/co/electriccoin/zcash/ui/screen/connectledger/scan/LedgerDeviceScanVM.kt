@@ -19,8 +19,8 @@ import co.electriccoin.zcash.ui.common.usecase.SelectWalletAccountUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.connecthardware.HardwareWalletEnrollment
-import co.electriccoin.zcash.ui.screen.connecthardware.neworactive.HardwareNewOrActiveArgs
+import co.electriccoin.zcash.ui.screen.connecthw.HWWalletEnrollment
+import co.electriccoin.zcash.ui.screen.connecthw.neworactive.HWNewOrActiveArgs
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.util.SettingsUtil
@@ -289,7 +289,7 @@ class LedgerDeviceScanVM(
         try {
             when (val result = pairLedgerDevice(device)) {
                 is PairLedgerDeviceResult.Paired -> {
-                    navigationRouter.forward(HardwareNewOrActiveArgs(HardwareWalletEnrollment.Ledger))
+                    navigationRouter.forward(HWNewOrActiveArgs(HWWalletEnrollment.Ledger))
                     internalState.update {
                         it.copy(
                             phase = LedgerScanPhase.IDLE,
