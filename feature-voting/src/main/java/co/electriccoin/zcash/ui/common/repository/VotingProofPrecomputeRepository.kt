@@ -142,7 +142,14 @@ class VotingProofPrecomputeRepositoryImpl(
     override fun startPirWarmup(request: VotingPirWarmupRequest) {
         synchronized(lock) {
             val existing = pirWarmupJobs[request.key]
-            if (existing != null && !existing.isCancelled) {
+            // Branch-wide review (22.9.): must check isCompleted, not isCancelled. cancel()
+            // flips isCancelled to true synchronously, but the job (holding the shared native
+            // voting-DB handle) keeps running until its own non-cancellable finally-block
+            // cleanup actually finishes -- only isCompleted reflects that. Checking isCancelled
+            // here let a second launch for the SAME key slip through during that window,
+            // overwriting the map entry with an untracked job cancelAndAwaitPrecompute could
+            // never find, defeating its whole purpose of serializing access to the native lock.
+            if (existing != null && !existing.isCompleted) {
                 return
             }
 
@@ -167,7 +174,9 @@ class VotingProofPrecomputeRepositoryImpl(
     override fun startSnapshotBundlePrecompute(request: VotingSnapshotBundlePrecomputeRequest) {
         synchronized(lock) {
             val existing = snapshotBundlePrecomputeJobs[request.key]
-            if (existing != null && !existing.isCancelled) {
+            // See startPirWarmup's identical comment above -- same isCancelled-vs-isCompleted
+            // race, same fix.
+            if (existing != null && !existing.isCompleted) {
                 return
             }
 

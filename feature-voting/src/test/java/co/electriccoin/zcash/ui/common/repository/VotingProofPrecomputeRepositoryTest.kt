@@ -7,6 +7,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
@@ -90,6 +91,82 @@ class VotingProofPrecomputeRepositoryTest {
             yield()
 
             assertEquals(1, cryptoClient.calls.count { it is CryptoCall.PrecomputePirProofs })
+
+            scope.cancel()
+        }
+
+    /**
+     * Regression test for the isCancelled-vs-isCompleted race (branch-wide review, 22.9.): a
+     * cancelled job's own `invokeOnCompletion` cleanup-removal handler only fires once it is
+     * genuinely done (`Job.isCompleted`), but `Job.isCancelled` flips to `true` synchronously the
+     * instant `cancel()` is called -- long before its own non-cancellable cleanup (`finally` +
+     * `NonCancellable` around `closeVotingDb`, which holds the shared native voting-DB handle)
+     * actually finishes. Before this fix, the dedup check used `!existing.isCancelled`, which is
+     * already `false` in that window, so a second `startPirWarmup` call for the SAME key would
+     * wrongly launch a second job -- silently defeating [cancelAndAwaitPrecompute]'s whole purpose
+     * of serializing access to the native DB lock right before real vote submission.
+     *
+     * Reproduces the window deterministically (no timing guesswork) by gating the fake crypto
+     * client's `closeVotingDb` on a [CompletableDeferred] this test controls: the first job runs
+     * to completion of its real work, gets cancelled (via [cancelAndAwaitPrecompute], run
+     * concurrently so this test doesn't block on its own `join()`), and is then held parked
+     * inside its own `finally` cleanup -- `isCancelled == true`, `isCompleted == false` -- while a
+     * second `startPirWarmup` call for the same key is made.
+     */
+    @Test
+    fun pirWarmupStaysDedupedWhileACancelledJobsNonCancellableCleanupIsStillRunning() =
+        runBlocking {
+            val cryptoClient = FakeVotingCryptoClient()
+            val closeGate = CompletableDeferred<Unit>()
+            val gatedCryptoClient = GatedCloseVotingDbClient(cryptoClient.client, closeGate)
+            val scope = CoroutineScope(coroutineContext + SupervisorJob())
+            val repository =
+                VotingProofPrecomputeRepositoryImpl(
+                    votingCryptoClient = gatedCryptoClient,
+                    pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
+                    scope = scope
+                )
+            val request = pirWarmupRequest()
+
+            repository.startPirWarmup(request)
+            yield()
+            yield()
+            // The job has finished its real work and is now parked inside the gated
+            // closeVotingDb call in its own finally block -- not completed yet.
+            assertEquals(1, cryptoClient.calls.count { it is CryptoCall.PrecomputePirProofs })
+
+            // Cancel it the same way cancelAndAwaitPrecompute does in production, but run
+            // concurrently -- awaiting it directly here would deadlock this test against
+            // closeGate below, since cancelAndAwaitPrecompute's own join() doesn't return until
+            // the gate is released.
+            val cancelling =
+                launch {
+                    repository.cancelAndAwaitPrecompute(accountUuid = request.accountUuid, roundId = "unused-round")
+                }
+            yield()
+            yield()
+
+            // The cancelled job's cleanup is still pending -- a second call for the SAME key
+            // must NOT launch a second underlying crypto-client call.
+            repository.startPirWarmup(request)
+            yield()
+            yield()
+            assertEquals(
+                1,
+                cryptoClient.calls.count { it is CryptoCall.PrecomputePirProofs },
+                "a second startPirWarmup call for the same key must stay deduped while the " +
+                    "first job's post-cancellation cleanup is still running"
+            )
+
+            // Let the first job's cleanup finish -- the dedup key is now genuinely free.
+            closeGate.complete(Unit)
+            cancelling.join()
+
+            // A third call for the same key now DOES launch a fresh job.
+            repository.startPirWarmup(request)
+            yield()
+            yield()
+            assertEquals(2, cryptoClient.calls.count { it is CryptoCall.PrecomputePirProofs })
 
             scope.cancel()
         }
@@ -596,6 +673,22 @@ private class FakeVotingCryptoClient(
                 }
             }
         } as VotingCryptoClient
+}
+
+/**
+ * Wraps [delegate], delaying only its `closeVotingDb` call until [closeGate] completes -- used by
+ * [VotingProofPrecomputeRepositoryTest.pirWarmupStaysDedupedWhileACancelledJobsNonCancellableCleanupIsStillRunning]
+ * to hold a cancelled job's own `finally`/`NonCancellable` cleanup open on demand, so the test can
+ * deterministically observe the isCancelled-true/isCompleted-false window that fix targets.
+ */
+private class GatedCloseVotingDbClient(
+    private val delegate: VotingCryptoClient,
+    private val closeGate: CompletableDeferred<Unit>
+) : VotingCryptoClient by delegate {
+    override suspend fun closeVotingDb(dbHandle: Long) {
+        closeGate.await()
+        delegate.closeVotingDb(dbHandle)
+    }
 }
 
 private fun fakePirWarmupResult() =
