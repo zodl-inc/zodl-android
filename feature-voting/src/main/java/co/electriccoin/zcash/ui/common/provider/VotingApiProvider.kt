@@ -885,7 +885,22 @@ class KtorVotingApiProvider(
             .normalizedVoteServerUrls()
 
     /**
-     * Executes a GET request to a vote-server URL, routing through OHTTP when Tor is OFF.
+     * Returns true if vote servers are from a user-selected custom voting config, false if they're
+     * from the default (bundled static config + ZODL's dynamic voting config).
+     *
+     * Custom servers route direct (clearnet when Tor is OFF, Tor when Tor is ON) and never through
+     * OHTTP. Predefined servers route through OHTTP when Tor is OFF and fail closed if the gateway
+     * cannot handle them.
+     *
+     * When the user selects a custom voting config (via VotingChainConfigRepository), ALL vote
+     * servers from that config's serviceConfig are treated as custom.
+     */
+    private suspend fun isCustomVoteServer(): Boolean =
+        !votingChainConfigRepository.get().isOnDefaultConfig
+
+    /**
+     * Executes a GET request to a vote-server URL, routing through OHTTP when Tor is OFF for
+     * predefined servers, or direct for custom user-selected voting configs.
      * Preserves failover semantics: OHTTP transport failures and non-2xx responses are thrown
      * as exceptions so the caller's failover logic can try the next server.
      */
@@ -894,8 +909,10 @@ class KtorVotingApiProvider(
         configureRequest: HttpRequestBuilder.() -> Unit = {}
     ): T {
         val torEnabled = httpClientProvider.isTorEnabled()
+        val isCustom = isCustomVoteServer()
         val ohttpClient = httpClientProvider.createOhttp()
-        if (!torEnabled && ohttpClient.canHandle(url)) {
+
+        if (!torEnabled && !isCustom && ohttpClient.canHandle(url)) {
             val response =
                 try {
                     ohttpClient.execute(
@@ -916,15 +933,22 @@ class KtorVotingApiProvider(
             }
             return VOTE_SERVER_JSON.decodeFromString(response.body.decodeToString())
         }
-        if (!torEnabled && !ohttpClient.canHandle(url)) {
-            error("Cannot reach vote server at unsupported destination $url with Tor disabled")
+        if (!torEnabled && !isCustom && !ohttpClient.canHandle(url)) {
+            error("Cannot reach predefined vote server at unsupported destination $url with Tor disabled")
         }
-        Twig.debug { "Vote server GET $url via Tor/direct client (tor=$torEnabled)" }
+        val routeDesc =
+            when {
+                isCustom && torEnabled -> "custom server via Tor"
+                isCustom && !torEnabled -> "custom server direct (clearnet)"
+                else -> "predefined server via Tor/direct client (tor=$torEnabled)"
+            }
+        Twig.debug { "Vote server GET $url $routeDesc" }
         return get(url) { configureRequest() }.body()
     }
 
     /**
-     * Executes a POST request to a vote-server URL, routing through OHTTP when Tor is OFF.
+     * Executes a POST request to a vote-server URL, routing through OHTTP when Tor is OFF for
+     * predefined servers, or direct for custom user-selected voting configs.
      * Preserves failover semantics: OHTTP transport failures and non-2xx responses are thrown
      * as exceptions so the caller's failover logic can try the next server.
      */
@@ -933,8 +957,10 @@ class KtorVotingApiProvider(
         body: String
     ): String {
         val torEnabled = httpClientProvider.isTorEnabled()
+        val isCustom = isCustomVoteServer()
         val ohttpClient = httpClientProvider.createOhttp()
-        if (!torEnabled && ohttpClient.canHandle(url)) {
+
+        if (!torEnabled && !isCustom && ohttpClient.canHandle(url)) {
             val response =
                 try {
                     ohttpClient.execute(
@@ -966,10 +992,16 @@ class KtorVotingApiProvider(
                 error("Vote server POST via OHTTP returned HTTP ${response.status} for $url")
             }
         }
-        if (!torEnabled && !ohttpClient.canHandle(url)) {
-            error("Cannot reach vote server at unsupported destination $url with Tor disabled")
+        if (!torEnabled && !isCustom && !ohttpClient.canHandle(url)) {
+            error("Cannot reach predefined vote server at unsupported destination $url with Tor disabled")
         }
-        Twig.debug { "Vote server POST $url via Tor/direct client (tor=$torEnabled)" }
+        val routeDesc =
+            when {
+                isCustom && torEnabled -> "custom server via Tor"
+                isCustom && !torEnabled -> "custom server direct (clearnet)"
+                else -> "predefined server via Tor/direct client (tor=$torEnabled)"
+            }
+        Twig.debug { "Vote server POST $url $routeDesc" }
         return try {
             post(url) {
                 setBody(TextContent(body, ContentType.Application.Json))
