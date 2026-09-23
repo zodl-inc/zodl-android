@@ -314,7 +314,24 @@ class SubmitVotesUseCase(
                             }
                         }
                     val report =
-                        runRoundWithBundleFailureRetry(roundId) {
+                        runRoundWithBundleFailureRetry(
+                            roundId,
+                            onRetrying = {
+                                onProgress(
+                                    VotingSubmissionProgress.RunningRound(
+                                        completedProposals =
+                                            progressTracker.estimatedCompletedProposals(
+                                                lastCompletedProposals,
+                                                lastTotalProposals
+                                            ),
+                                        totalProposals = lastTotalProposals,
+                                        proofProgress =
+                                            progressTracker.fraction(lastCompletedProposals, lastTotalProposals),
+                                        isRetrying = true
+                                    )
+                                )
+                            }
+                        ) {
                             roundSession.run(delegationInputs, progressListener)
                         }
                     chpBenchLog("run", roundId, System.currentTimeMillis() - chpBenchRunStart)
@@ -537,7 +554,21 @@ class SubmitVotesUseCase(
         val report =
             runRoundWithBundleFailureRetry(
                 roundId,
-                unexpectedResponseMessage = "Keystone round session run() returned no report"
+                unexpectedResponseMessage = "Keystone round session run() returned no report",
+                onRetrying = {
+                    onProgress(
+                        VotingSubmissionProgress.RunningRound(
+                            completedProposals =
+                                progressTracker.estimatedCompletedProposals(
+                                    lastCompletedProposals,
+                                    lastTotalProposals
+                                ),
+                            totalProposals = lastTotalProposals,
+                            proofProgress = progressTracker.fraction(lastCompletedProposals, lastTotalProposals),
+                            isRetrying = true
+                        )
+                    )
+                }
             ) {
                 votingKeystoneSessionHolder.runToCompletion(roundId, delegationInputs, progressListener)
             }
@@ -626,6 +657,7 @@ class SubmitVotesUseCase(
     private suspend fun runRoundWithBundleFailureRetry(
         roundId: String,
         unexpectedResponseMessage: String = "Round session run() returned no report",
+        onRetrying: () -> Unit = {},
         runRound: suspend () -> VotingRoundRunReport?
     ): VotingRoundRunReport {
         suspend fun freshReport() =
@@ -644,6 +676,7 @@ class SubmitVotesUseCase(
                         "attempt=$attempt/$MAX_BUNDLE_FAILURE_RETRIES failures=${report.failures}"
                 )
             }
+            onRetrying()
             delay(BUNDLE_FAILURE_RETRY_DELAY_MS)
             report = freshReport()
         }

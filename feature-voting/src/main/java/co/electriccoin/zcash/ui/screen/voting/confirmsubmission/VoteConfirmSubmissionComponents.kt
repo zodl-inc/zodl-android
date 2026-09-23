@@ -111,7 +111,14 @@ internal fun VoteSubmissionBottomSection(state: VoteConfirmSubmissionState) {
 
                 is VoteSubmissionStatus.RunningRound -> {
                     val total = status.totalProposals
-                    if (total != null && total > 0) {
+                    if (status.isRetrying) {
+                        // Takes priority over the normal N-of-M display below: during the
+                        // silent retry-delay gap (see SubmitVotesUseCase.
+                        // runRoundWithBundleFailureRetry's onRetrying callback), the screen
+                        // would otherwise show the exact same "Submitting vote X of Y..." text
+                        // it showed a moment ago, indistinguishable from a frozen app.
+                        stringRes(R.string.coinVote_confirmSubmission_progressRetrying)
+                    } else if (total != null && total > 0) {
                         stringRes(
                             R.string.coinVote_confirmSubmission_progressSubmittingVoteCount,
                             status.completedProposals ?: 0,

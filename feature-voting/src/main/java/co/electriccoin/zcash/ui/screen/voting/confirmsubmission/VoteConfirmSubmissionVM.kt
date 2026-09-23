@@ -492,7 +492,8 @@ class VoteConfirmSubmissionVM(
                     VoteSubmissionStatus.RunningRound(
                         completedProposals = progress.completedProposals,
                         totalProposals = progress.totalProposals,
-                        proofProgress = progress.proofProgress
+                        proofProgress = progress.proofProgress,
+                        isRetrying = progress.isRetrying
                     )
                 }
             }

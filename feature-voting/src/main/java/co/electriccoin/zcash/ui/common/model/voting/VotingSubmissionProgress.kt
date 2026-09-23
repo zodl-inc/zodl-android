@@ -31,11 +31,20 @@ sealed interface VotingSubmissionProgress {
      * deliberately dropped from this model entirely: it names whichever of several
      * concurrently-interleaved bundles happened to report last and flickers between bundles with
      * and without a proposal id -- see `VotingRoundDriveProgress.step`'s own doc comment.
+     *
+     * [isRetrying] is `true` only for the synthetic progress event
+     * `SubmitVotesUseCase.runRoundWithBundleFailureRetry`'s `onRetrying` callback emits
+     * immediately before its retry delay -- the retry loop's own `delay(...)` call otherwise
+     * produces a silent gap with zero progress callbacks, which on-screen is indistinguishable
+     * from a frozen app. It naturally reverts to `false` as soon as the retry's own round-drive
+     * produces its next real progress event (which goes through the normal per-event path above,
+     * with the default `isRetrying = false`) -- no explicit reset logic needed anywhere.
      */
     data class RunningRound(
         val completedProposals: Int?,
         val totalProposals: Int?,
-        val proofProgress: Float?
+        val proofProgress: Float?,
+        val isRetrying: Boolean = false
     ) : VotingSubmissionProgress
 }
 
