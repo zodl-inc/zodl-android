@@ -31,18 +31,11 @@ sealed interface VotingSubmissionProgress {
      * deliberately dropped from this model entirely: it names whichever of several
      * concurrently-interleaved bundles happened to report last and flickers between bundles with
      * and without a proposal id -- see `VotingRoundDriveProgress.step`'s own doc comment.
-     * [currentProposalId], in contrast, is safe to show: it comes from the crate's real per-draft
-     * `VoteCommit` progress payload (`VotingRoundDriveProgress.voteCommitProposalId`), which
-     * `VotingRoundProgressTracker.currentProposalId()` exposes as "whichever proposal's proof the
-     * crate is actually working on right now" -- proofs are serialized one at a time
-     * (`max_proof_concurrency: 1`), so this does not flicker the way the step-level id does.
-     * `null` until the first such payload arrives; never regresses to `null` afterward.
      */
     data class RunningRound(
         val completedProposals: Int?,
         val totalProposals: Int?,
-        val proofProgress: Float?,
-        val currentProposalId: Int? = null
+        val proofProgress: Float?
     ) : VotingSubmissionProgress
 }
 

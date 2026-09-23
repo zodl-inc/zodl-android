@@ -351,30 +351,6 @@ class VotingRoundProgressTrackerTest {
         assertEquals(0.5f / 37f, fraction)
     }
 
-    // --- currentProposalId ---
-
-    @Test
-    fun `currentProposalId is null until any proposal-scoped progress is recorded`() {
-        val tracker = VotingRoundProgressTracker()
-
-        assertNull(tracker.currentProposalId())
-
-        tracker.record(VotingNextStep.Delegate(bundleIndex = 0), proofProgress = 0.5f)
-        assertNull(tracker.currentProposalId(), "a delegation-only step has no proposal id")
-    }
-
-    @Test
-    fun `currentProposalId reflects the most recently observed real draft`() {
-        val tracker = VotingRoundProgressTracker()
-
-        val step = castVote(bundleIndex = 0, proposalId = 1)
-        tracker.record(step, proofProgress = 1.0f, voteCommitProposalId = 1)
-        assertEquals(1, tracker.currentProposalId())
-
-        tracker.record(step, proofProgress = 0.05f, voteCommitProposalId = 2)
-        assertEquals(2, tracker.currentProposalId())
-    }
-
     // --- estimatedCompletedProposals ---
 
     @Test

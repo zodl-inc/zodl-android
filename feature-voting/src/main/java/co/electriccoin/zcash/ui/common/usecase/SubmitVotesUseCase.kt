@@ -297,8 +297,7 @@ class SubmitVotesUseCase(
                                         ),
                                     totalProposals = lastTotalProposals,
                                     proofProgress =
-                                        progressTracker.fraction(lastCompletedProposals, lastTotalProposals),
-                                    currentProposalId = progressTracker.currentProposalId()
+                                        progressTracker.fraction(lastCompletedProposals, lastTotalProposals)
                                 )
                             )
                             // CHP_BENCH — see ChpBenchLog.kt's own note: local-only, never merge.
@@ -527,8 +526,7 @@ class SubmitVotesUseCase(
                         completedProposals =
                             progressTracker.estimatedCompletedProposals(lastCompletedProposals, lastTotalProposals),
                         totalProposals = lastTotalProposals,
-                        proofProgress = progressTracker.fraction(lastCompletedProposals, lastTotalProposals),
-                        currentProposalId = progressTracker.currentProposalId()
+                        proofProgress = progressTracker.fraction(lastCompletedProposals, lastTotalProposals)
                     )
                 )
             }

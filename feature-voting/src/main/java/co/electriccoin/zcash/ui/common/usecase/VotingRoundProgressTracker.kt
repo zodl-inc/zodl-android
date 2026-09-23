@@ -43,7 +43,6 @@ internal class VotingRoundProgressTracker {
     private var lastFraction = 0f
     private var lastProposalFraction = 0f
     private var lastEstimatedCompleted = 0
-    private var lastObservedProposalId: Int? = null
 
     /**
      * Records one step's proving progress. Proposal-scoped steps (see [proposalIdOf]) bucket by
@@ -72,22 +71,12 @@ internal class VotingRoundProgressTracker {
         } else {
             val proposalId = voteCommitProposalId ?: proposalIdOf(step)
             if (proposalId != null) {
-                lastObservedProposalId = proposalId
                 val bundleIndex = step.bundleIndex
                 val bundleProgress = bundleProgressByProposal.getOrPut(proposalId) { mutableMapOf() }
                 bundleProgress[bundleIndex] = maxOf(bundleProgress[bundleIndex] ?: 0f, proofProgress)
             }
         }
     }
-
-    /**
-     * The most recent real per-draft proposal id observed via [record]'s `voteCommitProposalId`
-     * parameter -- i.e. which proposal's proof the crate is actually working on right now, for a
-     * "currently on question N" display. `null` until at least one `VoteCommit` progress payload
-     * has carried one; never regresses to `null` afterward (the last-known draft stays displayed
-     * between events, exactly like [fraction]/[estimatedCompletedProposals]'s own ratchet).
-     */
-    fun currentProposalId(): Int? = lastObservedProposalId
 
     /**
      * Replaces the tracker's view of one `PlanRefreshed` event's `voteCarryingBundleIndexes`
