@@ -28,6 +28,7 @@ import co.electriccoin.zcash.ui.common.repository.VotingRecoveryPhase
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.toCanonicalUuidString
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
+import co.electriccoin.zcash.voting.BuildConfig
 import co.electriccoin.zcash.work.VotingShareTrackingScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -305,10 +306,12 @@ class SubmitVotesUseCase(
                             // timing-specific, elapsedMs required); this is the same "CHP_BENCH"
                             // tag so a benchmark logcat capture also proves the round-driver isn't
                             // silently stuck for its ~100-second-plus run.
-                            Log.d(
-                                "CHP_BENCH",
-                                "app=zodl step=progress round=$roundId detail=$progress"
-                            )
+                            if (BuildConfig.DEBUG) {
+                                Log.d(
+                                    "CHP_BENCH",
+                                    "app=zodl step=progress round=$roundId detail=$progress"
+                                )
+                            }
                         }
                     val report =
                         runRoundWithBundleFailureRetry(roundId) {
@@ -588,13 +591,15 @@ class SubmitVotesUseCase(
         if (report.failures.isEmpty() && report.skippedBundles.isEmpty()) {
             return
         }
-        Log.w(
-            "CHP_BENCH",
-            "app=zodl step=partial-outcome round=$roundId " +
-                "quiescence=${report.quiescence} completed the run with " +
-                "failures=${report.failures} skippedBundles=${report.skippedBundles} " +
-                "despite a success-shaped quiescence"
-        )
+        if (BuildConfig.DEBUG) {
+            Log.w(
+                "CHP_BENCH",
+                "app=zodl step=partial-outcome round=$roundId " +
+                    "quiescence=${report.quiescence} completed the run with " +
+                    "failures=${report.failures} skippedBundles=${report.skippedBundles} " +
+                    "despite a success-shaped quiescence"
+            )
+        }
     }
 
     /**
@@ -632,11 +637,13 @@ class SubmitVotesUseCase(
         var attempt = 0
         while (report.hasOnlyRetryableBundleFailures() && attempt < MAX_BUNDLE_FAILURE_RETRIES) {
             attempt++
-            Log.w(
-                "CHP_BENCH",
-                "app=zodl step=bundle-failure-retry round=$roundId " +
-                    "attempt=$attempt/$MAX_BUNDLE_FAILURE_RETRIES failures=${report.failures}"
-            )
+            if (BuildConfig.DEBUG) {
+                Log.w(
+                    "CHP_BENCH",
+                    "app=zodl step=bundle-failure-retry round=$roundId " +
+                        "attempt=$attempt/$MAX_BUNDLE_FAILURE_RETRIES failures=${report.failures}"
+                )
+            }
             delay(BUNDLE_FAILURE_RETRY_DELAY_MS)
             report = freshReport()
         }
