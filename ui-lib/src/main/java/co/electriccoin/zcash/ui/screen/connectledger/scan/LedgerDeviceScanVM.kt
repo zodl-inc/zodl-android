@@ -113,8 +113,6 @@ class LedgerDeviceScanVM(
             primaryButton = createPrimaryButton(internal, hasDevices),
             errorSheet = internal.error?.let { createErrorSheet(it) },
             permissionRequestNonce = internal.permissionRequestNonce,
-            onPermissionsGranted = ::onPermissionsGranted,
-            onPermissionsDenied = ::onPermissionsDenied,
             onBack = ::onBack,
         )
     }
@@ -237,13 +235,13 @@ class LedgerDeviceScanVM(
             onBack = ::onSheetDismissed,
         )
 
-    private fun onPermissionsGranted() {
+    fun onPermissionsGranted() {
         if (internalState.value.phase == LedgerScanPhase.PERMISSION) {
             startScan()
         }
     }
 
-    private fun onPermissionsDenied(canRequestAgain: Boolean) {
+    fun onPermissionsDenied(canRequestAgain: Boolean) {
         stopScan()
         internalState.update {
             it.copy(

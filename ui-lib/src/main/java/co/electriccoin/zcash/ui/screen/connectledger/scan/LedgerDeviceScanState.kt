@@ -23,8 +23,6 @@ data class LedgerDeviceScanState(
      * again; the screen keys its request effect on it.
      */
     val permissionRequestNonce: Int,
-    val onPermissionsGranted: () -> Unit,
-    val onPermissionsDenied: (canRequestAgain: Boolean) -> Unit,
     val onBack: () -> Unit,
 ) {
     companion object {
@@ -38,8 +36,6 @@ data class LedgerDeviceScanState(
                 primaryButton = ButtonState(stringRes("Searching"), isEnabled = false, isLoading = true),
                 errorSheet = null,
                 permissionRequestNonce = 0,
-                onPermissionsGranted = {},
-                onPermissionsDenied = {},
                 onBack = {},
             )
 

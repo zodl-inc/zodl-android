@@ -79,7 +79,7 @@ class LedgerDeviceScanVMTest {
             val vm = vm(navigationRouter = navigationRouter, pairLedgerDevice = pairLedgerDevice)
             collect(vm)
 
-            vm.state.value.onPermissionsGranted()
+            vm.onPermissionsGranted()
             runCurrent()
             assertTrue(vm.state.value.isScanning)
             assertFalse(vm.state.value.primaryButton.isEnabled)
@@ -114,7 +114,7 @@ class LedgerDeviceScanVMTest {
             val vm = vm(pairLedgerDevice = pairLedgerDevice)
             collect(vm)
 
-            vm.state.value.onPermissionsGranted()
+            vm.onPermissionsGranted()
             devices.value = listOf(device("AA"))
             runCurrent()
             vm.state.value.devices
@@ -145,7 +145,7 @@ class LedgerDeviceScanVMTest {
             val vm = vm()
             collect(vm)
 
-            vm.state.value.onPermissionsGranted()
+            vm.onPermissionsGranted()
             runCurrent()
             assertEquals(
                 R.string.ledger_scan_searching_title,
@@ -189,7 +189,7 @@ class LedgerDeviceScanVMTest {
             val vm = vm(observeLedgerDevices = failing, navigateToError = navigateToError)
             collect(vm)
 
-            vm.state.value.onPermissionsGranted()
+            vm.onPermissionsGranted()
             runCurrent()
             verify(exactly = 1) { navigateToError.invoke(any(), any()) }
 
@@ -204,7 +204,7 @@ class LedgerDeviceScanVMTest {
         runTest(dispatcher) {
             val soft = vm()
             collect(soft)
-            soft.state.value.onPermissionsDenied(true)
+            soft.onPermissionsDenied(true)
             runCurrent()
             val softSheet = assertNotNull(soft.state.value.errorSheet)
             assertEquals(R.string.ledger_error_permissions_title, softSheet.title.resourceId())
@@ -219,7 +219,7 @@ class LedgerDeviceScanVMTest {
 
             val permanent = vm()
             collect(permanent)
-            permanent.state.value.onPermissionsDenied(false)
+            permanent.onPermissionsDenied(false)
             runCurrent()
             val permanentSheet = assertNotNull(permanent.state.value.errorSheet)
             assertEquals(R.string.ledger_error_permissions_cta, permanentSheet.primary.text.resourceId())
@@ -251,7 +251,7 @@ class LedgerDeviceScanVMTest {
             val vm = vm()
             collect(vm)
 
-            vm.state.value.onPermissionsGranted()
+            vm.onPermissionsGranted()
             advanceTimeBy(31.seconds)
             runCurrent()
 
@@ -314,7 +314,7 @@ class LedgerDeviceScanVMTest {
             val vm = vm(observeLedgerDevices = observeLedgerDevices)
             collect(vm)
 
-            vm.state.value.onPermissionsGranted()
+            vm.onPermissionsGranted()
             advanceTimeBy(31.seconds)
             runCurrent()
             assertNotNull(vm.state.value.errorSheet)
@@ -343,7 +343,7 @@ class LedgerDeviceScanVMTest {
             val vm = vm(observeLedgerDevices = observeLedgerDevices)
             collect(vm)
 
-            vm.state.value.onPermissionsDenied(false)
+            vm.onPermissionsDenied(false)
             runCurrent()
 
             assertSheetTitle(vm, R.string.ledger_error_permissions_title)
@@ -361,7 +361,7 @@ class LedgerDeviceScanVMTest {
             val vm = vm(pairLedgerDevice = pairLedgerDevice)
             collect(vm)
 
-            vm.state.value.onPermissionsGranted()
+            vm.onPermissionsGranted()
             devices.value = listOf(device("AA"))
             runCurrent()
             vm.state.value.devices
@@ -399,7 +399,7 @@ class LedgerDeviceScanVMTest {
                 )
             collect(vm)
 
-            vm.state.value.onPermissionsGranted()
+            vm.onPermissionsGranted()
             devices.value = listOf(device("AA"))
             runCurrent()
             vm.state.value.devices
@@ -434,7 +434,7 @@ class LedgerDeviceScanVMTest {
                     ledgerPairingRepository = ledgerPairingRepository,
                 )
             collect(vm)
-            vm.state.value.onPermissionsGranted()
+            vm.onPermissionsGranted()
             runCurrent()
             assertTrue(vm.state.value.isScanning)
 
@@ -463,7 +463,7 @@ class LedgerDeviceScanVMTest {
                 navigationRouter = navigationRouter,
             )
         collect(vm)
-        vm.state.value.onPermissionsGranted()
+        vm.onPermissionsGranted()
         devices.value = listOf(device("AA"))
         runCurrent()
         vm.state.value.devices

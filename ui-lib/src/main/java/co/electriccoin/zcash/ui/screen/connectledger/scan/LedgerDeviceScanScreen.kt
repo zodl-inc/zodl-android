@@ -53,9 +53,9 @@ fun LedgerDeviceScanScreen() {
             onPermissionsResult = { result ->
                 isRequestAnswered = true
                 if (result.values.all { it }) {
-                    state.onPermissionsGranted()
+                    vm.onPermissionsGranted()
                 } else {
-                    state.onPermissionsDenied(permissionsHolder.value?.canRequestAgain() == true)
+                    vm.onPermissionsDenied(permissionsHolder.value?.canRequestAgain() == true)
                 }
             },
         )
@@ -63,7 +63,7 @@ fun LedgerDeviceScanScreen() {
 
     LaunchedEffect(Unit) {
         if (permissionsState.allPermissionsGranted) {
-            state.onPermissionsGranted()
+            vm.onPermissionsGranted()
         } else {
             permissionsState.launchMultiplePermissionRequest()
         }
@@ -77,9 +77,9 @@ fun LedgerDeviceScanScreen() {
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         if (permissionsState.allPermissionsGranted) {
-            state.onPermissionsGranted()
+            vm.onPermissionsGranted()
         } else if (isRequestAnswered) {
-            state.onPermissionsDenied(permissionsState.canRequestAgain())
+            vm.onPermissionsDenied(permissionsState.canRequestAgain())
         }
     }
 
