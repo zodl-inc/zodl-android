@@ -585,11 +585,21 @@ class KtorVotingApiProvider(
                             }
                         Twig.debug { "OHTTP GET $url -> HTTP ${response.status}" }
                         when {
-                            response.status == HttpStatusCode.NotFound.value -> return null
-                            response.status == HttpStatusCode.UnprocessableEntity.value ->
+                            response.status == HttpStatusCode.NotFound.value -> {
+                                return null
+                            }
+
+                            response.status == HttpStatusCode.UnprocessableEntity.value -> {
                                 return response.body.decodeToString().toTxConfirmation()
-                            response.status !in OHTTP_HTTP_SUCCESS -> return null
-                            else -> response.body.decodeToString()
+                            }
+
+                            response.status !in OHTTP_HTTP_SUCCESS -> {
+                                return null
+                            }
+
+                            else -> {
+                                response.body.decodeToString()
+                            }
                         }
                     }
 
@@ -602,10 +612,17 @@ class KtorVotingApiProvider(
             responseText.toTxConfirmation()
         } catch (responseException: ResponseException) {
             when (responseException.response.status) {
-                HttpStatusCode.NotFound -> null
-                HttpStatusCode.UnprocessableEntity ->
+                HttpStatusCode.NotFound -> {
+                    null
+                }
+
+                HttpStatusCode.UnprocessableEntity -> {
                     responseException.response.bodyAsText().toTxConfirmation()
-                else -> null
+                }
+
+                else -> {
+                    null
+                }
             }
         } catch (exception: Exception) {
             if (exception is CancellationException) {
