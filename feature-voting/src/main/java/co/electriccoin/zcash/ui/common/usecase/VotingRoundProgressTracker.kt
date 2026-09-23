@@ -90,17 +90,27 @@ internal class VotingRoundProgressTracker {
     fun currentProposalId(): Int? = lastObservedProposalId
 
     /**
-     * Folds in one `PlanRefreshed` event's `voteCarryingBundleIndexes`
-     * (`VotingRoundDriveProgress.voteCarryingBundleIndexes`) -- every bundle the round's live
-     * plan still owes a vote-family step for. Union-only (never cleared): a bundle that finishes
-     * casting drops out of the plan's own list on the next refresh, but must stay counted as a
-     * bundle this ballot is carried in -- mirrors Vizor Wallet's
-     * `votingBallotCarryingBundleCount`'s own union-with-observed rationale. A `null` or empty
-     * list (no `PlanRefreshed` event yet, or the plan has not reached vote steps yet) is a safe
-     * no-op.
+     * Replaces the tracker's view of one `PlanRefreshed` event's `voteCarryingBundleIndexes`
+     * (`VotingRoundDriveProgress.voteCarryingBundleIndexes`) -- every bundle the round's LATEST
+     * live plan still owes a vote-family step for. Verified directly against Vizor Wallet's own
+     * `voting_resume_plan.dart$voteCarryingBundleIndexes()`: it is a pure function that recomputes
+     * fresh from the latest plan on every call, with no persistent accumulator of its own -- its
+     * own doc comment states the union with bundles the run has *observed* reporting progress
+     * happens at the caller, over that fresh value, not by ever accumulating stale plan snapshots.
+     * An earlier version of this function unioned every call's list into a permanent set instead
+     * of replacing it, so a bundle the crate later revised OUT of the vote-carrying set (e.g. its
+     * delegation ended terminal before it ever cast) stayed counted forever, artificially
+     * inflating [proposalCompletionFraction]'s denominator and holding the estimate down. A bundle
+     * that finishes casting and *did* report real progress before dropping off the plan is still
+     * correctly retained -- via the separate union with [bundleProgressByProposal]'s observed
+     * bundle indexes at read time, exactly mirroring Vizor's split. A `null` call (no
+     * `PlanRefreshed` event this tick) is a safe no-op and leaves the last-known plan in place; an
+     * empty list is a real, current "the plan has no vote-carrying bundles right now" and replaces
+     * accordingly.
      */
     fun recordPlan(voteCarryingBundleIndexes: List<Int>?) {
         if (voteCarryingBundleIndexes != null) {
+            planVoteCarryingBundleIndexes.clear()
             planVoteCarryingBundleIndexes += voteCarryingBundleIndexes
         }
     }

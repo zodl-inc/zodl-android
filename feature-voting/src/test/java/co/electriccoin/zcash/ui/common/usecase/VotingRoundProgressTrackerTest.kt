@@ -540,13 +540,39 @@ class VotingRoundProgressTrackerTest {
         tracker.record(castVote(bundleIndex = 0, proposalId = 1), proofProgress = 1.0f)
         tracker.record(castVote(bundleIndex = 1, proposalId = 1), proofProgress = 1.0f)
 
-        // Bundle 0 finished casting and the plan no longer lists it -- recordPlan is a union, so
-        // this must not un-count bundle 0 for proposals already attributed to it (which would
-        // otherwise inflate the denominator down to 1 and double-credit this proposal).
+        // Bundle 0 finished casting and the plan no longer lists it -- recordPlan now REPLACES its
+        // view of the latest plan rather than unioning forever (see recordPlan's own doc comment),
+        // but bundle 0 must still count here because it already reported real progress above, so
+        // it's retained via the separate union with observed bundle indexes at read time -- the
+        // same split Vizor Wallet's own voteCarryingBundleIndexes()/caller pairing uses.
         tracker.recordPlan(listOf(1))
 
         val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 4)
         assertEquals(1, estimate)
+    }
+
+    @Test
+    fun `a bundle the crate revises out of the plan before it ever casts does not inflate the required count`() {
+        val tracker = VotingRoundProgressTracker()
+
+        // First refresh: the plan looks like both bundles will carry a vote.
+        tracker.recordPlan(listOf(0, 1))
+
+        // Bundle 1's delegation ends terminal before it ever reports any vote progress -- unlike
+        // the "drops out after finishing" case above, it never appears in bundleProgressByProposal
+        // either. The crate's next PlanRefreshed correctly no longer lists it. An earlier version
+        // of recordPlan unioned every plan forever, so bundle 1 stayed counted in the denominator
+        // regardless -- artificially depressing the estimate below what bundle 0 alone measures.
+        tracker.recordPlan(listOf(0))
+        tracker.record(castVote(bundleIndex = 0, proposalId = 1), proofProgress = 1.0f)
+
+        val estimate = tracker.estimatedCompletedProposals(completedProposals = 0, totalProposals = 4)
+        assertEquals(
+            1,
+            estimate,
+            "bundle 1 never carried a vote by the latest plan and never reported progress, so it " +
+                "must not depress the estimate below what bundle 0 alone measured"
+        )
     }
 
     @Test
