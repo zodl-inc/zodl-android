@@ -9,6 +9,7 @@ import co.electriccoin.zcash.preference.model.entry.BooleanPreferenceDefault
 import co.electriccoin.zcash.ui.BuildConfig
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.model.DistributionDimension
+import co.electriccoin.zcash.ui.common.model.HWWalletAccount
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
@@ -106,7 +107,7 @@ class ZashiTopAppBarVM(
         viewModelScope.launch {
             if (getVersionInfo().distribution == DistributionDimension.FOSS) {
                 val isFlexaAvailable = configurationRepository.isFlexaAvailable()
-                val isHardwareWalletConnected = accounts.orEmpty().any { it.isHardwareWallet }
+                val isHardwareWalletConnected = accounts.orEmpty().any { it is HWWalletAccount }
                 if (!isFlexaAvailable && isHardwareWalletConnected) {
                     navigationRouter.forward(MoreArgs)
                 } else {

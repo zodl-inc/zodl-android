@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.model.HWWalletAccount
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
@@ -66,7 +67,7 @@ class AccountListVM(
      */
     private fun hasUnconnectedHardwareVendor(accounts: List<WalletAccount>?): Boolean {
         val loaded = accounts ?: return false
-        return loaded.count { it.isHardwareWallet } < SUPPORTED_HARDWARE_VENDORS
+        return loaded.count { it is HWWalletAccount } < SUPPORTED_HARDWARE_VENDORS
     }
 
     private fun onAccountClicked(account: WalletAccount) =

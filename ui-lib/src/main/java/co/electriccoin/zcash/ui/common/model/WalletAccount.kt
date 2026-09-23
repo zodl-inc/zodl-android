@@ -46,12 +46,6 @@ sealed interface WalletAccount : Comparable<WalletAccount> {
     val transparentBalance: Zatoshi?
     val isSelected: Boolean
 
-    /**
-     * Whether the spend authority for this account lives on an external device. Declared per
-     * account rather than tested for at each call site, so a new vendor cannot be forgotten.
-     */
-    val isHardwareWallet: Boolean
-
     val name: StringResource
 
     @get:DrawableRes
@@ -167,8 +161,6 @@ data class ZashiAccount(
     override val transparentBalance: Zatoshi?,
     override val isSelected: Boolean,
 ) : WalletAccount {
-    override val isHardwareWallet: Boolean = false
-
     override val name: StringResource
         get() = stringRes(co.electriccoin.zcash.ui.R.string.accounts_zashi)
 
@@ -217,6 +209,11 @@ data class ZashiAccount(
         }
 }
 
+/**
+ * An account whose spend authority lives on a hardware wallet.
+ */
+sealed interface HWWalletAccount : WalletAccount
+
 data class KeystoneAccount(
     override val sdkAccount: Account,
     override val unifiedAddress: String,
@@ -225,11 +222,9 @@ data class KeystoneAccount(
     override val ironwoodBalance: WalletBalance?,
     override val transparentBalance: Zatoshi?,
     override val isSelected: Boolean,
-) : WalletAccount {
+) : HWWalletAccount {
     override val icon: Int
         get() = R.drawable.ic_item_keystone
-
-    override val isHardwareWallet: Boolean = true
 
     override val name: StringResource
         get() = stringRes(co.electriccoin.zcash.ui.R.string.accounts_keystone)
@@ -292,7 +287,7 @@ data class LedgerAccount(
     override val isSelected: Boolean,
     val deviceIdentity: String?,
     val zip32AccountIndex: Zip32AccountIndex?,
-) : WalletAccount {
+) : HWWalletAccount {
     /**
      * Whether the binding needed to sign with this account is stored. False means the account
      * still displays and receives, but nothing can derive against it.
@@ -302,8 +297,6 @@ data class LedgerAccount(
 
     override val icon: Int
         get() = R.drawable.ic_item_ledger
-
-    override val isHardwareWallet: Boolean = true
 
     override val name: StringResource
         get() = stringRes(co.electriccoin.zcash.ui.R.string.accounts_ledger)

@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.common.usecase
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
+import co.electriccoin.zcash.ui.common.model.HWWalletAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.toStorageKeyId
 import co.electriccoin.zcash.ui.common.repository.BiometricRepository
@@ -51,5 +52,5 @@ class DisconnectUseCase(
     suspend fun getHardwareWalletAccount(accountStorageKeyId: String): WalletAccount? =
         accountDataSource
             .getAllAccounts()
-            .firstOrNull { it.isHardwareWallet && it.sdkAccount.accountUuid.toStorageKeyId() == accountStorageKeyId }
+            .firstOrNull { it is HWWalletAccount && it.sdkAccount.accountUuid.toStorageKeyId() == accountStorageKeyId }
 }

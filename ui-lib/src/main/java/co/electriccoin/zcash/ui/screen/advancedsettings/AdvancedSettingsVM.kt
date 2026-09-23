@@ -10,6 +10,7 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.migration.MigrationGate
 import co.electriccoin.zcash.ui.common.migration.MigrationNavigator
 import co.electriccoin.zcash.ui.common.model.DistributionDimension
+import co.electriccoin.zcash.ui.common.model.HWWalletAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
 import co.electriccoin.zcash.ui.common.model.toStorageKeyId
@@ -82,7 +83,7 @@ class AdvancedSettingsVM(
         accounts: List<WalletAccount>?,
         isRestartAvailable: Boolean,
     ): AdvancedSettingsState {
-        val hardwareWalletAccounts = accounts.orEmpty().filter { it.isHardwareWallet }
+        val hardwareWalletAccounts = accounts.orEmpty().filterIsInstance<HWWalletAccount>()
         val restoring = walletRestoringState == WalletRestoringState.RESTORING
         return AdvancedSettingsState(
             onBack = ::onBack,

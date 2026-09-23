@@ -51,13 +51,6 @@ class LedgerAccountTest {
     }
 
     @Test
-    fun onlyTheHardwareWalletsSayTheyAreOne() {
-        assertTrue(ledger().isHardwareWallet)
-        assertTrue(keystone().isHardwareWallet)
-        assertFalse(zashi().isHardwareWallet)
-    }
-
-    @Test
     fun theDeviceIdentityAndAddressesNeverReachTheLog() {
         val printed = ledger(deviceIdentity = "tpk0-deadbeef").toString()
 
