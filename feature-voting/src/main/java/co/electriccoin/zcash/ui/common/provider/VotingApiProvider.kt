@@ -78,7 +78,7 @@ import kotlin.math.max
 
 data class RoundsListResult(
     val rounds: List<VotingRound>,
-    val sessionsByRoundId: Map<String, VotingSession>
+    val sessionsByRoundId: Map<String, VotingSession>,
 ) {
     companion object {
         val EMPTY = RoundsListResult(rounds = emptyList(), sessionsByRoundId = emptyMap())
@@ -116,7 +116,7 @@ interface VotingApiProvider {
 
     suspend fun submitVoteCommitment(
         bundle: VoteCommitmentBundle,
-        signature: CastVoteSignature
+        signature: CastVoteSignature,
     ): TxResult
 
     suspend fun fetchTallyResults(roundIdHex: String): TallyResults
@@ -126,13 +126,13 @@ interface VotingApiProvider {
     suspend fun fetchShareStatus(
         helperBaseUrl: String,
         roundIdHex: String,
-        nullifierHex: String
+        nullifierHex: String,
     ): ShareConfirmationResult
 
     suspend fun resubmitShare(
         payload: SharePayload,
         candidateUrls: List<String>,
-        excludeUrls: List<String>
+        excludeUrls: List<String>,
     ): List<String>
 
     suspend fun fetchTxConfirmation(txHash: String): TxConfirmation?
@@ -142,7 +142,7 @@ interface VotingApiProvider {
     suspend fun fetchCommitmentTreeLeafPage(
         roundIdHex: String,
         fromHeight: Long,
-        toHeight: Long
+        toHeight: Long,
     ): CommitmentTreeLeafPage
 }
 
@@ -232,8 +232,7 @@ class KtorVotingApiProvider(
     // screen entry, pull-to-refresh, and a config-source change, so the submit flow's own config
     // reads are only as fresh as whatever that screen-level invalidation + this TTL last left
     // cached, not independently guaranteed fresh by the submit flow itself.
-    override suspend fun fetchServiceConfig(): VotingServiceConfig =
-        getResolvedConfigWithTtl().serviceConfig
+    override suspend fun fetchServiceConfig(): VotingServiceConfig = getResolvedConfigWithTtl().serviceConfig
 
     override suspend fun fetchActiveVotingSession(): VotingSession? =
         try {
@@ -277,7 +276,7 @@ class KtorVotingApiProvider(
                 shouldTryNext = { throwable ->
                     failureStatuses += (throwable as? ResponseException)?.response?.status
                     shouldTryNextVoteServer(throwable)
-                }
+                },
             ) { baseUrl ->
                 voteServerGet<ZodlEndorsedRoundsResponse>("$baseUrl$ENDORSED_ROUNDS_PATH") {
                     noCache()
@@ -306,18 +305,18 @@ class KtorVotingApiProvider(
         executeWithVoteServerFailover(DELEGATE_VOTE_PATH) { baseUrl ->
             voteServerPost(
                 url = "$baseUrl$DELEGATE_VOTE_PATH",
-                body = registration.toApiBody()
+                body = registration.toApiBody(),
             ).toTxResult()
         }
 
     override suspend fun submitVoteCommitment(
         bundle: VoteCommitmentBundle,
-        signature: CastVoteSignature
+        signature: CastVoteSignature,
     ): TxResult =
         executeWithVoteServerFailover(CAST_VOTE_PATH) { baseUrl ->
             voteServerPost(
                 url = "$baseUrl$CAST_VOTE_PATH",
-                body = bundle.toApiBody(signature)
+                body = bundle.toApiBody(signature),
             ).toTxResult()
         }
 
@@ -423,7 +422,7 @@ class KtorVotingApiProvider(
                                         DelegatedShareInfo(
                                             shareIndex = share.encShare.shareIndex,
                                             proposalId = share.proposalId,
-                                            acceptedByServers = acceptedByServers
+                                            acceptedByServers = acceptedByServers,
                                         )
                                     }
                                 }
@@ -434,7 +433,7 @@ class KtorVotingApiProvider(
         } finally {
             votingLog(
                 "delegateShares END shares=${shares.size} " +
-                    "elapsed=${System.currentTimeMillis() - startMs}ms"
+                    "elapsed=${System.currentTimeMillis() - startMs}ms",
             )
         }
     }
@@ -442,14 +441,14 @@ class KtorVotingApiProvider(
     override suspend fun fetchShareStatus(
         helperBaseUrl: String,
         roundIdHex: String,
-        nullifierHex: String
+        nullifierHex: String,
     ): ShareConfirmationResult =
         executeWithKtorTimeoutSupport { supportsKtorTimeouts ->
             val normalizedHelperBaseUrl = helperBaseUrl.trimEnd('/')
             try {
                 val responseJson =
                     get(
-                        "$normalizedHelperBaseUrl/shielded-vote/v1/share-status/$roundIdHex/$nullifierHex"
+                        "$normalizedHelperBaseUrl/shielded-vote/v1/share-status/$roundIdHex/$nullifierHex",
                     ) {
                         header("Accept", "application/json")
                         header("X-Helper-Token", "voting-helper")
@@ -469,7 +468,7 @@ class KtorVotingApiProvider(
     override suspend fun resubmitShare(
         payload: SharePayload,
         candidateUrls: List<String>,
-        excludeUrls: List<String>
+        excludeUrls: List<String>,
     ): List<String> =
         executeWithKtorTimeoutSupport resubmitShare@{ supportsKtorTimeouts ->
             val allServers = candidateUrls.normalizeServerUrls()
@@ -556,7 +555,7 @@ class KtorVotingApiProvider(
     override suspend fun fetchCommitmentTreeLeafPage(
         roundIdHex: String,
         fromHeight: Long,
-        toHeight: Long
+        toHeight: Long,
     ): CommitmentTreeLeafPage {
         require(fromHeight >= 0) { "fromHeight must be non-negative" }
         require(toHeight >= fromHeight) { "toHeight must be at least fromHeight" }
@@ -577,7 +576,10 @@ class KtorVotingApiProvider(
      * all fall through to a real fetch.
      */
     private suspend fun getResolvedConfigWithTtl(): ResolvedVotingConfig =
-        resolveConfigCached(useTtl = true, forceRefresh = false)
+        resolveConfigCached(
+            useTtl = true,
+            forceRefresh = false,
+        )
 
     /**
      * Single mutex-guarded decision point shared by [getResolvedConfig] and
@@ -591,7 +593,7 @@ class KtorVotingApiProvider(
      */
     private suspend fun resolveConfigCached(
         useTtl: Boolean,
-        forceRefresh: Boolean
+        forceRefresh: Boolean,
     ): ResolvedVotingConfig =
         configMutex.withLock {
             val sources = resolveConfigSources()
@@ -639,13 +641,13 @@ class KtorVotingApiProvider(
      */
     private suspend fun HttpClient.fetchStaticConfigWalk(
         sources: List<PinnedConfigSource>,
-        supportsKtorTimeouts: Boolean
+        supportsKtorTimeouts: Boolean,
     ): StaticVotingConfig =
         walkConfigSources(
             sources = sources,
             emptyMessage = "Static voting config source list is empty",
             describe = { source -> source.url },
-            shouldTryNext = ::isRetryableStaticVotingConfigFailure
+            shouldTryNext = ::isRetryableStaticVotingConfigFailure,
         ) { source ->
             val bytes = fetchStaticConfigBytes(source.url, supportsKtorTimeouts)
             StaticVotingConfig.decodeAndVerify(data = bytes, expectedSHA256 = source.sha256)
@@ -654,7 +656,7 @@ class KtorVotingApiProvider(
     @Suppress("ThrowsCount") // OHTTP-05 fail-closed + unsupported-destination check = 3 throws
     private suspend fun HttpClient.fetchStaticConfigBytes(
         url: String,
-        supportsKtorTimeouts: Boolean
+        supportsKtorTimeouts: Boolean,
     ): ByteArray {
         // Privacy routing for the static voting config fetch:
         //   Tor OFF: route through the OHTTP gateway (voting.valargroup.dev -> vote.zodl.com proxy),
@@ -670,7 +672,7 @@ class KtorVotingApiProvider(
         }
         if (!torEnabled && !ohttpClient.canHandle(url)) {
             throw UnsupportedPrivateDestinationException(
-                "Cannot fetch static voting config from unsupported destination $url with Tor disabled"
+                "Cannot fetch static voting config from unsupported destination $url with Tor disabled",
             )
         }
         return try {
@@ -683,7 +685,7 @@ class KtorVotingApiProvider(
             }
         } catch (_: TimeoutCancellationException) {
             throw StaticVotingConfigFetchFailedException(
-                "Static voting config fetch failed: request timed out after ${configRequestTimeoutMillis}ms"
+                "Static voting config fetch failed: request timed out after ${configRequestTimeoutMillis}ms",
             )
         } catch (exception: Exception) {
             exception.rethrowIfCancellation()
@@ -693,7 +695,7 @@ class KtorVotingApiProvider(
 
     private suspend fun fetchStaticConfigBytesViaOhttp(
         ohttpClient: OhttpHttpClient,
-        url: String
+        url: String,
     ): ByteArray {
         val response =
             try {
@@ -705,7 +707,7 @@ class KtorVotingApiProvider(
             }
         if (response.status !in OHTTP_HTTP_SUCCESS) {
             throw StaticVotingConfigFetchFailedException(
-                "Static voting config fetch via OHTTP failed: HTTP ${response.status}"
+                "Static voting config fetch via OHTTP failed: HTTP ${response.status}",
             )
         }
         return response.body
@@ -720,7 +722,7 @@ class KtorVotingApiProvider(
             sources = sources,
             staticConfig = staticConfig,
             rawServiceConfig = rawServiceConfig,
-            serviceConfig = serviceConfig
+            serviceConfig = serviceConfig,
         )
     }
 
@@ -742,7 +744,7 @@ class KtorVotingApiProvider(
      */
     private suspend fun HttpClient.fetchDynamicServiceConfigWalk(
         urls: List<String>,
-        supportsKtorTimeouts: Boolean
+        supportsKtorTimeouts: Boolean,
     ): VotingServiceConfig {
         val normalizedUrls = urls.map(String::trim).filter(String::isNotEmpty).distinct()
         val cacheBustToken = UUID.randomUUID().toString()
@@ -751,7 +753,7 @@ class KtorVotingApiProvider(
             sources = normalizedUrls,
             emptyMessage = "Static voting config does not list any dynamic_config_urls",
             describe = { url -> url },
-            shouldTryNext = ::isRetryableDynamicVotingConfigFailure
+            shouldTryNext = ::isRetryableDynamicVotingConfigFailure,
         ) { url ->
             fetchSingleDynamicServiceConfig(url, cacheBustToken, supportsKtorTimeouts)
         }
@@ -760,7 +762,7 @@ class KtorVotingApiProvider(
     private suspend fun HttpClient.fetchSingleDynamicServiceConfig(
         url: String,
         cacheBustToken: String,
-        supportsKtorTimeouts: Boolean
+        supportsKtorTimeouts: Boolean,
     ): VotingServiceConfig {
         val body = fetchDynamicConfigBody(url, cacheBustToken, supportsKtorTimeouts)
         return VotingServiceConfig.decode(body).also(VotingServiceConfig::validate)
@@ -789,7 +791,7 @@ class KtorVotingApiProvider(
     private suspend fun HttpClient.fetchDynamicConfigBody(
         url: String,
         cacheBustToken: String,
-        supportsKtorTimeouts: Boolean
+        supportsKtorTimeouts: Boolean,
     ): String {
         val ohttpClient = httpClientProvider.createOhttp()
         val torEnabled = httpClientProvider.isTorEnabled()
@@ -798,7 +800,7 @@ class KtorVotingApiProvider(
         }
         if (!torEnabled && !ohttpClient.canHandle(url)) {
             throw UnsupportedPrivateDestinationException(
-                "Cannot fetch dynamic voting config from unsupported destination $url with Tor disabled"
+                "Cannot fetch dynamic voting config from unsupported destination $url with Tor disabled",
             )
         }
         return try {
@@ -811,7 +813,7 @@ class KtorVotingApiProvider(
             }
         } catch (_: TimeoutCancellationException) {
             throw DynamicVotingConfigTransientException(
-                "Dynamic voting config fetch failed for $url: request timed out after ${configRequestTimeoutMillis}ms"
+                "Dynamic voting config fetch failed for $url: request timed out after ${configRequestTimeoutMillis}ms",
             )
         } catch (exception: Exception) {
             exception.rethrowIfCancellation()
@@ -828,22 +830,22 @@ class KtorVotingApiProvider(
     private suspend fun fetchDynamicConfigBodyViaOhttp(
         ohttpClient: OhttpHttpClient,
         url: String,
-        cacheBustToken: String
+        cacheBustToken: String,
     ): String {
         val response =
             try {
                 ohttpClient.execute(
                     OhttpHttpClient.Request(
                         url = url.withCacheBustIfNeeded(cacheBustToken),
-                        headers = listOf("Cache-Control" to "no-cache")
-                    )
+                        headers = listOf("Cache-Control" to "no-cache"),
+                    ),
                 )
             } catch (exception: Exception) {
                 throw exception.toOhttpDynamicVotingConfigException(url)
             }
         if (response.status !in OHTTP_HTTP_SUCCESS) {
             throw DynamicVotingConfigTransientException(
-                "Dynamic voting config fetch via OHTTP failed for $url: HTTP ${response.status}"
+                "Dynamic voting config fetch via OHTTP failed for $url: HTTP ${response.status}",
             )
         }
         return response.body.decodeToString()
@@ -858,7 +860,7 @@ class KtorVotingApiProvider(
                 roundIdHex = roundIdHex,
                 rounds = resolvedConfig.rawServiceConfig.rounds,
                 trustedKeys = resolvedConfig.staticConfig.trustedKeys,
-                pirLayout = resolvedConfig.rawServiceConfig.pirLayout
+                pirLayout = resolvedConfig.rawServiceConfig.pirLayout,
             )
         if (status != RoundAuthStatus.AUTHENTICATED) {
             throw VotingRoundAuthenticationException(status = status, roundIdHex = roundIdHex)
@@ -872,7 +874,7 @@ class KtorVotingApiProvider(
         } catch (exception: VotingRoundAuthenticationException) {
             Log.w(
                 TAG,
-                "Skipping unauthenticated voting round ${exception.roundIdHex}: ${exception.status}"
+                "Skipping unauthenticated voting round ${exception.roundIdHex}: ${exception.status}",
             )
             null
         }
@@ -895,8 +897,46 @@ class KtorVotingApiProvider(
      * When the user selects a custom voting config (via VotingChainConfigRepository), ALL vote
      * servers from that config's serviceConfig are treated as custom.
      */
-    private suspend fun isCustomVoteServer(): Boolean =
-        !votingChainConfigRepository.get().isOnDefaultConfig
+    private suspend fun isCustomVoteServer(): Boolean = !votingChainConfigRepository.get().isOnDefaultConfig
+
+    /**
+     * Vote server routing decision based on Tor status, server type, and OHTTP capability.
+     */
+    private sealed class VoteRoute {
+        data class Ohttp(
+            val client: OhttpHttpClient,
+        ) : VoteRoute()
+
+        data class Direct(
+            val description: String,
+        ) : VoteRoute()
+    }
+
+    /**
+     * Resolves the routing strategy for a vote server request.
+     * @throws IllegalStateException if the URL cannot be reached (predefined server with Tor off and no OHTTP support)
+     */
+    private suspend fun resolveVoteRoute(
+        url: String,
+        torEnabled: Boolean,
+        isCustom: Boolean,
+        ohttpClient: OhttpHttpClient,
+    ): VoteRoute {
+        if (!torEnabled && !isCustom && !ohttpClient.canHandle(url)) {
+            error("Cannot reach predefined vote server at unsupported destination $url with Tor disabled")
+        }
+        return if (!torEnabled && !isCustom && ohttpClient.canHandle(url)) {
+            VoteRoute.Ohttp(ohttpClient)
+        } else {
+            val desc =
+                when {
+                    isCustom && torEnabled -> "custom server via Tor"
+                    isCustom && !torEnabled -> "custom server direct (clearnet)"
+                    else -> "predefined server via Tor/direct client (tor=$torEnabled)"
+                }
+            VoteRoute.Direct(desc)
+        }
+    }
 
     /**
      * Executes a GET request to a vote-server URL, routing through OHTTP when Tor is OFF for
@@ -906,44 +946,39 @@ class KtorVotingApiProvider(
      */
     private suspend inline fun <reified T> HttpClient.voteServerGet(
         url: String,
-        configureRequest: HttpRequestBuilder.() -> Unit = {}
+        configureRequest: HttpRequestBuilder.() -> Unit = {},
     ): T {
         val torEnabled = httpClientProvider.isTorEnabled()
         val isCustom = isCustomVoteServer()
         val ohttpClient = httpClientProvider.createOhttp()
 
-        if (!torEnabled && !isCustom && ohttpClient.canHandle(url)) {
-            val response =
-                try {
-                    ohttpClient.execute(
-                        OhttpHttpClient.Request(
-                            url = url,
-                            headers = listOf("Cache-Control" to "no-cache")
+        return when (val route = resolveVoteRoute(url, torEnabled, isCustom, ohttpClient)) {
+            is VoteRoute.Ohttp -> {
+                val response =
+                    try {
+                        route.client.execute(
+                            OhttpHttpClient.Request(
+                                url = url,
+                                headers = listOf("Cache-Control" to "no-cache"),
+                            ),
                         )
-                    )
-                } catch (exception: Exception) {
-                    exception.rethrowIfCancellation()
-                    error(
-                        "Vote server GET via OHTTP failed for $url: ${exception::class.simpleName ?: "unknown error"}"
-                    )
+                    } catch (exception: Exception) {
+                        exception.rethrowIfCancellation()
+                        val errorType = exception::class.simpleName ?: "unknown error"
+                        error("Vote server GET via OHTTP failed for $url: $errorType")
+                    }
+                Twig.debug { "OHTTP GET $url -> HTTP ${response.status} (${response.body.size} bytes)" }
+                if (response.status !in OHTTP_HTTP_SUCCESS) {
+                    error("Vote server GET via OHTTP returned HTTP ${response.status} for $url")
                 }
-            Twig.debug { "OHTTP GET $url -> HTTP ${response.status} (${response.body.size} bytes)" }
-            if (response.status !in OHTTP_HTTP_SUCCESS) {
-                error("Vote server GET via OHTTP returned HTTP ${response.status} for $url")
+                VOTE_SERVER_JSON.decodeFromString(response.body.decodeToString())
             }
-            return VOTE_SERVER_JSON.decodeFromString(response.body.decodeToString())
-        }
-        if (!torEnabled && !isCustom && !ohttpClient.canHandle(url)) {
-            error("Cannot reach predefined vote server at unsupported destination $url with Tor disabled")
-        }
-        val routeDesc =
-            when {
-                isCustom && torEnabled -> "custom server via Tor"
-                isCustom && !torEnabled -> "custom server direct (clearnet)"
-                else -> "predefined server via Tor/direct client (tor=$torEnabled)"
+
+            is VoteRoute.Direct -> {
+                Twig.debug { "Vote server GET $url ${route.description}" }
+                get(url) { configureRequest() }.body()
             }
-        Twig.debug { "Vote server GET $url $routeDesc" }
-        return get(url) { configureRequest() }.body()
+        }
     }
 
     /**
@@ -954,63 +989,58 @@ class KtorVotingApiProvider(
      */
     private suspend fun HttpClient.voteServerPost(
         url: String,
-        body: String
+        body: String,
     ): String {
         val torEnabled = httpClientProvider.isTorEnabled()
         val isCustom = isCustomVoteServer()
         val ohttpClient = httpClientProvider.createOhttp()
 
-        if (!torEnabled && !isCustom && ohttpClient.canHandle(url)) {
-            val response =
-                try {
-                    ohttpClient.execute(
-                        OhttpHttpClient.Request(
-                            url = url,
-                            method = "POST",
-                            headers =
-                                listOf(
-                                    "Content-Type" to "application/json",
-                                    "Cache-Control" to "no-cache"
-                                ),
-                            body = body.toByteArray(Charsets.UTF_8)
+        return when (val route = resolveVoteRoute(url, torEnabled, isCustom, ohttpClient)) {
+            is VoteRoute.Ohttp -> {
+                val response =
+                    try {
+                        route.client.execute(
+                            OhttpHttpClient.Request(
+                                url = url,
+                                method = "POST",
+                                headers =
+                                    listOf(
+                                        "Content-Type" to "application/json",
+                                        "Cache-Control" to "no-cache",
+                                    ),
+                                body = body.toByteArray(Charsets.UTF_8),
+                            ),
                         )
-                    )
-                } catch (exception: Exception) {
-                    exception.rethrowIfCancellation()
-                    error(
-                        "Vote server POST via OHTTP failed for $url: ${exception::class.simpleName ?: "unknown error"}"
-                    )
+                    } catch (exception: Exception) {
+                        exception.rethrowIfCancellation()
+                        val errorType = exception::class.simpleName ?: "unknown error"
+                        error("Vote server POST via OHTTP failed for $url: $errorType")
+                    }
+                Twig.debug { "OHTTP POST $url -> HTTP ${response.status} (${response.body.size} bytes)" }
+                // 422 carries a JSON error body the caller parses (same as the Tor path below).
+                val accepted =
+                    response.status in OHTTP_HTTP_SUCCESS ||
+                        response.status == HttpStatusCode.UnprocessableEntity.value
+                if (accepted) {
+                    response.body.decodeToString()
+                } else {
+                    error("Vote server POST via OHTTP returned HTTP ${response.status} for $url")
                 }
-            Twig.debug { "OHTTP POST $url -> HTTP ${response.status} (${response.body.size} bytes)" }
-            // 422 carries a JSON error body the caller parses (same as the Tor path below).
-            val accepted =
-                response.status in OHTTP_HTTP_SUCCESS ||
-                    response.status == HttpStatusCode.UnprocessableEntity.value
-            return if (accepted) {
-                response.body.decodeToString()
-            } else {
-                error("Vote server POST via OHTTP returned HTTP ${response.status} for $url")
             }
-        }
-        if (!torEnabled && !isCustom && !ohttpClient.canHandle(url)) {
-            error("Cannot reach predefined vote server at unsupported destination $url with Tor disabled")
-        }
-        val routeDesc =
-            when {
-                isCustom && torEnabled -> "custom server via Tor"
-                isCustom && !torEnabled -> "custom server direct (clearnet)"
-                else -> "predefined server via Tor/direct client (tor=$torEnabled)"
-            }
-        Twig.debug { "Vote server POST $url $routeDesc" }
-        return try {
-            post(url) {
-                setBody(TextContent(body, ContentType.Application.Json))
-            }.bodyAsText()
-        } catch (responseException: ResponseException) {
-            if (responseException.response.status == HttpStatusCode.UnprocessableEntity) {
-                responseException.response.bodyAsText()
-            } else {
-                throw responseException
+
+            is VoteRoute.Direct -> {
+                Twig.debug { "Vote server POST $url ${route.description}" }
+                try {
+                    post(url) {
+                        setBody(TextContent(body, ContentType.Application.Json))
+                    }.bodyAsText()
+                } catch (responseException: ResponseException) {
+                    if (responseException.response.status == HttpStatusCode.UnprocessableEntity) {
+                        responseException.response.bodyAsText()
+                    } else {
+                        throw responseException
+                    }
+                }
             }
         }
     }
@@ -1018,7 +1048,7 @@ class KtorVotingApiProvider(
     private suspend fun <T> executeWithVoteServerFailover(
         path: String,
         shouldTryNext: (Throwable) -> Boolean = ::shouldTryNextVoteServer,
-        block: suspend HttpClient.(String) -> T
+        block: suspend HttpClient.(String) -> T,
     ): T {
         val serverUrls = configuredVoteServerUrls()
         return executeWithKtorTimeoutSupport { supportsKtorTimeouts ->
@@ -1035,18 +1065,16 @@ class KtorVotingApiProvider(
                     withTorRequestTimeoutFallback(supportsKtorTimeouts, voteServerFailoverTimeoutMillis) {
                         block(serverUrl)
                     }
-                }
+                },
             )
         }
     }
 
-    private suspend inline fun <T> execute(
-        crossinline block: suspend HttpClient.() -> T
-    ): T =
+    private suspend inline fun <T> execute(crossinline block: suspend HttpClient.() -> T): T =
         executeWithKtorTimeoutSupport { block() }
 
     private suspend inline fun <T> executeWithKtorTimeoutSupport(
-        crossinline block: suspend HttpClient.(Boolean) -> T
+        crossinline block: suspend HttpClient.(Boolean) -> T,
     ): T =
         withContext(Dispatchers.IO) {
             val (httpClient, supportsKtorTimeouts) = sharedHttpClient()
@@ -1082,7 +1110,7 @@ class KtorVotingApiProvider(
     private suspend fun HttpClient.postShareToTargets(
         targetUrls: List<String>,
         body: String,
-        supportsKtorTimeouts: Boolean
+        supportsKtorTimeouts: Boolean,
     ): List<String> =
         coroutineScope {
             targetUrls
@@ -1101,7 +1129,7 @@ class KtorVotingApiProvider(
     private suspend fun HttpClient.postShare(
         serverUrl: String,
         body: String,
-        supportsKtorTimeouts: Boolean
+        supportsKtorTimeouts: Boolean,
     ): Boolean =
         try {
             // MOB-1808: observed live (see the "slow window" trace) that a single share hitting a
@@ -1173,7 +1201,8 @@ private class VotingServerHealthTracker {
                     val state = statesByUrl.getOrPut(serverUrl, ::ServerState)
                     when (val circuit = state.circuit) {
                         Circuit.Closed,
-                        Circuit.HalfOpen -> {
+                        Circuit.HalfOpen,
+                        -> {
                             true
                         }
 
@@ -1233,14 +1262,14 @@ private class VotingServerHealthTracker {
 
     private class ServerState(
         var circuit: Circuit = Circuit.Closed,
-        var consecutiveFailures: Int = 0
+        var consecutiveFailures: Int = 0,
     )
 
     private sealed interface Circuit {
         data object Closed : Circuit
 
         data class Open(
-            val sinceMillis: Long
+            val sinceMillis: Long,
         ) : Circuit
 
         data object HalfOpen : Circuit
@@ -1267,7 +1296,7 @@ private data class ResolvedVotingConfig(
  * thrown as a plain [VotingConfigException] instead, so it is never retried.
  */
 internal class StaticVotingConfigFetchFailedException(
-    message: String
+    message: String,
 ) : VotingConfigException(message)
 
 internal fun isRetryableStaticVotingConfigFailure(throwable: Throwable): Boolean =
@@ -1281,7 +1310,7 @@ internal fun isRetryableStaticVotingConfigFailure(throwable: Throwable): Boolean
  * never lets them retry and they propagate as authoritative.
  */
 internal class DynamicVotingConfigTransientException(
-    message: String
+    message: String,
 ) : VotingConfigException(message)
 
 internal fun isRetryableDynamicVotingConfigFailure(throwable: Throwable): Boolean =
@@ -1293,7 +1322,7 @@ internal fun isRetryableDynamicVotingConfigFailure(throwable: Throwable): Boolea
  * the device IP.
  */
 internal class UnsupportedPrivateDestinationException(
-    message: String
+    message: String,
 ) : VotingConfigException(message)
 
 /**
@@ -1323,7 +1352,7 @@ private fun Exception.toDynamicVotingConfigException(url: String): VotingConfigE
         toDynamicVotingConfigException()
     } else {
         DynamicVotingConfigTransientException(
-            "Dynamic voting config fetch failed for $url: ${this::class.simpleName ?: "unknown error"}"
+            "Dynamic voting config fetch failed for $url: ${this::class.simpleName ?: "unknown error"}",
         )
     }
 
@@ -1343,7 +1372,7 @@ private fun Exception.toOhttpDynamicVotingConfigException(url: String): DynamicV
             this::class.simpleName ?: "unknown error"
         }
     return DynamicVotingConfigTransientException(
-        "Dynamic voting config fetch via OHTTP failed for $url: $reason"
+        "Dynamic voting config fetch via OHTTP failed for $url: $reason",
     )
 }
 
@@ -1378,7 +1407,7 @@ private fun HttpRequestBuilder.helperRequestTimeout(supportsKtorTimeouts: Boolea
 
 private fun HttpRequestBuilder.configRequestTimeout(
     supportsKtorTimeouts: Boolean,
-    timeoutMillis: Long
+    timeoutMillis: Long,
 ) {
     if (supportsKtorTimeouts) {
         timeout {
@@ -1412,7 +1441,7 @@ private fun HttpRequestBuilder.configRequestTimeout(
 private suspend fun <T> withTorRequestTimeoutFallback(
     supportsKtorTimeouts: Boolean,
     timeoutMillis: Long,
-    block: suspend () -> T
+    block: suspend () -> T,
 ): T =
     if (supportsKtorTimeouts) {
         block()
@@ -1552,7 +1581,7 @@ internal fun SharePayload.toApiBody() =
             JSONObject()
                 .put("c1", encShare.c1.toBase64String())
                 .put("c2", encShare.c2.toBase64String())
-                .put("share_index", encShare.shareIndex)
+                .put("share_index", encShare.shareIndex),
         ).put("share_index", encShare.shareIndex)
         .put("tree_position", treePosition)
         .put("vote_round_id", voteRoundId)
@@ -1592,7 +1621,7 @@ internal fun String.toTxResult(): TxResult {
     return TxResult(
         txHash = json.optString("tx_hash"),
         code = json.optNumber("code").toInt(),
-        log = json.optString("log")
+        log = json.optString("log"),
     )
 }
 
@@ -1620,15 +1649,15 @@ internal fun String.toTxConfirmation(): TxConfirmation {
                                         add(
                                             TxEventAttribute(
                                                 key = attribute.optString("key"),
-                                                value = attribute.optString("value")
-                                            )
+                                                value = attribute.optString("value"),
+                                            ),
                                         )
                                     }
-                                }
-                        )
+                                },
+                        ),
                     )
                 }
-            }
+            },
     )
 }
 
@@ -1653,11 +1682,9 @@ private fun ByteArray.toLowerHex(): String =
 private const val HEX_RADIX = 16
 private const val BYTE_MASK = 0xff
 
-private fun tallyResultsPath(roundIdHex: String): String =
-    "/shielded-vote/v1/tally-results/$roundIdHex"
+private fun tallyResultsPath(roundIdHex: String): String = "/shielded-vote/v1/tally-results/$roundIdHex"
 
-private fun txConfirmationPath(txHash: String): String =
-    "/shielded-vote/v1/tx/$txHash"
+private fun txConfirmationPath(txHash: String): String = "/shielded-vote/v1/tx/$txHash"
 
 internal fun commitmentTreeLatestPath(roundIdHex: String): String =
     "/shielded-vote/v1/commitment-tree/$roundIdHex/latest"
@@ -1665,16 +1692,13 @@ internal fun commitmentTreeLatestPath(roundIdHex: String): String =
 internal fun commitmentTreeLeavesPath(
     roundIdHex: String,
     fromHeight: Long,
-    toHeight: Long
-): String =
-    "/shielded-vote/v1/commitment-tree/$roundIdHex/leaves?from_height=$fromHeight&to_height=$toHeight"
+    toHeight: Long,
+): String = "/shielded-vote/v1/commitment-tree/$roundIdHex/leaves?from_height=$fromHeight&to_height=$toHeight"
 
 internal fun shouldTreatEndorsedRoundsStatusAsEmpty(status: HttpStatusCode): Boolean =
     status == HttpStatusCode.BadRequest || status == HttpStatusCode.NotFound
 
-internal fun shouldTreatEndorsedRoundsFailoverFailuresAsEmpty(
-    statuses: List<HttpStatusCode?>
-): Boolean =
+internal fun shouldTreatEndorsedRoundsFailoverFailuresAsEmpty(statuses: List<HttpStatusCode?>): Boolean =
     statuses.isNotEmpty() &&
         statuses.all { status ->
             status != null && shouldTreatEndorsedRoundsStatusAsEmpty(status)
