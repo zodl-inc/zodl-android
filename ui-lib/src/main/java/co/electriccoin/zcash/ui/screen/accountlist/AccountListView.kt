@@ -20,7 +20,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -91,7 +90,7 @@ private fun BottomSheetContent(
                     Spacer(Modifier.height(8.dp))
                 }
                 ZashiAccountListItem(
-                    modifier = Modifier.padding(horizontal = 4.dp),
+                    modifier = Modifier.padding(horizontal = 24.dp),
                     state = item,
                 )
             }
@@ -102,7 +101,7 @@ private fun BottomSheetContent(
                 )
             }
             if (state.addWalletButton != null) {
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 ZashiButton(
                     state = state.addWalletButton,
                     modifier =
@@ -123,7 +122,7 @@ private fun BottomSheetContent(
             onHeightChanged = { headerHeight = it },
             title = {
                 Text(
-                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
+                    modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 16.dp),
                     text = stringResource(co.electriccoin.zcash.ui.R.string.keystone_drawer_title),
                     style = ZashiTypography.textXl,
                     fontWeight = FontWeight.SemiBold,
