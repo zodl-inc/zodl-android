@@ -64,10 +64,13 @@ internal suspend fun <T> withVoteServerFailover(
 
 internal fun shouldTryNextVoteServer(throwable: Throwable): Boolean =
     when (throwable) {
-        // MOB-1811: must precede the plain CancellationException branch below - a
-        // TimeoutCancellationException is this attempt's own bounded deadline firing, not a
-        // reason to give up on the remaining servers.
-        is TimeoutCancellationException -> true
+        // F-06 audit fix: TimeoutCancellationException means the request may have timed out
+        // after delivery. For POSTs (delegate/cast vote), retrying on another server would
+        // risk double-submission. Return false to surface the timeout error instead of
+        // automatically failing over. MOB-1811's comment assumed timeouts are always safe
+        // to retry, but that's only true for idempotent operations.
+        // Note: This still needs to precede CancellationException since it's a subtype.
+        is TimeoutCancellationException -> false
 
         is CancellationException -> false
 
