@@ -45,6 +45,13 @@ sealed interface WalletAccount : Comparable<WalletAccount> {
     val ironwoodBalance: WalletBalance?
     val transparentBalance: Zatoshi?
     val isSelected: Boolean
+
+    /**
+     * Whether the spend authority for this account lives on an external device. Declared per
+     * account rather than tested for at each call site, so a new vendor cannot be forgotten.
+     */
+    val isHardwareWallet: Boolean
+
     val name: StringResource
 
     @get:DrawableRes
@@ -160,6 +167,8 @@ data class ZashiAccount(
     override val transparentBalance: Zatoshi?,
     override val isSelected: Boolean,
 ) : WalletAccount {
+    override val isHardwareWallet: Boolean = false
+
     override val name: StringResource
         get() = stringRes(co.electriccoin.zcash.ui.R.string.accounts_zashi)
 
@@ -220,6 +229,8 @@ data class KeystoneAccount(
     override val icon: Int
         get() = R.drawable.ic_item_keystone
 
+    override val isHardwareWallet: Boolean = true
+
     override val name: StringResource
         get() = stringRes(co.electriccoin.zcash.ui.R.string.accounts_keystone)
 
@@ -264,10 +275,12 @@ data class KeystoneAccount(
  * SDK-side [Account.hdAccountIndex] is null — the device never reveals its seed fingerprint — so
  * the ZIP 32 account index comes from the binding the app persisted at pairing time.
  *
- * @param deviceIdentity The paired device's identity encoding, or null when no binding is stored
- *        yet. Privacy-sensitive: it is linkable to the account's first transparent address, so it
- *        must never be logged or printed.
- * @param zip32AccountIndex The account's ZIP 32 index on the paired device.
+ * @param deviceIdentity The paired device's identity encoding, or null when no binding is stored.
+ *        Privacy-sensitive: it is linkable to the account's first transparent address, so it must
+ *        never be logged or printed.
+ * @param zip32AccountIndex The account's ZIP 32 index on the paired device, or null when no
+ *        binding is stored. Never defaulted to zero — index 0 is a real account, not a stand-in
+ *        for "unknown", and deriving against the wrong one would produce the wrong signature.
  */
 data class LedgerAccount(
     override val sdkAccount: Account,
@@ -278,10 +291,19 @@ data class LedgerAccount(
     override val transparentBalance: Zatoshi?,
     override val isSelected: Boolean,
     val deviceIdentity: String?,
-    val zip32AccountIndex: Zip32AccountIndex,
+    val zip32AccountIndex: Zip32AccountIndex?,
 ) : WalletAccount {
+    /**
+     * Whether the binding needed to sign with this account is stored. False means the account
+     * still displays and receives, but nothing can derive against it.
+     */
+    val isBound: Boolean
+        get() = deviceIdentity != null && zip32AccountIndex != null
+
     override val icon: Int
         get() = R.drawable.ic_item_ledger
+
+    override val isHardwareWallet: Boolean = true
 
     override val name: StringResource
         get() = stringRes(co.electriccoin.zcash.ui.R.string.accounts_ledger)
@@ -291,7 +313,7 @@ data class LedgerAccount(
     override val saplingBalance: WalletBalance? = null
 
     override val hdAccountIndex: Zip32AccountIndex
-        get() = zip32AccountIndex
+        get() = zip32AccountIndex ?: error("Ledger account has no stored binding")
 
     override val totalBalance: Zatoshi?
         get() {

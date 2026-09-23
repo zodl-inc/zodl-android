@@ -26,6 +26,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -130,10 +131,72 @@ class LedgerDeviceScanVMTest {
             assertFalse(button.isLoading)
             assertEquals(emptyList(), vm.state.value.devices)
             assertEquals(
+                R.string.ledger_scan_idle_title,
+                vm.state.value.title
+                    .resourceId()
+            )
+            assertFalse(vm.state.value.showDeviceSkeletons)
+            assertFalse(vm.state.value.isScanning)
+        }
+
+    @Test
+    fun theCopyFollowsThePhaseRatherThanPretendingToSearch() =
+        runTest(dispatcher) {
+            val vm = vm()
+            collect(vm)
+
+            vm.state.value.onPermissionsGranted()
+            runCurrent()
+            assertEquals(
                 R.string.ledger_scan_searching_title,
                 vm.state.value.title
                     .resourceId()
             )
+            assertTrue(vm.state.value.showDeviceSkeletons)
+
+            advanceTimeBy(31.seconds)
+            runCurrent()
+            assertNotNull(vm.state.value.errorSheet).onBack()
+            runCurrent()
+
+            assertEquals(
+                R.string.ledger_scan_idle_title,
+                vm.state.value.title
+                    .resourceId()
+            )
+            assertEquals(
+                R.string.ledger_scan_searching_subtitle,
+                vm.state.value.subtitle
+                    .resourceId()
+            )
+            assertFalse(vm.state.value.showDeviceSkeletons)
+            assertEquals(
+                R.string.ledger_scan_retry_cta,
+                vm.state.value.primaryButton.text
+                    .resourceId()
+            )
+        }
+
+    @Suppress("TooGenericExceptionThrown")
+    @Test
+    fun aGenericScanFailureStopsTheTimeoutInsteadOfLettingItFireLater() =
+        runTest(dispatcher) {
+            val failing =
+                mockk<ObserveLedgerDevicesUseCase> {
+                    every { this@mockk.invoke() } returns flow { throw RuntimeException("boom") }
+                }
+            val navigateToError = mockk<NavigateToErrorUseCase>(relaxed = true)
+            val vm = vm(observeLedgerDevices = failing, navigateToError = navigateToError)
+            collect(vm)
+
+            vm.state.value.onPermissionsGranted()
+            runCurrent()
+            verify(exactly = 1) { navigateToError.invoke(any(), any()) }
+
+            advanceTimeBy(31.seconds)
+            runCurrent()
+
+            assertNull(vm.state.value.errorSheet)
         }
 
     @Test
@@ -352,7 +415,8 @@ class LedgerDeviceScanVMTest {
                 .onClick()
             runCurrent()
 
-            coVerify(exactly = 1) { selectWalletAccount.invoke(existing) }
+            coVerify(exactly = 1) { selectWalletAccount.invoke(existing, false) }
+            verify(exactly = 0) { navigationRouter.back() }
             verify(exactly = 1) { navigationRouter.backToRoot() }
         }
 

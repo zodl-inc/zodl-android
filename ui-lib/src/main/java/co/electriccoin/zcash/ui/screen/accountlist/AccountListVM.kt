@@ -66,7 +66,7 @@ class AccountListVM(
      */
     private fun hasUnconnectedHardwareVendor(accounts: List<WalletAccount>?): Boolean {
         val loaded = accounts ?: return false
-        return loaded.none { it is KeystoneAccount } || loaded.none { it is LedgerAccount }
+        return loaded.count { it.isHardwareWallet } < SUPPORTED_HARDWARE_VENDORS
     }
 
     private fun onAccountClicked(account: WalletAccount) =
@@ -78,3 +78,5 @@ class AccountListVM(
 
     private fun onBack() = navigationRouter.back()
 }
+
+private const val SUPPORTED_HARDWARE_VENDORS = 2

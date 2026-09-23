@@ -177,7 +177,7 @@ class AccountDataSourceImplTest {
         }
 
     @Test
-    fun ledgerAccountWithoutStoredBindingStillDisplaysAtIndexZero() =
+    fun ledgerAccountWithoutStoredBindingStillDisplaysButHasNoIndex() =
         runBlocking {
             val ledgerAccount =
                 mockk<Account> {
@@ -197,7 +197,9 @@ class AccountDataSourceImplTest {
 
             val account = accounts.single() as LedgerAccount
             assertNull(account.deviceIdentity)
-            assertEquals(Zip32AccountIndex.new(0L), account.hdAccountIndex)
+            assertNull(account.zip32AccountIndex)
+            assertFailsWith<IllegalStateException> { account.hdAccountIndex }
+            assertFalse(account.isBound)
         }
 
     @Test

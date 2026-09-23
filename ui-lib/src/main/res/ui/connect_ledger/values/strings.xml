@@ -17,6 +17,7 @@
     <string name="ledger_connect_cta">Connect</string>
 
     <!-- Device scan and selection -->
+    <string name="ledger_scan_idle_title">Connect your Ledger</string>
     <string name="ledger_scan_searching_title">Searching for Devices…</string>
     <string name="ledger_scan_searching_subtitle">Make sure your Ledger is unlocked and Bluetooth is enabled.</string>
     <string name="ledger_scan_searching_cta">Searching</string>

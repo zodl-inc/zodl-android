@@ -85,12 +85,13 @@ class LedgerDeviceScanVM(
 
     private fun createState(internal: LedgerScanInternalState): LedgerDeviceScanState {
         val hasDevices = internal.devices.isNotEmpty()
+        val isIdle = internal.phase == LedgerScanPhase.IDLE
         return LedgerDeviceScanState(
             title =
-                if (hasDevices) {
-                    stringRes(R.string.ledger_scan_select_title)
-                } else {
-                    stringRes(R.string.ledger_scan_searching_title)
+                when {
+                    hasDevices -> stringRes(R.string.ledger_scan_select_title)
+                    isIdle -> stringRes(R.string.ledger_scan_idle_title)
+                    else -> stringRes(R.string.ledger_scan_searching_title)
                 },
             subtitle =
                 if (hasDevices) {
@@ -99,6 +100,7 @@ class LedgerDeviceScanVM(
                     stringRes(R.string.ledger_scan_searching_subtitle)
                 },
             isScanning = internal.phase == LedgerScanPhase.SCANNING && !hasDevices,
+            showDeviceSkeletons = !hasDevices && !isIdle,
             devices =
                 internal.devices.map { device ->
                     LedgerDeviceItemState(
@@ -321,7 +323,7 @@ class LedgerDeviceScanVM(
 
     private fun onGoToAccountClick(account: WalletAccount) =
         viewModelScope.launch {
-            selectWalletAccount(account)
+            selectWalletAccount(account, navigateBack = false)
             navigationRouter.backToRoot()
         }
 
@@ -390,6 +392,7 @@ class LedgerDeviceScanVM(
         } catch (e: LedgerException) {
             showError(e.toScanError() ?: LedgerScanError.NoDevices)
         } catch (e: Exception) {
+            stopScan()
             internalState.update { it.copy(phase = LedgerScanPhase.IDLE) }
             navigateToError(ErrorArgs.General(e))
         }

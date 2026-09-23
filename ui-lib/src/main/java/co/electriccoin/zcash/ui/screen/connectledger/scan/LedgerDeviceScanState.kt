@@ -8,6 +8,11 @@ data class LedgerDeviceScanState(
     val title: StringResource,
     val subtitle: StringResource,
     val isScanning: Boolean,
+    /**
+     * Whether the placeholder rows stand in for devices still being looked for. False once the
+     * scan has stopped, so an idle screen does not pretend to be searching.
+     */
+    val showDeviceSkeletons: Boolean,
     val devices: List<LedgerDeviceItemState>,
     val primaryButton: ButtonState,
     val errorSheet: LedgerErrorSheetState?,

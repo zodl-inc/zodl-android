@@ -106,7 +106,9 @@ fun LedgerDeviceScanView(state: LedgerDeviceScanState) {
                 )
                 Spacer(Modifier.height(32.dp))
                 if (state.devices.isEmpty()) {
-                    DeviceSkeletons(isShimmering = state.isScanning)
+                    if (state.showDeviceSkeletons) {
+                        DeviceSkeletons(isShimmering = state.isScanning)
+                    }
                 } else {
                     state.devices.forEachIndexed { index, device ->
                         if (index != 0) {
@@ -364,6 +366,7 @@ private fun ScanningPreview() =
                     title = stringRes("Searching for Devices…"),
                     subtitle = stringRes("Make sure your Ledger is unlocked and Bluetooth is enabled."),
                     isScanning = true,
+                    showDeviceSkeletons = true,
                     devices = emptyList(),
                     primaryButton = ButtonState(stringRes("Searching"), isEnabled = false, isLoading = true),
                     errorSheet = null,
@@ -385,6 +388,7 @@ private fun SelectPreview() =
                     title = stringRes("Select Your Device"),
                     subtitle = stringRes("Select the Ledger device you'd like to connect."),
                     isScanning = false,
+                    showDeviceSkeletons = false,
                     devices =
                         listOf(
                             LedgerDeviceItemState(

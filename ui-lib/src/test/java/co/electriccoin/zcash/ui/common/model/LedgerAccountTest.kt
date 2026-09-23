@@ -7,8 +7,10 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * A Ledger account's ZIP 32 index comes from its stored binding, because the SDK account has none
@@ -26,9 +28,33 @@ class LedgerAccountTest {
                 every { hdAccountIndex } returns null
             }
 
-        val account = ledger(sdkAccount = sdkAccountWithoutIndex, index = 5L)
+        val account = ledger(sdkAccount = sdkAccountWithoutIndex, deviceIdentity = "tpk0-x", index = 5L)
 
         assertEquals(Zip32AccountIndex.new(5L), account.hdAccountIndex)
+    }
+
+    @Test
+    fun anUnboundAccountRefusesToReportAnIndexRatherThanGuessZero() {
+        val unbound = ledger(deviceIdentity = null, index = null)
+
+        assertFalse(unbound.isBound)
+        val thrown = assertFailsWith<IllegalStateException> { unbound.hdAccountIndex }
+        assertEquals("Ledger account has no stored binding", thrown.message)
+    }
+
+    @Test
+    fun aBoundAccountReportsItsStoredIndex() {
+        val bound = ledger(deviceIdentity = "tpk0-deadbeef", index = 5L)
+
+        assertTrue(bound.isBound)
+        assertEquals(Zip32AccountIndex.new(5L), bound.hdAccountIndex)
+    }
+
+    @Test
+    fun onlyTheHardwareWalletsSayTheyAreOne() {
+        assertTrue(ledger().isHardwareWallet)
+        assertTrue(keystone().isHardwareWallet)
+        assertFalse(zashi().isHardwareWallet)
     }
 
     @Test
@@ -50,28 +76,8 @@ class LedgerAccountTest {
 
     @Test
     fun walletsSortAsZodlThenKeystoneThenLedger() {
-        val zashi =
-            ZashiAccount(
-                sdkAccount = sdkAccount,
-                unifiedAddress = "u",
-                transparentAddress = "t",
-                saplingAddress = "s",
-                orchardBalance = null,
-                saplingBalance = null,
-                ironwoodBalance = null,
-                transparentBalance = null,
-                isSelected = true,
-            )
-        val keystone =
-            KeystoneAccount(
-                sdkAccount = sdkAccount,
-                unifiedAddress = "u",
-                transparentAddress = "t",
-                orchardBalance = null,
-                ironwoodBalance = null,
-                transparentBalance = null,
-                isSelected = false,
-            )
+        val zashi = zashi()
+        val keystone = keystone()
         val ledger = ledger()
 
         assertEquals(
@@ -80,10 +86,34 @@ class LedgerAccountTest {
         )
     }
 
+    private fun zashi() =
+        ZashiAccount(
+            sdkAccount = sdkAccount,
+            unifiedAddress = "u",
+            transparentAddress = "t",
+            saplingAddress = "s",
+            orchardBalance = null,
+            saplingBalance = null,
+            ironwoodBalance = null,
+            transparentBalance = null,
+            isSelected = false,
+        )
+
+    private fun keystone() =
+        KeystoneAccount(
+            sdkAccount = sdkAccount,
+            unifiedAddress = "u",
+            transparentAddress = "t",
+            orchardBalance = null,
+            ironwoodBalance = null,
+            transparentBalance = null,
+            isSelected = false,
+        )
+
     private fun ledger(
         sdkAccount: Account = this.sdkAccount,
-        deviceIdentity: String? = null,
-        index: Long = 0L,
+        deviceIdentity: String? = "tpk0-deadbeef",
+        index: Long? = 0L,
     ) = LedgerAccount(
         sdkAccount = sdkAccount,
         unifiedAddress = "u1secret",
@@ -93,6 +123,6 @@ class LedgerAccountTest {
         transparentBalance = null,
         isSelected = false,
         deviceIdentity = deviceIdentity,
-        zip32AccountIndex = Zip32AccountIndex.new(index),
+        zip32AccountIndex = index?.let { Zip32AccountIndex.new(it) },
     )
 }

@@ -106,8 +106,7 @@ class ZashiTopAppBarVM(
         viewModelScope.launch {
             if (getVersionInfo().distribution == DistributionDimension.FOSS) {
                 val isFlexaAvailable = configurationRepository.isFlexaAvailable()
-                val isHardwareWalletConnected =
-                    accounts.orEmpty().any { it is KeystoneAccount || it is LedgerAccount }
+                val isHardwareWalletConnected = accounts.orEmpty().any { it.isHardwareWallet }
                 if (!isFlexaAvailable && isHardwareWalletConnected) {
                     navigationRouter.forward(MoreArgs)
                 } else {

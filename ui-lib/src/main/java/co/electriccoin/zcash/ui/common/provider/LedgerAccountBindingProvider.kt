@@ -8,7 +8,6 @@ import co.electriccoin.zcash.preference.model.entry.PreferenceDefault
 import co.electriccoin.zcash.preference.model.entry.PreferenceKey
 import co.electriccoin.zcash.ui.common.model.LedgerAccountBindingData
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 
@@ -16,8 +15,12 @@ import kotlinx.coroutines.flow.flow
  * Persists the Ledger binding of an imported account — the paired device's identity encoding and
  * the account's ZIP 32 index on it — in encrypted preferences, keyed by the account's UUID.
  *
- * The device identity is privacy-sensitive (it is linkable to the account's first transparent
- * address once that address has spent on chain), which is why it lives in the encrypted store
+ * The two halves live in one value under one key, so a binding is either fully stored or absent:
+ * split across two keys, a half-completed write would be observable as an identity with no index,
+ * and an index guessed for a signing account is how you sign with the wrong key.
+ *
+ * The device identity is privacy-sensitive — it is linkable to the account's first transparent
+ * address once that address has spent on chain — which is why this lives in the encrypted store
  * alongside the selected-account UUID and is never logged.
  */
 interface LedgerAccountBindingProvider {
@@ -37,72 +40,62 @@ class LedgerAccountBindingProviderImpl(
 ) : LedgerAccountBindingProvider {
     override fun observe(accountUuid: AccountUuid): Flow<LedgerAccountBindingData?> =
         flow {
-            val preferenceProvider = encryptedPreferenceProvider()
-            emitAll(
-                combine(
-                    deviceIdentityDefault(accountUuid).observe(preferenceProvider),
-                    zip32AccountIndexDefault(accountUuid).observe(preferenceProvider),
-                ) { deviceIdentityEncoding, index ->
-                    if (deviceIdentityEncoding == null) {
-                        null
-                    } else {
-                        LedgerAccountBindingData(
-                            deviceIdentityEncoding = deviceIdentityEncoding,
-                            zip32AccountIndex = Zip32AccountIndex.new(index ?: 0L),
-                        )
-                    }
-                }
-            )
+            emitAll(bindingDefault(accountUuid).observe(encryptedPreferenceProvider()))
         }
 
     override suspend fun save(
         accountUuid: AccountUuid,
         deviceIdentityEncoding: String,
         zip32AccountIndex: Long
-    ) {
-        val preferenceProvider = encryptedPreferenceProvider()
-        deviceIdentityDefault(accountUuid).putValue(preferenceProvider, deviceIdentityEncoding)
-        zip32AccountIndexDefault(accountUuid).putValue(preferenceProvider, zip32AccountIndex)
-    }
+    ) = bindingDefault(accountUuid).putValue(
+        encryptedPreferenceProvider(),
+        LedgerAccountBindingData(
+            deviceIdentityEncoding = deviceIdentityEncoding,
+            zip32AccountIndex = Zip32AccountIndex.new(zip32AccountIndex),
+        )
+    )
 
-    override suspend fun clear(accountUuid: AccountUuid) {
-        val preferenceProvider = encryptedPreferenceProvider()
-        deviceIdentityDefault(accountUuid).putValue(preferenceProvider, null)
-        zip32AccountIndexDefault(accountUuid).putValue(preferenceProvider, null)
-    }
+    override suspend fun clear(accountUuid: AccountUuid) =
+        bindingDefault(accountUuid).putValue(encryptedPreferenceProvider(), null)
 }
 
-private fun deviceIdentityDefault(accountUuid: AccountUuid) =
-    LedgerDeviceIdentityPreferenceDefault(PreferenceKey("$DEVICE_IDENTITY_KEY_PREFIX${accountUuid.toHex()}"))
+private fun bindingDefault(accountUuid: AccountUuid) =
+    LedgerBindingPreferenceDefault(PreferenceKey("$BINDING_KEY_PREFIX${accountUuid.toHex()}"))
 
-private fun zip32AccountIndexDefault(accountUuid: AccountUuid) =
-    LedgerZip32AccountIndexPreferenceDefault(PreferenceKey("$ZIP32_KEY_PREFIX${accountUuid.toHex()}"))
-
-private class LedgerDeviceIdentityPreferenceDefault(
+/**
+ * Encodes the binding as `<identity>|<index>`. A device identity is `tpk0-` followed by hex, so it
+ * never contains the separator. Anything that does not parse reads as no binding at all rather
+ * than as a partially recovered one.
+ */
+private class LedgerBindingPreferenceDefault(
     override val key: PreferenceKey
-) : PreferenceDefault<String?> {
-    override suspend fun getValue(preferenceProvider: PreferenceProvider) = preferenceProvider.getString(key)
+) : PreferenceDefault<LedgerAccountBindingData?> {
+    override suspend fun getValue(preferenceProvider: PreferenceProvider): LedgerAccountBindingData? {
+        val encoded = preferenceProvider.getString(key).orEmpty()
+        val identity = encoded.substringBeforeLast(SEPARATOR, missingDelimiterValue = "")
+        val index = encoded.substringAfterLast(SEPARATOR, missingDelimiterValue = "").toLongOrNull()
+        return if (identity.isEmpty() || index == null) {
+            null
+        } else {
+            LedgerAccountBindingData(
+                deviceIdentityEncoding = identity,
+                zip32AccountIndex = Zip32AccountIndex.new(index),
+            )
+        }
+    }
 
     override suspend fun putValue(
         preferenceProvider: PreferenceProvider,
-        newValue: String?
-    ) = preferenceProvider.putString(key, newValue)
-}
-
-private class LedgerZip32AccountIndexPreferenceDefault(
-    override val key: PreferenceKey
-) : PreferenceDefault<Long?> {
-    override suspend fun getValue(preferenceProvider: PreferenceProvider) = preferenceProvider.getLong(key)
-
-    override suspend fun putValue(
-        preferenceProvider: PreferenceProvider,
-        newValue: Long?
-    ) = preferenceProvider.putLong(key, newValue)
+        newValue: LedgerAccountBindingData?
+    ) = preferenceProvider.putString(
+        key,
+        newValue?.let { "${it.deviceIdentityEncoding}$SEPARATOR${it.zip32AccountIndex.index}" }
+    )
 }
 
 @OptIn(ExperimentalStdlibApi::class)
 private fun AccountUuid.toHex() = value.toHexString()
 
-private const val DEVICE_IDENTITY_KEY_PREFIX = "ledger_device_identity_"
+private const val SEPARATOR = "|"
 
-private const val ZIP32_KEY_PREFIX = "ledger_zip32_account_index_"
+private const val BINDING_KEY_PREFIX = "ledger_account_binding_"

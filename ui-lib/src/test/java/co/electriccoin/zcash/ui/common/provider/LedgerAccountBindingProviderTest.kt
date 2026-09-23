@@ -56,16 +56,28 @@ class LedgerAccountBindingProviderTest {
         }
 
     @Test
-    fun anIdentityWithNoStoredIndexFallsBackToAccountZero() =
+    fun aHalfWrittenOrUnparsableValueReadsAsNoBindingAtAll() =
+        runTest {
+            listOf("tpk0-deadbeef", "tpk0-deadbeef|", "|4", "", "|", "tpk0-deadbeef|notanumber")
+                .forEach { encoded ->
+                    val store = FakePreferenceProvider()
+                    store.putString(PreferenceKey(bindingKey), encoded)
+
+                    assertNull(provider(store).observe(accountUuid).first(), "encoded=$encoded")
+                }
+        }
+
+    @Test
+    fun theBindingIsStoredUnderOneKeySoItIsNeverHalfPresent() =
         runTest {
             val store = FakePreferenceProvider()
-            store.putString(PreferenceKey("ledger_device_identity_${accountUuid.hex()}"), "tpk0-deadbeef")
 
-            val binding = provider(store).observe(accountUuid).first()
+            provider(store).save(accountUuid, deviceIdentityEncoding = "tpk0-deadbeef", zip32AccountIndex = 4L)
 
-            assertEquals("tpk0-deadbeef", binding?.deviceIdentityEncoding)
-            assertEquals(Zip32AccountIndex.new(0L), binding?.zip32AccountIndex)
+            assertEquals("tpk0-deadbeef|4", store.getString(PreferenceKey(bindingKey)))
         }
+
+    private val bindingKey get() = "ledger_account_binding_${accountUuid.hex()}"
 
     @OptIn(ExperimentalStdlibApi::class)
     private fun AccountUuid.hex() = value.toHexString()

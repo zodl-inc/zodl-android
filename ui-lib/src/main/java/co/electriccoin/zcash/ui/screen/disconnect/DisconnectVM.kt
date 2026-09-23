@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 
 class DisconnectVM(
+    private val args: DisconnectArgs,
     private val disconnect: DisconnectUseCase,
     private val navigationRouter: NavigationRouter,
     private val errorStateMapper: ErrorMapperUseCase,
@@ -32,7 +33,7 @@ class DisconnectVM(
 
     init {
         initLce.execute {
-            val account = disconnect.getHardwareWalletAccount()
+            val account = disconnect.getHardwareWalletAccount(args.accountStorageKeyId)
             if (account == null) navigationRouter.back()
             account ?: error("No hardware wallet account")
         }

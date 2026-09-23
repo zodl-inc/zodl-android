@@ -308,9 +308,8 @@ class AccountDataSourceImpl(
         isKeystoneAccount(sdkAccount) || isLedgerAccount(sdkAccount)
 
     /**
-     * A Ledger account with no stored binding (the write never landed, or the account predates the
-     * binding store) still displays; it just cannot sign, which the Ledger arms of the send paths
-     * refuse anyway.
+     * A Ledger account with no stored binding still displays and receives; it just cannot derive
+     * anything, which is why its index stays null rather than being guessed as zero.
      */
     private fun createWalletAccount(
         sdkAccount: Account,
@@ -328,7 +327,7 @@ class AccountDataSourceImpl(
                     transparentBalance = snapshot.balance?.unshielded,
                     isSelected = snapshot.isSelected,
                     deviceIdentity = ledgerBinding?.deviceIdentityEncoding,
-                    zip32AccountIndex = ledgerBinding?.zip32AccountIndex ?: Zip32AccountIndex.new(0),
+                    zip32AccountIndex = ledgerBinding?.zip32AccountIndex,
                 )
             }
 

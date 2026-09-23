@@ -3,8 +3,6 @@ package co.electriccoin.zcash.ui.common.usecase
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
-import co.electriccoin.zcash.ui.common.model.KeystoneAccount
-import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.toStorageKeyId
 import co.electriccoin.zcash.ui.common.repository.BiometricRepository
@@ -46,15 +44,12 @@ class DisconnectUseCase(
         }
 
     /**
-     * The hardware account the disconnect screen acts on: the selected one when a hardware wallet
-     * is selected, otherwise the only one there is. With a single Keystone connected — every case
-     * that existed before Ledger — both answers are that Keystone.
+     * The hardware account [accountStorageKeyId] names, or null when it is no longer there. There
+     * is deliberately no fallback: with two vendors connected, picking "the first one" would
+     * silently disconnect a device the user did not choose.
      */
-    suspend fun getHardwareWalletAccount(): WalletAccount? {
-        val accounts = accountDataSource.getAllAccounts().filter { it.isHardwareWallet }
-        return accounts.firstOrNull { it.isSelected } ?: accounts.firstOrNull()
-    }
+    suspend fun getHardwareWalletAccount(accountStorageKeyId: String): WalletAccount? =
+        accountDataSource
+            .getAllAccounts()
+            .firstOrNull { it.isHardwareWallet && it.sdkAccount.accountUuid.toStorageKeyId() == accountStorageKeyId }
 }
-
-private val WalletAccount.isHardwareWallet: Boolean
-    get() = this is KeystoneAccount || this is LedgerAccount

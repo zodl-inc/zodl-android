@@ -125,7 +125,7 @@ class AccountListVMTest {
             assertNotNull(vm.state.value?.items)[1].onClick()
             runCurrent()
 
-            coVerify(exactly = 1) { selectWalletAccount.invoke(ledger) }
+            coVerify(exactly = 1) { selectWalletAccount.invoke(ledger, true) }
         }
 
     private fun vm(

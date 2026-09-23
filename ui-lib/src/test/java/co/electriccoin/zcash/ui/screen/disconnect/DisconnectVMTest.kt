@@ -10,6 +10,7 @@ import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
+import co.electriccoin.zcash.ui.common.model.toStorageKeyId
 import co.electriccoin.zcash.ui.common.usecase.DisconnectUseCase
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
 import co.electriccoin.zcash.ui.design.util.StringResource
@@ -31,6 +32,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 /**
  * The disconnect screen serves either hardware vendor: it names the one being removed, and the
@@ -39,7 +41,8 @@ import kotlin.test.assertNotNull
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class DisconnectVMTest {
-    private val sdkAccount = Account.new(AccountUuid.new(ByteArray(16) { it.toByte() }))
+    private val defaultUuid = AccountUuid.new(ByteArray(16) { it.toByte() })
+    private val sdkAccount = Account.new(defaultUuid)
 
     @BeforeTest
     fun setUp() {
@@ -111,43 +114,49 @@ class DisconnectVMTest {
         }
 
     @Test
-    fun theSelectedHardwareAccountIsTheOneOffered() =
+    fun eachHardwareAccountIsReachableByItsOwnTargetWithBothConnected() =
         runTest {
-            val keystone = keystone()
-            val ledger = ledger(isSelected = true)
-            val useCase =
-                DisconnectUseCase(
-                    accountDataSource =
-                        mockk<AccountDataSource>(relaxed = true) {
-                            coEvery { getAllAccounts() } returns listOf(zashi(), keystone, ledger)
-                        },
-                    biometricRepository = mockk(relaxed = true),
-                    migrationAppHooks = mockk(relaxed = true),
-                )
+            val keystone = keystone(uuid = KEYSTONE_UUID)
+            val ledger = ledger(uuid = LEDGER_UUID)
+            val useCase = useCase(listOf(zashi(isSelected = true), keystone, ledger))
 
-            assertEquals(ledger, useCase.getHardwareWalletAccount())
+            assertEquals(keystone, useCase.getHardwareWalletAccount(keystone.storageKeyId()))
+            assertEquals(ledger, useCase.getHardwareWalletAccount(ledger.storageKeyId()))
         }
 
     @Test
-    fun aLoneKeystoneIsStillOfferedWhenTheSoftwareWalletIsSelected() =
+    fun aTargetThatIsNoLongerConnectedResolvesToNothingRatherThanTheOtherVendor() =
         runTest {
-            val keystone = keystone()
-            val useCase =
-                DisconnectUseCase(
-                    accountDataSource =
-                        mockk<AccountDataSource>(relaxed = true) {
-                            coEvery { getAllAccounts() } returns listOf(zashi(isSelected = true), keystone)
-                        },
-                    biometricRepository = mockk(relaxed = true),
-                    migrationAppHooks = mockk(relaxed = true),
-                )
+            val keystone = keystone(uuid = KEYSTONE_UUID)
+            val useCase = useCase(listOf(zashi(isSelected = true), keystone))
 
-            assertEquals(keystone, useCase.getHardwareWalletAccount())
+            assertNull(useCase.getHardwareWalletAccount(LEDGER_UUID.toStorageKeyId()))
         }
+
+    @Test
+    fun theSoftwareWalletIsNeverADisconnectTarget() =
+        runTest {
+            val zashi = zashi(isSelected = true)
+            val useCase = useCase(listOf(zashi, keystone(uuid = KEYSTONE_UUID)))
+
+            assertNull(useCase.getHardwareWalletAccount(zashi.storageKeyId()))
+        }
+
+    private fun useCase(accounts: List<WalletAccount>) =
+        DisconnectUseCase(
+            accountDataSource =
+                mockk<AccountDataSource>(relaxed = true) {
+                    coEvery { getAllAccounts() } returns accounts
+                },
+            biometricRepository = mockk(relaxed = true),
+            migrationAppHooks = mockk(relaxed = true),
+        )
+
+    private fun WalletAccount.storageKeyId() = sdkAccount.accountUuid.toStorageKeyId()
 
     private fun useCase(account: WalletAccount) =
         mockk<DisconnectUseCase>(relaxed = true) {
-            coEvery { getHardwareWalletAccount() } returns account
+            coEvery { getHardwareWalletAccount(any()) } returns account
         }
 
     private fun vm(
@@ -155,6 +164,7 @@ class DisconnectVMTest {
         disconnect: DisconnectUseCase = useCase(account),
         navigationRouter: NavigationRouter = mockk(relaxed = true),
     ) = DisconnectVM(
+        args = DisconnectArgs(account.sdkAccount.accountUuid.toStorageKeyId()),
         disconnect = disconnect,
         navigationRouter = navigationRouter,
         errorStateMapper = ErrorMapperUseCase(sendEmail = mockk(relaxed = true)),
@@ -173,9 +183,9 @@ class DisconnectVMTest {
             isSelected = isSelected,
         )
 
-    private fun keystone(isSelected: Boolean = false) =
+    private fun keystone(isSelected: Boolean = false, uuid: AccountUuid = defaultUuid) =
         KeystoneAccount(
-            sdkAccount = sdkAccount,
+            sdkAccount = Account.new(uuid),
             unifiedAddress = "u",
             transparentAddress = "t",
             orchardBalance = null,
@@ -184,9 +194,9 @@ class DisconnectVMTest {
             isSelected = isSelected,
         )
 
-    private fun ledger(isSelected: Boolean = false) =
+    private fun ledger(isSelected: Boolean = false, uuid: AccountUuid = defaultUuid) =
         LedgerAccount(
-            sdkAccount = sdkAccount,
+            sdkAccount = Account.new(uuid),
             unifiedAddress = "u",
             transparentAddress = "t",
             orchardBalance = null,
@@ -203,3 +213,7 @@ class DisconnectVMTest {
 
     private fun StringResource.resourceId(): Int = (this as StringResource.ByResource).resource
 }
+
+private val KEYSTONE_UUID = AccountUuid.new(ByteArray(16) { 7 })
+
+private val LEDGER_UUID = AccountUuid.new(ByteArray(16) { 9 })
