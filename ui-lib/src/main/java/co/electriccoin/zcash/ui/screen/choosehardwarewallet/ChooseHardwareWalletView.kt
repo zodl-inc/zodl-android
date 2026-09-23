@@ -1,9 +1,5 @@
 package co.electriccoin.zcash.ui.screen.choosehardwarewallet
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,17 +12,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
@@ -40,7 +33,10 @@ import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
+import co.electriccoin.zcash.ui.design.util.Compose
+import co.electriccoin.zcash.ui.design.util.ImageResource
 import co.electriccoin.zcash.ui.design.util.getValue
+import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
 
@@ -102,55 +98,20 @@ fun ChooseHardwareWalletView(state: ChooseHardwareWalletState) {
 
 @Composable
 private fun HardwareWalletCard(state: HardwareWalletCardState) {
-    Box(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .background(CARD_BACKGROUND)
-                .border(BorderStroke(1.dp, ZashiColors.Surfaces.strokeSecondary), RoundedCornerShape(16.dp))
-                .clickable(onClick = state.onClick)
-                .testTag(state.testTag),
-        contentAlignment = Alignment.Center,
-    ) {
-        Image(
-            modifier = Modifier.matchParentSize(),
-            painter = painterResource(state.background),
-            contentDescription = state.contentDescription.getValue(),
-            contentScale = ContentScale.Crop,
-            alpha = CARD_PHOTO_ALPHA,
-        )
-        Box(
+    val image = state.image
+    if (image is ImageResource.ByDrawable) {
+        image.Compose(
             modifier =
                 Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.verticalGradient(
-                            0f to Color.Transparent,
-                            1f to CARD_BACKGROUND,
-                        )
-                    )
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .clickable(onClick = state.onClick)
+                    .testTag(state.testTag),
+            contentDescription = state.contentDescription.getValue(),
+            contentScale = ContentScale.FillWidth,
         )
-        if (state.wordmark != null) {
-            Icon(
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 32.dp),
-                painter = painterResource(state.wordmark),
-                contentDescription = null,
-                tint = Color.White,
-            )
-        } else {
-            Spacer(Modifier.height(CARD_MIN_CONTENT_HEIGHT.dp))
-        }
     }
 }
-
-private const val CARD_MIN_CONTENT_HEIGHT = 104
-
-private const val CARD_PHOTO_ALPHA = 0.48f
-
-private const val CARD_BACKGROUND_ARGB = 0xFF231F20
-
-private val CARD_BACKGROUND = Color(CARD_BACKGROUND_ARGB)
 
 @PreviewScreens
 @Composable
@@ -164,15 +125,13 @@ private fun Preview() =
                     cards =
                         listOf(
                             HardwareWalletCardState(
-                                background = co.electriccoin.zcash.ui.design.R.drawable.image_keystone,
-                                wordmark = null,
+                                image = imageRes(R.drawable.img_hardware_wallet_keystone),
                                 contentDescription = stringRes("Keystone"),
                                 testTag = ChooseHardwareWalletTag.KEYSTONE_CARD,
                                 onClick = {},
                             ),
                             HardwareWalletCardState(
-                                background = R.drawable.img_ledger_card,
-                                wordmark = R.drawable.ic_ledger_wordmark,
+                                image = imageRes(R.drawable.img_hardware_wallet_ledger),
                                 contentDescription = stringRes("Ledger"),
                                 testTag = ChooseHardwareWalletTag.LEDGER_CARD,
                                 onClick = {},

@@ -9,6 +9,7 @@ import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.usecase.GetWalletAccountsUseCase
+import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connectkeystone.connect.ConnectKeystoneArgs
 import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectArgs
@@ -39,15 +40,13 @@ class ChooseHardwareWalletVM(
             cards =
                 listOfNotNull(
                     HardwareWalletCardState(
-                        background = co.electriccoin.zcash.ui.design.R.drawable.image_keystone,
-                        wordmark = null,
+                        image = imageRes(R.drawable.img_hardware_wallet_keystone),
                         contentDescription = stringRes(R.string.accounts_keystone),
                         testTag = ChooseHardwareWalletTag.KEYSTONE_CARD,
                         onClick = ::onKeystoneClick,
                     ).takeIf { accounts.orEmpty().none { account -> account is KeystoneAccount } },
                     HardwareWalletCardState(
-                        background = R.drawable.img_ledger_card,
-                        wordmark = R.drawable.ic_ledger_wordmark,
+                        image = imageRes(R.drawable.img_hardware_wallet_ledger),
                         contentDescription = stringRes(R.string.accounts_ledger),
                         testTag = ChooseHardwareWalletTag.LEDGER_CARD,
                         onClick = ::onLedgerClick,
