@@ -172,6 +172,7 @@ class SubmitVotesUseCase(
                 votingHotkeySeedProvider.get(accountUuidString)
                     ?: throw VotingSubmissionRecoverableException(VotingErrors.MissingHotkeySeed(roundId))
             val treeStateBytes = synchronizer.getTreeState(BlockHeight.new(session.snapshotHeight))
+
             // Tor is a user preference here, not a hard requirement -- mirrors the
             // pre-4.0 architecture (VotingApiProvider builds a plain or Tor-routed
             // client depending on the user's preference). `0L` is the SDK-side "no
@@ -183,6 +184,7 @@ class SubmitVotesUseCase(
             // Only TorUnavailableException (Tor disabled) falls back to 0L;
             // TorInitializationErrorException (Tor is ON but failed to bootstrap) must
             // propagate rather than silently deanonymizing this submission.
+            @Suppress("SwallowedException")
             val torRuntime =
                 try {
                     synchronizer.getVotingTorRuntimeHandle()
@@ -459,9 +461,11 @@ class SubmitVotesUseCase(
             sessionContext.serviceConfig.voteServers
                 .map { endpoint -> endpoint.url.trimEnd('/') }
                 .distinct()
+
         // Same Tor policy as the non-Keystone path above: `0L` is the SDK's "no Tor runtime"
         // sentinel, only used when Tor is genuinely disabled; TorInitializationErrorException
         // (Tor is ON but failed to bootstrap) must propagate.
+        @Suppress("SwallowedException")
         val torRuntime =
             try {
                 synchronizer.getVotingTorRuntimeHandle()

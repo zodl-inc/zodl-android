@@ -79,7 +79,8 @@ class SubmitVotesUseCaseProposalSelectionLockTest {
 
             val serviceConfig =
                 VotingServiceConfig(
-                    voteServers = listOf(VotingServiceConfig.ServiceEndpoint(url = "https://vote.example", label = "v1"))
+                    voteServers =
+                        listOf(VotingServiceConfig.ServiceEndpoint(url = "https://vote.example", label = "v1"))
                 )
             val synchronizer = mockk<Synchronizer>()
             every { synchronizer.network } returns ZcashNetwork.Testnet

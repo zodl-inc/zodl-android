@@ -47,8 +47,7 @@ class PrepareVotingRoundUseCase(
     private val votingHotkeySeedProvider: VotingHotkeySeedProvider,
     private val votingProofPrecomputeRepository: VotingProofPrecomputeRepository,
     private val synchronizerProvider: SynchronizerProvider,
-    private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
-    private val getWalletSeedBytes: GetWalletSeedBytesUseCase
+    private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase
 ) {
     private val secureRandom = SecureRandom()
 

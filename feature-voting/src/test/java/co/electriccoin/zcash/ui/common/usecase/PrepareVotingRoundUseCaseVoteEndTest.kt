@@ -51,7 +51,6 @@ class PrepareVotingRoundUseCaseVoteEndTest {
             val votingProofPrecomputeRepository = mockk<VotingProofPrecomputeRepository>(relaxed = true)
             val synchronizerProvider = mockk<SynchronizerProvider>()
             val getSelectedWalletAccount = mockk<GetSelectedWalletAccountUseCase>()
-            val getWalletSeedBytes = mockk<GetWalletSeedBytesUseCase>()
 
             // A synchronizer that is still behind the round's snapshot height. This deliberately
             // trips the WalletSyncing short-circuit gate a few lines below the new call, so the
@@ -75,8 +74,7 @@ class PrepareVotingRoundUseCaseVoteEndTest {
                     votingHotkeySeedProvider = votingHotkeySeedProvider,
                     votingProofPrecomputeRepository = votingProofPrecomputeRepository,
                     synchronizerProvider = synchronizerProvider,
-                    getSelectedWalletAccount = getSelectedWalletAccount,
-                    getWalletSeedBytes = getWalletSeedBytes
+                    getSelectedWalletAccount = getSelectedWalletAccount
                 )
 
             val result = useCase(roundId)

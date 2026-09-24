@@ -27,7 +27,12 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
  * outcomes rather than hand-authoring copy that doesn't fit. [VotingErrors.MissingCachedCommitment]
  * has no round-driver quiescence to trigger it at all (it was specific to the old hand-rolled
  * retry-recovery cache) and stays unreachable — documented here, not silently dropped.
+ *
+ * One branch per [VotingRoundQuiescence] case, exhaustively -- the cyclomatic complexity this
+ * trips is the sealed class's own case count, not accidental branching; splitting the function
+ * would just scatter that exhaustiveness check across smaller functions instead of reducing it.
  */
+@Suppress("CyclomaticComplexMethod")
 internal fun VotingRoundRunReport.toVotingErrorOrNull(roundId: String): VotingErrors? =
     when (val quiescence = quiescence) {
         is VotingRoundQuiescence.NoWorkLeft,

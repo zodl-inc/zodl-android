@@ -89,6 +89,7 @@ class TrackVotingSharesUseCase(
                 // preference, not a hard requirement. Only TorUnavailableException
                 // (Tor disabled) falls back to 0L; TorInitializationErrorException
                 // (Tor is ON but failed to bootstrap) must propagate.
+                @Suppress("SwallowedException")
                 val torRuntime =
                     try {
                         synchronizer.getVotingTorRuntimeHandle()
@@ -186,6 +187,11 @@ class TrackVotingSharesUseCase(
         const val DEFAULT_DELAY_MILLIS = 15_000L
         const val MAX_DELAY_MILLIS = 120_000L
 
+        // Caps the exponential-backoff shift itself, well before coerceIn's MAX_DELAY_MILLIS
+        // clamp would anyway -- keeps `1L shl attempt` from ever approaching Long's own shift
+        // range regardless of how many consecutive attempts a stuck round accumulates.
+        const val MAX_BACKOFF_SHIFT = 32
+
         private val activeSessionsMutex = Mutex()
         private val activeSessions = mutableMapOf<String, VotingShareTrackingSession>()
 
@@ -204,7 +210,7 @@ class TrackVotingSharesUseCase(
         private fun nextDelayMillis(roundId: String): Long {
             val attempt = (attemptCounts[roundId] ?: 0) + 1
             attemptCounts[roundId] = attempt
-            val backedOff = DEFAULT_DELAY_MILLIS * (1L shl (attempt - 1).coerceAtMost(32))
+            val backedOff = DEFAULT_DELAY_MILLIS * (1L shl (attempt - 1).coerceAtMost(MAX_BACKOFF_SHIFT))
             return backedOff.coerceIn(DEFAULT_DELAY_MILLIS, MAX_DELAY_MILLIS)
         }
 

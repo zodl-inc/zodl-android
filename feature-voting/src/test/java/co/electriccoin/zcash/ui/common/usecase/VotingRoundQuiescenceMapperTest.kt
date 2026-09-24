@@ -97,7 +97,8 @@ class VotingRoundQuiescenceMapperTest {
                 kind = "ChainSubmission",
                 message = "nullifier already spent"
             )
-        val error = reportWith(VotingRoundQuiescence.Failures, failures = listOf(failure)).toVotingErrorOrNull("round-1")
+        val error =
+            reportWith(VotingRoundQuiescence.Failures, failures = listOf(failure)).toVotingErrorOrNull("round-1")
         assertIs<VotingErrors.TxConfirmationTimedOut>(error)
     }
 
@@ -110,7 +111,8 @@ class VotingRoundQuiescenceMapperTest {
                 kind = "TreeSync",
                 message = "failed to sync vote tree"
             )
-        val error = reportWith(VotingRoundQuiescence.Failures, failures = listOf(failure)).toVotingErrorOrNull("round-1")
+        val error =
+            reportWith(VotingRoundQuiescence.Failures, failures = listOf(failure)).toVotingErrorOrNull("round-1")
         assertIs<VotingErrors.VoteTreeSyncFailed>(error)
     }
 
@@ -123,7 +125,8 @@ class VotingRoundQuiescenceMapperTest {
                 kind = "SomeFutureKind",
                 message = "unrecognized"
             )
-        val error = reportWith(VotingRoundQuiescence.Failures, failures = listOf(failure)).toVotingErrorOrNull("round-1")
+        val error =
+            reportWith(VotingRoundQuiescence.Failures, failures = listOf(failure)).toVotingErrorOrNull("round-1")
         assertIs<VotingErrors.UnexpectedSdkResponse>(error)
     }
 

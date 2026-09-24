@@ -168,7 +168,12 @@ internal class VotingRoundProgressTracker {
      * never returns a lower value than [completedProposals] itself (so it can never fall behind
      * the authoritative count either). The returned value never regresses across calls, and is
      * `null` under the same "nothing measured yet" condition as [fraction].
+     *
+     * The four returns below are guard clauses for "nothing measured yet" / "already done", not
+     * branching control flow -- collapsing them into one return would need an extra nullable var
+     * and an if/else nest, not a clearer function.
      */
+    @Suppress("ReturnCount")
     fun estimatedCompletedProposals(
         completedProposals: Int?,
         totalProposals: Int?
