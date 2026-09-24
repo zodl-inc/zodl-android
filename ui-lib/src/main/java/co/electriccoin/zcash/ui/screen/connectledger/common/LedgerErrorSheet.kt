@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.connectledger.common
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.animateContentSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -22,7 +23,10 @@ internal fun LedgerErrorSheet(state: LedgerErrorSheetState?) {
     ZashiInScreenModalBottomSheet(state = state) { sheetState ->
         LedgerErrorContent(
             state = sheetState,
-            modifier = Modifier.testTag(LedgerDeviceScanTag.ERROR_SHEET),
+            modifier =
+                Modifier
+                    .testTag(LedgerDeviceScanTag.ERROR_SHEET)
+                    .animateContentSize(),
         )
     }
 }

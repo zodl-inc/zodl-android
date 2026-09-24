@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.signledgertransaction
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -53,6 +54,7 @@ internal fun LedgerSignSheet(state: LedgerSignSheetState?) {
                 Modifier
                     .fillMaxWidth()
                     .testTag(LedgerSignTag.SHEET)
+                    .animateContentSize()
                     .padding(
                         top = 24.dp,
                         bottom = contentPadding.calculateBottomPadding()
