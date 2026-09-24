@@ -30,13 +30,13 @@ import java.security.SecureRandom
 
 /**
  * voting-5.0.0 round-driver port note: this use case is substantially simplified from its pre-4.0
- * form for this benchmark pass (Task 8's scope-cut default — "recovery = call run() again", no
- * persisted `VotingRecoveryPhase` state machine). Witness generation
+ * form — the scope-cut default is "recovery = call run() again", no
+ * persisted `VotingRecoveryPhase` state machine. Witness generation
  * (`generateNoteWitnessesJson`/`storeWitnesses`) and the software-wallet PIR/delegation-proof
  * background precompute optimization were both confirmed to have no direct equivalent needed here
- * — witness generation is now fully internal to the crate's `run()` call (Task 3 finding), and the
+ * — witness generation is now fully internal to the crate's `run()` call, and the
  * precompute optimization has no straightforward new-architecture equivalent in this pass's scope
- * and was dropped rather than half-ported. See the port plan's Task 8/9 notes before treating this
+ * and was dropped rather than half-ported. Do not treat this
  * as a full replacement for the pre-4.0 implementation.
  */
 class PrepareVotingRoundUseCase(

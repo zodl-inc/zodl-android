@@ -36,8 +36,8 @@ import java.io.File
 
 /**
  * voting-5.0.0 round-driver port note: no longer thrown by this file (Keystone signing, the old
- * source of protocol-auth failures, was deferred per Task 7 but is now routed through
- * [VotingKeystoneSessionHolder.runToCompletion] as of Task 18) — kept only because
+ * source of protocol-auth failures, is now routed through
+ * [VotingKeystoneSessionHolder.runToCompletion]) — kept only because
  * `VoteConfirmSubmissionVM` still pattern-matches on this type for a specific UI status.
  */
 class VotingAuthorizationException(
@@ -48,21 +48,21 @@ class VotingAuthorizationException(
     )
 
 /**
- * voting-5.0.0 round-driver port note: this is a from-scratch rewrite for the benchmark pass
- * (Task 4/5 of the port plan), not an incremental patch of the pre-4.0 implementation. The old
+ * voting-5.0.0 round-driver port note: this is a from-scratch rewrite for the benchmark pass,
+ * not an incremental patch of the pre-4.0 implementation. The old
  * ~1700-line per-bundle-per-question loop (`runVoteChains`/`proveVoteBundle`/`postVoteBundle`/
  * `confirmVoteBundle`) is gone entirely — the crate's own `RoundExecutor`/`RoundDriver` now owns
  * that sequencing internally behind [VotingCryptoClient.openRoundSession] + one
  * [cash.z.ecc.android.sdk.VotingRoundSession.run] call.
  *
- * Scope cut for this pass (see the port plan's "Scope cut" section): Keystone accounts are now
+ * Scope cut for this pass: Keystone accounts are now
  * routed through [VotingKeystoneSessionHolder.runToCompletion] instead of this method's own
- * open/run sequence (Task 18) rather than rejected outright; there is no persisted recovery
+ * open/run sequence, rather than rejected outright; there is no persisted recovery
  * snapshot — resuming a round means calling this again, which re-derives everything from the
  * round's own on-disk/on-chain state via [VotingRoundSession.run] rather than a local state
- * machine (Task 8 default); errors
+ * machine; errors
  * are passed through as one generic [VotingErrors.UnexpectedSdkResponse] rather than mapped
- * per-failure-type (Task 9-lite). Do not treat this as a full replacement for the pre-4.0
+ * per-failure-type. Do not treat this as a full replacement for the pre-4.0
  * implementation's UI-facing error granularity.
  */
 class SubmitVotesUseCase(
@@ -92,14 +92,14 @@ class SubmitVotesUseCase(
             val selectedAccount = getSelectedWalletAccount()
             val accountUuidString = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
 
-            // Important #1 (final whole-plan review): review-screen entry can start a
-            // background precompute job (PrecomputeVotingSnapshotBundlesUseCase /
-            // WarmVotingPirProofsUseCase) seconds before the user taps Submit. Both paths below
-            // -- Keystone (via VotingKeystoneSessionHolder.ensureDelegationPipeline) and
-            // non-Keystone (opening votingCryptoClient's own DB session directly) -- would
-            // otherwise contend with that job for the shared native (dbPath, walletId) lock,
-            // parking the progress UI the exact same way Task 6 already fixed for a different
-            // cause. Cancelling and awaiting termination here, before either path opens its own
+            // Review-screen entry can start a background precompute job
+            // (PrecomputeVotingSnapshotBundlesUseCase / WarmVotingPirProofsUseCase) seconds
+            // before the user taps Submit. Both paths below -- Keystone (via
+            // VotingKeystoneSessionHolder.ensureDelegationPipeline) and non-Keystone (opening
+            // votingCryptoClient's own DB session directly) -- would otherwise contend with that
+            // job for the shared native (dbPath, walletId) lock, parking the progress UI the same
+            // way a lock-contention bug was already fixed for a different cause elsewhere in this
+            // port. Cancelling and awaiting termination here, before either path opens its own
             // session, guarantees the lock is free by the time either one needs it.
             //
             // NOT the only entry point into the pipeline, though (correction, Milan's review of
@@ -283,8 +283,8 @@ class SubmitVotesUseCase(
                     // across that proposal's own bundles, summed across every proposal currently
                     // in flight) -- moves visibly even in a many-proposal round, unlike tracking
                     // only the slowest bundle of a single proposal. Returns null (show an
-                    // indeterminate indicator) until real progress exists. See Phase 4 of the
-                    // production-completion design doc and VotingRoundProgressTracker's own doc
+                    // indeterminate indicator) until real progress exists. See
+                    // VotingRoundProgressTracker's own doc
                     // comment for the Vizor Wallet precedent this mirrors.
                     val progressTracker = VotingRoundProgressTracker()
                     val progressListener =
@@ -347,17 +347,17 @@ class SubmitVotesUseCase(
                             roundSession.run(delegationInputs, progressListener)
                         }
 
-                    // Task 4's acceptance criterion: PersistedChainTerminal must surface to the
+                    // By design: PersistedChainTerminal must surface to the
                     // user immediately, never be silently retried -- unaffected by
                     // runRoundWithBundleFailureRetry above, which only ever re-invokes this call
                     // for the disjoint Failures-with-isolated-bundle-transport-errors case (see
                     // its own doc comment); every other quiescence, PersistedChainTerminal
                     // included, still falls straight through to the mapped error below on the
-                    // very first report. Unknown is explicitly NOT treated as success either
-                    // (Task 9-lite requirement, a defect the lost plan's own review caught once
-                    // already). See
+                    // very first report. Unknown is explicitly NOT treated as success either --
+                    // an earlier version of this code did, and a review of this port caught it as
+                    // a defect. See
                     // VotingRoundQuiescenceMapper.kt for the full quiescence/failure -> VotingErrors
-                    // mapping (Task 12).
+                    // mapping.
                     report.toVotingErrorOrNull(roundId)?.let { votingError ->
                         throw VotingSubmissionRecoverableException(votingError)
                     }
@@ -372,7 +372,7 @@ class SubmitVotesUseCase(
 
                     // Marks the durable recovery snapshot as having successfully submitted votes
                     // for this round -- restores the pre-rewrite phase transition that was lost
-                    // in the round-driver port (Task 9 of the production-completion plan).
+                    // in this rewrite.
                     votingRecoveryRepository.setPhase(
                         accountUuidString,
                         roundId,

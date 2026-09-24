@@ -71,7 +71,7 @@ interface VotingProofPrecomputeRepository {
 
     /**
      * Fire-and-forget, deduped background warm-up of the bundle- and round-independent PIR proof
-     * cache (Task 1's `precomputePirProofs`) -- safe to trigger before any round is selected, e.g.
+     * cache (`precomputePirProofs`) -- safe to trigger before any round is selected, e.g.
      * from the poll list or proposal detail screen's entry hook. Never blocks or fails the
      * triggering screen: failures are logged and swallowed.
      */
@@ -79,7 +79,7 @@ interface VotingProofPrecomputeRepository {
 
     /**
      * Fire-and-forget, deduped background precompute of a round's snapshot-stable bundle plan
-     * plus PIR warm-up for every bundle in it (Task 2's `precomputeSnapshotBundles`) -- a verified
+     * plus PIR warm-up for every bundle in it (`precomputeSnapshotBundles`) -- a verified
      * strict superset of the old per-bundle delegation-PIR precompute. Requires a resolved
      * [VotingSnapshotBundlePrecomputeRequest.roundId], so this can only fire once a specific round
      * is selected (proposal detail / review), unlike [startPirWarmup]. Never blocks or fails the
@@ -117,8 +117,8 @@ class VotingProofPrecomputeRepositoryImpl(
     private val pirSnapshotResolver: PirSnapshotResolver,
     private val synchronizerProvider: SynchronizerProvider,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
-    // Injectable so tests exercising the "one failure is enough" dedup-key behavior (Important
-    // #4) aren't forced to actually wait out real backoff delays -- see withPirFetchRetry's own
+    // Injectable so tests exercising the "one failure is enough" dedup-key behavior
+    // aren't forced to actually wait out real backoff delays -- see withPirFetchRetry's own
     // doc comment for why the default matches Vizor Wallet's own delay schedule.
     private val pirFetchRetryDelaysMs: LongArray = DEFAULT_PIR_FETCH_RETRY_DELAYS_MS
 ) : VotingProofPrecomputeRepository {
@@ -127,8 +127,7 @@ class VotingProofPrecomputeRepositoryImpl(
     private val snapshotBundlePrecomputeJobs = mutableMapOf<VotingSnapshotBundlePrecomputeKey, Job>()
 
     override fun warmProvingCaches() {
-        // voting-5.0.0 background-precompute port, Task 3: the crate's own
-        // start_proving_cache_warmup() now dedupes and backgrounds this for free, so the
+        // The crate's own start_proving_cache_warmup() now dedupes and backgrounds this for free, so the
         // AtomicBoolean gate this method used to need is redundant -- repeat calls (e.g. every
         // screen re-entry) are cheap at the crate level. The old onFailure { warmupStarted.set
         // (false) } retry-reset was already dead code before this simplification too:
@@ -156,8 +155,8 @@ class VotingProofPrecomputeRepositoryImpl(
 
             val job = scope.launch { runPirWarmup(request) }
             pirWarmupJobs[request.key] = job
-            // Important #4 (final whole-plan review): a job that completes -- successfully OR
-            // with a failure -- must not permanently poison its own dedup key. Removing it here
+            // A job that completes -- successfully OR with a failure -- must not permanently
+            // poison its own dedup key. Removing it here
             // on ANY completion (not just cancellation) is what lets the next screen entry retry
             // instead of silently staying stuck until process restart. Guarded by identity so a
             // newer job already registered under the same key (e.g. a retry that started while
@@ -183,7 +182,7 @@ class VotingProofPrecomputeRepositoryImpl(
 
             val job = scope.launch { runSnapshotBundlePrecompute(request) }
             snapshotBundlePrecomputeJobs[request.key] = job
-            // See startPirWarmup's identical comment above (Important #4) -- same reasoning.
+            // See startPirWarmup's identical comment above -- same reasoning.
             job.invokeOnCompletion {
                 synchronized(lock) {
                     if (snapshotBundlePrecomputeJobs[request.key] === job) {
@@ -252,7 +251,7 @@ class VotingProofPrecomputeRepositoryImpl(
                     )
                 }
             } finally {
-                // Important #1 (final whole-plan review): cancelAndAwaitPrecompute cancels this
+                // cancelAndAwaitPrecompute cancels this
                 // job while it may be blocked inside the native, non-cancellable precompute call
                 // -- cancellation only actually takes effect once that call returns. By then this
                 // coroutine's Job is already Cancelling/Cancelled, so a plain suspend call here
@@ -269,7 +268,7 @@ class VotingProofPrecomputeRepositoryImpl(
                 }
             }
         }.onSuccess { result ->
-            // Minor (final whole-plan review): this result used to be built and dropped
+            // This result used to be built and dropped
             // entirely -- the pending live on-device test has no observable signal today that
             // precompute actually ran or what it did. Log-only, never surfaced to the UI.
             Log.d(
@@ -318,14 +317,14 @@ class VotingProofPrecomputeRepositoryImpl(
                     )
                 }
             } finally {
-                // See runPirWarmup's identical comment above (Important #1) -- same reasoning.
+                // See runPirWarmup's identical comment above -- same reasoning.
                 withContext(NonCancellable) {
                     votingCryptoClient.closeVotingDb(dbHandle)
                     if (torRuntime != 0L) synchronizerProvider.getSynchronizer().releaseVotingTorRuntimeHandle()
                 }
             }
         }.onSuccess { result ->
-            // Minor (final whole-plan review): same observability gap as runPirWarmup above.
+            // Same observability gap as runPirWarmup above.
             Log.d(
                 TAG,
                 "Snapshot bundle precompute completed for round ${request.roundId}: " +

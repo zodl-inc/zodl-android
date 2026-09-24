@@ -15,7 +15,7 @@ import org.json.JSONArray
 import java.io.File
 
 /**
- * voting-5.0.0 background-precompute port (Task 4): triggers Task 2's whole-round background
+ * Triggers a whole-round background
  * precompute (`VotingCryptoClient.precomputeSnapshotBundles`) -- persists the round's canonical
  * bundle plan and warms PIR for every bundle in it, ahead of vote submission -- mirroring Vizor's
  * proposal-detail/review screen-entry precompute (`voting_proposal_detail_screen.dart:444-473`,

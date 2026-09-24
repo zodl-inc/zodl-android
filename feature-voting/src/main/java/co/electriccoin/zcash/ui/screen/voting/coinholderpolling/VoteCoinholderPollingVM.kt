@@ -361,7 +361,7 @@ class VoteCoinholderPollingVM(
             refreshVotingDataInternal(resetVisibleConfigError = true, softRefresh = true)
         }
         screenRefreshPending.value = false
-        // voting-5.0.0 background-precompute port (Task 4): mirrors Vizor's poll-list screen-init
+        // Mirrors Vizor's poll-list screen-init
         // PIR proof cache warm-up (voting_polls_screen.dart:75) -- fire-and-forget, deduped inside
         // the repository, never blocks or fails this screen. Safe here even before any round is
         // selected, since the underlying SDK call is bundle- and round-independent.

@@ -28,8 +28,7 @@ sealed interface VotingShareTrackingResult {
 /**
  * voting-5.0.0 production-completion note: `trackShares` is now a cancellable session
  * ([VotingCryptoClient.openShareTrackingSession]), replacing the standalone JNI export that had
- * no reachable cancel path and caused indefinite hangs under WorkManager (see Phase 1 of
- * `2026-09-21-round-driver-production-completion-design.md`). [cancel] lets
+ * no reachable cancel path and caused indefinite hangs under WorkManager. [cancel] lets
  * [co.electriccoin.zcash.work.VotingShareTrackingWorker] interrupt an in-flight [invoke] call for
  * the same [roundId] within seconds rather than leaving an orphaned native thread running for the
  * full WorkManager execution-time-limit window. (The worker reaches this from a coroutine that

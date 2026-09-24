@@ -380,9 +380,9 @@ class VotingCryptoClientImpl : VotingCryptoClient {
     private val sdkMutex = Mutex()
     private var sdk: VotingSdk? = null
 
-    // Minor (final whole-plan review): these were plain unsynchronized mutableMapOf()s on a
+    // These were plain unsynchronized mutableMapOf()s on a
     // singleton -- pre-existing, but VoteProposalDetailVM.init now launches two DB-opening jobs
-    // concurrently (Task 4), increasing real exposure to a torn/corrupted map under concurrent
+    // concurrently, increasing real exposure to a torn/corrupted map under concurrent
     // structural mutation (put/remove from different coroutines). Guarded with a Mutex (this
     // team's established rule -- Mutex, not synchronized, in suspend code) rather than swapping
     // to a concurrent collection type, so the lock scope stays small and explicit: only the map

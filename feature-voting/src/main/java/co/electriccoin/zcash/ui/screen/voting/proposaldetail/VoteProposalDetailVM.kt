@@ -61,7 +61,7 @@ class VoteProposalDetailVM(
             .map { account -> account.sdkAccount.accountUuid.toVotingAccountScopeId() }
 
     init {
-        // voting-5.0.0 background-precompute port (Task 4): mirrors Vizor's proposal-detail
+        // Mirrors Vizor's proposal-detail
         // screen-init PIR warm-up (voting_proposal_detail_screen.dart:93). Fire-and-forget,
         // deduped inside VotingProofPrecomputeRepository -- never blocks or fails this screen.
         viewModelScope.launch { warmVotingPirProofs() }

@@ -7,8 +7,7 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
 
 /**
  * Maps a completed round-drive run onto a [VotingErrors] case, following Vizor Wallet's proven
- * two-layer pattern for the same crate (see Phase 3 of
- * `2026-09-21-round-driver-production-completion-design.md`): switch exhaustively on the
+ * two-layer pattern for the same crate: switch exhaustively on the
  * *quiescence* (why the run stopped) first, since that's a small, meaningful enum; fall back to
  * matching [VotingRoundStepFailure.kind]/[VotingRoundStepFailure.message] text only for the
  * generic [VotingRoundQuiescence.Failures] case, since the crate's own failure-kind enum has no
@@ -72,8 +71,8 @@ internal fun VotingRoundRunReport.toVotingErrorOrNull(roundId: String): VotingEr
         }
 
         is VotingRoundQuiescence.NeedsDelegationSignatures -> {
-            // Deliberately makes no claim about *which* submission path produced this. Task 18
-            // routed the Keystone path through this same mapper, where this quiescence is a
+            // Deliberately makes no claim about *which* submission path produced this. The
+            // Keystone path is routed through this same mapper, where this quiescence is a
             // normal mid-flow state ("bundle N still needs a signature") rather than the
             // non-Keystone anomaly the earlier wording asserted it always was.
             VotingErrors.UnexpectedSdkResponse(

@@ -16,8 +16,8 @@ import org.json.JSONArray
 import java.io.File
 
 /**
- * voting-5.0.0 background-precompute port (Task 4): triggers Task 1's bundle- and
- * round-independent PIR proof cache warm-up (`VotingCryptoClient.precomputePirProofs`) as a
+ * Triggers a bundle- and round-independent PIR proof cache warm-up
+ * (`VotingCryptoClient.precomputePirProofs`) as a
  * best-effort background step, mirroring Vizor's poll-list/proposal-detail screen-entry warm-up
  * (`voting_polls_screen.dart:75`, `voting_proposal_detail_screen.dart:93`).
  *
@@ -81,7 +81,7 @@ class WarmVotingPirProofsUseCase(
                 val synchronizer = synchronizerProvider.getSynchronizer()
                 val networkId = synchronizer.network.toVotingNetworkId()
 
-                // Important #3 (final whole-plan review): each round's own iteration body gets
+                // Each round's own iteration body gets
                 // its own runCatching, rather than sharing the outer one. Fetching wallet notes
                 // for a round the wallet hasn't fully scanned to yet is a normal state (a newer
                 // active round the wallet hasn't caught up to) and throws -- with a single shared

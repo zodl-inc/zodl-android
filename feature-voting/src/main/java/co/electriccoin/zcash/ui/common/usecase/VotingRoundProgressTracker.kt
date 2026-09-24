@@ -251,7 +251,7 @@ internal class VotingRoundProgressTracker {
      * a bundle's progress is never counted on both sides as it transitions from delegating to
      * casting.
      *
-     * **Denominator (fixed, Important #2 of the final whole-plan review):** this used to divide
+     * **Denominator (fixed after review):** this used to divide
      * by bare [total] (a count of PROPOSALS) under the assumption `numBundles <= total`, but that
      * is not actually guaranteed by the crate -- bundle count is driven by the wallet's note set
      * (`ceil(note_count / 5)`, independent of proposal count). A 1-proposal round whose note set

@@ -99,7 +99,7 @@ class VoteProposalListVM(
 
     init {
         prepareForVoting()
-        // voting-5.0.0 background-precompute port (Task 4): mirrors Vizor's review-screen entry
+        // Mirrors Vizor's review-screen entry
         // snapshot-bundle precompute (voting_review_screen.dart:137-169), the same
         // eligibility-gated trigger as VoteProposalDetailVM's. REVIEW is only reachable after the
         // VOTING flow's PrepareVotingRoundUseCase gate above already confirmed eligibility for
