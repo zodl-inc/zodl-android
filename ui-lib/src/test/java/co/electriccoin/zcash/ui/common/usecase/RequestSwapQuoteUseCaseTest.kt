@@ -18,6 +18,7 @@ import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
+import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
 import co.electriccoin.zcash.ui.common.repository.SwapQuoteData
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
@@ -65,6 +66,7 @@ class RequestSwapQuoteUseCaseTest {
     private val navigateToError = mockk<NavigateToErrorUseCase>(relaxed = true)
     private val zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true)
     private val keystoneProposalRepository = mockk<KeystoneProposalRepository>(relaxed = true)
+    private val ledgerProposalRepository = mockk<LedgerProposalRepository>(relaxed = true)
     private val swapRepository = mockk<SwapRepository>(relaxed = true)
     private val accountDataSource = mockk<AccountDataSource>()
 
@@ -370,7 +372,7 @@ class RequestSwapQuoteUseCaseTest {
     }
 
     private fun assertNavigatedToTexUnsupported() {
-        verify { navigationRouter.forward(TEXUnsupportedArgs) }
+        verify { navigationRouter.forward(TEXUnsupportedArgs(isLedger = false)) }
         verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
     }
 
@@ -429,6 +431,7 @@ class RequestSwapQuoteUseCaseTest {
             swapRepository = swapRepository,
             zashiProposalRepository = zashiProposalRepository,
             keystoneProposalRepository = keystoneProposalRepository,
+            ledgerProposalRepository = ledgerProposalRepository,
             accountDataSource = accountDataSource,
             synchronizerProvider = synchronizerProvider
         )

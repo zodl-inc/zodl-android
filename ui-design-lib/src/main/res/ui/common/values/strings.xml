@@ -896,6 +896,7 @@
     <!-- ===== tex_unsupported ===== -->
     <string name="texKeystone_title">Unsupported Address Type</string>
     <string name="texKeystone_warn1">Keystone doesn\'t currently support transfers to Binance TEX addresses.</string>
+    <string name="texLedger_warn1">Ledger doesn\'t currently support transfers to Binance TEX addresses.</string>
     <string name="texKeystone_warn2">Please use the steps below to complete your transaction.</string>
     <string name="texKeystone_workaround">Workaround Steps</string>
     <string name="tex_unsupported_step_1_badge">Step 1</string>

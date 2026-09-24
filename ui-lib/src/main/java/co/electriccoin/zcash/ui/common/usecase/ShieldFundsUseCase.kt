@@ -5,14 +5,15 @@ import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.MessageAvailabilityDataSource
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
-import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
+import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionArgs
+import co.electriccoin.zcash.ui.screen.signledgertransaction.LedgerSignArgs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -21,6 +22,7 @@ import kotlinx.coroutines.launch
 
 class ShieldFundsUseCase(
     private val keystoneProposalRepository: KeystoneProposalRepository,
+    private val ledgerProposalRepository: LedgerProposalRepository,
     private val zashiProposalRepository: ZashiProposalRepository,
     private val navigationRouter: NavigationRouter,
     private val accountDataSource: AccountDataSource,
@@ -43,7 +45,7 @@ class ShieldFundsUseCase(
                     }
 
                     is LedgerAccount -> {
-                        navigateToError(ErrorArgs.General(LedgerOperationUnsupportedException()))
+                        createLedgerShieldProposal()
                     }
 
                     is ZashiAccount -> {
@@ -87,6 +89,18 @@ class ShieldFundsUseCase(
             navigationRouter.forward(SignKeystoneTransactionArgs)
         } catch (e: Exception) {
             keystoneProposalRepository.clear()
+            navigateToError(ErrorArgs.ShieldingGeneralError(e))
+        }
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun createLedgerShieldProposal() {
+        try {
+            ledgerProposalRepository.createShieldProposal()
+            ledgerProposalRepository.createPCZTFromProposal()
+            navigationRouter.forward(LedgerSignArgs)
+        } catch (e: Exception) {
+            ledgerProposalRepository.clear()
             navigateToError(ErrorArgs.ShieldingGeneralError(e))
         }
     }

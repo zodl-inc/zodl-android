@@ -6,6 +6,7 @@ import co.electriccoin.zcash.ui.common.datasource.MessageAvailabilityDataSource
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
+import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
@@ -78,6 +79,7 @@ class ShieldFundsUseCaseTest {
         navigateToError: NavigateToErrorUseCase
     ) = ShieldFundsUseCase(
         keystoneProposalRepository = mockk<KeystoneProposalRepository>(relaxed = true),
+        ledgerProposalRepository = mockk<LedgerProposalRepository>(relaxed = true),
         zashiProposalRepository =
             mockk<ZashiProposalRepository>(relaxed = true) { coEvery { submit() } returns submitResult },
         navigationRouter = mockk<NavigationRouter>(relaxed = true),
