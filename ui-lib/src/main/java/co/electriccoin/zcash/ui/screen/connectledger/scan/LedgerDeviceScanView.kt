@@ -36,9 +36,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
-import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiButton
-import co.electriccoin.zcash.ui.design.component.ZashiInScreenModalBottomSheet
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
 import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
@@ -51,7 +49,9 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
-import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerErrorSheet
+import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerInlineIssue
+import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerInlineIssueState
 import com.valentinilk.shimmer.shimmer
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -107,7 +107,10 @@ fun LedgerDeviceScanView(state: LedgerDeviceScanState) {
                 Spacer(Modifier.height(32.dp))
                 if (state.devices.isEmpty()) {
                     if (state.showDeviceSkeletons) {
-                        DeviceSkeletons(isShimmering = state.isScanning)
+                        DeviceSkeletons(
+                            isShimmering = state.isScanning && state.inlineIssue == null,
+                            inlineIssue = state.inlineIssue,
+                        )
                     }
                 } else {
                     state.devices.forEachIndexed { index, device ->
@@ -134,7 +137,7 @@ fun LedgerDeviceScanView(state: LedgerDeviceScanState) {
 }
 
 @Composable
-private fun DeviceSkeletons(isShimmering: Boolean) {
+private fun DeviceSkeletons(isShimmering: Boolean, inlineIssue: LedgerInlineIssueState?) {
     Box {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             repeat(SKELETON_ROWS) {
@@ -184,6 +187,12 @@ private fun DeviceSkeletons(isShimmering: Boolean) {
                         )
                     )
         )
+        inlineIssue?.let {
+            LedgerInlineIssue(
+                state = it,
+                modifier = Modifier.align(Alignment.Center),
+            )
+        }
     }
 }
 

@@ -1,10 +1,10 @@
 package co.electriccoin.zcash.ui.screen.connectledger.scan
 
 import co.electriccoin.zcash.ui.design.component.ButtonState
-import co.electriccoin.zcash.ui.design.component.ButtonStyle
-import co.electriccoin.zcash.ui.design.component.ModalBottomSheetState
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerErrorSheetState
+import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerInlineIssueState
 
 data class LedgerDeviceScanState(
     val title: StringResource,
@@ -12,10 +12,16 @@ data class LedgerDeviceScanState(
     val isScanning: Boolean,
     /**
      * Whether the placeholder rows stand in for devices still being looked for. False once the
-     * scan has stopped, so an idle screen does not pretend to be searching.
+     * scan has stopped, so an idle screen does not pretend to be searching — unless an
+     * [inlineIssue] sits over them, in which case they stay, static.
      */
     val showDeviceSkeletons: Boolean,
     val devices: List<LedgerDeviceItemState>,
+    /**
+     * The issue shown over the placeholder rows while no device is listed; it outlives a dismissed
+     * [errorSheet].
+     */
+    val inlineIssue: LedgerInlineIssueState?,
     val primaryButton: ButtonState,
     val errorSheet: LedgerErrorSheetState?,
     /**
@@ -23,6 +29,11 @@ data class LedgerDeviceScanState(
      * again; the screen keys its request effect on it.
      */
     val permissionRequestNonce: Int,
+    /**
+     * Bumped whenever the view model wants the screen to launch the system dialog that turns
+     * Bluetooth on; the screen keys its launch effect on it.
+     */
+    val enableBluetoothRequestNonce: Int,
     val onBack: () -> Unit,
 ) {
     companion object {
@@ -33,9 +44,11 @@ data class LedgerDeviceScanState(
                 isScanning = true,
                 showDeviceSkeletons = true,
                 devices = emptyList(),
+                inlineIssue = null,
                 primaryButton = ButtonState(stringRes("Searching"), isEnabled = false, isLoading = true),
                 errorSheet = null,
                 permissionRequestNonce = 0,
+                enableBluetoothRequestNonce = 0,
                 onBack = {},
             )
 
@@ -59,7 +72,14 @@ data class LedgerDeviceScanState(
                 primaryButton = ButtonState(stringRes("Connect"), isEnabled = false, isLoading = true),
             )
 
-        val previewError = previewSearching.copy(errorSheet = LedgerErrorSheetState.preview)
+        val previewError =
+            previewSearching.copy(
+                title = stringRes("Connect your Ledger"),
+                isScanning = false,
+                inlineIssue = LedgerInlineIssueState.preview,
+                primaryButton = ButtonState(stringRes("Try again")),
+                errorSheet = LedgerErrorSheetState.previewBluetoothOff,
+            )
     }
 }
 
@@ -84,41 +104,5 @@ data class LedgerDeviceItemState(
             )
 
         val previewSelected = preview.copy(name = stringRes("Ledger Device 1"), isSelected = true)
-    }
-}
-
-/**
- * The one error sheet the scan screen owns; only the copy and the buttons differ between the
- * seven cases in the Figma "Error States and Edge Cases" section.
- */
-data class LedgerErrorSheetState(
-    val title: StringResource,
-    val message: StringResource,
-    val primary: ButtonState,
-    val secondary: ButtonState?,
-    override val onBack: () -> Unit,
-) : ModalBottomSheetState {
-    companion object {
-        val preview =
-            LedgerErrorSheetState(
-                title = stringRes("No Devices Found"),
-                message =
-                    stringRes(
-                        "We couldn't find any Ledger devices nearby. Make sure your Ledger " +
-                            "hardware is unlocked and Bluetooth is turned on."
-                    ),
-                primary = ButtonState(stringRes("Try again")),
-                secondary = null,
-                onBack = {},
-            )
-
-        val previewTwoButtons =
-            LedgerErrorSheetState(
-                title = stringRes("Account Already Added"),
-                message = stringRes("This account is already connected to Zodl."),
-                primary = ButtonState(stringRes("Go to Account")),
-                secondary = ButtonState(stringRes("Cancel"), style = ButtonStyle.SECONDARY),
-                onBack = {},
-            )
     }
 }

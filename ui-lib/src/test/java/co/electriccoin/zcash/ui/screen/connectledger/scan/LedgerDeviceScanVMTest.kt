@@ -169,7 +169,7 @@ class LedgerDeviceScanVMTest {
                 vm.state.value.subtitle
                     .resourceId()
             )
-            assertFalse(vm.state.value.showDeviceSkeletons)
+            assertTrue(vm.state.value.showDeviceSkeletons)
             assertEquals(
                 R.string.ledger_scan_retry_cta,
                 vm.state.value.primaryButton.text
@@ -267,13 +267,13 @@ class LedgerDeviceScanVMTest {
                 mockk<LedgerException.ConnectionFailed>(relaxed = true) to R.string.ledger_error_pairingFailed_title,
                 mockk<LedgerException.DeviceNotFound>(relaxed = true) to R.string.ledger_error_pairingFailed_title,
                 mockk<LedgerException.WrongApp>(relaxed = true) to R.string.ledger_error_locked_title,
-                mockk<LedgerException.DeviceRefused>(relaxed = true) to R.string.ledger_error_locked_title,
-                mockk<LedgerException.AppTooOld>(relaxed = true) to R.string.ledger_error_locked_title,
+                mockk<LedgerException.DeviceRefused>(relaxed = true) to R.string.ledger_error_unknown_title,
+                mockk<LedgerException.AppTooOld>(relaxed = true) to R.string.ledger_error_appTooOld_title,
                 mockk<LedgerException.DerivationBudgetExhausted>(relaxed = true) to
-                    R.string.ledger_error_locked_title,
+                    R.string.ledger_error_restartApp_title,
                 mockk<LedgerException.UserRejected>(relaxed = true) to R.string.ledger_error_importRejected_title,
                 mockk<LedgerException.Disconnected>(relaxed = true) to R.string.ledger_error_disconnected_title,
-                mockk<LedgerException.BluetoothDisabled>(relaxed = true) to R.string.ledger_error_permissions_title,
+                mockk<LedgerException.BluetoothDisabled>(relaxed = true) to R.string.ledger_error_bluetoothOff_title,
                 mockk<LedgerException.BluetoothUnauthorized>(relaxed = true) to
                     R.string.ledger_error_permissions_title,
             ).forEach { (exception, expectedTitle) ->
@@ -294,14 +294,14 @@ class LedgerDeviceScanVMTest {
         }
 
     @Test
-    fun anUnmappedLedgerFailureGoesToTheGenericErrorDialog() =
+    fun aLedgerFailureWithoutEnrollmentCopyShowsTheSomethingWentWrongSheet() =
         runTest(dispatcher) {
             val navigateToError = mockk<NavigateToErrorUseCase>(relaxed = true)
             val exception = mockk<LedgerException.DeviceMismatch>(relaxed = true)
             val vm = pairedWithFailure(exception, navigateToError = navigateToError)
 
-            assertNull(vm.state.value.errorSheet)
-            verify(exactly = 1) { navigateToError.invoke(any(), any()) }
+            assertSheetTitle(vm, R.string.ledger_error_unknown_title)
+            verify(exactly = 0) { navigateToError.invoke(any(), any()) }
         }
 
     @Test

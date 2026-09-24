@@ -1,12 +1,18 @@
 package co.electriccoin.zcash.ui.screen.connectledger.scan
 
 import android.Manifest
+import android.app.Activity
+import android.bluetooth.BluetoothAdapter
+import android.content.Intent
 import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -32,6 +38,10 @@ import org.koin.androidx.compose.koinViewModel
  *
  * The permission state is read back through a holder because the result callback is part of its
  * own construction and cannot refer to it directly.
+ *
+ * Turning Bluetooth on goes through the system dialog rather than Settings; its request needs
+ * `BLUETOOTH_CONNECT` on API 31+, which is always granted by the time the SDK reports Bluetooth as
+ * off. The last handled nonce is saved so a configuration change does not show the dialog again.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
@@ -72,6 +82,24 @@ fun LedgerDeviceScanScreen() {
     LaunchedEffect(state.permissionRequestNonce) {
         if (state.permissionRequestNonce > 0 && !permissionsState.allPermissionsGranted) {
             permissionsState.launchMultiplePermissionRequest()
+        }
+    }
+
+    var handledEnableBluetoothNonce by rememberSaveable { mutableIntStateOf(0) }
+    val enableBluetoothLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                vm.onBluetoothEnabled()
+            } else {
+                vm.onBluetoothEnableDeclined()
+            }
+        }
+
+    LaunchedEffect(state.enableBluetoothRequestNonce) {
+        val nonce = state.enableBluetoothRequestNonce
+        if (nonce > 0 && nonce != handledEnableBluetoothNonce) {
+            handledEnableBluetoothNonce = nonce
+            enableBluetoothLauncher.launch(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
         }
     }
 

@@ -1,16 +1,20 @@
 package co.electriccoin.zcash.ui.screen.connectledger.scan
 
 import android.app.Application
-import android.content.Intent
-import android.provider.Settings
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.sdk.exception.LedgerException
 import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
+import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.LedgerIssue
+import co.electriccoin.zcash.ui.common.model.LedgerIssueContext
+import co.electriccoin.zcash.ui.common.model.LedgerIssueKind
+import co.electriccoin.zcash.ui.common.model.LedgerIssueRetry
 import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.model.toLedgerIssue
 import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
 import co.electriccoin.zcash.ui.common.usecase.PairLedgerDeviceResult
@@ -21,6 +25,8 @@ import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connecthw.HWWalletEnrollment
 import co.electriccoin.zcash.ui.screen.connecthw.neworactive.HWNewOrActiveArgs
+import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerErrorSheetState
+import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerInlineIssueState
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.util.SettingsUtil
@@ -86,11 +92,12 @@ class LedgerDeviceScanVM(
     private fun createState(internal: LedgerScanInternalState): LedgerDeviceScanState {
         val hasDevices = internal.devices.isNotEmpty()
         val isIdle = internal.phase == LedgerScanPhase.IDLE
+        val pageIssue = internal.issue?.takeIf { !hasDevices }
         return LedgerDeviceScanState(
             title =
                 when {
                     hasDevices -> stringRes(R.string.ledger_scan_select_title)
-                    isIdle -> stringRes(R.string.ledger_scan_idle_title)
+                    isIdle || pageIssue != null -> stringRes(R.string.ledger_scan_idle_title)
                     else -> stringRes(R.string.ledger_scan_searching_title)
                 },
             subtitle =
@@ -100,7 +107,7 @@ class LedgerDeviceScanVM(
                     stringRes(R.string.ledger_scan_searching_subtitle)
                 },
             isScanning = internal.phase == LedgerScanPhase.SCANNING && !hasDevices,
-            showDeviceSkeletons = !hasDevices && !isIdle,
+            showDeviceSkeletons = !hasDevices && (!isIdle || pageIssue != null),
             devices =
                 internal.devices.map { device ->
                     LedgerDeviceItemState(
@@ -110,130 +117,147 @@ class LedgerDeviceScanVM(
                         onClick = { onDeviceClick(device.identifier) },
                     )
                 },
-            primaryButton = createPrimaryButton(internal, hasDevices),
-            errorSheet = internal.error?.let { createErrorSheet(it) },
+            inlineIssue = pageIssue?.let { LedgerInlineIssueState(it.icon, it.title, it.message) },
+            primaryButton = createPrimaryButton(internal, hasDevices, pageIssue),
+            errorSheet = if (internal.isSheetShown) createErrorSheet(internal) else null,
             permissionRequestNonce = internal.permissionRequestNonce,
+            enableBluetoothRequestNonce = internal.enableBluetoothRequestNonce,
             onBack = ::onBack,
         )
     }
 
-    private fun createPrimaryButton(internal: LedgerScanInternalState, hasDevices: Boolean) =
-        when {
-            internal.phase == LedgerScanPhase.IDLE -> {
-                ButtonState(
-                    text = stringRes(R.string.ledger_scan_retry_cta),
-                    onClick = ::onTryAgainClick,
-                )
-            }
-
-            hasDevices -> {
-                ButtonState(
-                    text = stringRes(R.string.ledger_scan_select_cta),
-                    isEnabled =
-                        internal.selectedIdentifier != null && internal.phase != LedgerScanPhase.PAIRING,
-                    isLoading = internal.phase == LedgerScanPhase.PAIRING,
-                    onClick = ::onConnectClick,
-                )
-            }
-
-            else -> {
-                ButtonState(
-                    text = stringRes(R.string.ledger_scan_searching_cta),
-                    isEnabled = false,
-                    isLoading = internal.phase == LedgerScanPhase.SCANNING,
-                )
-            }
+    /**
+     * Retained devices win over the idle retry: after an issue that keeps the link, the selected
+     * row and an enabled Connect are how the user tries again.
+     */
+    private fun createPrimaryButton(
+        internal: LedgerScanInternalState,
+        hasDevices: Boolean,
+        pageIssue: LedgerIssue?,
+    ) = when {
+        pageIssue?.kind == LedgerIssueKind.BLUETOOTH_UNAVAILABLE -> {
+            ButtonState(
+                text = stringRes(R.string.ledger_scan_select_cta),
+                isEnabled = false,
+            )
         }
 
-    private fun createErrorSheet(error: LedgerScanError): LedgerErrorSheetState =
-        when (error) {
-            is LedgerScanError.NoDevices -> {
-                retrySheet(R.string.ledger_error_noDevices_title, R.string.ledger_error_noDevices_message)
-            }
-
-            is LedgerScanError.Locked -> {
-                retrySheet(R.string.ledger_error_locked_title, R.string.ledger_error_locked_message)
-            }
-
-            is LedgerScanError.PairingFailed -> {
-                retrySheet(R.string.ledger_error_pairingFailed_title, R.string.ledger_error_pairingFailed_message)
-            }
-
-            is LedgerScanError.ImportRejected -> {
-                retrySheet(R.string.ledger_error_importRejected_title, R.string.ledger_error_importRejected_message)
-            }
-
-            is LedgerScanError.Disconnected -> {
-                retrySheet(R.string.ledger_error_disconnected_title, R.string.ledger_error_disconnected_message)
-            }
-
-            is LedgerScanError.Unavailable -> {
-                LedgerErrorSheetState(
-                    title = stringRes(R.string.ledger_error_unavailable_title),
-                    message = stringRes(R.string.ledger_error_unavailable_message),
-                    primary =
-                        ButtonState(
-                            text = stringRes(R.string.ledger_error_unavailable_cta),
-                            onClick = ::onBack,
-                        ),
-                    secondary = null,
-                    onBack = ::onBack,
-                )
-            }
-
-            is LedgerScanError.Permissions -> {
-                LedgerErrorSheetState(
-                    title = stringRes(R.string.ledger_error_permissions_title),
-                    message = stringRes(R.string.ledger_error_permissions_message),
-                    primary =
-                        if (error.canRequestAgain) {
-                            ButtonState(
-                                text = stringRes(R.string.ledger_error_tryAgain),
-                                onClick = ::onRequestPermissionsAgainClick,
-                            )
-                        } else {
-                            ButtonState(
-                                text = stringRes(R.string.ledger_error_permissions_cta),
-                                onClick = { onOpenSettingsClick(error.openBluetoothSettings) },
-                            )
-                        },
-                    secondary = null,
-                    onBack = ::onSheetDismissed,
-                )
-            }
-
-            is LedgerScanError.AlreadyAdded -> {
-                LedgerErrorSheetState(
-                    title = stringRes(R.string.ledger_error_alreadyAdded_title),
-                    message = stringRes(R.string.ledger_error_alreadyAdded_message),
-                    primary =
-                        ButtonState(
-                            text = stringRes(R.string.ledger_error_alreadyAdded_primary),
-                            onClick = { onGoToAccountClick(error.account) },
-                        ),
-                    secondary =
-                        ButtonState(
-                            text = stringRes(R.string.ledger_error_alreadyAdded_secondary),
-                            style = ButtonStyle.SECONDARY,
-                            onClick = ::onSheetDismissed,
-                        ),
-                    onBack = ::onSheetDismissed,
-                )
-            }
+        pageIssue != null -> {
+            ButtonState(
+                text = stringRes(R.string.ledger_scan_retry_cta),
+                onClick = issueAction(internal, pageIssue),
+            )
         }
 
-    private fun retrySheet(title: Int, message: Int) =
+        hasDevices -> {
+            ButtonState(
+                text = stringRes(R.string.ledger_scan_select_cta),
+                isEnabled =
+                    internal.selectedIdentifier != null && internal.phase != LedgerScanPhase.PAIRING,
+                isLoading = internal.phase == LedgerScanPhase.PAIRING,
+                onClick = ::onConnectClick,
+            )
+        }
+
+        internal.phase == LedgerScanPhase.IDLE -> {
+            ButtonState(
+                text = stringRes(R.string.ledger_scan_retry_cta),
+                onClick = ::onTryAgainClick,
+            )
+        }
+
+        else -> {
+            ButtonState(
+                text = stringRes(R.string.ledger_scan_searching_cta),
+                isEnabled = false,
+                isLoading = internal.phase == LedgerScanPhase.SCANNING,
+            )
+        }
+    }
+
+    private fun createErrorSheet(internal: LedgerScanInternalState): LedgerErrorSheetState? {
+        val alreadyAdded = internal.alreadyAdded
+        val issue = internal.issue
+        return when {
+            alreadyAdded != null -> alreadyAddedSheet(alreadyAdded)
+            issue != null -> issueSheet(internal, issue)
+            else -> null
+        }
+    }
+
+    private fun issueSheet(internal: LedgerScanInternalState, issue: LedgerIssue) =
         LedgerErrorSheetState(
-            title = stringRes(title),
-            message = stringRes(message),
+            icon = issue.icon,
+            title = issue.title,
+            message = issue.message,
             primary =
                 ButtonState(
-                    text = stringRes(R.string.ledger_error_tryAgain),
-                    onClick = ::onTryAgainClick,
+                    text = issueActionText(internal, issue),
+                    onClick = issueAction(internal, issue),
                 ),
             secondary = null,
             onBack = ::onSheetDismissed,
         )
+
+    private fun alreadyAddedSheet(account: WalletAccount) =
+        LedgerErrorSheetState(
+            icon = R.drawable.ic_ledger_alert_circle,
+            title = stringRes(R.string.ledger_error_alreadyAdded_title),
+            message = stringRes(R.string.ledger_error_alreadyAdded_message),
+            primary =
+                ButtonState(
+                    text = stringRes(R.string.ledger_error_alreadyAdded_primary),
+                    onClick = { onGoToAccountClick(account) },
+                ),
+            secondary =
+                ButtonState(
+                    text = stringRes(R.string.ledger_error_alreadyAdded_secondary),
+                    style = ButtonStyle.SECONDARY,
+                    onClick = ::onSheetDismissed,
+                ),
+            onBack = ::onSheetDismissed,
+        )
+
+    private fun issueActionText(internal: LedgerScanInternalState, issue: LedgerIssue) =
+        when {
+            issue.kind == LedgerIssueKind.BLUETOOTH_UNAVAILABLE -> {
+                stringRes(R.string.ledger_error_unavailable_cta)
+            }
+
+            issue.kind == LedgerIssueKind.PERMISSIONS && !internal.canRequestPermissionsAgain -> {
+                stringRes(R.string.ledger_error_permissions_cta)
+            }
+
+            else -> {
+                stringRes(R.string.ledger_error_tryAgain)
+            }
+        }
+
+    /**
+     * What the sheet's primary button does, and the page's Try again with it.
+     */
+    private fun issueAction(internal: LedgerScanInternalState, issue: LedgerIssue): () -> Unit =
+        when (issue.kind) {
+            LedgerIssueKind.PERMISSIONS -> {
+                if (internal.canRequestPermissionsAgain) {
+                    ::onRequestPermissionsAgainClick
+                } else {
+                    ::onOpenSettingsClick
+                }
+            }
+
+            LedgerIssueKind.BLUETOOTH_OFF -> {
+                ::onEnableBluetoothClick
+            }
+
+            LedgerIssueKind.BLUETOOTH_UNAVAILABLE -> {
+                ::onBack
+            }
+
+            else -> {
+                ::onTryAgainClick
+            }
+        }
 
     fun onPermissionsGranted() {
         if (internalState.value.phase == LedgerScanPhase.PERMISSION) {
@@ -242,13 +266,21 @@ class LedgerDeviceScanVM(
     }
 
     fun onPermissionsDenied(canRequestAgain: Boolean) {
-        stopScan()
-        internalState.update {
-            it.copy(
-                phase = LedgerScanPhase.IDLE,
-                error = LedgerScanError.Permissions(canRequestAgain = canRequestAgain),
-            )
-        }
+        internalState.update { it.copy(canRequestPermissionsAgain = canRequestAgain) }
+        showIssue(LedgerIssue.permissions)
+    }
+
+    /**
+     * The system dialog turned Bluetooth on; nothing but a fresh scan can find the device now.
+     */
+    fun onBluetoothEnabled() = startScan()
+
+    /**
+     * The user declined the system dialog. The inline issue stayed on the page throughout, so only
+     * the sheet has to come back.
+     */
+    fun onBluetoothEnableDeclined() {
+        internalState.update { it.copy(isSheetShown = it.issue != null) }
     }
 
     /**
@@ -258,9 +290,18 @@ class LedgerDeviceScanVM(
     private fun onRequestPermissionsAgainClick() {
         internalState.update {
             it.copy(
-                error = null,
+                isSheetShown = false,
                 phase = LedgerScanPhase.PERMISSION,
                 permissionRequestNonce = it.permissionRequestNonce + 1,
+            )
+        }
+    }
+
+    private fun onEnableBluetoothClick() {
+        internalState.update {
+            it.copy(
+                isSheetShown = false,
+                enableBluetoothRequestNonce = it.enableBluetoothRequestNonce + 1,
             )
         }
     }
@@ -271,12 +312,23 @@ class LedgerDeviceScanVM(
     }
 
     private fun onConnectClick() {
-        val internal = internalState.value
-        val device = internal.devices.firstOrNull { it.identifier == internal.selectedIdentifier } ?: return
+        val device = selectedDevice() ?: return
         if (pairJob?.isActive == true) return
         stopScan()
-        internalState.update { it.copy(phase = LedgerScanPhase.PAIRING, error = null) }
+        internalState.update {
+            it.copy(
+                phase = LedgerScanPhase.PAIRING,
+                issue = null,
+                alreadyAdded = null,
+                isSheetShown = false,
+            )
+        }
         pairJob = viewModelScope.launch { pair(device) }
+    }
+
+    private fun selectedDevice(): LedgerBluetoothDevice? {
+        val internal = internalState.value
+        return internal.devices.firstOrNull { it.identifier == internal.selectedIdentifier }
     }
 
     /**
@@ -300,19 +352,13 @@ class LedgerDeviceScanVM(
                 }
 
                 is PairLedgerDeviceResult.AlreadyAdded -> {
-                    showError(LedgerScanError.AlreadyAdded(result.account))
+                    showAlreadyAdded(result.account)
                 }
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: LedgerException) {
-            val error = e.toScanError()
-            if (error == null) {
-                internalState.update { it.copy(phase = LedgerScanPhase.IDLE) }
-                navigateToError(ErrorArgs.General(e))
-            } else {
-                showError(error)
-            }
+            showIssue(e.toEnrollmentIssue())
         } catch (e: Exception) {
             internalState.update { it.copy(phase = LedgerScanPhase.IDLE) }
             navigateToError(ErrorArgs.General(e))
@@ -330,21 +376,27 @@ class LedgerDeviceScanVM(
      * scan from that phase, and returning from Settings with the permission granted has to start
      * one without another tap.
      */
-    private fun onOpenSettingsClick(openBluetoothSettings: Boolean) {
-        internalState.update { it.copy(error = null, phase = LedgerScanPhase.PERMISSION) }
-        val intent =
-            if (openBluetoothSettings) {
-                Intent(Settings.ACTION_BLUETOOTH_SETTINGS).apply { flags = SettingsUtil.FLAGS }
-            } else {
-                SettingsUtil.newSettingsIntent(getApplication<Application>().packageName)
-            }
-        getApplication<Application>().startActivity(intent)
+    private fun onOpenSettingsClick() {
+        internalState.update { it.copy(isSheetShown = false, phase = LedgerScanPhase.PERMISSION) }
+        getApplication<Application>().startActivity(
+            SettingsUtil.newSettingsIntent(getApplication<Application>().packageName)
+        )
     }
 
-    private fun onTryAgainClick() = startScan()
+    /**
+     * An issue that keeps the link repeats the request to the still selected device; any other
+     * starts over with a scan. Each pairing attempt opens a fresh transport.
+     */
+    private fun onTryAgainClick() {
+        if (selectedDevice() != null) {
+            onConnectClick()
+        } else {
+            startScan()
+        }
+    }
 
     private fun onSheetDismissed() {
-        internalState.update { it.copy(error = null, phase = LedgerScanPhase.IDLE) }
+        internalState.update { it.copy(isSheetShown = false) }
     }
 
     private fun onBack() = navigationRouter.back()
@@ -358,7 +410,9 @@ class LedgerDeviceScanVM(
                 phase = LedgerScanPhase.SCANNING,
                 devices = emptyList(),
                 selectedIdentifier = null,
-                error = null,
+                issue = null,
+                alreadyAdded = null,
+                isSheetShown = false,
             )
         }
         scanJob = viewModelScope.launch { scan() }
@@ -366,7 +420,7 @@ class LedgerDeviceScanVM(
             viewModelScope.launch {
                 delay(SCAN_TIMEOUT)
                 if (internalState.value.devices.isEmpty()) {
-                    showError(LedgerScanError.NoDevices)
+                    showIssue(LedgerIssue.noDevices)
                 }
             }
     }
@@ -388,7 +442,7 @@ class LedgerDeviceScanVM(
         } catch (e: CancellationException) {
             throw e
         } catch (e: LedgerException) {
-            showError(e.toScanError() ?: LedgerScanError.NoDevices)
+            showIssue(e.toEnrollmentIssue())
         } catch (e: Exception) {
             stopScan()
             internalState.update { it.copy(phase = LedgerScanPhase.IDLE) }
@@ -407,70 +461,57 @@ class LedgerDeviceScanVM(
         scanTimeoutJob = null
     }
 
-    private fun showError(error: LedgerScanError) {
+    /**
+     * An issue that keeps the link leaves the device row selected so Connect can repeat the
+     * request; any other clears the list so the page shows the issue over the placeholder rows.
+     */
+    private fun showIssue(issue: LedgerIssue) {
         stopScan()
-        internalState.update { it.copy(phase = LedgerScanPhase.IDLE, error = error) }
+        val keepsDevice = issue.retry == LedgerIssueRetry.SAME_LINK
+        internalState.update {
+            it.copy(
+                phase = LedgerScanPhase.IDLE,
+                devices = if (keepsDevice) it.devices else emptyList(),
+                selectedIdentifier = if (keepsDevice) it.selectedIdentifier else null,
+                issue = issue,
+                alreadyAdded = null,
+                isSheetShown = true,
+            )
+        }
+    }
+
+    private fun showAlreadyAdded(account: WalletAccount) {
+        stopScan()
+        internalState.update {
+            it.copy(
+                phase = LedgerScanPhase.IDLE,
+                issue = null,
+                alreadyAdded = account,
+                isSheetShown = true,
+            )
+        }
     }
 }
 
 /**
- * The sheet a [LedgerException] maps to, or null when it has no Ledger-specific copy and belongs
- * in the generic error dialog instead.
- *
- * A [LedgerException.BluetoothUnavailable] carrying a scan error code means the scan itself failed
- * to start; without one the phone has no Bluetooth LE at all, which no settings screen can fix.
+ * Logs only the exception's class and its [LedgerException.reason], which the SDK keeps free of
+ * device identifiers.
  */
-private fun LedgerException.toScanError(): LedgerScanError? =
-    when (this) {
-        is LedgerException.PairingRefused,
-        is LedgerException.ConnectionFailed,
-        is LedgerException.DeviceNotFound,
-        is LedgerException.Timeout -> {
-            LedgerScanError.PairingFailed
-        }
-
-        is LedgerException.WrongApp,
-        is LedgerException.DeviceRefused,
-        is LedgerException.DerivationBudgetExhausted,
-        is LedgerException.AppTooOld -> {
-            LedgerScanError.Locked
-        }
-
-        is LedgerException.UserRejected -> {
-            LedgerScanError.ImportRejected
-        }
-
-        is LedgerException.Disconnected -> {
-            LedgerScanError.Disconnected
-        }
-
-        is LedgerException.BluetoothDisabled -> {
-            LedgerScanError.Permissions(openBluetoothSettings = true)
-        }
-
-        is LedgerException.BluetoothUnauthorized -> {
-            LedgerScanError.Permissions(canRequestAgain = false)
-        }
-
-        is LedgerException.BluetoothUnavailable -> {
-            if (scanErrorCode != null) {
-                LedgerScanError.NoDevices
-            } else {
-                LedgerScanError.Unavailable
-            }
-        }
-
-        else -> {
-            null
-        }
-    }
+private fun LedgerException.toEnrollmentIssue(): LedgerIssue {
+    Twig.warn { "Ledger enrollment failed: ${javaClass.simpleName}, reason: $reason" }
+    return toLedgerIssue(LedgerIssueContext.ENROLLMENT)
+}
 
 private data class LedgerScanInternalState(
     val phase: LedgerScanPhase = LedgerScanPhase.PERMISSION,
     val devices: List<LedgerBluetoothDevice> = emptyList(),
     val selectedIdentifier: String? = null,
-    val error: LedgerScanError? = null,
+    val issue: LedgerIssue? = null,
+    val alreadyAdded: WalletAccount? = null,
+    val isSheetShown: Boolean = false,
+    val canRequestPermissionsAgain: Boolean = false,
     val permissionRequestNonce: Int = 0,
+    val enableBluetoothRequestNonce: Int = 0,
 )
 
 private enum class LedgerScanPhase {
@@ -478,29 +519,6 @@ private enum class LedgerScanPhase {
     SCANNING,
     PAIRING,
     IDLE,
-}
-
-private sealed interface LedgerScanError {
-    data object NoDevices : LedgerScanError
-
-    data object Unavailable : LedgerScanError
-
-    data object Locked : LedgerScanError
-
-    data object PairingFailed : LedgerScanError
-
-    data object ImportRejected : LedgerScanError
-
-    data object Disconnected : LedgerScanError
-
-    data class Permissions(
-        val canRequestAgain: Boolean = false,
-        val openBluetoothSettings: Boolean = false,
-    ) : LedgerScanError
-
-    data class AlreadyAdded(
-        val account: WalletAccount
-    ) : LedgerScanError
 }
 
 private val SCAN_TIMEOUT = 30.seconds
