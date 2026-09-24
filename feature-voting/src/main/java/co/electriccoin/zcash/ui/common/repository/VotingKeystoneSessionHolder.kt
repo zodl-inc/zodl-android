@@ -1,14 +1,18 @@
 package co.electriccoin.zcash.ui.common.repository
 
 import cash.z.ecc.android.sdk.VotingRoundSession
+import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import cash.z.ecc.android.sdk.model.voting.VotingBallotIntent
 import cash.z.ecc.android.sdk.model.voting.VotingDelegationInputs
 import cash.z.ecc.android.sdk.model.voting.VotingKeystoneSigningRequest
 import cash.z.ecc.android.sdk.model.voting.VotingProposalRosterEntry
 import cash.z.ecc.android.sdk.model.voting.VotingRoundDriveProgressListener
+import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 /**
  * Keeps one round's [VotingRoundSession] (and the [VotingCryptoClient] DB handle it was opened
@@ -31,12 +35,18 @@ import kotlinx.coroutines.sync.withLock
  * pattern this mirrors from Vizor Wallet's shipping implementation on the same crate).
  */
 class VotingKeystoneSessionHolder(
-    private val votingCryptoClient: VotingCryptoClient
+    private val votingCryptoClient: VotingCryptoClient,
+    private val synchronizerProvider: SynchronizerProvider
 ) {
     private val mutex = Mutex()
     private var openRoundId: String? = null
     private var dbHandle: Long? = null
     private var roundSession: VotingRoundSession? = null
+
+    // True exactly when the currently-open roundSession was opened with a pinned Tor runtime
+    // handle this holder is responsible for releasing (see closeLocked()) -- false when Tor was
+    // disabled (torRuntime = 0L) and nothing was pinned.
+    private var torRuntimePinned = false
 
     /**
      * Ensures a delegation-enabled [VotingRoundSession.run] pass has completed for [roundId] on
@@ -45,6 +55,11 @@ class VotingKeystoneSessionHolder(
      * an open session for [roundId] -- callers should call this once per entry into the Keystone
      * signing flow (e.g. from [VotingKeystoneRepositoryImpl.createPcztEncoder]'s first call for a
      * round), not before every [getKeystoneSigningRequests] call.
+     *
+     * The Tor runtime handle is resolved internally, only on the path that actually opens a new
+     * session (below the no-op check) -- resolving it in the caller and passing it in would pin
+     * a handle on every call, including calls this function no-ops on, and that pin would then
+     * never be released (this holder only releases what it itself pinned, in [closeLocked]).
      */
     @Suppress("LongParameterList", "TooGenericExceptionCaught")
     suspend fun ensureDelegationPipeline(
@@ -52,7 +67,6 @@ class VotingKeystoneSessionHolder(
         votingDbPath: String,
         accountUuidString: String,
         networkId: Int,
-        torRuntime: Long,
         proposals: List<VotingProposalRosterEntry>,
         hotkeySecret: ByteArray,
         chainEndpoints: List<String>,
@@ -67,6 +81,17 @@ class VotingKeystoneSessionHolder(
 
         val handle = votingCryptoClient.openVotingDb(votingDbPath)
         check(handle != 0L) { "Failed to open voting DB at $votingDbPath" }
+
+        // Same Tor policy as SubmitVotesUseCase's non-Keystone path: 0L (Tor disabled) is the
+        // only fallback; a real init failure must propagate. Pinned here, released in
+        // closeLocked() -- see torRuntimePinned's own comment.
+        @Suppress("SwallowedException")
+        val torRuntime =
+            try {
+                synchronizerProvider.getSynchronizer().getVotingTorRuntimeHandle()
+            } catch (e: TorUnavailableException) {
+                0L
+            }
 
         // setWalletId/openRoundSession/session.run below are all documented to surface a
         // RuntimeException from the native layer, and this whole sequence sits behind a
@@ -101,14 +126,20 @@ class VotingKeystoneSessionHolder(
             // for the Keystone-specific bundle indices it still needs signed.
             session.run(delegationInputs = delegationInputs, progressListener = null)
         } catch (t: Throwable) {
-            session?.close()
-            votingCryptoClient.closeVotingDb(handle)
+            // NonCancellable: see closeLocked()'s own comment -- the same leak risk applies to
+            // tearing down a partially-opened attempt after a cancellation.
+            withContext(NonCancellable) {
+                session?.close()
+                votingCryptoClient.closeVotingDb(handle)
+                if (torRuntime != 0L) synchronizerProvider.getSynchronizer().releaseVotingTorRuntimeHandle()
+            }
             throw t
         }
 
         dbHandle = handle
         roundSession = session
         openRoundId = roundId
+        torRuntimePinned = torRuntime != 0L
     }
 
     suspend fun getKeystoneSigningRequests(
@@ -163,11 +194,18 @@ class VotingKeystoneSessionHolder(
             }
         }
 
-    private suspend fun closeLocked() {
-        roundSession?.close()
-        dbHandle?.let { votingCryptoClient.closeVotingDb(it) }
-        roundSession = null
-        dbHandle = null
-        openRoundId = null
-    }
+    // NonCancellable: withContext(Dispatchers.IO) inside roundSession.close()/closeVotingDb()/
+    // releaseVotingTorRuntimeHandle() throws immediately instead of running if the caller's Job
+    // is already cancelled (e.g. the user backed out of the Sign screen mid delegation pass),
+    // which would otherwise leak all three native handles instead of closing them.
+    private suspend fun closeLocked() =
+        withContext(NonCancellable) {
+            roundSession?.close()
+            dbHandle?.let { votingCryptoClient.closeVotingDb(it) }
+            if (torRuntimePinned) synchronizerProvider.getSynchronizer().releaseVotingTorRuntimeHandle()
+            roundSession = null
+            dbHandle = null
+            openRoundId = null
+            torRuntimePinned = false
+        }
 }

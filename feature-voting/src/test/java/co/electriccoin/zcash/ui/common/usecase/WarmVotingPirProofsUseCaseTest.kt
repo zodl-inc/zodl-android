@@ -63,29 +63,8 @@ class WarmVotingPirProofsUseCaseTest {
                         pirEndpoints = listOf("https://pir-a", "https://pir-b"),
                         pirLayout = VotingPirLayout(pirDepth = 3, tier0Layers = 1, tier1Layers = 2, polyLen = 2048),
                         networkId = 0,
-                        notesJson = "[{\"note\":1}]",
-                        torRuntime = 0L
+                        notesJson = "[{\"note\":1}]"
                     )
-                )
-            }
-        }
-
-    @Test
-    fun `invoke resolves a real Tor runtime handle and threads it through the warmup request`() =
-        runTest {
-            val env = environment()
-            coEvery { env.votingConfigRepository.get() } returns
-                VotingConfigSnapshot(serviceConfig = env.serviceConfig(), source = VotingConfigSource.REMOTE)
-            coEvery {
-                env.votingCryptoClient.getWalletNotesJson(any(), any(), any(), any())
-            } returns "[{\"note\":1}]"
-            coEvery { env.synchronizer.getVotingTorRuntimeHandle() } returns TOR_RUNTIME_HANDLE
-
-            env.useCase()
-
-            coVerify(exactly = 1) {
-                env.votingProofPrecomputeRepository.startPirWarmup(
-                    match { request -> request.torRuntime == TOR_RUNTIME_HANDLE }
                 )
             }
         }
@@ -330,6 +309,5 @@ class WarmVotingPirProofsUseCaseTest {
     private companion object {
         const val ROUND_ID = "round-id"
         const val ROUND_SNAPSHOT_HEIGHT = 500L
-        const val TOR_RUNTIME_HANDLE = 42L
     }
 }

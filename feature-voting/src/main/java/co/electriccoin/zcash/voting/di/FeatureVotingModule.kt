@@ -99,7 +99,8 @@ val featureVotingModule =
         single<VotingProofPrecomputeRepository> {
             VotingProofPrecomputeRepositoryImpl(
                 votingCryptoClient = get(),
-                pirSnapshotResolver = get()
+                pirSnapshotResolver = get(),
+                synchronizerProvider = get()
             )
         }
         singleOf(::VotingKeystoneRepositoryImpl) bind VotingKeystoneRepository::class

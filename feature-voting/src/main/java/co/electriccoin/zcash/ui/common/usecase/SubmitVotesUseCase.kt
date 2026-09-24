@@ -183,7 +183,10 @@ class SubmitVotesUseCase(
             // when Tor is disabled/unavailable, never a silent downgrade while it's on.
             // Only TorUnavailableException (Tor disabled) falls back to 0L;
             // TorInitializationErrorException (Tor is ON but failed to bootstrap) must
-            // propagate rather than silently deanonymizing this submission.
+            // propagate rather than silently deanonymizing this submission. A non-zero
+            // torRuntime is pinned (see getVotingTorRuntimeHandle's own doc comment) and MUST be
+            // released exactly once -- the finally below, alongside roundSession.close(), does
+            // that -- or the shared Tor client can never be disposed again.
             @Suppress("SwallowedException")
             val torRuntime =
                 try {
@@ -393,8 +396,11 @@ class SubmitVotesUseCase(
                     // throws immediately instead of running when the parent Job is already
                     // cancelled (e.g. the user backed out mid round-drive) -- NonCancellable lets
                     // the native round session actually get closed instead of leaking its handle.
+                    // Releasing the pinned Tor runtime handle alongside it (see torRuntime's own
+                    // comment above) needs the same NonCancellable treatment for the same reason.
                     withContext(NonCancellable) {
                         roundSession.close()
+                        if (torRuntime != 0L) synchronizer.releaseVotingTorRuntimeHandle()
                     }
                 }
             } finally {
@@ -462,17 +468,6 @@ class SubmitVotesUseCase(
                 .map { endpoint -> endpoint.url.trimEnd('/') }
                 .distinct()
 
-        // Same Tor policy as the non-Keystone path above: `0L` is the SDK's "no Tor runtime"
-        // sentinel, only used when Tor is genuinely disabled; TorInitializationErrorException
-        // (Tor is ON but failed to bootstrap) must propagate.
-        @Suppress("SwallowedException")
-        val torRuntime =
-            try {
-                synchronizer.getVotingTorRuntimeHandle()
-            } catch (e: TorUnavailableException) {
-                0L
-            }
-
         val delegationInputs =
             VotingDelegationInputs(
                 walletDbPath = walletDbPath,
@@ -502,7 +497,6 @@ class SubmitVotesUseCase(
             votingDbPath = votingDbPath,
             accountUuidString = accountUuidString,
             networkId = networkId,
-            torRuntime = torRuntime,
             proposals =
                 session.proposals.map { proposal ->
                     VotingProposalRosterEntry(proposalId = proposal.id, numOptions = proposal.options.size)

@@ -108,7 +108,10 @@ class TrackVotingSharesUseCase(
                         )
                     } finally {
                         unregisterSession(roundId, session)
-                        withContext(NonCancellable) { session.close() }
+                        withContext(NonCancellable) {
+                            session.close()
+                            if (torRuntime != 0L) synchronizer.releaseVotingTorRuntimeHandle()
+                        }
                     }
 
                 when (report?.quiescence) {

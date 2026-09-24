@@ -1,7 +1,9 @@
 package co.electriccoin.zcash.ui.common.repository
 
+import cash.z.ecc.android.sdk.Synchronizer
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.provider.PirSnapshotResolver
+import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -33,6 +35,7 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
+                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = pirSnapshotResolver,
                     scope = scope
@@ -78,6 +81,7 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
+                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
                     scope = scope
@@ -122,6 +126,7 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
+                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = gatedCryptoClient,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
                     scope = scope
@@ -178,6 +183,7 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
+                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
                     scope = scope,
@@ -210,6 +216,7 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
+                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
                     scope = scope,
@@ -253,6 +260,7 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
+                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
                     scope = scope,
@@ -286,6 +294,7 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
+                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = pirSnapshotResolver,
                     scope = scope
@@ -323,6 +332,7 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
+                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
                     scope = scope
@@ -351,6 +361,7 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
+                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
                     scope = scope,
@@ -376,6 +387,7 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
+                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
                     scope = scope,
@@ -411,6 +423,7 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
+                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
                     scope = scope,
@@ -446,6 +459,7 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
+                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example", gate = gate),
                     scope = scope
@@ -486,6 +500,7 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
+                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example", gate = gate),
                     scope = scope
@@ -531,6 +546,7 @@ class VotingProofPrecomputeRepositoryTest {
             val scope = CoroutineScope(coroutineContext + SupervisorJob())
             val repository =
                 VotingProofPrecomputeRepositoryImpl(
+                    synchronizerProvider = fakeSynchronizerProvider(),
                     votingCryptoClient = cryptoClient.client,
                     pirSnapshotResolver = FakePirSnapshotResolver("https://pir.example"),
                     scope = scope
@@ -555,8 +571,7 @@ class VotingProofPrecomputeRepositoryTest {
             pirEndpoints = listOf("https://pir-a", "https://pir-b"),
             pirLayout = VotingPirLayout(),
             networkId = 0,
-            notesJson = "[notes]",
-            torRuntime = TOR_RUNTIME
+            notesJson = "[notes]"
         )
 
     private fun snapshotBundlePrecomputeRequest(accountUuid: String = "account") =
@@ -569,10 +584,32 @@ class VotingProofPrecomputeRepositoryTest {
             pirLayout = VotingPirLayout(),
             expectedSnapshotHeight = 123L,
             networkId = 0,
-            notesJson = "[notes]",
-            torRuntime = TOR_RUNTIME
+            notesJson = "[notes]"
         )
 }
+
+private fun fakeSynchronizerProvider(): SynchronizerProvider =
+    Proxy.newProxyInstance(
+        SynchronizerProvider::class.java.classLoader,
+        arrayOf(SynchronizerProvider::class.java)
+    ) { proxy, method, args ->
+        when (method.name) {
+            "getSynchronizer" -> fakeSynchronizer()
+            else -> method.handleObjectMethod(proxy, args)
+        }
+    } as SynchronizerProvider
+
+private fun fakeSynchronizer(): Synchronizer =
+    Proxy.newProxyInstance(
+        Synchronizer::class.java.classLoader,
+        arrayOf(Synchronizer::class.java)
+    ) { proxy, method, args ->
+        when (method.name) {
+            "getVotingTorRuntimeHandle" -> TOR_RUNTIME
+            "releaseVotingTorRuntimeHandle" -> Unit
+            else -> method.handleObjectMethod(proxy, args)
+        }
+    } as Synchronizer
 
 private const val DB_HANDLE = 42L
 private const val TOR_RUNTIME = 7L

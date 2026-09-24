@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.common.repository
 
-import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import cash.z.ecc.android.sdk.ext.toHex
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.ZcashNetwork
@@ -104,11 +103,7 @@ class VotingKeystoneRepositoryImpl(
     private val synchronizerProvider: SynchronizerProvider,
     private val keystoneSDKProvider: KeystoneSDKProvider,
 ) : VotingKeystoneRepository {
-    // SwallowedException: TorUnavailableException means the user has Tor turned off -- an
-    // expected configuration, not an error worth propagating or logging. The failure mode that
-    // MUST propagate (TorInitializationErrorException: Tor is on but failed to bootstrap) is
-    // deliberately not caught here.
-    @Suppress("LongMethod", "SwallowedException")
+    @Suppress("LongMethod")
     override suspend fun createPcztEncoder(
         accountUuid: String,
         roundId: String
@@ -145,16 +140,6 @@ class VotingKeystoneRepositoryImpl(
                     .distinct()
             val pirLayout = sessionContext.serviceConfig.pirLayout
             val treeStateBytes = synchronizer.getTreeState(BlockHeight.new(session.snapshotHeight))
-            // Same Tor policy as SubmitVotesUseCase's non-Keystone path: `0L` is the SDK's
-            // "no Tor runtime" sentinel and is only used when Tor is genuinely disabled.
-            // TorInitializationErrorException (Tor is ON but failed to bootstrap) must propagate
-            // rather than silently deanonymizing this round's delegation traffic.
-            val torRuntime =
-                try {
-                    synchronizer.getVotingTorRuntimeHandle()
-                } catch (e: TorUnavailableException) {
-                    0L
-                }
 
             val delegationInputs =
                 VotingDelegationInputs(
@@ -185,7 +170,6 @@ class VotingKeystoneRepositoryImpl(
                 votingDbPath = votingDbPath,
                 accountUuidString = accountUuid,
                 networkId = networkId,
-                torRuntime = torRuntime,
                 proposals =
                     session.proposals.map { proposal ->
                         VotingProposalRosterEntry(proposalId = proposal.id, numOptions = proposal.options.size)

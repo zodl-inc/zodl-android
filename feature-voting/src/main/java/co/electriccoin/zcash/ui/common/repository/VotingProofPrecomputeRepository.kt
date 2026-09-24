@@ -1,8 +1,10 @@
 package co.electriccoin.zcash.ui.common.repository
 
 import android.util.Log
+import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.provider.PirSnapshotResolver
+import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -33,8 +35,7 @@ data class VotingPirWarmupRequest(
     val pirEndpoints: List<String>,
     val pirLayout: VotingPirLayout,
     val networkId: Int,
-    val notesJson: String,
-    val torRuntime: Long
+    val notesJson: String
 ) {
     val key: VotingPirWarmupKey
         get() = VotingPirWarmupKey(accountUuid = accountUuid, snapshotHeight = snapshotHeight)
@@ -59,8 +60,7 @@ data class VotingSnapshotBundlePrecomputeRequest(
     val pirLayout: VotingPirLayout,
     val expectedSnapshotHeight: Long,
     val networkId: Int,
-    val notesJson: String,
-    val torRuntime: Long
+    val notesJson: String
 ) {
     val key: VotingSnapshotBundlePrecomputeKey
         get() = VotingSnapshotBundlePrecomputeKey(accountUuid = accountUuid, roundId = roundId)
@@ -115,6 +115,7 @@ interface VotingProofPrecomputeRepository {
 class VotingProofPrecomputeRepositoryImpl(
     private val votingCryptoClient: VotingCryptoClient,
     private val pirSnapshotResolver: PirSnapshotResolver,
+    private val synchronizerProvider: SynchronizerProvider,
     private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob()),
     // Injectable so tests exercising the "one failure is enough" dedup-key behavior (Important
     // #4) aren't forced to actually wait out real backoff delays -- see withPirFetchRetry's own
@@ -227,12 +228,24 @@ class VotingProofPrecomputeRepositoryImpl(
             val dbHandle = votingCryptoClient.openVotingDb(request.votingDbPath)
             check(dbHandle != 0L) { "Failed to open voting DB at ${request.votingDbPath}" }
 
+            // Resolved here, inside the job that actually uses it, rather than by the caller
+            // before startPirWarmup -- startPirWarmup no-ops on an existing dedup-key job (see
+            // its own comment above), and a handle pinned by the caller for that no-op path would
+            // never be released. Same Tor-optional fallback as SubmitVotesUseCase.kt.
+            @Suppress("SwallowedException")
+            val torRuntime =
+                try {
+                    synchronizerProvider.getSynchronizer().getVotingTorRuntimeHandle()
+                } catch (e: TorUnavailableException) {
+                    0L
+                }
+
             try {
                 votingCryptoClient.setWalletId(dbHandle, request.walletId, request.networkId)
                 withPirFetchRetry("PIR proof warmup for account ${request.accountUuid}") {
                     votingCryptoClient.precomputePirProofs(
                         dbHandle = dbHandle,
-                        torRuntime = request.torRuntime,
+                        torRuntime = torRuntime,
                         pirServerUrl = pirServerUrl,
                         pirLayout = request.pirLayout,
                         notesJson = request.notesJson
@@ -248,9 +261,11 @@ class VotingProofPrecomputeRepositoryImpl(
                 // the shared native lock it holds -- exactly the outcome this whole fix exists to
                 // prevent. NonCancellable guarantees this cleanup actually runs, same pattern
                 // SubmitVotesUseCase.kt already uses for its own roundSession.close()/
-                // closeVotingDb() cleanup.
+                // closeVotingDb() cleanup. Releasing the pinned Tor runtime handle needs the same
+                // treatment, for the same reason.
                 withContext(NonCancellable) {
                     votingCryptoClient.closeVotingDb(dbHandle)
+                    if (torRuntime != 0L) synchronizerProvider.getSynchronizer().releaseVotingTorRuntimeHandle()
                 }
             }
         }.onSuccess { result ->
@@ -280,12 +295,22 @@ class VotingProofPrecomputeRepositoryImpl(
             val dbHandle = votingCryptoClient.openVotingDb(request.votingDbPath)
             check(dbHandle != 0L) { "Failed to open voting DB at ${request.votingDbPath}" }
 
+            // See runPirWarmup's identical comment above -- same no-op-on-existing-job hazard,
+            // same fix.
+            @Suppress("SwallowedException")
+            val torRuntime =
+                try {
+                    synchronizerProvider.getSynchronizer().getVotingTorRuntimeHandle()
+                } catch (e: TorUnavailableException) {
+                    0L
+                }
+
             try {
                 votingCryptoClient.setWalletId(dbHandle, request.walletId, request.networkId)
                 withPirFetchRetry("Snapshot bundle precompute for round ${request.roundId}") {
                     votingCryptoClient.precomputeSnapshotBundles(
                         dbHandle = dbHandle,
-                        torRuntime = request.torRuntime,
+                        torRuntime = torRuntime,
                         roundId = request.roundId,
                         pirServerUrl = pirServerUrl,
                         pirLayout = request.pirLayout,
@@ -296,6 +321,7 @@ class VotingProofPrecomputeRepositoryImpl(
                 // See runPirWarmup's identical comment above (Important #1) -- same reasoning.
                 withContext(NonCancellable) {
                     votingCryptoClient.closeVotingDb(dbHandle)
+                    if (torRuntime != 0L) synchronizerProvider.getSynchronizer().releaseVotingTorRuntimeHandle()
                 }
             }
         }.onSuccess { result ->

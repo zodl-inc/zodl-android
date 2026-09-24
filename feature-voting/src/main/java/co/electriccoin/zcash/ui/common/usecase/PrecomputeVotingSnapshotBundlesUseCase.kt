@@ -1,7 +1,6 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import android.util.Log
-import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
@@ -41,12 +40,6 @@ class PrecomputeVotingSnapshotBundlesUseCase(
     private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
     private val votingProofPrecomputeRepository: VotingProofPrecomputeRepository
 ) {
-    // SwallowedException: TorUnavailableException means the user has Tor turned off -- an
-    // expected configuration, not an error worth propagating or logging. Matches
-    // VotingKeystoneRepositoryImpl.createPcztEncoder's identical suppression for the identical
-    // pattern. The failure mode that MUST propagate (TorInitializationErrorException) is
-    // deliberately not caught here.
-    @Suppress("SwallowedException")
     suspend operator fun invoke(roundId: String) {
         if (roundId.isEmpty()) return
 
@@ -72,16 +65,6 @@ class PrecomputeVotingSnapshotBundlesUseCase(
                         ?: return@withContext
                 val synchronizer = synchronizerProvider.getSynchronizer()
                 val networkId = synchronizer.network.toVotingNetworkId()
-                // Same Tor-optional fallback as SubmitVotesUseCase.kt -- Tor is a preference, not
-                // a hard requirement. Only TorUnavailableException (Tor disabled) falls back to
-                // 0L; TorInitializationErrorException (Tor is ON but failed to bootstrap) must
-                // propagate, same as every other caller of this handle.
-                val torRuntime =
-                    try {
-                        synchronizer.getVotingTorRuntimeHandle()
-                    } catch (e: TorUnavailableException) {
-                        0L
-                    }
 
                 val notesJson =
                     votingCryptoClient.getWalletNotesJson(
@@ -102,8 +85,7 @@ class PrecomputeVotingSnapshotBundlesUseCase(
                         pirLayout = serviceConfig.pirLayout,
                         expectedSnapshotHeight = round.snapshotHeight,
                         networkId = networkId,
-                        notesJson = notesJson,
-                        torRuntime = torRuntime
+                        notesJson = notesJson
                     )
                 )
             }
