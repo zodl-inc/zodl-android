@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.screen.connectledger.scan
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceItemState
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerErrorSheetState
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerInlineIssueState
 
@@ -80,29 +81,5 @@ data class LedgerDeviceScanState(
                 primaryButton = ButtonState(stringRes("Try again")),
                 errorSheet = LedgerErrorSheetState.previewBluetoothOff,
             )
-    }
-}
-
-/**
- * A device row. It deliberately carries no identifier: the only one a scan has is the device's
- * Bluetooth address, a stable hardware identifier that must not reach the semantics tree. The view
- * keys and tags rows by position; the selection itself is tracked inside the view model.
- */
-data class LedgerDeviceItemState(
-    val name: StringResource,
-    val isSelected: Boolean,
-    val isEnabled: Boolean,
-    val onClick: () -> Unit,
-) {
-    companion object {
-        val preview =
-            LedgerDeviceItemState(
-                name = stringRes("Ledger Device 2"),
-                isSelected = false,
-                isEnabled = true,
-                onClick = {},
-            )
-
-        val previewSelected = preview.copy(name = stringRes("Ledger Device 1"), isSelected = true)
     }
 }

@@ -4,7 +4,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,7 +20,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -49,6 +47,7 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
+import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceRow
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerErrorSheet
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerInlineIssue
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerInlineIssueState
@@ -117,7 +116,10 @@ fun LedgerDeviceScanView(state: LedgerDeviceScanState) {
                         if (index != 0) {
                             Spacer(Modifier.height(12.dp))
                         }
-                        DeviceRow(state = device, index = index)
+                        LedgerDeviceRow(
+                            state = device,
+                            testTag = LedgerDeviceScanTag.DEVICE_ROW_PREFIX + index,
+                        )
                     }
                 }
                 Spacer(Modifier.height(24.dp))
@@ -206,92 +208,6 @@ private fun SkeletonBar(widthFraction: Float) {
                 .clip(RoundedCornerShape(5.dp))
                 .background(ZashiColors.Surfaces.bgTertiary)
     )
-}
-
-@Composable
-private fun DeviceRow(state: LedgerDeviceItemState, index: Int) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(ZashiColors.Surfaces.bgPrimary)
-                .selectionBorder(state.isSelected)
-                .clickable(enabled = state.isEnabled, onClick = state.onClick)
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .testTag(LedgerDeviceScanTag.DEVICE_ROW_PREFIX + index),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Image(
-            modifier = Modifier.size(40.dp),
-            painter = painterResource(co.electriccoin.zcash.ui.design.R.drawable.ic_item_ledger),
-            contentDescription = null,
-        )
-        Spacer(Modifier.width(12.dp))
-        Text(
-            modifier = Modifier.weight(1f),
-            text = state.name.getValue(),
-            style = ZashiTypography.textSm,
-            color = ZashiColors.Text.textPrimary,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Spacer(Modifier.width(16.dp))
-        SelectionIndicator(isSelected = state.isSelected)
-    }
-}
-
-/**
- * The selected row is drawn with a heavier, darker stroke; selection is carried by the border and
- * the filled selector together, as in the Figma frames.
- */
-@Composable
-private fun Modifier.selectionBorder(isSelected: Boolean) =
-    this.then(
-        Modifier.border(
-            if (isSelected) {
-                BorderStroke(2.dp, ZashiColors.Text.textPrimary)
-            } else {
-                BorderStroke(1.dp, ZashiColors.Surfaces.strokeSecondary)
-            },
-            RoundedCornerShape(12.dp)
-        )
-    )
-
-@Composable
-private fun SelectionIndicator(isSelected: Boolean) {
-    Box(
-        modifier =
-            Modifier
-                .size(20.dp)
-                .clip(CircleShape)
-                .background(
-                    if (isSelected) {
-                        ZashiColors.Checkboxes.boxOnBg
-                    } else {
-                        Color.Transparent
-                    }
-                ).border(
-                    BorderStroke(
-                        1.dp,
-                        if (isSelected) {
-                            ZashiColors.Checkboxes.boxOnBg
-                        } else {
-                            ZashiColors.Checkboxes.boxOffStroke
-                        }
-                    ),
-                    CircleShape
-                ),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (isSelected) {
-            Icon(
-                modifier = Modifier.size(14.dp),
-                painter = painterResource(R.drawable.ic_ledger_check),
-                contentDescription = null,
-                tint = ZashiColors.Checkboxes.boxOnFg,
-            )
-        }
-    }
 }
 
 private const val SKELETON_ROWS = 3

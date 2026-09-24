@@ -25,6 +25,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connecthw.HWWalletEnrollment
 import co.electriccoin.zcash.ui.screen.connecthw.neworactive.HWNewOrActiveArgs
+import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceItemState
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerErrorSheetState
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerInlineIssueState
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs

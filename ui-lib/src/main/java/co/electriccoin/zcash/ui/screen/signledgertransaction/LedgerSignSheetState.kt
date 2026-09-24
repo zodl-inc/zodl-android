@@ -5,7 +5,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ModalBottomSheetState
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.connectledger.scan.LedgerDeviceItemState
+import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceItemState
 
 /**
  * The sheet the Ledger signing session runs under. [primaryButton] is the device-selection Connect
