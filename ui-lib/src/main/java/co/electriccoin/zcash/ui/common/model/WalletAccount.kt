@@ -338,7 +338,8 @@ data class LedgerAccount(
         }
 
     /**
-     * Overridden to keep the device identity and the addresses out of logs.
+     * Overridden to redact the device identity; the addresses are not part of the string, so
+     * nothing else needs redacting.
      */
     override fun toString() =
         "LedgerAccount(sdkAccount=$sdkAccount, deviceIdentity=***, " +

@@ -51,7 +51,7 @@ class AccountListVM(
                     onBack = ::onBack,
                     addWalletButton =
                         ButtonState(
-                            text = stringRes(co.electriccoin.zcash.ui.R.string.keystone_connect),
+                            text = stringRes(co.electriccoin.zcash.ui.R.string.hwWallet_connect),
                             onClick = ::onAddWalletButtonClicked
                         ).takeIf { hasUnconnectedHWVendor(accounts) }
                 )

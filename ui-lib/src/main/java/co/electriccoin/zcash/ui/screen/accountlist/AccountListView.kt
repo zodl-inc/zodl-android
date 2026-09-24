@@ -123,7 +123,7 @@ private fun BottomSheetContent(
             title = {
                 Text(
                     modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 16.dp),
-                    text = stringResource(co.electriccoin.zcash.ui.R.string.keystone_drawer_title),
+                    text = stringResource(co.electriccoin.zcash.ui.R.string.hwWallet_drawer_title),
                     style = ZashiTypography.textXl,
                     fontWeight = FontWeight.SemiBold,
                     color = ZashiColors.Text.textPrimary

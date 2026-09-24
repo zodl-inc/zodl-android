@@ -87,8 +87,8 @@
     <string name="about_privacyPolicy">Política de privacidad</string>
 
     <!-- ===== account_list ===== -->
-    <string name="keystone_drawer_title">Billeteras y Dispositivos</string>
-    <string name="keystone_connect">Conectar Billetera de Hardware</string>
+    <string name="hwWallet_drawer_title">Billeteras y Dispositivos</string>
+    <string name="hwWallet_connect">Conectar Billetera de Hardware</string>
 
     <!-- ===== add_contact ===== -->
     <string name="addressBook_addNewContact">Agregar nuevo contacto</string>

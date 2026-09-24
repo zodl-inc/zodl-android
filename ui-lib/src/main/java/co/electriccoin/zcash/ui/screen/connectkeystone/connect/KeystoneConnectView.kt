@@ -154,7 +154,7 @@ private fun HeaderSection(
         )
         Spacer(Modifier.height(24.dp))
         Text(
-            stringResource(R.string.keystone_connect),
+            stringResource(R.string.hwWallet_connect),
             style = ZashiTypography.header6,
             color = ZashiColors.Text.textPrimary,
             fontWeight = FontWeight.SemiBold

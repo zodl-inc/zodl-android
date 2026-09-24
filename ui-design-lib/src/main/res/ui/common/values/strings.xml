@@ -93,8 +93,8 @@
     <string name="about_privacyPolicy">Privacy Policy</string>
 
     <!-- ===== account_list ===== -->
-    <string name="keystone_drawer_title">Wallets &amp; Hardware</string>
-    <string name="keystone_connect">Connect Hardware Wallet</string>
+    <string name="hwWallet_drawer_title">Wallets &amp; Hardware</string>
+    <string name="hwWallet_connect">Connect Hardware Wallet</string>
 
     <!-- ===== add_contact ===== -->
     <string name="addressBook_addNewContact">Add New Contact</string>

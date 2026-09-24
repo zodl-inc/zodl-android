@@ -90,7 +90,7 @@
 
     <!-- Disconnect and integrations -->
     <string name="ledger_disconnect_title">Desconectar Ledger</string>
-    <string name="ledgerHW">Hardware Ledger</string>
+    <string name="ledgerHW">Ledger Hardware</string>
     <string name="integrations_disabled_info_flexa_ledger">Cambia de Ledger a Zodl para usar Flexa.</string>
 
     <!-- Send paths -->
