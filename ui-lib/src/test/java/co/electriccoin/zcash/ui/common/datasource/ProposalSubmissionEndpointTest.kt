@@ -120,11 +120,14 @@ class ProposalSubmissionEndpointTest {
      */
     private suspend fun resolveSubmissionEndpoints(
         currentEndpoint: LightWalletEndpoint,
+        @Suppress("UNUSED_PARAMETER")
         allEndpoints: List<LightWalletEndpoint>,
+        @Suppress("UNUSED_PARAMETER")
         isAutomaticPreference: Boolean?
     ): List<LightWalletEndpoint> {
         // After F-05 fix: getSubmissionEndpoints() always returns listOf(currentEndpoint)
         // regardless of automatic/manual mode. The mode logic was removed.
+        // The unused parameters are kept for test readability (showing what was checked).
         return listOf(currentEndpoint)
     }
 }

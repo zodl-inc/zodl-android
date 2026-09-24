@@ -93,8 +93,6 @@ class TexUnsupportedOnKSException : Exception("TEX addresses are unsupported on 
 @Suppress("TooManyFunctions")
 class ProposalDataSourceImpl(
     private val synchronizerProvider: SynchronizerProvider,
-    private val lightWalletEndpointProvider: LightWalletEndpointProvider,
-    private val isServerSelectionAutomaticProvider: IsServerSelectionAutomaticProvider,
     private val persistableWalletProvider: PersistableWalletProvider,
 ) : ProposalDataSource {
     override suspend fun createProposal(account: WalletAccount, send: ZecSend): RegularTransactionProposal =

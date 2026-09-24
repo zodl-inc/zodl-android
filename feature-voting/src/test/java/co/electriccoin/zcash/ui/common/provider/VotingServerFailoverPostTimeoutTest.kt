@@ -57,7 +57,7 @@ class VotingServerFailoverPostTimeoutTest {
         val servers = listOf("https://server1.example.com", "https://server2.example.com")
         var attemptedServers = mutableListOf<String>()
 
-        try {
+        val result = runCatching {
             withVoteServerFailover(
                 path = "/shielded-vote/v1/delegate-vote",
                 serverUrls = servers,
@@ -67,9 +67,13 @@ class VotingServerFailoverPostTimeoutTest {
                     throw TimeoutCancellationException("Server took too long")
                 }
             )
-        } catch (e: VotingServerFailoverException) {
-            // Expected: failover should give up after first timeout
         }
+        // Expected: failover should give up after first timeout
+        assertTrue("Failover should fail after timeout", result.isFailure)
+        assertTrue(
+            "Should fail with VotingServerFailoverException",
+            result.exceptionOrNull() is VotingServerFailoverException
+        )
 
         assertEquals(
             "F-06 fix: After timeout on first server, should NOT try second server",
@@ -87,7 +91,7 @@ class VotingServerFailoverPostTimeoutTest {
         val servers = listOf("https://server1.example.com", "https://server2.example.com")
         var attemptedServers = mutableListOf<String>()
 
-        try {
+        val result = runCatching {
             withVoteServerFailover(
                 path = "/shielded-vote/v1/delegate-vote",
                 serverUrls = servers,
@@ -101,9 +105,13 @@ class VotingServerFailoverPostTimeoutTest {
                     throw IOException("All servers down")
                 }
             )
-        } catch (e: VotingServerFailoverException) {
-            // Expected: all servers tried
         }
+        // Expected: all servers tried
+        assertTrue("Failover should fail after all servers tried", result.isFailure)
+        assertTrue(
+            "Should fail with VotingServerFailoverException",
+            result.exceptionOrNull() is VotingServerFailoverException
+        )
 
         assertEquals(
             "Connection error on first server should trigger retry on second server",

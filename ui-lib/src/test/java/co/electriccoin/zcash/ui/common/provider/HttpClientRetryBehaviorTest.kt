@@ -82,13 +82,13 @@ class HttpClientRetryBehaviorTest {
                         }
                     }
 
-                try {
+                val result = runCatching {
                     client.post("https://vote.example.com$path") {
                         // Voting POST
                     }
-                } catch (e: Exception) {
-                    // Expected to fail with 500
                 }
+                // Expected to fail with 500
+                assertTrue("Request should fail", result.isFailure)
 
                 // Verify only ONE attempt was made (no retries)
                 assertEquals(
@@ -136,11 +136,11 @@ class HttpClientRetryBehaviorTest {
                     }
                 }
 
-            try {
+            val result = runCatching {
                 client.get("https://vote.example.com/shielded-vote/v1/share-status/round123/nullifier456")
-            } catch (e: Exception) {
-                // Expected to fail
             }
+            // Expected to fail
+            assertTrue("Request should fail", result.isFailure)
 
             // Verify only ONE attempt (no retries)
             assertEquals(
@@ -188,11 +188,11 @@ class HttpClientRetryBehaviorTest {
                     }
                 }
 
-            try {
+            val result = runCatching {
                 client.get("https://api.example.com/some-other-endpoint")
-            } catch (e: Exception) {
-                // Expected to fail after retries
             }
+            // Expected to fail after retries
+            assertTrue("Request should fail after retries", result.isFailure)
 
             // Verify it was tried 5 times (1 initial + 4 retries)
             assertEquals(
@@ -236,11 +236,11 @@ class HttpClientRetryBehaviorTest {
                     }
                 }
 
-            try {
+            val result = runCatching {
                 client.post("https://vote.example.com/shielded-vote/v1/delegate-vote")
-            } catch (e: Exception) {
-                // Expected - connection failed
             }
+            // Expected - connection failed
+            assertTrue("Request should fail on connection error", result.isFailure)
 
             // Verify only ONE attempt (no retries on exception for voting paths)
             assertEquals(
