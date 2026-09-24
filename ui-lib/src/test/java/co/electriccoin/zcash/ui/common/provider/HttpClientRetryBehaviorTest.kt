@@ -133,6 +133,15 @@ class HttpClientRetryBehaviorTest {
                                     url.contains("/shielded-vote/v1/cast-vote")
                             !isVoting && response.status.value in 500..599
                         }
+                        retryOnExceptionIf { request, _ ->
+                            val url = request.url.toString()
+                            val isVoting =
+                                url.contains("/shielded-vote/v1/shares") ||
+                                    url.contains("/shielded-vote/v1/share-status/") ||
+                                    url.contains("/shielded-vote/v1/delegate-vote") ||
+                                    url.contains("/shielded-vote/v1/cast-vote")
+                            !isVoting
+                        }
                         exponentialDelay()
                     }
                 }
@@ -185,6 +194,15 @@ class HttpClientRetryBehaviorTest {
                                     url.contains("/shielded-vote/v1/cast-vote")
                             // Assume no exchange rate host for this test
                             !isVoting && response.status.value in 500..599
+                        }
+                        retryOnExceptionIf { request, _ ->
+                            val url = request.url.toString()
+                            val isVoting =
+                                url.contains("/shielded-vote/v1/shares") ||
+                                    url.contains("/shielded-vote/v1/share-status/") ||
+                                    url.contains("/shielded-vote/v1/delegate-vote") ||
+                                    url.contains("/shielded-vote/v1/cast-vote")
+                            !isVoting
                         }
                         exponentialDelay()
                     }
