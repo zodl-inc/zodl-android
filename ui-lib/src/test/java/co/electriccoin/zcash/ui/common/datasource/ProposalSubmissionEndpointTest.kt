@@ -33,86 +33,90 @@ class ProposalSubmissionEndpointTest {
      * to that gateway, not to all bundled endpoints.
      */
     @Test
-    fun testAutomaticMode_OhttpGateway_SubmitsOnlyToGateway() = runTest {
-        // Given: wallet on OHTTP gateway, automatic mode preference = true
-        val currentEndpoint = ohttpGatewayMainnet
-        val allEndpoints = listOf(ohttpGatewayMainnet, clearnetServer1, clearnetServer2)
+    fun testAutomaticMode_OhttpGateway_SubmitsOnlyToGateway() =
+        runTest {
+            // Given: wallet on OHTTP gateway, automatic mode preference = true
+            val currentEndpoint = ohttpGatewayMainnet
+            val allEndpoints = listOf(ohttpGatewayMainnet, clearnetServer1, clearnetServer2)
 
-        val result =
-            resolveSubmissionEndpoints(
-                currentEndpoint = currentEndpoint,
-                allEndpoints = allEndpoints,
-                isAutomaticPreference = true
-            )
+            val result =
+                resolveSubmissionEndpoints(
+                    currentEndpoint = currentEndpoint,
+                    allEndpoints = allEndpoints,
+                    isAutomaticPreference = true
+                )
 
-        // Then: submit ONLY to the gateway (not all endpoints)
-        assertEquals("F-05: automatic mode must submit only to current endpoint", 1, result.size)
-        assertEquals(ohttpGatewayMainnet, result.single())
-    }
+            // Then: submit ONLY to the gateway (not all endpoints)
+            assertEquals("F-05: automatic mode must submit only to current endpoint", 1, result.size)
+            assertEquals(ohttpGatewayMainnet, result.single())
+        }
 
     /**
      * Test that manual mode with a clearnet endpoint submits only to that endpoint.
      */
     @Test
-    fun testManualMode_ClearnetServer_SubmitsOnlyToThatServer() = runTest {
-        // Given: wallet on clearnet server, manual mode (preference = false)
-        val currentEndpoint = clearnetServer1
-        val allEndpoints = listOf(ohttpGatewayMainnet, clearnetServer1, clearnetServer2)
+    fun testManualMode_ClearnetServer_SubmitsOnlyToThatServer() =
+        runTest {
+            // Given: wallet on clearnet server, manual mode (preference = false)
+            val currentEndpoint = clearnetServer1
+            val allEndpoints = listOf(ohttpGatewayMainnet, clearnetServer1, clearnetServer2)
 
-        val result =
-            resolveSubmissionEndpoints(
-                currentEndpoint = currentEndpoint,
-                allEndpoints = allEndpoints,
-                isAutomaticPreference = false
-            )
+            val result =
+                resolveSubmissionEndpoints(
+                    currentEndpoint = currentEndpoint,
+                    allEndpoints = allEndpoints,
+                    isAutomaticPreference = false
+                )
 
-        // Then: submit only to the manually-selected server
-        assertEquals(1, result.size)
-        assertEquals(clearnetServer1, result.single())
-    }
+            // Then: submit only to the manually-selected server
+            assertEquals(1, result.size)
+            assertEquals(clearnetServer1, result.single())
+        }
 
     /**
      * Test that manual mode with OHTTP endpoint submits only to that endpoint.
      */
     @Test
-    fun testManualMode_OhttpGateway_SubmitsOnlyToGateway() = runTest {
-        // Given: wallet on OHTTP gateway, manual mode
-        val currentEndpoint = ohttpGatewayMainnet
-        val allEndpoints = listOf(ohttpGatewayMainnet, clearnetServer1, clearnetServer2)
+    fun testManualMode_OhttpGateway_SubmitsOnlyToGateway() =
+        runTest {
+            // Given: wallet on OHTTP gateway, manual mode
+            val currentEndpoint = ohttpGatewayMainnet
+            val allEndpoints = listOf(ohttpGatewayMainnet, clearnetServer1, clearnetServer2)
 
-        val result =
-            resolveSubmissionEndpoints(
-                currentEndpoint = currentEndpoint,
-                allEndpoints = allEndpoints,
-                isAutomaticPreference = false
-            )
+            val result =
+                resolveSubmissionEndpoints(
+                    currentEndpoint = currentEndpoint,
+                    allEndpoints = allEndpoints,
+                    isAutomaticPreference = false
+                )
 
-        // Then: submit only to the gateway
-        assertEquals(1, result.size)
-        assertEquals(ohttpGatewayMainnet, result.single())
-    }
+            // Then: submit only to the gateway
+            assertEquals(1, result.size)
+            assertEquals(ohttpGatewayMainnet, result.single())
+        }
 
     /**
      * Test the legacy migration case: null preference with OHTTP gateway defaults to automatic,
      * and still submits only to the current endpoint.
      */
     @Test
-    fun testNullPreference_OhttpGateway_SubmitsOnlyToGateway() = runTest {
-        // Given: null preference (legacy wallet), on OHTTP gateway (→ automatic by migration rule)
-        val currentEndpoint = ohttpGatewayMainnet
-        val allEndpoints = listOf(ohttpGatewayMainnet, clearnetServer1, clearnetServer2)
+    fun testNullPreference_OhttpGateway_SubmitsOnlyToGateway() =
+        runTest {
+            // Given: null preference (legacy wallet), on OHTTP gateway (→ automatic by migration rule)
+            val currentEndpoint = ohttpGatewayMainnet
+            val allEndpoints = listOf(ohttpGatewayMainnet, clearnetServer1, clearnetServer2)
 
-        val result =
-            resolveSubmissionEndpoints(
-                currentEndpoint = currentEndpoint,
-                allEndpoints = allEndpoints,
-                isAutomaticPreference = null
-            )
+            val result =
+                resolveSubmissionEndpoints(
+                    currentEndpoint = currentEndpoint,
+                    allEndpoints = allEndpoints,
+                    isAutomaticPreference = null
+                )
 
-        // Then: submit only to the gateway
-        assertEquals("F-05: null preference must still submit only to current endpoint", 1, result.size)
-        assertEquals(ohttpGatewayMainnet, result.single())
-    }
+            // Then: submit only to the gateway
+            assertEquals("F-05: null preference must still submit only to current endpoint", 1, result.size)
+            assertEquals(ohttpGatewayMainnet, result.single())
+        }
 
     /**
      * Helper that simulates the ProposalDataSource.getSubmissionEndpoints() logic after the F-05 fix.

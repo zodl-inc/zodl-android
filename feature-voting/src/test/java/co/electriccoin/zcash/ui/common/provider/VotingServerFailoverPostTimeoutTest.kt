@@ -53,104 +53,110 @@ class VotingServerFailoverPostTimeoutTest {
      * Test that withVoteServerFailover does NOT try second server after timeout.
      */
     @Test
-    fun testFailoverDoesNotRetryAfterTimeout() = runTest {
-        val servers = listOf("https://server1.example.com", "https://server2.example.com")
-        var attemptedServers = mutableListOf<String>()
+    fun testFailoverDoesNotRetryAfterTimeout() =
+        runTest {
+            val servers = listOf("https://server1.example.com", "https://server2.example.com")
+            var attemptedServers = mutableListOf<String>()
 
-        val result = runCatching {
-            withVoteServerFailover(
-                path = "/shielded-vote/v1/delegate-vote",
-                serverUrls = servers,
-                operation = { serverUrl ->
-                    attemptedServers.add(serverUrl)
-                    // First server times out after possibly delivering the request
-                    throw TimeoutCancellationException("Server took too long")
+            val result =
+                runCatching {
+                    withVoteServerFailover(
+                        path = "/shielded-vote/v1/delegate-vote",
+                        serverUrls = servers,
+                        operation = { serverUrl ->
+                            attemptedServers.add(serverUrl)
+                            // First server times out after possibly delivering the request
+                            throw TimeoutCancellationException("Server took too long")
+                        }
+                    )
                 }
+            // Expected: failover should give up after first timeout
+            assertTrue("Failover should fail after timeout", result.isFailure)
+            assertTrue(
+                "Should fail with VotingServerFailoverException",
+                result.exceptionOrNull() is VotingServerFailoverException
             )
-        }
-        // Expected: failover should give up after first timeout
-        assertTrue("Failover should fail after timeout", result.isFailure)
-        assertTrue(
-            "Should fail with VotingServerFailoverException",
-            result.exceptionOrNull() is VotingServerFailoverException
-        )
 
-        assertEquals(
-            "F-06 fix: After timeout on first server, should NOT try second server",
-            1,
-            attemptedServers.size
-        )
-        assertEquals("https://server1.example.com", attemptedServers[0])
-    }
+            assertEquals(
+                "F-06 fix: After timeout on first server, should NOT try second server",
+                1,
+                attemptedServers.size
+            )
+            assertEquals("https://server1.example.com", attemptedServers[0])
+        }
 
     /**
      * Test that withVoteServerFailover DOES try second server after connection error.
      */
     @Test
-    fun testFailoverRetriesAfterConnectionError() = runTest {
-        val servers = listOf("https://server1.example.com", "https://server2.example.com")
-        var attemptedServers = mutableListOf<String>()
+    fun testFailoverRetriesAfterConnectionError() =
+        runTest {
+            val servers = listOf("https://server1.example.com", "https://server2.example.com")
+            var attemptedServers = mutableListOf<String>()
 
-        val result = runCatching {
-            withVoteServerFailover(
-                path = "/shielded-vote/v1/delegate-vote",
-                serverUrls = servers,
-                operation = { serverUrl ->
-                    attemptedServers.add(serverUrl)
-                    // First server fails with connection error (pre-send, safe to retry)
-                    if (attemptedServers.size == 1) {
-                        throw IOException("Connection refused")
-                    }
-                    // Second server also fails (to trigger VotingServerFailoverException)
-                    throw IOException("All servers down")
+            val result =
+                runCatching {
+                    withVoteServerFailover(
+                        path = "/shielded-vote/v1/delegate-vote",
+                        serverUrls = servers,
+                        operation = { serverUrl ->
+                            attemptedServers.add(serverUrl)
+                            // First server fails with connection error (pre-send, safe to retry)
+                            if (attemptedServers.size == 1) {
+                                throw IOException("Connection refused")
+                            }
+                            // Second server also fails (to trigger VotingServerFailoverException)
+                            throw IOException("All servers down")
+                        }
+                    )
                 }
+            // Expected: all servers tried
+            assertTrue("Failover should fail after all servers tried", result.isFailure)
+            assertTrue(
+                "Should fail with VotingServerFailoverException",
+                result.exceptionOrNull() is VotingServerFailoverException
             )
-        }
-        // Expected: all servers tried
-        assertTrue("Failover should fail after all servers tried", result.isFailure)
-        assertTrue(
-            "Should fail with VotingServerFailoverException",
-            result.exceptionOrNull() is VotingServerFailoverException
-        )
 
-        assertEquals(
-            "Connection error on first server should trigger retry on second server",
-            2,
-            attemptedServers.size
-        )
-        assertEquals("https://server1.example.com", attemptedServers[0])
-        assertEquals("https://server2.example.com", attemptedServers[1])
-    }
+            assertEquals(
+                "Connection error on first server should trigger retry on second server",
+                2,
+                attemptedServers.size
+            )
+            assertEquals("https://server1.example.com", attemptedServers[0])
+            assertEquals("https://server2.example.com", attemptedServers[1])
+        }
 
     /**
      * Test that withVoteServerFailover succeeds on second server after connection error on first.
      */
     @Test
-    fun testFailoverSucceedsOnSecondServerAfterConnectionError() = runTest {
-        val servers = listOf("https://server1.example.com", "https://server2.example.com")
-        var attemptedServers = mutableListOf<String>()
+    fun testFailoverSucceedsOnSecondServerAfterConnectionError() =
+        runTest {
+            val servers = listOf("https://server1.example.com", "https://server2.example.com")
+            var attemptedServers = mutableListOf<String>()
 
-        val result = withVoteServerFailover(
-            path = "/shielded-vote/v1/cast-vote",
-            serverUrls = servers,
-            operation = { serverUrl ->
-                attemptedServers.add(serverUrl)
-                if (attemptedServers.size == 1) {
-                    // First server fails with connection error (pre-send, safe to retry)
-                    throw IOException("Connection refused")
-                }
-                // Second server succeeds
-                "success"
-            }
-        )
+            val result =
+                withVoteServerFailover(
+                    path = "/shielded-vote/v1/cast-vote",
+                    serverUrls = servers,
+                    operation = { serverUrl ->
+                        attemptedServers.add(serverUrl)
+                        if (attemptedServers.size == 1) {
+                            // First server fails with connection error (pre-send, safe to retry)
+                            throw IOException("Connection refused")
+                        }
+                        // Second server succeeds
+                        "success"
+                    }
+                )
 
-        assertEquals(
-            "Should have tried both servers (first failed, second succeeded)",
-            2,
-            attemptedServers.size
-        )
-        assertEquals("success", result)
-    }
+            assertEquals(
+                "Should have tried both servers (first failed, second succeeded)",
+                2,
+                attemptedServers.size
+            )
+            assertEquals("success", result)
+        }
 
     /**
      * Document the problem scenario: timeout after delivery risks double-submission.
