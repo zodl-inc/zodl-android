@@ -38,11 +38,12 @@ class ProposalSubmissionEndpointTest {
         val currentEndpoint = ohttpGatewayMainnet
         val allEndpoints = listOf(ohttpGatewayMainnet, clearnetServer1, clearnetServer2)
 
-        val result = resolveSubmissionEndpoints(
-            currentEndpoint = currentEndpoint,
-            allEndpoints = allEndpoints,
-            isAutomaticPreference = true
-        )
+        val result =
+            resolveSubmissionEndpoints(
+                currentEndpoint = currentEndpoint,
+                allEndpoints = allEndpoints,
+                isAutomaticPreference = true
+            )
 
         // Then: submit ONLY to the gateway (not all endpoints)
         assertEquals("F-05: automatic mode must submit only to current endpoint", 1, result.size)
@@ -58,11 +59,12 @@ class ProposalSubmissionEndpointTest {
         val currentEndpoint = clearnetServer1
         val allEndpoints = listOf(ohttpGatewayMainnet, clearnetServer1, clearnetServer2)
 
-        val result = resolveSubmissionEndpoints(
-            currentEndpoint = currentEndpoint,
-            allEndpoints = allEndpoints,
-            isAutomaticPreference = false
-        )
+        val result =
+            resolveSubmissionEndpoints(
+                currentEndpoint = currentEndpoint,
+                allEndpoints = allEndpoints,
+                isAutomaticPreference = false
+            )
 
         // Then: submit only to the manually-selected server
         assertEquals(1, result.size)
@@ -78,11 +80,12 @@ class ProposalSubmissionEndpointTest {
         val currentEndpoint = ohttpGatewayMainnet
         val allEndpoints = listOf(ohttpGatewayMainnet, clearnetServer1, clearnetServer2)
 
-        val result = resolveSubmissionEndpoints(
-            currentEndpoint = currentEndpoint,
-            allEndpoints = allEndpoints,
-            isAutomaticPreference = false
-        )
+        val result =
+            resolveSubmissionEndpoints(
+                currentEndpoint = currentEndpoint,
+                allEndpoints = allEndpoints,
+                isAutomaticPreference = false
+            )
 
         // Then: submit only to the gateway
         assertEquals(1, result.size)
@@ -99,11 +102,12 @@ class ProposalSubmissionEndpointTest {
         val currentEndpoint = ohttpGatewayMainnet
         val allEndpoints = listOf(ohttpGatewayMainnet, clearnetServer1, clearnetServer2)
 
-        val result = resolveSubmissionEndpoints(
-            currentEndpoint = currentEndpoint,
-            allEndpoints = allEndpoints,
-            isAutomaticPreference = null
-        )
+        val result =
+            resolveSubmissionEndpoints(
+                currentEndpoint = currentEndpoint,
+                allEndpoints = allEndpoints,
+                isAutomaticPreference = null
+            )
 
         // Then: submit only to the gateway
         assertEquals("F-05: null preference must still submit only to current endpoint", 1, result.size)

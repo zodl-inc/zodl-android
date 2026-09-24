@@ -215,7 +215,7 @@ class HttpClientRetryBehaviorTest {
             val mockEngine =
                 MockEngine { request ->
                     attemptCount.incrementAndGet()
-                    throw RuntimeException("Connection failed")
+                    throw java.io.IOException("Connection failed")
                 }
 
             val client =
