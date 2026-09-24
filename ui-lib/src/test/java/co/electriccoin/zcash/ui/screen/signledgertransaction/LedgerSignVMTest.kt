@@ -129,6 +129,38 @@ class LedgerSignVMTest {
             runCurrent()
 
             coVerify(exactly = 1) { submitLedgerProposal.invoke() }
+
+            val alreadySigned = MutableStateFlow<LedgerSigningState?>(LedgerSigningState.Signed)
+            val submitAlreadySigned = mockk<SubmitLedgerProposalUseCase>(relaxed = true)
+            val vmAlreadySigned = vm(signingState = alreadySigned, submitLedgerProposal = submitAlreadySigned)
+            collect(vmAlreadySigned)
+            runCurrent()
+
+            coVerify(exactly = 1) { submitAlreadySigned.invoke() }
+        }
+
+    @Test
+    fun cancelIsDisabledOnlyOnceSigned() =
+        runTest(dispatcher) {
+            val signingState = MutableStateFlow<LedgerSigningState?>(LedgerSigningState.Signing)
+            val vm = vm(signingState = signingState)
+            collect(vm)
+            runCurrent()
+
+            assertTrue(
+                vm.state.value
+                    ?.cancelButton
+                    ?.isEnabled == true
+            )
+
+            signingState.value = LedgerSigningState.Signed
+            runCurrent()
+
+            assertFalse(
+                vm.state.value
+                    ?.cancelButton
+                    ?.isEnabled ?: true
+            )
         }
 
     @Test

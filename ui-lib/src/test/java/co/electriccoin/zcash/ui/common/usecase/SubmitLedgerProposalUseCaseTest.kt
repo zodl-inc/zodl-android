@@ -43,12 +43,26 @@ class SubmitLedgerProposalUseCaseTest {
         }
 
     @Test
-    fun aSecondCallIsIgnoredWhileASubmissionIsAlreadyRunning() =
+    fun aSecondSignedAfterANewPcztSubmitsAgain() =
         runTest {
             val fx = useCase()
+            val submitState = MutableStateFlow<SubmitProposalState?>(null)
+            every { fx.ledgerProposalRepository.submitState } returns submitState
             fx.givenProposal(mockk<TransactionProposal>())
-            every { fx.ledgerProposalRepository.submitState } returns
-                MutableStateFlow(SubmitProposalState.Submitting)
+
+            fx.useCase()
+            submitState.value = SubmitProposalState.Result(mockk(relaxed = true))
+            fx.useCase()
+
+            coVerify(exactly = 2) { fx.ledgerProposalRepository.submit() }
+            verify(exactly = 2) { fx.navigationRouter.replaceAll(TransactionProgressArgs) }
+        }
+
+    @Test
+    fun anEmptyRepositoryReturnsWithoutSubmitting() =
+        runTest {
+            val fx = useCase()
+            every { fx.ledgerProposalRepository.transactionProposal } returns MutableStateFlow(null)
 
             fx.useCase()
 
@@ -98,7 +112,7 @@ class SubmitLedgerProposalUseCaseTest {
         proposal: TransactionProposal,
         submitResult: SubmitResult = mockk(relaxed = true),
     ) {
-        coEvery { ledgerProposalRepository.getTransactionProposal() } returns proposal
+        every { ledgerProposalRepository.transactionProposal } returns MutableStateFlow(proposal)
         coEvery { ledgerProposalRepository.submit() } returns submitResult
     }
 
@@ -112,9 +126,7 @@ class SubmitLedgerProposalUseCaseTest {
     private class Fixtures {
         val navigationRouter = mockk<NavigationRouter>(relaxed = true)
         val ledgerProposalRepository =
-            mockk<LedgerProposalRepository>(relaxed = true) {
-                every { submitState } returns MutableStateFlow<SubmitProposalState?>(null)
-            }
+            mockk<LedgerProposalRepository>(relaxed = true)
         val swapRepository = mockk<SwapRepository>(relaxed = true)
         val processSwapTransaction = mockk<ProcessSwapTransactionUseCase>(relaxed = true)
         val prefillSend = mockk<PrefillSendUseCase>(relaxed = true)

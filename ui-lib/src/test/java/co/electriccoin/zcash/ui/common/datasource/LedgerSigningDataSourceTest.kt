@@ -145,6 +145,23 @@ class LedgerSigningDataSourceTest {
         }
 
     @Test
+    fun aCorruptStoredBindingClosesTheLinkAndThrowsLedgerBindingUnusableException() =
+        runTest {
+            val transport = mockk<LedgerBluetoothTransport>(relaxed = true)
+            coEvery { ledgerScannerProvider.connect(any()) } returns transport
+            coEvery { LedgerDeviceIdentity.new(any()) } throws IllegalArgumentException("corrupt")
+
+            dataSource.connect(device())
+            assertFailsWith<LedgerBindingUnusableException> {
+                dataSource.sign(Pczt(byteArrayOf(0)), ledgerAccount()) { }
+            }
+
+            coVerify(exactly = 1) { transport.close() }
+            coVerify(exactly = 0) { synchronizer.signPcztWithLedger(any(), any(), any(), any(), any()) }
+            assertFalse(dataSource.isLinked)
+        }
+
+    @Test
     fun signWithoutALinkThrowsLedgerLinkMissingException() =
         runTest {
             assertFailsWith<LedgerLinkMissingException> {

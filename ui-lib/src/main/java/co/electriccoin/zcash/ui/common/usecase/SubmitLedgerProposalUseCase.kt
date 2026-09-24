@@ -27,11 +27,10 @@ class SubmitLedgerProposalUseCase(
 
     /**
      * Submits the proposal the device has signed and replaces the whole back stack with the
-     * Transaction Progress screen.
+     * Transaction Progress screen. An empty repository leaves nothing to submit.
      */
     suspend operator fun invoke() {
-        if (ledgerProposalRepository.submitState.value != null) return
-        val proposal = ledgerProposalRepository.getTransactionProposal()
+        val proposal = ledgerProposalRepository.transactionProposal.value ?: return
         swapRepository.clear()
         submitLedgerProposal(proposal)
         navigationRouter.replaceAll(TransactionProgressArgs)

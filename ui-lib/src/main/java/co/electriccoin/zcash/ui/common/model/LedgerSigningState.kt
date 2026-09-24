@@ -28,7 +28,12 @@ sealed interface LedgerSigningState {
     data class Selecting(
         val devices: List<LedgerSigningDevice>,
         val selectedIdentifier: String?,
-    ) : LedgerSigningState
+    ) : LedgerSigningState {
+        /**
+         * Overridden to keep the Bluetooth addresses out of logs.
+         */
+        override fun toString() = "Selecting(devices=${devices.size}, hasSelection=${selectedIdentifier != null})"
+    }
 
     data object Connecting : LedgerSigningState
 

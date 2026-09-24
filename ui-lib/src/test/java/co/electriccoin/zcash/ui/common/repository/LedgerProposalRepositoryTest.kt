@@ -15,6 +15,7 @@ import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZecSend
 import cash.z.ecc.android.sdk.model.Zip32AccountIndex
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
+import co.electriccoin.zcash.ui.common.datasource.LedgerBindingUnusableException
 import co.electriccoin.zcash.ui.common.datasource.LedgerDeviceDataSource
 import co.electriccoin.zcash.ui.common.datasource.LedgerSigningDataSource
 import co.electriccoin.zcash.ui.common.datasource.ProposalDataSource
@@ -24,25 +25,33 @@ import co.electriccoin.zcash.ui.common.model.LedgerIssueKind
 import co.electriccoin.zcash.ui.common.model.LedgerIssueRetry
 import co.electriccoin.zcash.ui.common.model.LedgerSigningState
 import co.electriccoin.zcash.ui.common.model.SubmitResult
+import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -275,8 +284,18 @@ class LedgerProposalRepositoryTest {
     @Test
     fun cancelSigningClosesTheLinkAndKeepsTheProposalPcztAndProofs() =
         runTest(dispatcher) {
-            val pczt = givenPczt(ledgerAccount())
+            val proofsPczt = Pczt(byteArrayOf(7))
+            val proofsGate = CompletableDeferred<Unit>()
+            var proofsCancelled = false
+            val pczt =
+                givenPczt(
+                    ledgerAccount(),
+                    proofsPczt = proofsPczt,
+                    proofsGate = proofsGate,
+                    onProofsCancelled = { proofsCancelled = true }
+                )
             runCurrent()
+            clearMocks(ledgerSigningDataSource, answers = false)
 
             repository.startSigning()
             runCurrent()
@@ -285,9 +304,23 @@ class LedgerProposalRepositoryTest {
             runCurrent()
 
             assertNull(repository.signingState.value)
-            coVerify(atLeast = 1) { ledgerSigningDataSource.close() }
+            coVerify(exactly = 1) { ledgerSigningDataSource.close() }
             assertSame(pczt, repository.getProposalPCZT())
             assertNotNull(repository.transactionProposal.value)
+            assertFalse(proofsCancelled)
+
+            every { ledgerSigningDataSource.isLinked } returns true
+            val signed = Pczt(byteArrayOf(5))
+            coEvery { ledgerSigningDataSource.sign(any(), any(), any()) } returns signed
+            val submitResult = mockk<SubmitResult>(relaxed = true)
+            coEvery { proposalDataSource.submitTransaction(proofsPczt, signed) } returns submitResult
+            repository.startSigning()
+            runCurrent()
+            proofsGate.complete(Unit)
+            runCurrent()
+
+            assertEquals(submitResult, repository.submit())
+            coVerify(exactly = 1) { proposalDataSource.addProofsToPczt(any()) }
         }
 
     @Test
@@ -309,7 +342,8 @@ class LedgerProposalRepositoryTest {
     fun submitAwaitsTheProofsJobAndSurfacesItsError() =
         runTest(dispatcher) {
             val proofsError = mockk<PcztException.AddProofsToPcztException>(relaxed = true)
-            givenPczt(ledgerAccount(), proofsError = proofsError)
+            val proofsGate = CompletableDeferred<Unit>()
+            givenPczt(ledgerAccount(), proofsError = proofsError, proofsGate = proofsGate)
             runCurrent()
             every { ledgerSigningDataSource.isLinked } returns true
             coEvery { ledgerSigningDataSource.sign(any(), any(), any()) } returns Pczt(byteArrayOf(5))
@@ -318,11 +352,144 @@ class LedgerProposalRepositoryTest {
             runCurrent()
             assertEquals(LedgerSigningState.Signed, repository.signingState.value)
 
-            val thrown =
-                assertFailsWith<PcztException.AddProofsToPcztException> {
-                    repository.submit()
+            val submitting = async { runCatching { repository.submit() } }
+            runCurrent()
+            assertFalse(submitting.isCompleted)
+
+            proofsGate.complete(Unit)
+            runCurrent()
+
+            assertTrue(submitting.isCompleted)
+            assertSame(proofsError, submitting.await().exceptionOrNull())
+        }
+
+    @Test
+    fun createPcztFromProposalStartsACleanSubmissionCycle() =
+        runTest(dispatcher) {
+            givenPczt(ledgerAccount())
+            runCurrent()
+            every { ledgerSigningDataSource.isLinked } returns true
+            coEvery { ledgerSigningDataSource.sign(any(), any(), any()) } returns Pczt(byteArrayOf(5))
+            val submitResult = mockk<SubmitResult>(relaxed = true)
+            coEvery { proposalDataSource.submitTransaction(any<Pczt>(), any<Pczt>()) } returns submitResult
+            repository.startSigning()
+            runCurrent()
+            repository.submit()
+            assertNotNull(repository.submitState.value)
+
+            repository.createPCZTFromProposal()
+            runCurrent()
+
+            assertNull(repository.submitState.value)
+            assertNull(repository.signingState.value)
+            assertFailsWith<IllegalStateException> { repository.submit() }
+        }
+
+    /**
+     * The retry arrives while the failed session is still inside its own publish of the failure,
+     * i.e. while its job is still active.
+     */
+    @Test
+    fun retryWhileTheFailedSessionIsStillUnwindingStartsANewSession() =
+        runTest(dispatcher) {
+            givenPczt(ledgerAccount())
+            runCurrent()
+            every { ledgerSigningDataSource.isLinked } returns true
+            var signCalls = 0
+            val signed = Pczt(byteArrayOf(5))
+            val rejected = mockk<LedgerException.UserRejected>(relaxed = true)
+            coEvery { ledgerSigningDataSource.sign(any(), any(), any()) } coAnswers {
+                signCalls++
+                if (signCalls == 1) throw rejected else signed
+            }
+            var retried = false
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                repository.signingState.collect { state ->
+                    if (state is LedgerSigningState.Failed && !retried) {
+                        retried = true
+                        repository.retry()
+                    }
                 }
-            assertSame(proofsError, thrown)
+            }
+
+            repository.startSigning()
+            runCurrent()
+
+            assertTrue(retried)
+            assertEquals(2, signCalls)
+            assertEquals(LedgerSigningState.Signed, repository.signingState.value)
+        }
+
+    @Test
+    fun aLoneDeviceVanishingWhileTheListSettlesKeepsWaitingUntilTheScanTimesOut() =
+        runTest(dispatcher) {
+            givenPczt(ledgerAccount())
+            runCurrent()
+
+            devices.value = listOf(device("AA"))
+            repository.startSigning()
+            runCurrent()
+            advanceTimeBy(500.milliseconds)
+            devices.value = emptyList()
+            advanceTimeBy(1.seconds)
+            runCurrent()
+
+            assertEquals(LedgerSigningState.Scanning, repository.signingState.value)
+            coVerify(exactly = 0) { ledgerSigningDataSource.connect(any()) }
+
+            advanceTimeBy(20.seconds)
+            runCurrent()
+
+            val failed = repository.signingState.value
+            assertTrue(failed is LedgerSigningState.Failed)
+            assertEquals(LedgerIssueKind.NO_DEVICES, failed.issue.kind)
+        }
+
+    @Test
+    fun selectingNeverPrintsTheDeviceIdentifiers() =
+        runTest(dispatcher) {
+            givenPczt(ledgerAccount())
+            runCurrent()
+
+            devices.value = listOf(device("AA:11"), device("BB:22"))
+            repository.startSigning()
+            runCurrent()
+            advanceTimeBy(1.seconds)
+            runCurrent()
+            repository.selectDevice("AA:11")
+            runCurrent()
+            repository.cancelSigning()
+            runCurrent()
+            devices.value = listOf(device("AA:11"), device("BB:22"))
+            repository.startSigning()
+            runCurrent()
+            advanceTimeBy(1.seconds)
+            runCurrent()
+
+            val state = repository.signingState.value
+            assertTrue(state is LedgerSigningState.Selecting)
+            assertNotNull(state.selectedIdentifier)
+            val printed = state.toString()
+            assertFalse(printed.contains("AA:11"))
+            assertFalse(printed.contains("BB:22"))
+        }
+
+    @Test
+    fun aCorruptStoredBindingFailsWithUnboundAndOffersNoRetry() =
+        runTest(dispatcher) {
+            givenPczt(ledgerAccount())
+            runCurrent()
+            every { ledgerSigningDataSource.isLinked } returns true
+            coEvery { ledgerSigningDataSource.sign(any(), any(), any()) } throws
+                LedgerBindingUnusableException(IllegalArgumentException("corrupt"))
+
+            repository.startSigning()
+            runCurrent()
+
+            val failed = repository.signingState.value
+            assertTrue(failed is LedgerSigningState.Failed)
+            assertEquals(LedgerIssueKind.UNBOUND, failed.issue.kind)
+            assertEquals(LedgerIssueRetry.NONE, failed.issue.retry)
         }
 
     @Test
@@ -381,6 +548,8 @@ class LedgerProposalRepositoryTest {
         pczt: Pczt = Pczt(byteArrayOf(1)),
         proofsPczt: Pczt = Pczt(byteArrayOf(9)),
         proofsError: PcztException.AddProofsToPcztException? = null,
+        proofsGate: CompletableDeferred<Unit>? = null,
+        onProofsCancelled: () -> Unit = {},
     ): Pczt {
         coEvery { accountDataSource.getSelectedAccount() } returns account
         coEvery { proposalDataSource.createProposal(any(), any()) } returns
@@ -391,10 +560,15 @@ class LedgerProposalRepositoryTest {
                 proposal = mockk<Proposal>()
             )
         coEvery { proposalDataSource.createPcztFromProposal(any(), any()) } returns pczt
-        if (proofsError != null) {
-            coEvery { proposalDataSource.addProofsToPczt(any()) } throws proofsError
-        } else {
-            coEvery { proposalDataSource.addProofsToPczt(any()) } returns proofsPczt
+        coEvery { proposalDataSource.addProofsToPczt(any()) } coAnswers {
+            try {
+                proofsGate?.await()
+            } catch (e: CancellationException) {
+                onProofsCancelled()
+                throw e
+            }
+            if (proofsError != null) throw proofsError
+            proofsPczt
         }
         repository.createProposal(
             ZecSend(

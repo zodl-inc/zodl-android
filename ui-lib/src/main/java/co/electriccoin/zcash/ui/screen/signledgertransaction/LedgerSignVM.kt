@@ -41,6 +41,8 @@ import kotlinx.coroutines.launch
  * Signing starts once the gate reports the permissions granted, which it also does on every resume,
  * so coming back from Settings with the permission granted starts the session without a tap.
  *
+ * Cancel is disabled once the device has signed, as submission is then under way.
+ *
  * An empty repository at start means the process was recreated under the sheet: there is nothing
  * left to sign, so the wallet root is shown instead.
  */
@@ -79,6 +81,7 @@ class LedgerSignVM(
                 cancelButton =
                     ButtonState(
                         text = stringRes(R.string.ledger_sign_cancel),
+                        isEnabled = signingState != LedgerSigningState.Signed,
                         onClick = ::onCancelClick,
                     ),
                 permissionRequestNonce = permissionNonce,

@@ -14,6 +14,7 @@ import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.ExactInputSwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.ExactOutputSwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.InsufficientFundsException
+import co.electriccoin.zcash.ui.common.datasource.LedgerBindingUnusableException
 import co.electriccoin.zcash.ui.common.datasource.LedgerDeviceDataSource
 import co.electriccoin.zcash.ui.common.datasource.LedgerLinkMissingException
 import co.electriccoin.zcash.ui.common.datasource.LedgerSigningDataSource
@@ -45,12 +46,12 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -145,14 +146,28 @@ class LedgerProposalRepositoryImpl(
     override val signingState = MutableStateFlow<LedgerSigningState?>(null)
 
     private val pcztWithProofs = MutableStateFlow(LedgerPcztState(isLoading = false, pczt = null))
+
+    @Volatile
     private var proposalPczt: Pczt? = null
+
+    @Volatile
     private var pcztWithSignatures: Pczt? = null
 
     private var pcztWithProofsJob: Job? = null
+
+    @Volatile
     private var sessionJob: Job? = null
+
+    @Volatile
     private var closeJob: Job? = null
 
+    @Volatile
     private var selection: CompletableDeferred<String>? = null
+
+    /**
+     * Guards [generation] together with every state write that depends on it.
+     */
+    private val lock = Any()
 
     /**
      * Bumped whenever a session starts or is cancelled; a session only publishes state while its
@@ -160,6 +175,8 @@ class LedgerProposalRepositoryImpl(
      */
     @Volatile
     private var generation = 0
+
+    @Volatile
     private var lastSelectedIdentifier: String? = null
 
     override suspend fun createProposal(zecSend: ZecSend) {
@@ -223,6 +240,8 @@ class LedgerProposalRepositoryImpl(
                 if (transactionProposal.paysTexAddress()) throw TexUnsupportedOnKSException() else throw e
             }
         cancelSigning()
+        submitState.update { null }
+        pcztWithSignatures = null
         proposalPczt = result
         addProofsToPczt(result)
     }
@@ -254,7 +273,7 @@ class LedgerProposalRepositoryImpl(
             return
         }
         val pendingClose = closeJob
-        val session = ++generation
+        val session = synchronized(lock) { ++generation }
         sessionJob =
             scope.launch {
                 pendingClose?.join()
@@ -266,7 +285,9 @@ class LedgerProposalRepositoryImpl(
         session: Int,
         state: LedgerSigningState
     ) {
-        signingState.update { current -> if (generation == session) state else current }
+        synchronized(lock) {
+            if (generation == session) signingState.value = state
+        }
     }
 
     @Suppress("TooGenericExceptionCaught")
@@ -296,6 +317,9 @@ class LedgerProposalRepositoryImpl(
         } catch (e: LedgerLinkMissingException) {
             Twig.warn { "Ledger signing: session failed with ${e.javaClass.simpleName}" }
             publish(session, LedgerSigningState.Failed(disconnectedIssue))
+        } catch (e: LedgerBindingUnusableException) {
+            Twig.warn { "Ledger signing: session failed with ${e.javaClass.simpleName}" }
+            publish(session, LedgerSigningState.Failed(unboundIssue))
         } catch (e: Exception) {
             Twig.warn { "Ledger signing: session failed with ${e.javaClass.simpleName}" }
             publish(session, LedgerSigningState.Failed(unknownIssue))
@@ -310,35 +334,28 @@ class LedgerProposalRepositoryImpl(
         Twig.info { "Ledger signing: stage Scanning" }
         publish(session, LedgerSigningState.Scanning)
         val found = MutableStateFlow<List<LedgerBluetoothDevice>>(emptyList())
+        val timedOut = MutableStateFlow(false)
         return coroutineScope {
             val collector =
                 launch {
                     ledgerDeviceDataSource.observeDevices().collect { devices ->
                         found.update { devices }
-                        signingState.update { current ->
-                            if (current is LedgerSigningState.Selecting && generation == session) {
-                                current.copy(
-                                    devices = devices.map { it.toSigningDevice() },
-                                    selectedIdentifier =
-                                        current.selectedIdentifier?.takeIf { selected ->
-                                            devices.any { it.identifier == selected }
-                                        }
-                                )
-                            } else {
-                                current
-                            }
-                        }
+                        updateSelecting(session, devices)
                     }
                 }
-            val firstSeen = withTimeoutOrNull(SCAN_TIMEOUT) { found.first { it.isNotEmpty() } }
-            if (firstSeen == null) {
+            val timer =
+                launch {
+                    delay(SCAN_TIMEOUT)
+                    timedOut.update { true }
+                }
+            val settled = awaitSettledDevices(found, timedOut)
+            timer.cancel()
+            if (settled == null) {
                 collector.cancel()
                 Twig.info { "Ledger signing: no device found" }
                 publish(session, LedgerSigningState.Failed(LedgerIssue.noDevices))
                 return@coroutineScope null
             }
-            delay(SETTLE_DELAY)
-            val settled = found.value
             val device =
                 if (settled.size == 1) {
                     settled.single()
@@ -347,6 +364,44 @@ class LedgerProposalRepositoryImpl(
                 }
             collector.cancel()
             device
+        }
+    }
+
+    private fun updateSelecting(
+        session: Int,
+        devices: List<LedgerBluetoothDevice>
+    ) {
+        synchronized(lock) {
+            val current = signingState.value
+            if (current is LedgerSigningState.Selecting && generation == session) {
+                signingState.value =
+                    current.copy(
+                        devices = devices.map { it.toSigningDevice() },
+                        selectedIdentifier =
+                            current.selectedIdentifier?.takeIf { selected ->
+                                devices.any { it.identifier == selected }
+                            }
+                    )
+            }
+        }
+    }
+
+    /**
+     * Waits for a device and then for the list to settle. A lone device that vanishes while the
+     * list settles is waited for again, so the picker never opens empty. Returns null once
+     * [timedOut] is set without a device in range.
+     */
+    private suspend fun awaitSettledDevices(
+        found: StateFlow<List<LedgerBluetoothDevice>>,
+        timedOut: StateFlow<Boolean>
+    ): List<LedgerBluetoothDevice>? {
+        while (true) {
+            combine(found, timedOut) { devices, isTimedOut -> devices.isNotEmpty() || isTimedOut }
+                .first { it }
+            if (found.value.isEmpty()) return null
+            delay(SETTLE_DELAY)
+            val settled = found.value
+            if (settled.isNotEmpty()) return settled
         }
     }
 
@@ -389,8 +444,10 @@ class LedgerProposalRepositoryImpl(
             ledgerSigningDataSource.sign(pczt.clonePczt(), account) { progress ->
                 publish(session, progress.toSigningState())
             }
-        if (generation != session) return
-        pcztWithSignatures = signed
+        synchronized(lock) {
+            if (generation != session) return
+            pcztWithSignatures = signed
+        }
         Twig.info { "Ledger signing: stage Signed" }
         publish(session, LedgerSigningState.Signed)
     }
@@ -402,6 +459,8 @@ class LedgerProposalRepositoryImpl(
 
     override fun retry() {
         if (signingState.value !is LedgerSigningState.Failed) return
+        sessionJob?.cancel()
+        sessionJob = null
         signingState.update { null }
         startSigning()
     }
@@ -411,7 +470,7 @@ class LedgerProposalRepositoryImpl(
      * it can never close the link the next session opens.
      */
     override fun cancelSigning() {
-        generation++
+        synchronized(lock) { generation++ }
         sessionJob?.cancel()
         sessionJob = null
         selection = null

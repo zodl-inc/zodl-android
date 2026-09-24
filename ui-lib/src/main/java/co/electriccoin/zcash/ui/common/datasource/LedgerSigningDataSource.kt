@@ -39,6 +39,7 @@ interface LedgerSigningDataSource {
      * repeated over it, such as a rejected review.
      *
      * @throws LedgerLinkMissingException when no link is open.
+     * @throws LedgerBindingUnusableException when the account's stored binding cannot be read.
      * @throws LedgerException for every device failure.
      */
     suspend fun sign(
@@ -55,6 +56,14 @@ interface LedgerSigningDataSource {
  * the request was on its way.
  */
 class LedgerLinkMissingException : Exception("No Ledger link is open.")
+
+/**
+ * The Ledger binding stored with the account is missing or corrupt, so the account cannot be signed
+ * for until it is connected again.
+ */
+class LedgerBindingUnusableException(
+    cause: Throwable
+) : Exception("The stored Ledger binding is unusable.", cause)
 
 class LedgerSigningDataSourceImpl(
     private val ledgerScannerProvider: LedgerScannerProvider,
@@ -83,12 +92,21 @@ class LedgerSigningDataSourceImpl(
     ): Pczt =
         mutex.withLock {
             val link = transport ?: throw LedgerLinkMissingException()
-            try {
-                val binding =
+            val binding =
+                try {
                     LedgerAccountBinding(
                         deviceIdentity = LedgerDeviceIdentity.new(checkNotNull(account.deviceIdentity)),
                         zip32AccountIndex = checkNotNull(account.zip32AccountIndex)
                     )
+                } catch (e: CancellationException) {
+                    withContext(NonCancellable) { closeLink() }
+                    throw e
+                } catch (e: Exception) {
+                    Twig.warn { "Ledger signing: the stored binding is unusable: ${e.javaClass.simpleName}" }
+                    closeLink()
+                    throw LedgerBindingUnusableException(e)
+                }
+            try {
                 Twig.info { "Ledger signing: signing" }
                 val signed =
                     synchronizerProvider.getSynchronizer().signPcztWithLedger(
