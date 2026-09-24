@@ -8,6 +8,7 @@ import co.electriccoin.zcash.ui.common.datasource.InsufficientFundsException
 import co.electriccoin.zcash.ui.common.datasource.TexUnsupportedOnKSException
 import co.electriccoin.zcash.ui.common.model.FakeSwapQuote
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.SwapAsset
 import co.electriccoin.zcash.ui.common.model.SwapAssetTestFixture
 import co.electriccoin.zcash.ui.common.model.SwapMode
@@ -101,6 +102,15 @@ class RequestSwapQuoteUseCaseTest {
         }
 
     @Test
+    fun exactInputLedgerCreatesProposalAndPcztAndForwards() =
+        runBlocking {
+            useCase(swapQuote(originAsset = zec, destinationAsset = btc), ledger()).exactInput()
+            coVerify { ledgerProposalRepository.createExactInputSwapProposal(any(), any()) }
+            coVerify { ledgerProposalRepository.createPCZTFromProposal() }
+            assertForwardedToQuote()
+        }
+
+    @Test
     fun exactInputZashiInsufficientFunds() =
         runBlocking {
             coEvery { zashiProposalRepository.createExactInputSwapProposal(any(), any()) } throws
@@ -119,12 +129,34 @@ class RequestSwapQuoteUseCaseTest {
         }
 
     @Test
+    fun exactInputLedgerInsufficientFundsClearsEveryRepository() =
+        runBlocking {
+            coEvery { ledgerProposalRepository.createExactInputSwapProposal(any(), any()) } throws
+                InsufficientFundsException()
+            useCase(swapQuote(originAsset = zec, destinationAsset = btc), ledger()).exactInput()
+            assertNavigatedToInsufficientFunds()
+            coVerify(exactly = 1) { ledgerProposalRepository.clear() }
+            coVerify(exactly = 1) { keystoneProposalRepository.clear() }
+            coVerify(exactly = 1) { zashiProposalRepository.clear() }
+        }
+
+    @Test
     fun exactInputKeystoneTexUnsupported() =
         runBlocking {
             coEvery { keystoneProposalRepository.createExactInputSwapProposal(any(), any()) } throws
                 TexUnsupportedOnKSException()
             useCase(swapQuote(originAsset = zec, destinationAsset = btc), keystone()).exactInput()
             assertNavigatedToTexUnsupported()
+        }
+
+    @Test
+    fun exactInputLedgerTexUnsupportedNamesTheLedgerInTheCopy() =
+        runBlocking {
+            coEvery { ledgerProposalRepository.createExactInputSwapProposal(any(), any()) } throws
+                TexUnsupportedOnKSException()
+            useCase(swapQuote(originAsset = zec, destinationAsset = btc), ledger()).exactInput()
+            assertNavigatedToTexUnsupported(isLedger = true)
+            coVerify(exactly = 1) { ledgerProposalRepository.clear() }
         }
 
     @Test
@@ -141,6 +173,15 @@ class RequestSwapQuoteUseCaseTest {
             coEvery { keystoneProposalRepository.createExactInputSwapProposal(any(), any()) } throws TestException()
             useCase(swapQuote(originAsset = zec, destinationAsset = btc), keystone()).exactInput()
             assertNavigatedToError()
+        }
+
+    @Test
+    fun exactInputLedgerGenericErrorClearsEveryRepository() =
+        runBlocking {
+            coEvery { ledgerProposalRepository.createExactInputSwapProposal(any(), any()) } throws TestException()
+            useCase(swapQuote(originAsset = zec, destinationAsset = btc), ledger()).exactInput()
+            assertNavigatedToError()
+            coVerify(exactly = 1) { ledgerProposalRepository.clear() }
         }
 
     @Test
@@ -169,6 +210,15 @@ class RequestSwapQuoteUseCaseTest {
             useCase(exactOutputQuote(), keystone()).exactOutput()
             coVerify { keystoneProposalRepository.createExactOutputSwapProposal(any(), any()) }
             coVerify { keystoneProposalRepository.createPCZTFromProposal() }
+            assertForwardedToQuote()
+        }
+
+    @Test
+    fun exactOutputLedgerCreatesProposalAndPcztAndForwards() =
+        runBlocking {
+            useCase(exactOutputQuote(), ledger()).exactOutput()
+            coVerify { ledgerProposalRepository.createExactOutputSwapProposal(any(), any()) }
+            coVerify { ledgerProposalRepository.createPCZTFromProposal() }
             assertForwardedToQuote()
         }
 
@@ -232,6 +282,23 @@ class RequestSwapQuoteUseCaseTest {
             coVerify(exactly = 0) { zashiProposalRepository.createExactInputSwapProposal(any(), any()) }
             coVerify(exactly = 0) { keystoneProposalRepository.createExactInputSwapProposal(any(), any()) }
             assertForwardedToQuote()
+        }
+
+    /**
+     * Flex-input quotes never reach [RequestSwapQuoteUseCase.createProposal] through the public
+     * flex entry point (it never asks for one), but a Ledger account's branch still guards against
+     * one arriving with `createProposal = true` by throwing - the same defensive arm proposal
+     * creation has always had for Keystone and Zashi.
+     */
+    @Test
+    fun aFlexModeQuoteOnLedgerWithProposalCreationRequestedThrowsAndClearsEveryRepository() =
+        runBlocking {
+            useCase(flexQuote(), ledger()).exactInput()
+            assertNavigatedToError()
+            coVerify(exactly = 0) { ledgerProposalRepository.createExactInputSwapProposal(any(), any()) }
+            coVerify(exactly = 1) { ledgerProposalRepository.clear() }
+            coVerify(exactly = 1) { keystoneProposalRepository.clear() }
+            coVerify(exactly = 1) { zashiProposalRepository.clear() }
         }
 
     @Test
@@ -371,14 +438,16 @@ class RequestSwapQuoteUseCaseTest {
         verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
     }
 
-    private fun assertNavigatedToTexUnsupported() {
-        verify { navigationRouter.forward(TEXUnsupportedArgs(isLedger = false)) }
+    private fun assertNavigatedToTexUnsupported(isLedger: Boolean = false) {
+        verify { navigationRouter.forward(TEXUnsupportedArgs(isLedger = isLedger)) }
         verify(exactly = 0) { navigationRouter.forward(SwapQuoteArgs) }
     }
 
     private fun zashi(): WalletAccount = mockk<ZashiAccount>()
 
     private fun keystone(): WalletAccount = mockk<KeystoneAccount>()
+
+    private fun ledger(): WalletAccount = mockk<LedgerAccount>()
 
     private suspend fun RequestSwapQuoteUseCase.exactInput(selectedAsset: SwapAsset = btc) =
         requestExactInput(

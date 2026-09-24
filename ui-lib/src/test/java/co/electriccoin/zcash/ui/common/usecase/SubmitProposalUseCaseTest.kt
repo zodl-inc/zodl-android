@@ -5,6 +5,7 @@ import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.SwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.SwapAssetTestFixture
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
@@ -17,6 +18,7 @@ import co.electriccoin.zcash.ui.common.repository.MetadataRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionArgs
+import co.electriccoin.zcash.ui.screen.signledgertransaction.LedgerSignArgs
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressArgs
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -101,6 +103,21 @@ class SubmitProposalUseCaseTest {
         }
 
     @Test
+    fun ledgerProposalOpensTheSignSheetWithoutSubmittingOrClearingSwapState() =
+        runTest {
+            val fx = useCase()
+            fx.givenLedger(mockk<TransactionProposal>())
+
+            fx.useCase()
+
+            verify(exactly = 1) { fx.navigationRouter.forward(LedgerSignArgs) }
+            verify(exactly = 0) { fx.swapRepository.clear() }
+            coVerify(exactly = 0) { fx.ledgerProposalRepository.submit() }
+            verify(exactly = 0) { fx.prefillSend.clear() }
+            verify(exactly = 0) { fx.navigationRouter.replace(*anyVararg()) }
+        }
+
+    @Test
     fun zashiSwapProposalAddsHistoryClearsSubmitsProcessesAndNavigates() =
         runTest {
             val fx = useCase()
@@ -173,6 +190,11 @@ class SubmitProposalUseCaseTest {
     private fun Fixtures.givenKeystone(proposal: TransactionProposal) {
         coEvery { accountDataSource.getSelectedAccount() } returns mockk<KeystoneAccount>()
         coEvery { keystoneProposalRepository.getTransactionProposal() } returns proposal
+    }
+
+    private fun Fixtures.givenLedger(proposal: TransactionProposal) {
+        coEvery { accountDataSource.getSelectedAccount() } returns mockk<LedgerAccount>()
+        coEvery { ledgerProposalRepository.getTransactionProposal() } returns proposal
     }
 
     private fun Fixtures.givenZashi(

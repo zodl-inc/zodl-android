@@ -197,6 +197,27 @@ class AutomaticServerRepositoryTest {
         }
 
     @Test
+    fun aPendingLedgerProposalSkipsTheSdkBenchmark() =
+        runTest {
+            coEvery { isAutomaticProvider.get() } returns true
+            every { ledgerProposalRepository.transactionProposal } returns
+                MutableStateFlow<TransactionProposal?>(mockk<TransactionProposal>())
+
+            assertNull(repository.evaluateServerSwitch())
+            coVerify(exactly = 0) { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun aPendingLedgerSubmitStateSkipsTheSdkBenchmark() =
+        runTest {
+            coEvery { isAutomaticProvider.get() } returns true
+            every { ledgerProposalRepository.submitState } returns MutableStateFlow(SubmitProposalState.Submitting)
+
+            assertNull(repository.evaluateServerSwitch())
+            coVerify(exactly = 0) { synchronizer.evaluateServerSwitch(any(), any(), any(), any()) }
+        }
+
+    @Test
     fun sdkDecisionToStayIsPassedThrough() =
         runTest {
             coEvery { isAutomaticProvider.get() } returns true

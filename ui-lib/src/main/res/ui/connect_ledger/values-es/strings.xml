@@ -57,6 +57,18 @@
     <string name="ledger_error_unknown_title">Algo salió mal</string>
     <string name="ledger_error_unknown_message">Zodl no pudo conectarse a tu Ledger. Asegúrate de que esté desbloqueado y cerca, e inténtalo de nuevo.</string>
 
+    <!-- Signing sheet -->
+    <string name="ledger_sign_title">Confirmar transacción</string>
+    <string name="ledger_sign_scanning">Buscando tu Ledger…</string>
+    <string name="ledger_sign_select_title">Selecciona tu dispositivo</string>
+    <string name="ledger_sign_select_message">Selecciona el dispositivo Ledger con el que quieres firmar.</string>
+    <string name="ledger_sign_select_cta">Conectar</string>
+    <string name="ledger_sign_connecting">Conectando con tu Ledger…</string>
+    <string name="ledger_sign_preparing">Preparando la transacción…</string>
+    <string name="ledger_sign_streaming">Enviando la transacción a tu Ledger…</string>
+    <string name="ledger_sign_awaitingReview">Confirma la transacción pulsando los dos botones de tu dispositivo Ledger.</string>
+    <string name="ledger_sign_signing">Firmando…</string>
+
     <!-- Signing error sheets -->
     <string name="ledger_sign_error_rejected_title">Transacción rechazada</string>
     <string name="ledger_sign_error_rejected_message">Rechazaste la transacción en tu Ledger. Inténtalo de nuevo para revisarla en tu dispositivo.</string>

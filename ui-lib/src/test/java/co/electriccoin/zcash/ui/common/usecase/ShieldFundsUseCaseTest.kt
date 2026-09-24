@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.common.usecase
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.MessageAvailabilityDataSource
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
@@ -10,7 +11,9 @@ import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
+import co.electriccoin.zcash.ui.screen.signledgertransaction.LedgerSignArgs
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
@@ -74,6 +77,43 @@ class ShieldFundsUseCaseTest {
             verify(exactly = 0) { navigateToError(any(), any()) }
         }
 
+    @Test
+    fun ledgerAccountCreatesProposalAndPcztThenOpensTheSignSheet() =
+        runTest(dispatcher) {
+            val ledgerProposalRepository = mockk<LedgerProposalRepository>(relaxed = true)
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+
+            ledgerUseCase(
+                ledgerProposalRepository = ledgerProposalRepository,
+                navigationRouter = navigationRouter
+            )(false)
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { ledgerProposalRepository.createShieldProposal() }
+            coVerify(exactly = 1) { ledgerProposalRepository.createPCZTFromProposal() }
+            verify(exactly = 1) { navigationRouter.forward(LedgerSignArgs) }
+            coVerify(exactly = 0) { ledgerProposalRepository.clear() }
+        }
+
+    @Test
+    fun aLedgerFailureClearsTheProposalAndShowsTheShieldingGeneralError() =
+        runTest(dispatcher) {
+            val ledgerProposalRepository =
+                mockk<LedgerProposalRepository>(relaxed = true) {
+                    coEvery { createShieldProposal() } throws RuntimeException("boom")
+                }
+            val navigateToError = mockk<NavigateToErrorUseCase>(relaxed = true)
+
+            ledgerUseCase(
+                ledgerProposalRepository = ledgerProposalRepository,
+                navigateToError = navigateToError
+            )(false)
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { ledgerProposalRepository.clear() }
+            verify(exactly = 1) { navigateToError(match<ErrorArgs> { it is ErrorArgs.ShieldingGeneralError }, any()) }
+        }
+
     private fun useCase(
         submitResult: SubmitResult,
         navigateToError: NavigateToErrorUseCase
@@ -85,6 +125,21 @@ class ShieldFundsUseCaseTest {
         navigationRouter = mockk<NavigationRouter>(relaxed = true),
         accountDataSource =
             mockk<AccountDataSource> { coEvery { getSelectedAccount() } returns mockk<ZashiAccount>() },
+        navigateToError = navigateToError,
+        messageAvailabilityDataSource = mockk<MessageAvailabilityDataSource>(relaxed = true)
+    )
+
+    private fun ledgerUseCase(
+        ledgerProposalRepository: LedgerProposalRepository,
+        navigationRouter: NavigationRouter = mockk(relaxed = true),
+        navigateToError: NavigateToErrorUseCase = mockk(relaxed = true),
+    ) = ShieldFundsUseCase(
+        keystoneProposalRepository = mockk<KeystoneProposalRepository>(relaxed = true),
+        ledgerProposalRepository = ledgerProposalRepository,
+        zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true),
+        navigationRouter = navigationRouter,
+        accountDataSource =
+            mockk<AccountDataSource> { coEvery { getSelectedAccount() } returns mockk<LedgerAccount>() },
         navigateToError = navigateToError,
         messageAvailabilityDataSource = mockk<MessageAvailabilityDataSource>(relaxed = true)
     )

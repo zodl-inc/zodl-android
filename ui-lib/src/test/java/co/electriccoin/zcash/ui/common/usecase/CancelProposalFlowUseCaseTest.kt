@@ -1,20 +1,25 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import androidx.navigation.NavBackStackEntry
+import cash.z.ecc.android.sdk.model.Memo
 import cash.z.ecc.android.sdk.model.Proposal
+import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.BaseNavigationCommand
 import co.electriccoin.zcash.ui.NavigationCommand
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.MigrationSweepTransactionProposal
+import co.electriccoin.zcash.ui.common.datasource.RegularTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.ShieldTransactionProposal
 import co.electriccoin.zcash.ui.common.migration.MigrationNavigator
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
+import co.electriccoin.zcash.ui.screen.send.Send
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -89,6 +94,44 @@ class CancelProposalFlowUseCaseTest {
             coVerify(exactly = 1) { keystoneProposalRepository.clear() }
             assertEquals(0, router.backToCalls.size)
             assertEquals(1, router.backCalls)
+        }
+
+    @Test
+    fun regularLedgerProposalClearsTheLedgerRepositoryAndNavigatesBackToSend() =
+        runTest {
+            val proposal =
+                RegularTransactionProposal(
+                    destination = WalletAddress.Unified.new("recipient"),
+                    amount = Zatoshi(1234L),
+                    memo = Memo(""),
+                    proposal = mockk<Proposal>()
+                )
+            val ledgerProposalRepository =
+                mockk<LedgerProposalRepository>(relaxed = true) {
+                    coEvery { getTransactionProposal() } returns proposal
+                }
+            val router = FakeNavigationRouter()
+            val useCase =
+                CancelProposalFlowUseCase(
+                    zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true),
+                    keystoneProposalRepository = mockk<KeystoneProposalRepository>(relaxed = true),
+                    ledgerProposalRepository = ledgerProposalRepository,
+                    navigationRouter = router,
+                    observeClearSend = mockk<ObserveClearSendUseCase>(relaxed = true),
+                    accountDataSource =
+                        mockk<AccountDataSource> {
+                            coEvery { getSelectedAccount() } returns mockk<LedgerAccount>(relaxed = true)
+                        },
+                    swapRepository = mockk<SwapRepository>(relaxed = true),
+                    migrationNavigator = FakeMigrationNavigator(),
+                )
+
+            useCase()
+
+            coVerify(exactly = 1) { ledgerProposalRepository.clear() }
+            assertEquals(1, router.backToCalls.size)
+            assertEquals(Send::class, router.backToCalls.single())
+            assertEquals(0, router.backCalls)
         }
 
     private class FakeMigrationNavigator : MigrationNavigator {

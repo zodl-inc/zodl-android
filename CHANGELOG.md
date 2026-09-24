@@ -13,10 +13,11 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   as a QR code or key string, revealed behind biometrics and behind a consent sheet for the Full key.
   The chooser carries the logo and name of the selected wallet, Zodl or Keystone.
 - You can now connect a Ledger hardware wallet over Bluetooth: pair a Ledger account, then see it
-  in the new Wallets & Hardware picker, on Home and on Receive. Sending from a Ledger account
-  follows in a later release. The connect flow explains what to do when Bluetooth is off, the
-  Zcash app on the Ledger is out of date or needs a restart, or the connection fails, and can turn
-  Bluetooth on for you.
+  in the new Wallets & Hardware picker, on Home and on Receive. Sending, shielding, swapping,
+  paying and ZIP-321 payments from a Ledger account now sign on the device over Bluetooth; voting,
+  migration and tax export do not yet. The connect flow explains what to do when Bluetooth is off,
+  the Zcash app on the Ledger is out of date or needs a restart, or the connection fails, and can
+  turn Bluetooth on for you.
 
 ## [3.14.0 (2738)] - 2026-09-16
 
