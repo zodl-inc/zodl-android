@@ -36,8 +36,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 /**
- * The disconnect screen serves either hardware vendor: it names the one being removed, and the
- * confirmed disconnect deletes that account — which is also what drops a Ledger account's stored
+ * The disconnect screen serves whichever hardware vendor is selected: it names and draws the one
+ * being removed, and the confirmed disconnect deletes that account — which is also what drops a Ledger account's stored
  * binding — before selecting the software wallet again.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -60,15 +60,35 @@ class DisconnectVMTest {
         runTest {
             val keystone = vm(MutableStateFlow(keystone(isSelected = true)))
             collect(keystone)
-            val keystoneState = assertNotNull(keystone.state.value.content)
-            assertEquals(R.string.deleteKeystoneTitle, keystoneState.title.resourceId())
-            assertEquals(R.string.keystoneHW, keystoneState.connectedTitle.resourceId())
+            assertShowsKeystone(assertNotNull(keystone.state.value.content))
 
             val ledger = vm(MutableStateFlow(ledger(isSelected = true)))
             collect(ledger)
-            val ledgerState = assertNotNull(ledger.state.value.content)
-            assertEquals(R.string.ledger_disconnect_title, ledgerState.title.resourceId())
-            assertEquals(R.string.ledgerHW, ledgerState.connectedTitle.resourceId())
+            assertShowsLedger(assertNotNull(ledger.state.value.content))
+        }
+
+    @Test
+    fun openingOnTheSoftwareWalletGoesBack() =
+        runTest {
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+            vm(MutableStateFlow(zashi(isSelected = true)), navigationRouter = navigationRouter)
+            runCurrent()
+
+            verify(exactly = 1) { navigationRouter.back() }
+        }
+
+    @Test
+    fun switchingTheSelectedHardwareWalletUpdatesTheScreen() =
+        runTest {
+            val selected = MutableStateFlow<WalletAccount?>(keystone(isSelected = true))
+            val vm = vm(selected)
+            collect(vm)
+            assertShowsKeystone(assertNotNull(vm.state.value.content))
+
+            selected.value = ledger(isSelected = true)
+            runCurrent()
+
+            assertShowsLedger(assertNotNull(vm.state.value.content))
         }
 
     @Test
@@ -89,6 +109,31 @@ class DisconnectVMTest {
 
             coVerify(exactly = 1) { disconnect.invoke(account) }
             verify(exactly = 1) { navigationRouter.backToRoot() }
+        }
+
+    @Test
+    fun theSelectionMovingToZashiAfterDisconnectDoesNotBlankTheScreen() =
+        runTest {
+            val account = ledger(isSelected = true)
+            val selected = MutableStateFlow<WalletAccount?>(account)
+            val disconnect =
+                mockk<DisconnectUseCase> {
+                    coEvery { this@mockk(account) } coAnswers { selected.value = zashi(isSelected = true) }
+                }
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+            val vm = vm(selected, disconnect, navigationRouter)
+            collect(vm)
+
+            assertNotNull(vm.state.value.content).disconnectButton.onClick()
+            runCurrent()
+            assertNotNull(
+                assertNotNull(vm.state.value.content).confirmationDialog
+            ).primaryAction.onClick()
+            runCurrent()
+
+            assertShowsLedger(assertNotNull(vm.state.value.content))
+            verify(exactly = 1) { navigationRouter.backToRoot() }
+            verify(exactly = 0) { navigationRouter.back() }
         }
 
     @Test
@@ -165,6 +210,20 @@ class DisconnectVMTest {
             deviceIdentity = "tpk0-deadbeef",
             zip32AccountIndex = Zip32AccountIndex.new(0L),
         )
+
+    private fun assertShowsKeystone(state: DisconnectState) {
+        assertEquals(R.string.deleteKeystoneTitle, state.title.resourceId())
+        assertEquals(R.string.keystoneHW, state.connectedTitle.resourceId())
+        assertEquals(co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone, state.icon)
+        assertEquals(R.string.connectedHWInfo, state.infoText.resourceId())
+    }
+
+    private fun assertShowsLedger(state: DisconnectState) {
+        assertEquals(R.string.ledger_disconnect_title, state.title.resourceId())
+        assertEquals(R.string.ledgerHW, state.connectedTitle.resourceId())
+        assertEquals(co.electriccoin.zcash.ui.design.R.drawable.ic_item_ledger, state.icon)
+        assertEquals(R.string.connectedHWInfo_ledger, state.infoText.resourceId())
+    }
 
     private fun TestScope.collect(vm: DisconnectVM) {
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { vm.state.collect { } }
