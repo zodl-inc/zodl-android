@@ -102,6 +102,7 @@ class VotingKeystoneRepositoryImpl(
     private val votingHotkeySeedProvider: VotingHotkeySeedProvider,
     private val synchronizerProvider: SynchronizerProvider,
     private val keystoneSDKProvider: KeystoneSDKProvider,
+    private val votingProofPrecomputeRepository: VotingProofPrecomputeRepository,
 ) : VotingKeystoneRepository {
     @Suppress("LongMethod")
     override suspend fun createPcztEncoder(
@@ -164,6 +165,18 @@ class VotingKeystoneRepositoryImpl(
                     ncRoot = session.ncRoot,
                     nullifierImtRoot = session.nullifierIMTRoot
                 )
+
+            // Milan's review of PR #6, should-fix: this is the Sign-screen entry into the same
+            // delegation pipeline SubmitVotesUseCase's own "Important #1" comment opens (that
+            // comment's claim that SubmitVotesUseCase is "the single entry point both submission
+            // paths funnel through" missed this one) -- reached well before SubmitVotesUseCase
+            // ever runs, so its own cancelAndAwaitPrecompute call does nothing to protect this
+            // path. Without cancelling here too, a still-running background precompute job
+            // (PrecomputeVotingSnapshotBundlesUseCase / WarmVotingPirProofsUseCase) contends with
+            // ensureDelegationPipeline below for the same native (dbPath, walletId) lock, parking
+            // the Sign screen with no progress indication for however long the precompute job
+            // takes to finish on its own.
+            votingProofPrecomputeRepository.cancelAndAwaitPrecompute(accountUuid, roundId)
 
             votingKeystoneSessionHolder.ensureDelegationPipeline(
                 roundId = roundId,

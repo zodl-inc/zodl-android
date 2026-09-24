@@ -103,9 +103,13 @@ class SubmitVotesUseCase(
             // otherwise contend with that job for the shared native (dbPath, walletId) lock,
             // parking the progress UI the exact same way Task 6 already fixed for a different
             // cause. Cancelling and awaiting termination here, before either path opens its own
-            // session, guarantees the lock is free by the time either one needs it. This is the
-            // single entry point both submission paths funnel through, so one call site here
-            // covers both.
+            // session, guarantees the lock is free by the time either one needs it.
+            //
+            // NOT the only entry point into the pipeline, though (correction, Milan's review of
+            // PR #6): the Keystone Sign screen reaches ensureDelegationPipeline earlier, via
+            // VotingKeystoneRepository.createPcztEncoder, well before this use case ever runs --
+            // that call site carries its own identical cancelAndAwaitPrecompute guard for exactly
+            // this reason.
             votingProofPrecomputeRepository.cancelAndAwaitPrecompute(accountUuidString, roundId)
 
             if (selectedAccount is KeystoneAccount) {
