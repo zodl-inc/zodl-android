@@ -384,7 +384,7 @@ fun NavGraphBuilder.walletNavGraph(
         composable<ResyncDateArgs> { ResyncDateScreen(it.toRoute()) }
         composable<ResyncEstimationArgs> { ResyncEstimationScreen(it.toRoute()) }
         composable<ResyncHeightArgs> { ResyncHeightScreen() }
-        composable<DisconnectArgs> { DisconnectScreen(it.toRoute()) }
+        composable<DisconnectArgs> { DisconnectScreen() }
         // Migration destinations are contributed by the feature-migration module — see
         // MigrationNavContributor in MigrationContracts.kt (wired via Koin in the app module).
         org.koin.mp.KoinPlatform.getKoin().getAll<MigrationNavContributor>().forEach {

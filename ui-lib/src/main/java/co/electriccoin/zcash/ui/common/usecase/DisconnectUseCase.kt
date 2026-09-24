@@ -4,7 +4,6 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
 import co.electriccoin.zcash.ui.common.model.HWWalletAccount
-import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.toStorageKeyId
 import co.electriccoin.zcash.ui.common.repository.BiometricRepository
 import co.electriccoin.zcash.ui.common.repository.BiometricRequest
@@ -27,7 +26,7 @@ class DisconnectUseCase(
      * is never left pointing at an account that is gone.
      */
     @Suppress("TooGenericExceptionCaught")
-    suspend operator fun invoke(hwAccount: WalletAccount) =
+    suspend operator fun invoke(hwAccount: HWWalletAccount) =
         withContext(Dispatchers.IO) {
             biometricRepository.requestBiometrics(
                 BiometricRequest(message = stringRes(R.string.disconnect_hw_wallet_biometric_message))
@@ -43,14 +42,4 @@ class DisconnectUseCase(
             val zashiAccount = accountDataSource.getZashiAccount()
             accountDataSource.selectAccount(zashiAccount)
         }
-
-    /**
-     * The hardware account [accountStorageKeyId] names, or null when it is no longer there. There
-     * is deliberately no fallback: with two vendors connected, picking "the first one" would
-     * silently disconnect a device the user did not choose.
-     */
-    suspend fun getHWWalletAccount(accountStorageKeyId: String): WalletAccount? =
-        accountDataSource
-            .getAllAccounts()
-            .firstOrNull { it is HWWalletAccount && it.sdkAccount.accountUuid.toStorageKeyId() == accountStorageKeyId }
 }
