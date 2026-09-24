@@ -1,0 +1,54 @@
+package co.electriccoin.zcash.ui.common.model
+
+/**
+ * A Ledger found while looking for the device to sign with.
+ *
+ * [identifier] is the device's Bluetooth address: it keys the choice and is never rendered or logged.
+ */
+data class LedgerSigningDevice(
+    val identifier: String,
+    val name: String,
+) {
+    /**
+     * Overridden to keep the Bluetooth address out of logs.
+     */
+    override fun toString() = "LedgerSigningDevice(identifier=***, name=$name)"
+}
+
+/**
+ * Where a Ledger signing session is, from looking for the device to the signed transaction.
+ */
+sealed interface LedgerSigningState {
+    data object Scanning : LedgerSigningState
+
+    /**
+     * More than one Ledger is in range; the session waits for the user to pick one.
+     * [selectedIdentifier] is the device picked in an earlier attempt, when it is in range again.
+     */
+    data class Selecting(
+        val devices: List<LedgerSigningDevice>,
+        val selectedIdentifier: String?,
+    ) : LedgerSigningState
+
+    data object Connecting : LedgerSigningState
+
+    data object Preparing : LedgerSigningState
+
+    /**
+     * The transaction is being sent to the device; identifying the device reports `Streaming(0, 0)`.
+     */
+    data class Streaming(
+        val sent: Int,
+        val total: Int,
+    ) : LedgerSigningState
+
+    data object AwaitingReview : LedgerSigningState
+
+    data object Signing : LedgerSigningState
+
+    data object Signed : LedgerSigningState
+
+    data class Failed(
+        val issue: LedgerIssue,
+    ) : LedgerSigningState
+}
