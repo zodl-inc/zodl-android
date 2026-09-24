@@ -48,24 +48,45 @@ private class MetadataKeyPreferenceDefault(
     private fun getKey(uuid: AccountUuid) = PreferenceKey("metadata_key_${uuid.value.toHexString()}")
 }
 
+/**
+ * Each entry is encoded as "$index:$base64Bytes" so [decode] can restore [MetadataKey.bytes]'
+ * preference order, which a plain [Set] does not preserve on its own.
+ */
 @OptIn(ExperimentalEncodingApi::class)
 private fun MetadataKey?.encode(secretKeyAccess: SecretKeyAccess?): Set<String>? =
     this
         ?.bytes
-        ?.map {
-            Base64.encode(it.toByteArray(secretKeyAccess))
+        ?.mapIndexed { index, secretBytes ->
+            "$index:${Base64.encode(secretBytes.toByteArray(secretKeyAccess))}"
         }?.toSet()
 
+/**
+ * Returns null for a legacy set whose entries carry no "$index:" prefix, since its original
+ * order is unknown; the caller re-derives the key in canonical order in that case.
+ */
 @OptIn(ExperimentalEncodingApi::class)
-private fun Set<String>?.decode(secretKeyAccess: SecretKeyAccess?) =
-    if (this != null) {
-        MetadataKey(
-            this
-                .toList()
-                .map {
-                    SecretBytes.copyFrom(Base64.decode(it), secretKeyAccess)
-                }
-        )
-    } else {
+private fun Set<String>?.decode(secretKeyAccess: SecretKeyAccess?): MetadataKey? {
+    val indexedEntries = this?.map { it.parseIndexedEntry() }
+    return if (indexedEntries == null || indexedEntries.any { it == null }) {
         null
+    } else {
+        MetadataKey(
+            indexedEntries
+                .filterNotNull()
+                .sortedBy { (index, _) -> index }
+                .map { (_, encoded) -> SecretBytes.copyFrom(Base64.decode(encoded), secretKeyAccess) }
+        )
     }
+}
+
+/**
+ * Parses one "$index:$base64Bytes" entry, or null if it carries no "$index:" prefix.
+ */
+private fun String.parseIndexedEntry(): Pair<Int, String>? {
+    val separatorIndex = indexOf(':')
+    return if (separatorIndex <= 0) {
+        null
+    } else {
+        substring(0, separatorIndex).toIntOrNull()?.let { index -> index to substring(separatorIndex + 1) }
+    }
+}

@@ -274,35 +274,52 @@ class MetadataDataSourceImpl(
     override suspend fun delete(key: MetadataKey) =
         withContext(Dispatchers.IO) {
             mutex.withLock {
-                metadataStorageProvider.getStorageFile(key)?.delete()
+                metadataStorageProvider.getStorageFiles(key).forEach { it.delete() }
                 metadataUpdatePipeline.emit(key to null)
             }
         }
 
-    private suspend fun getMetadataInternal(key: MetadataKey): MetadataV3 {
-        fun readLocalFileToMetadata(key: MetadataKey): MetadataV3? {
-            val encryptedFile =
-                runCatching { metadataStorageProvider.getStorageFile(key) }.getOrNull()
-                    ?: return null
+    /**
+     * A hardware-wallet account's metadata key can have more than one file on disk: the SDK
+     * derives one key per viewing-key item, and a key read back in a different order than it was
+     * derived in names a different file. This reads every file that exists under any of [key]'s
+     * identifiers, merges their contents into one [MetadataV3], writes the result to the
+     * canonical file and removes the rest, so a later call always finds exactly one file again.
+     */
+    private suspend fun getMetadataInternal(key: MetadataKey): MetadataV3 =
+        withContext(Dispatchers.IO) {
+            val existingFiles = runCatching { metadataStorageProvider.getStorageFiles(key) }.getOrDefault(emptyList())
+            val canonicalFile = metadataStorageProvider.getOrCreateStorageFile(key)
 
-            return runCatching {
-                metadataProvider.readMetadataFromFile(encryptedFile, key)
-            }.onFailure { e -> Twig.warn(e) { "Failed to decrypt metadata" } }.getOrNull()
-        }
+            val decodedByFile =
+                existingFiles.associateWith { file ->
+                    runCatching { metadataProvider.readMetadataFromFile(file, key) }
+                        .onFailure { e -> Twig.warn(e) { "Failed to decrypt metadata" } }
+                        .getOrNull()
+                }
 
-        return withContext(Dispatchers.IO) {
-            var new: MetadataV3? = readLocalFileToMetadata(key)
-            if (new == null) {
-                new =
+            val onlyCanonicalFileExists = existingFiles.singleOrNull() == canonicalFile
+            val canonicalMetadata = decodedByFile[canonicalFile]
+            if (onlyCanonicalFileExists && canonicalMetadata != null) {
+                return@withContext canonicalMetadata
+            }
+
+            val candidates = decodedByFile.values.filterNotNull()
+            val merged =
+                if (candidates.isEmpty()) {
                     MetadataV3(
                         lastUpdated = Instant.now(),
                         accountMetadata = defaultAccountMetadata(),
                     )
-                writeToLocalStorage(new, key)
-            }
-            new
+                } else {
+                    candidates.reduce(MetadataV3::merge)
+                }
+
+            writeToLocalStorage(merged, key)
+            existingFiles.filterNot { it == canonicalFile }.forEach { it.delete() }
+
+            merged
         }
-    }
 
     private suspend fun writeToLocalStorage(metadata: MetadataV3, key: MetadataKey) {
         withContext(Dispatchers.IO) {
@@ -457,6 +474,50 @@ private fun <T : Any> List<T>.update(predicate: (T) -> Boolean, transform: (T) -
     } else {
         this
     }
+}
+
+/**
+ * Merges [other] into this metadata, keeping the newer per-entry value on a conflict and the
+ * newer [MetadataV3.lastUpdated] as the merged top-level value.
+ */
+private fun MetadataV3.merge(other: MetadataV3): MetadataV3 =
+    MetadataV3(
+        lastUpdated = maxOf(lastUpdated, other.lastUpdated),
+        accountMetadata = accountMetadata.merge(other.accountMetadata)
+    )
+
+private fun AccountMetadataV3.merge(other: AccountMetadataV3): AccountMetadataV3 =
+    AccountMetadataV3(
+        bookmarked = bookmarked.mergeById(other.bookmarked, idOf = { it.txId }, lastUpdatedOf = { it.lastUpdated }),
+        read = (read.toSet() + other.read).toList(),
+        annotations = annotations.mergeById(other.annotations, idOf = { it.txId }, lastUpdatedOf = { it.lastUpdated }),
+        swaps = swaps.merge(other.swaps)
+    )
+
+private fun SwapsMetadataV3.merge(other: SwapsMetadataV3): SwapsMetadataV3 =
+    SwapsMetadataV3(
+        swapIds = swapIds.mergeById(other.swapIds, idOf = { it.depositAddress }, lastUpdatedOf = { it.lastUpdated }),
+        lastUsedAssetHistory = lastUsedAssetHistory + other.lastUsedAssetHistory
+    )
+
+/**
+ * Unions two entry lists by [idOf], keeping whichever entry's [lastUpdatedOf] is newer when both
+ * sides carry the same id.
+ */
+private fun <T> List<T>.mergeById(
+    other: List<T>,
+    idOf: (T) -> String,
+    lastUpdatedOf: (T) -> Instant
+): List<T> {
+    val merged = associateByTo(LinkedHashMap(), idOf)
+    other.forEach { candidate ->
+        val id = idOf(candidate)
+        val current = merged[id]
+        if (current == null || lastUpdatedOf(candidate) > lastUpdatedOf(current)) {
+            merged[id] = candidate
+        }
+    }
+    return merged.values.toList()
 }
 
 private const val MAX_SWAP_ASSETS_IN_HISTORY = 10
