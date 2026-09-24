@@ -28,7 +28,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 
 /**
- * voting-5.0.0 background-precompute port (Task 4 fix round): covers the
+ * voting-5.0.0 background-precompute port: covers the
  * [VoteCoinholderPollingVM.onScreenEntered] PIR proof warm-up trigger, which was previously
  * untested.
  */

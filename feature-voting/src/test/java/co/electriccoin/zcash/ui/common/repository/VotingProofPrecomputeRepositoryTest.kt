@@ -19,10 +19,10 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * voting-5.0.0 background-precompute port (Task 4): the old per-bundle
+ * voting-5.0.0 background-precompute port: the old per-bundle
  * `startDelegationPirPrecompute`/`awaitDelegationPirPrecompute` mechanism this test used to cover
  * had zero production callers (confirmed by repo-wide grep) and is superseded by
- * `precomputeSnapshotBundles` (Task 2's SDK call, a verified strict superset). Replaced with
+ * `precomputeSnapshotBundles` (an SDK call, a verified strict superset). Replaced with
  * coverage for the two new fire-and-forget background-warmup entry points below, which follow the
  * same dedup-by-key/scope.launch shape the old delegation methods and `warmProvingCaches` used.
  */
@@ -204,8 +204,8 @@ class VotingProofPrecomputeRepositoryTest {
         }
 
     /**
-     * Regression test for Important #4 of the final whole-plan review: a job that completes WITH
-     * a failure must not permanently poison its own dedup key. Before this fix, the dedup check
+     * Regression test: a job that completes WITH a failure must not permanently poison its own
+     * dedup key. Before this fix, the dedup check
      * only skipped a re-request while `!existing.isCancelled` -- a failed-but-not-cancelled job
      * stayed in the map forever, silently disabling retries for that key until process restart.
      */
@@ -446,8 +446,8 @@ class VotingProofPrecomputeRepositoryTest {
         }
 
     /**
-     * Regression test for Important #1 of the final whole-plan review: browse-time precompute can
-     * hold the shared native DB lock across into the submit path. [cancelAndAwaitPrecompute] must
+     * Regression test: browse-time precompute can hold the shared native DB lock across into the
+     * submit path. [cancelAndAwaitPrecompute] must
      * actually cancel a genuinely in-flight job (not just one that already finished) and await its
      * real termination before returning.
      */
@@ -539,7 +539,7 @@ class VotingProofPrecomputeRepositoryTest {
     @Test
     fun warmProvingCachesCallsThroughOnEveryInvocation() =
         runBlocking {
-            // Task 3: the crate's own start_proving_cache_warmup() now dedupes for free, so this
+            // The crate's own start_proving_cache_warmup() now dedupes for free, so this
             // wrapper no longer needs its own AtomicBoolean gate -- every call is forwarded
             // directly and the crate is responsible for making repeat calls cheap.
             val cryptoClient = FakeVotingCryptoClient()

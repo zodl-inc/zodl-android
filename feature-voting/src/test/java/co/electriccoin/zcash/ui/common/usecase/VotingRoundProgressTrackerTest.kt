@@ -232,7 +232,7 @@ class VotingRoundProgressTrackerTest {
     fun `delegation progress is still bounded when the wallet's note set produces more bundles than proposals`() {
         val tracker = VotingRoundProgressTracker()
 
-        // Important #2 (final whole-plan review): a 1-proposal round whose wallet note set
+        // A 1-proposal round whose wallet note set
         // produces 2 bundles (plausible -- bundle count is ceil(note_count / 5) in the crate,
         // independent of proposal count, NOT guaranteed numBundles <= totalProposals). Both
         // bundles fully delegate with nothing cast. Before the fix, dividing by bare

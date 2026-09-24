@@ -70,8 +70,8 @@ class WarmVotingPirProofsUseCaseTest {
         }
 
     /**
-     * Regression test for Important #3 of the final whole-plan review: fetching wallet notes for
-     * a round the wallet hasn't fully scanned to yet throws (a normal state for a newer active
+     * Regression test: fetching wallet notes for a round the wallet hasn't fully scanned to yet
+     * throws (a normal state for a newer active
      * round). Before this fix, one shared runCatching around the whole loop meant that failure
      * aborted warmup for every OTHER active round too. Each round's own iteration must now be
      * isolated so a fully-scanned, genuinely-votable round still gets warmed.

@@ -22,7 +22,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 
 /**
- * voting-5.0.0 background-precompute port (Task 4 fix round): covers the snapshot-bundle
+ * voting-5.0.0 background-precompute port: covers the snapshot-bundle
  * precompute trigger added to [VoteProposalListVM]'s `init` block for `REVIEW` mode -- the same
  * VM/screen also serves `VOTING` and `VOTED` modes, neither of which should trigger it.
  */

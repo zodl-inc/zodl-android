@@ -36,8 +36,8 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 
 /**
- * Regression test for Task 10 of the round-driver production-completion plan: before
- * [SubmitVotesUseCase] locks in ballot intents with the round driver, it must durably record the
+ * Regression test: before [SubmitVotesUseCase] locks in ballot intents with the round driver, it
+ * must durably record the
  * proposal choices via [VotingRecoveryRepository.storeProposalSelections]. That call is the single
  * owner of the selection-lock invariant, and it throws [VotingSubmissionRecoverableException] with
  * [VotingErrors.ConflictingProposalSelection] when a retry supplies a different choice than what
@@ -159,11 +159,11 @@ class SubmitVotesUseCaseProposalSelectionLockTest {
         }
 
     /**
-     * Regression test for Important #1 of the final whole-plan review: browse-time background
-     * precompute can hold the shared native voting-DB lock across into the submit path,
-     * reintroducing the "looks frozen" symptom Task 6 fixed for a different cause. Before opening
-     * its own DB session for the round being submitted, [SubmitVotesUseCase] must cancel and
-     * await any in-flight precompute job for the account/round it is about to submit.
+     * Regression test: browse-time background precompute can hold the shared native voting-DB
+     * lock across into the submit path, reintroducing a "looks frozen" symptom already fixed for
+     * a different cause elsewhere. Before opening its own DB session for the round being
+     * submitted, [SubmitVotesUseCase] must cancel and await any in-flight precompute job for the
+     * account/round it is about to submit.
      */
     @Test
     fun `invoke cancels and awaits in-flight precompute before opening its own voting DB session`() =

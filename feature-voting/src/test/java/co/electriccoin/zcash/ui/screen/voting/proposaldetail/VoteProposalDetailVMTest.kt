@@ -23,7 +23,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 
 /**
- * voting-5.0.0 background-precompute port (Task 4 fix round): covers the screen-entry trigger
+ * voting-5.0.0 background-precompute port: covers the screen-entry trigger
  * wiring added to [VoteProposalDetailVM]'s `init` block, which was previously untested. Most
  * importantly, asserts the `!args.isReadOnly` eligibility-confirmed proxy actually gates
  * [PrecomputeVotingSnapshotBundlesUseCase] -- a read-only (already-voted) visit must not trigger

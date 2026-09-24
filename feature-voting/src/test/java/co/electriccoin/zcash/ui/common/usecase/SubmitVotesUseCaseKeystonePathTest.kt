@@ -39,8 +39,8 @@ import kotlin.test.assertFailsWith
 
 /**
  * Coverage for [SubmitVotesUseCase]'s Keystone submission path (`submitKeystoneVotes`, reached
- * via [SubmitVotesUseCase.invoke] when the selected account is a [KeystoneAccountFixture]-shaped
- * account) -- previously entirely untested (nit #13 of Milan's review of PR #6, alongside
+ * via [SubmitVotesUseCase.invoke] when the selected account is a [KeystoneAccount]) --
+ * previously entirely untested (nit #13 of Milan's review of PR #6, alongside
  * `SubmitVotesUseCaseSuccessPathTest` for the non-Keystone path). Fixture pattern matches
  * `SubmitVotesUseCaseBundleFailureRetryTest`/`SubmitVotesUseCaseSuccessPathTest`, minus the
  * `VotingRoundSession` mock (the Keystone path drives [VotingKeystoneSessionHolder] directly, not

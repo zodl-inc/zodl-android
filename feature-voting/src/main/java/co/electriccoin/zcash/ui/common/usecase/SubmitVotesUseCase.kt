@@ -442,8 +442,8 @@ class SubmitVotesUseCase(
      * nothing else in the Keystone flow (the Sign/Scan screens only sign bundles) ever sets them.
      *
      * Progress reporting here is intentionally simpler than the non-Keystone path's per-bundle
-     * ledger (tally-only, no per-bundle-index floor) -- see this task's report for why that
-     * inconsistency was left in place rather than ported over.
+     * ledger (tally-only, no per-bundle-index floor) -- a deliberate, known inconsistency left in
+     * place rather than ported over.
      */
     @Suppress("LongMethod", "LongParameterList", "ThrowsCount")
     private suspend fun submitKeystoneVotes(
@@ -622,8 +622,8 @@ class SubmitVotesUseCase(
     }
 
     /**
-     * Diagnostic-only replacement for the blanket `report.failures.isNotEmpty()` throw that Task
-     * 12's quiescence-based mapper removed. A run can quiesce success-shaped
+     * Diagnostic-only replacement for the blanket `report.failures.isNotEmpty()` throw the
+     * quiescence-based mapper removed. A run can quiesce success-shaped
      * ([cash.z.ecc.android.sdk.model.voting.VotingRoundQuiescence.NoWorkLeft] /
      * `BackgroundShareWorkOnly`, both mapped to `null` by [toVotingErrorOrNull]) while still
      * carrying non-empty `failures`/`skippedBundles` — the caller then reports full success and
