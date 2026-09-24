@@ -89,17 +89,18 @@ class VotingRoundQuiescenceMapperTest {
     }
 
     @Test
-    fun `a spent-nullifier-shaped failure maps to TxConfirmationTimedOut`() {
+    fun `a spent-nullifier-shaped failure maps to RecoveredVoteCommitmentMismatch`() {
         val failure =
             cash.z.ecc.android.sdk.model.voting.VotingRoundStepFailure(
                 step = null,
-                bundleIndex = 0,
+                bundleIndex = 3,
                 kind = "ChainSubmission",
                 message = "nullifier already spent"
             )
         val error =
             reportWith(VotingRoundQuiescence.Failures, failures = listOf(failure)).toVotingErrorOrNull("round-1")
-        assertIs<VotingErrors.TxConfirmationTimedOut>(error)
+        assertIs<VotingErrors.RecoveredVoteCommitmentMismatch>(error)
+        assertEquals(3, error.bundleIndex)
     }
 
     @Test
@@ -114,6 +115,20 @@ class VotingRoundQuiescenceMapperTest {
         val error =
             reportWith(VotingRoundQuiescence.Failures, failures = listOf(failure)).toVotingErrorOrNull("round-1")
         assertIs<VotingErrors.VoteTreeSyncFailed>(error)
+    }
+
+    @Test
+    fun `an async-mentioning failure does NOT false-positive match the sync substring`() {
+        val failure =
+            cash.z.ecc.android.sdk.model.voting.VotingRoundStepFailure(
+                step = null,
+                bundleIndex = null,
+                kind = "InvariantViolation",
+                message = "an async task panicked"
+            )
+        val error =
+            reportWith(VotingRoundQuiescence.Failures, failures = listOf(failure)).toVotingErrorOrNull("round-1")
+        assertIs<VotingErrors.UnexpectedSdkResponse>(error)
     }
 
     @Test

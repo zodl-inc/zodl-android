@@ -102,11 +102,27 @@ private fun VotingRoundStepFailure.toVotingErrorOrDefault(roundId: String): Voti
     val lowerMessage = message.lowercase()
     val lowerKind = kind.lowercase()
     return when {
+        // VotingErrors.RecoveredVoteCommitmentMismatch's own doc comment describes exactly this
+        // case verbatim ("A spent-nullifier response referenced a successful transaction whose
+        // commitment-tree leaves do not contain the exact vote commitment currently being
+        // recovered"). The previous mapping put the raw failure message into
+        // TxConfirmationTimedOut.txHash -- wrong VotingErrors case entirely (a spent-nullifier
+        // failure isn't "not confirmed in time"), and txHash isn't a transaction hash here, just
+        // the crate's free-text message.
         "spent" in lowerMessage && "nullifier" in lowerMessage -> {
-            VotingErrors.TxConfirmationTimedOut(txHash = message)
+            VotingErrors.RecoveredVoteCommitmentMismatch(
+                roundId = roundId,
+                bundleIndex = bundleIndex ?: -1,
+                proposalId = -1
+            )
         }
 
-        "tree" in lowerKind || "sync" in lowerMessage -> {
+        // Word-boundary match on "sync" (SYNC_WORD_BOUNDARY), not a plain "sync" in lowerMessage
+        // substring check: the crate's failure-kind enum has no stable string form (this
+        // function's own doc comment), so lowerMessage is arbitrary free text -- a plain
+        // substring match also matches "async", which has no relationship to vote-tree sync
+        // (e.g. "an async task panicked" would be misclassified as VoteTreeSyncFailed).
+        "tree" in lowerKind || SYNC_WORD_BOUNDARY.containsMatchIn(lowerMessage) -> {
             VotingErrors.VoteTreeSyncFailed(roundId = roundId)
         }
 
@@ -133,3 +149,5 @@ private fun VotingRoundStepFailure.toVotingErrorOrDefault(roundId: String): Voti
         }
     }
 }
+
+private val SYNC_WORD_BOUNDARY = Regex("\\bsync\\b")
