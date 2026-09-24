@@ -116,11 +116,25 @@ private fun VotingRoundStepFailure.toVotingErrorOrDefault(roundId: String): Voti
             )
         }
 
-        // Word-boundary match on "sync" (SYNC_WORD_BOUNDARY), not a plain "sync" in lowerMessage
-        // substring check: the crate's failure-kind enum has no stable string form (this
-        // function's own doc comment), so lowerMessage is arbitrary free text -- a plain
-        // substring match also matches "async", which has no relationship to vote-tree sync
-        // (e.g. "an async task panicked" would be misclassified as VoteTreeSyncFailed).
+        // Word-boundary match on "sync"/"synced"/"syncing" (SYNC_WORD_BOUNDARY), not a plain
+        // "sync" in lowerMessage substring check: the crate's failure-kind enum has no stable
+        // string form (this function's own doc comment), so lowerMessage is arbitrary free text
+        // -- a plain substring match also matches "async", which has no relationship to
+        // vote-tree sync (e.g. "an async task panicked" would be misclassified as
+        // VoteTreeSyncFailed).
+        //
+        // Verified directly against zcash_voting 5.1.0's src/tree_sync.rs (a fresh Fable review
+        // of this exact fix caught a real regression a bare \bsync\b introduced): three genuine
+        // tree-sync failure messages use "synced", not the standalone word "sync" -- "synced vote
+        // tree has no root at anchor height {h}", "...does not match its synced vote-tree leaf",
+        // "...is absent from the synced vote tree" -- so \bsync\b alone silently stopped
+        // classifying them as VoteTreeSyncFailed (falling through to the generic default
+        // instead), an unannounced behavior change beyond the original async-collision fix.
+        // "(ed|ing)?" restores those without reopening the async hole: "async"/"asynced"/
+        // "asyncing" never contain "sync"/"synced"/"syncing" as their own token, and src/vote.rs's
+        // unrelated "synthetic vote tree" proof-construction errors (a different failure family
+        // entirely -- VAN auth-path building, not vote-server tree sync) contain "synthetic", not
+        // "synced", so they're correctly still excluded.
         "tree" in lowerKind || SYNC_WORD_BOUNDARY.containsMatchIn(lowerMessage) -> {
             VotingErrors.VoteTreeSyncFailed(roundId = roundId)
         }
@@ -149,4 +163,4 @@ private fun VotingRoundStepFailure.toVotingErrorOrDefault(roundId: String): Voti
     }
 }
 
-private val SYNC_WORD_BOUNDARY = Regex("\\bsync\\b")
+private val SYNC_WORD_BOUNDARY = Regex("\\bsync(ed|ing)?\\b")

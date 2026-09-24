@@ -118,6 +118,49 @@ class VotingRoundQuiescenceMapperTest {
     }
 
     @Test
+    fun `real crate tree-sync failure messages using 'synced' rather than 'sync' still map to VoteTreeSyncFailed`() {
+        // Caught by a fresh Fable review of the \bsync\b word-boundary fix (this file's other
+        // "async" regression test): the original fix was too narrow and silently stopped
+        // classifying these three genuine zcash_voting 5.1.0 src/tree_sync.rs failure messages.
+        val messages =
+            listOf(
+                "synced vote tree has no root at anchor height 12345",
+                "confirmed delegation bundle 2 does not match its synced vote-tree leaf",
+                "confirmed delegation bundle 2 is absent from the synced vote tree"
+            )
+        messages.forEach { syncedMessage ->
+            val failure =
+                cash.z.ecc.android.sdk.model.voting.VotingRoundStepFailure(
+                    step = null,
+                    bundleIndex = 2,
+                    kind = "InvalidInput",
+                    message = syncedMessage
+                )
+            val error =
+                reportWith(VotingRoundQuiescence.Failures, failures = listOf(failure)).toVotingErrorOrNull("round-1")
+            assertIs<VotingErrors.VoteTreeSyncFailed>(error, "expected VoteTreeSyncFailed for: $syncedMessage")
+        }
+    }
+
+    @Test
+    fun `an unrelated 'synthetic vote tree' proof-construction message does NOT map to VoteTreeSyncFailed`() {
+        // src/vote.rs's single_leaf_auth_path builds an in-memory VAN authentication path during
+        // proof construction -- a different failure family than vote-server tree sync entirely,
+        // despite also mentioning "vote tree". These messages say "synthetic", never "synced" or
+        // a standalone "sync", so SYNC_WORD_BOUNDARY correctly leaves them unmatched.
+        val failure =
+            cash.z.ecc.android.sdk.model.voting.VotingRoundStepFailure(
+                step = null,
+                bundleIndex = null,
+                kind = "Internal",
+                message = "build synthetic vote tree failed: some inner error"
+            )
+        val error =
+            reportWith(VotingRoundQuiescence.Failures, failures = listOf(failure)).toVotingErrorOrNull("round-1")
+        assertIs<VotingErrors.UnexpectedSdkResponse>(error)
+    }
+
+    @Test
     fun `an async-mentioning failure does NOT false-positive match the sync substring`() {
         val failure =
             cash.z.ecc.android.sdk.model.voting.VotingRoundStepFailure(
