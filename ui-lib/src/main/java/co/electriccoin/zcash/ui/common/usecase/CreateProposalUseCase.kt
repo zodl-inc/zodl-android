@@ -44,7 +44,8 @@ class CreateProposalUseCase(
             }
             navigationRouter.forward(ReviewTransactionArgs)
         } catch (_: TexUnsupportedOnKSException) {
-            navigationRouter.forward(TEXUnsupportedArgs)
+            val isLedger = accountDataSource.getSelectedAccount() is LedgerAccount
+            navigationRouter.forward(TEXUnsupportedArgs(isLedger = isLedger))
             keystoneProposalRepository.clear()
             ledgerProposalRepository.clear()
             zashiProposalRepository.clear()
