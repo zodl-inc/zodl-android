@@ -443,7 +443,8 @@ class LedgerDeviceScanVMTest {
                 }
             val pairLedgerDevice =
                 mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } throws mockk<LedgerException.UserRejected>(relaxed = true)
+                    coEvery { this@mockk.invoke(any()) } throws
+                        mockk<LedgerException.UserRejected>(relaxed = true) { every { isRestartable } returns true }
                 }
             val vm = vm(observeLedgerDevices = observeLedgerDevices, pairLedgerDevice = pairLedgerDevice)
             collect(vm)

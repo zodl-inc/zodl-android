@@ -80,6 +80,34 @@ data class LedgerIssue(
                 R.string.ledger_error_permissions_title,
                 R.string.ledger_error_permissions_message
             )
+
+        /**
+         * A failure nothing more specific describes; looking for the device again may help.
+         */
+        val unknown: LedgerIssue = unknownIssue(LedgerIssueKind.UNKNOWN)
+
+        /**
+         * The selected account has no usable Ledger binding, so it cannot be signed for until it is
+         * connected again.
+         */
+        val unbound: LedgerIssue =
+            issue(
+                LedgerIssueKind.UNBOUND,
+                LedgerIssueRetry.NONE,
+                R.string.ledger_sign_error_unbound_title,
+                R.string.ledger_sign_error_unbound_message
+            )
+
+        /**
+         * The link to the device was lost while a transaction was being signed.
+         */
+        val disconnectedWhileSigning: LedgerIssue =
+            issue(
+                LedgerIssueKind.DISCONNECTED,
+                LedgerIssueRetry.RECONNECT,
+                R.string.ledger_error_disconnected_title,
+                R.string.ledger_sign_error_disconnected_message
+            )
     }
 }
 
@@ -88,13 +116,14 @@ data class LedgerIssue(
  *
  * A [LedgerException.BluetoothUnavailable] carrying a scan error code means the scan itself failed
  * to start; without one the phone has no Bluetooth LE at all, which nothing in the app can fix. A
- * locked device answers with a transient [LedgerException.DeviceRefused].
+ * locked device answers with a transient [LedgerException.DeviceRefused]. A timeout while connecting
+ * means pairing failed; while signing, it means the link to the device was lost.
  */
 @Suppress("CyclomaticComplexMethod")
 fun LedgerException.toLedgerIssue(context: LedgerIssueContext): LedgerIssue =
     when (this) {
         is LedgerException.UserRejected -> {
-            rejected(context)
+            rejected(context, isRestartable)
         }
 
         is LedgerException.WrongApp -> {
@@ -102,7 +131,7 @@ fun LedgerException.toLedgerIssue(context: LedgerIssueContext): LedgerIssue =
         }
 
         is LedgerException.DeviceRefused -> {
-            if (isTransient) locked() else unknown()
+            if (isTransient) locked() else LedgerIssue.unknown
         }
 
         is LedgerException.DerivationBudgetExhausted -> {
@@ -130,7 +159,7 @@ fun LedgerException.toLedgerIssue(context: LedgerIssueContext): LedgerIssue =
         is LedgerException.CapsMismatch,
         is LedgerException.MalformedReply,
         is LedgerException.Internal -> {
-            unknown()
+            LedgerIssue.unknown
         }
 
         is LedgerException.InvalidInput -> {
@@ -162,12 +191,16 @@ fun LedgerException.toLedgerIssue(context: LedgerIssueContext): LedgerIssue =
         is LedgerException.ConnectionFailed,
         is LedgerException.PairingRefused,
         is LedgerException.Timeout -> {
-            issue(
-                LedgerIssueKind.PAIRING_FAILED,
-                LedgerIssueRetry.RECONNECT,
-                R.string.ledger_error_pairingFailed_title,
-                R.string.ledger_error_pairingFailed_message
-            )
+            if (this is LedgerException.Timeout && context == LedgerIssueContext.SIGNING) {
+                LedgerIssue.disconnectedWhileSigning
+            } else {
+                issue(
+                    LedgerIssueKind.PAIRING_FAILED,
+                    LedgerIssueRetry.RECONNECT,
+                    R.string.ledger_error_pairingFailed_title,
+                    R.string.ledger_error_pairingFailed_message
+                )
+            }
         }
 
         is LedgerException.Disconnected -> {
@@ -175,12 +208,20 @@ fun LedgerException.toLedgerIssue(context: LedgerIssueContext): LedgerIssue =
         }
     }
 
-private fun rejected(context: LedgerIssueContext) =
-    when (context) {
+/**
+ * A rejection the device can be asked about again is retried over the same link; any other one
+ * needs the device to be found again.
+ */
+private fun rejected(
+    context: LedgerIssueContext,
+    isRestartable: Boolean
+): LedgerIssue {
+    val retry = if (isRestartable) LedgerIssueRetry.SAME_LINK else LedgerIssueRetry.RECONNECT
+    return when (context) {
         LedgerIssueContext.ENROLLMENT -> {
             issue(
                 LedgerIssueKind.REJECTED,
-                LedgerIssueRetry.SAME_LINK,
+                retry,
                 R.string.ledger_error_importRejected_title,
                 R.string.ledger_error_importRejected_message
             )
@@ -189,12 +230,13 @@ private fun rejected(context: LedgerIssueContext) =
         LedgerIssueContext.SIGNING -> {
             issue(
                 LedgerIssueKind.REJECTED,
-                LedgerIssueRetry.SAME_LINK,
+                retry,
                 R.string.ledger_sign_error_rejected_title,
                 R.string.ledger_sign_error_rejected_message
             )
         }
     }
+}
 
 private fun locked() =
     issue(
@@ -204,7 +246,7 @@ private fun locked() =
         R.string.ledger_error_locked_message
     )
 
-private fun unknown(kind: LedgerIssueKind = LedgerIssueKind.UNKNOWN) =
+private fun unknownIssue(kind: LedgerIssueKind) =
     issue(
         kind,
         LedgerIssueRetry.RECONNECT,
@@ -218,7 +260,7 @@ private fun unknown(kind: LedgerIssueKind = LedgerIssueKind.UNKNOWN) =
 private fun wrongDevice(context: LedgerIssueContext) =
     when (context) {
         LedgerIssueContext.ENROLLMENT -> {
-            unknown(LedgerIssueKind.WRONG_DEVICE)
+            unknownIssue(LedgerIssueKind.WRONG_DEVICE)
         }
 
         LedgerIssueContext.SIGNING -> {
@@ -237,16 +279,11 @@ private fun wrongDevice(context: LedgerIssueContext) =
 private fun invalidInput(context: LedgerIssueContext) =
     when (context) {
         LedgerIssueContext.ENROLLMENT -> {
-            unknown()
+            LedgerIssue.unknown
         }
 
         LedgerIssueContext.SIGNING -> {
-            issue(
-                LedgerIssueKind.UNBOUND,
-                LedgerIssueRetry.RECONNECT,
-                R.string.ledger_sign_error_unbound_title,
-                R.string.ledger_sign_error_unbound_message
-            )
+            LedgerIssue.unbound
         }
     }
 
@@ -284,15 +321,20 @@ private fun bluetoothUnavailable(scanErrorCode: Int?) =
     }
 
 private fun disconnected(context: LedgerIssueContext) =
-    issue(
-        LedgerIssueKind.DISCONNECTED,
-        LedgerIssueRetry.RECONNECT,
-        R.string.ledger_error_disconnected_title,
-        when (context) {
-            LedgerIssueContext.ENROLLMENT -> R.string.ledger_error_disconnected_message
-            LedgerIssueContext.SIGNING -> R.string.ledger_sign_error_disconnected_message
+    when (context) {
+        LedgerIssueContext.ENROLLMENT -> {
+            issue(
+                LedgerIssueKind.DISCONNECTED,
+                LedgerIssueRetry.RECONNECT,
+                R.string.ledger_error_disconnected_title,
+                R.string.ledger_error_disconnected_message
+            )
         }
-    )
+
+        LedgerIssueContext.SIGNING -> {
+            LedgerIssue.disconnectedWhileSigning
+        }
+    }
 
 private fun issue(
     kind: LedgerIssueKind,

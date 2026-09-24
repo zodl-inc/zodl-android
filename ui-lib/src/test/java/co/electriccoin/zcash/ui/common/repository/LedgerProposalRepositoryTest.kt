@@ -220,7 +220,7 @@ class LedgerProposalRepositoryTest {
             every { ledgerSigningDataSource.isLinked } returns true
             var signCalls = 0
             val signed = Pczt(byteArrayOf(5))
-            val rejected = mockk<LedgerException.UserRejected>(relaxed = true)
+            val rejected = mockk<LedgerException.UserRejected>(relaxed = true) { every { isRestartable } returns true }
             coEvery { ledgerSigningDataSource.sign(any(), any(), any()) } coAnswers {
                 signCalls++
                 if (signCalls == 1) throw rejected else signed

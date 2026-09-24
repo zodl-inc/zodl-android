@@ -9,7 +9,6 @@ import cash.z.ecc.android.sdk.model.Pczt
 import cash.z.ecc.android.sdk.model.WalletAddress
 import cash.z.ecc.android.sdk.model.ZecSend
 import co.electriccoin.zcash.spackle.Twig
-import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.ExactInputSwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.ExactOutputSwapTransactionProposal
@@ -27,14 +26,11 @@ import co.electriccoin.zcash.ui.common.datasource.Zip321TransactionProposal
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.LedgerIssue
 import co.electriccoin.zcash.ui.common.model.LedgerIssueContext
-import co.electriccoin.zcash.ui.common.model.LedgerIssueKind
-import co.electriccoin.zcash.ui.common.model.LedgerIssueRetry
 import co.electriccoin.zcash.ui.common.model.LedgerSigningDevice
 import co.electriccoin.zcash.ui.common.model.LedgerSigningState
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.model.toLedgerIssue
-import co.electriccoin.zcash.ui.design.util.stringRes
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -269,7 +265,7 @@ class LedgerProposalRepositoryImpl(
         val pczt = proposalPczt
         if (pczt == null) {
             Twig.warn { "Ledger signing: no PCZT to sign" }
-            signingState.update { LedgerSigningState.Failed(unknownIssue) }
+            signingState.update { LedgerSigningState.Failed(LedgerIssue.unknown) }
             return
         }
         val pendingClose = closeJob
@@ -299,7 +295,7 @@ class LedgerProposalRepositoryImpl(
             val account = accountDataSource.getSelectedAccount()
             if (account !is LedgerAccount || !account.isBound) {
                 Twig.warn { "Ledger signing: the selected account has no Ledger binding" }
-                publish(session, LedgerSigningState.Failed(unboundIssue))
+                publish(session, LedgerSigningState.Failed(LedgerIssue.unbound))
                 return
             }
             if (!ledgerSigningDataSource.isLinked) {
@@ -316,13 +312,13 @@ class LedgerProposalRepositoryImpl(
             publish(session, LedgerSigningState.Failed(e.toLedgerIssue(LedgerIssueContext.SIGNING)))
         } catch (e: LedgerLinkMissingException) {
             Twig.warn { "Ledger signing: session failed with ${e.javaClass.simpleName}" }
-            publish(session, LedgerSigningState.Failed(disconnectedIssue))
+            publish(session, LedgerSigningState.Failed(LedgerIssue.disconnectedWhileSigning))
         } catch (e: LedgerBindingUnusableException) {
             Twig.warn { "Ledger signing: session failed with ${e.javaClass.simpleName}" }
-            publish(session, LedgerSigningState.Failed(unboundIssue))
+            publish(session, LedgerSigningState.Failed(LedgerIssue.unbound))
         } catch (e: Exception) {
             Twig.warn { "Ledger signing: session failed with ${e.javaClass.simpleName}" }
-            publish(session, LedgerSigningState.Failed(unknownIssue))
+            publish(session, LedgerSigningState.Failed(LedgerIssue.unknown))
         }
     }
 
@@ -561,30 +557,6 @@ class LedgerProposalRepositoryImpl(
     private companion object {
         val SCAN_TIMEOUT = 20.seconds
         val SETTLE_DELAY = 1.seconds
-
-        val unknownIssue =
-            LedgerIssue(
-                kind = LedgerIssueKind.UNKNOWN,
-                retry = LedgerIssueRetry.RECONNECT,
-                title = stringRes(R.string.ledger_error_unknown_title),
-                message = stringRes(R.string.ledger_error_unknown_message),
-            )
-
-        val unboundIssue =
-            LedgerIssue(
-                kind = LedgerIssueKind.UNBOUND,
-                retry = LedgerIssueRetry.NONE,
-                title = stringRes(R.string.ledger_sign_error_unbound_title),
-                message = stringRes(R.string.ledger_sign_error_unbound_message),
-            )
-
-        val disconnectedIssue =
-            LedgerIssue(
-                kind = LedgerIssueKind.DISCONNECTED,
-                retry = LedgerIssueRetry.RECONNECT,
-                title = stringRes(R.string.ledger_error_disconnected_title),
-                message = stringRes(R.string.ledger_sign_error_disconnected_message),
-            )
     }
 }
 

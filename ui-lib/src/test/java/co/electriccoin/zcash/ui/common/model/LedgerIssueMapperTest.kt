@@ -68,7 +68,12 @@ class LedgerIssueMapperTest {
         val issue = row.exception.toLedgerIssue(context)
         val label = "${row.name} in $context"
         assertEquals(kind, issue.kind, label)
-        assertEquals(row.retry, issue.retry, label)
+        val retry =
+            when (context) {
+                LedgerIssueContext.ENROLLMENT -> row.retry
+                LedgerIssueContext.SIGNING -> row.signingRetry
+            }
+        assertEquals(retry, issue.retry, label)
         assertEquals(copy.title, issue.title.resourceId(), label)
         assertEquals(copy.message, issue.message.resourceId(), label)
     }
@@ -99,10 +104,18 @@ class LedgerIssueMapperTest {
 
         return listOf(
             Row(
-                "UserRejected",
-                mockk<LedgerException.UserRejected>(relaxed = true),
+                "restartable UserRejected",
+                mockk<LedgerException.UserRejected>(relaxed = true) { every { isRestartable } returns true },
                 LedgerIssueKind.REJECTED,
                 LedgerIssueRetry.SAME_LINK,
+                importRejected,
+                signRejected
+            ),
+            Row(
+                "non-restartable UserRejected",
+                mockk<LedgerException.UserRejected>(relaxed = true) { every { isRestartable } returns false },
+                LedgerIssueKind.REJECTED,
+                LedgerIssueRetry.RECONNECT,
                 importRejected,
                 signRejected
             ),
@@ -185,7 +198,8 @@ class LedgerIssueMapperTest {
                 LedgerIssueRetry.RECONNECT,
                 unknown,
                 unbound,
-                signingKind = LedgerIssueKind.UNBOUND
+                signingKind = LedgerIssueKind.UNBOUND,
+                signingRetry = LedgerIssueRetry.NONE
             ),
             Row(
                 "TransactionNotSignable",
@@ -257,7 +271,8 @@ class LedgerIssueMapperTest {
                 LedgerIssueKind.PAIRING_FAILED,
                 LedgerIssueRetry.RECONNECT,
                 pairingFailed,
-                pairingFailed
+                signDisconnected,
+                signingKind = LedgerIssueKind.DISCONNECTED
             ),
             Row(
                 "Disconnected",
@@ -285,5 +300,6 @@ class LedgerIssueMapperTest {
         val enrollment: Copy,
         val signing: Copy,
         val signingKind: LedgerIssueKind = enrollmentKind,
+        val signingRetry: LedgerIssueRetry = retry,
     )
 }

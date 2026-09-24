@@ -15,6 +15,7 @@ import co.electriccoin.zcash.ui.common.provider.LedgerScannerProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
@@ -81,7 +82,7 @@ class LedgerSigningDataSourceTest {
         runTest {
             val transport = mockk<LedgerBluetoothTransport>(relaxed = true)
             coEvery { ledgerScannerProvider.connect(any()) } returns transport
-            val rejected = mockk<LedgerException.UserRejected>(relaxed = true)
+            val rejected = mockk<LedgerException.UserRejected>(relaxed = true) { every { isRestartable } returns true }
             coEvery { synchronizer.signPcztWithLedger(any(), any(), any(), any(), any()) } throws rejected
 
             dataSource.connect(device())
