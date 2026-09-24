@@ -35,8 +35,20 @@ import cash.z.ecc.android.sdk.model.voting.VotingNextStep
  * [record] never regresses a single bundle's own stored contribution, and [fraction] never
  * returns a lower value than it has already returned -- both are monotonic for this tracker's
  * lifetime, matching [SubmitVotesUseCase]'s existing per-submission ratchet discipline.
+ *
+ * Thread safety (Milan's review of PR #6, should-fix): [record]/[recordPlan]/[fraction]/
+ * [estimatedCompletedProposals] are each called from [SubmitVotesUseCase]'s
+ * `VotingRoundDriveProgressListener`, which [VotingRoundDriveProgressListener]'s own doc comment
+ * requires to be safe to call "from whichever native thread the round-driver's concurrent bundle
+ * tasks happen to be running on" -- i.e. this tracker's internal maps/vars can be mutated from
+ * several threads at once. Each public method is `synchronized` on [lock] to keep every read of
+ * this tracker's own mutable state consistent with every write; unsynchronized concurrent writes
+ * to the plain `MutableMap`s here would risk corrupting their internal structure (or throwing),
+ * not just producing a stale value. Each method's own critical section is a handful of map/int
+ * operations with no I/O or suspension, so this does not violate the "must not block" contract.
  */
 internal class VotingRoundProgressTracker {
+    private val lock = Any()
     private val bundleProgressByProposal = mutableMapOf<Int, MutableMap<Int, Float>>()
     private val delegationProgressByBundle = mutableMapOf<Int, Float>()
     private val planVoteCarryingBundleIndexes = mutableSetOf<Int>()
@@ -62,8 +74,8 @@ internal class VotingRoundProgressTracker {
         step: VotingNextStep?,
         proofProgress: Float?,
         voteCommitProposalId: Int? = null
-    ) {
-        if (step == null || proofProgress == null) return
+    ) = synchronized(lock) {
+        if (step == null || proofProgress == null) return@synchronized
         if (isDelegationStep(step)) {
             val bundleIndex = step.bundleIndex
             delegationProgressByBundle[bundleIndex] =
@@ -97,12 +109,13 @@ internal class VotingRoundProgressTracker {
      * empty list is a real, current "the plan has no vote-carrying bundles right now" and replaces
      * accordingly.
      */
-    fun recordPlan(voteCarryingBundleIndexes: List<Int>?) {
-        if (voteCarryingBundleIndexes != null) {
-            planVoteCarryingBundleIndexes.clear()
-            planVoteCarryingBundleIndexes += voteCarryingBundleIndexes
+    fun recordPlan(voteCarryingBundleIndexes: List<Int>?) =
+        synchronized(lock) {
+            if (voteCarryingBundleIndexes != null) {
+                planVoteCarryingBundleIndexes.clear()
+                planVoteCarryingBundleIndexes += voteCarryingBundleIndexes
+            }
         }
-    }
 
     /**
      * A 0..1 fraction of the round's total work, or `null` when nothing measurable exists yet
@@ -126,13 +139,14 @@ internal class VotingRoundProgressTracker {
     fun fraction(
         completedProposals: Int?,
         totalProposals: Int?
-    ): Float? {
-        val total = totalProposals?.takeIf { it > 0 } ?: return null
-        val combined =
-            (proposalCompletionFraction(completedProposals, total) + delegationFraction(total)).coerceIn(0f, 1f)
-        lastFraction = maxOf(lastFraction, combined)
-        return lastFraction.takeIf { it > 0f }
-    }
+    ): Float? =
+        synchronized(lock) {
+            val total = totalProposals?.takeIf { it > 0 } ?: return@synchronized null
+            val combined =
+                (proposalCompletionFraction(completedProposals, total) + delegationFraction(total)).coerceIn(0f, 1f)
+            lastFraction = maxOf(lastFraction, combined)
+            return@synchronized lastFraction.takeIf { it > 0f }
+        }
 
     /**
      * An ESTIMATE of how many proposals are complete, derived from [proposalCompletionFraction]
@@ -177,22 +191,23 @@ internal class VotingRoundProgressTracker {
     fun estimatedCompletedProposals(
         completedProposals: Int?,
         totalProposals: Int?
-    ): Int? {
-        val total = totalProposals?.takeIf { it > 0 } ?: return null
-        val authoritative = (completedProposals ?: 0).coerceAtMost(total)
-        if (authoritative >= total) {
-            lastEstimatedCompleted = total
-            return total
+    ): Int? =
+        synchronized(lock) {
+            val total = totalProposals?.takeIf { it > 0 } ?: return@synchronized null
+            val authoritative = (completedProposals ?: 0).coerceAtMost(total)
+            if (authoritative >= total) {
+                lastEstimatedCompleted = total
+                return@synchronized total
+            }
+            lastProposalFraction = maxOf(lastProposalFraction, proposalCompletionFraction(completedProposals, total))
+            if (lastProposalFraction <= 0f) return@synchronized null
+            // See PROPOSAL_ESTIMATE_EPSILON's own doc comment: absorbs Float round-trip error that
+            // would otherwise truncate a genuinely fully-measured proposal count short by one for
+            // many non-power-of-2 totals.
+            val estimate = (lastProposalFraction * total + PROPOSAL_ESTIMATE_EPSILON).toInt().coerceIn(0, total - 1)
+            lastEstimatedCompleted = maxOf(lastEstimatedCompleted, maxOf(estimate, authoritative))
+            return@synchronized lastEstimatedCompleted
         }
-        lastProposalFraction = maxOf(lastProposalFraction, proposalCompletionFraction(completedProposals, total))
-        if (lastProposalFraction <= 0f) return null
-        // See PROPOSAL_ESTIMATE_EPSILON's own doc comment: absorbs Float round-trip error that
-        // would otherwise truncate a genuinely fully-measured proposal count short by one for
-        // many non-power-of-2 totals.
-        val estimate = (lastProposalFraction * total + PROPOSAL_ESTIMATE_EPSILON).toInt().coerceIn(0, total - 1)
-        lastEstimatedCompleted = maxOf(lastEstimatedCompleted, maxOf(estimate, authoritative))
-        return lastEstimatedCompleted
-    }
 
     /**
      * The authoritative tally's fraction, or the locally-measured per-proposal fraction --

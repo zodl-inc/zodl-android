@@ -272,6 +272,13 @@ class SubmitVotesUseCase(
                     // doc comment for why a per-event bundle/proposal id was dropped instead.
                     var lastCompletedProposals: Int? = null
                     var lastTotalProposals: Int? = null
+                    // Guards lastCompletedProposals/lastTotalProposals: like
+                    // VotingRoundProgressTracker's own internal state (see its class doc comment),
+                    // these are mutated by progressListener below, which is called from whichever
+                    // native thread the round-driver's concurrent bundle tasks happen to be
+                    // running on -- unsynchronized read-maxOf-write from multiple threads risks a
+                    // lost update. Milan's review of PR #6, should-fix.
+                    val tallyLock = Any()
                     // Per-proposal progress tracker (each proposal's own fraction is the minimum
                     // across that proposal's own bundles, summed across every proposal currently
                     // in flight) -- moves visibly even in a many-proposal round, unlike tracking
@@ -283,10 +290,12 @@ class SubmitVotesUseCase(
                     val progressListener =
                         VotingRoundDriveProgressListener { progress ->
                             progress.tally?.let { tally ->
-                                lastCompletedProposals =
-                                    maxOf(lastCompletedProposals ?: 0, tally.completedProposals)
-                                lastTotalProposals =
-                                    maxOf(lastTotalProposals ?: 0, tally.totalProposals)
+                                synchronized(tallyLock) {
+                                    lastCompletedProposals =
+                                        maxOf(lastCompletedProposals ?: 0, tally.completedProposals)
+                                    lastTotalProposals =
+                                        maxOf(lastTotalProposals ?: 0, tally.totalProposals)
+                                }
                             }
                             progressTracker.record(
                                 progress.step,
@@ -294,16 +303,23 @@ class SubmitVotesUseCase(
                                 progress.voteCommitProposalId
                             )
                             progressTracker.recordPlan(progress.voteCarryingBundleIndexes)
+                            // Snapshot both vars together under the same lock they're written
+                            // under, rather than reading them individually below -- a plain var
+                            // read with no synchronization has no Java Memory Model guarantee of
+                            // seeing another thread's write at all, not just a risk of seeing a
+                            // stale one.
+                            val (completedForRead, totalForRead) =
+                                synchronized(tallyLock) { lastCompletedProposals to lastTotalProposals }
                             onProgress(
                                 VotingSubmissionProgress.RunningRound(
                                     completedProposals =
                                         progressTracker.estimatedCompletedProposals(
-                                            lastCompletedProposals,
-                                            lastTotalProposals
+                                            completedForRead,
+                                            totalForRead
                                         ),
-                                    totalProposals = lastTotalProposals,
+                                    totalProposals = totalForRead,
                                     proofProgress =
-                                        progressTracker.fraction(lastCompletedProposals, lastTotalProposals)
+                                        progressTracker.fraction(completedForRead, totalForRead)
                                 )
                             )
                             // CHP_BENCH — see ChpBenchLog.kt's own note: local-only, never merge.
@@ -322,16 +338,18 @@ class SubmitVotesUseCase(
                         runRoundWithBundleFailureRetry(
                             roundId,
                             onRetrying = {
+                                val (completedForRead, totalForRead) =
+                                    synchronized(tallyLock) { lastCompletedProposals to lastTotalProposals }
                                 onProgress(
                                     VotingSubmissionProgress.RunningRound(
                                         completedProposals =
                                             progressTracker.estimatedCompletedProposals(
-                                                lastCompletedProposals,
-                                                lastTotalProposals
+                                                completedForRead,
+                                                totalForRead
                                             ),
-                                        totalProposals = lastTotalProposals,
+                                        totalProposals = totalForRead,
                                         proofProgress =
-                                            progressTracker.fraction(lastCompletedProposals, lastTotalProposals),
+                                            progressTracker.fraction(completedForRead, totalForRead),
                                         isRetrying = true
                                     )
                                 )
@@ -530,21 +548,30 @@ class SubmitVotesUseCase(
 
         var lastCompletedProposals: Int? = null
         var lastTotalProposals: Int? = null
+        // Guards lastCompletedProposals/lastTotalProposals -- see the non-Keystone path's
+        // identical tallyLock (SubmitVotesUseCase.kt above) for why: progressListener is called
+        // from whichever native thread the round-driver's concurrent bundle tasks happen to be
+        // running on. Milan's review of PR #6, should-fix.
+        val tallyLock = Any()
         val progressTracker = VotingRoundProgressTracker()
         val progressListener =
             VotingRoundDriveProgressListener { progress ->
                 progress.tally?.let { tally ->
-                    lastCompletedProposals = maxOf(lastCompletedProposals ?: 0, tally.completedProposals)
-                    lastTotalProposals = maxOf(lastTotalProposals ?: 0, tally.totalProposals)
+                    synchronized(tallyLock) {
+                        lastCompletedProposals = maxOf(lastCompletedProposals ?: 0, tally.completedProposals)
+                        lastTotalProposals = maxOf(lastTotalProposals ?: 0, tally.totalProposals)
+                    }
                 }
                 progressTracker.record(progress.step, progress.proofProgress, progress.voteCommitProposalId)
                 progressTracker.recordPlan(progress.voteCarryingBundleIndexes)
+                val (completedForRead, totalForRead) =
+                    synchronized(tallyLock) { lastCompletedProposals to lastTotalProposals }
                 onProgress(
                     VotingSubmissionProgress.RunningRound(
                         completedProposals =
-                            progressTracker.estimatedCompletedProposals(lastCompletedProposals, lastTotalProposals),
-                        totalProposals = lastTotalProposals,
-                        proofProgress = progressTracker.fraction(lastCompletedProposals, lastTotalProposals)
+                            progressTracker.estimatedCompletedProposals(completedForRead, totalForRead),
+                        totalProposals = totalForRead,
+                        proofProgress = progressTracker.fraction(completedForRead, totalForRead)
                     )
                 )
             }
@@ -554,15 +581,17 @@ class SubmitVotesUseCase(
                 roundId,
                 unexpectedResponseMessage = "Keystone round session run() returned no report",
                 onRetrying = {
+                    val (completedForRead, totalForRead) =
+                        synchronized(tallyLock) { lastCompletedProposals to lastTotalProposals }
                     onProgress(
                         VotingSubmissionProgress.RunningRound(
                             completedProposals =
                                 progressTracker.estimatedCompletedProposals(
-                                    lastCompletedProposals,
-                                    lastTotalProposals
+                                    completedForRead,
+                                    totalForRead
                                 ),
-                            totalProposals = lastTotalProposals,
-                            proofProgress = progressTracker.fraction(lastCompletedProposals, lastTotalProposals),
+                            totalProposals = totalForRead,
+                            proofProgress = progressTracker.fraction(completedForRead, totalForRead),
                             isRetrying = true
                         )
                     )
