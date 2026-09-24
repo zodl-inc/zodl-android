@@ -1006,6 +1006,7 @@ class KtorVotingApiProvider(
      * Resolves the routing strategy for a vote server request.
      * @throws IllegalStateException if the URL cannot be reached (predefined server with Tor off and no OHTTP support)
      */
+    @Suppress("CyclomaticComplexMethod", "ComplexCondition")
     private suspend fun resolveVoteRoute(
         url: String,
         torEnabled: Boolean,
