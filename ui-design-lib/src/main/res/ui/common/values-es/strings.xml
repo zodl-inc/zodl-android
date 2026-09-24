@@ -127,6 +127,7 @@
     <string name="keystoneHW">Hardware Keystone</string>
     <string name="currentlyConnected">Conectado actualmente</string>
     <string name="connectedHWInfo">Si desconectas ahora, tu Keystone dejará de estar vinculado con tu billetera Zodl.</string>
+    <string name="connectedHWInfo_ledger">Si desconectas ahora, tu Ledger dejará de estar vinculado con tu billetera Zodl.</string>
     <string name="disconnectHWWallet_title">Desconectar</string>
     <string name="disconnectHWWallet_sheetDesc">Desconectar el hardware wallet no se puede deshacer.</string>
     <string name="disconnectHWWallet_failureTitle">Error al Desconectar</string>

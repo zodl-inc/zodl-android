@@ -86,6 +86,12 @@ class DisconnectVM(
                     stringRes(R.string.disconnectHWWallet_bullet2),
                     stringRes(R.string.disconnectHWWallet_bullet3),
                 ),
+            icon =
+                if (hwAccount is LedgerAccount) {
+                    co.electriccoin.zcash.ui.design.R.drawable.ic_item_ledger
+                } else {
+                    co.electriccoin.zcash.ui.design.R.drawable.ic_item_keystone
+                },
             connectedTitle =
                 if (hwAccount is LedgerAccount) {
                     stringRes(R.string.ledgerHW)
@@ -93,7 +99,12 @@ class DisconnectVM(
                     stringRes(R.string.keystoneHW)
                 },
             connectedStatus = stringRes(R.string.currentlyConnected),
-            infoText = stringRes(R.string.connectedHWInfo),
+            infoText =
+                if (hwAccount is LedgerAccount) {
+                    stringRes(R.string.connectedHWInfo_ledger)
+                } else {
+                    stringRes(R.string.connectedHWInfo)
+                },
             disconnectButton =
                 ButtonState(
                     text = stringRes(R.string.disconnectHWWallet_title),
