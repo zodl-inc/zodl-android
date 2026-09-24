@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.common.repository.BiometricRepository
 import co.electriccoin.zcash.ui.common.repository.BiometricsCancelledException
 import co.electriccoin.zcash.ui.common.repository.BiometricsFailureException
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
+import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.MetadataRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
@@ -196,6 +197,7 @@ class SubmitProposalUseCaseTest {
         val accountDataSource = mockk<AccountDataSource>(relaxed = true)
         val zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true)
         val keystoneProposalRepository = mockk<KeystoneProposalRepository>(relaxed = true)
+        val ledgerProposalRepository = mockk<LedgerProposalRepository>(relaxed = true)
         val biometricRepository = mockk<BiometricRepository>(relaxed = true)
         val swapRepository = mockk<SwapRepository>(relaxed = true)
         val metadataRepository = mockk<MetadataRepository>(relaxed = true)
@@ -207,6 +209,7 @@ class SubmitProposalUseCaseTest {
                 accountDataSource = accountDataSource,
                 zashiProposalRepository = zashiProposalRepository,
                 keystoneProposalRepository = keystoneProposalRepository,
+                ledgerProposalRepository = ledgerProposalRepository,
                 biometricRepository = biometricRepository,
                 swapRepository = swapRepository,
                 metadataRepository = metadataRepository,

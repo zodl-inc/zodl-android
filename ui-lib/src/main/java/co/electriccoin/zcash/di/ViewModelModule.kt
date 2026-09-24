@@ -77,6 +77,7 @@ import co.electriccoin.zcash.ui.screen.scankeystone.viewmodel.ScanKeystoneSignIn
 import co.electriccoin.zcash.ui.screen.selectkeystoneaccount.viewmodel.SelectKeystoneAccountViewModel
 import co.electriccoin.zcash.ui.screen.send.SendViewModel
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionVM
+import co.electriccoin.zcash.ui.screen.signledgertransaction.LedgerSignVM
 import co.electriccoin.zcash.ui.screen.support.viewmodel.SupportViewModel
 import co.electriccoin.zcash.ui.screen.swap.SwapVM
 import co.electriccoin.zcash.ui.screen.swap.ab.AddSwapABContactVM
@@ -220,5 +221,6 @@ val viewModelModule =
         viewModelOf(::LedgerConnectVM)
         viewModelOf(::LedgerConnectedVM)
         viewModelOf(::LedgerDeviceScanVM)
+        viewModelOf(::LedgerSignVM)
         viewModelOf(::KeepOpenVM)
     }

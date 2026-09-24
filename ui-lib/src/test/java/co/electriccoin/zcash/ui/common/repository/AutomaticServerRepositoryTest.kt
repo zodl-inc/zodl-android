@@ -76,6 +76,12 @@ class AutomaticServerRepositoryTest {
             every { submitState } returns MutableStateFlow<SubmitProposalState?>(null)
         }
 
+    private val ledgerProposalRepository =
+        mockk<LedgerProposalRepository>(relaxed = true) {
+            every { transactionProposal } returns MutableStateFlow<TransactionProposal?>(null)
+            every { submitState } returns MutableStateFlow<SubmitProposalState?>(null)
+        }
+
     private val walletRepository = mockk<WalletRepository>(relaxed = true)
 
     private val timeSource = TestTimeSource()
@@ -85,6 +91,7 @@ class AutomaticServerRepositoryTest {
             walletRepository = walletRepository,
             zashiProposalRepository = zashiProposalRepository,
             keystoneProposalRepository = keystoneProposalRepository,
+            ledgerProposalRepository = ledgerProposalRepository,
             applicationStateProvider = mockk(relaxed = true),
             synchronizerProvider = synchronizerProvider,
             persistableWalletProvider = persistableWalletProvider,

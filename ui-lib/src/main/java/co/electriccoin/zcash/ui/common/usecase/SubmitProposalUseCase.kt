@@ -9,18 +9,19 @@ import co.electriccoin.zcash.ui.common.datasource.SwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
-import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.repository.BiometricRepository
 import co.electriccoin.zcash.ui.common.repository.BiometricRequest
 import co.electriccoin.zcash.ui.common.repository.BiometricsCancelledException
 import co.electriccoin.zcash.ui.common.repository.BiometricsFailureException
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
+import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.MetadataRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionArgs
+import co.electriccoin.zcash.ui.screen.signledgertransaction.LedgerSignArgs
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressArgs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +33,7 @@ class SubmitProposalUseCase(
     private val accountDataSource: AccountDataSource,
     private val zashiProposalRepository: ZashiProposalRepository,
     private val keystoneProposalRepository: KeystoneProposalRepository,
+    private val ledgerProposalRepository: LedgerProposalRepository,
     private val biometricRepository: BiometricRepository,
     private val swapRepository: SwapRepository,
     private val metadataRepository: MetadataRepository,
@@ -43,7 +45,8 @@ class SubmitProposalUseCase(
     internal var scope: CoroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     /**
-     * Submit Zashi proposal and navigate to Transaction Progress screen or navigate to Keystone PCZT flow.
+     * Submit Zashi proposal and navigate to Transaction Progress screen, navigate to Keystone PCZT flow, or open
+     * the Ledger sign sheet over the confirmation screen.
      */
     suspend operator fun invoke() {
         try {
@@ -61,7 +64,7 @@ class SubmitProposalUseCase(
             val proposal =
                 when (account) {
                     is KeystoneAccount -> keystoneProposalRepository.getTransactionProposal()
-                    is LedgerAccount -> throw LedgerOperationUnsupportedException()
+                    is LedgerAccount -> ledgerProposalRepository.getTransactionProposal()
                     is ZashiAccount -> zashiProposalRepository.getTransactionProposal()
                 }
             if (proposal is SwapTransactionProposal) {
@@ -77,7 +80,7 @@ class SubmitProposalUseCase(
                 }
 
                 is LedgerAccount -> {
-                    throw LedgerOperationUnsupportedException()
+                    navigationRouter.forward(LedgerSignArgs)
                 }
 
                 is ZashiAccount -> {

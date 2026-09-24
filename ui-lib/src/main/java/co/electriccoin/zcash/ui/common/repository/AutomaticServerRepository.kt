@@ -53,6 +53,7 @@ class AutomaticServerRepositoryImpl(
     private val walletRepository: WalletRepository,
     private val zashiProposalRepository: ZashiProposalRepository,
     private val keystoneProposalRepository: KeystoneProposalRepository,
+    private val ledgerProposalRepository: LedgerProposalRepository,
     private val applicationStateProvider: ApplicationStateProvider,
     private val synchronizerProvider: SynchronizerProvider,
     private val persistableWalletProvider: PersistableWalletProvider,
@@ -67,7 +68,9 @@ class AutomaticServerRepositoryImpl(
             zashiProposalRepository.transactionProposal.value != null ||
                 zashiProposalRepository.submitState.value != null ||
                 keystoneProposalRepository.transactionProposal.value != null ||
-                keystoneProposalRepository.submitState.value != null
+                keystoneProposalRepository.submitState.value != null ||
+                ledgerProposalRepository.transactionProposal.value != null ||
+                ledgerProposalRepository.submitState.value != null
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val walletBalances =

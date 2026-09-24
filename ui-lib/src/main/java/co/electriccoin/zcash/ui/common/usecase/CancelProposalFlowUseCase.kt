@@ -11,6 +11,7 @@ import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
+import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.screen.pay.PayArgs
@@ -20,6 +21,7 @@ import co.electriccoin.zcash.ui.screen.swap.SwapArgs
 class CancelProposalFlowUseCase(
     private val zashiProposalRepository: ZashiProposalRepository,
     private val keystoneProposalRepository: KeystoneProposalRepository,
+    private val ledgerProposalRepository: LedgerProposalRepository,
     private val navigationRouter: NavigationRouter,
     private val observeClearSend: ObserveClearSendUseCase,
     private val accountDataSource: AccountDataSource,
@@ -31,11 +33,12 @@ class CancelProposalFlowUseCase(
             when (accountDataSource.getSelectedAccount()) {
                 is ZashiAccount -> zashiProposalRepository.getTransactionProposal()
                 is KeystoneAccount -> keystoneProposalRepository.getTransactionProposal()
-                is LedgerAccount -> null
+                is LedgerAccount -> ledgerProposalRepository.getTransactionProposal()
             }
 
         zashiProposalRepository.clear()
         keystoneProposalRepository.clear()
+        ledgerProposalRepository.clear()
 
         when (proposal) {
             is ExactInputSwapTransactionProposal -> {

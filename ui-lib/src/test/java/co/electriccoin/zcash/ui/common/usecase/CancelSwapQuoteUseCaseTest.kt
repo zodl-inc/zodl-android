@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.common.usecase
 
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
+import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import io.mockk.mockk
@@ -24,6 +25,7 @@ class CancelSwapQuoteUseCaseTest {
             swapRepository = swapRepository,
             zashiProposalRepository = zashiProposalRepository,
             keystoneProposalRepository = keystoneProposalRepository,
+            ledgerProposalRepository = mockk<LedgerProposalRepository>(relaxed = true),
             navigationRouter = navigationRouter
         )
 

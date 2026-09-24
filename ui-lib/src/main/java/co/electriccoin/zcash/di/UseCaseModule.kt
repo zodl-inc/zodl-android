@@ -3,6 +3,7 @@ package co.electriccoin.zcash.di
 import co.electriccoin.zcash.ui.common.mapper.SwapSupportMapper
 import co.electriccoin.zcash.ui.common.usecase.ApplyTransactionFiltersUseCase
 import co.electriccoin.zcash.ui.common.usecase.ApplyTransactionFulltextFiltersUseCase
+import co.electriccoin.zcash.ui.common.usecase.CancelLedgerSigningUseCase
 import co.electriccoin.zcash.ui.common.usecase.CancelProposalFlowUseCase
 import co.electriccoin.zcash.ui.common.usecase.CancelSwapQuoteUseCase
 import co.electriccoin.zcash.ui.common.usecase.CancelSwapUseCase
@@ -97,6 +98,7 @@ import co.electriccoin.zcash.ui.common.usecase.ObserveClearSendUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveContactByAddressUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveFastestServersUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
+import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerSigningStateUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSeedMismatchUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
@@ -123,8 +125,10 @@ import co.electriccoin.zcash.ui.common.usecase.RescanQrUseCase
 import co.electriccoin.zcash.ui.common.usecase.ResetTransactionFiltersUseCase
 import co.electriccoin.zcash.ui.common.usecase.RestoreWalletUseCase
 import co.electriccoin.zcash.ui.common.usecase.ResyncErrorMapperUseCase
+import co.electriccoin.zcash.ui.common.usecase.RetryLedgerSigningUseCase
 import co.electriccoin.zcash.ui.common.usecase.SaveABContactUseCase
 import co.electriccoin.zcash.ui.common.usecase.SaveORSwapUseCase
+import co.electriccoin.zcash.ui.common.usecase.SelectLedgerSigningDeviceUseCase
 import co.electriccoin.zcash.ui.common.usecase.SelectWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.SendEmailUseCase
 import co.electriccoin.zcash.ui.common.usecase.SendSupportEmailUseCase
@@ -136,8 +140,10 @@ import co.electriccoin.zcash.ui.common.usecase.ShareQRUseCase
 import co.electriccoin.zcash.ui.common.usecase.ShieldFundsFromMessageUseCase
 import co.electriccoin.zcash.ui.common.usecase.ShieldFundsUseCase
 import co.electriccoin.zcash.ui.common.usecase.ShowErrorUseCase
+import co.electriccoin.zcash.ui.common.usecase.StartLedgerSigningUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitIncreaseEphemeralGapLimitUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitKSProposalUseCase
+import co.electriccoin.zcash.ui.common.usecase.SubmitLedgerProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.UpdateABContactUseCase
 import co.electriccoin.zcash.ui.common.usecase.UpdateSwapActivityMetadataUseCase
@@ -215,6 +221,12 @@ val useCaseModule =
         factoryOf(::OnAddressScannedUseCase)
         factoryOf(::ParseKeystonePCZTUseCase)
         singleOf(::SubmitKSProposalUseCase)
+        singleOf(::SubmitLedgerProposalUseCase)
+        factoryOf(::ObserveLedgerSigningStateUseCase)
+        factoryOf(::StartLedgerSigningUseCase)
+        factoryOf(::SelectLedgerSigningDeviceUseCase)
+        factoryOf(::RetryLedgerSigningUseCase)
+        factoryOf(::CancelLedgerSigningUseCase)
         factoryOf(::ParseKeystoneSignInRequestUseCase)
         factoryOf(::CancelProposalFlowUseCase)
         factoryOf(::ObserveProposalUseCase)

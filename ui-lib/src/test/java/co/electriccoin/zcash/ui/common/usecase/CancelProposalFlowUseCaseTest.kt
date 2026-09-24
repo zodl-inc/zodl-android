@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.common.datasource.ShieldTransactionProposal
 import co.electriccoin.zcash.ui.common.migration.MigrationNavigator
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
+import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import io.mockk.coEvery
@@ -41,6 +42,7 @@ class CancelProposalFlowUseCaseTest {
                 CancelProposalFlowUseCase(
                     zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true),
                     keystoneProposalRepository = keystoneProposalRepository,
+                    ledgerProposalRepository = mockk<LedgerProposalRepository>(relaxed = true),
                     navigationRouter = router,
                     observeClearSend = mockk<ObserveClearSendUseCase>(relaxed = true),
                     accountDataSource =
@@ -71,6 +73,7 @@ class CancelProposalFlowUseCaseTest {
                 CancelProposalFlowUseCase(
                     zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true),
                     keystoneProposalRepository = keystoneProposalRepository,
+                    ledgerProposalRepository = mockk<LedgerProposalRepository>(relaxed = true),
                     navigationRouter = router,
                     observeClearSend = mockk<ObserveClearSendUseCase>(relaxed = true),
                     accountDataSource =

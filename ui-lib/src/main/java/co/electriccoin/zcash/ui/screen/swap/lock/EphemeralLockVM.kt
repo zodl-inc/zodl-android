@@ -6,6 +6,7 @@ import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
+import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.common.usecase.ObserveProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitIncreaseEphemeralGapLimitUseCase
@@ -28,6 +29,7 @@ internal class EphemeralLockVM(
     private val submitIncreaseEphemeralGapLimit: SubmitIncreaseEphemeralGapLimitUseCase,
     private val zashiProposalRepository: ZashiProposalRepository,
     private val keystoneProposalRepository: KeystoneProposalRepository,
+    private val ledgerProposalRepository: LedgerProposalRepository,
 ) : ViewModel() {
     val state: StateFlow<EphemeralLockState?> =
         observeProposal
@@ -77,6 +79,7 @@ internal class EphemeralLockVM(
     private fun onBack() {
         zashiProposalRepository.clear()
         keystoneProposalRepository.clear()
+        ledgerProposalRepository.clear()
         navigationRouter.backToRoot()
     }
 

@@ -23,6 +23,8 @@ import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
 import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
+import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.MINIMUM_EVALUATION_INTERVAL
 import co.electriccoin.zcash.ui.common.repository.MockOrchardBalanceRepository
 import co.electriccoin.zcash.ui.common.repository.MockOrchardBalanceRepositoryImpl
@@ -52,6 +54,7 @@ val repositoryModule =
         singleOf(::BiometricRepositoryImpl) bind BiometricRepository::class
         singleOf(::KeystoneProposalRepositoryImpl) bind KeystoneProposalRepository::class
         singleOf(::LedgerPairingRepositoryImpl) bind LedgerPairingRepository::class
+        singleOf(::LedgerProposalRepositoryImpl) bind LedgerProposalRepository::class
         singleOf(::TransactionRepositoryImpl) bind TransactionRepository::class
         singleOf(::TransactionFilterRepositoryImpl) bind TransactionFilterRepository::class
         singleOf(::ZashiProposalRepositoryImpl) bind ZashiProposalRepository::class

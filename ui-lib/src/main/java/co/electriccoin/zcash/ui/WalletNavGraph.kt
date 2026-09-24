@@ -171,6 +171,8 @@ import co.electriccoin.zcash.ui.screen.send.Send
 import co.electriccoin.zcash.ui.screen.send.WrapSend
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionArgs
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionScreen
+import co.electriccoin.zcash.ui.screen.signledgertransaction.LedgerSignArgs
+import co.electriccoin.zcash.ui.screen.signledgertransaction.LedgerSignScreen
 import co.electriccoin.zcash.ui.screen.swap.SwapArgs
 import co.electriccoin.zcash.ui.screen.swap.SwapScreen
 import co.electriccoin.zcash.ui.screen.swap.ab.AddSwapABContactArgs
@@ -268,6 +270,7 @@ fun NavGraphBuilder.walletNavGraph(
         composable<ScanKeystoneSignInRequest> { WrapScanKeystoneSignInRequest() }
         composable<ScanKeystonePCZTRequest> { WrapScanKeystonePCZTRequest() }
         composable<SignKeystoneTransactionArgs> { SignKeystoneTransactionScreen() }
+        dialogComposable<LedgerSignArgs> { LedgerSignScreen() }
         dialogComposable<AccountListArgs> { AccountListScreen() }
         composable<ScanArgs> { ScanZashiAddressScreen(it.toRoute()) }
         composable(NavigationTargets.EXPORT_PRIVATE_DATA) { WrapExportPrivateData() }
