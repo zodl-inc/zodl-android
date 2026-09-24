@@ -1,6 +1,8 @@
 package co.electriccoin.zcash.ui.screen.signledgertransaction
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.annotation.StringRes
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
@@ -16,10 +18,10 @@ import co.electriccoin.zcash.ui.common.usecase.SelectLedgerSigningDeviceUseCase
 import co.electriccoin.zcash.ui.common.usecase.StartLedgerSigningUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitLedgerProposalUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
-import co.electriccoin.zcash.ui.design.component.ButtonStyle
-import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceItemState
+import co.electriccoin.zcash.ui.util.SettingsUtil
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -32,13 +34,19 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Drives the Ledger sign sheet. The session itself lives in the repository; this only renders its
- * phase and forwards the user's choices. Device identifiers are used as selection keys only.
+ * Drives the Ledger sign sheet. The session itself lives in the repository; this renders its phase,
+ * forwards the user's choices and owns only what the screen's Bluetooth gate reports. Device
+ * identifiers are used as selection keys only.
+ *
+ * Signing starts once the gate reports the permissions granted, which it also does on every resume,
+ * so coming back from Settings with the permission granted starts the session without a tap.
  *
  * An empty repository at start means the process was recreated under the sheet: there is nothing
  * left to sign, so the wallet root is shown instead.
  */
+@Suppress("TooManyFunctions")
 class LedgerSignVM(
+    application: Application,
     private val observeLedgerSigningState: ObserveLedgerSigningStateUseCase,
     private val observeProposal: ObserveProposalUseCase,
     private val startLedgerSigning: StartLedgerSigningUseCase,
@@ -47,12 +55,36 @@ class LedgerSignVM(
     private val cancelLedgerSigning: CancelLedgerSigningUseCase,
     private val submitLedgerProposal: SubmitLedgerProposalUseCase,
     private val navigationRouter: NavigationRouter,
-) : ViewModel() {
+) : AndroidViewModel(application) {
+    private val permissionDenial = MutableStateFlow<PermissionDenial?>(null)
+
+    private val permissionRequestNonce = MutableStateFlow(0)
+
+    private val enableBluetoothRequestNonce = MutableStateFlow(0)
+
     private val selectedIdentifier = MutableStateFlow<String?>(null)
 
+    private val hasProposal = CompletableDeferred<Boolean>()
+
     val state: StateFlow<LedgerSignSheetState?> =
-        combine(observeLedgerSigningState(), selectedIdentifier) { signingState, selected ->
-            createState(signingState, selected)
+        combine(
+            observeLedgerSigningState(),
+            permissionDenial,
+            permissionRequestNonce,
+            enableBluetoothRequestNonce,
+            selectedIdentifier,
+        ) { signingState, denial, permissionNonce, enableBluetoothNonce, selected ->
+            LedgerSignSheetState(
+                content = createContent(signingState, denial, selected),
+                cancelButton =
+                    ButtonState(
+                        text = stringRes(R.string.ledger_sign_cancel),
+                        onClick = ::onCancelClick,
+                    ),
+                permissionRequestNonce = permissionNonce,
+                enableBluetoothRequestNonce = enableBluetoothNonce,
+                onBack = {},
+            )
         }.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(ANDROID_STATE_FLOW_TIMEOUT),
@@ -61,10 +93,10 @@ class LedgerSignVM(
 
     init {
         viewModelScope.launch {
-            if (observeProposal.observeNullable().first() == null) {
+            val isPresent = observeProposal.observeNullable().first() != null
+            hasProposal.complete(isPresent)
+            if (!isPresent) {
                 navigationRouter.backToRoot()
-            } else {
-                startLedgerSigning()
             }
         }
         viewModelScope.launch {
@@ -73,19 +105,115 @@ class LedgerSignVM(
         }
     }
 
-    private fun createState(
+    /**
+     * Starts the session when none has run yet, or restarts one that failed for want of the
+     * permissions; a session already under way is left alone.
+     */
+    fun onPermissionsGranted() {
+        permissionDenial.update { null }
+        viewModelScope.launch {
+            if (!hasProposal.await()) return@launch
+            when (val signingState = observeLedgerSigningState().value) {
+                null -> {
+                    startLedgerSigning()
+                }
+
+                is LedgerSigningState.Failed -> {
+                    if (signingState.issue.kind == LedgerIssueKind.PERMISSIONS) retryLedgerSigning()
+                }
+
+                else -> {
+                    Unit
+                }
+            }
+        }
+    }
+
+    fun onPermissionsDenied(canRequestAgain: Boolean) {
+        permissionDenial.update { PermissionDenial(canRequestAgain) }
+    }
+
+    /**
+     * The system dialog turned Bluetooth on; the failed session can now look for the device again.
+     */
+    fun onBluetoothEnabled() = retryLedgerSigning()
+
+    /**
+     * The user declined the system dialog; the Bluetooth issue is still on the sheet, so there is
+     * nothing to restore.
+     */
+    fun onBluetoothEnableDeclined() = Unit
+
+    private fun createContent(
         signingState: LedgerSigningState?,
+        denial: PermissionDenial?,
         selected: String?,
-    ): LedgerSignSheetState {
-        val selecting = signingState as? LedgerSigningState.Selecting
+    ): LedgerSignContent {
+        if (denial != null) {
+            return issueContent(LedgerIssue.permissions, denial.canRequestAgain)
+        }
+        return when (signingState) {
+            null,
+            LedgerSigningState.Scanning -> {
+                progress(R.string.ledger_sign_scanning)
+            }
+
+            is LedgerSigningState.Selecting -> {
+                devicesContent(signingState, selected)
+            }
+
+            LedgerSigningState.Connecting -> {
+                progress(R.string.ledger_sign_connecting)
+            }
+
+            LedgerSigningState.Preparing -> {
+                progress(R.string.ledger_sign_preparing)
+            }
+
+            is LedgerSigningState.Streaming -> {
+                progress(R.string.ledger_sign_streaming)
+            }
+
+            LedgerSigningState.AwaitingReview -> {
+                progress(R.string.ledger_sign_awaitingReview, isSpinning = false)
+            }
+
+            LedgerSigningState.Signing,
+            LedgerSigningState.Signed -> {
+                progress(R.string.ledger_sign_signing)
+            }
+
+            is LedgerSigningState.Failed -> {
+                issueContent(signingState.issue, canRequestPermissionsAgain = false)
+            }
+        }
+    }
+
+    private fun progress(
+        @StringRes message: Int,
+        isSpinning: Boolean = true,
+    ) = LedgerSignContent.Progress(
+        title = stringRes(R.string.ledger_sign_title),
+        message = stringRes(message),
+        isSpinning = isSpinning,
+    )
+
+    /**
+     * A selection made on the sheet wins over the device picked in an earlier attempt; either only
+     * counts while that device is still listed.
+     */
+    private fun devicesContent(
+        selecting: LedgerSigningState.Selecting,
+        selected: String?,
+    ): LedgerSignContent.Devices {
         val effectiveSelection =
-            (selected ?: selecting?.selectedIdentifier)
-                ?.takeIf { identifier -> selecting?.devices?.any { it.identifier == identifier } == true }
-        val issue = (signingState as? LedgerSigningState.Failed)?.issue
-        return LedgerSignSheetState(
-            phase = signingState.toPhase(),
+            (selected ?: selecting.selectedIdentifier)
+                ?.takeIf { identifier -> selecting.devices.any { it.identifier == identifier } }
+        return LedgerSignContent.Devices(
+            title = stringRes(R.string.ledger_sign_select_title),
+            message = stringRes(R.string.ledger_sign_select_message),
             devices =
-                selecting?.devices.orEmpty().map { device ->
+                selecting.devices.map { device ->
                     LedgerDeviceItemState(
                         name = stringRes(device.name),
                         isSelected = device.identifier == effectiveSelection,
@@ -93,38 +221,66 @@ class LedgerSignVM(
                         onClick = { selectedIdentifier.update { device.identifier } },
                     )
                 },
-            issueTitle = issue?.title,
-            issueMessage = issue?.message,
-            primaryButton =
-                when {
-                    selecting != null -> {
-                        ButtonState(
-                            text = stringRes(R.string.ledger_scan_select_cta),
-                            isEnabled = effectiveSelection != null,
-                            onClick = { effectiveSelection?.let(::onConnectClick) },
-                        )
-                    }
-
-                    issue != null && issue.hasRetry() -> {
-                        ButtonState(
-                            text = stringRes(R.string.ledger_error_tryAgain),
-                            onClick = ::onTryAgainClick,
-                        )
-                    }
-
-                    else -> {
-                        null
-                    }
-                },
-            cancelButton =
+            connectButton =
                 ButtonState(
-                    text = stringRes(R.string.ledger_sign_cancel),
-                    style = ButtonStyle.DESTRUCTIVE2,
-                    onClick = ::onCancelClick,
+                    text = stringRes(R.string.ledger_sign_select_cta),
+                    isEnabled = effectiveSelection != null,
+                    onClick = { effectiveSelection?.let(::onConnectClick) },
                 ),
-            onBack = {},
         )
     }
+
+    private fun issueContent(
+        issue: LedgerIssue,
+        canRequestPermissionsAgain: Boolean,
+    ) = LedgerSignContent.Issue(
+        icon = issue.icon,
+        title = issue.title,
+        message = issue.message,
+        primary = issuePrimary(issue.kind, canRequestPermissionsAgain),
+    )
+
+    /**
+     * A permission the system can still ask for is requested again in-app; one denied for good
+     * only Settings can grant. Bluetooth that is off is turned on through the system dialog. Kinds
+     * nothing in the app can fix leave Cancel Transaction as the only way on.
+     */
+    private fun issuePrimary(
+        kind: LedgerIssueKind,
+        canRequestPermissionsAgain: Boolean,
+    ): ButtonState? =
+        when (kind) {
+            LedgerIssueKind.PERMISSIONS -> {
+                if (canRequestPermissionsAgain) {
+                    tryAgain(::onRequestPermissionsAgainClick)
+                } else {
+                    ButtonState(
+                        text = stringRes(R.string.ledger_error_permissions_cta),
+                        onClick = ::onOpenSettingsClick,
+                    )
+                }
+            }
+
+            LedgerIssueKind.BLUETOOTH_OFF -> {
+                tryAgain(::onEnableBluetoothClick)
+            }
+
+            LedgerIssueKind.BLUETOOTH_UNAVAILABLE,
+            LedgerIssueKind.NOT_SIGNABLE,
+            LedgerIssueKind.UNBOUND -> {
+                null
+            }
+
+            else -> {
+                tryAgain(::onTryAgainClick)
+            }
+        }
+
+    private fun tryAgain(onClick: () -> Unit) =
+        ButtonState(
+            text = stringRes(R.string.ledger_error_tryAgain),
+            onClick = onClick,
+        )
 
     private fun onConnectClick(identifier: String) {
         selectedIdentifier.update { null }
@@ -136,24 +292,30 @@ class LedgerSignVM(
         retryLedgerSigning()
     }
 
+    /**
+     * The denial stays on the sheet while the system asks again; the gate reports the answer.
+     */
+    private fun onRequestPermissionsAgainClick() {
+        permissionRequestNonce.update { it + 1 }
+    }
+
+    private fun onEnableBluetoothClick() {
+        enableBluetoothRequestNonce.update { it + 1 }
+    }
+
+    /**
+     * The gate's resume check reports the permissions granted on the way back, which starts the
+     * session.
+     */
+    private fun onOpenSettingsClick() {
+        getApplication<Application>().startActivity(
+            SettingsUtil.newSettingsIntent(getApplication<Application>().packageName)
+        )
+    }
+
     private fun onCancelClick() = cancelLedgerSigning()
 }
 
-private fun LedgerIssue.hasRetry() =
-    kind != LedgerIssueKind.BLUETOOTH_UNAVAILABLE &&
-        kind != LedgerIssueKind.NOT_SIGNABLE &&
-        kind != LedgerIssueKind.UNBOUND
-
-private fun LedgerSigningState?.toPhase(): StringResource =
-    when (this) {
-        null -> stringRes("Starting…")
-        LedgerSigningState.Scanning -> stringRes("Looking for your Ledger…")
-        is LedgerSigningState.Selecting -> stringRes("Select your device")
-        LedgerSigningState.Connecting -> stringRes("Connecting to your Ledger…")
-        LedgerSigningState.Preparing -> stringRes("Preparing the transaction…")
-        is LedgerSigningState.Streaming -> stringRes("Sending to your Ledger ($sent/$total)")
-        LedgerSigningState.AwaitingReview -> stringRes("Confirm the transaction on your Ledger")
-        LedgerSigningState.Signing -> stringRes("Signing…")
-        LedgerSigningState.Signed -> stringRes("Signed")
-        is LedgerSigningState.Failed -> stringRes("Failed")
-    }
+private data class PermissionDenial(
+    val canRequestAgain: Boolean,
+)

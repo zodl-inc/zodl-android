@@ -28,6 +28,7 @@ import co.electriccoin.zcash.ui.design.util.getValue
 internal fun ColumnScope.LedgerErrorContent(
     state: LedgerErrorContentState,
     modifier: Modifier = Modifier,
+    primaryModifier: Modifier = Modifier,
 ) {
     Column(
         modifier =
@@ -66,10 +67,12 @@ internal fun ColumnScope.LedgerErrorContent(
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(24.dp))
-        ZashiButton(
-            state = state.primary,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        state.primary?.let { primary ->
+            ZashiButton(
+                state = primary,
+                modifier = primaryModifier.fillMaxWidth(),
+            )
+        }
         state.secondary?.let { secondary ->
             Spacer(Modifier.height(12.dp))
             ZashiButton(
