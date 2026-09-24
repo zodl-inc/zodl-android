@@ -40,6 +40,12 @@ class VotingKeystoneSessionHolder(
 ) {
     private val mutex = Mutex()
     private var openRoundId: String? = null
+    // Keyed on (account, round), not round alone: without this, switching Keystone accounts on
+    // the SAME round -- start signing on account A, back out, switch to account B, open the same
+    // round -- read openRoundId == roundId as "already open" and reused A's session for B.
+    // getKeystoneSigningRequests then handed out A's PCZTs, and setBallotIntents/runToCompletion
+    // wrote B's choices into A's round state.
+    private var openAccountUuidString: String? = null
     private var dbHandle: Long? = null
     private var roundSession: VotingRoundSession? = null
 
@@ -74,7 +80,7 @@ class VotingKeystoneSessionHolder(
         voteEndTimeSeconds: Long,
         delegationInputs: VotingDelegationInputs
     ) = mutex.withLock {
-        if (openRoundId == roundId && roundSession != null) {
+        if (openRoundId == roundId && openAccountUuidString == accountUuidString && roundSession != null) {
             return@withLock
         }
         closeLocked()
@@ -139,6 +145,7 @@ class VotingKeystoneSessionHolder(
         dbHandle = handle
         roundSession = session
         openRoundId = roundId
+        openAccountUuidString = accountUuidString
         torRuntimePinned = torRuntime != 0L
     }
 
@@ -206,6 +213,7 @@ class VotingKeystoneSessionHolder(
             roundSession = null
             dbHandle = null
             openRoundId = null
+            openAccountUuidString = null
             torRuntimePinned = false
         }
 }
