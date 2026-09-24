@@ -16,7 +16,6 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingRoundPreparationResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionProgress
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionResult
-import co.electriccoin.zcash.ui.common.model.voting.chpBenchLog
 import co.electriccoin.zcash.ui.common.model.voting.requireKnownPolyLen
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
@@ -28,7 +27,6 @@ import co.electriccoin.zcash.ui.common.repository.VotingRecoveryPhase
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.toCanonicalUuidString
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
-import co.electriccoin.zcash.voting.BuildConfig
 import co.electriccoin.zcash.work.VotingShareTrackingScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -90,7 +88,6 @@ class SubmitVotesUseCase(
             if (choices.isEmpty()) {
                 return@withContext VotingSubmissionResult(submittedProposalCount = 0)
             }
-            val chpBenchStart = System.currentTimeMillis()
 
             val selectedAccount = getSelectedWalletAccount()
             val accountUuidString = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
@@ -263,7 +260,6 @@ class SubmitVotesUseCase(
                             nullifierImtRoot = session.nullifierIMTRoot
                         )
 
-                    val chpBenchRunStart = System.currentTimeMillis()
                     // Ratchet, not overwrite: the round-driver interleaves several bundles
                     // concurrently (confirmed on-device -- a Delegate-phase event with no tally
                     // update for bundle B can arrive between two CastVote events for bundle A),
@@ -326,17 +322,6 @@ class SubmitVotesUseCase(
                                         progressTracker.fraction(completedForRead, totalForRead)
                                 )
                             )
-                            // CHP_BENCH — see ChpBenchLog.kt's own note: local-only, never merge.
-                            // Not routed through chpBenchLog() itself (that helper's signature is
-                            // timing-specific, elapsedMs required); this is the same "CHP_BENCH"
-                            // tag so a benchmark logcat capture also proves the round-driver isn't
-                            // silently stuck for its ~100-second-plus run.
-                            if (BuildConfig.DEBUG) {
-                                Log.d(
-                                    "CHP_BENCH",
-                                    "app=zodl step=progress round=$roundId detail=$progress"
-                                )
-                            }
                         }
                     val report =
                         runRoundWithBundleFailureRetry(
@@ -361,7 +346,6 @@ class SubmitVotesUseCase(
                         ) {
                             roundSession.run(delegationInputs, progressListener)
                         }
-                    chpBenchLog("run", roundId, System.currentTimeMillis() - chpBenchRunStart)
 
                     // Task 4's acceptance criterion: PersistedChainTerminal must surface to the
                     // user immediately, never be silently retried -- unaffected by
@@ -429,7 +413,6 @@ class SubmitVotesUseCase(
                 withContext(NonCancellable) {
                     votingCryptoClient.closeVotingDb(dbHandle)
                 }
-                chpBenchLog("total", roundId, System.currentTimeMillis() - chpBenchStart)
             }
         }
 
@@ -645,6 +628,12 @@ class SubmitVotesUseCase(
      * they had already signed), so a hard failure here would false-positive on a legitimate
      * flow. Escalating this to an error needs a way to distinguish skipped-by-user from
      * skipped-by-the-driver first.
+     *
+     * Not gated on `BuildConfig.DEBUG` (Milan's review of PR #6, should-fix): this is exactly the
+     * kind of partial-outcome signal a QA/internal build needs to actually be able to capture from
+     * logcat, and neither field logged here carries anything sensitive (round id, quiescence,
+     * failure/skip metadata) -- matching every other diagnostic `Log.w` in this module (see e.g.
+     * [VotingProofPrecomputeRepository]'s own unconditional `Log.w(TAG, ...)` calls).
      */
     private fun logPartialOutcomeIfAny(
         roundId: String,
@@ -653,15 +642,12 @@ class SubmitVotesUseCase(
         if (report.failures.isEmpty() && report.skippedBundles.isEmpty()) {
             return
         }
-        if (BuildConfig.DEBUG) {
-            Log.w(
-                "CHP_BENCH",
-                "app=zodl step=partial-outcome round=$roundId " +
-                    "quiescence=${report.quiescence} completed the run with " +
-                    "failures=${report.failures} skippedBundles=${report.skippedBundles} " +
-                    "despite a success-shaped quiescence"
-            )
-        }
+        Log.w(
+            TAG,
+            "step=partial-outcome round=$roundId quiescence=${report.quiescence} completed the run with " +
+                "failures=${report.failures} skippedBundles=${report.skippedBundles} " +
+                "despite a success-shaped quiescence"
+        )
     }
 
     /**
@@ -700,13 +686,12 @@ class SubmitVotesUseCase(
         var attempt = 0
         while (report.hasOnlyRetryableBundleFailures() && attempt < MAX_BUNDLE_FAILURE_RETRIES) {
             attempt++
-            if (BuildConfig.DEBUG) {
-                Log.w(
-                    "CHP_BENCH",
-                    "app=zodl step=bundle-failure-retry round=$roundId " +
-                        "attempt=$attempt/$MAX_BUNDLE_FAILURE_RETRIES failures=${report.failures}"
-                )
-            }
+            // Not gated on BuildConfig.DEBUG -- see logPartialOutcomeIfAny's own doc comment.
+            Log.w(
+                TAG,
+                "step=bundle-failure-retry round=$roundId " +
+                    "attempt=$attempt/$MAX_BUNDLE_FAILURE_RETRIES failures=${report.failures}"
+            )
             onRetrying()
             delay(BUNDLE_FAILURE_RETRY_DELAY_MS)
             report = freshReport()
@@ -727,6 +712,10 @@ class SubmitVotesUseCase(
         quiescence is VotingRoundQuiescence.Failures &&
             failures.isNotEmpty() &&
             failures.all { it.kind.lowercase() in RETRYABLE_BUNDLE_FAILURE_KINDS }
+
+    private companion object {
+        const val TAG = "SubmitVotesUseCase"
+    }
 }
 
 private fun ZcashNetwork.toVotingNetworkId() = if (isMainnet()) 1 else 0
