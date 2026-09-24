@@ -852,7 +852,6 @@
     <string name="swapAndPay_totalFees">Total fees</string>
     <string name="swapAndPay_maxSlippage">Max slippage %s</string>
     <string name="swapAndPay_totalAmount">Total Amount</string>
-    <string name="swapAndPay_quote_zashi">Zodl</string>
     <string name="swapAndPay_swapQuoteSlippageWarn">You could receive up to %s less based on the %s slippage you set.</string>
     <string name="swapAndPay_getQuote">Get a quote</string>
     <string name="swapAndPay_custom">Custom</string>

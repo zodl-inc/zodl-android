@@ -783,7 +783,6 @@
     <string name="swapAndPay_totalFees">Comisiones totales</string>
     <string name="swapAndPay_maxSlippage">Slippage máximo %s</string>
     <string name="swapAndPay_totalAmount">Monto total</string>
-    <string name="swapAndPay_quote_zashi">Zodl</string>
     <string name="swapAndPay_swapQuoteSlippageWarn">Podrías recibir hasta %s menos según el deslizamiento %s que configuraste.</string>
     <string name="swapAndPay_getQuote">Obtener cotización</string>
     <string name="swapAndPay_custom">Otro</string>
