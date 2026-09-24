@@ -11,7 +11,7 @@ import io.mockk.verifyOrder
 import kotlin.test.Test
 
 /**
- * [CancelSwapQuoteUseCase] tears down a pending swap quote: it clears both proposal repositories and
+ * [CancelSwapQuoteUseCase] tears down a pending swap quote: it clears every proposal repository and
  * the cached quote, then pops the quote screen — and must do so in that order (clear state before
  * navigating away).
  */
@@ -19,13 +19,14 @@ class CancelSwapQuoteUseCaseTest {
     private val swapRepository = mockk<SwapRepository>(relaxed = true)
     private val zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true)
     private val keystoneProposalRepository = mockk<KeystoneProposalRepository>(relaxed = true)
+    private val ledgerProposalRepository = mockk<LedgerProposalRepository>(relaxed = true)
     private val navigationRouter = mockk<NavigationRouter>(relaxed = true)
     private val useCase =
         CancelSwapQuoteUseCase(
             swapRepository = swapRepository,
             zashiProposalRepository = zashiProposalRepository,
             keystoneProposalRepository = keystoneProposalRepository,
-            ledgerProposalRepository = mockk<LedgerProposalRepository>(relaxed = true),
+            ledgerProposalRepository = ledgerProposalRepository,
             navigationRouter = navigationRouter
         )
 
@@ -35,6 +36,7 @@ class CancelSwapQuoteUseCaseTest {
 
         verify(exactly = 1) { zashiProposalRepository.clear() }
         verify(exactly = 1) { keystoneProposalRepository.clear() }
+        verify(exactly = 1) { ledgerProposalRepository.clear() }
         verify(exactly = 1) { swapRepository.clearQuote() }
         verify(exactly = 1) { navigationRouter.back() }
 
@@ -42,6 +44,7 @@ class CancelSwapQuoteUseCaseTest {
         verifyOrder {
             zashiProposalRepository.clear()
             keystoneProposalRepository.clear()
+            ledgerProposalRepository.clear()
             swapRepository.clearQuote()
             navigationRouter.back()
         }
