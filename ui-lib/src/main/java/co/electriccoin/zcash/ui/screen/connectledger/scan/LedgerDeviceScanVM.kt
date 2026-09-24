@@ -142,6 +142,13 @@ class LedgerDeviceScanVM(
             )
         }
 
+        pageIssue != null && pageIssue.kind == LedgerIssueKind.PERMISSIONS && !internal.canRequestPermissionsAgain -> {
+            ButtonState(
+                text = issueActionText(internal, pageIssue),
+                onClick = issueAction(internal, pageIssue),
+            )
+        }
+
         pageIssue != null -> {
             ButtonState(
                 text = stringRes(R.string.ledger_scan_retry_cta),
