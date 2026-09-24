@@ -57,6 +57,7 @@ class HttpClientRetryBehaviorTest {
 
                 val client =
                     HttpClient(mockEngine) {
+                        expectSuccess = false
                         install(HttpRequestRetry) {
                             maxRetries = 4
                             retryIf { request, response ->
@@ -88,8 +89,10 @@ class HttpClientRetryBehaviorTest {
                             // Voting POST
                         }
                     }
-                // Expected to fail with 500
-                assertTrue("Request should fail", result.isFailure)
+                // Expected to succeed (no exception with expectSuccess=false)
+                assertTrue("Request should succeed", result.isSuccess)
+                // But the response status should be 500
+                assertTrue("Response should be 500", result.getOrNull()?.status?.value == 500)
 
                 // Verify only ONE attempt was made (no retries)
                 assertEquals(
@@ -122,6 +125,7 @@ class HttpClientRetryBehaviorTest {
 
             val client =
                 HttpClient(mockEngine) {
+                    expectSuccess = false
                     install(HttpRequestRetry) {
                         maxRetries = 4
                         retryIf { request, response ->
@@ -150,8 +154,10 @@ class HttpClientRetryBehaviorTest {
                 runCatching {
                     client.get("https://vote.example.com/shielded-vote/v1/share-status/round123/nullifier456")
                 }
-            // Expected to fail
-            assertTrue("Request should fail", result.isFailure)
+            // Expected to succeed (no exception thrown with expectSuccess=false)
+            assertTrue("Request should succeed", result.isSuccess)
+            // But the response status should be 500
+            assertTrue("Response should be 500", result.getOrNull()?.status?.value == 500)
 
             // Verify only ONE attempt (no retries)
             assertEquals(
@@ -183,6 +189,7 @@ class HttpClientRetryBehaviorTest {
 
             val client =
                 HttpClient(mockEngine) {
+                    expectSuccess = false
                     install(HttpRequestRetry) {
                         maxRetries = 4
                         retryIf { request, response ->
@@ -212,8 +219,10 @@ class HttpClientRetryBehaviorTest {
                 runCatching {
                     client.get("https://api.example.com/some-other-endpoint")
                 }
-            // Expected to fail after retries
-            assertTrue("Request should fail after retries", result.isFailure)
+            // Expected to succeed (no exception with expectSuccess=false)
+            assertTrue("Request should succeed", result.isSuccess)
+            // But the response status should be 500 after retries
+            assertTrue("Response should be 500", result.getOrNull()?.status?.value == 500)
 
             // Verify it was tried 5 times (1 initial + 4 retries)
             assertEquals(
