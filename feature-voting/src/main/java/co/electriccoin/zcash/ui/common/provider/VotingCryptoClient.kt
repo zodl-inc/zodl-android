@@ -176,6 +176,7 @@ interface VotingCryptoClient {
     @Throws(RuntimeException::class)
     suspend fun precomputeDelegationPir(
         dbHandle: Long,
+        torRuntime: Long,
         roundId: String,
         bundleIndex: Int,
         pirServerUrl: String,
@@ -563,6 +564,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
 
     override suspend fun precomputeDelegationPir(
         dbHandle: Long,
+        torRuntime: Long,
         roundId: String,
         bundleIndex: Int,
         pirServerUrl: String,
@@ -572,6 +574,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         withContext(Dispatchers.IO) {
             session(dbHandle)
                 .precomputeDelegationPir(
+                    torRuntime,
                     roundId,
                     bundleIndex,
                     pirServerUrl,
