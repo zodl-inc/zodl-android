@@ -16,6 +16,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.screen.connecthw.HWWalletEnrollment
 import co.electriccoin.zcash.ui.screen.connecthw.neworactive.HWNewOrActiveArgs
+import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -226,6 +227,28 @@ class LedgerDeviceScanVMTest {
         }
 
     @Test
+    fun aPermanentDenialLabelsThePageButtonLikeTheSheet() =
+        runTest(dispatcher) {
+            val soft = vm()
+            collect(soft)
+            soft.onPermissionsDenied(true)
+            runCurrent()
+            assertEquals(
+                R.string.ledger_scan_retry_cta,
+                soft.state.value.primaryButton.text
+                    .resourceId()
+            )
+
+            val permanent = vm()
+            collect(permanent)
+            permanent.onPermissionsDenied(false)
+            runCurrent()
+            val button = permanent.state.value.primaryButton
+            assertEquals(R.string.ledger_error_permissions_cta, button.text.resourceId())
+            assertTrue(button.isEnabled)
+        }
+
+    @Test
     fun aBluetoothUnavailableWithoutAScanCodeShowsTheUnavailableSheetWhichOnlyCloses() =
         runTest(dispatcher) {
             val navigationRouter = mockk<NavigationRouter>(relaxed = true)
@@ -240,9 +263,25 @@ class LedgerDeviceScanVMTest {
             assertEquals(R.string.ledger_error_unavailable_title, sheet.title.resourceId())
             assertNull(sheet.secondary)
 
+            assertEquals(R.string.ledger_error_unavailable_cta, sheet.primary.text.resourceId())
             sheet.primary.onClick()
 
             verify(exactly = 1) { navigationRouter.back() }
+        }
+
+    @Test
+    fun theBluetoothUnavailablePageOffersOnlyADisabledConnect() =
+        runTest(dispatcher) {
+            val exception =
+                mockk<LedgerException.BluetoothUnavailable>(relaxed = true) {
+                    every { scanErrorCode } returns null
+                }
+            val vm = pairedWithFailure(exception)
+
+            val button = vm.state.value.primaryButton
+            assertEquals(R.string.ledger_scan_select_cta, button.text.resourceId())
+            assertFalse(button.isEnabled)
+            assertNotNull(vm.state.value.inlineIssue)
         }
 
     @Test
@@ -268,6 +307,10 @@ class LedgerDeviceScanVMTest {
                 mockk<LedgerException.DeviceNotFound>(relaxed = true) to R.string.ledger_error_pairingFailed_title,
                 mockk<LedgerException.WrongApp>(relaxed = true) to R.string.ledger_error_locked_title,
                 mockk<LedgerException.DeviceRefused>(relaxed = true) to R.string.ledger_error_unknown_title,
+                mockk<LedgerException.DeviceRefused>(relaxed = true) {
+                    every { isTransient } returns true
+                } to R.string.ledger_error_locked_title,
+                mockk<LedgerException.CapsMismatch>(relaxed = true) to R.string.ledger_error_unknown_title,
                 mockk<LedgerException.AppTooOld>(relaxed = true) to R.string.ledger_error_appTooOld_title,
                 mockk<LedgerException.DerivationBudgetExhausted>(relaxed = true) to
                     R.string.ledger_error_restartApp_title,
@@ -302,6 +345,153 @@ class LedgerDeviceScanVMTest {
 
             assertSheetTitle(vm, R.string.ledger_error_unknown_title)
             verify(exactly = 0) { navigateToError.invoke(any(), any()) }
+        }
+
+    @Suppress("TooGenericExceptionThrown")
+    @Test
+    fun aNonLedgerPairingFailureGoesToTheGeneralErrorScreen() =
+        runTest(dispatcher) {
+            val navigateToError = mockk<NavigateToErrorUseCase>(relaxed = true)
+            val failure = IllegalStateException("boom")
+            val pairLedgerDevice =
+                mockk<PairLedgerDeviceUseCase> {
+                    coEvery { this@mockk.invoke(any()) } throws failure
+                }
+            val vm = vm(pairLedgerDevice = pairLedgerDevice, navigateToError = navigateToError)
+            collect(vm)
+
+            vm.onPermissionsGranted()
+            devices.value = listOf(device("AA"))
+            runCurrent()
+            vm.state.value.devices
+                .first()
+                .onClick()
+            runCurrent()
+            vm.state.value.primaryButton
+                .onClick()
+            runCurrent()
+
+            verify(exactly = 1) { navigateToError.invoke(ErrorArgs.General(failure), any()) }
+            assertNull(vm.state.value.errorSheet)
+        }
+
+    @Test
+    fun bluetoothOffAsksTheSystemToTurnItOnAndScansOnceItIs() =
+        runTest(dispatcher) {
+            val observeLedgerDevices =
+                mockk<ObserveLedgerDevicesUseCase> {
+                    every { this@mockk.invoke() } returnsMany
+                        listOf(
+                            flow { throw mockk<LedgerException.BluetoothDisabled>(relaxed = true) },
+                            devices,
+                        )
+                }
+            val vm = vm(observeLedgerDevices = observeLedgerDevices)
+            collect(vm)
+
+            vm.onPermissionsGranted()
+            runCurrent()
+            val sheet = assertNotNull(vm.state.value.errorSheet)
+            assertEquals(R.string.ledger_error_bluetoothOff_title, sheet.title.resourceId())
+            assertEquals(R.drawable.ic_ledger_bluetooth_off, sheet.icon)
+            assertEquals(0, vm.state.value.enableBluetoothRequestNonce)
+
+            sheet.primary.onClick()
+            runCurrent()
+            assertNull(vm.state.value.errorSheet)
+            assertEquals(1, vm.state.value.enableBluetoothRequestNonce)
+
+            vm.onBluetoothEnableDeclined()
+            runCurrent()
+            assertSheetTitle(vm, R.string.ledger_error_bluetoothOff_title)
+            assertEquals(
+                R.string.ledger_error_bluetoothOff_title,
+                assertNotNull(vm.state.value.inlineIssue).title.resourceId()
+            )
+
+            vm.onBluetoothEnabled()
+            runCurrent()
+            verify(exactly = 2) { observeLedgerDevices.invoke() }
+            assertTrue(vm.state.value.isScanning)
+            assertNull(vm.state.value.inlineIssue)
+            assertNull(vm.state.value.errorSheet)
+        }
+
+    @Test
+    fun dismissingAnIssueSheetLeavesTheInlineIssueAndAnEnabledTryAgain() =
+        runTest(dispatcher) {
+            val vm = pairedWithFailure(mockk<LedgerException.ConnectionFailed>(relaxed = true))
+            assertNotNull(vm.state.value.errorSheet).onBack()
+            runCurrent()
+
+            assertNull(vm.state.value.errorSheet)
+            assertEquals(
+                R.string.ledger_error_pairingFailed_title,
+                assertNotNull(vm.state.value.inlineIssue).title.resourceId()
+            )
+            val button = vm.state.value.primaryButton
+            assertEquals(R.string.ledger_scan_retry_cta, button.text.resourceId())
+            assertTrue(button.isEnabled)
+        }
+
+    @Test
+    fun tryAgainAfterARejectedImportAsksTheSameDeviceAgain() =
+        runTest(dispatcher) {
+            val observeLedgerDevices =
+                mockk<ObserveLedgerDevicesUseCase> {
+                    every { this@mockk.invoke() } returns devices
+                }
+            val pairLedgerDevice =
+                mockk<PairLedgerDeviceUseCase> {
+                    coEvery { this@mockk.invoke(any()) } throws mockk<LedgerException.UserRejected>(relaxed = true)
+                }
+            val vm = vm(observeLedgerDevices = observeLedgerDevices, pairLedgerDevice = pairLedgerDevice)
+            collect(vm)
+
+            vm.onPermissionsGranted()
+            devices.value = listOf(device("AA"))
+            runCurrent()
+            vm.state.value.devices
+                .first()
+                .onClick()
+            runCurrent()
+            vm.state.value.primaryButton
+                .onClick()
+            runCurrent()
+
+            assertSheetTitle(vm, R.string.ledger_error_importRejected_title)
+            assertNull(vm.state.value.inlineIssue)
+            assertTrue(
+                vm.state.value.devices
+                    .single()
+                    .isSelected
+            )
+
+            assertNotNull(vm.state.value.errorSheet)
+                .primary
+                .onClick()
+            runCurrent()
+
+            coVerify(exactly = 2) { pairLedgerDevice.invoke(device("AA")) }
+            verify(exactly = 1) { observeLedgerDevices.invoke() }
+            assertSheetTitle(vm, R.string.ledger_error_importRejected_title)
+            assertNull(vm.state.value.inlineIssue)
+            assertTrue(
+                vm.state.value.devices
+                    .single()
+                    .isSelected
+            )
+        }
+
+    @Test
+    fun aFailedPairingClearsTheListAndShowsTheInlineIssue() =
+        runTest(dispatcher) {
+            val vm = pairedWithFailure(mockk<LedgerException.ConnectionFailed>(relaxed = true))
+
+            assertSheetTitle(vm, R.string.ledger_error_pairingFailed_title)
+            assertNotNull(vm.state.value.inlineIssue)
+            assertEquals(emptyList(), vm.state.value.devices)
+            assertTrue(vm.state.value.showDeviceSkeletons)
         }
 
     @Test

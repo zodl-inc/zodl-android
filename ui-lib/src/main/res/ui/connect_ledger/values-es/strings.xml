@@ -39,7 +39,7 @@
     <string name="ledger_error_disconnected_title">Ledger desconectado</string>
     <string name="ledger_error_disconnected_message">Tu Ledger se desconectó durante la configuración. Comprueba la conexión e inténtalo de nuevo.</string>
     <string name="ledger_error_unavailable_title">Bluetooth no disponible</string>
-    <string name="ledger_error_unavailable_message">Este teléfono no admite Bluetooth LE, que es necesario para conectar un Ledger.</string>
+    <string name="ledger_error_unavailable_message">Este dispositivo no puede usar Bluetooth, así que no puede conectarse a un dispositivo Ledger.</string>
     <string name="ledger_error_unavailable_cta">Cerrar</string>
     <string name="ledger_error_permissions_title">Se requiere acceso a Bluetooth</string>
     <string name="ledger_error_permissions_message">Zodl necesita acceso a Bluetooth para conectarse a tu Ledger. Activa el Bluetooth en Ajustes para continuar.</string>
@@ -48,6 +48,26 @@
     <string name="ledger_error_alreadyAdded_message">Esta cuenta ya está conectada a Zodl.</string>
     <string name="ledger_error_alreadyAdded_primary">Ir a la cuenta</string>
     <string name="ledger_error_alreadyAdded_secondary">Cancelar</string>
+    <string name="ledger_error_bluetoothOff_title">El Bluetooth está desactivado</string>
+    <string name="ledger_error_bluetoothOff_message">Activa el Bluetooth en Ajustes para conectar tu Ledger.</string>
+    <string name="ledger_error_appTooOld_title">Actualiza la aplicación Zcash</string>
+    <string name="ledger_error_appTooOld_message">La aplicación Zcash de tu Ledger está desactualizada. Actualízala a la versión 3.6.0 o posterior con Ledger Live e inténtalo de nuevo.</string>
+    <string name="ledger_error_restartApp_title">Reinicia la aplicación Zcash</string>
+    <string name="ledger_error_restartApp_message">Cierra y vuelve a abrir la aplicación Zcash en tu Ledger e inténtalo de nuevo.</string>
+    <string name="ledger_error_unknown_title">Algo salió mal</string>
+    <string name="ledger_error_unknown_message">Zodl no pudo conectarse a tu Ledger. Asegúrate de que esté desbloqueado y cerca, e inténtalo de nuevo.</string>
+
+    <!-- Signing error sheets -->
+    <string name="ledger_sign_error_rejected_title">Transacción rechazada</string>
+    <string name="ledger_sign_error_rejected_message">Rechazaste la transacción en tu Ledger. Inténtalo de nuevo para revisarla en tu dispositivo.</string>
+    <string name="ledger_sign_error_disconnected_message">Tu Ledger se desconectó antes de firmar la transacción. Comprueba la conexión e inténtalo de nuevo.</string>
+    <string name="ledger_sign_error_wrongDevice_title">Ledger incorrecto</string>
+    <string name="ledger_sign_error_wrongDevice_message">Este no es el Ledger con el que se conectó esta cuenta. Conecta ese Ledger e inténtalo de nuevo.</string>
+    <string name="ledger_sign_error_notSignable_title">No se puede firmar esta transacción</string>
+    <string name="ledger_sign_error_notSignable_message">Tu Ledger no puede firmar esta transacción. No se envió nada.</string>
+    <string name="ledger_sign_error_unbound_title">Ledger no vinculado</string>
+    <string name="ledger_sign_error_unbound_message">Esta cuenta no tiene ninguna vinculación con un Ledger guardada. Elimina la cuenta y vuelve a conectar tu Ledger.</string>
+    <string name="ledger_sign_cancel">Cancelar transacción</string>
 
     <!-- New or active device -->
 
