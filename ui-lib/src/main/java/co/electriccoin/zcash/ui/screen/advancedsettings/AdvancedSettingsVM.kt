@@ -156,7 +156,7 @@ class AdvancedSettingsVM(
 
     fun onBack() = navigationRouter.back()
 
-    private fun onChooseServerClick() = navigationRouter.forward(ChooseServerArgs)
+    private fun onChooseServerClick() = navigationRouter.forward(ChooseServerArgs())
 
     private fun onDebugMenuClick() = navigationRouter.forward(DebugArgs)
 

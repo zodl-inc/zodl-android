@@ -59,7 +59,7 @@ class MigrationCustomServerTorVM(
         )
     }
 
-    private fun onSwitchServer() = navigationRouter.forward(ChooseServerArgs)
+    private fun onSwitchServer() = navigationRouter.forward(ChooseServerArgs())
 
     private fun onBack() = navigationRouter.back()
 }

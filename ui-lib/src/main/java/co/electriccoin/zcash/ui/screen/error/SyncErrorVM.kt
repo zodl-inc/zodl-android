@@ -81,7 +81,7 @@ class SyncErrorVM(
         navigationRouter.back()
     }
 
-    private fun onSwitchServerClick() = navigationRouter.forward(ChooseServerArgs)
+    private fun onSwitchServerClick() = navigationRouter.forward(ChooseServerArgs())
 
     private fun onDisableTorClick() = navigationRouter.forward(TorSettingsArgs)
 
