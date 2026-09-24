@@ -119,9 +119,15 @@ internal fun VoteSubmissionBottomSection(state: VoteConfirmSubmissionState) {
                         // it showed a moment ago, indistinguishable from a frozen app.
                         stringRes(R.string.coinVote_confirmSubmission_progressRetrying)
                     } else if (total != null && total > 0) {
+                        // completedProposals counts finished proposals (0..total-1 while the
+                        // round runs), but the string reads as "currently working on vote X of
+                        // Y" -- a 1-indexed current-item count. Without the +1 the label showed
+                        // "vote 0 of Y" at the very start and jumped straight from "Y-1 of Y" to
+                        // done, skipping the Yth vote entirely (reported by Michal, iOS thread
+                        // https://zodl.slack.com/archives/C0B4F0CUWMC/p1790242548417319).
                         stringRes(
                             R.string.coinVote_confirmSubmission_progressSubmittingVoteCount,
-                            status.completedProposals ?: 0,
+                            ((status.completedProposals ?: 0) + 1).coerceAtMost(total),
                             total
                         )
                     } else {
