@@ -139,6 +139,14 @@ class VotingKeystoneRepositoryImpl(
                 sessionContext.serviceConfig.voteServers
                     .map { endpoint -> endpoint.url.trimEnd('/') }
                     .distinct()
+            // Mirrors SubmitVotesUseCase's identical guard on its own two voteServerUrls
+            // derivations (Milan's review of PR #6, nit): without it, an empty list reaches
+            // ensureDelegationPipeline as chainEndpoints below and fails deep inside the native
+            // delegation pipeline with an unhelpful error instead of surfacing this misconfigured
+            // service config clearly, up front.
+            if (voteServerUrls.isEmpty()) {
+                error("Voting round $roundId has no configured vote server URL")
+            }
             val pirLayout = sessionContext.serviceConfig.pirLayout
             val treeStateBytes = synchronizer.getTreeState(BlockHeight.new(session.snapshotHeight))
 

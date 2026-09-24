@@ -445,7 +445,7 @@ class SubmitVotesUseCase(
      * ledger (tally-only, no per-bundle-index floor) -- see this task's report for why that
      * inconsistency was left in place rather than ported over.
      */
-    @Suppress("LongMethod", "LongParameterList")
+    @Suppress("LongMethod", "LongParameterList", "ThrowsCount")
     private suspend fun submitKeystoneVotes(
         roundId: String,
         choices: Map<Int, Int>,
@@ -472,6 +472,13 @@ class SubmitVotesUseCase(
             sessionContext.serviceConfig.voteServers
                 .map { endpoint -> endpoint.url.trimEnd('/') }
                 .distinct()
+        // Mirrors the non-Keystone path's identical guard above (Milan's review of PR #6, nit):
+        // without it, an empty voteServerUrls list reaches ensureDelegationPipeline as
+        // chainEndpoints below and fails deep inside the native delegation pipeline instead of
+        // surfacing this same clear, recoverable error up front.
+        if (voteServerUrls.isEmpty()) {
+            throw VotingSubmissionRecoverableException(VotingErrors.MissingVotingServerUrl)
+        }
 
         val delegationInputs =
             VotingDelegationInputs(
