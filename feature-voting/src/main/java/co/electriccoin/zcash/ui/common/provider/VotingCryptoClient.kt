@@ -31,6 +31,7 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingPirWarmupResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingSnapshotBundlePrecomputeResult
 import co.electriccoin.zcash.ui.common.model.voting.requireKnownPolyLen
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -447,7 +448,9 @@ class VotingCryptoClientImpl : VotingCryptoClient {
             // mapsMutex here would fully serialize concurrent DB opens across every dbHandle,
             // defeating the point of the two concurrent jobs this fix is guarding against.
             val newSession = votingSdk().openDb(dbPath, walletId, networkId)
-            mapsMutex.withLock { sessions[dbHandle] = newSession }
+            // NonCancellable: a cancellation while waiting for the lock would otherwise drop the
+            // freshly opened native session before closeVotingDb can ever find it.
+            withContext(NonCancellable) { mapsMutex.withLock { sessions[dbHandle] = newSession } }
         }
 
     override suspend fun ensureRound(

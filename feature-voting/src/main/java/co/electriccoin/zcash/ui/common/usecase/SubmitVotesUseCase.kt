@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import android.util.Log
+import cash.z.ecc.android.sdk.VotingRoundSession
 import cash.z.ecc.android.sdk.ext.toHex
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.ZcashNetwork
@@ -384,13 +385,7 @@ class SubmitVotesUseCase(
 
                         VotingSubmissionResult(submittedProposalCount = report.completedProposals)
                     } finally {
-                        // withContext(Dispatchers.IO) here (used internally by roundSession.close())
-                        // throws immediately instead of running when the parent Job is already
-                        // cancelled (e.g. the user backed out mid round-drive) -- NonCancellable lets
-                        // the native round session actually get closed instead of leaking its handle.
-                        withContext(NonCancellable) {
-                            roundSession.close()
-                        }
+                        closeRoundSessionLogged(roundSession, roundId)
                     }
                 } finally {
                     // After roundSession.close(): the session uses the runtime until then.
@@ -612,6 +607,24 @@ class SubmitVotesUseCase(
         closeKeystoneSessionAfterSuccess(roundId)
 
         return VotingSubmissionResult(submittedProposalCount = report.completedProposals)
+    }
+
+    // withContext(Dispatchers.IO) inside roundSession.close() throws immediately instead of running
+    // when the parent Job is already cancelled (e.g. the user backed out mid round-drive), so
+    // NonCancellable lets the native round session actually close instead of leaking its handle.
+    // A close failure is only logged, same as the Keystone path: after a successful run the votes
+    // are already on chain and recorded, and after a failed run the original error is the one to
+    // surface.
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun closeRoundSessionLogged(
+        roundSession: VotingRoundSession,
+        roundId: String
+    ) {
+        try {
+            withContext(NonCancellable) { roundSession.close() }
+        } catch (e: Exception) {
+            Log.w(TAG, "step=round-session-close round=$roundId failed", e)
+        }
     }
 
     @Suppress("TooGenericExceptionCaught")

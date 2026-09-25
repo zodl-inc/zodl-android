@@ -142,6 +142,24 @@ class SubmitVotesUseCaseSuccessPathTest {
         }
 
     @Test
+    fun `a round session close failure after a successful run is logged, not surfaced`() =
+        runTest {
+            val env = Env()
+            env.stubRun(env.runReport(quiescence = VotingRoundQuiescence.NoWorkLeft, completedProposals = 1))
+            val torLease = mockk<VotingTorLease>(relaxed = true)
+            coEvery { env.synchronizer.acquireVotingTorLease() } returns torLease
+            coEvery { env.roundSession.close() } throws IllegalStateException("native close failed")
+
+            // Milan's review of PR #6: the votes are already on chain and recorded by this point,
+            // so the Keystone path's log-and-continue applies here too.
+            val result = env.invoke(choices = mapOf(1 to 0))
+
+            assertEquals(1, result.submittedProposalCount)
+            coVerify(exactly = 1) { torLease.release() }
+            coVerify(exactly = 1) { env.votingCryptoClient.closeVotingDb(any()) }
+        }
+
+    @Test
     fun `the Tor lease is still released when opening the round session throws`() =
         runTest {
             val env = Env()

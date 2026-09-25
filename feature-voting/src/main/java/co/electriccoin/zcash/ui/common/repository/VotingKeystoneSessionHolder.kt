@@ -65,10 +65,11 @@ class VotingKeystoneSessionHolder(
      * signing flow (e.g. from [VotingKeystoneRepositoryImpl.createPcztEncoder]'s first call for a
      * round), not before every [getKeystoneSigningRequests] call.
      *
-     * The Tor lease is acquired internally, only on the path that actually opens a new session
-     * (below the no-op check) -- acquiring it in the caller and passing it in would take a lease
-     * on every call, including calls this function no-ops on, and that lease would then never be
-     * released (this holder only releases what it itself acquired, in [closeLocked]).
+     * The Tor lease is acquired internally, before the no-op check, because the retained session
+     * is only reusable if it was opened under the same Tor state (lease present or absent) as the
+     * user's current preference: a session parked with Tor off must not finish the round without
+     * Tor after the user turns it on, and vice versa. On reuse the fresh lease is released right
+     * away; otherwise it is handed to the new session and released in [closeLocked].
      */
     @Suppress("LongParameterList", "TooGenericExceptionCaught")
     suspend fun ensureDelegationPipeline(
@@ -83,13 +84,26 @@ class VotingKeystoneSessionHolder(
         voteEndTimeSeconds: Long,
         delegationInputs: VotingDelegationInputs
     ) = mutex.withLock {
-        if (openRoundId == roundId && openAccountUuidString == accountUuidString && roundSession != null) {
+        val lease = synchronizerProvider.getSynchronizer().acquireVotingTorLeaseOrNull()
+        val reusable =
+            openRoundId == roundId &&
+                openAccountUuidString == accountUuidString &&
+                roundSession != null &&
+                (torLease == null) == (lease == null)
+        if (reusable) {
+            lease?.release()
             return@withLock
         }
-        closeLocked()
 
-        val handle = votingCryptoClient.openVotingDb(votingDbPath)
-        check(handle != 0L) { "Failed to open voting DB at $votingDbPath" }
+        val handle: Long
+        try {
+            closeLocked()
+            handle = votingCryptoClient.openVotingDb(votingDbPath)
+            check(handle != 0L) { "Failed to open voting DB at $votingDbPath" }
+        } catch (t: Throwable) {
+            lease?.release()
+            throw t
+        }
 
         // setWalletId/openRoundSession/session.run below are all documented to surface a
         // RuntimeException from the native layer, and this whole sequence sits behind a
@@ -99,13 +113,9 @@ class VotingKeystoneSessionHolder(
         // fully succeeded (below), so a failure here would otherwise leak whatever was already
         // opened -- closeLocked() on a later call finds the fields still null and has nothing to
         // close. Catch broadly, tear down exactly what this attempt actually opened, and rethrow.
-        // The Tor lease is acquired inside the try (same Tor policy as SubmitVotesUseCase's
-        // non-Keystone path), so a Tor init failure or cancellation still closes the DB handle.
-        var lease: VotingTorLease? = null
         var session: VotingRoundSession? = null
         try {
             votingCryptoClient.setWalletId(handle, accountUuidString, networkId)
-            lease = synchronizerProvider.getSynchronizer().acquireVotingTorLeaseOrNull()
 
             session =
                 votingCryptoClient.openRoundSession(

@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.common.repository
 
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.VotingRoundSession
+import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import cash.z.ecc.android.sdk.model.voting.VotingDelegationInputs
 import cash.z.ecc.android.sdk.model.voting.VotingRoundRunReport
 import cash.z.ecc.android.sdk.model.voting.VotingTorLease
@@ -34,6 +35,55 @@ class VotingKeystoneSessionHolderTest {
 
             coVerify(exactly = 1) { env.votingCryptoClient.openVotingDb(any()) }
             coVerify(exactly = 1) { env.roundSessionA.run(any(), null) }
+            // The reuse check needs a fresh lease to compare Tor state; it must not be leaked.
+            coVerify(exactly = 1) { env.torLeaseB.release() }
+            coVerify(exactly = 0) { env.torLeaseA.release() }
+        }
+
+    @Test
+    fun `a session parked with Tor off is not reused once Tor is on`() =
+        runTest {
+            val env = environment()
+            coEvery { env.synchronizer.acquireVotingTorLease() } throws
+                TorUnavailableException() andThen env.torLeaseB
+            val holder = env.holder()
+
+            env.ensureDelegationPipeline(holder, roundId = ROUND_ID, accountUuidString = ACCOUNT_A)
+            env.ensureDelegationPipeline(holder, roundId = ROUND_ID, accountUuidString = ACCOUNT_A)
+
+            // Milan's review of PR #6: backing out of Sign with Tor off, turning Tor on and then
+            // submitting used to finish the round on the parked plain-HTTP session.
+            coVerify(exactly = 1) { env.roundSessionA.close() }
+            coVerify(exactly = 1) {
+                env.votingCryptoClient.openRoundSession(
+                    dbHandle = DB_HANDLE_B,
+                    torLease = env.torLeaseB,
+                    roundId = any(),
+                    proposals = any(),
+                    hotkeySecret = any(),
+                    chainEndpoints = any(),
+                    operationEpoch = any(),
+                    configuredHelperUrls = any(),
+                    voteTreeNodeUrls = any(),
+                    ceremonyStartSeconds = any(),
+                    voteEndTimeSeconds = any()
+                )
+            }
+            coVerify(exactly = 0) { env.torLeaseB.release() }
+        }
+
+    @Test
+    fun `a failure opening the DB releases the lease acquired for the reuse check`() =
+        runTest {
+            val env = environment()
+            coEvery { env.votingCryptoClient.openVotingDb(any()) } throws IllegalStateException("open failed")
+            val holder = env.holder()
+
+            assertFailsWith<IllegalStateException> {
+                env.ensureDelegationPipeline(holder, roundId = ROUND_ID, accountUuidString = ACCOUNT_A)
+            }
+
+            coVerify(exactly = 1) { env.torLeaseA.release() }
         }
 
     @Test
@@ -125,6 +175,7 @@ class VotingKeystoneSessionHolderTest {
         }
 
     private class Environment(
+        val synchronizer: Synchronizer,
         val votingCryptoClient: VotingCryptoClient,
         val synchronizerProvider: SynchronizerProvider,
         val roundSessionA: VotingRoundSession,
@@ -201,7 +252,15 @@ class VotingKeystoneSessionHolderTest {
             )
         } returns roundSessionB
 
-        return Environment(votingCryptoClient, synchronizerProvider, roundSessionA, roundSessionB, torLeaseA, torLeaseB)
+        return Environment(
+            synchronizer = synchronizer,
+            votingCryptoClient = votingCryptoClient,
+            synchronizerProvider = synchronizerProvider,
+            roundSessionA = roundSessionA,
+            roundSessionB = roundSessionB,
+            torLeaseA = torLeaseA,
+            torLeaseB = torLeaseB
+        )
     }
 
     private companion object {
