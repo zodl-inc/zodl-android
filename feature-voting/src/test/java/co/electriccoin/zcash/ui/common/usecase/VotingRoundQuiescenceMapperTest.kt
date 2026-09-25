@@ -101,6 +101,9 @@ class VotingRoundQuiescenceMapperTest {
             reportWith(VotingRoundQuiescence.Failures, failures = listOf(failure)).toVotingErrorOrNull("round-1")
         assertIs<VotingErrors.RecoveredVoteCommitmentMismatch>(error)
         assertEquals(3, error.bundleIndex)
+        // A step failure never names a proposal: no "proposal -1" sentinel in the message.
+        assertEquals(null, error.proposalId)
+        assertEquals("Recovered transaction does not match round round-1 bundle 3", error.userMessage)
     }
 
     @Test

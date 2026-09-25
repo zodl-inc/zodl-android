@@ -18,6 +18,7 @@ import co.electriccoin.zcash.ui.common.usecase.ResolveVotingRoundSessionUseCase
 import com.sparrowwallet.hummingbird.UR
 import com.sparrowwallet.hummingbird.UREncoder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -174,11 +175,8 @@ class VotingKeystoneRepositoryImpl(
                     nullifierImtRoot = session.nullifierIMTRoot
                 )
 
-            // Milan's review of PR #6, should-fix: this is the Sign-screen entry into the same
-            // delegation pipeline SubmitVotesUseCase's own "Important #1" comment opens (that
-            // comment's claim that SubmitVotesUseCase is "the single entry point both submission
-            // paths funnel through" missed this one) -- reached well before SubmitVotesUseCase
-            // ever runs, so its own cancelAndAwaitPrecompute call does nothing to protect this
+            // The Sign screen reaches the delegation pipeline here, well before SubmitVotesUseCase
+            // runs, so SubmitVotesUseCase's own cancelAndAwaitPrecompute call does not cover this
             // path. Without cancelling here too, a still-running background precompute job
             // (PrecomputeVotingSnapshotBundlesUseCase / WarmVotingPirProofsUseCase) contends with
             // ensureDelegationPipeline below for the same native (dbPath, walletId) lock, parking
@@ -405,7 +403,11 @@ class VotingKeystoneRepositoryImpl(
                     )
             )
         } finally {
-            votingCryptoClient.closeVotingDb(dbHandle)
+            // NonCancellable: see SkipRemainingKeystoneBundlesUseCase's identical close -- a
+            // cancelled scan screen must not leak the DB handle and its shared native lock.
+            withContext(NonCancellable) {
+                votingCryptoClient.closeVotingDb(dbHandle)
+            }
         }
     }
 

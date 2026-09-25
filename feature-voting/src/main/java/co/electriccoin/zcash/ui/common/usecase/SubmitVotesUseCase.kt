@@ -48,22 +48,20 @@ class VotingAuthorizationException(
     )
 
 /**
- * voting-5.0.0 round-driver port note: this is a from-scratch rewrite for the benchmark pass,
- * not an incremental patch of the pre-4.0 implementation. The old
- * ~1700-line per-bundle-per-question loop (`runVoteChains`/`proveVoteBundle`/`postVoteBundle`/
- * `confirmVoteBundle`) is gone entirely — the crate's own `RoundExecutor`/`RoundDriver` now owns
- * that sequencing internally behind [VotingCryptoClient.openRoundSession] + one
- * [cash.z.ecc.android.sdk.VotingRoundSession.run] call.
+ * Submits a round's votes through the `zcash_voting` round driver. The pre-4.0 per-bundle,
+ * per-question loop (`runVoteChains`/`proveVoteBundle`/`postVoteBundle`/`confirmVoteBundle`) is
+ * gone: the crate's `RoundExecutor`/`RoundDriver` owns that sequencing behind
+ * [VotingCryptoClient.openRoundSession] and one [cash.z.ecc.android.sdk.VotingRoundSession.run]
+ * call. Keystone accounts continue on the session [VotingKeystoneSessionHolder] retained across the
+ * Sign/Scan flow ([VotingKeystoneSessionHolder.runToCompletion]) instead of opening their own.
  *
- * Scope cut for this pass: Keystone accounts are now
- * routed through [VotingKeystoneSessionHolder.runToCompletion] instead of this method's own
- * open/run sequence, rather than rejected outright; there is no persisted recovery
- * snapshot — resuming a round means calling this again, which re-derives everything from the
- * round's own on-disk/on-chain state via [VotingRoundSession.run] rather than a local state
- * machine; errors
- * are passed through as one generic [VotingErrors.UnexpectedSdkResponse] rather than mapped
- * per-failure-type. Do not treat this as a full replacement for the pre-4.0
- * implementation's UI-facing error granularity.
+ * Resuming a round means calling this again: the round driver re-derives what is left from the
+ * round's own on-disk/on-chain state. The app-side [VotingRecoveryRepository] snapshot records
+ * the durable outcome around that -- proposal selections before the run, then the submitted phase,
+ * submitted proposals and submission time once it succeeds -- for UI and share tracking, not as a
+ * step-by-step state machine. A run's outcome is mapped onto [VotingErrors] per quiescence and
+ * failure kind by `VotingRoundQuiescenceMapper`; outcomes with no clean pre-4.0 equivalent surface
+ * as [VotingErrors.UnexpectedSdkResponse] carrying the crate's own detail.
  */
 class SubmitVotesUseCase(
     private val resolveVotingRoundSession: ResolveVotingRoundSessionUseCase,

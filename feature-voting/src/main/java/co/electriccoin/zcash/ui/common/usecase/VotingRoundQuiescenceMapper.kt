@@ -111,8 +111,8 @@ private fun VotingRoundStepFailure.toVotingErrorOrDefault(roundId: String): Voti
         "spent" in lowerMessage && "nullifier" in lowerMessage -> {
             VotingErrors.RecoveredVoteCommitmentMismatch(
                 roundId = roundId,
-                bundleIndex = bundleIndex ?: -1,
-                proposalId = -1
+                bundleIndex = bundleIndex,
+                proposalId = null
             )
         }
 
@@ -142,16 +142,16 @@ private fun VotingRoundStepFailure.toVotingErrorOrDefault(roundId: String): Voti
         "commitment" in lowerMessage && "mismatch" in lowerMessage -> {
             VotingErrors.RecoveredVoteCommitmentMismatch(
                 roundId = roundId,
-                bundleIndex = bundleIndex ?: -1,
-                proposalId = -1
+                bundleIndex = bundleIndex,
+                proposalId = null
             )
         }
 
         "verif" in lowerMessage -> {
             VotingErrors.RecoveredVoteVerificationUnavailable(
                 roundId = roundId,
-                bundleIndex = bundleIndex ?: -1,
-                proposalId = -1
+                bundleIndex = bundleIndex,
+                proposalId = null
             )
         }
 

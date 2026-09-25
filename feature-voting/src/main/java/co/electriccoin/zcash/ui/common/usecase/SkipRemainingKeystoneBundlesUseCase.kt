@@ -70,7 +70,12 @@ class SkipRemainingKeystoneBundlesUseCase(
                     keepCount = keepCount
                 )
             } finally {
-                votingCryptoClient.closeVotingDb(dbHandle)
+                // NonCancellable: closeVotingDb uses withContext(Dispatchers.IO), which throws
+                // immediately on an already-cancelled Job and would leak the handle (and the shared
+                // native (dbPath, walletId) lock it holds) -- same pattern as SubmitVotesUseCase.
+                withContext(NonCancellable) {
+                    votingCryptoClient.closeVotingDb(dbHandle)
+                }
             }
 
             // The delete above truncated this round's native bundle rows, but

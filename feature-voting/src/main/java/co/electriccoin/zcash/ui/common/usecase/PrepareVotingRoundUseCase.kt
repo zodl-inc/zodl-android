@@ -29,15 +29,18 @@ import java.io.File
 import java.security.SecureRandom
 
 /**
- * voting-5.0.0 round-driver port note: this use case is substantially simplified from its pre-4.0
- * form — the scope-cut default is "recovery = call run() again", no
- * persisted `VotingRecoveryPhase` state machine. Witness generation
- * (`generateNoteWitnessesJson`/`storeWitnesses`) and the software-wallet PIR/delegation-proof
- * background precompute optimization were both confirmed to have no direct equivalent needed here
- * — witness generation is now fully internal to the crate's `run()` call, and the
- * precompute optimization has no straightforward new-architecture equivalent in this pass's scope
- * and was dropped rather than half-ported. Do not treat this
- * as a full replacement for the pre-4.0 implementation.
+ * Prepares a round for submission: checks the wallet has scanned past the snapshot height,
+ * bootstraps the round (`ensureRound` + `setupBundles`) or recovers an existing bundle setup,
+ * derives the eligibility result, and binds the voting hotkey. Durable state it records on the
+ * [VotingRecoveryRepository] snapshot: vote-end time, vote-server URLs, bundle setup and hotkey
+ * address. Resuming means calling this again; it recovers from the voting DB rather than replaying
+ * a step-by-step state machine.
+ *
+ * Witness generation (`generateNoteWitnessesJson`/`storeWitnesses` pre-4.0) is gone -- the crate's
+ * `run()` does it internally. PIR precompute lives outside this use case now: this only kicks off
+ * the crate's proving-cache warm-up ([VotingProofPrecomputeRepository.warmProvingCaches]); the
+ * background PIR proof and snapshot-bundle precompute run from `WarmVotingPirProofsUseCase` and
+ * `PrecomputeVotingSnapshotBundlesUseCase`, triggered by the voting screens.
  */
 class PrepareVotingRoundUseCase(
     private val resolveVotingRoundSession: ResolveVotingRoundSessionUseCase,
