@@ -34,6 +34,19 @@ runs:
           exit 1
         fi
         echo "commit=${PIN}" >> "$GITHUB_OUTPUT"
+    - name: Free runner disk space for the companion SDK build
+      if: steps.pin.outputs.commit != ''
+      shell: bash
+      run: |
+        # Compiling the companion SDK's Rust plus the app exhausts the ~14GB free on a
+        # standard ubuntu-latest runner (ENOSPC in cargoBuild*/mergeJniLibFolders). Drop
+        # preinstalled toolchains nothing in this build uses; the Android SDK stays.
+        df -h /
+        sudo rm -rf /usr/share/dotnet /usr/local/share/boost /opt/ghc /usr/local/.ghcup \
+          /usr/local/share/powershell /usr/share/swift /usr/local/lib/node_modules \
+          /opt/hostedtoolcache/CodeQL /opt/hostedtoolcache/go /opt/hostedtoolcache/PyPy
+        sudo docker image prune --all --force > /dev/null 2>&1 || true
+        df -h /
     - name: Checkout companion SDK commit
       if: steps.pin.outputs.commit != ''
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
@@ -66,8 +79,18 @@ runs:
         CHANNEL="$(sed -n 's/^channel *= *"\([^"]*\)".*/\1/p' rust-toolchain.toml)"
         rustup toolchain install "${CHANNEL}"
         rustup default "${CHANNEL}"
-        rustup target add --toolchain "${CHANNEL}" \
-          armv7-linux-androideabi aarch64-linux-android i686-linux-android x86_64-linux-android
+        rustup target add --toolchain "${CHANNEL}" x86_64-linux-android
+    - name: Limit the companion SDK build to x86_64
+      if: steps.pin.outputs.commit != ''
+      shell: bash
+      run: |
+        # rust-android-gradle reads rust.targets from the SDK build's own root
+        # local.properties and uses it in place of backend-lib's four-ABI list. CI only
+        # needs x86_64 (the emulator jobs run x86_64 images); building all four ABIs cold
+        # overran both runner disk and job timeouts. APKs from a pinned CI run therefore
+        # carry only x86_64 native code -- fine, since the branch gate above keeps
+        # SDK_COMMIT_PIN off release branches.
+        echo "rust.targets=x86_64" >> .sdk-companion/local.properties
     - name: Rust cache for the companion SDK build
       if: steps.pin.outputs.commit != ''
       uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae
