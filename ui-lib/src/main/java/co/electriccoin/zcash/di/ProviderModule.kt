@@ -36,6 +36,8 @@ import co.electriccoin.zcash.ui.common.provider.IsSwapRefundWarningDismissedStor
 import co.electriccoin.zcash.ui.common.provider.IsSwapRefundWarningDismissedStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProviderImpl
+import co.electriccoin.zcash.ui.common.provider.KeepScreenOnSyncSessionProvider
+import co.electriccoin.zcash.ui.common.provider.KeepScreenOnSyncSessionProviderImpl
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProvider
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProviderImpl
 import co.electriccoin.zcash.ui.common.provider.KtorNearApiProvider
@@ -129,6 +131,7 @@ val providerModule =
         factoryOf(::HttpClientProviderImpl) bind HttpClientProvider::class
         singleOf(::SimpleSwapAssetProviderImpl) bind SimpleSwapAssetProvider::class
         factoryOf(::IsKeepScreenOnDuringRestoreProviderImpl) bind IsKeepScreenOnDuringRestoreProvider::class
+        factoryOf(::KeepScreenOnSyncSessionProviderImpl) bind KeepScreenOnSyncSessionProvider::class
         singleOf(::EphemeralAddressStorageProviderImpl) bind EphemeralAddressStorageProvider::class
         singleOf(::CMCApiProviderImpl) bind CMCApiProvider::class
         factoryOf(::KeystoneSDKProviderImpl) bind KeystoneSDKProvider::class

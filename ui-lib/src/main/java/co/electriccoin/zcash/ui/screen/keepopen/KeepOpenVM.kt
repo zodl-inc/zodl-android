@@ -7,6 +7,7 @@ import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.provider.IsKeepScreenOnDuringRestoreProvider
+import co.electriccoin.zcash.ui.common.provider.KeepScreenOnSyncSessionProvider
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiDisclaimerState
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -25,6 +26,7 @@ class KeepOpenVM(
     application: Application,
     private val flow: KeepOpenFlow,
     private val isKeepScreenOnDuringRestoreProvider: IsKeepScreenOnDuringRestoreProvider,
+    private val keepScreenOnSyncSessionProvider: KeepScreenOnSyncSessionProvider,
     private val navigationRouter: NavigationRouter,
 ) : AndroidViewModel(application) {
     private val isChecked = MutableStateFlow(true)
@@ -106,7 +108,11 @@ class KeepOpenVM(
     }
 
     private fun onButtonClick() {
-        viewModelScope.launch { isKeepScreenOnDuringRestoreProvider.store(isChecked.value) }
+        val keepScreenOn = isChecked.value
+        viewModelScope.launch {
+            isKeepScreenOnDuringRestoreProvider.store(keepScreenOn)
+            keepScreenOnSyncSessionProvider.store(keepScreenOn)
+        }
         when (flow) {
             KeepOpenFlow.RESTORE, KeepOpenFlow.RESYNC -> navigationRouter.backToRoot()
             KeepOpenFlow.KEYSTONE -> navigationRouter.forward(KeystoneConnectedArgs)

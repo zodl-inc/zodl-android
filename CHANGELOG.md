@@ -19,6 +19,11 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   the Zcash app on the Ledger is out of date or needs a restart, or the connection fails, and can
   turn Bluetooth on for you.
 
+### Fixed:
+
+- Choosing to keep the screen on while Zodl syncs now works after connecting a Ledger or a Keystone,
+  and the screen stays on until that sync has finished after a restore or a resync as well.
+
 ## [3.14.0 (2738)] - 2026-09-16
 
 ### Added:

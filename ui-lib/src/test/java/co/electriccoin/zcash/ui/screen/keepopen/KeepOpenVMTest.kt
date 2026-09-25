@@ -2,10 +2,12 @@ package co.electriccoin.zcash.ui.screen.keepopen
 
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.provider.KeepScreenOnSyncSessionProvider
 import co.electriccoin.zcash.ui.design.component.ZashiDisclaimerState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connectkeystone.connected.KeystoneConnectedArgs
 import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedArgs
+import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
@@ -83,13 +85,38 @@ class KeepOpenVMTest {
         }
     }
 
+    @Test
+    fun confirmingTheLedgerScreenStartsAKeepScreenOnSession() {
+        val session = mockk<KeepScreenOnSyncSessionProvider>(relaxed = true)
+
+        vm(KeepOpenFlow.LEDGER, session = session)
+            .state.value.button
+            .onClick()
+
+        coVerify(exactly = 1) { session.store(true) }
+    }
+
+    @Test
+    fun anUncheckedBoxDoesNotStartASession() {
+        val session = mockk<KeepScreenOnSyncSessionProvider>(relaxed = true)
+        val vm = vm(KeepOpenFlow.LEDGER, session = session)
+
+        vm.state.value.onCheckedChange(false)
+        vm.state.value.button
+            .onClick()
+
+        coVerify(exactly = 1) { session.store(false) }
+    }
+
     private fun vm(
         flow: KeepOpenFlow,
         navigationRouter: NavigationRouter = mockk(relaxed = true),
+        session: KeepScreenOnSyncSessionProvider = mockk(relaxed = true),
     ) = KeepOpenVM(
         application = mockk(relaxed = true),
         flow = flow,
         isKeepScreenOnDuringRestoreProvider = mockk(relaxed = true),
+        keepScreenOnSyncSessionProvider = session,
         navigationRouter = navigationRouter,
     )
 }
