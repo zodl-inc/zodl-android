@@ -416,7 +416,7 @@ class MultiEndpointTransactionSubmitterTest {
         }
 
     @Test
-    fun acceptedTransactionThenGrpcFailureMapsToPartialResult() {
+    fun acceptedTransactionThenGrpcFailureMapsToPendingResult() {
         val firstTransaction = transaction(10)
         val secondTransaction = transaction(11)
         val thirdTransaction = transaction(12)
@@ -429,14 +429,13 @@ class MultiEndpointTransactionSubmitterTest {
             ).toSubmitResult()
 
         assertEquals(
-            SubmitResult.Partial(
+            SubmitResult.GrpcFailure(
                 txIds =
                     listOf(
                         firstTransaction.txIdString(),
                         secondTransaction.txIdString(),
                         thirdTransaction.txIdString()
-                    ),
-                statuses = listOf("success", "grpcFailure", "notAttempted")
+                    )
             ),
             result
         )
@@ -483,7 +482,7 @@ class MultiEndpointTransactionSubmitterTest {
     }
 
     @Test
-    fun grpcFailureThenNotAttemptedMapsToPartialResult() {
+    fun grpcFailureThenNotAttemptedMapsToPendingResult() {
         val firstTransaction = transaction(17)
         val secondTransaction = transaction(18)
 
@@ -494,16 +493,15 @@ class MultiEndpointTransactionSubmitterTest {
             ).toSubmitResult()
 
         assertEquals(
-            SubmitResult.Partial(
-                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString()),
-                statuses = listOf("grpcFailure", "notAttempted")
+            SubmitResult.GrpcFailure(
+                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString())
             ),
             result
         )
     }
 
     @Test
-    fun grpcFailurePartialStatusDoesNotExposeDescription() {
+    fun grpcFailurePendingResultDoesNotExposeDescription() {
         val firstTransaction = transaction(21)
         val secondTransaction = transaction(22)
 
@@ -519,9 +517,8 @@ class MultiEndpointTransactionSubmitterTest {
             ).toSubmitResult()
 
         assertEquals(
-            SubmitResult.Partial(
-                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString()),
-                statuses = listOf("grpcFailure", "notAttempted")
+            SubmitResult.GrpcFailure(
+                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString())
             ),
             result
         )

@@ -7,6 +7,10 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Fixed:
+
+- [MOB-1032] TEX payments remain pending while a retryable second transaction is still being broadcast instead of showing a failure after the first transaction succeeds.
+
 ## [3.14.0 (2738)] - 2026-09-16
 
 ### Added:
