@@ -10,9 +10,11 @@ description: >-
 inputs:
   sdk-repo:
     description: >-
-      owner/name of the SDK repository to check SDK_COMMIT_PIN out of, needed only when
-      SDK_COMMIT_PIN is set. Callers pass the SDK_COMPANION_REPO repository variable, so
-      the repository name lives in repo settings rather than in this file.
+      owner/name of the SDK repository to check SDK_COMMIT_PIN out of. Optional: callers
+      pass the SDK_COMPANION_REPO repository variable, and when it is empty the SDK repo is
+      derived from this repo's own name - the app's private twin builds against the SDK's
+      private twin, the public app against the public SDK. The name is never hardcoded here,
+      so nothing private-only reaches the public repo when this file is published.
     required: false
     default: ''
   sdk-token:
@@ -42,11 +44,15 @@ runs:
           echo "::error::SDK_COMMIT_PIN is set to '${PIN}' but this workflow's target branch is '${TARGET}'. SDK_COMMIT_PIN is only supported on main, maint/* branches, and branches targeting them — clear it before merging into release/review branches, which must always build against a real published SDK version." >&2
           exit 1
         fi
-        if [ -n "${PIN}" ] && [ -z "${SDK_REPO}" ]; then
-          echo "::error::SDK_COMMIT_PIN is set but sdk-repo is empty. Set the SDK_COMPANION_REPO repository variable (owner/name of the SDK repo that has the pinned commit)." >&2
-          exit 1
+        if [ -z "${SDK_REPO}" ]; then
+          # Twin convention: <owner>/zodl-android[-private] builds against
+          # <owner>/zodl-android-wallet-sdk[-private].
+          SUFFIX=""
+          case "${GITHUB_REPOSITORY}" in *-private) SUFFIX="-private" ;; esac
+          SDK_REPO="${GITHUB_REPOSITORY_OWNER}/zodl-android-wallet-sdk${SUFFIX}"
         fi
         echo "commit=${PIN}" >> "$GITHUB_OUTPUT"
+        echo "repo=${SDK_REPO}" >> "$GITHUB_OUTPUT"
     - name: Free runner disk space for the companion SDK build
       if: steps.pin.outputs.commit != ''
       shell: bash
@@ -64,9 +70,9 @@ runs:
       if: steps.pin.outputs.commit != ''
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       with:
-        repository: ${{ inputs.sdk-repo }}
-        # When sdk-repo is private, GITHUB_TOKEN cannot read it (a different private repo), so a
-        # token with contents:read on sdk-repo must be supplied by
+        repository: ${{ steps.pin.outputs.repo }}
+        # When the SDK repo is private, GITHUB_TOKEN cannot read it (a different private repo),
+        # so a token with contents:read on it must be supplied by
         # the caller via sdk-token.
         token: ${{ inputs.sdk-token }}
         ref: ${{ steps.pin.outputs.commit }}
@@ -121,7 +127,7 @@ runs:
       if: steps.pin.outputs.commit != ''
       shell: bash
       env:
-        SDK_REPO: ${{ inputs.sdk-repo }}
+        SDK_REPO: ${{ steps.pin.outputs.repo }}
       run: |
         echo "ORG_GRADLE_PROJECT_SDK_INCLUDED_BUILD_PATH=${{ github.workspace }}/.sdk-companion" >> "$GITHUB_ENV"
         # The SDK's build-conventions module locks its own (build-tooling-only, not
