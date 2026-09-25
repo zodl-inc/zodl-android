@@ -29,13 +29,17 @@ import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.screen.transactionhistory.EMPTY_GRADIENT_THRESHOLD
 
 @Composable
-fun CommonEmptyScreen(modifier: Modifier = Modifier) {
+fun CommonEmptyScreen(
+    modifier: Modifier = Modifier,
+    shimmerColor: Color = ZashiColors.Surfaces.bgSecondary
+) {
     Box(
         modifier = modifier
     ) {
         CommonShimmerLoadingScreen(
             modifier = Modifier.padding(top = 22.dp),
             shimmerItemsCount = 3,
+            color = shimmerColor,
             disableShimmer = true,
             showDivider = false,
             contentPaddingValues = PaddingValues(horizontal = 24.dp, vertical = 10.dp)

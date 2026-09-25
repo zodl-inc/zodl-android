@@ -272,9 +272,6 @@ internal class MockSynchronizer(
         error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
     }
 
-    override val initializationError: Synchronizer.InitializationError?
-        get() = error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
-
     override var onProcessorErrorResolved: (() -> Unit)?
         get() = error("Intentionally not implemented in ${MockSynchronizer::class.simpleName} implementation.")
         set(value) {}

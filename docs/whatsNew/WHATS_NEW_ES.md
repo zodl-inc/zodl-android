@@ -14,6 +14,32 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.14.0 (2738)] - 2026-09-16
+
+### Añadido:
+
+- Añadimos soporte para coinholder polls con hasta 50 preguntas.
+
+### Cambiado:
+
+- Hicimos más rápido el envío de tus votos en las coinholder polls.
+
+## [3.13.0 (2705)] - 2026-09-15
+
+### Añadido:
+
+- Añadimos Dash, Bitcoin Cash, ZEC en Solana y ZEC en NEAR a Swap y CrossPay.
+- Añadimos todas las monedas fiduciarias de CoinMarketCap a Conversión de Moneda.
+
+### Cambiado:
+
+- Añadimos una advertencia de reembolso para transacciones de Swap y CrossPay inferiores a $300.
+- Incluimos el estado de conexión de Tor en los correos de soporte.
+
+### Corregido:
+
+- Corregimos los recordatorios de respaldo que quedaban ocultos por avisos de migración o error.
+
 ## [3.11.0 (2653)] - 2026-09-08
 
 ### Añadido:
