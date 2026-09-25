@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.common.usecase
 
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.VotingRoundSession
+import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import cash.z.ecc.android.sdk.ext.toHex
 import cash.z.ecc.android.sdk.fixture.AccountFixture
 import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
@@ -198,7 +199,7 @@ class SubmitVotesUseCaseBundleFailureRetryTest {
         val synchronizer = mockk<Synchronizer>()
         every { synchronizer.network } returns ZcashNetwork.Testnet
         coEvery { synchronizer.getTreeState(any()) } returns ByteArray(32)
-        coEvery { synchronizer.getVotingTorRuntimeHandle() } returns 0L
+        coEvery { synchronizer.acquireVotingTorLease() } throws TorUnavailableException()
 
         coEvery { resolveVotingRoundSession(roundId) } returns
             VotingRoundSessionContext(session = session, serviceConfig = serviceConfig)
@@ -218,7 +219,7 @@ class SubmitVotesUseCaseBundleFailureRetryTest {
         coEvery {
             votingCryptoClient.openRoundSession(
                 dbHandle = any(),
-                torRuntime = any(),
+                torLease = any(),
                 roundId = any(),
                 proposals = any(),
                 hotkeySecret = any(),

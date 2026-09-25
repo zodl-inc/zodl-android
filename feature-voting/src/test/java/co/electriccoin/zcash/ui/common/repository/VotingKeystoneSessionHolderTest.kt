@@ -4,6 +4,7 @@ import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.VotingRoundSession
 import cash.z.ecc.android.sdk.model.voting.VotingDelegationInputs
 import cash.z.ecc.android.sdk.model.voting.VotingRoundRunReport
+import cash.z.ecc.android.sdk.model.voting.VotingTorLease
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import io.mockk.coEvery
@@ -12,6 +13,7 @@ import io.mockk.coVerifyOrder
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
+import kotlin.test.assertFailsWith
 
 /**
  * Regression coverage for the account-reuse bug Milan's review of PR #6 found: keying the
@@ -63,11 +65,72 @@ class VotingKeystoneSessionHolderTest {
             coVerify(exactly = 0) { env.roundSessionA.getKeystoneSigningRequests(any()) }
         }
 
+    @Test
+    fun `a synchronizer rebuild between open and close still releases the original lease on itself`() =
+        runTest {
+            val env = environment()
+            val holder = env.holder()
+            env.ensureDelegationPipeline(holder, roundId = ROUND_ID, accountUuidString = ACCOUNT_A)
+
+            // Milan's review of PR #6 (B1): the holder used to release on
+            // synchronizerProvider.getSynchronizer() at *release* time -- after a rebuild that is a
+            // different synchronizer, which failed its pin-count check and never released A's pin.
+            val rebuilt = mockk<Synchronizer>()
+            coEvery { env.synchronizerProvider.getSynchronizer() } returns rebuilt
+
+            holder.close(ROUND_ID)
+
+            coVerify(exactly = 1) { env.torLeaseA.release() }
+            coVerify(exactly = 0) { rebuilt.acquireVotingTorLease() }
+            coVerifyOrder {
+                env.roundSessionA.close()
+                env.votingCryptoClient.closeVotingDb(DB_HANDLE_A)
+                env.torLeaseA.release()
+            }
+        }
+
+    @Test
+    fun `a failing session close still closes the DB, releases the lease and never leaves a dead session behind`() =
+        runTest {
+            val env = environment()
+            val holder = env.holder()
+            env.ensureDelegationPipeline(holder, roundId = ROUND_ID, accountUuidString = ACCOUNT_A)
+            coEvery { env.roundSessionA.close() } throws IllegalStateException("native close failed")
+
+            assertFailsWith<IllegalStateException> { holder.close(ROUND_ID) }
+
+            coVerify(exactly = 1) { env.votingCryptoClient.closeVotingDb(DB_HANDLE_A) }
+            coVerify(exactly = 1) { env.torLeaseA.release() }
+
+            // The holder cleared its fields before tearing down, so re-entering the same round opens
+            // a fresh session instead of no-op'ing onto the dead one until process restart.
+            env.ensureDelegationPipeline(holder, roundId = ROUND_ID, accountUuidString = ACCOUNT_A)
+            coVerify(exactly = 2) { env.votingCryptoClient.openVotingDb(any()) }
+        }
+
+    @Test
+    fun `a failure while opening the pipeline tears down the session, DB and lease it had acquired`() =
+        runTest {
+            val env = environment()
+            val holder = env.holder()
+            coEvery { env.roundSessionA.run(any(), null) } throws IllegalStateException("delegation pass failed")
+
+            assertFailsWith<IllegalStateException> {
+                env.ensureDelegationPipeline(holder, roundId = ROUND_ID, accountUuidString = ACCOUNT_A)
+            }
+
+            coVerify(exactly = 1) { env.roundSessionA.close() }
+            coVerify(exactly = 1) { env.votingCryptoClient.closeVotingDb(DB_HANDLE_A) }
+            coVerify(exactly = 1) { env.torLeaseA.release() }
+        }
+
     private class Environment(
         val votingCryptoClient: VotingCryptoClient,
         val synchronizerProvider: SynchronizerProvider,
         val roundSessionA: VotingRoundSession,
-        val roundSessionB: VotingRoundSession
+        val roundSessionB: VotingRoundSession,
+        val torLeaseA: VotingTorLease,
+        val torLeaseB: VotingTorLease
     ) {
         fun holder() = VotingKeystoneSessionHolder(votingCryptoClient, synchronizerProvider)
 
@@ -90,9 +153,10 @@ class VotingKeystoneSessionHolderTest {
     }
 
     private fun environment(): Environment {
+        val torLeaseA = mockk<VotingTorLease>(relaxed = true)
+        val torLeaseB = mockk<VotingTorLease>(relaxed = true)
         val synchronizer = mockk<Synchronizer>()
-        coEvery { synchronizer.getVotingTorRuntimeHandle() } returns TOR_RUNTIME
-        coEvery { synchronizer.releaseVotingTorRuntimeHandle() } returns Unit
+        coEvery { synchronizer.acquireVotingTorLease() } returnsMany listOf(torLeaseA, torLeaseB)
 
         val synchronizerProvider = mockk<SynchronizerProvider>()
         coEvery { synchronizerProvider.getSynchronizer() } returns synchronizer
@@ -109,7 +173,7 @@ class VotingKeystoneSessionHolderTest {
         coEvery {
             votingCryptoClient.openRoundSession(
                 dbHandle = DB_HANDLE_A,
-                torRuntime = any(),
+                torLease = any(),
                 roundId = any(),
                 proposals = any(),
                 hotkeySecret = any(),
@@ -124,7 +188,7 @@ class VotingKeystoneSessionHolderTest {
         coEvery {
             votingCryptoClient.openRoundSession(
                 dbHandle = DB_HANDLE_B,
-                torRuntime = any(),
+                torLease = any(),
                 roundId = any(),
                 proposals = any(),
                 hotkeySecret = any(),
@@ -137,7 +201,7 @@ class VotingKeystoneSessionHolderTest {
             )
         } returns roundSessionB
 
-        return Environment(votingCryptoClient, synchronizerProvider, roundSessionA, roundSessionB)
+        return Environment(votingCryptoClient, synchronizerProvider, roundSessionA, roundSessionB, torLeaseA, torLeaseB)
     }
 
     private companion object {
@@ -146,6 +210,5 @@ class VotingKeystoneSessionHolderTest {
         const val ACCOUNT_B = "account-b"
         const val DB_HANDLE_A = 11L
         const val DB_HANDLE_B = 22L
-        const val TOR_RUNTIME = 7L
     }
 }

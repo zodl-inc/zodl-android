@@ -1,11 +1,11 @@
 package co.electriccoin.zcash.ui.common.repository
 
 import android.util.Log
-import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.provider.PirSnapshotResolver
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
+import co.electriccoin.zcash.ui.common.provider.acquireVotingTorLeaseOrNull
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -227,28 +227,26 @@ class VotingProofPrecomputeRepositoryImpl(
             val dbHandle = votingCryptoClient.openVotingDb(request.votingDbPath)
             check(dbHandle != 0L) { "Failed to open voting DB at ${request.votingDbPath}" }
 
-            // Resolved here, inside the job that actually uses it, rather than by the caller
-            // before startPirWarmup -- startPirWarmup no-ops on an existing dedup-key job (see
-            // its own comment above), and a handle pinned by the caller for that no-op path would
-            // never be released. Same Tor-optional fallback as SubmitVotesUseCase.kt.
-            @Suppress("SwallowedException")
-            val torRuntime =
-                try {
-                    synchronizerProvider.getSynchronizer().getVotingTorRuntimeHandle()
-                } catch (e: TorUnavailableException) {
-                    0L
-                }
-
             try {
                 votingCryptoClient.setWalletId(dbHandle, request.walletId, request.networkId)
-                withPirFetchRetry("PIR proof warmup for account ${request.accountUuid}") {
-                    votingCryptoClient.precomputePirProofs(
-                        dbHandle = dbHandle,
-                        torRuntime = torRuntime,
-                        pirServerUrl = pirServerUrl,
-                        pirLayout = request.pirLayout,
-                        notesJson = request.notesJson
-                    )
+                // Acquired here, inside the job that actually uses it, rather than by the caller
+                // before startPirWarmup -- startPirWarmup no-ops on an existing dedup-key job (see
+                // its own comment above), and a lease taken by the caller for that no-op path would
+                // never be released. Inside the DB try, so a Tor init failure or cancellation still
+                // closes the DB handle below. Same Tor-optional policy as SubmitVotesUseCase.kt.
+                val torLease = synchronizerProvider.getSynchronizer().acquireVotingTorLeaseOrNull()
+                try {
+                    withPirFetchRetry("PIR proof warmup for account ${request.accountUuid}") {
+                        votingCryptoClient.precomputePirProofs(
+                            dbHandle = dbHandle,
+                            torLease = torLease,
+                            pirServerUrl = pirServerUrl,
+                            pirLayout = request.pirLayout,
+                            notesJson = request.notesJson
+                        )
+                    }
+                } finally {
+                    torLease?.release()
                 }
             } finally {
                 // cancelAndAwaitPrecompute cancels this
@@ -260,11 +258,9 @@ class VotingProofPrecomputeRepositoryImpl(
                 // the shared native lock it holds -- exactly the outcome this whole fix exists to
                 // prevent. NonCancellable guarantees this cleanup actually runs, same pattern
                 // SubmitVotesUseCase.kt already uses for its own roundSession.close()/
-                // closeVotingDb() cleanup. Releasing the pinned Tor runtime handle needs the same
-                // treatment, for the same reason.
+                // closeVotingDb() cleanup.
                 withContext(NonCancellable) {
                     votingCryptoClient.closeVotingDb(dbHandle)
-                    if (torRuntime != 0L) synchronizerProvider.getSynchronizer().releaseVotingTorRuntimeHandle()
                 }
             }
         }.onSuccess { result ->
@@ -294,33 +290,29 @@ class VotingProofPrecomputeRepositoryImpl(
             val dbHandle = votingCryptoClient.openVotingDb(request.votingDbPath)
             check(dbHandle != 0L) { "Failed to open voting DB at ${request.votingDbPath}" }
 
-            // See runPirWarmup's identical comment above -- same no-op-on-existing-job hazard,
-            // same fix.
-            @Suppress("SwallowedException")
-            val torRuntime =
-                try {
-                    synchronizerProvider.getSynchronizer().getVotingTorRuntimeHandle()
-                } catch (e: TorUnavailableException) {
-                    0L
-                }
-
             try {
                 votingCryptoClient.setWalletId(dbHandle, request.walletId, request.networkId)
-                withPirFetchRetry("Snapshot bundle precompute for round ${request.roundId}") {
-                    votingCryptoClient.precomputeSnapshotBundles(
-                        dbHandle = dbHandle,
-                        torRuntime = torRuntime,
-                        roundId = request.roundId,
-                        pirServerUrl = pirServerUrl,
-                        pirLayout = request.pirLayout,
-                        notesJson = request.notesJson
-                    )
+                // See runPirWarmup's identical comment above -- same no-op-on-existing-job hazard,
+                // same fix.
+                val torLease = synchronizerProvider.getSynchronizer().acquireVotingTorLeaseOrNull()
+                try {
+                    withPirFetchRetry("Snapshot bundle precompute for round ${request.roundId}") {
+                        votingCryptoClient.precomputeSnapshotBundles(
+                            dbHandle = dbHandle,
+                            torLease = torLease,
+                            roundId = request.roundId,
+                            pirServerUrl = pirServerUrl,
+                            pirLayout = request.pirLayout,
+                            notesJson = request.notesJson
+                        )
+                    }
+                } finally {
+                    torLease?.release()
                 }
             } finally {
                 // See runPirWarmup's identical comment above -- same reasoning.
                 withContext(NonCancellable) {
                     votingCryptoClient.closeVotingDb(dbHandle)
-                    if (torRuntime != 0L) synchronizerProvider.getSynchronizer().releaseVotingTorRuntimeHandle()
                 }
             }
         }.onSuccess { result ->

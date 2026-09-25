@@ -1,12 +1,12 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import cash.z.ecc.android.sdk.VotingShareTrackingSession
-import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import cash.z.ecc.android.sdk.model.voting.VotingShareTrackingQuiescence
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
+import co.electriccoin.zcash.ui.common.provider.acquireVotingTorLeaseOrNull
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryPhase
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
@@ -84,33 +84,28 @@ class TrackVotingSharesUseCase(
 
             try {
                 votingCryptoClient.setWalletId(dbHandle, accountUuidString, networkId)
-                // Same Tor-optional fallback as SubmitVotesUseCase.kt -- Tor is a
-                // preference, not a hard requirement. Only TorUnavailableException
-                // (Tor disabled) falls back to 0L; TorInitializationErrorException
-                // (Tor is ON but failed to bootstrap) must propagate.
-                @Suppress("SwallowedException")
-                val torRuntime =
-                    try {
-                        synchronizer.getVotingTorRuntimeHandle()
-                    } catch (e: TorUnavailableException) {
-                        0L
-                    }
-
-                val session = votingCryptoClient.openShareTrackingSession(dbHandle, roundId)
-                registerSession(roundId, session)
+                // Same Tor-optional policy as SubmitVotesUseCase.kt -- null when Tor is disabled,
+                // a Tor init failure propagates. Released in its own finally, after the session
+                // is closed, so a throw from openShareTrackingSession cannot leak it either.
+                val torLease = synchronizer.acquireVotingTorLeaseOrNull()
                 val report =
                     try {
-                        session.run(
-                            torRuntime = torRuntime,
-                            helperUrls = roundVoteServerUrls,
-                            voteEndTimeSeconds = recovery.voteEndEpochSeconds ?: -1L
-                        )
-                    } finally {
-                        unregisterSession(roundId, session)
-                        withContext(NonCancellable) {
-                            session.close()
-                            if (torRuntime != 0L) synchronizer.releaseVotingTorRuntimeHandle()
+                        val session = votingCryptoClient.openShareTrackingSession(dbHandle, roundId)
+                        registerSession(roundId, session)
+                        try {
+                            session.run(
+                                torLease = torLease,
+                                helperUrls = roundVoteServerUrls,
+                                voteEndTimeSeconds = recovery.voteEndEpochSeconds ?: -1L
+                            )
+                        } finally {
+                            unregisterSession(roundId, session)
+                            withContext(NonCancellable) {
+                                session.close()
+                            }
                         }
+                    } finally {
+                        torLease?.release()
                     }
 
                 when (report?.quiescence) {

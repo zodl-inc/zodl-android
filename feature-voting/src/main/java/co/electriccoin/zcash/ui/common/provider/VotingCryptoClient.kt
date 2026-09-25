@@ -19,6 +19,7 @@ import cash.z.ecc.android.sdk.model.voting.VotingRoundPhase
 import cash.z.ecc.android.sdk.model.voting.VotingRoundPlan
 import cash.z.ecc.android.sdk.model.voting.VotingRoundRunReport
 import cash.z.ecc.android.sdk.model.voting.VotingRoundState
+import cash.z.ecc.android.sdk.model.voting.VotingTorLease
 import cash.z.ecc.android.sdk.model.voting.VotingWitness
 import co.electriccoin.zcash.ui.common.model.voting.RoundPhase
 import co.electriccoin.zcash.ui.common.model.voting.RoundStateInfo
@@ -176,7 +177,7 @@ interface VotingCryptoClient {
     @Throws(RuntimeException::class)
     suspend fun precomputeDelegationPir(
         dbHandle: Long,
-        torRuntime: Long,
+        torLease: VotingTorLease?,
         roundId: String,
         bundleIndex: Int,
         pirServerUrl: String,
@@ -191,10 +192,10 @@ interface VotingCryptoClient {
      * round or bundle -- safe to call as a background pre-warming step before any round is
      * selected, whenever wallet notes are available.
      *
-     * [torRuntime] follows the same contract as [openRoundSession]'s own `torRuntime` parameter --
-     * obtain it from `Synchronizer.getVotingTorRuntimeHandle()`, pass `0` when no live Tor runtime
-     * is available (Tor disabled); this degrades to plain HTTP rather than failing the call, never
-     * fail-closed.
+     * [torLease] follows the same contract as [openRoundSession]'s own `torLease` parameter --
+     * obtain it from `Synchronizer.acquireVotingTorLeaseOrNull()`, `null` when Tor is disabled;
+     * this degrades to plain HTTP rather than failing the call, never fail-closed. The caller
+     * owns the lease and releases it after this call returns.
      *
      * **Shared native DB lock**: holds the shared native database lock for [dbHandle]'s
      * `(dbPath, walletId)` for the full call duration, including all PIR network round-trips,
@@ -207,7 +208,7 @@ interface VotingCryptoClient {
     @Throws(RuntimeException::class)
     suspend fun precomputePirProofs(
         dbHandle: Long,
-        torRuntime: Long,
+        torLease: VotingTorLease?,
         pirServerUrl: String,
         pirLayout: VotingPirLayout,
         notesJson: String
@@ -221,14 +222,14 @@ interface VotingCryptoClient {
      * superset of [precomputeDelegationPir] -- prefer this over per-bundle calls whenever the
      * round's full snapshot note set is available.
      *
-     * [torRuntime] and the shared-database-lock contract are the same as [precomputePirProofs]
+     * [torLease] and the shared-database-lock contract are the same as [precomputePirProofs]
      * above -- see that doc comment.
      * @throws RuntimeException if the native layer reports a failure.
      */
     @Throws(RuntimeException::class)
     suspend fun precomputeSnapshotBundles(
         dbHandle: Long,
-        torRuntime: Long,
+        torLease: VotingTorLease?,
         roundId: String,
         pirServerUrl: String,
         pirLayout: VotingPirLayout,
@@ -237,8 +238,9 @@ interface VotingCryptoClient {
 
     /**
      * Opens a round-driver session: binds a `RoundExecutor` to [roundId]'s roster and hotkey,
-     * wires its chain-submission and helper transports through [torRuntime]. Callers must
-     * [VotingRoundSession.close] it when done.
+     * wires its chain-submission and helper transports through [torLease]. Callers must
+     * [VotingRoundSession.close] it when done, and keep [torLease] unreleased until after that
+     * close -- the session uses the Tor runtime for its whole lifetime.
      *
      * Returns the raw SDK session type directly — the round-driver's plan/ballot-intent/run
      * surface is new with this port and has no pre-4.0 app-level equivalent to preserve, so this
@@ -251,7 +253,7 @@ interface VotingCryptoClient {
     @Throws(RuntimeException::class)
     suspend fun openRoundSession(
         dbHandle: Long,
-        torRuntime: Long,
+        torLease: VotingTorLease?,
         roundId: String,
         proposals: List<VotingProposalRosterEntry>,
         hotkeySecret: ByteArray?,
@@ -564,7 +566,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
 
     override suspend fun precomputeDelegationPir(
         dbHandle: Long,
-        torRuntime: Long,
+        torLease: VotingTorLease?,
         roundId: String,
         bundleIndex: Int,
         pirServerUrl: String,
@@ -574,7 +576,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         withContext(Dispatchers.IO) {
             session(dbHandle)
                 .precomputeDelegationPir(
-                    torRuntime,
+                    torLease,
                     roundId,
                     bundleIndex,
                     pirServerUrl,
@@ -588,7 +590,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
 
     override suspend fun precomputePirProofs(
         dbHandle: Long,
-        torRuntime: Long,
+        torLease: VotingTorLease?,
         pirServerUrl: String,
         pirLayout: VotingPirLayout,
         notesJson: String
@@ -596,7 +598,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         withContext(Dispatchers.IO) {
             session(dbHandle)
                 .precomputePirProofs(
-                    torRuntime,
+                    torLease,
                     pirServerUrl,
                     pirLayout.pirDepth,
                     pirLayout.tier0Layers,
@@ -608,7 +610,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
 
     override suspend fun precomputeSnapshotBundles(
         dbHandle: Long,
-        torRuntime: Long,
+        torLease: VotingTorLease?,
         roundId: String,
         pirServerUrl: String,
         pirLayout: VotingPirLayout,
@@ -617,7 +619,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         withContext(Dispatchers.IO) {
             session(dbHandle)
                 .precomputeSnapshotBundles(
-                    torRuntime,
+                    torLease,
                     roundId,
                     pirServerUrl,
                     pirLayout.pirDepth,
@@ -630,7 +632,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
 
     override suspend fun openRoundSession(
         dbHandle: Long,
-        torRuntime: Long,
+        torLease: VotingTorLease?,
         roundId: String,
         proposals: List<VotingProposalRosterEntry>,
         hotkeySecret: ByteArray?,
@@ -644,7 +646,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         withContext(Dispatchers.IO) {
             session(dbHandle)
                 .openRoundSession(
-                    torRuntime,
+                    torLease,
                     roundId,
                     proposals,
                     hotkeySecret,

@@ -2,6 +2,8 @@ package co.electriccoin.zcash.ui.common.usecase
 
 import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.VotingRoundSession
+import cash.z.ecc.android.sdk.exception.TorInitializationErrorException
+import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import cash.z.ecc.android.sdk.ext.toHex
 import cash.z.ecc.android.sdk.fixture.AccountFixture
 import cash.z.ecc.android.sdk.fixture.WalletAddressFixture
@@ -10,6 +12,7 @@ import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import cash.z.ecc.android.sdk.model.voting.VotingRoundQuiescence
 import cash.z.ecc.android.sdk.model.voting.VotingRoundRunReport
+import cash.z.ecc.android.sdk.model.voting.VotingTorLease
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.model.voting.Proposal
 import co.electriccoin.zcash.ui.common.model.voting.SessionStatus
@@ -36,6 +39,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import java.time.Instant
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 /**
  * Core non-Keystone success-path coverage for [SubmitVotesUseCase.invoke] -- fixture pattern
@@ -103,7 +107,7 @@ class SubmitVotesUseCaseSuccessPathTest {
                 env.votingProofPrecomputeRepository.cancelAndAwaitPrecompute(env.accountUuidString, env.roundId)
                 env.votingCryptoClient.openRoundSession(
                     dbHandle = any(),
-                    torRuntime = any(),
+                    torLease = any(),
                     roundId = any(),
                     proposals = any(),
                     hotkeySecret = any(),
@@ -118,29 +122,65 @@ class SubmitVotesUseCaseSuccessPathTest {
         }
 
     @Test
-    fun `a pinned non-zero Tor runtime handle is released exactly once when the round session closes`() =
+    fun `the Tor lease is released exactly once, after the round session closes`() =
         runTest {
             val env = Env()
             env.stubRun(env.runReport(quiescence = VotingRoundQuiescence.NoWorkLeft, completedProposals = 1))
-            coEvery { env.synchronizer.getVotingTorRuntimeHandle() } returns TOR_RUNTIME_HANDLE
-            coEvery { env.synchronizer.releaseVotingTorRuntimeHandle() } returns Unit
+            val torLease = mockk<VotingTorLease>(relaxed = true)
+            coEvery { env.synchronizer.acquireVotingTorLease() } returns torLease
 
             env.invoke(choices = mapOf(1 to 0))
 
-            coVerify(exactly = 1) { env.synchronizer.releaseVotingTorRuntimeHandle() }
+            coVerify(exactly = 1) { torLease.release() }
+            // Milan's review of PR #6 (B1): the session keeps using the runtime until close(), so
+            // the lease must outlive it -- and the release goes to the lease itself, never through
+            // whichever synchronizer is current by then.
+            coVerifyOrder {
+                env.roundSession.close()
+                torLease.release()
+            }
         }
 
     @Test
-    fun `a zero Tor runtime handle (Tor disabled) never triggers a release call`() =
+    fun `the Tor lease is still released when opening the round session throws`() =
         runTest {
             val env = Env()
-            env.stubRun(env.runReport(quiescence = VotingRoundQuiescence.NoWorkLeft, completedProposals = 1))
-            // Env's default is already 0L (Tor unavailable) -- explicit here for clarity.
-            coEvery { env.synchronizer.getVotingTorRuntimeHandle() } returns 0L
+            val torLease = mockk<VotingTorLease>(relaxed = true)
+            coEvery { env.synchronizer.acquireVotingTorLease() } returns torLease
+            coEvery {
+                env.votingCryptoClient.openRoundSession(
+                    dbHandle = any(),
+                    torLease = any(),
+                    roundId = any(),
+                    proposals = any(),
+                    hotkeySecret = any(),
+                    chainEndpoints = any(),
+                    operationEpoch = any(),
+                    configuredHelperUrls = any(),
+                    voteTreeNodeUrls = any(),
+                    ceremonyStartSeconds = any(),
+                    voteEndTimeSeconds = any()
+                )
+            } throws IllegalStateException("native open failed")
 
-            env.invoke(choices = mapOf(1 to 0))
+            assertFailsWith<IllegalStateException> { env.invoke(choices = mapOf(1 to 0)) }
 
-            coVerify(exactly = 0) { env.synchronizer.releaseVotingTorRuntimeHandle() }
+            // Milan's review of PR #6 (S4): the lease used to be taken before the DB/session opens
+            // but released only in the session's own finally, so this throw leaked it.
+            coVerify(exactly = 1) { torLease.release() }
+            coVerify(exactly = 1) { env.votingCryptoClient.closeVotingDb(any()) }
+        }
+
+    @Test
+    fun `a Tor init failure still closes the voting DB`() =
+        runTest {
+            val env = Env()
+            coEvery { env.synchronizer.acquireVotingTorLease() } throws
+                TorInitializationErrorException(IllegalStateException("bootstrap failed"))
+
+            assertFailsWith<TorInitializationErrorException> { env.invoke(choices = mapOf(1 to 0)) }
+
+            coVerify(exactly = 1) { env.votingCryptoClient.closeVotingDb(any()) }
         }
 
     /**
@@ -199,7 +239,7 @@ class SubmitVotesUseCaseSuccessPathTest {
                 )
             every { synchronizer.network } returns ZcashNetwork.Testnet
             coEvery { synchronizer.getTreeState(any()) } returns ByteArray(32)
-            coEvery { synchronizer.getVotingTorRuntimeHandle() } returns 0L
+            coEvery { synchronizer.acquireVotingTorLease() } throws TorUnavailableException()
 
             coEvery { resolveVotingRoundSession(roundId) } returns
                 VotingRoundSessionContext(session = session, serviceConfig = serviceConfig)
@@ -219,7 +259,7 @@ class SubmitVotesUseCaseSuccessPathTest {
             coEvery {
                 votingCryptoClient.openRoundSession(
                     dbHandle = any(),
-                    torRuntime = any(),
+                    torLease = any(),
                     roundId = any(),
                     proposals = any(),
                     hotkeySecret = any(),
@@ -308,5 +348,3 @@ class SubmitVotesUseCaseSuccessPathTest {
         )
     }
 }
-
-private const val TOR_RUNTIME_HANDLE = 42L

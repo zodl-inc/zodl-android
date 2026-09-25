@@ -1,7 +1,6 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import android.util.Log
-import cash.z.ecc.android.sdk.exception.TorUnavailableException
 import cash.z.ecc.android.sdk.ext.toHex
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.ZcashNetwork
@@ -20,6 +19,7 @@ import co.electriccoin.zcash.ui.common.model.voting.requireKnownPolyLen
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.VotingHotkeySeedProvider
+import co.electriccoin.zcash.ui.common.provider.acquireVotingTorLeaseOrNull
 import co.electriccoin.zcash.ui.common.repository.VotingKeystoneSessionHolder
 import co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepository
 import co.electriccoin.zcash.ui.common.repository.VotingProposalSelection
@@ -174,159 +174,128 @@ class SubmitVotesUseCase(
                     ?: throw VotingSubmissionRecoverableException(VotingErrors.MissingHotkeySeed(roundId))
             val treeStateBytes = synchronizer.getTreeState(BlockHeight.new(session.snapshotHeight))
 
-            // Tor is a user preference here, not a hard requirement -- mirrors the
-            // pre-4.0 architecture (VotingApiProvider builds a plain or Tor-routed
-            // client depending on the user's preference). `0L` is the SDK-side "no
-            // Tor runtime" sentinel `resolve_tor_runtime` handles cleanly; when Tor
-            // is actually enabled, `openRoundSessionNative`'s Rust side picks real
-            // Tor routing (`SessionRoute::Tor`, see round_session.rs) for this
-            // session's whole lifetime -- plain HTTP is only the explicit fallback
-            // when Tor is disabled/unavailable, never a silent downgrade while it's on.
-            // Only TorUnavailableException (Tor disabled) falls back to 0L;
-            // TorInitializationErrorException (Tor is ON but failed to bootstrap) must
-            // propagate rather than silently deanonymizing this submission. A non-zero
-            // torRuntime is pinned (see getVotingTorRuntimeHandle's own doc comment) and MUST be
-            // released exactly once -- the finally below, alongside roundSession.close(), does
-            // that -- or the shared Tor client can never be disposed again.
-            @Suppress("SwallowedException")
-            val torRuntime =
-                try {
-                    synchronizer.getVotingTorRuntimeHandle()
-                } catch (e: TorUnavailableException) {
-                    0L
-                }
-
             val dbHandle = votingCryptoClient.openVotingDb(votingDbPath)
             check(dbHandle != 0L) { "Failed to open voting DB at $votingDbPath" }
 
             try {
                 votingCryptoClient.setWalletId(dbHandle, accountUuidString, networkId)
 
-                val proposals =
-                    session.proposals.map { proposal ->
-                        VotingProposalRosterEntry(proposalId = proposal.id, numOptions = proposal.options.size)
-                    }
-                val roundSession =
-                    votingCryptoClient.openRoundSession(
-                        dbHandle = dbHandle,
-                        torRuntime = torRuntime,
-                        roundId = roundId,
-                        proposals = proposals,
-                        hotkeySecret = hotkeySecret,
-                        chainEndpoints = voteServerUrls,
-                        operationEpoch = 0L,
-                        configuredHelperUrls = voteServerUrls,
-                        voteTreeNodeUrls = voteServerUrls,
-                        ceremonyStartSeconds = session.ceremonyStart.epochSecond,
-                        voteEndTimeSeconds = session.voteEndTime.epochSecond
-                    )
+                // Tor is a user preference here, not a hard requirement -- mirrors the pre-4.0
+                // architecture (VotingApiProvider builds a plain or Tor-routed client depending on
+                // the user's preference). A null lease means Tor is disabled (plain HTTP); a Tor
+                // init failure propagates rather than silently deanonymizing this submission (see
+                // acquireVotingTorLeaseOrNull). Acquired inside the DB try and released in its own
+                // finally, so no throw or cancellation between here and openRoundSession can leak
+                // either the lease or the DB handle. The lease releases against the Tor client that
+                // issued it, so a synchronizer rebuild during the run cannot break the release.
+                val torLease = synchronizer.acquireVotingTorLeaseOrNull()
                 try {
-                    votingRecoveryRepository.storeProposalSelections(
-                        accountUuid = accountUuidString,
-                        roundId = roundId,
-                        proposalSelections =
-                            choices.mapValues { (proposalId, choiceId) ->
-                                val numOptions =
-                                    session.proposals
-                                        .first { proposal -> proposal.id == proposalId }
-                                        .options.size
-                                VotingProposalSelection(
-                                    choiceId = choiceId,
-                                    numOptions = numOptions
-                                )
-                            }
-                    )
-
-                    roundSession.setBallotIntents(buildBallotIntents(session.proposals, choices))
-
-                    val delegationInputs =
-                        VotingDelegationInputs(
-                            walletDbPath = walletDbPath,
-                            accountUuid = selectedAccount.sdkAccount.accountUuid.toCanonicalUuidString(),
-                            anchorTreeStateBytes = treeStateBytes,
+                    val proposals =
+                        session.proposals.map { proposal ->
+                            VotingProposalRosterEntry(proposalId = proposal.id, numOptions = proposal.options.size)
+                        }
+                    val roundSession =
+                        votingCryptoClient.openRoundSession(
+                            dbHandle = dbHandle,
+                            torLease = torLease,
+                            roundId = roundId,
+                            proposals = proposals,
                             hotkeySecret = hotkeySecret,
-                            pirEndpoints = serviceConfig.pirEndpoints.map { endpoint -> endpoint.url },
-                            pirDepth = serviceConfig.pirLayout.requireKnownPolyLen().pirDepth,
-                            pirTier0Layers = serviceConfig.pirLayout.tier0Layers,
-                            pirTier1Layers = serviceConfig.pirLayout.tier1Layers,
-                            pirPolyLen = serviceConfig.pirLayout.polyLen,
-                            keystone = false,
-                            softwareSeed = getWalletSeedBytes(),
-                            keystoneSig = null,
-                            keystoneSighash = null,
-                            snapshotHeight = session.snapshotHeight,
-                            eaPk = session.eaPK,
-                            ncRoot = session.ncRoot,
-                            nullifierImtRoot = session.nullifierIMTRoot
+                            chainEndpoints = voteServerUrls,
+                            operationEpoch = 0L,
+                            configuredHelperUrls = voteServerUrls,
+                            voteTreeNodeUrls = voteServerUrls,
+                            ceremonyStartSeconds = session.ceremonyStart.epochSecond,
+                            voteEndTimeSeconds = session.voteEndTime.epochSecond
+                        )
+                    try {
+                        votingRecoveryRepository.storeProposalSelections(
+                            accountUuid = accountUuidString,
+                            roundId = roundId,
+                            proposalSelections =
+                                choices.mapValues { (proposalId, choiceId) ->
+                                    val numOptions =
+                                        session.proposals
+                                            .first { proposal -> proposal.id == proposalId }
+                                            .options.size
+                                    VotingProposalSelection(
+                                        choiceId = choiceId,
+                                        numOptions = numOptions
+                                    )
+                                }
                         )
 
-                    // Ratchet, not overwrite: the round-driver interleaves several bundles
-                    // concurrently (confirmed on-device -- a Delegate-phase event with no tally
-                    // update for bundle B can arrive between two CastVote events for bundle A),
-                    // so the last event received is not necessarily the most complete state.
-                    // completedProposals/totalProposals come from PlanRefreshed's own tally --
-                    // a stable "N of M" measured against the run's first plan (see
-                    // VotingRoundWorkTally's doc comment) -- and only ever move forward here,
-                    // the same fix Vizor Wallet's own zcash_voting v5.0.0 integration uses for
-                    // the identical interleaving. See VotingSubmissionProgress.RunningRound's
-                    // doc comment for why a per-event bundle/proposal id was dropped instead.
-                    var lastCompletedProposals: Int? = null
-                    var lastTotalProposals: Int? = null
-                    // Guards lastCompletedProposals/lastTotalProposals: like
-                    // VotingRoundProgressTracker's own internal state (see its class doc comment),
-                    // these are mutated by progressListener below, which is called from whichever
-                    // native thread the round-driver's concurrent bundle tasks happen to be
-                    // running on -- unsynchronized read-maxOf-write from multiple threads risks a
-                    // lost update. Milan's review of PR #6, should-fix.
-                    val tallyLock = Any()
-                    // Per-proposal progress tracker (each proposal's own fraction is the minimum
-                    // across that proposal's own bundles, summed across every proposal currently
-                    // in flight) -- moves visibly even in a many-proposal round, unlike tracking
-                    // only the slowest bundle of a single proposal. Returns null (show an
-                    // indeterminate indicator) until real progress exists. See
-                    // VotingRoundProgressTracker's own doc
-                    // comment for the Vizor Wallet precedent this mirrors.
-                    val progressTracker = VotingRoundProgressTracker()
-                    val progressListener =
-                        VotingRoundDriveProgressListener { progress ->
-                            progress.tally?.let { tally ->
-                                synchronized(tallyLock) {
-                                    lastCompletedProposals =
-                                        maxOf(lastCompletedProposals ?: 0, tally.completedProposals)
-                                    lastTotalProposals =
-                                        maxOf(lastTotalProposals ?: 0, tally.totalProposals)
+                        roundSession.setBallotIntents(buildBallotIntents(session.proposals, choices))
+
+                        val delegationInputs =
+                            VotingDelegationInputs(
+                                walletDbPath = walletDbPath,
+                                accountUuid = selectedAccount.sdkAccount.accountUuid.toCanonicalUuidString(),
+                                anchorTreeStateBytes = treeStateBytes,
+                                hotkeySecret = hotkeySecret,
+                                pirEndpoints = serviceConfig.pirEndpoints.map { endpoint -> endpoint.url },
+                                pirDepth = serviceConfig.pirLayout.requireKnownPolyLen().pirDepth,
+                                pirTier0Layers = serviceConfig.pirLayout.tier0Layers,
+                                pirTier1Layers = serviceConfig.pirLayout.tier1Layers,
+                                pirPolyLen = serviceConfig.pirLayout.polyLen,
+                                keystone = false,
+                                softwareSeed = getWalletSeedBytes(),
+                                keystoneSig = null,
+                                keystoneSighash = null,
+                                snapshotHeight = session.snapshotHeight,
+                                eaPk = session.eaPK,
+                                ncRoot = session.ncRoot,
+                                nullifierImtRoot = session.nullifierIMTRoot
+                            )
+
+                        // Ratchet, not overwrite: the round-driver interleaves several bundles
+                        // concurrently (confirmed on-device -- a Delegate-phase event with no tally
+                        // update for bundle B can arrive between two CastVote events for bundle A),
+                        // so the last event received is not necessarily the most complete state.
+                        // completedProposals/totalProposals come from PlanRefreshed's own tally --
+                        // a stable "N of M" measured against the run's first plan (see
+                        // VotingRoundWorkTally's doc comment) -- and only ever move forward here,
+                        // the same fix Vizor Wallet's own zcash_voting v5.0.0 integration uses for
+                        // the identical interleaving. See VotingSubmissionProgress.RunningRound's
+                        // doc comment for why a per-event bundle/proposal id was dropped instead.
+                        var lastCompletedProposals: Int? = null
+                        var lastTotalProposals: Int? = null
+                        // Guards lastCompletedProposals/lastTotalProposals: like
+                        // VotingRoundProgressTracker's own internal state (see its class doc comment),
+                        // these are mutated by progressListener below, which is called from whichever
+                        // native thread the round-driver's concurrent bundle tasks happen to be
+                        // running on -- unsynchronized read-maxOf-write from multiple threads risks a
+                        // lost update. Milan's review of PR #6, should-fix.
+                        val tallyLock = Any()
+                        // Per-proposal progress tracker (each proposal's own fraction is the minimum
+                        // across that proposal's own bundles, summed across every proposal currently
+                        // in flight) -- moves visibly even in a many-proposal round, unlike tracking
+                        // only the slowest bundle of a single proposal. Returns null (show an
+                        // indeterminate indicator) until real progress exists. See
+                        // VotingRoundProgressTracker's own doc
+                        // comment for the Vizor Wallet precedent this mirrors.
+                        val progressTracker = VotingRoundProgressTracker()
+                        val progressListener =
+                            VotingRoundDriveProgressListener { progress ->
+                                progress.tally?.let { tally ->
+                                    synchronized(tallyLock) {
+                                        lastCompletedProposals =
+                                            maxOf(lastCompletedProposals ?: 0, tally.completedProposals)
+                                        lastTotalProposals =
+                                            maxOf(lastTotalProposals ?: 0, tally.totalProposals)
+                                    }
                                 }
-                            }
-                            progressTracker.record(
-                                progress.step,
-                                progress.proofProgress,
-                                progress.voteCommitProposalId
-                            )
-                            progressTracker.recordPlan(progress.voteCarryingBundleIndexes)
-                            // Snapshot both vars together under the same lock they're written
-                            // under, rather than reading them individually below -- a plain var
-                            // read with no synchronization has no Java Memory Model guarantee of
-                            // seeing another thread's write at all, not just a risk of seeing a
-                            // stale one.
-                            val (completedForRead, totalForRead) =
-                                synchronized(tallyLock) { lastCompletedProposals to lastTotalProposals }
-                            onProgress(
-                                VotingSubmissionProgress.RunningRound(
-                                    completedProposals =
-                                        progressTracker.estimatedCompletedProposals(
-                                            completedForRead,
-                                            totalForRead
-                                        ),
-                                    totalProposals = totalForRead,
-                                    proofProgress =
-                                        progressTracker.fraction(completedForRead, totalForRead)
+                                progressTracker.record(
+                                    progress.step,
+                                    progress.proofProgress,
+                                    progress.voteCommitProposalId
                                 )
-                            )
-                        }
-                    val report =
-                        runRoundWithBundleFailureRetry(
-                            roundId,
-                            onRetrying = {
+                                progressTracker.recordPlan(progress.voteCarryingBundleIndexes)
+                                // Snapshot both vars together under the same lock they're written
+                                // under, rather than reading them individually below -- a plain var
+                                // read with no synchronization has no Java Memory Model guarantee of
+                                // seeing another thread's write at all, not just a risk of seeing a
+                                // stale one.
                                 val (completedForRead, totalForRead) =
                                     synchronized(tallyLock) { lastCompletedProposals to lastTotalProposals }
                                 onProgress(
@@ -338,76 +307,97 @@ class SubmitVotesUseCase(
                                             ),
                                         totalProposals = totalForRead,
                                         proofProgress =
-                                            progressTracker.fraction(completedForRead, totalForRead),
-                                        isRetrying = true
+                                            progressTracker.fraction(completedForRead, totalForRead)
                                     )
                                 )
                             }
-                        ) {
-                            roundSession.run(delegationInputs, progressListener)
+                        val report =
+                            runRoundWithBundleFailureRetry(
+                                roundId,
+                                onRetrying = {
+                                    val (completedForRead, totalForRead) =
+                                        synchronized(tallyLock) { lastCompletedProposals to lastTotalProposals }
+                                    onProgress(
+                                        VotingSubmissionProgress.RunningRound(
+                                            completedProposals =
+                                                progressTracker.estimatedCompletedProposals(
+                                                    completedForRead,
+                                                    totalForRead
+                                                ),
+                                            totalProposals = totalForRead,
+                                            proofProgress =
+                                                progressTracker.fraction(completedForRead, totalForRead),
+                                            isRetrying = true
+                                        )
+                                    )
+                                }
+                            ) {
+                                roundSession.run(delegationInputs, progressListener)
+                            }
+
+                        // By design: PersistedChainTerminal must surface to the
+                        // user immediately, never be silently retried -- unaffected by
+                        // runRoundWithBundleFailureRetry above, which only ever re-invokes this call
+                        // for the disjoint Failures-with-isolated-bundle-transport-errors case (see
+                        // its own doc comment); every other quiescence, PersistedChainTerminal
+                        // included, still falls straight through to the mapped error below on the
+                        // very first report. Unknown is explicitly NOT treated as success either --
+                        // an earlier version of this code did, and a review of this port caught it as
+                        // a defect. See
+                        // VotingRoundQuiescenceMapper.kt for the full quiescence/failure -> VotingErrors
+                        // mapping.
+                        report.toVotingErrorOrNull(roundId)?.let { votingError ->
+                            throw VotingSubmissionRecoverableException(votingError)
                         }
+                        logPartialOutcomeIfAny(roundId, report)
 
-                    // By design: PersistedChainTerminal must surface to the
-                    // user immediately, never be silently retried -- unaffected by
-                    // runRoundWithBundleFailureRetry above, which only ever re-invokes this call
-                    // for the disjoint Failures-with-isolated-bundle-transport-errors case (see
-                    // its own doc comment); every other quiescence, PersistedChainTerminal
-                    // included, still falls straight through to the mapped error below on the
-                    // very first report. Unknown is explicitly NOT treated as success either --
-                    // an earlier version of this code did, and a review of this port caught it as
-                    // a defect. See
-                    // VotingRoundQuiescenceMapper.kt for the full quiescence/failure -> VotingErrors
-                    // mapping.
-                    report.toVotingErrorOrNull(roundId)?.let { votingError ->
-                        throw VotingSubmissionRecoverableException(votingError)
+                        // Schedules VotingShareTrackingWorker unconditionally on success (matches the
+                        // pre-parking-commit round-driver implementation of this call, which this
+                        // rewrite lost -- see git history for the exact prior call site). Safe to
+                        // call even when quiescence was NoWorkLeft: TrackVotingSharesUseCase's own
+                        // first pass short-circuits immediately when no unconfirmed shares remain.
+                        votingShareTrackingScheduler.schedule(roundId)
+
+                        // Marks the durable recovery snapshot as having successfully submitted votes
+                        // for this round -- restores the pre-rewrite phase transition that was lost
+                        // in this rewrite.
+                        votingRecoveryRepository.setPhase(
+                            accountUuidString,
+                            roundId,
+                            VotingRecoveryPhase.VOTES_SUBMITTED
+                        )
+
+                        // Marks this round submitted in the durable recovery snapshot -- without
+                        // this, VoteCoinholderPollingVM's persisted (cross-process-restart) fallback
+                        // never sees a submitted round (VotingSessionStore's in-memory record is the
+                        // only thing that currently works, and only within the same process), so a
+                        // freshly relaunched app always shows an already-voted round as still
+                        // ACTIVE/enterable rather than VOTED. markProposalSubmitted per proposal is
+                        // also what getRoundIdsRequiringShareTracking's submittedProposalIds check
+                        // depends on. Lost in the same rewrite as the scheduler call above.
+                        choices.keys.forEach { proposalId ->
+                            votingRecoveryRepository.markProposalSubmitted(accountUuidString, roundId, proposalId)
+                        }
+                        votingRecoveryRepository.storeSubmittedAt(
+                            accountUuidString,
+                            roundId,
+                            System.currentTimeMillis() / MILLIS_PER_SECOND
+                        )
+
+                        VotingSubmissionResult(submittedProposalCount = report.completedProposals)
+                    } finally {
+                        // withContext(Dispatchers.IO) here (used internally by roundSession.close())
+                        // throws immediately instead of running when the parent Job is already
+                        // cancelled (e.g. the user backed out mid round-drive) -- NonCancellable lets
+                        // the native round session actually get closed instead of leaking its handle.
+                        withContext(NonCancellable) {
+                            roundSession.close()
+                        }
                     }
-                    logPartialOutcomeIfAny(roundId, report)
-
-                    // Schedules VotingShareTrackingWorker unconditionally on success (matches the
-                    // pre-parking-commit round-driver implementation of this call, which this
-                    // rewrite lost -- see git history for the exact prior call site). Safe to
-                    // call even when quiescence was NoWorkLeft: TrackVotingSharesUseCase's own
-                    // first pass short-circuits immediately when no unconfirmed shares remain.
-                    votingShareTrackingScheduler.schedule(roundId)
-
-                    // Marks the durable recovery snapshot as having successfully submitted votes
-                    // for this round -- restores the pre-rewrite phase transition that was lost
-                    // in this rewrite.
-                    votingRecoveryRepository.setPhase(
-                        accountUuidString,
-                        roundId,
-                        VotingRecoveryPhase.VOTES_SUBMITTED
-                    )
-
-                    // Marks this round submitted in the durable recovery snapshot -- without
-                    // this, VoteCoinholderPollingVM's persisted (cross-process-restart) fallback
-                    // never sees a submitted round (VotingSessionStore's in-memory record is the
-                    // only thing that currently works, and only within the same process), so a
-                    // freshly relaunched app always shows an already-voted round as still
-                    // ACTIVE/enterable rather than VOTED. markProposalSubmitted per proposal is
-                    // also what getRoundIdsRequiringShareTracking's submittedProposalIds check
-                    // depends on. Lost in the same rewrite as the scheduler call above.
-                    choices.keys.forEach { proposalId ->
-                        votingRecoveryRepository.markProposalSubmitted(accountUuidString, roundId, proposalId)
-                    }
-                    votingRecoveryRepository.storeSubmittedAt(
-                        accountUuidString,
-                        roundId,
-                        System.currentTimeMillis() / MILLIS_PER_SECOND
-                    )
-
-                    VotingSubmissionResult(submittedProposalCount = report.completedProposals)
                 } finally {
-                    // withContext(Dispatchers.IO) here (used internally by roundSession.close())
-                    // throws immediately instead of running when the parent Job is already
-                    // cancelled (e.g. the user backed out mid round-drive) -- NonCancellable lets
-                    // the native round session actually get closed instead of leaking its handle.
-                    // Releasing the pinned Tor runtime handle alongside it (see torRuntime's own
-                    // comment above) needs the same NonCancellable treatment for the same reason.
-                    withContext(NonCancellable) {
-                        roundSession.close()
-                        if (torRuntime != 0L) synchronizer.releaseVotingTorRuntimeHandle()
-                    }
+                    // After roundSession.close(): the session uses the runtime until then.
+                    // release() is idempotent and completes even when this coroutine is cancelled.
+                    torLease?.release()
                 }
             } finally {
                 withContext(NonCancellable) {
@@ -599,14 +589,9 @@ class SubmitVotesUseCase(
         }
         logPartialOutcomeIfAny(roundId, report)
 
-        // Only close on genuine success -- unlike the non-Keystone path's roundSession (freshly
-        // opened and unconditionally closed every call), this session is retained across the
-        // Sign/Scan flow and must survive a transient failure here (e.g. a network blip mid
-        // chain-submission) so a retry can resume the same session via ensureDelegationPipeline's
-        // no-op path above instead of hitting a "no open session" checkNotNull with no way back
-        // in (the Sign screen refuses to re-open once every bundle is already signed).
-        withContext(NonCancellable) { votingKeystoneSessionHolder.close(roundId) }
-
+        // The votes are cast at this point -- record that before anything else can fail, so a
+        // problem tearing down the retained session below can never make the user see an error
+        // (and the round stay "not submitted") for votes that actually went out.
         votingShareTrackingScheduler.schedule(roundId)
         votingRecoveryRepository.setPhase(accountUuidString, roundId, VotingRecoveryPhase.VOTES_SUBMITTED)
         choices.keys.forEach { proposalId ->
@@ -618,7 +603,26 @@ class SubmitVotesUseCase(
             System.currentTimeMillis() / MILLIS_PER_SECOND
         )
 
+        // Only close on genuine success -- unlike the non-Keystone path's roundSession (freshly
+        // opened and unconditionally closed every call), this session is retained across the
+        // Sign/Scan flow and must survive a transient failure here (e.g. a network blip mid
+        // chain-submission) so a retry can resume the same session via ensureDelegationPipeline's
+        // no-op path above instead of hitting a "no open session" checkNotNull with no way back
+        // in (the Sign screen refuses to re-open once every bundle is already signed). A close
+        // failure is logged, not thrown: the submission itself succeeded, and the holder has
+        // already cleared its fields, so the next Keystone flow starts from a fresh session.
+        closeKeystoneSessionAfterSuccess(roundId)
+
         return VotingSubmissionResult(submittedProposalCount = report.completedProposals)
+    }
+
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun closeKeystoneSessionAfterSuccess(roundId: String) {
+        try {
+            withContext(NonCancellable) { votingKeystoneSessionHolder.close(roundId) }
+        } catch (e: Exception) {
+            Log.w(TAG, "step=keystone-session-close round=$roundId failed after a successful submission", e)
+        }
     }
 
     /**
