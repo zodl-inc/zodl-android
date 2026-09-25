@@ -35,6 +35,13 @@ import androidx.compose.ui.window.DialogWindowProvider
 import co.electriccoin.zcash.ui.design.LocalKeyboardManager
 import co.electriccoin.zcash.ui.design.R
 
+/**
+ * A bottom sheet that is a whole navigation destination.
+ *
+ * The dim behind the sheet is drawn by the host navigation dialog window, which is stretched to fill
+ * the screen: its content is empty, so it would otherwise be zero-sized, and Samsung's window manager
+ * draws no dim behind a zero-sized window.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun <T : ModalBottomSheetState> ZashiScreenModalBottomSheet(
@@ -51,6 +58,7 @@ fun <T : ModalBottomSheetState> ZashiScreenModalBottomSheet(
     // animation fades the dim in place on dismissals that tear the composition down (forward/back).
     val hostWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
     SideEffect {
+        hostWindow?.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT)
         hostWindow?.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
         hostWindow?.setWindowAnimations(R.style.ZashiBottomSheetScrimAnimation)
     }
