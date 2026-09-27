@@ -165,6 +165,7 @@ jobs:
         timeout-minutes: 30
         uses: ./.github/actions/setup-sdk-companion
         with:
+          sdk-repo: ${{ vars.SDK_COMPANION_REPO }}
           sdk-token: ${{ secrets.SDK_COMPANION_TOKEN || secrets.ZODL_QA }}
       - name: Set up Java
         uses: ./.github/actions/setup-java
@@ -216,6 +217,7 @@ jobs:
         timeout-minutes: 30
         uses: ./.github/actions/setup-sdk-companion
         with:
+          sdk-repo: ${{ vars.SDK_COMPANION_REPO }}
           sdk-token: ${{ secrets.SDK_COMPANION_TOKEN || secrets.ZODL_QA }}
       - name: Set up Java
         uses: ./.github/actions/setup-java
@@ -294,6 +296,7 @@ jobs:
         timeout-minutes: 30
         uses: ./.github/actions/setup-sdk-companion
         with:
+          sdk-repo: ${{ vars.SDK_COMPANION_REPO }}
           sdk-token: ${{ secrets.SDK_COMPANION_TOKEN || secrets.ZODL_QA }}
       - name: Set up Java
         uses: ./.github/actions/setup-java
@@ -450,6 +453,7 @@ jobs:
         timeout-minutes: 30
         uses: ./.github/actions/setup-sdk-companion
         with:
+          sdk-repo: ${{ vars.SDK_COMPANION_REPO }}
           sdk-token: ${{ secrets.SDK_COMPANION_TOKEN || secrets.ZODL_QA }}
       - name: Set up Java
         uses: ./.github/actions/setup-java
