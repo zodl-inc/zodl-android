@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.component.BlankSurface
 import co.electriccoin.zcash.ui.design.component.ZashiHorizontalDivider
@@ -30,11 +31,16 @@ import com.valentinilk.shimmer.ShimmerBounds
 import com.valentinilk.shimmer.rememberShimmer
 import com.valentinilk.shimmer.shimmer
 
+/**
+ * @param color the placeholder color; must contrast with the surface the screen is drawn on, so a
+ * bottom sheet (whose container is already [ZashiColors.Surfaces.bgSecondary]) needs a different one.
+ */
 @Suppress("MagicNumber")
 @Composable
 fun CommonShimmerLoadingScreen(
     shimmerItemsCount: Int,
     modifier: Modifier = Modifier,
+    color: Color = ZashiColors.Surfaces.bgSecondary,
     contentPaddingValues: PaddingValues = PaddingValues(horizontal = 24.dp, vertical = 12.dp),
     disableShimmer: Boolean = false,
     showDivider: Boolean = true
@@ -70,6 +76,7 @@ fun CommonShimmerLoadingScreen(
                 ZashiHorizontalDivider(modifier = Modifier.padding(4.dp))
             }
             FakeItem(
+                color = color,
                 modifier = Modifier.padding(contentPaddingValues)
             )
         }
@@ -77,7 +84,10 @@ fun CommonShimmerLoadingScreen(
 }
 
 @Composable
-private fun FakeItem(modifier: Modifier = Modifier) {
+private fun FakeItem(
+    color: Color,
+    modifier: Modifier = Modifier
+) {
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically
@@ -86,7 +96,7 @@ private fun FakeItem(modifier: Modifier = Modifier) {
             modifier =
                 Modifier
                     .size(40.dp)
-                    .background(ZashiColors.Surfaces.bgSecondary, CircleShape)
+                    .background(color, CircleShape)
         )
 
         Spacer(Modifier.width(16.dp))
@@ -97,7 +107,7 @@ private fun FakeItem(modifier: Modifier = Modifier) {
                     Modifier
                         .width(86.dp)
                         .height(14.dp)
-                        .background(ZashiColors.Surfaces.bgSecondary, CircleShape)
+                        .background(color, CircleShape)
             )
             Spacer(Modifier.height(4.dp))
             Box(
@@ -105,7 +115,7 @@ private fun FakeItem(modifier: Modifier = Modifier) {
                     Modifier
                         .width(64.dp)
                         .height(14.dp)
-                        .background(ZashiColors.Surfaces.bgSecondary, CircleShape)
+                        .background(color, CircleShape)
             )
         }
         Spacer(Modifier.weight(1f))
@@ -114,7 +124,7 @@ private fun FakeItem(modifier: Modifier = Modifier) {
                 Modifier
                     .width(32.dp)
                     .height(14.dp)
-                    .background(ZashiColors.Surfaces.bgSecondary, CircleShape)
+                    .background(color, CircleShape)
         )
     }
 }

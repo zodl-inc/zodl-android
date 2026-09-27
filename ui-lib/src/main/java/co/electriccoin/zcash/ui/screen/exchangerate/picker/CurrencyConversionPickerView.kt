@@ -79,6 +79,7 @@ fun CurrencyConversionPickerView(state: CurrencyConversionPickerState?) {
                         is CurrencyConversionPickerDataState.Error -> {
                             CommonErrorScreen(
                                 state = innerState.data,
+                                shimmerColor = ZashiColors.Surfaces.bgTertiary,
                                 modifier =
                                     Modifier
                                         .fillMaxSize()
@@ -89,6 +90,7 @@ fun CurrencyConversionPickerView(state: CurrencyConversionPickerState?) {
                         CurrencyConversionPickerDataState.Loading -> {
                             CommonShimmerLoadingScreen(
                                 shimmerItemsCount = 10,
+                                color = ZashiColors.Surfaces.bgTertiary,
                                 modifier =
                                     Modifier
                                         .fillMaxSize()

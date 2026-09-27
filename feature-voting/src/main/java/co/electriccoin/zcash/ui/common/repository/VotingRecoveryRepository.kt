@@ -3,12 +3,15 @@ package co.electriccoin.zcash.ui.common.repository
 import co.electriccoin.zcash.preference.EncryptedPreferenceProvider
 import co.electriccoin.zcash.preference.api.PreferenceProvider
 import co.electriccoin.zcash.preference.model.entry.PreferenceKey
+import co.electriccoin.zcash.ui.common.model.voting.VotingBundleSetupResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingErrors
 import co.electriccoin.zcash.ui.common.model.voting.VotingSubmissionRecoverableException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
@@ -81,6 +84,8 @@ data class VotingRecoverySnapshot(
     val eligibleWeight: Long? = null,
     val bundleWeights: List<Long> = emptyList(),
     val skippedBundleCount: Int = 0,
+    val trimmedBundleCount: Int = 0,
+    val trimmedWeight: Long = 0,
     val submittedAtEpochSeconds: Long? = null,
     val voteEndEpochSeconds: Long? = null,
     // Legacy recovery snapshots stored the voting hotkey seed inline here.
@@ -104,6 +109,25 @@ data class VotingRecoverySnapshot(
 ) {
     fun decodeHotkeySeed(): ByteArray? =
         hotkeySeedBase64?.let { encoded -> Base64.getDecoder().decode(encoded) }
+}
+
+/**
+ * The bundle setup this snapshot already carries, or null when the round was never prepared. A
+ * non-null result means round preparation ran for this account and round and got past its
+ * eligibility and scanned-height gates.
+ */
+internal fun VotingRecoverySnapshot.preparedBundleSetup(): VotingBundleSetupResult? {
+    val count = bundleCount
+    val weight = eligibleWeight
+    return if (count == null || weight == null || bundleWeights.size < count) {
+        null
+    } else {
+        VotingBundleSetupResult(
+            bundleCount = count,
+            eligibleWeight = weight,
+            bundleWeights = bundleWeights.take(count)
+        )
+    }
 }
 
 interface VotingRecoveryRepository {
@@ -130,7 +154,9 @@ interface VotingRecoveryRepository {
         roundId: String,
         bundleCount: Int,
         eligibleWeight: Long,
-        bundleWeights: List<Long>
+        bundleWeights: List<Long>,
+        trimmedBundleCount: Int = 0,
+        trimmedWeight: Long = 0
     )
 
     suspend fun setEligibleWeight(
@@ -290,6 +316,14 @@ interface VotingRecoveryRepository {
 class VotingRecoveryRepositoryImpl(
     private val encryptedPreferenceProvider: EncryptedPreferenceProvider
 ) : VotingRecoveryRepository {
+    /**
+     * Serializes every read-modify-write of a snapshot. Submission mutates one round's snapshot
+     * from concurrent bundle chains and background share deliveries; without this, two mutators
+     * that read the same snapshot would each store their own copy and the later write would drop
+     * the earlier one's field.
+     */
+    private val mutex = Mutex()
+
     override fun observe(
         accountUuid: String,
         roundId: String
@@ -306,35 +340,81 @@ class VotingRecoveryRepositoryImpl(
     override suspend fun get(
         accountUuid: String,
         roundId: String
+    ): VotingRecoverySnapshot? = mutex.withLock { readSnapshot(accountUuid, roundId) }
+
+    /**
+     * Reads this round's snapshot without taking [mutex], so it can be reused by the mutators that
+     * already hold it. Migrating a legacy snapshot is itself a read-modify-write, which is why no
+     * caller may run it unlocked.
+     */
+    private suspend fun readSnapshot(
+        accountUuid: String,
+        roundId: String
     ): VotingRecoverySnapshot? {
         val scopedKey = key(accountUuid, roundId)
         val preferenceProvider = encryptedPreferenceProvider()
 
-        preferenceProvider
-            .getString(scopedKey)
-            ?.toVotingRecoverySnapshot()
-            ?.let { return it }
+        val storedSnapshot =
+            preferenceProvider
+                .getString(scopedKey)
+                ?.toVotingRecoverySnapshot()
+        if (storedSnapshot != null) {
+            return storedSnapshot
+        }
 
-        val legacySnapshot =
+        val migratedSnapshot =
             preferenceProvider
                 .getString(legacyKey(roundId))
                 ?.toVotingRecoverySnapshot()
-                ?: return null
-
-        val migratedSnapshot =
-            legacySnapshot.copy(
-                accountUuid = accountUuid,
-                roundId = roundId,
-                updatedAt = Instant.now()
+                ?.copy(
+                    accountUuid = accountUuid,
+                    roundId = roundId,
+                    updatedAt = Instant.now()
+                )
+        if (migratedSnapshot != null) {
+            preferenceProvider.putString(
+                key = scopedKey,
+                value = migratedSnapshot.encode()
             )
-
-        preferenceProvider.putString(
-            key = scopedKey,
-            value = migratedSnapshot.encode()
-        )
-        preferenceProvider.remove(legacyKey(roundId))
+            preferenceProvider.remove(legacyKey(roundId))
+        }
 
         return migratedSnapshot
+    }
+
+    /**
+     * Applies [transform] to this round's snapshot and stores the result, all under [mutex]. A
+     * round without a stored snapshot gets a fresh one, mirroring what every mutator did before.
+     * [transform] may throw - the selection lock does - and nothing is stored then.
+     */
+    private suspend fun update(
+        accountUuid: String,
+        roundId: String,
+        transform: (VotingRecoverySnapshot) -> VotingRecoverySnapshot
+    ): VotingRecoverySnapshot =
+        mutex.withLock {
+            val current =
+                readSnapshot(accountUuid, roundId) ?: VotingRecoverySnapshot(
+                    accountUuid = accountUuid,
+                    roundId = roundId
+                )
+            transform(current).also { updated -> store(updated) }
+        }
+
+    /**
+     * As [update], except that a round with no stored snapshot - or a [transform] that returns
+     * null - writes nothing.
+     */
+    private suspend fun updateExisting(
+        accountUuid: String,
+        roundId: String,
+        transform: (VotingRecoverySnapshot) -> VotingRecoverySnapshot?
+    ) {
+        mutex.withLock {
+            val current = readSnapshot(accountUuid, roundId) ?: return@withLock
+            val updated = transform(current) ?: return@withLock
+            store(updated)
+        }
     }
 
     override suspend fun store(snapshot: VotingRecoverySnapshot) {
@@ -351,17 +431,12 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         phase: VotingRecoveryPhase
     ) {
-        val current =
-            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-                accountUuid = accountUuid,
-                roundId = roundId
-            )
-        store(
+        update(accountUuid, roundId) { current ->
             current.copy(
                 phase = phase,
                 updatedAt = Instant.now()
             )
-        )
+        }
     }
 
     override suspend fun storeBundleSetup(
@@ -369,14 +444,11 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         bundleCount: Int,
         eligibleWeight: Long,
-        bundleWeights: List<Long>
+        bundleWeights: List<Long>,
+        trimmedBundleCount: Int,
+        trimmedWeight: Long
     ) {
-        val current =
-            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-                accountUuid = accountUuid,
-                roundId = roundId
-            )
-        store(
+        update(accountUuid, roundId) { current ->
             current.copy(
                 // Monotonic: only ever advance the phase, never rewind it.
                 // PrepareVotingRoundUseCase.recoverExistingBundleSetup calls this on EVERY
@@ -391,9 +463,11 @@ class VotingRecoveryRepositoryImpl(
                 eligibleWeight = eligibleWeight,
                 bundleWeights = bundleWeights,
                 skippedBundleCount = 0,
+                trimmedBundleCount = trimmedBundleCount,
+                trimmedWeight = trimmedWeight,
                 updatedAt = Instant.now()
             )
-        )
+        }
     }
 
     override suspend fun setEligibleWeight(
@@ -401,17 +475,12 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         eligibleWeight: Long
     ) {
-        val current =
-            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-                accountUuid = accountUuid,
-                roundId = roundId
-            )
-        store(
+        update(accountUuid, roundId) { current ->
             current.copy(
                 eligibleWeight = eligibleWeight,
                 updatedAt = Instant.now()
             )
-        )
+        }
     }
 
     override suspend fun storeVoteEndEpochSeconds(
@@ -419,17 +488,12 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         voteEndEpochSeconds: Long
     ) {
-        val current =
-            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-                accountUuid = accountUuid,
-                roundId = roundId
-            )
-        store(
+        update(accountUuid, roundId) { current ->
             current.copy(
                 voteEndEpochSeconds = voteEndEpochSeconds,
                 updatedAt = Instant.now()
             )
-        )
+        }
     }
 
     override suspend fun storeSubmittedAt(
@@ -437,17 +501,12 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         submittedAtEpochSeconds: Long
     ) {
-        val current =
-            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-                accountUuid = accountUuid,
-                roundId = roundId
-            )
-        store(
+        update(accountUuid, roundId) { current ->
             current.copy(
                 submittedAtEpochSeconds = submittedAtEpochSeconds,
                 updatedAt = Instant.now()
             )
-        )
+        }
     }
 
     override suspend fun storeHotkey(
@@ -455,18 +514,13 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         hotkeyAddress: String
     ) {
-        val current =
-            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-                accountUuid = accountUuid,
-                roundId = roundId
-            )
-        store(
+        update(accountUuid, roundId) { current ->
             current.copy(
                 phase = VotingRecoveryPhase.HOTKEY_READY,
                 hotkeyAddress = hotkeyAddress,
                 updatedAt = Instant.now()
             )
-        )
+        }
     }
 
     override suspend fun storeVoteServerUrls(
@@ -474,12 +528,7 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         voteServerUrls: List<String>
     ) {
-        val current =
-            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-                accountUuid = accountUuid,
-                roundId = roundId
-            )
-        store(
+        update(accountUuid, roundId) { current ->
             current.copy(
                 voteServerUrls =
                     voteServerUrls
@@ -489,7 +538,7 @@ class VotingRecoveryRepositoryImpl(
                         .distinct(),
                 updatedAt = Instant.now()
             )
-        )
+        }
     }
 
     override suspend fun storeDraftChoices(
@@ -497,17 +546,12 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         draftChoices: Map<Int, Int>
     ) {
-        val current =
-            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-                accountUuid = accountUuid,
-                roundId = roundId
-            )
-        store(
+        update(accountUuid, roundId) { current ->
             current.copy(
                 draftChoices = draftChoices.toMap(),
                 updatedAt = Instant.now()
             )
-        )
+        }
     }
 
     override suspend fun storeProposalSelections(
@@ -515,30 +559,25 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         proposalSelections: Map<Int, VotingProposalSelection>
     ) {
-        val current =
-            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-                accountUuid = accountUuid,
-                roundId = roundId
-            )
-        val conflictingProposalId =
-            proposalSelections.entries
-                .firstOrNull { (proposalId, selection) ->
-                    current.proposalSelections[proposalId]?.let { it != selection } == true
-                }?.key
-        if (conflictingProposalId != null) {
-            throw VotingSubmissionRecoverableException(
-                VotingErrors.ConflictingProposalSelection(
-                    roundId = roundId,
-                    proposalId = conflictingProposalId
+        update(accountUuid, roundId) { current ->
+            val conflictingProposalId =
+                proposalSelections.entries
+                    .firstOrNull { (proposalId, selection) ->
+                        current.proposalSelections[proposalId]?.let { it != selection } == true
+                    }?.key
+            if (conflictingProposalId != null) {
+                throw VotingSubmissionRecoverableException(
+                    VotingErrors.ConflictingProposalSelection(
+                        roundId = roundId,
+                        proposalId = conflictingProposalId
+                    )
                 )
-            )
-        }
-        store(
+            }
             current.copy(
                 proposalSelections = current.proposalSelections + proposalSelections,
                 updatedAt = Instant.now()
             )
-        )
+        }
     }
 
     override suspend fun storeKeystoneBundleSignature(
@@ -549,12 +588,7 @@ class VotingRecoveryRepositoryImpl(
         sighash: ByteArray,
         rk: ByteArray?
     ) {
-        val current =
-            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-                accountUuid = accountUuid,
-                roundId = roundId
-            )
-        store(
+        update(accountUuid, roundId) { current ->
             current.copy(
                 keystoneBundleSignatures =
                     current.keystoneBundleSignatures + (
@@ -570,7 +604,7 @@ class VotingRecoveryRepositoryImpl(
                         ?.takeUnless { request -> request.bundleIndex == bundleIndex },
                 updatedAt = Instant.now()
             )
-        )
+        }
     }
 
     override suspend fun markBundleRebuiltSinceProof(
@@ -578,12 +612,9 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         bundleIndex: Int
     ) {
-        val current =
-            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-                accountUuid = accountUuid,
-                roundId = roundId
-            )
-        store(current.withBundleRebuiltSinceProof(bundleIndex))
+        update(accountUuid, roundId) { current ->
+            current.withBundleRebuiltSinceProof(bundleIndex)
+        }
     }
 
     override suspend fun clearBundleRebuiltSinceProof(
@@ -591,11 +622,11 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         bundleIndex: Int
     ) {
-        val current = get(accountUuid, roundId) ?: return
-        if (bundleIndex !in current.rebuiltSinceProofBundles) {
-            return
+        updateExisting(accountUuid, roundId) { current ->
+            current
+                .takeIf { bundleIndex in current.rebuiltSinceProofBundles }
+                ?.withBundleRebuiltSinceProofCleared(bundleIndex)
         }
-        store(current.withBundleRebuiltSinceProofCleared(bundleIndex))
     }
 
     override suspend fun storePendingKeystoneRequest(
@@ -607,12 +638,7 @@ class VotingRecoveryRepositoryImpl(
         expectedSighash: ByteArray,
         expectedRk: ByteArray?
     ) {
-        val current =
-            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-                accountUuid = accountUuid,
-                roundId = roundId
-            )
-        store(
+        update(accountUuid, roundId) { current ->
             current.copy(
                 pendingKeystoneRequest =
                     VotingPendingKeystoneRequest(
@@ -625,7 +651,7 @@ class VotingRecoveryRepositoryImpl(
                     ),
                 updatedAt = Instant.now()
             )
-        )
+        }
     }
 
     override suspend fun setPendingKeystoneRouteStage(
@@ -633,12 +659,11 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         routeStage: VotingKeystoneRouteStage
     ) {
-        val current = get(accountUuid, roundId) ?: return
-        val pendingRequest = current.pendingKeystoneRequest ?: return
-        if (pendingRequest.routeStage == routeStage) {
-            return
-        }
-        store(
+        updateExisting(accountUuid, roundId) { current ->
+            val pendingRequest = current.pendingKeystoneRequest ?: return@updateExisting null
+            if (pendingRequest.routeStage == routeStage) {
+                return@updateExisting null
+            }
             current.copy(
                 pendingKeystoneRequest =
                     pendingRequest.copy(
@@ -649,7 +674,7 @@ class VotingRecoveryRepositoryImpl(
                     ),
                 updatedAt = Instant.now()
             )
-        )
+        }
     }
 
     override suspend fun storePendingKeystoneScanNotice(
@@ -657,9 +682,8 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         scanNotice: VotingKeystoneScanNotice
     ) {
-        val current = get(accountUuid, roundId) ?: return
-        val pendingRequest = current.pendingKeystoneRequest ?: return
-        store(
+        updateExisting(accountUuid, roundId) { current ->
+            val pendingRequest = current.pendingKeystoneRequest ?: return@updateExisting null
             current.copy(
                 pendingKeystoneRequest =
                     pendingRequest.copy(
@@ -668,21 +692,21 @@ class VotingRecoveryRepositoryImpl(
                     ),
                 updatedAt = Instant.now()
             )
-        )
+        }
     }
 
     override suspend fun clearPendingKeystoneScanNotice(
         accountUuid: String,
         roundId: String
     ) {
-        val current = get(accountUuid, roundId) ?: return
-        val pendingRequest = current.pendingKeystoneRequest
-        if (pendingRequest?.scanNotice != null) {
-            store(
-                current.copy(
-                    pendingKeystoneRequest = pendingRequest.copy(scanNotice = null),
-                    updatedAt = Instant.now()
-                )
+        updateExisting(accountUuid, roundId) { current ->
+            val pendingRequest = current.pendingKeystoneRequest ?: return@updateExisting null
+            if (pendingRequest.scanNotice == null) {
+                return@updateExisting null
+            }
+            current.copy(
+                pendingKeystoneRequest = pendingRequest.copy(scanNotice = null),
+                updatedAt = Instant.now()
             )
         }
     }
@@ -691,51 +715,46 @@ class VotingRecoveryRepositoryImpl(
         accountUuid: String,
         roundId: String
     ) {
-        val current = get(accountUuid, roundId) ?: return
-        if (current.pendingKeystoneRequest == null) {
-            return
-        }
-        store(
+        updateExisting(accountUuid, roundId) { current ->
+            if (current.pendingKeystoneRequest == null) {
+                return@updateExisting null
+            }
             current.copy(
                 pendingKeystoneRequest = null,
                 updatedAt = Instant.now()
             )
-        )
+        }
     }
 
     override suspend fun skipRemainingKeystoneBundles(
         accountUuid: String,
         roundId: String,
         keepCount: Int
-    ): VotingRecoverySnapshot {
-        val current =
-            requireNotNull(get(accountUuid, roundId)) {
-                "Voting round $roundId has not been prepared"
+    ): VotingRecoverySnapshot =
+        mutex.withLock {
+            val current =
+                requireNotNull(readSnapshot(accountUuid, roundId)) {
+                    "Voting round $roundId has not been prepared"
+                }
+            current.withRemainingKeystoneBundlesSkipped(keepCount).also { updated ->
+                store(updated)
             }
-        return current.withRemainingKeystoneBundlesSkipped(keepCount).also { updated ->
-            store(updated)
         }
-    }
 
     override suspend fun storeSingleShareMode(
         accountUuid: String,
         roundId: String,
         singleShareMode: Boolean
     ) {
-        val current =
-            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-                accountUuid = accountUuid,
-                roundId = roundId
-            )
-        require(current.singleShareMode == null || current.singleShareMode == singleShareMode) {
-            "Share mode is already locked for round $roundId"
-        }
-        store(
+        update(accountUuid, roundId) { current ->
+            require(current.singleShareMode == null || current.singleShareMode == singleShareMode) {
+                "Share mode is already locked for round $roundId"
+            }
             current.copy(
                 singleShareMode = singleShareMode,
                 updatedAt = Instant.now()
             )
-        )
+        }
     }
 
     override suspend fun markProposalSubmitted(
@@ -743,24 +762,21 @@ class VotingRecoveryRepositoryImpl(
         roundId: String,
         proposalId: Int
     ) {
-        val current =
-            get(accountUuid, roundId) ?: VotingRecoverySnapshot(
-                accountUuid = accountUuid,
-                roundId = roundId
-            )
-        store(
+        update(accountUuid, roundId) { current ->
             current.withProposalSubmitted(proposalId)
-        )
+        }
     }
 
     override suspend fun clearRound(
         accountUuid: String,
         roundId: String
     ) {
-        val preferenceProvider = encryptedPreferenceProvider()
-        preferenceProvider.remove(key(accountUuid, roundId))
-        preferenceProvider.remove(legacyKey(roundId))
-        removeFromIndex(preferenceProvider, accountUuid, roundId)
+        mutex.withLock {
+            val preferenceProvider = encryptedPreferenceProvider()
+            preferenceProvider.remove(key(accountUuid, roundId))
+            preferenceProvider.remove(legacyKey(roundId))
+            removeFromIndex(preferenceProvider, accountUuid, roundId)
+        }
     }
 
     override suspend fun getRoundIdsRequiringShareTracking(accountUuid: String): List<String> =
@@ -889,6 +905,8 @@ private fun VotingRecoverySnapshot.encode(): String =
         .put("eligible_weight", eligibleWeight)
         .put("bundle_weights", JSONArray(bundleWeights))
         .put("skipped_bundle_count", skippedBundleCount)
+        .put("trimmed_bundle_count", trimmedBundleCount)
+        .put("trimmed_weight", trimmedWeight)
         .put("submitted_at_epoch_seconds", submittedAtEpochSeconds)
         .put("vote_end_epoch_seconds", voteEndEpochSeconds)
         .put("hotkey_seed", hotkeySeedBase64)
@@ -983,6 +1001,16 @@ private fun String.toVotingRecoverySnapshot(): VotingRecoverySnapshot {
             json
                 .optInt("skipped_bundle_count")
                 .takeIf { json.has("skipped_bundle_count") && !json.isNull("skipped_bundle_count") }
+                ?: 0,
+        trimmedBundleCount =
+            json
+                .optInt("trimmed_bundle_count")
+                .takeIf { json.has("trimmed_bundle_count") && !json.isNull("trimmed_bundle_count") }
+                ?: 0,
+        trimmedWeight =
+            json
+                .optLong("trimmed_weight")
+                .takeIf { json.has("trimmed_weight") && !json.isNull("trimmed_weight") }
                 ?: 0,
         submittedAtEpochSeconds =
             json
