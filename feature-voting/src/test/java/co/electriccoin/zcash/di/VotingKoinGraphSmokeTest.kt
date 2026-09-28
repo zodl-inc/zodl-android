@@ -33,6 +33,7 @@ import android.content.Context
 import co.electriccoin.zcash.preference.EncryptedPreferenceProvider
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
+import co.electriccoin.zcash.ui.common.provider.GetVersionInfoProvider
 import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteKeystoneStorageProvider
 import co.electriccoin.zcash.ui.common.provider.HasSeenHowToVoteStorageProvider
 import co.electriccoin.zcash.ui.common.provider.HttpClientProvider
@@ -115,6 +116,7 @@ class VotingKoinGraphSmokeTest {
                 single<KeystoneSDKProvider> { mockk(relaxed = true) }
                 single<HasSeenHowToVoteStorageProvider> { mockk(relaxed = true) }
                 single<HasSeenHowToVoteKeystoneStorageProvider> { mockk(relaxed = true) }
+                single<GetVersionInfoProvider> { mockk(relaxed = true) }
 
                 // DataSources (owned by ui-lib, not feature-voting)
                 single<AccountDataSource> { mockk(relaxed = true) }

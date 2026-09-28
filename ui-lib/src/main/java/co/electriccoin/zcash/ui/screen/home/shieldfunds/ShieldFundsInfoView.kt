@@ -33,7 +33,7 @@ import co.electriccoin.zcash.ui.design.util.TickerLocation.HIDDEN
 import co.electriccoin.zcash.ui.design.util.asPrivacySensitive
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.common.InfoBottomSheetView
+import co.electriccoin.zcash.ui.screen.common.ZodlInfoBottomSheetView
 import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,8 +42,7 @@ fun ShieldFundsInfoView(
     state: ShieldFundsInfoState?,
     sheetState: SheetState = rememberScreenModalBottomSheetState(),
 ) {
-    state ?: return
-    InfoBottomSheetView(onBack = state.onBack, sheetState = sheetState) {
+    ZodlInfoBottomSheetView(state = state, sheetState = sheetState) { innerState ->
         Image(painterResource(R.drawable.ic_info_shield), contentDescription = null)
         Spacer(12.dp)
         Text(
@@ -86,22 +85,22 @@ fun ShieldFundsInfoView(
             }
             Spacer(4.dp)
             Text(
-                text = state.subtitle.getValue(),
+                text = innerState.subtitle.getValue(),
                 color = ZashiColors.Text.textPrimary,
                 style = ZashiTypography.textXl,
                 fontWeight = FontWeight.SemiBold,
             )
         }
         Spacer(24.dp)
-        ZashiCheckbox(state = state.checkbox)
+        ZashiCheckbox(state = innerState.checkbox)
         Spacer(24.dp)
         ZashiButton(
-            state = state.secondaryButton,
+            state = innerState.secondaryButton,
             modifier = Modifier.fillMaxWidth(),
             defaultPrimaryColors = ZashiButtonDefaults.secondaryColors(),
         )
         Spacer(4.dp)
-        ZashiButton(state = state.primaryButton, modifier = Modifier.fillMaxWidth())
+        ZashiButton(state = innerState.primaryButton, modifier = Modifier.fillMaxWidth())
     }
 }
 

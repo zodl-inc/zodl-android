@@ -201,7 +201,9 @@ private fun headerTitle(status: VoteSubmissionStatus): StringResource =
             stringRes(R.string.coinVote_store_submissionAuthorizingVote)
         }
 
-        is VoteSubmissionStatus.Authorizing, is VoteSubmissionStatus.Submitting -> {
+        is VoteSubmissionStatus.Authorizing,
+        is VoteSubmissionStatus.Submitting,
+        is VoteSubmissionStatus.RunningRound -> {
             stringRes(R.string.coinVote_submission_continuedProcessingTitle)
         }
 
@@ -234,7 +236,8 @@ private fun headerSubtitle(state: VoteConfirmSubmissionState): StringResource =
 
         is VoteSubmissionStatus.LocalAuthorizing,
         is VoteSubmissionStatus.Authorizing,
-        is VoteSubmissionStatus.Submitting -> {
+        is VoteSubmissionStatus.Submitting,
+        is VoteSubmissionStatus.RunningRound -> {
             stringRes(R.string.coinVote_confirmSubmission_headerSubtitleSubmitting)
         }
 

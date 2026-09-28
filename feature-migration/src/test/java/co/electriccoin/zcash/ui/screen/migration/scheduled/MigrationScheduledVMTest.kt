@@ -313,6 +313,8 @@ class MigrationScheduledVMTest {
 
         override fun replaceAll(vararg routes: Any) = Unit
 
+        override fun replaceFrom(route: KClass<*>, vararg routes: Any) = Unit
+
         override fun back() = Unit
 
         override fun backTo(route: KClass<*>) = Unit

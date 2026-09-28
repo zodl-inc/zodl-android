@@ -7,6 +7,14 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+## [3.15.0 (2852)] - 2026-09-28
+
+### Added:
+
+- Export Viewing Key in Advanced Settings: share the selected account's Incoming or Full Viewing Key
+  as a QR code or key string, revealed behind biometrics and behind a consent sheet for the Full key.
+  The chooser carries the logo and name of the selected wallet, Zodl or Keystone.
+
 ## [3.14.0 (2738)] - 2026-09-16
 
 ### Added:

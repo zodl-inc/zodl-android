@@ -61,6 +61,7 @@ android {
                     "src/main/res/ui/crash_reporting_opt_in",
                     "src/main/res/ui/delete_wallet",
                     "src/main/res/ui/export_data",
+                    "src/main/res/ui/export_viewing_key",
                     "src/main/res/ui/error",
                     "src/main/res/ui/home",
                     "src/main/res/ui/keep_open",

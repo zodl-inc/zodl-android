@@ -18,6 +18,7 @@ import co.electriccoin.zcash.ui.common.usecase.ShareQRUseCase
 import co.electriccoin.zcash.ui.common.usecase.Zip321BuildUriUseCase
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
 import co.electriccoin.zcash.ui.design.util.StringResource.Companion.NUMBER_FORMAT_LOCALE
+import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.qrcode.ext.fromReceiveAddressType
 import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressType
 import co.electriccoin.zcash.ui.screen.request.ext.toBigDecimalLocalized
@@ -137,16 +138,9 @@ class RequestVM(
                             viewModelScope.launch {
                                 shareQR(
                                     qrData = uri,
-                                    shareText =
-                                        application.getString(
-                                            R.string.request_qr_code_share_chooser_text,
-                                            CURRENCY_TICKER
-                                        ),
+                                    shareText = stringRes(R.string.request_qr_code_share_chooser_text, CURRENCY_TICKER),
                                     sharePickerText =
-                                        application.getString(
-                                            R.string.request_qr_code_share_chooser_title,
-                                            CURRENCY_TICKER
-                                        ),
+                                        stringRes(R.string.request_qr_code_share_chooser_title, CURRENCY_TICKER),
                                     filenamePrefix = TEMP_FILE_NAME_PREFIX,
                                     centerIcon =
                                         if (walletAddress is WalletAddress.Transparent) {

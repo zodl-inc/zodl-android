@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="exportViewingKey_settingsItem">Export Viewing Key</string>
+    <string name="exportViewingKey_topBar">Export Viewing Key</string>
+    <string name="exportViewingKey_title">Export Viewing Key</string>
+    <string name="exportViewingKey_description">Sharing a viewing key lets others monitor your <xliff:g id="app_name" example="Zodl">%1$s</xliff:g> wallet activity. Never share with anyone you don\'t trust.</string>
+    <string name="exportViewingKey_option_incoming">Incoming Viewing Key</string>
+    <string name="exportViewingKey_option_incoming_desc">Lets others see incoming transactions only. Safe for accountants and payment verification.</string>
+    <string name="exportViewingKey_option_full">Full Viewing Key</string>
+    <string name="exportViewingKey_option_full_desc">Full visibility into all wallet activity. Use for watch-only wallets, auditing, or legal compliance.</string>
+    <string name="exportViewingKey_continue">Continue</string>
+
+    <string name="exportViewingKey_confirm_title">Before you share your Full Viewing Key</string>
+    <string name="exportViewingKey_confirm_alert">Anyone with this key can see every transaction you\'ve ever made, and every one you make in the future.</string>
+    <string name="exportViewingKey_confirm_check_reveals">I understand this reveals all my transactions, past and future</string>
+    <string name="exportViewingKey_confirm_check_trust">I trust the party I\'m sharing this with</string>
+    <string name="exportViewingKey_confirm_check_undone">I understand this cannot be undone</string>
+    <string name="exportViewingKey_confirm_export">Export Key</string>
+
+    <string name="exportViewingKey_detail_title_incoming">Your Incoming Viewing Key</string>
+    <string name="exportViewingKey_detail_title_full">Your Full Viewing Key</string>
+    <string name="exportViewingKey_detail_subtitle_incoming">Incoming transactions only.</string>
+    <string name="exportViewingKey_detail_subtitle_full">Full visibility. Handle with care.</string>
+    <string name="exportViewingKey_tab_qr">QR Code</string>
+    <string name="exportViewingKey_tab_key">Key String</string>
+    <string name="exportViewingKey_disclaimer_qr_incoming">Scan with any compatible wallet to add as watch-only.</string>
+    <string name="exportViewingKey_disclaimer_qr_full">Only scan in a trusted, private environment</string>
+    <string name="exportViewingKey_disclaimer_key_incoming">This key is safe to share with accounting software or watch-only wallets.</string>
+    <string name="exportViewingKey_disclaimer_key_full">This key reveals your full send and receive history. Only share with trusted parties.</string>
+    <string name="exportViewingKey_share">Share</string>
+    <string name="exportViewingKey_reveal">Reveal key</string>
+    <string name="exportViewingKey_hide">Hide key</string>
+    <string name="exportViewingKey_share_picker_title">Share viewing key</string>
+    <string name="exportViewingKey_auth_use_case">Export Viewing Key feature</string>
+    <string name="exportViewingKey_hidden_content_description">Hidden viewing key</string>
+</resources>
