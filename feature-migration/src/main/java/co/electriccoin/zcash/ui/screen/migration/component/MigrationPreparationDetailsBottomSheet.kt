@@ -53,7 +53,7 @@ import co.electriccoin.zcash.ui.design.R as DesignR
  *
  * Uses [ZashiScreenModalBottomSheet] rather than the bare modal primitive — matching this
  * codebase's convention for button-heavy sheets (HeightInfoView, SeedInfoView, IntegrationsView,
- * InfoBottomSheetView): it opens fully expanded by default (no half-open "peek" state clipping the
+ * ZodlInfoBottomSheetView): it opens fully expanded by default (no half-open "peek" state clipping the
  * "Got it" button) AND supplies a [contentPadding] whose bottom accounts for the system nav-bar
  * inset plus a 24 dp margin, instead of a bare fixed padding that a plain [ZashiButton] can end up
  * flush against on gesture-nav devices. The content Column is ALSO scrollable as a second line of

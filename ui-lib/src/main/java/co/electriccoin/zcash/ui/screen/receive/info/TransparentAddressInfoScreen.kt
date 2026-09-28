@@ -17,7 +17,7 @@ import co.electriccoin.zcash.ui.design.component.ZashiBulletText
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.common.InfoBottomSheetView
+import co.electriccoin.zcash.ui.screen.common.ZodlInfoBottomSheetView
 import co.electriccoin.zcash.ui.util.CURRENCY_TICKER
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
@@ -27,7 +27,7 @@ import org.koin.compose.koinInject
 fun TransparentAddressInfoScreen() {
     val navigationRouter = koinInject<NavigationRouter>()
     BackHandler { navigationRouter.back() }
-    InfoBottomSheetView(
+    ZodlInfoBottomSheetView(
         onBack = navigationRouter::back,
         primaryButton =
             ButtonState(

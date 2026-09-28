@@ -33,6 +33,9 @@ import co.electriccoin.zcash.ui.screen.exchangerate.optin.ExchangeRateOptInVM
 import co.electriccoin.zcash.ui.screen.exchangerate.picker.CurrencyConversionPickerVM
 import co.electriccoin.zcash.ui.screen.exchangerate.settings.ExchangeRateSettingsVM
 import co.electriccoin.zcash.ui.screen.exchangerateunavailable.ExchangeRateUnavailableVM
+import co.electriccoin.zcash.ui.screen.exportvk.ExportVKVM
+import co.electriccoin.zcash.ui.screen.exportvk.confirm.ExportVKConfirmVM
+import co.electriccoin.zcash.ui.screen.exportvk.detail.VKDetailVM
 import co.electriccoin.zcash.ui.screen.feedback.FeedbackVM
 import co.electriccoin.zcash.ui.screen.flexa.FlexaViewModel
 import co.electriccoin.zcash.ui.screen.home.HomeVM
@@ -168,6 +171,9 @@ val viewModelModule =
         viewModelOf(::ThemeVM)
         viewModelOf(::ThemeSettingsVM)
         viewModelOf(::ThemeDarkLookVM)
+        viewModelOf(::ExportVKVM)
+        viewModelOf(::ExportVKConfirmVM)
+        viewModelOf(::VKDetailVM)
         viewModelOf(::TorOptInVM)
         viewModelOf(::ExchangeRateOptInVM)
         viewModelOf(::SwapAssetPickerVM)

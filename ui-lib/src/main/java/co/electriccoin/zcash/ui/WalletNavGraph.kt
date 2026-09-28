@@ -76,6 +76,12 @@ import co.electriccoin.zcash.ui.screen.exchangerate.settings.ExchangeRateSetting
 import co.electriccoin.zcash.ui.screen.exchangerateunavailable.ExchangeRateUnavailableArgs
 import co.electriccoin.zcash.ui.screen.exchangerateunavailable.ExchangeRateUnavailableScreen
 import co.electriccoin.zcash.ui.screen.exportdata.WrapExportPrivateData
+import co.electriccoin.zcash.ui.screen.exportvk.ExportVKArgs
+import co.electriccoin.zcash.ui.screen.exportvk.ExportVKScreen
+import co.electriccoin.zcash.ui.screen.exportvk.confirm.ExportVKConfirmArgs
+import co.electriccoin.zcash.ui.screen.exportvk.confirm.ExportVKConfirmScreen
+import co.electriccoin.zcash.ui.screen.exportvk.detail.VKDetailArgs
+import co.electriccoin.zcash.ui.screen.exportvk.detail.VKDetailScreen
 import co.electriccoin.zcash.ui.screen.feedback.FeedbackArgs
 import co.electriccoin.zcash.ui.screen.feedback.FeedbackScreen
 import co.electriccoin.zcash.ui.screen.heightinfo.HeightInfoArgs
@@ -256,6 +262,9 @@ fun NavGraphBuilder.walletNavGraph(
         dialogComposable<AccountListArgs> { AccountListScreen() }
         composable<ScanArgs> { ScanZashiAddressScreen(it.toRoute()) }
         composable(NavigationTargets.EXPORT_PRIVATE_DATA) { WrapExportPrivateData() }
+        composable<ExportVKArgs> { ExportVKScreen() }
+        dialogComposable<ExportVKConfirmArgs> { ExportVKConfirmScreen() }
+        composable<VKDetailArgs> { VKDetailScreen(it.toRoute()) }
         composable(NavigationTargets.NOT_ENOUGH_SPACE) {
             WrapNotEnoughSpace(
                 goPrevious = { navigationRouter.back() },
