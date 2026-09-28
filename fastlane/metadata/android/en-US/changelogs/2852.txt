@@ -1,0 +1,5 @@
+Added:
+- We added viewing key export in Advanced Settings, with QR code and key text options.
+
+Changed:
+- We updated Coinholder Polling to support the latest voting protocol.
