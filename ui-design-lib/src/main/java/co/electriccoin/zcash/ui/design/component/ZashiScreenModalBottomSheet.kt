@@ -1,12 +1,13 @@
 package co.electriccoin.zcash.ui.design.component
 
+import android.os.Build
 import android.view.View
+import android.view.Window
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.systemBars
@@ -22,11 +23,17 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
@@ -34,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
 import co.electriccoin.zcash.ui.design.LocalKeyboardManager
 import co.electriccoin.zcash.ui.design.R
+import kotlin.math.roundToInt
 
 /**
  * A bottom sheet that is a whole navigation destination.
@@ -57,21 +65,20 @@ fun <T : ModalBottomSheetState> ZashiScreenModalBottomSheet(
     // own scrim, so it does not translate when the sheet window slides out. Its window exit
     // animation fades the dim in place on dismissals that tear the composition down (forward/back).
     val hostWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
+
+    val openFraction = remember { mutableFloatStateOf(0f) }
+    val blurRadiusPx = with(LocalDensity.current) { SCRIM_BLUR_RADIUS.toPx() }
     SideEffect {
         hostWindow?.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT)
         hostWindow?.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            hostWindow?.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+        }
+        hostWindow?.applyScrim(
+            fraction = if (state != null) openFraction.floatValue else 0f,
+            blurRadiusPx = blurRadiusPx
+        )
         hostWindow?.setWindowAnimations(R.style.ZashiBottomSheetScrimAnimation)
-    }
-
-    // Mirror Material's internal scrim: alpha tracks sheetState so the dim fades out together with
-    // the sheet as it animates to Hidden (drag / scrim-tap), never lagging behind it.
-    val dimAmount by animateFloatAsState(
-        targetValue = if (state != null && sheetState.targetValue != Hidden) SCRIM_DIM_AMOUNT else 0f,
-        animationSpec = spring(dampingRatio = 1f, stiffness = 1600f),
-        label = "ScrimDim",
-    )
-    LaunchedEffect(hostWindow, dimAmount) {
-        hostWindow?.setDimAmount(dimAmount)
     }
 
     state?.let {
@@ -82,6 +89,17 @@ fun <T : ModalBottomSheetState> ZashiScreenModalBottomSheet(
             shape = shape,
             dragHandle = dragHandle,
             content = {
+                Spacer(
+                    Modifier.onGloballyPositioned { coordinates ->
+                        val sheet = coordinates.parentLayoutCoordinates ?: return@onGloballyPositioned
+                        val windowHeight = coordinates.findRootCoordinates().size.height
+                        val sheetHeight = minOf(sheet.size.height, windowHeight)
+                        if (sheetHeight <= 0) return@onGloballyPositioned
+                        val fraction = ((windowHeight - sheet.positionInWindow().y) / sheetHeight).coerceIn(0f, 1f)
+                        openFraction.floatValue = fraction
+                        hostWindow?.applyScrim(fraction = fraction, blurRadiusPx = blurRadiusPx)
+                    }
+                )
                 BackHandler {
                     it.onBack()
                 }
@@ -205,3 +223,20 @@ fun rememberScreenModalBottomSheetState(
 // Matches Material3's BottomSheetDefaults.ScrimColor (scrim @ 0.32 opacity); FLAG_DIM_BEHIND draws
 // black, so the dim amount alone reproduces the default scrim.
 private const val SCRIM_DIM_AMOUNT = 0.32f
+
+private val SCRIM_BLUR_RADIUS = 12.dp
+
+/**
+ * Dims and, from Android 12, blurs whatever lies behind the host window in proportion to how far
+ * the sheet is open. The blur needs the device's cross-window blur; where the system has it turned
+ * off, only the dim shows.
+ */
+private fun Window.applyScrim(
+    fraction: Float,
+    blurRadiusPx: Float
+) {
+    setDimAmount(SCRIM_DIM_AMOUNT * fraction)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        attributes = attributes.apply { blurBehindRadius = (blurRadiusPx * fraction).roundToInt() }
+    }
+}
