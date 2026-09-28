@@ -13,7 +13,7 @@ import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.common.InfoBottomSheetView
+import co.electriccoin.zcash.ui.screen.common.ZodlInfoBottomSheetView
 import kotlinx.serialization.Serializable
 import org.koin.compose.koinInject
 
@@ -21,7 +21,7 @@ import org.koin.compose.koinInject
 @Composable
 fun AndroidWalletUpdatingInfo() {
     val navigationRouter = koinInject<NavigationRouter>()
-    InfoBottomSheetView(
+    ZodlInfoBottomSheetView(
         onBack = navigationRouter::back,
         primaryButton =
             ButtonState(

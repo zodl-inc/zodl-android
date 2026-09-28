@@ -15,20 +15,19 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.common.InfoBottomSheetView
+import co.electriccoin.zcash.ui.screen.common.ZodlInfoBottomSheetView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SwapRefundAddressInfoView(state: SwapRefundAddressInfoState?) {
-    state ?: return
-    InfoBottomSheetView(
-        onBack = state.onBack,
+    ZodlInfoBottomSheetView(
+        state = state,
         primaryButton =
             ButtonState(
                 text = stringRes(co.electriccoin.zcash.ui.design.R.string.general_dismiss),
-                onClick = state.onBack,
+                onClick = { state?.onBack?.invoke() },
             ),
-    ) {
+    ) { innerState ->
         Text(
             text = stringResource(R.string.swapToZec_refundAddress_title),
             style = ZashiTypography.textXl,
@@ -37,7 +36,7 @@ fun SwapRefundAddressInfoView(state: SwapRefundAddressInfoState?) {
         )
         Spacer(12.dp)
         Text(
-            text = state.message.getValue(),
+            text = innerState.message.getValue(),
             style = ZashiTypography.textSm,
             color = ZashiColors.Text.textTertiary,
         )

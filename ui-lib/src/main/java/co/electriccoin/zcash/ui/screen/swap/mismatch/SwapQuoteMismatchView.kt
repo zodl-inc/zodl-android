@@ -18,7 +18,7 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.common.InfoBottomSheetView
+import co.electriccoin.zcash.ui.screen.common.ZodlInfoBottomSheetView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,22 +26,21 @@ fun SwapQuoteMismatchView(
     state: SwapQuoteMismatchState?,
     sheetState: SheetState = rememberScreenModalBottomSheetState(),
 ) {
-    state ?: return
-    InfoBottomSheetView(
-        onBack = state.onBack,
-        primaryButton = state.reportButton,
-        secondaryButton = state.goBackButton,
+    ZodlInfoBottomSheetView(
+        state = state,
+        primaryButton = state?.reportButton,
+        secondaryButton = state?.goBackButton,
         sheetState = sheetState,
-    ) {
+    ) { innerState ->
         Image(painterResource(R.drawable.ic_swap_quote_error), contentDescription = null)
         Spacer(12.dp)
         Text(
-            text = state.title.getValue(),
+            text = innerState.title.getValue(),
             color = ZashiColors.Text.textPrimary,
             style = ZashiTypography.textXl,
             fontWeight = FontWeight.SemiBold,
         )
-        state.paragraphs.forEach { paragraph ->
+        innerState.paragraphs.forEach { paragraph ->
             Spacer(8.dp)
             Text(
                 text = paragraph.getValue(),

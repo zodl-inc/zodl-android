@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.screen.qrcode
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.sdk.model.WalletAddress
@@ -13,6 +12,7 @@ import co.electriccoin.zcash.ui.common.usecase.CopyToClipboardUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.ShareQRUseCase
 import co.electriccoin.zcash.ui.design.util.Ellipsize
+import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByAddress
 import co.electriccoin.zcash.ui.screen.qrcode.ext.fromReceiveAddressType
 import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressType
@@ -29,7 +29,6 @@ class QrCodeVM(
     private val copyToClipboard: CopyToClipboardUseCase,
     private val navigationRouter: NavigationRouter,
     private val shareQR: ShareQRUseCase,
-    private val context: Context,
 ) : ViewModel() {
     internal val state =
         observeSelectedWalletAccount
@@ -52,12 +51,8 @@ class QrCodeVM(
                             viewModelScope.launch {
                                 shareQR(
                                     qrData = it,
-                                    shareText = context.getString(R.string.qr_code_share_chooser_text, CURRENCY_TICKER),
-                                    sharePickerText =
-                                        context.getString(
-                                            R.string.qr_code_share_chooser_title,
-                                            CURRENCY_TICKER
-                                        ),
+                                    shareText = stringRes(R.string.qr_code_share_chooser_text, CURRENCY_TICKER),
+                                    sharePickerText = stringRes(R.string.qr_code_share_chooser_title, CURRENCY_TICKER),
                                     filenamePrefix = "zcash_address_qr_",
                                     centerIcon =
                                         if (walletAddress is WalletAddress.Transparent) {
