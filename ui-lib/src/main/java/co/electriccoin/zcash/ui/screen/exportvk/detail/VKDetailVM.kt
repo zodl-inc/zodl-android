@@ -11,6 +11,7 @@ import co.electriccoin.zcash.ui.common.repository.BiometricRepository
 import co.electriccoin.zcash.ui.common.repository.BiometricRequest
 import co.electriccoin.zcash.ui.common.repository.BiometricsCancelledException
 import co.electriccoin.zcash.ui.common.repository.BiometricsFailureException
+import co.electriccoin.zcash.ui.common.usecase.DeleteSharedQRImagesUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetVKUseCase
 import co.electriccoin.zcash.ui.common.usecase.ShareQRUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -30,6 +31,7 @@ internal class VKDetailVM(
     private val args: VKDetailArgs,
     getVK: GetVKUseCase,
     private val shareQR: ShareQRUseCase,
+    private val deleteSharedQRImages: DeleteSharedQRImagesUseCase,
     private val biometricRepository: BiometricRepository,
     private val navigationRouter: NavigationRouter,
 ) : ViewModel() {
@@ -179,10 +181,15 @@ internal class VKDetailVM(
                 qrData = key,
                 shareText = stringRes(key),
                 sharePickerText = stringRes(R.string.exportViewingKey_share_picker_title),
-                filenamePrefix = "zodl_viewing_key_qr_",
+                filenamePrefix = VK_QR_FILENAME_PREFIX,
                 centerIcon = null,
             )
         }
+
+    override fun onCleared() {
+        deleteSharedQRImages(VK_QR_FILENAME_PREFIX)
+        super.onCleared()
+    }
 
     private fun onBack() = navigationRouter.back()
 
@@ -220,3 +227,5 @@ internal class VKDetailVM(
 private val HIDDEN_KEY_PLACEHOLDER = "*".repeat(HIDDEN_KEY_PLACEHOLDER_LENGTH)
 
 private const val HIDDEN_KEY_PLACEHOLDER_LENGTH = 300
+
+private const val VK_QR_FILENAME_PREFIX = "zodl_viewing_key_qr_"

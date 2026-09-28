@@ -15,6 +15,7 @@ import co.electriccoin.zcash.ui.common.usecase.CreateKeystoneProposalPCZTEncoder
 import co.electriccoin.zcash.ui.common.usecase.CreateOrUpdateTransactionNoteUseCase
 import co.electriccoin.zcash.ui.common.usecase.CreateProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.DeleteABContactUseCase
+import co.electriccoin.zcash.ui.common.usecase.DeleteSharedQRImagesUseCase
 import co.electriccoin.zcash.ui.common.usecase.DeleteTransactionNoteUseCase
 import co.electriccoin.zcash.ui.common.usecase.DeriveKeystoneAccountUnifiedAddressUseCase
 import co.electriccoin.zcash.ui.common.usecase.DisconnectUseCase
@@ -174,6 +175,7 @@ val useCaseModule =
         singleOf(::ObserveABContactPickedUseCase)
         factoryOf(::CopyToClipboardUseCase)
         factoryOf(::ShareImageUseCase)
+        singleOf(::DeleteSharedQRImagesUseCase)
         factoryOf(::Zip321BuildUriUseCase)
         factoryOf(::Zip321ParseUriValidationUseCase)
         factoryOf(::GetPersistableWalletUseCase)

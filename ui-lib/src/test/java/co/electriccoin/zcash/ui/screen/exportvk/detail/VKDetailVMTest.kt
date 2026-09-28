@@ -1,5 +1,9 @@
 package co.electriccoin.zcash.ui.screen.exportvk.detail
 
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.NavBackStackEntry
 import co.electriccoin.zcash.ui.BaseNavigationCommand
 import co.electriccoin.zcash.ui.NavigationCommand
@@ -9,6 +13,7 @@ import co.electriccoin.zcash.ui.common.model.VKType
 import co.electriccoin.zcash.ui.common.repository.BiometricRepository
 import co.electriccoin.zcash.ui.common.repository.BiometricsCancelledException
 import co.electriccoin.zcash.ui.common.repository.BiometricsFailureException
+import co.electriccoin.zcash.ui.common.usecase.DeleteSharedQRImagesUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetVKUseCase
 import co.electriccoin.zcash.ui.common.usecase.ShareQRUseCase
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -16,6 +21,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -43,7 +49,7 @@ import kotlin.test.assertTrue
  * The viewing key export screen (MOB-1883): the content starts hidden behind a placeholder of a fixed length
  * and only reveals once biometrics pass, Hide never prompts but a second Reveal does, the QR tab opens first,
  * Share only works once revealed and always sends the key string together with its QR PNG whichever tab is
- * open, and the copy follows the exported key type.
+ * open, the copy follows the exported key type, and leaving the screen deletes the shared QR PNG.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class VKDetailVMTest {
@@ -261,6 +267,32 @@ class VKDetailVMTest {
         }
 
     @Test
+    fun sharingLeavesTheQrPngForTheReceivingApp() =
+        runTest(dispatcher) {
+            val deleteSharedQRImages = mockk<DeleteSharedQRImagesUseCase>(relaxed = true)
+            val vm = startedVm(biometricRepository = biometrics(true), deleteSharedQRImages = deleteSharedQRImages)
+            reveal(vm)
+
+            requireNotNull(vm.state.value).secondaryButton.onClick()
+            advanceUntilIdle()
+
+            verify(exactly = 0) { deleteSharedQRImages(any()) }
+        }
+
+    @Test
+    fun leavingTheScreenDeletesTheViewingKeyQrPng() =
+        runTest(dispatcher) {
+            val deleteSharedQRImages = mockk<DeleteSharedQRImagesUseCase>(relaxed = true)
+            val vm = startedVm(deleteSharedQRImages = deleteSharedQRImages)
+            val store = ViewModelStore()
+            ViewModelProvider.create(store, viewModelFactory { initializer { vm } })[VKDetailVM::class]
+
+            store.clear()
+
+            verify(exactly = 1) { deleteSharedQRImages("zodl_viewing_key_qr_") }
+        }
+
+    @Test
     fun copyFollowsTheExportedKeyType() =
         runTest(dispatcher) {
             val incoming = requireNotNull(startedVm(type = VKType.INCOMING).state.value)
@@ -308,6 +340,7 @@ class VKDetailVMTest {
         key: String? = KEY,
         biometricRepository: BiometricRepository = biometrics(succeeds = true),
         shareQR: ShareQRUseCase = mockk(relaxed = true),
+        deleteSharedQRImages: DeleteSharedQRImagesUseCase = mockk(relaxed = true),
         router: FakeNavigationRouter = FakeNavigationRouter(),
     ): VKDetailVM {
         val getVK =
@@ -319,6 +352,7 @@ class VKDetailVMTest {
                 args = VKDetailArgs(type),
                 getVK = getVK,
                 shareQR = shareQR,
+                deleteSharedQRImages = deleteSharedQRImages,
                 biometricRepository = biometricRepository,
                 navigationRouter = router,
             )
