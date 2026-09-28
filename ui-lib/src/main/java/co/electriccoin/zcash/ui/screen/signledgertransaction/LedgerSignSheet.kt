@@ -77,7 +77,9 @@ internal fun LedgerSignSheet(state: LedgerSignSheetState?) {
                     )
                 }
             }
-            Spacer(12.dp)
+            if (sheetState.content is LedgerSignContent.Progress) {
+                Spacer(12.dp)
+            }
             ZashiButton(
                 state = sheetState.cancelButton,
                 modifier =

@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.connectledger.common
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
@@ -37,19 +39,27 @@ internal fun ColumnScope.LedgerErrorContent(
                 .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(
-            modifier =
-                Modifier
-                    .size(44.dp)
-                    .background(ZashiColors.Surfaces.bgSecondary, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                modifier = Modifier.size(20.dp),
-                painter = painterResource(state.icon),
+        if (state.icon == R.drawable.ic_ledger_alert_circle) {
+            Image(
+                modifier = Modifier.size(44.dp),
+                painter = painterResource(R.drawable.ic_ledger_alert_badge),
                 contentDescription = null,
-                tint = ZashiColors.Text.textPrimary,
             )
+        } else {
+            Box(
+                modifier =
+                    Modifier
+                        .size(44.dp)
+                        .background(ZashiColors.Surfaces.bgSecondary, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    modifier = Modifier.size(20.dp),
+                    painter = painterResource(state.icon),
+                    contentDescription = null,
+                    tint = ZashiColors.Text.textPrimary,
+                )
+            }
         }
         Spacer(Modifier.height(12.dp))
         Text(
@@ -74,7 +84,6 @@ internal fun ColumnScope.LedgerErrorContent(
             )
         }
         state.secondary?.let { secondary ->
-            Spacer(Modifier.height(12.dp))
             ZashiButton(
                 state = secondary,
                 modifier = Modifier.fillMaxWidth(),
