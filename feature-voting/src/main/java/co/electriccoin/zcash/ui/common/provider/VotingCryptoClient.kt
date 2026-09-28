@@ -3,41 +3,33 @@
 package co.electriccoin.zcash.ui.common.provider
 
 import cash.z.ecc.android.sdk.VotingDbSession
+import cash.z.ecc.android.sdk.VotingRoundSession
 import cash.z.ecc.android.sdk.VotingSdk
+import cash.z.ecc.android.sdk.VotingShareTrackingSession
 import cash.z.ecc.android.sdk.model.AccountUuid
 import cash.z.ecc.android.sdk.model.BlockHeight
-import cash.z.ecc.android.sdk.model.voting.VotingCommitResult
-import cash.z.ecc.android.sdk.model.voting.VotingCommitmentResult
-import cash.z.ecc.android.sdk.model.voting.VotingDelegationPhase
-import cash.z.ecc.android.sdk.model.voting.VotingDelegationProofResult
-import cash.z.ecc.android.sdk.model.voting.VotingDelegationSubmissionResult
-import cash.z.ecc.android.sdk.model.voting.VotingEncryptedShare
+import cash.z.ecc.android.sdk.model.voting.VotingBallotIntent
+import cash.z.ecc.android.sdk.model.voting.VotingDelegationInputs
+import cash.z.ecc.android.sdk.model.voting.VotingKeystoneSignatureBatchResult
+import cash.z.ecc.android.sdk.model.voting.VotingKeystoneSignatureInput
 import cash.z.ecc.android.sdk.model.voting.VotingNoteInfo
 import cash.z.ecc.android.sdk.model.voting.VotingNoteScope
+import cash.z.ecc.android.sdk.model.voting.VotingProposalRosterEntry
 import cash.z.ecc.android.sdk.model.voting.VotingRoundPhase
+import cash.z.ecc.android.sdk.model.voting.VotingRoundPlan
+import cash.z.ecc.android.sdk.model.voting.VotingRoundRunReport
 import cash.z.ecc.android.sdk.model.voting.VotingRoundState
-import cash.z.ecc.android.sdk.model.voting.VotingSharePayload
-import cash.z.ecc.android.sdk.model.voting.VotingVanWitness
+import cash.z.ecc.android.sdk.model.voting.VotingTorLease
 import cash.z.ecc.android.sdk.model.voting.VotingWitness
-import co.electriccoin.zcash.ui.common.model.voting.BundleDelegationPhase
-import co.electriccoin.zcash.ui.common.model.voting.DelegationPhase
 import co.electriccoin.zcash.ui.common.model.voting.RoundPhase
 import co.electriccoin.zcash.ui.common.model.voting.RoundStateInfo
 import co.electriccoin.zcash.ui.common.model.voting.VotingBundleSetupResult
-import co.electriccoin.zcash.ui.common.model.voting.VotingCommitmentBundleRecord
-import co.electriccoin.zcash.ui.common.model.voting.VotingCommittedVoteRecord
 import co.electriccoin.zcash.ui.common.model.voting.VotingDelegationPirPrecomputeResult
-import co.electriccoin.zcash.ui.common.model.voting.VotingDelegationProof
-import co.electriccoin.zcash.ui.common.model.voting.VotingDelegationSubmission
-import co.electriccoin.zcash.ui.common.model.voting.VotingGovernancePczt
 import co.electriccoin.zcash.ui.common.model.voting.VotingHotkey
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
-import co.electriccoin.zcash.ui.common.model.voting.VotingShareDelegationRecord
-import co.electriccoin.zcash.ui.common.model.voting.VotingTxHashLookup
-import co.electriccoin.zcash.ui.common.model.voting.VotingVoteCommitment
-import co.electriccoin.zcash.ui.common.model.voting.VotingVoteRecord
+import co.electriccoin.zcash.ui.common.model.voting.VotingPirWarmupResult
+import co.electriccoin.zcash.ui.common.model.voting.VotingSnapshotBundlePrecomputeResult
 import co.electriccoin.zcash.ui.common.model.voting.requireKnownPolyLen
-import co.electriccoin.zcash.ui.common.model.voting.toVoteCommitmentBundle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
@@ -45,22 +37,25 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import cash.z.ecc.android.sdk.model.voting.VotingBundleSetupResult as SdkVotingBundleSetupResult
-import cash.z.ecc.android.sdk.model.voting.VotingCommitmentBundleRecord as SdkVotingCommitmentBundleRecord
-import cash.z.ecc.android.sdk.model.voting.VotingCommittedVoteRecord as SdkVotingCommittedVoteRecord
 import cash.z.ecc.android.sdk.model.voting.VotingDelegationPirPrecomputeResult as SdkVotingDelegationPirPrecomputeResult
-import cash.z.ecc.android.sdk.model.voting.VotingGovernancePczt as SdkVotingGovernancePczt
 import cash.z.ecc.android.sdk.model.voting.VotingHotkey as SdkVotingHotkey
-import cash.z.ecc.android.sdk.model.voting.VotingShareDelegationRecord as SdkVotingShareDelegationRecord
-import cash.z.ecc.android.sdk.model.voting.VotingTxHashLookup as SdkVotingTxHashLookup
-import cash.z.ecc.android.sdk.model.voting.VotingVoteRecord as SdkVotingVoteRecord
+import cash.z.ecc.android.sdk.model.voting.VotingPirPrecomputeResult as SdkVotingPirPrecomputeResult
+import cash.z.ecc.android.sdk.model.voting.VotingSnapshotBundlePrecomputeReport as SdkVotingSnapshotBundlePrecomputeReport
 
 /**
  * Kotlin surface over the voting-crypto backend, delegating to the public [VotingSdk] and its
  * per-round [VotingDbSession] handles. All failures surface as [RuntimeException] from the
  * native layer - every method below is annotated accordingly.
+ *
+ * **voting-5.0.0 round-driver port note:** this interface used to expose ~45 granular per-step
+ * methods (build a PCZT, extract a sighash, build a vote commitment, store a tx hash, ...). The
+ * SDK's own `RoundExecutor`/`RoundDriver`/`DelegationPipeline` now owns that sequencing
+ * internally (see [openRoundSession]/[VotingRoundSession.run]) — every one of those old methods
+ * was confirmed (real compile errors against the ported SDK, not inferred) to have no surviving
+ * equivalent, and was deleted rather than shimmed. Only DB lifecycle, bundle/notes setup, and a
+ * handful of standalone crypto helpers survive unchanged from the pre-4.0 interface.
  */
 @Suppress("TooManyFunctions")
 interface VotingCryptoClient {
@@ -80,16 +75,23 @@ interface VotingCryptoClient {
         networkId: Int
     )
 
-    /** @throws RuntimeException if the native layer reports a failure. */
+    /**
+     * Bootstraps (or validates) [roundId]'s round row — replaces the pre-4.0 `initializeRound`.
+     * Required before [setupBundles] or a delegation-enabled [openRoundSession]/
+     * [VotingRoundSession.run] can do anything for a round that has never been through this call
+     * before. See [VotingRoundSession.run]'s SDK-side doc comment for why neither call alone can
+     * bootstrap a virgin round.
+     * @throws RuntimeException if the native layer reports a failure.
+     */
     @Throws(RuntimeException::class)
-    suspend fun initializeRound(
+    suspend fun ensureRound(
         dbHandle: Long,
         roundId: String,
+        anchorTreeStateBytes: ByteArray,
         snapshotHeight: Long,
-        eaPK: ByteArray,
+        eaPk: ByteArray,
         ncRoot: ByteArray,
-        nullifierIMTRoot: ByteArray,
-        sessionJson: String?
+        nullifierImtRoot: ByteArray
     )
 
     /** @throws RuntimeException if the native layer reports a failure. */
@@ -100,22 +102,9 @@ interface VotingCryptoClient {
     ): RoundStateInfo?
 
     /**
-     * The canonical, per-bundle delegation phase for every bundle in the round. Callers deciding
-     * whether to (re)construct/prove/submit a specific bundle must use this, not [getRoundState]'s
-     * round-level phase — see [BundleDelegationPhase].
-     * @throws RuntimeException if the native layer reports a failure.
-     */
-    @Throws(RuntimeException::class)
-    suspend fun delegationPhases(
-        dbHandle: Long,
-        roundId: String
-    ): List<BundleDelegationPhase>
-
-    /**
      * Clears unsigned/unproved delegation setup for this round (preserving submitted bundles and
      * bundles with a persisted Keystone signature) so an interrupted or corrupted per-bundle setup
-     * can be rebuilt from scratch. Only call in response to a delegation-setup-overwrite error
-     * (see [isDelegationSetupOverwrite]), not routinely.
+     * can be rebuilt from scratch.
      * @throws RuntimeException if the native layer reports a failure.
      */
     @Throws(RuntimeException::class)
@@ -134,13 +123,6 @@ interface VotingCryptoClient {
         dbHandle: Long,
         roundId: String
     ): Int
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun getVotes(
-        dbHandle: Long,
-        roundId: String
-    ): List<VotingVoteRecord>
 
     /** @throws RuntimeException if the native layer reports a failure. */
     @Throws(RuntimeException::class)
@@ -178,14 +160,6 @@ interface VotingCryptoClient {
 
     /** @throws RuntimeException if the native layer reports a failure. */
     @Throws(RuntimeException::class)
-    suspend fun storeTreeState(
-        dbHandle: Long,
-        roundId: String,
-        treeStateBytes: ByteArray
-    )
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
     suspend fun getWalletNotesJson(
         walletDbPath: String,
         snapshotHeight: Long,
@@ -202,84 +176,9 @@ interface VotingCryptoClient {
 
     /** @throws RuntimeException if the native layer reports a failure. */
     @Throws(RuntimeException::class)
-    suspend fun generateNoteWitnessesJson(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        walletDbPath: String,
-        networkId: Int,
-        notesJson: String
-    ): String
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun storeWitnesses(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        notesJson: String,
-        witnessesJson: String
-    )
-
-    /**
-     * True when this bundle already has a stored witness for every note, so generating and storing
-     * them again would only repeat work an earlier run or the background stage already did.
-     *
-     * @throws RuntimeException if the native layer reports a failure.
-     */
-    @Throws(RuntimeException::class)
-    suspend fun hasCompleteWitnesses(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        notesJson: String
-    ): Boolean
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun buildGovernancePczt(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        fvkBytes: ByteArray,
-        hotkeySeed: ByteArray,
-        accountIndex: Int,
-        notesJson: String,
-        seedFingerprint: ByteArray,
-        roundName: String
-    ): VotingGovernancePczt
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun buildGovernancePcztFromSeed(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        ufvk: String,
-        networkId: Int,
-        accountIndex: Int,
-        notesJson: String,
-        walletSeed: ByteArray,
-        hotkeySeed: ByteArray,
-        seedFingerprint: ByteArray,
-        roundName: String
-    ): VotingGovernancePczt
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun extractPcztSighash(pcztBytes: ByteArray): ByteArray
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun extractSpendAuthSignatureFromSignedPczt(
-        signedPcztBytes: ByteArray,
-        actionIndex: Int
-    ): ByteArray
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
     suspend fun precomputeDelegationPir(
         dbHandle: Long,
+        torLease: VotingTorLease?,
         roundId: String,
         bundleIndex: Int,
         pirServerUrl: String,
@@ -287,185 +186,114 @@ interface VotingCryptoClient {
         notesJson: String
     ): VotingDelegationPirPrecomputeResult
 
-    /** @throws RuntimeException if the native layer reports a failure. */
+    /**
+     * Warms the bundle- and round-independent PIR proof cache for [notesJson]'s nullifiers, so a
+     * later [precomputeDelegationPir]/[precomputeSnapshotBundles] call (or vote construction)
+     * finds proofs already cached instead of paying PIR latency synchronously. Not scoped to a
+     * round or bundle -- safe to call as a background pre-warming step before any round is
+     * selected, whenever wallet notes are available.
+     *
+     * [torLease] follows the same contract as [openRoundSession]'s own `torLease` parameter --
+     * obtain it from `Synchronizer.acquireVotingTorLeaseOrNull()`, `null` when Tor is disabled;
+     * this degrades to plain HTTP rather than failing the call, never fail-closed. The caller
+     * owns the lease and releases it after this call returns.
+     *
+     * **Shared native DB lock**: holds the shared native database lock for [dbHandle]'s
+     * `(dbPath, walletId)` for the full call duration, including all PIR network round-trips,
+     * non-cancellably once the native call starts. Other operations on the same database queue
+     * behind it. Background/browse-time callers should be prepared to cancel or coordinate with
+     * it before opening a round session for real vote submission -- see
+     * [co.electriccoin.zcash.ui.common.repository.VotingProofPrecomputeRepository.cancelAndAwaitPrecompute].
+     * @throws RuntimeException if the native layer reports a failure.
+     */
     @Throws(RuntimeException::class)
-    suspend fun buildAndProveDelegation(
+    suspend fun precomputePirProofs(
         dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
+        torLease: VotingTorLease?,
         pirServerUrl: String,
         pirLayout: VotingPirLayout,
-        notesJson: String,
-        fvkBytes: ByteArray,
-        hotkeySeed: ByteArray,
-        seedFingerprint: ByteArray,
-        accountIndex: Int,
-        roundName: String,
-        proofProgress: ((Double) -> Unit)? = null
-    ): VotingDelegationProof
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun getDelegationSubmission(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        walletDbPath: String,
-        accountUuid: String,
-        hotkeySeed: ByteArray,
-        roundName: String,
-        senderSeed: ByteArray
-    ): VotingDelegationSubmission
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun getDelegationSubmissionWithKeystoneSignature(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        keystoneSig: ByteArray,
-        keystoneSighash: ByteArray
-    ): VotingDelegationSubmission
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun storeDelegationTxHash(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        txHash: String
-    )
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun getDelegationTxHash(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int
-    ): VotingTxHashLookup
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun storeVoteTxHash(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        proposalId: Int,
-        txHash: String
-    )
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun getVoteTxHash(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        proposalId: Int
-    ): VotingTxHashLookup
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun getCommitmentBundle(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        proposalId: Int
-    ): VotingCommitmentBundleRecord?
+        notesJson: String
+    ): VotingPirWarmupResult
 
     /**
-     * Records the confirmed vote-commitment-tree position for an already-committed vote, once
-     * its cast-vote transaction has been mined.
+     * Persists (or validates) [roundId]'s canonical bundle plan for [notesJson] and warms PIR for
+     * every bundle in that plan -- the whole-round background pre-warming entry point,
+     * complementing [precomputePirProofs] (round-independent, no bundle layout) and
+     * [precomputeDelegationPir] (one already-persisted bundle at a time). Verified strict
+     * superset of [precomputeDelegationPir] -- prefer this over per-bundle calls whenever the
+     * round's full snapshot note set is available.
+     *
+     * [torLease] and the shared-database-lock contract are the same as [precomputePirProofs]
+     * above -- see that doc comment.
+     * @throws RuntimeException if the native layer reports a failure.
+     */
+    @Throws(RuntimeException::class)
+    suspend fun precomputeSnapshotBundles(
+        dbHandle: Long,
+        torLease: VotingTorLease?,
+        roundId: String,
+        pirServerUrl: String,
+        pirLayout: VotingPirLayout,
+        notesJson: String
+    ): VotingSnapshotBundlePrecomputeResult
+
+    /**
+     * Opens a round-driver session: binds a `RoundExecutor` to [roundId]'s roster and hotkey,
+     * wires its chain-submission and helper transports through [torLease]. Callers must
+     * [VotingRoundSession.close] it when done, and keep [torLease] unreleased until after that
+     * close -- the session uses the Tor runtime for its whole lifetime.
+     *
+     * Returns the raw SDK session type directly — the round-driver's plan/ballot-intent/run
+     * surface is new with this port and has no pre-4.0 app-level equivalent to preserve, so this
+     * deliberately does not wrap it in another app-side abstraction layer (see this interface's
+     * class doc for why the old per-step methods below it were deleted rather than shimmed).
      *
      * @throws RuntimeException if the native layer reports a failure.
      */
+    @Suppress("LongParameterList")
     @Throws(RuntimeException::class)
-    suspend fun recordVcPosition(
+    suspend fun openRoundSession(
         dbHandle: Long,
+        torLease: VotingTorLease?,
         roundId: String,
-        bundleIndex: Int,
-        proposalId: Int,
-        vcTreePosition: Long
-    )
+        proposals: List<VotingProposalRosterEntry>,
+        hotkeySecret: ByteArray?,
+        chainEndpoints: List<String>,
+        operationEpoch: Long,
+        configuredHelperUrls: List<String>,
+        voteTreeNodeUrls: List<String>,
+        ceremonyStartSeconds: Long?,
+        voteEndTimeSeconds: Long?
+    ): VotingRoundSession
 
     /**
-     * Recovers the signed `vote::commit` result for an already-committed vote, together with
-     * its confirmed vote-commitment-tree position recorded by [recordVcPosition].
+     * Atomically persists a batch of Keystone-signed delegation bundle signatures for [roundId],
+     * so a later [resetVotingSessionState] preserves those bundles instead of wiping their
+     * unsigned setup for a rebuild. VotingDb-scoped rather than round-session-scoped: it can be
+     * called independently of whether a [VotingRoundSession] is currently open.
      *
+     * Pass `sig`/`sighash`/`rk` produced by a prior
+     * [VotingRoundSession.getKeystoneSigningRequests]-driven signing flow, not arbitrary values —
+     * see [VotingDbSession.storeKeystoneSignatures]'s own doc comment.
      * @throws RuntimeException if the native layer reports a failure.
      */
     @Throws(RuntimeException::class)
-    suspend fun recoverCommittedVote(
+    suspend fun storeKeystoneSignatures(
         dbHandle: Long,
         roundId: String,
-        bundleIndex: Int,
-        proposalId: Int
-    ): VotingCommittedVoteRecord
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun clearRecoveryState(
-        dbHandle: Long,
-        roundId: String
-    )
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun recordShareDelegation(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        proposalId: Int,
-        shareIndex: Int,
-        sentToUrls: List<String>,
-        nullifier: ByteArray,
-        submitAt: Long
-    )
+        signatures: List<VotingKeystoneSignatureInput>
+    ): VotingKeystoneSignatureBatchResult
 
     /**
-     * Persists a Keystone-signed delegation bundle's signature so a later round-wide
-     * [resetVotingSessionState] preserves this bundle instead of wiping its unsigned setup
-     * fields for a rebuild. Pass the `rk`/`sighash` the app already verified the signature
-     * against (the crate-computed values from the governance PCZT that was signed), not
-     * arbitrary caller-supplied values — this call does not itself re-verify the signature.
+     * Opens a cancellable share-tracking session for [roundId]. See
+     * [VotingDbSession.openShareTrackingSession]'s doc comment.
      * @throws RuntimeException if the native layer reports a failure.
      */
     @Throws(RuntimeException::class)
-    suspend fun storeKeystoneSignature(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        keystoneSig: ByteArray,
-        keystoneSighash: ByteArray,
-        rk: ByteArray
-    )
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun getShareDelegations(
+    suspend fun openShareTrackingSession(
         dbHandle: Long,
         roundId: String
-    ): List<VotingShareDelegationRecord>
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun markShareConfirmed(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        proposalId: Int,
-        shareIndex: Int
-    )
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun addSentServers(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        proposalId: Int,
-        shareIndex: Int,
-        newUrls: List<String>
-    )
+    ): VotingShareTrackingSession
 
     /** @throws RuntimeException if the native layer reports a failure. */
     @Throws(RuntimeException::class)
@@ -483,58 +311,11 @@ interface VotingCryptoClient {
         nodeUrl: String
     ): Long
 
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun storeVanPosition(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        position: Int
-    )
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun generateVanWitnessJson(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        anchorHeight: Int
-    ): String
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun buildVoteCommitment(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        hotkeySeed: ByteArray,
-        proposalId: Int,
-        choice: Int,
-        numOptions: Int,
-        witnessJson: String,
-        vanPosition: Int,
-        anchorHeight: Int,
-        singleShare: Boolean = false,
-        proofProgress: ((Double) -> Unit)? = null
-    ): VotingVoteCommitment
-
-    /** @throws RuntimeException if the native layer reports a failure. */
-    @Throws(RuntimeException::class)
-    suspend fun buildSharePayloadsJson(
-        encSharesJson: String,
-        commitmentJson: String,
-        voteDecision: Int,
-        numOptions: Int,
-        vcTreePosition: Long,
-        singleShareMode: Boolean = false
-    ): String
-
     /**
      * Computes when a delegated helper share should submit, honoring the ceremony's
      * last-moment buffer window. Sources its own entropy natively; callers must not
      * reimplement this scheduling in Kotlin. Returns unix seconds; `0` means "submit
      * immediately".
-     *
      * @throws RuntimeException if the native layer reports a failure.
      */
     @Throws(RuntimeException::class)
@@ -549,6 +330,15 @@ interface VotingCryptoClient {
     @Throws(RuntimeException::class)
     suspend fun warmProvingCaches()
 
+    /**
+     * Fixes the process-wide proving-pool policy once at startup, before any voting round work.
+     * Must be called exactly once, before the first [warmProvingCaches]/round-session call — see
+     * [VotingSdk.configureVoting]'s doc comment for why.
+     * @throws RuntimeException if the native layer reports a failure.
+     */
+    @Throws(RuntimeException::class)
+    suspend fun configureVoting()
+
     /** @throws RuntimeException if the native layer reports a failure. */
     @Throws(RuntimeException::class)
     suspend fun ballotDivisorZatoshi(): Long
@@ -559,36 +349,84 @@ interface VotingCryptoClient {
         ufvk: String,
         networkId: Int
     ): ByteArray
+
+    /** @throws RuntimeException if the native layer reports a failure. */
+    @Throws(RuntimeException::class)
+    suspend fun verifyWitness(witness: VotingWitness): Boolean
+
+    /**
+     * Extracts the 32-byte ZIP-244 shielded sighash from finalized PCZT bytes. Stateless — needs
+     * neither a DB handle nor an open round session. Used by the Keystone signing flow to recover
+     * the sighash a hardware wallet actually signed over, once the signed PCZT is scanned back.
+     * @throws RuntimeException if [pcztBytes] is not a parseable PCZT.
+     */
+    @Throws(RuntimeException::class)
+    suspend fun extractPcztSighash(pcztBytes: ByteArray): ByteArray
+
+    /**
+     * Extracts the 64-byte RedPallas spend-authorization signature from a Keystone-signed PCZT.
+     * Stateless, like [extractPcztSighash]. [actionIndex] is the expected action index; the
+     * backend tries it first and otherwise scans every action, which stays unambiguous because a
+     * governance PCZT has exactly one signable action.
+     * @throws RuntimeException if [signedPcztBytes] is not a parseable PCZT or carries no signed
+     * action.
+     */
+    @Throws(RuntimeException::class)
+    suspend fun extractSpendAuthSig(
+        signedPcztBytes: ByteArray,
+        actionIndex: Int
+    ): ByteArray
 }
 
 class VotingCryptoClientImpl : VotingCryptoClient {
     private val nextDbHandle = AtomicLong(1)
     private val sdkMutex = Mutex()
     private var sdk: VotingSdk? = null
-    private val dbPaths = ConcurrentHashMap<Long, String>()
-    private val sessions = ConcurrentHashMap<Long, VotingDbSession>()
+
+    // These were plain unsynchronized mutableMapOf()s on a
+    // singleton -- pre-existing, but VoteProposalDetailVM.init now launches two DB-opening jobs
+    // concurrently, increasing real exposure to a torn/corrupted map under concurrent
+    // structural mutation (put/remove from different coroutines). Guarded with a Mutex (this
+    // team's established rule -- Mutex, not synchronized, in suspend code) rather than swapping
+    // to a concurrent collection type, so the lock scope stays small and explicit: only the map
+    // reads/writes themselves are held under lock, never the slow native calls around them.
+    private val mapsMutex = Mutex()
+    private val dbPaths = mutableMapOf<Long, String>()
+    private val sessions = mutableMapOf<Long, VotingDbSession>()
 
     private suspend fun votingSdk(): VotingSdk =
         sdk ?: sdkMutex.withLock {
-            sdk ?: VotingSdk.new().also { sdk = it }
+            sdk ?: VotingSdk.new().also {
+                // configureVoting() fixes the process-wide proving-pool policy and must run
+                // exactly once, before any warmProvingCaches()/round-session call -- see its
+                // own doc comment. Every native call in this class funnels through votingSdk(),
+                // so doing it here, still under sdkMutex right after construction and before
+                // the new instance is published to `sdk`, is the one place that can guarantee
+                // "before the first real call" for every caller (openRoundSession,
+                // warmProvingCaches, precomputeDelegationPir, ...) without each of them having
+                // to remember to call it themselves.
+                it.configureVoting()
+                sdk = it
+            }
         }
 
-    private fun session(dbHandle: Long): VotingDbSession =
-        checkNotNull(sessions[dbHandle]) {
-            "Voting DB handle is not open: $dbHandle"
+    private suspend fun session(dbHandle: Long): VotingDbSession =
+        mapsMutex.withLock {
+            checkNotNull(sessions[dbHandle]) {
+                "Voting DB handle is not open: $dbHandle"
+            }
         }
 
     override suspend fun openVotingDb(dbPath: String): Long {
         val handle = nextDbHandle.getAndIncrement()
-        dbPaths[handle] = dbPath
+        mapsMutex.withLock { dbPaths[handle] = dbPath }
         return handle
     }
 
-    /** Non-cancellable: a cancelled background job must still release its native session. */
     override suspend fun closeVotingDb(dbHandle: Long) {
-        withContext(NonCancellable + Dispatchers.IO) {
-            sessions.remove(dbHandle)?.close()
-            dbPaths.remove(dbHandle)
+        withContext(Dispatchers.IO) {
+            val removedSession = mapsMutex.withLock { sessions.remove(dbHandle).also { dbPaths.remove(dbHandle) } }
+            removedSession?.close()
         }
     }
 
@@ -599,25 +437,33 @@ class VotingCryptoClientImpl : VotingCryptoClient {
     ) =
         withContext(Dispatchers.IO) {
             val dbPath =
-                checkNotNull(dbPaths[dbHandle]) {
-                    "Voting DB handle is not registered: $dbHandle"
+                mapsMutex.withLock {
+                    checkNotNull(dbPaths[dbHandle]) {
+                        "Voting DB handle is not registered: $dbHandle"
+                    }
                 }
-            sessions.remove(dbHandle)?.close()
-            sessions[dbHandle] = votingSdk().openDb(dbPath, walletId, networkId)
+            val previousSession = mapsMutex.withLock { sessions.remove(dbHandle) }
+            previousSession?.close()
+            // The slow native openDb() call runs OUTSIDE the lock, deliberately -- holding
+            // mapsMutex here would fully serialize concurrent DB opens across every dbHandle,
+            // defeating the point of the two concurrent jobs this fix is guarding against.
+            val newSession = votingSdk().openDb(dbPath, walletId, networkId)
+            // NonCancellable: a cancellation while waiting for the lock would otherwise drop the
+            // freshly opened native session before closeVotingDb can ever find it.
+            withContext(NonCancellable) { mapsMutex.withLock { sessions[dbHandle] = newSession } }
         }
 
-    override suspend fun initializeRound(
+    override suspend fun ensureRound(
         dbHandle: Long,
         roundId: String,
+        anchorTreeStateBytes: ByteArray,
         snapshotHeight: Long,
-        eaPK: ByteArray,
+        eaPk: ByteArray,
         ncRoot: ByteArray,
-        nullifierIMTRoot: ByteArray,
-        sessionJson: String?
-    ) =
-        withContext(Dispatchers.IO) {
-            session(dbHandle).initRound(roundId, snapshotHeight, eaPK, ncRoot, nullifierIMTRoot, sessionJson)
-        }
+        nullifierImtRoot: ByteArray
+    ) = withContext(Dispatchers.IO) {
+        session(dbHandle).ensureRound(roundId, anchorTreeStateBytes, snapshotHeight, eaPk, ncRoot, nullifierImtRoot)
+    }
 
     override suspend fun getRoundState(
         dbHandle: Long,
@@ -625,14 +471,6 @@ class VotingCryptoClientImpl : VotingCryptoClient {
     ): RoundStateInfo? =
         withContext(Dispatchers.IO) {
             session(dbHandle).getRoundState(roundId)?.toAppModel()
-        }
-
-    override suspend fun delegationPhases(
-        dbHandle: Long,
-        roundId: String
-    ): List<BundleDelegationPhase> =
-        withContext(Dispatchers.IO) {
-            session(dbHandle).delegationPhases(roundId).map(VotingDelegationPhase::toAppModel)
         }
 
     override suspend fun resetVotingSessionState(
@@ -664,14 +502,6 @@ class VotingCryptoClientImpl : VotingCryptoClient {
     ): Int =
         withContext(Dispatchers.IO) {
             session(dbHandle).getBundleCount(roundId)
-        }
-
-    override suspend fun getVotes(
-        dbHandle: Long,
-        roundId: String
-    ): List<VotingVoteRecord> =
-        withContext(Dispatchers.IO) {
-            session(dbHandle).getVotes(roundId).map(SdkVotingVoteRecord::toAppModel)
         }
 
     override suspend fun clearRound(
@@ -713,15 +543,6 @@ class VotingCryptoClientImpl : VotingCryptoClient {
             session(dbHandle).generateHotkey(storedSecret).toAppModel()
         }
 
-    override suspend fun storeTreeState(
-        dbHandle: Long,
-        roundId: String,
-        treeStateBytes: ByteArray
-    ) =
-        withContext(Dispatchers.IO) {
-            session(dbHandle).storeTreeState(roundId, treeStateBytes)
-        }
-
     override suspend fun getWalletNotesJson(
         walletDbPath: String,
         snapshotHeight: Long,
@@ -746,115 +567,9 @@ class VotingCryptoClientImpl : VotingCryptoClient {
             votingSdk().deriveHotkeyRawAddress(hotkeySeed, networkId)
         }
 
-    override suspend fun generateNoteWitnessesJson(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        walletDbPath: String,
-        networkId: Int,
-        notesJson: String
-    ): String =
-        withContext(Dispatchers.IO) {
-            session(dbHandle)
-                .generateNoteWitnesses(roundId, bundleIndex, walletDbPath, networkId, notesJson.toVotingNoteInfos())
-                .toWitnessesJson()
-        }
-
-    override suspend fun storeWitnesses(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        notesJson: String,
-        witnessesJson: String
-    ) =
-        withContext(Dispatchers.IO) {
-            session(dbHandle).storeWitnesses(
-                roundId,
-                bundleIndex,
-                notesJson.toVotingNoteInfos(),
-                witnessesJson.toVotingWitnesses()
-            )
-        }
-
-    override suspend fun hasCompleteWitnesses(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        notesJson: String
-    ): Boolean =
-        withContext(Dispatchers.IO) {
-            session(dbHandle).hasCompleteWitnesses(roundId, bundleIndex, notesJson.toVotingNoteInfos())
-        }
-
-    override suspend fun buildGovernancePczt(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        fvkBytes: ByteArray,
-        hotkeySeed: ByteArray,
-        accountIndex: Int,
-        notesJson: String,
-        seedFingerprint: ByteArray,
-        roundName: String
-    ): VotingGovernancePczt =
-        withContext(Dispatchers.IO) {
-            session(dbHandle)
-                .buildGovernancePczt(
-                    roundId,
-                    bundleIndex,
-                    fvkBytes,
-                    hotkeySeed,
-                    accountIndex,
-                    notesJson.toVotingNoteInfos(),
-                    seedFingerprint,
-                    roundName
-                ).toAppModel()
-        }
-
-    override suspend fun buildGovernancePcztFromSeed(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        ufvk: String,
-        networkId: Int,
-        accountIndex: Int,
-        notesJson: String,
-        walletSeed: ByteArray,
-        hotkeySeed: ByteArray,
-        seedFingerprint: ByteArray,
-        roundName: String
-    ): VotingGovernancePczt =
-        withContext(Dispatchers.IO) {
-            session(dbHandle)
-                .buildGovernancePcztFromSeed(
-                    roundId,
-                    bundleIndex,
-                    ufvk,
-                    networkId,
-                    accountIndex,
-                    notesJson.toVotingNoteInfos(),
-                    walletSeed,
-                    hotkeySeed,
-                    seedFingerprint,
-                    roundName
-                ).toAppModel()
-        }
-
-    override suspend fun extractPcztSighash(pcztBytes: ByteArray): ByteArray =
-        withContext(Dispatchers.IO) {
-            votingSdk().extractPcztSighash(pcztBytes)
-        }
-
-    override suspend fun extractSpendAuthSignatureFromSignedPczt(
-        signedPcztBytes: ByteArray,
-        actionIndex: Int
-    ): ByteArray =
-        withContext(Dispatchers.IO) {
-            votingSdk().extractSpendAuthSig(signedPcztBytes, actionIndex)
-        }
-
     override suspend fun precomputeDelegationPir(
         dbHandle: Long,
+        torLease: VotingTorLease?,
         roundId: String,
         bundleIndex: Int,
         pirServerUrl: String,
@@ -864,6 +579,7 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         withContext(Dispatchers.IO) {
             session(dbHandle)
                 .precomputeDelegationPir(
+                    torLease,
                     roundId,
                     bundleIndex,
                     pirServerUrl,
@@ -875,226 +591,92 @@ class VotingCryptoClientImpl : VotingCryptoClient {
                 ).toAppModel()
         }
 
-    override suspend fun buildAndProveDelegation(
+    override suspend fun precomputePirProofs(
         dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
+        torLease: VotingTorLease?,
         pirServerUrl: String,
         pirLayout: VotingPirLayout,
-        notesJson: String,
-        fvkBytes: ByteArray,
-        hotkeySeed: ByteArray,
-        seedFingerprint: ByteArray,
-        accountIndex: Int,
-        roundName: String,
-        proofProgress: ((Double) -> Unit)?
-    ): VotingDelegationProof =
+        notesJson: String
+    ): VotingPirWarmupResult =
         withContext(Dispatchers.IO) {
             session(dbHandle)
-                .buildAndProveDelegation(
-                    roundId,
-                    bundleIndex,
+                .precomputePirProofs(
+                    torLease,
                     pirServerUrl,
                     pirLayout.pirDepth,
                     pirLayout.tier0Layers,
                     pirLayout.tier1Layers,
                     pirLayout.requireKnownPolyLen().polyLen,
-                    notesJson.toVotingNoteInfos(),
-                    fvkBytes,
-                    hotkeySeed,
-                    seedFingerprint,
-                    accountIndex,
-                    roundName,
-                    proofProgress
+                    notesJson.toVotingNoteInfos()
                 ).toAppModel()
         }
 
-    override suspend fun getDelegationSubmission(
+    override suspend fun precomputeSnapshotBundles(
         dbHandle: Long,
+        torLease: VotingTorLease?,
         roundId: String,
-        bundleIndex: Int,
-        walletDbPath: String,
-        accountUuid: String,
-        hotkeySeed: ByteArray,
-        roundName: String,
-        senderSeed: ByteArray
-    ): VotingDelegationSubmission =
+        pirServerUrl: String,
+        pirLayout: VotingPirLayout,
+        notesJson: String
+    ): VotingSnapshotBundlePrecomputeResult =
         withContext(Dispatchers.IO) {
             session(dbHandle)
-                .getDelegationSubmission(
+                .precomputeSnapshotBundles(
+                    torLease,
                     roundId,
-                    bundleIndex,
-                    walletDbPath,
-                    accountUuid,
-                    hotkeySeed,
-                    roundName,
-                    senderSeed
+                    pirServerUrl,
+                    pirLayout.pirDepth,
+                    pirLayout.tier0Layers,
+                    pirLayout.tier1Layers,
+                    pirLayout.requireKnownPolyLen().polyLen,
+                    notesJson.toVotingNoteInfos()
                 ).toAppModel()
         }
 
-    override suspend fun getDelegationSubmissionWithKeystoneSignature(
+    override suspend fun openRoundSession(
         dbHandle: Long,
+        torLease: VotingTorLease?,
         roundId: String,
-        bundleIndex: Int,
-        keystoneSig: ByteArray,
-        keystoneSighash: ByteArray
-    ): VotingDelegationSubmission =
+        proposals: List<VotingProposalRosterEntry>,
+        hotkeySecret: ByteArray?,
+        chainEndpoints: List<String>,
+        operationEpoch: Long,
+        configuredHelperUrls: List<String>,
+        voteTreeNodeUrls: List<String>,
+        ceremonyStartSeconds: Long?,
+        voteEndTimeSeconds: Long?
+    ): VotingRoundSession =
         withContext(Dispatchers.IO) {
             session(dbHandle)
-                .getDelegationSubmissionWithKeystoneSig(roundId, bundleIndex, keystoneSig, keystoneSighash)
-                .toAppModel()
+                .openRoundSession(
+                    torLease,
+                    roundId,
+                    proposals,
+                    hotkeySecret,
+                    chainEndpoints,
+                    operationEpoch,
+                    configuredHelperUrls,
+                    voteTreeNodeUrls,
+                    ceremonyStartSeconds,
+                    voteEndTimeSeconds
+                )
         }
 
-    override suspend fun storeDelegationTxHash(
+    override suspend fun storeKeystoneSignatures(
         dbHandle: Long,
         roundId: String,
-        bundleIndex: Int,
-        txHash: String
-    ) =
+        signatures: List<VotingKeystoneSignatureInput>
+    ): VotingKeystoneSignatureBatchResult =
         withContext(Dispatchers.IO) {
-            session(dbHandle).storeDelegationTxHash(roundId, bundleIndex, txHash)
+            session(dbHandle).storeKeystoneSignatures(roundId, signatures)
         }
 
-    override suspend fun getDelegationTxHash(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int
-    ): VotingTxHashLookup =
-        withContext(Dispatchers.IO) {
-            runExpectedMissingRowLookup {
-                session(dbHandle).getDelegationTxHash(roundId, bundleIndex).toAppModel()
-            } ?: VotingTxHashLookup.NotFound
-        }
-
-    override suspend fun storeVoteTxHash(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        proposalId: Int,
-        txHash: String
-    ) =
-        withContext(Dispatchers.IO) {
-            session(dbHandle).storeVoteTxHash(roundId, bundleIndex, proposalId, txHash)
-        }
-
-    override suspend fun getVoteTxHash(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        proposalId: Int
-    ): VotingTxHashLookup =
-        withContext(Dispatchers.IO) {
-            runExpectedMissingRowLookup {
-                session(dbHandle).getVoteTxHash(roundId, bundleIndex, proposalId).toAppModel()
-            } ?: VotingTxHashLookup.NotFound
-        }
-
-    override suspend fun getCommitmentBundle(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        proposalId: Int
-    ): VotingCommitmentBundleRecord? =
-        withContext(Dispatchers.IO) {
-            runExpectedMissingRowLookup {
-                session(dbHandle)
-                    .getCommitmentBundle(roundId, bundleIndex, proposalId)
-                    ?.toAppModel()
-            }
-        }
-
-    override suspend fun recordVcPosition(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        proposalId: Int,
-        vcTreePosition: Long
-    ) =
-        withContext(Dispatchers.IO) {
-            session(dbHandle).recordVcPosition(roundId, bundleIndex, proposalId, vcTreePosition)
-        }
-
-    override suspend fun recoverCommittedVote(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        proposalId: Int
-    ): VotingCommittedVoteRecord =
-        withContext(Dispatchers.IO) {
-            session(dbHandle).recoverCommittedVote(roundId, bundleIndex, proposalId).toAppModel()
-        }
-
-    override suspend fun clearRecoveryState(
+    override suspend fun openShareTrackingSession(
         dbHandle: Long,
         roundId: String
-    ) =
+    ): VotingShareTrackingSession =
         withContext(Dispatchers.IO) {
-            session(dbHandle).clearRecoveryState(roundId)
-        }
-
-    override suspend fun recordShareDelegation(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        proposalId: Int,
-        shareIndex: Int,
-        sentToUrls: List<String>,
-        nullifier: ByteArray,
-        submitAt: Long
-    ) =
-        withContext(Dispatchers.IO) {
-            session(dbHandle).recordShareDelegation(
-                roundId,
-                bundleIndex,
-                proposalId,
-                shareIndex,
-                sentToUrls,
-                nullifier,
-                submitAt
-            )
-        }
-
-    override suspend fun storeKeystoneSignature(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        keystoneSig: ByteArray,
-        keystoneSighash: ByteArray,
-        rk: ByteArray
-    ) =
-        withContext(Dispatchers.IO) {
-            session(dbHandle).storeKeystoneSignature(roundId, bundleIndex, keystoneSig, keystoneSighash, rk)
-        }
-
-    override suspend fun getShareDelegations(
-        dbHandle: Long,
-        roundId: String
-    ): List<VotingShareDelegationRecord> =
-        withContext(Dispatchers.IO) {
-            session(dbHandle).getShareDelegations(roundId).map(SdkVotingShareDelegationRecord::toAppModel)
-        }
-
-    override suspend fun markShareConfirmed(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        proposalId: Int,
-        shareIndex: Int
-    ) =
-        withContext(Dispatchers.IO) {
-            session(dbHandle).markShareConfirmed(roundId, bundleIndex, proposalId, shareIndex)
-        }
-
-    override suspend fun addSentServers(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        proposalId: Int,
-        shareIndex: Int,
-        newUrls: List<String>
-    ) =
-        withContext(Dispatchers.IO) {
-            session(dbHandle).addSentServers(roundId, bundleIndex, proposalId, shareIndex, newUrls)
+            session(dbHandle).openShareTrackingSession(roundId)
         }
 
     override suspend fun computeShareNullifier(
@@ -1115,74 +697,6 @@ class VotingCryptoClientImpl : VotingCryptoClient {
             session(dbHandle).syncVoteTree(roundId, nodeUrl)
         }
 
-    override suspend fun storeVanPosition(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        position: Int
-    ) =
-        withContext(Dispatchers.IO) {
-            session(dbHandle).storeVanPosition(roundId, bundleIndex, position.toLong())
-        }
-
-    override suspend fun generateVanWitnessJson(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        anchorHeight: Int
-    ): String =
-        withContext(Dispatchers.IO) {
-            session(dbHandle).generateVanWitness(roundId, bundleIndex, anchorHeight.toLong()).toJson()
-        }
-
-    override suspend fun buildVoteCommitment(
-        dbHandle: Long,
-        roundId: String,
-        bundleIndex: Int,
-        hotkeySeed: ByteArray,
-        proposalId: Int,
-        choice: Int,
-        numOptions: Int,
-        witnessJson: String,
-        vanPosition: Int,
-        anchorHeight: Int,
-        singleShare: Boolean,
-        proofProgress: ((Double) -> Unit)?
-    ): VotingVoteCommitment =
-        withContext(Dispatchers.IO) {
-            session(dbHandle)
-                .buildVoteCommitment(
-                    roundId,
-                    bundleIndex,
-                    hotkeySeed,
-                    proposalId,
-                    choice,
-                    numOptions,
-                    witnessJson.toVotingVanWitness(vanPosition, anchorHeight),
-                    singleShare,
-                    proofProgress
-                ).toAppModel()
-        }
-
-    override suspend fun buildSharePayloadsJson(
-        encSharesJson: String,
-        commitmentJson: String,
-        voteDecision: Int,
-        numOptions: Int,
-        vcTreePosition: Long,
-        singleShareMode: Boolean
-    ): String =
-        withContext(Dispatchers.IO) {
-            votingSdk()
-                .buildSharePayloads(
-                    commitmentJson.toVotingCommitmentResult(encSharesJson.toVotingEncryptedShares()),
-                    voteDecision,
-                    numOptions,
-                    vcTreePosition,
-                    singleShareMode
-                ).toSharePayloadsJson()
-        }
-
     override suspend fun scheduledShareSubmitAt(
         nowSeconds: Long,
         ceremonyStartSeconds: Long,
@@ -1198,6 +712,11 @@ class VotingCryptoClientImpl : VotingCryptoClient {
             votingSdk().warmProvingCaches()
         }
 
+    override suspend fun configureVoting() =
+        withContext(Dispatchers.IO) {
+            votingSdk().configureVoting()
+        }
+
     override suspend fun ballotDivisorZatoshi(): Long = BALLOT_DIVISOR_ZATOSHI
 
     override suspend fun extractOrchardFvkFromUfvk(
@@ -1206,6 +725,24 @@ class VotingCryptoClientImpl : VotingCryptoClient {
     ): ByteArray =
         withContext(Dispatchers.IO) {
             votingSdk().extractOrchardFvkFromUfvk(ufvk, networkId)
+        }
+
+    override suspend fun verifyWitness(witness: VotingWitness): Boolean =
+        withContext(Dispatchers.IO) {
+            votingSdk().verifyWitness(witness)
+        }
+
+    override suspend fun extractPcztSighash(pcztBytes: ByteArray): ByteArray =
+        withContext(Dispatchers.IO) {
+            votingSdk().extractPcztSighash(pcztBytes)
+        }
+
+    override suspend fun extractSpendAuthSig(
+        signedPcztBytes: ByteArray,
+        actionIndex: Int
+    ): ByteArray =
+        withContext(Dispatchers.IO) {
+            votingSdk().extractSpendAuthSig(signedPcztBytes, actionIndex)
         }
 }
 
@@ -1258,35 +795,7 @@ private fun VotingRoundPhase.toWireInt(): Int =
         VotingRoundPhase.VOTE_READY -> WIRE_ROUND_PHASE_VOTE_READY
     }
 
-private fun VotingDelegationPhase.toAppModel() =
-    BundleDelegationPhase(
-        bundleIndex = bundleIndex,
-        phase = DelegationPhase.fromWireValue(phase)
-    )
-
 private const val BALLOT_DIVISOR_ZATOSHI = 12_500_000L
-private const val HEX_BYTE_CHARS = 2
-private const val HEX_RADIX = 16
-private const val BYTE_MASK = 0xff
-
-private fun SdkVotingGovernancePczt.toAppModel() =
-    VotingGovernancePczt(
-        pcztBytes = pcztBytes.copyOf(),
-        rk = rk.copyOf(),
-        sighash = sighash.copyOf(),
-        actionIndex = actionIndex
-    )
-
-private fun VotingDelegationProofResult.toAppModel() =
-    VotingDelegationProof(
-        proof = proof.copyOf(),
-        publicInputs = publicInputs.map(ByteArray::copyOf),
-        nfSigned = nfSigned.copyOf(),
-        cmxNew = cmxNew.copyOf(),
-        govNullifiers = govNullifiers.map(ByteArray::copyOf),
-        vanComm = vanComm.copyOf(),
-        rk = rk.copyOf()
-    )
 
 private fun SdkVotingDelegationPirPrecomputeResult.toAppModel() =
     VotingDelegationPirPrecomputeResult(
@@ -1294,111 +803,29 @@ private fun SdkVotingDelegationPirPrecomputeResult.toAppModel() =
         fetchedCount = fetchedCount
     )
 
-private fun VotingDelegationSubmissionResult.toAppModel() =
-    VotingDelegationSubmission(
-        proof = proof.copyOf(),
-        rk = rk.copyOf(),
-        spendAuthSig = spendAuthSig.copyOf(),
-        sighash = sighash.copyOf(),
-        tx1Effects = tx1Effects.copyOf(),
-        nfSigned = nfSigned.copyOf(),
-        cmxNew = cmxNew.copyOf(),
-        govComm = govComm.copyOf(),
-        govNullifiers = govNullifiers.map(ByteArray::copyOf),
-        alpha = ByteArray(0),
-        voteRoundId = voteRoundId
+private fun SdkVotingPirPrecomputeResult.toAppModel() =
+    VotingPirWarmupResult(
+        cachedCount = cachedCount,
+        fetchedCount = fetchedCount,
+        servedRoot = servedRoot.copyOf()
     )
 
-private fun VotingCommitResult.toAppModel() =
-    VotingVoteCommitment(
-        vanNullifier = vanNullifier.copyOf(),
-        voteAuthorityNoteNew = voteAuthorityNoteNew.copyOf(),
-        voteCommitment = voteCommitment.copyOf(),
-        rVpk = rVpk.copyOf(),
-        voteAuthSig = voteAuthSig.copyOf(),
-        anchorHeight = anchorHeight.toInt(),
-        encSharesJson = encShares.toEncryptedSharesJson(),
-        rawBundleJson = toStorageJson()
+private fun SdkVotingSnapshotBundlePrecomputeReport.toAppModel() =
+    VotingSnapshotBundlePrecomputeResult(
+        bundleCount = layout.bundleCount,
+        eligibleWeight = layout.eligibleWeightZatoshi,
+        bundleReports =
+            bundles.map { report ->
+                VotingDelegationPirPrecomputeResult(
+                    cachedCount = report.cachedCount,
+                    fetchedCount = report.fetchedCount
+                )
+            }
     )
 
-private fun VotingCommitResult.toStorageJson(): String =
-    JSONObject()
-        .put("van_nullifier", vanNullifier.toHexString())
-        .put("vote_authority_note_new", voteAuthorityNoteNew.toHexString())
-        .put("vote_commitment", voteCommitment.toHexString())
-        .put("proposal_id", proposalId)
-        .put("bundle_index", bundleIndex)
-        .put("proof", proof.toHexString())
-        .put("enc_shares", encShares.toEncryptedSharesJsonArray())
-        .put("anchor_height", anchorHeight)
-        .put("vote_round_id", voteRoundId)
-        .put("shares_hash", sharesHash.toHexString())
-        .put("share_comms", shareComms.toHexJsonArray())
-        .put("r_vpk_bytes", rVpk.toHexString())
-        .toString()
-
-private fun SdkVotingCommittedVoteRecord.toAppModel() =
-    VotingCommittedVoteRecord(
-        bundleIndex = commit.bundleIndex,
-        proposalId = commit.proposalId,
-        vcTreePosition = vcTreePosition,
-        sharePayloadsJson = commit.sharePayloads.toSharePayloadsJson()
-    )
-
-@Suppress("TooGenericExceptionCaught")
-private suspend fun <T> runExpectedMissingRowLookup(block: suspend () -> T): T? =
-    try {
-        block()
-    } catch (exception: RuntimeException) {
-        // Recovery lookups are cache probes. Older native layers can surface a
-        // missing row as RuntimeException instead of returning null/NotFound.
-        if (exception.isQueryReturnedNoRows()) {
-            null
-        } else {
-            throw exception
-        }
-    }
-
-private fun Throwable.isQueryReturnedNoRows(): Boolean =
-    generateSequence(this) { throwable -> throwable.cause }
-        .any { throwable ->
-            throwable.message
-                ?.contains("Query returned no rows", ignoreCase = true) == true
-        }
-
-private fun SdkVotingTxHashLookup.toAppModel(): VotingTxHashLookup =
-    when (this) {
-        is SdkVotingTxHashLookup.Missing -> VotingTxHashLookup.NotFound
-        is SdkVotingTxHashLookup.Found -> VotingTxHashLookup.Present(txHash)
-    }
-
-private fun SdkVotingCommitmentBundleRecord.toAppModel() =
-    VotingCommitmentBundleRecord(
-        bundleJson = commitment.toStorageJson(),
-        bundle = commitment.toStorageJson().toVoteCommitmentBundle(),
-        vcTreePosition = vcTreePosition
-    )
-
-private fun SdkVotingVoteRecord.toAppModel() =
-    VotingVoteRecord(
-        proposalId = proposalId,
-        bundleIndex = bundleIndex,
-        choice = choice,
-        submitted = submitted
-    )
-
-private fun SdkVotingShareDelegationRecord.toAppModel() =
-    VotingShareDelegationRecord(
-        roundId = roundId,
-        bundleIndex = bundleIndex,
-        proposalId = proposalId,
-        shareIndex = shareIndex,
-        sentToUrls = sentToUrls,
-        nullifier = nullifier.copyOf(),
-        confirmed = confirmed,
-        submitAt = submitAt,
-        createdAt = createdAt
-    )
+private const val HEX_BYTE_CHARS = 2
+private const val HEX_RADIX = 16
+private const val BYTE_MASK = 0xff
 
 private fun String.toVotingNoteInfos(): List<VotingNoteInfo> {
     val notes = JSONArray(this)
@@ -1443,165 +870,6 @@ private fun List<VotingNoteInfo>.toNotesJson(): String =
                 .put("ufvk", note.ufvk)
         }
     ).toString()
-
-private fun String.toVotingWitnesses(): List<VotingWitness> {
-    val witnesses = JSONArray(this)
-    return buildList {
-        for (index in 0 until witnesses.length()) {
-            val witness = witnesses.getJSONObject(index)
-            add(
-                VotingWitness(
-                    noteCommitment = witness.getString("note_commitment").hexStringToBytes(),
-                    position = witness.getLong("position"),
-                    root = witness.getString("root").hexStringToBytes(),
-                    authPath = witness.getJSONArray("auth_path").toByteArrays()
-                )
-            )
-        }
-    }
-}
-
-private fun List<VotingWitness>.toWitnessesJson(): String =
-    JSONArray(
-        map { witness ->
-            JSONObject()
-                .put("note_commitment", witness.noteCommitment.toHexString())
-                .put("position", witness.position)
-                .put("root", witness.root.toHexString())
-                .put("auth_path", witness.authPath.toHexJsonArray())
-        }
-    ).toString()
-
-private fun VotingVanWitness.toJson(): String =
-    JSONObject()
-        .put("auth_path", authPath.toHexJsonArray())
-        .put("position", position)
-        .put("anchor_height", anchorHeight)
-        .toString()
-
-private fun String.toVotingVanWitness(
-    position: Int,
-    anchorHeight: Int
-): VotingVanWitness {
-    val json = JSONObject(this)
-    return VotingVanWitness(
-        authPath = json.getJSONArray("auth_path").toByteArrays(),
-        position = json.optLong("position", position.toLong()),
-        anchorHeight = json.optLong("anchor_height", anchorHeight.toLong())
-    )
-}
-
-private fun String.toVotingCommitmentResult(
-    encSharesOverride: List<VotingEncryptedShare>? = null,
-    fallbackBundleIndex: Int = 0
-): VotingCommitmentResult {
-    val json = JSONObject(this)
-    return VotingCommitmentResult(
-        vanNullifier = json.getString("van_nullifier").hexStringToBytes(),
-        voteAuthorityNoteNew = json.getString("vote_authority_note_new").hexStringToBytes(),
-        voteCommitment = json.getString("vote_commitment").hexStringToBytes(),
-        proposalId = json.getInt("proposal_id"),
-        bundleIndex = json.optInt("bundle_index", fallbackBundleIndex),
-        proof = json.getString("proof").hexStringToBytes(),
-        encShares = encSharesOverride ?: json.optJSONArray("enc_shares").toVotingEncryptedShares(),
-        anchorHeight = json.getLong("anchor_height"),
-        voteRoundId = json.getString("vote_round_id"),
-        sharesHash = json.getString("shares_hash").hexStringToBytes(),
-        shareBlinds = json.optJSONArray("share_blinds").toByteArrays(),
-        shareComms = json.optJSONArray("share_comms").toByteArrays(),
-        rVpk =
-            json
-                .optString("r_vpk_bytes")
-                .takeIf(String::isNotEmpty)
-                ?.hexStringToBytes()
-                ?: ByteArray(0),
-        alphaV =
-            json
-                .optString("alpha_v")
-                .takeIf(String::isNotEmpty)
-                ?.hexStringToBytes()
-                ?: ByteArray(0)
-    )
-}
-
-private fun VotingCommitmentResult.toStorageJson(): String =
-    JSONObject()
-        .put("van_nullifier", vanNullifier.toHexString())
-        .put("vote_authority_note_new", voteAuthorityNoteNew.toHexString())
-        .put("vote_commitment", voteCommitment.toHexString())
-        .put("proposal_id", proposalId)
-        .put("bundle_index", bundleIndex)
-        .put("proof", proof.toHexString())
-        .put("enc_shares", encShares.toEncryptedSharesJsonArray())
-        .put("anchor_height", anchorHeight)
-        .put("vote_round_id", voteRoundId)
-        .put("shares_hash", sharesHash.toHexString())
-        .put("share_blinds", shareBlinds.toHexJsonArray())
-        .put("share_comms", shareComms.toHexJsonArray())
-        .put("r_vpk_bytes", rVpk.toHexString())
-        .put("alpha_v", alphaV.toHexString())
-        .toString()
-
-private fun String.toVotingEncryptedShares(): List<VotingEncryptedShare> =
-    JSONArray(this).toVotingEncryptedShares()
-
-private fun JSONArray?.toVotingEncryptedShares(): List<VotingEncryptedShare> {
-    if (this == null) return emptyList()
-
-    return buildList {
-        for (index in 0 until length()) {
-            val share = getJSONObject(index)
-            add(
-                VotingEncryptedShare(
-                    c1 = share.getString("c1").hexStringToBytes(),
-                    c2 = share.getString("c2").hexStringToBytes(),
-                    shareIndex = share.getInt("share_index")
-                )
-            )
-        }
-    }
-}
-
-private fun List<VotingEncryptedShare>.toEncryptedSharesJson(): String =
-    toEncryptedSharesJsonArray().toString()
-
-private fun List<VotingEncryptedShare>.toEncryptedSharesJsonArray(): JSONArray =
-    JSONArray(map(VotingEncryptedShare::toJson))
-
-private fun VotingEncryptedShare.toJson(): JSONObject =
-    JSONObject()
-        .put("c1", c1.toHexString())
-        .put("c2", c2.toHexString())
-        .put("share_index", shareIndex)
-
-private fun List<VotingSharePayload>.toSharePayloadsJson(): String =
-    JSONArray(
-        map { payload ->
-            JSONObject()
-                .put("shares_hash", payload.sharesHash.toHexString())
-                .put("proposal_id", payload.proposalId)
-                .put("vote_decision", payload.voteDecision)
-                .put("enc_share", payload.encShare.toJson())
-                .put("tree_position", payload.treePosition)
-                .put("vote_round_id", payload.voteRoundId)
-                .put("all_enc_shares", payload.allEncShares.toEncryptedSharesJsonArray())
-                .put("share_comms", payload.shareComms.toHexJsonArray())
-                .put("primary_blind", payload.primaryBlind.toHexString())
-        }
-    ).toString()
-
-private fun JSONArray?.toByteArrays(): List<ByteArray> {
-    if (this == null) return emptyList()
-
-    return buildList {
-        for (index in 0 until length()) {
-            add(getString(index).hexStringToBytes())
-        }
-    }
-}
-
-private fun List<ByteArray>.toHexJsonArray(): JSONArray =
-    JSONArray(map(ByteArray::toHexString))
 
 private fun String.hexStringToBytes(): ByteArray {
     if (isEmpty()) return ByteArray(0)
