@@ -19,7 +19,6 @@ import co.electriccoin.zcash.ui.design.component.NumberTextFieldInnerState
 import co.electriccoin.zcash.ui.design.component.NumberTextFieldState
 import co.electriccoin.zcash.ui.screen.common.BlockHeightState
 import co.electriccoin.zcash.ui.screen.connecthw.brandingOf
-import co.electriccoin.zcash.ui.screen.connecthw.importOrReturnToRoot
 import co.electriccoin.zcash.ui.screen.heightinfo.HeightInfoArgs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -80,7 +79,7 @@ class HWHeightVM(
 
     private fun onConfirmClick(height: Long) {
         createAccountLce.execute {
-            createHWWalletAccount.importOrReturnToRoot(args.enrollment, BlockHeight.new(height), navigationRouter)
+            createHWWalletAccount(args.enrollment, BlockHeight.new(height))
         }
     }
 

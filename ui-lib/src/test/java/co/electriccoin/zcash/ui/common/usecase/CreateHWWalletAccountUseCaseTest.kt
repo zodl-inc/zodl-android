@@ -2,13 +2,17 @@ package co.electriccoin.zcash.ui.common.usecase
 
 import cash.z.ecc.android.sdk.exception.InitializeException
 import cash.z.ecc.android.sdk.model.BlockHeight
+import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.ledger.LedgerAccountImporter
+import co.electriccoin.zcash.ui.common.model.LedgerPairingMissingException
 import co.electriccoin.zcash.ui.screen.connecthw.HWWalletEnrollment
 import com.keystone.module.ZcashAccount
 import com.keystone.module.ZcashAccounts
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
@@ -17,8 +21,8 @@ import kotlin.test.assertTrue
 
 /**
  * The single vendor branch of the shared enrollment flow: a Keystone enrollment parses its UR and
- * goes through the Keystone import, a Ledger enrollment goes straight to the Ledger one, and
- * neither is ready when what it needs is gone.
+ * goes through the Keystone import, a Ledger enrollment goes straight to the Ledger one and returns
+ * to the root when its pairing went missing, and neither is ready when what it needs is gone.
  */
 class CreateHWWalletAccountUseCaseTest {
     private val birthday = BlockHeight.new(2_500_000L)
@@ -61,6 +65,31 @@ class CreateHWWalletAccountUseCaseTest {
         }
 
     @Test
+    fun aLedgerPairingLostBeforeTheImportReturnsToTheRootInsteadOfFailing() =
+        runTest {
+            val ledgerAccountImporter =
+                mockk<LedgerAccountImporter>(relaxed = true) {
+                    coEvery { importAccount(any()) } throws LedgerPairingMissingException()
+                }
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+            val useCase = useCase(ledgerAccountImporter = ledgerAccountImporter, navigationRouter = navigationRouter)
+
+            useCase(HWWalletEnrollment.Ledger, birthday)
+
+            verify(exactly = 1) { navigationRouter.backToRoot() }
+        }
+
+    @Test
+    fun aSuccessfulLedgerImportStaysOnTheFlow() =
+        runTest {
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+
+            useCase(navigationRouter = navigationRouter)(HWWalletEnrollment.Ledger, birthday)
+
+            verify(exactly = 0) { navigationRouter.backToRoot() }
+        }
+
+    @Test
     fun aKeystoneUrWithNoAccountsFailsInsteadOfImportingNothing() =
         runTest {
             val accounts = mockk<ZcashAccounts> { every { this@mockk.accounts } returns emptyList() }
@@ -92,6 +121,7 @@ class CreateHWWalletAccountUseCaseTest {
         hasPendingPairing: Boolean = true,
         createKeystoneAccount: CreateKeystoneAccountUseCase = mockk(relaxed = true),
         ledgerAccountImporter: LedgerAccountImporter = mockk(relaxed = true),
+        navigationRouter: NavigationRouter = mockk(relaxed = true),
     ) = CreateHWWalletAccountUseCase(
         parseKeystoneUrToZashiAccounts =
             mockk {
@@ -107,6 +137,7 @@ class CreateHWWalletAccountUseCaseTest {
             ledgerAccountImporter.also {
                 every { it.hasPendingPairing() } returns hasPendingPairing
             },
+        navigationRouter = navigationRouter,
     )
 }
 

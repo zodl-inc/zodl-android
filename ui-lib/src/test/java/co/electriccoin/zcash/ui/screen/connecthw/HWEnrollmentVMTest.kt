@@ -3,7 +3,6 @@ package co.electriccoin.zcash.ui.screen.connecthw
 import cash.z.ecc.android.sdk.model.BlockHeight
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
-import co.electriccoin.zcash.ui.common.model.LedgerPairingMissingException
 import co.electriccoin.zcash.ui.common.usecase.CreateHWWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
 import co.electriccoin.zcash.ui.design.component.NumberTextFieldInnerState
@@ -40,7 +39,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -154,35 +152,6 @@ class HWEnrollmentVMTest {
 
                 routers.forEach { verify(exactly = 1) { it.backToRoot() } }
             }
-        }
-
-    @Test
-    fun aLedgerPairingLostBeforeTheImportReturnsToTheRootInsteadOfOfferingARetry() =
-        runTest {
-            val createAccount =
-                mockk<CreateHWWalletAccountUseCase>(relaxed = true) {
-                    every { isReady(any()) } returns true
-                    coEvery { this@mockk.invoke(any(), any()) } throws LedgerPairingMissingException()
-                }
-            val routers = List(3) { mockk<NavigationRouter>(relaxed = true) }
-            val newOrActive = newOrActiveVM(HWWalletEnrollment.Ledger, createAccount, routers[0])
-            val estimation = estimationVM(HWWalletEnrollment.Ledger, createAccount, routers[1])
-            val height = heightVM(HWWalletEnrollment.Ledger, createAccount, routers[2])
-            collect { newOrActive.state.collect { } }
-            collect { estimation.state.collect { } }
-            collect { height.state.collect { } }
-
-            assertNotNull(newOrActive.state.value.content).newDevice.onClick()
-            assertNotNull(estimation.state.value.content).primaryButton.onClick()
-            assertNotNull(height.state.value.content).blockHeight.onValueChange(heightText(VALID_HEIGHT))
-            runCurrent()
-            assertNotNull(height.state.value.content).primaryButton.onClick()
-            runCurrent()
-
-            routers.forEach { verify(exactly = 1) { it.backToRoot() } }
-            assertNull(newOrActive.state.value.error)
-            assertNull(estimation.state.value.error)
-            assertNull(height.state.value.error)
         }
 
     @Test

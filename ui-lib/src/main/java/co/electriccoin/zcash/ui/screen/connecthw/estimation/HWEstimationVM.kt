@@ -18,7 +18,6 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByNumber
 import co.electriccoin.zcash.ui.screen.common.EstimatedBlockHeightState
 import co.electriccoin.zcash.ui.screen.connecthw.brandingOf
-import co.electriccoin.zcash.ui.screen.connecthw.importOrReturnToRoot
 import co.electriccoin.zcash.ui.screen.heightinfo.HeightInfoArgs
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -76,11 +75,7 @@ class HWEstimationVM(
 
     private fun onConfirmClick() =
         createAccountLce.execute {
-            createHWWalletAccount.importOrReturnToRoot(
-                args.enrollment,
-                BlockHeight.new(args.blockHeight),
-                navigationRouter
-            )
+            createHWWalletAccount(args.enrollment, BlockHeight.new(args.blockHeight))
         }
 
     private fun onInfoClick() = navigationRouter.forward(HeightInfoArgs)
