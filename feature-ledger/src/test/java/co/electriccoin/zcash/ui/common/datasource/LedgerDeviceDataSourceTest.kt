@@ -44,7 +44,7 @@ import kotlin.time.Duration.Companion.seconds
  * [LedgerDeviceDataSourceImpl.openZcashApp] does the app step alone, closes the same way and has
  * the same cap.
  * [LedgerDeviceDataSourceImpl.connect] only asks which app runs, and a failed query leaves that
- * unknown rather than failing the connection.
+ * unknown rather than failing the connection, unless the device answered it locked.
  *
  * `LedgerDevice.new` loads the SDK's native backend and `LedgerZcashApp` talks to a device, so both
  * are mocked at their object boundary.
@@ -262,6 +262,24 @@ class LedgerDeviceDataSourceTest {
         }
 
     @Test
+    fun aLockedDeviceFailsTheConnectionAndStillClosesTheTransport() =
+        runTest {
+            val connected = mockk<LedgerBluetoothTransport>(relaxed = true)
+            val locked =
+                mockk<LedgerException.DeviceRefused>(relaxed = true) {
+                    every { statusWord } returns LOCKED_STATUS_WORD
+                    every { isTransient } returns true
+                }
+            coEvery { ledgerScannerProvider.connect(any()) } returns connected
+            coEvery { LedgerZcashApp.currentApp(connected) } throws locked
+
+            val failure = assertFailsWith<LedgerException.DeviceRefused> { dataSource.connect(device()) }
+
+            assertSame(locked, failure)
+            coVerify(exactly = 1) { connected.close() }
+        }
+
+    @Test
     fun aFailedConnectionSurfacesAndAsksTheDeviceNothing() =
         runTest {
             val refused = mockk<LedgerException.PairingRefused>(relaxed = true)
@@ -353,3 +371,5 @@ class LedgerDeviceDataSourceTest {
             rssi = -40,
         )
 }
+
+private const val LOCKED_STATUS_WORD = 0x5515

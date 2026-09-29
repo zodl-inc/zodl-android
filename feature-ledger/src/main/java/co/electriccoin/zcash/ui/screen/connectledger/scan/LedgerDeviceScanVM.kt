@@ -318,7 +318,8 @@ class LedgerDeviceScanVM(
      * would show disabled rows and a spinning Connect with no way out.
      *
      * Connecting is the step that bonds the phone with the device, so a lost or refused connection
-     * here reads as a failed pairing.
+     * here reads as a failed pairing. A device that answers locked shows the Unlock sheet and keeps
+     * its row selected, so Try again connects to it again.
      *
      * A device that already runs the Zcash app skips the request to open it: the open-the-app step
      * goes on the back stack idle, under the handshake, so Back from the handshake lands on it

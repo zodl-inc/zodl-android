@@ -34,6 +34,9 @@ interface LedgerDeviceDataSource {
      *
      * @return whether the device reported the Zcash app running; false when it runs another app or
      *         the query failed, which leaves the connection itself a success.
+     * @throws LedgerException.DeviceRefused if the device answered the query locked, which the user
+     *         has to fix before anything else can reach it.
+     * @throws LedgerException for any failure reaching the device.
      */
     suspend fun connect(device: LedgerBluetoothDevice): Boolean
 
@@ -89,7 +92,8 @@ class LedgerDeviceDataSourceImpl(
 
     /**
      * The bond is in place once the link is up, so a query that fails only leaves the running app
-     * unknown; the flow then asks the device to open the Zcash app as it would anyway.
+     * unknown; the flow then asks the device to open the Zcash app as it would anyway. A locked
+     * device is the exception: it would refuse that request too, so it is reported here.
      */
     @Suppress("TooGenericExceptionCaught")
     private suspend fun isZcashAppRunning(transport: LedgerApduTransport): Boolean =
@@ -97,6 +101,10 @@ class LedgerDeviceDataSourceImpl(
             LedgerZcashApp.currentApp(transport).isZcash
         } catch (e: CancellationException) {
             throw e
+        } catch (e: LedgerException.DeviceRefused) {
+            if (e.statusWord == LOCKED_STATUS_WORD) throw e
+            Twig.info { "Ledger connect: the running app is unknown: ${e.javaClass.simpleName}" }
+            false
         } catch (e: Exception) {
             Twig.info { "Ledger connect: the running app is unknown: ${e.javaClass.simpleName}" }
             false
@@ -175,5 +183,10 @@ class LedgerDeviceDataSourceImpl(
          * confirmation on the device included.
          */
         val PAIRING_TIMEOUT = 5.minutes
+
+        /**
+         * The status word a locked Ledger answers any command with.
+         */
+        const val LOCKED_STATUS_WORD = 0x5515
     }
 }

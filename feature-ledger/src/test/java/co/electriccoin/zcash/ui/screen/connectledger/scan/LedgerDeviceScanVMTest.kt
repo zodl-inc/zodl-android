@@ -546,6 +546,50 @@ class LedgerDeviceScanVMTest {
         }
 
     @Test
+    fun aDeviceThatAnswersLockedShowsTheUnlockSheetAndTryAgainConnectsToItAgain() =
+        runTest(dispatcher) {
+            val connectLedgerDevice =
+                mockk<ConnectLedgerDeviceUseCase> {
+                    coEvery { this@mockk.invoke(any()) } throws
+                        mockk<LedgerException.DeviceRefused>(relaxed = true) {
+                            every { statusWord } returns LOCKED_STATUS_WORD
+                            every { isTransient } returns true
+                        }
+                }
+            val vm = vm(connectLedgerDevice = connectLedgerDevice)
+            collect(vm)
+
+            vm.onPermissionsGranted()
+            devices.value = listOf(device("AA"))
+            runCurrent()
+            vm.state.value.devices
+                .first()
+                .onClick()
+            runCurrent()
+            vm.state.value.primaryButton
+                .onClick()
+            runCurrent()
+
+            assertSheetTitle(vm, R.string.ledger_error_locked_title)
+            val primary =
+                assertNotNull(
+                    vm.state.value.errorSheet
+                        ?.primary
+                )
+            assertEquals(R.string.ledger_error_tryAgain, primary.text.resourceId())
+            assertTrue(
+                vm.state.value.devices
+                    .single()
+                    .isSelected
+            )
+
+            primary.onClick()
+            runCurrent()
+
+            coVerify(exactly = 2) { connectLedgerDevice.invoke(device("AA")) }
+        }
+
+    @Test
     fun tryAgainAfterAnIssueThatKeepsTheLinkConnectsToTheSameDeviceAgain() =
         runTest(dispatcher) {
             val observeLedgerDevices =
@@ -799,3 +843,5 @@ class LedgerDeviceScanVMTest {
         navigationRouter = navigationRouter,
     )
 }
+
+private const val LOCKED_STATUS_WORD = 0x5515
