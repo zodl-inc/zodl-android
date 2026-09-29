@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -120,14 +121,16 @@ fun LedgerDeviceScanView(state: LedgerDeviceScanState) {
                         )
                     }
                 } else {
-                    state.devices.forEachIndexed { index, device ->
-                        if (index != 0) {
-                            Spacer(Modifier.height(12.dp))
+                    Column(Modifier.fillMaxWidth().selectableGroup()) {
+                        state.devices.forEachIndexed { index, device ->
+                            if (index != 0) {
+                                Spacer(Modifier.height(12.dp))
+                            }
+                            LedgerDeviceRow(
+                                state = device,
+                                testTag = LedgerDeviceScanTag.DEVICE_ROW_PREFIX + index,
+                            )
                         }
-                        LedgerDeviceRow(
-                            state = device,
-                            testTag = LedgerDeviceScanTag.DEVICE_ROW_PREFIX + index,
-                        )
                     }
                 }
                 Spacer(Modifier.height(32.dp))

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheetProperties
@@ -127,14 +128,16 @@ private fun ColumnScope.DevicesContent(content: LedgerSignContent.Devices) {
     ) {
         Header(title = content.title, message = content.message)
         Spacer(24.dp)
-        content.devices.forEachIndexed { index, device ->
-            if (index != 0) {
-                Spacer(12.dp)
+        Column(Modifier.fillMaxWidth().selectableGroup()) {
+            content.devices.forEachIndexed { index, device ->
+                if (index != 0) {
+                    Spacer(12.dp)
+                }
+                LedgerDeviceRow(
+                    state = device,
+                    testTag = LedgerSignTag.DEVICE_ROW_PREFIX + index,
+                )
             }
-            LedgerDeviceRow(
-                state = device,
-                testTag = LedgerSignTag.DEVICE_ROW_PREFIX + index,
-            )
         }
         Spacer(24.dp)
         PrimaryButton(content.connectButton)
