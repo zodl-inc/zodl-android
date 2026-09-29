@@ -314,7 +314,7 @@ class ProposalDataSourceImpl(
      * and defeat OHTTP's IP hiding. The current endpoint already provides the right privacy/Tor
      * routing, as determined by ServerFallbackPolicy.
      */
-    private suspend fun getSubmissionEndpoints(): List<LightWalletEndpoint> {
+    internal suspend fun getSubmissionEndpoints(): List<LightWalletEndpoint> {
         val currentEndpoint = persistableWalletProvider.requirePersistableWallet().endpoint
         return listOf(currentEndpoint)
     }

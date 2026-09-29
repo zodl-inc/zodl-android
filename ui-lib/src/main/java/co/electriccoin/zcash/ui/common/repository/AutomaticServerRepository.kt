@@ -144,6 +144,16 @@ class AutomaticServerRepositoryImpl(
     }
 
     override fun init() {
+        // Leaving automatic mode makes the automatic lane's "gateway unavailable, pick a server"
+        // banner moot. React to the transition immediately rather than waiting for the next
+        // FOREGROUND/CONNECTIVITY trigger to reach evaluateServerSwitch's own defensive clear below --
+        // otherwise a user who just made the manual choice the banner asked for could see it linger
+        // until the app is next backgrounded and foregrounded.
+        isServerAutomatic
+            .filter { automatic -> !automatic }
+            .onEach { _ohttpUnavailable.value = false }
+            .launchIn(scope)
+
         switchLane(
             merge(
                 applicationStateProvider.observeOnForeground().map { SwitchTrigger.FOREGROUND },
@@ -282,7 +292,16 @@ class AutomaticServerRepositoryImpl(
      */
     @Suppress("ReturnCount", "ComplexMethod", "NestedBlockDepth")
     internal suspend fun evaluateServerSwitch(trigger: SwitchTrigger): LightWalletEndpoint? {
-        if (!isServerAutomatic() || isAppInTransactionState) return null
+        if (!isServerAutomatic()) {
+            // Being outside automatic mode makes the automatic lane's "gateway unavailable, pick a
+            // server" signal moot. Clear it here so a manual server choice actually dismisses the
+            // banner it was prompting -- nothing else in this class clears it once automatic mode is
+            // off, since healthTicks() also stops firing in that case, so without this the banner would
+            // otherwise persist forever after the user does exactly what it asked.
+            _ohttpUnavailable.value = false
+            return null
+        }
+        if (isAppInTransactionState) return null
         val current = persistableWalletProvider.getPersistableWallet()?.endpoint ?: return null
         val gateways = lightWalletEndpointProvider.getEndpoints().filter(lightWalletEndpointProvider::isOhttpGateway)
         if (gateways.isEmpty()) return null
