@@ -5,10 +5,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 
 /**
- * Holds the Ledger the user picked on the scan screen, so the handshake screen that follows pairs
- * with the same device. In memory only: the device carries its Bluetooth address, which stays out
- * of navigation arguments and saved state, and the handshake screen falls back to the wallet root
- * when process death empties it.
+ * Holds the Ledger the user picked and bonded with while they open the Zcash app on it, so the
+ * handshake screen that follows talks to the same device. In memory only: the device carries its
+ * Bluetooth address, which stays out of navigation arguments and saved state, and the handshake
+ * screen falls back to the wallet root when process death empties it.
  */
 interface LedgerSelectedDeviceRepository {
     fun set(device: LedgerBluetoothDevice)

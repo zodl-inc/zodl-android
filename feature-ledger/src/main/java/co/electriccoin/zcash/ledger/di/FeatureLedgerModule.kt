@@ -22,6 +22,7 @@ import co.electriccoin.zcash.ui.common.repository.LedgerRepairTargetRepositoryIm
 import co.electriccoin.zcash.ui.common.repository.LedgerSelectedDeviceRepository
 import co.electriccoin.zcash.ui.common.repository.LedgerSelectedDeviceRepositoryImpl
 import co.electriccoin.zcash.ui.common.usecase.CancelLedgerSigningUseCase
+import co.electriccoin.zcash.ui.common.usecase.ConnectLedgerDeviceUseCase
 import co.electriccoin.zcash.ui.common.usecase.CreateLedgerAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToLedgerRepairUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
@@ -70,6 +71,7 @@ val featureLedgerModule =
         factoryOf(::CreateLedgerAccountUseCase)
         factoryOf(::ObserveLedgerDevicesUseCase)
         factoryOf(::PairLedgerDeviceUseCase)
+        factoryOf(::ConnectLedgerDeviceUseCase)
         singleOf(::SubmitLedgerProposalUseCase)
         factoryOf(::ObserveLedgerSigningStateUseCase)
         factoryOf(::StartLedgerSigningUseCase)

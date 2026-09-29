@@ -29,6 +29,13 @@ interface LedgerDeviceDataSource {
     fun isLocationOffForScan(): Boolean
 
     /**
+     * Opens a link to [device], bonding with it first if the phone has not yet (the OS shows its
+     * pairing prompt and the device a code), and closes it again. No command reaches the device, so
+     * the Zcash app need not be open on it.
+     */
+    suspend fun connect(device: LedgerBluetoothDevice)
+
+    /**
      * Connects to [device], opens the Zcash app on it if it is elsewhere (the user confirms on the
      * device; the link may be reopened while the device switches apps), asks it to export the
      * ZIP 32 account [zip32AccountIndex] (the user approves the export on the device) and closes
@@ -56,6 +63,8 @@ class LedgerDeviceDataSourceImpl(
     override fun observeDevices(): Flow<List<LedgerBluetoothDevice>> = ledgerScannerProvider.devices()
 
     override fun isLocationOffForScan(): Boolean = ledgerScannerProvider.isLocationOffForScan()
+
+    override suspend fun connect(device: LedgerBluetoothDevice) = ledgerScannerProvider.connect(device).close()
 
     /**
      * Every transport opened here, the first one and each reconnect, is closed on the way out; the
