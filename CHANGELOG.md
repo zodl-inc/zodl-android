@@ -14,8 +14,9 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   The chooser carries the logo and name of the selected wallet, Zodl or Keystone.
 - You can now connect a Ledger hardware wallet over Bluetooth: pair a Ledger account, then see it
   in the new Wallets & Hardware picker, on Home and on Receive. Sending, shielding, swapping,
-  paying and ZIP-321 payments from a Ledger account now sign on the device over Bluetooth; voting,
-  migration and tax export do not yet. After you pick your Ledger, an Approve on Your Device screen
+  paying and ZIP-321 payments from a Ledger account now sign on the device over Bluetooth, and tax
+  export saves a Ledger account's history as `Ledger_Transaction_History_<year>.csv`; voting and
+  migration do not yet. After you pick your Ledger, an Approve on Your Device screen
   waits while Zodl connects, opens the Zcash app and asks the Ledger to share the account's viewing
   key, with Cancel to stop and Retry after a failure. The connect flow explains what to do when
   Bluetooth is off, the Zcash app on the Ledger is out of date or needs a restart, or the connection
