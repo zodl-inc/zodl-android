@@ -81,7 +81,12 @@ class LedgerDeviceScanVMPairingTest {
                 mockk<LedgerException.DeviceNotFound>(relaxed = true) to R.string.ledger_error_disconnected_title,
                 mockk<LedgerException.PairingRefused>(relaxed = true) to R.string.ledger_error_pairingFailed_title,
                 LedgerPairingTimedOutException() to R.string.ledger_error_disconnected_title,
-                mockk<LedgerException.WrongApp>(relaxed = true) to R.string.ledger_error_locked_title,
+                mockk<LedgerException.WrongApp>(relaxed = true) {
+                    every { statusWord } returns WRONG_APP_STATUS
+                } to R.string.ledger_error_locked_title,
+                mockk<LedgerException.WrongApp>(relaxed = true) {
+                    every { statusWord } returns null
+                } to R.string.ledger_error_disconnected_title,
                 mockk<LedgerException.DeviceRefused>(relaxed = true) to R.string.ledger_error_unknown_title,
                 mockk<LedgerException.DeviceRefused>(relaxed = true) {
                     every { isTransient } returns true
@@ -234,3 +239,5 @@ class LedgerDeviceScanVMPairingTest {
         navigationRouter = navigationRouter,
     )
 }
+
+private const val WRONG_APP_STATUS = 0x6E00

@@ -172,8 +172,10 @@ data class LedgerIssue(
  * A [LedgerException.BluetoothUnavailable] carrying a scan error code means the scan itself failed
  * to start; without one the phone has no Bluetooth LE at all, which nothing in the app can fix. A
  * locked device answers with a transient [LedgerException.DeviceRefused], and a device that did not
- * reach the Zcash app with [LedgerException.WrongApp]. A lost connection while the phone connects
- * to the device means pairing failed; once the link is up, it means the device disconnected.
+ * reach the Zcash app with [LedgerException.WrongApp]. A [LedgerException.WrongApp] without a status
+ * word is an app switch the device answered but never finished in time, which reads as a disconnect.
+ * A lost connection while the phone connects to the device means pairing failed; once the link is
+ * up, it means the device disconnected.
  *
  * While signing, a device that has to be unlocked, switched to the Zcash app or have that app
  * restarted is looked for again on Try again, so the fresh link opens the Zcash app first; during
@@ -187,7 +189,7 @@ fun LedgerException.toLedgerIssue(context: LedgerIssueContext): LedgerIssue =
         }
 
         is LedgerException.WrongApp -> {
-            locked(context)
+            if (statusWord == null) disconnected(context).copy(retry = context.appRetry) else locked(context)
         }
 
         is LedgerException.DeviceRefused -> {

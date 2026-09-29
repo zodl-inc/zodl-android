@@ -239,7 +239,10 @@ class LedgerDeviceScanVMPageTest {
     @Test
     fun anIssueThatKeepsTheDeviceShowsTheSelectionWithoutAnIndicator() =
         runTest(dispatcher) {
-            val vm = pairedWithFailure(mockk<LedgerException.WrongApp>(relaxed = true))
+            val vm =
+                pairedWithFailure(
+                    mockk<LedgerException.WrongApp>(relaxed = true) { every { statusWord } returns WRONG_APP_STATUS }
+                )
 
             assertSheetTitle(vm, R.string.ledger_error_locked_title)
             assertPage(
@@ -364,3 +367,5 @@ class LedgerDeviceScanVMPageTest {
         navigationRouter = mockk(relaxed = true),
     )
 }
+
+private const val WRONG_APP_STATUS = 0x6E00

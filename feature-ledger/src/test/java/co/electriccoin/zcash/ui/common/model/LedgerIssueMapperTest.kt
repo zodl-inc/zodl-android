@@ -198,10 +198,16 @@ class LedgerIssueMapperTest {
                 signing = Expected(LedgerIssueKind.REJECTED, LedgerIssueRetry.RECONNECT, signRejected),
             ),
             Row.same(
-                "WrongApp",
-                mockk<LedgerException.WrongApp>(relaxed = true),
+                "WrongApp with a status word",
+                mockk<LedgerException.WrongApp>(relaxed = true) { every { statusWord } returns WRONG_APP_STATUS },
                 enrollment = Expected(LedgerIssueKind.LOCKED, LedgerIssueRetry.SAME_LINK, locked),
                 signing = Expected(LedgerIssueKind.LOCKED, LedgerIssueRetry.RECONNECT, locked),
+            ),
+            Row.same(
+                "WrongApp without a status word (app switch timed out)",
+                mockk<LedgerException.WrongApp>(relaxed = true) { every { statusWord } returns null },
+                enrollment = Expected(LedgerIssueKind.DISCONNECTED, LedgerIssueRetry.SAME_LINK, Copies.disconnected),
+                signing = Expected(LedgerIssueKind.DISCONNECTED, LedgerIssueRetry.RECONNECT, Copies.signDisconnected),
             ),
             Row.same(
                 "transient DeviceRefused",
@@ -395,3 +401,5 @@ class LedgerIssueMapperTest {
         }
     }
 }
+
+private const val WRONG_APP_STATUS = 0x6E00
