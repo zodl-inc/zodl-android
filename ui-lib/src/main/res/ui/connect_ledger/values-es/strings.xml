@@ -48,8 +48,8 @@
     <string name="ledger_error_alreadyAdded_message">Esta cuenta ya está conectada a Zodl.</string>
     <string name="ledger_error_alreadyAdded_primary">Ir a la cuenta</string>
     <string name="ledger_error_alreadyAdded_secondary">Cancelar</string>
-    <string name="ledger_error_bluetoothOff_title">El Bluetooth está desactivado</string>
-    <string name="ledger_error_bluetoothOff_message">Activa el Bluetooth en Ajustes para conectar tu Ledger.</string>
+    <string name="ledger_error_bluetoothOff_title">Bluetooth desactivado</string>
+    <string name="ledger_error_bluetoothOff_message">Activa el Bluetooth en Ajustes para conectarte a tu Ledger.</string>
     <string name="ledger_error_appTooOld_title">Actualiza la aplicación Zcash</string>
     <string name="ledger_error_appTooOld_message">La aplicación Zcash de tu Ledger está desactualizada. Actualízala a la versión 3.6.0 o posterior con Ledger Live e inténtalo de nuevo.</string>
     <string name="ledger_error_appNotInstalled_title">Instala la aplicación Zcash</string>
@@ -82,7 +82,8 @@
     <string name="ledger_sign_error_notSignable_title">No se puede firmar esta transacción</string>
     <string name="ledger_sign_error_notSignable_message">Tu Ledger no puede firmar esta transacción. No se envió nada.</string>
     <string name="ledger_sign_error_unbound_title">Ledger no vinculado</string>
-    <string name="ledger_sign_error_unbound_message">Esta cuenta no tiene ninguna vinculación con un Ledger guardada. Elimina la cuenta y vuelve a conectar tu Ledger.</string>
+    <string name="ledger_sign_error_unbound_message">Esta cuenta no está vinculada con un Ledger en este teléfono. Vincula tu Ledger para firmar esta transacción.</string>
+    <string name="ledger_sign_error_unbound_cta">Vincular Ledger</string>
     <string name="ledger_sign_cancel">Cancelar transacción</string>
 
     <!-- New or active device -->

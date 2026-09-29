@@ -76,8 +76,8 @@ data class LedgerInlineIssueState(
         val preview =
             LedgerInlineIssueState(
                 icon = R.drawable.ic_ledger_bluetooth_off,
-                title = stringRes("Bluetooth Is Off"),
-                message = stringRes("Turn on Bluetooth in Settings to connect your Ledger."),
+                title = stringRes("Bluetooth Off"),
+                message = stringRes("Turn on Bluetooth in Settings to connect to your Ledger."),
             )
     }
 }
