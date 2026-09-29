@@ -60,7 +60,7 @@ class DisconnectVM(
                 errorStateMapper.mapToState(
                     error = it,
                     title = stringRes(R.string.disconnectHWWallet_failureTitle),
-                    message = stringRes(R.string.disconnect_hw_wallet_error_message),
+                    message = stringRes(R.string.disconnect_hardware_wallet_error_message),
                     primaryStyle = ButtonStyle.DESTRUCTIVE2,
                 )
             }.stateIn(this)

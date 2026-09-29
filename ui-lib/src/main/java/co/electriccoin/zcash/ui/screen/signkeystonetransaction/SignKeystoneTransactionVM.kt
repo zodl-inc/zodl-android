@@ -90,7 +90,7 @@ class SignKeystoneTransactionVM(
                                 stringRes("${wallet.unifiedAddress.take(ADDRESS_MAX_LENGTH)}...")
                             }
                     ),
-                badgeText = stringRes(R.string.keystone_signWith_hw),
+                badgeText = stringRes(R.string.keystone_signWith_hardware),
                 generateNextQrCode = { currentQrPart.update { encoder?.nextPart() } },
                 qrData = qrData,
                 positiveButton =

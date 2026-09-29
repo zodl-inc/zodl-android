@@ -230,7 +230,7 @@ class MigrationKeystoneSignVM(
                         title = account.name,
                         subtitle = stringRes("${account.unifiedAddress.take(ADDRESS_MAX_LENGTH)}..."),
                     ),
-                badgeText = stringRes(DesignR.string.migrationKeystoneSign_badgeHW),
+                badgeText = stringRes(DesignR.string.migrationKeystoneSign_badgeHardware),
                 generateNextQrCode = {
                     val size = parts?.size ?: 1
                     qrFrameIndex.value = (frameIndex + 1) % size

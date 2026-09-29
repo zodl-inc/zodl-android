@@ -117,7 +117,7 @@
     <string name="taxExport_taxFile">Exportar archivo fiscal</string>
     <string name="resyncWallet_title">Resincronizar Billetera</string>
     <string name="disconnectHWWallet_cta">Desconectar Hardware</string>
-    <string name="disconnect_hw_wallet_biometric_message">Confirma para desconectar tu hardware wallet</string>
+    <string name="disconnect_hardware_wallet_biometric_message">Confirma para desconectar tu hardware wallet</string>
     <string name="deleteKeystoneTitle">Desconectar Keystone</string>
     <string name="deleteKeystoneDesc">Desconectar tu hardware wallet eliminará permanentemente algunos datos locales que no pueden recuperarse de la blockchain.</string>
     <string name="disconnectHWWallet_mayInclude">Esto puede incluir:</string>
@@ -131,7 +131,7 @@
     <string name="disconnectHWWallet_title">Desconectar</string>
     <string name="disconnectHWWallet_sheetDesc">Desconectar el hardware wallet no se puede deshacer.</string>
     <string name="disconnectHWWallet_failureTitle">Error al Desconectar</string>
-    <string name="disconnect_hw_wallet_error_message">No se pudo finalizar la desconexión del hardware wallet. Por favor, inténtalo de nuevo o informa del problema.</string>
+    <string name="disconnect_hardware_wallet_error_message">No se pudo finalizar la desconexión del hardware wallet. Por favor, inténtalo de nuevo o informa del problema.</string>
 
     <!-- ===== authentication ===== -->
     <string name="authentication_system_ui_title">
@@ -232,17 +232,17 @@
     <string name="firstWalletTransactionSubtitleHWWallet">Ingresar la altura de bloque en la que se creó tu billetera garantiza que se escanee el número correcto de bloques. Si no estás seguro/a, elige una fecha anterior.</string>
     <string name="keystone_first_transaction_note">Si no estás seguro/a, elige una fecha anterior.</string>
     <string name="keystone_addHWWallet_connect">Conectar</string>
-    <string name="hwWalletExplainer_title">¿Qué es un Hardware Wallet?</string>
-    <string name="hwWalletExplainer_description">Un hardware wallet es un dispositivo físico que almacena tus claves privadas de criptomonedas sin conexión a internet, manteniéndolas a salvo de hackers y malware.</string>
-    <string name="hwWalletExplainer_featureTitle1">Seguridad Máxima</string>
-    <string name="hwWalletExplainer_featureDescription1">Tus claves nunca salen del dispositivo, incluso al firmar transacciones</string>
-    <string name="hwWalletExplainer_featureTitle2">Protección contra Malware</string>
-    <string name="hwWalletExplainer_featureDescription2">Inmune a virus informáticos y ataques de phishing</string>
-    <string name="hwWalletExplainer_featureTitle3">Control Total</string>
-    <string name="hwWalletExplainer_featureDescription3">Tus claves son tuyas, tu cripto es tuya</string>
-    <string name="hwWalletExplainer_infoBoxTitle">Sobre Keystone</string>
-    <string name="hwWalletExplainer_infoBoxDescription">Keystone es una marca popular de hardware wallet que ofrece seguridad air-gapped con firma mediante códigos QR. Es una de las muchas opciones confiables de hardware wallet, junto con Ledger y otros.</string>
-    <string name="hwWalletExplainer_cta">Entendido</string>
+    <string name="hardwareWalletExplainer_title">¿Qué es un Hardware Wallet?</string>
+    <string name="hardwareWalletExplainer_description">Un hardware wallet es un dispositivo físico que almacena tus claves privadas de criptomonedas sin conexión a internet, manteniéndolas a salvo de hackers y malware.</string>
+    <string name="hardwareWalletExplainer_featureTitle1">Seguridad Máxima</string>
+    <string name="hardwareWalletExplainer_featureDescription1">Tus claves nunca salen del dispositivo, incluso al firmar transacciones</string>
+    <string name="hardwareWalletExplainer_featureTitle2">Protección contra Malware</string>
+    <string name="hardwareWalletExplainer_featureDescription2">Inmune a virus informáticos y ataques de phishing</string>
+    <string name="hardwareWalletExplainer_featureTitle3">Control Total</string>
+    <string name="hardwareWalletExplainer_featureDescription3">Tus claves son tuyas, tu cripto es tuya</string>
+    <string name="hardwareWalletExplainer_infoBoxTitle">Sobre Keystone</string>
+    <string name="hardwareWalletExplainer_infoBoxDescription">Keystone es una marca popular de hardware wallet que ofrece seguridad air-gapped con firma mediante códigos QR. Es una de las muchas opciones confiables de hardware wallet, junto con Ledger y otros.</string>
+    <string name="hardwareWalletExplainer_cta">Entendido</string>
     <string name="restoreWallet_help_title">¿Necesitas más información?</string>
     <string name="keystone_wbh_info_message_bold">La Altura de Cumpleaños de la Billetera</string>
     <string name="keystone_wbh_info_message">es la altura de bloque (número de bloque en la cadena de bloques) en la que se creó tu billetera. Es importante proporcionar la altura correcta porque determina el rango de bloques que se escanearán para mostrar tu historial de transacciones y saldo. Si recuperaste una semilla de un dispositivo de hardware diferente, asegúrate de ingresar la altura de bloque de tu dispositivo de hardware original.</string>
@@ -734,7 +734,7 @@
     <string name="keystone_signWith_title">Escanea con tu billetera Keystone</string>
     <string name="keystone_signWith_desc">Después de firmar con Keystone, toca el botón Obtener Firma que se encuentra abajo.</string>
     <string name="keystone_signWith_signTransaction">Firmar Transacción</string>
-    <string name="keystone_signWith_hw">Hardware</string>
+    <string name="keystone_signWith_hardware">Hardware</string>
     <string name="keystone_signWith_getSignature">Obtener Firma</string>
     <string name="keystone_signWith_reject">Rechazar</string>
     <string name="keystoneTransactionReject_title">¿Estás seguro?</string>
@@ -1209,7 +1209,7 @@
     <string name="migrationKeystoneSign_scanWithKeystone">Escanea con tu wallet Keystone%1$s</string>
     <string name="migrationKeystoneSign_roundSuffix"> (%1$d de %2$d)</string>
     <string name="migrationKeystoneSign_subtitle">Después de firmar con Keystone, toca el botón Obtener firma que aparece abajo.</string>
-    <string name="migrationKeystoneSign_badgeHW">Hardware</string>
+    <string name="migrationKeystoneSign_badgeHardware">Hardware</string>
     <string name="migrationKeystoneSign_getSignature">Obtener firma</string>
     <string name="migrationKeystoneSign_reject">Rechazar</string>
 

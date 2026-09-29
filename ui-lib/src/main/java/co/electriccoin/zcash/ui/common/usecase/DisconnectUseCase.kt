@@ -29,7 +29,7 @@ class DisconnectUseCase(
     suspend operator fun invoke(hwAccount: HWWalletAccount) =
         withContext(Dispatchers.IO) {
             biometricRepository.requestBiometrics(
-                BiometricRequest(message = stringRes(R.string.disconnect_hw_wallet_biometric_message))
+                BiometricRequest(message = stringRes(R.string.disconnect_hardware_wallet_biometric_message))
             )
 
             migrationAppHooks.cancelMigrationWork(hwAccount.sdkAccount.accountUuid.toStorageKeyId())

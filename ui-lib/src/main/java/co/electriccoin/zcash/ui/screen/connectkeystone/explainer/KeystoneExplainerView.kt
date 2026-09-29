@@ -69,27 +69,27 @@ fun KeystoneExplainerView(
                         ),
             ) {
                 Text(
-                    text = stringResource(R.string.hwWalletExplainer_description),
+                    text = stringResource(R.string.hardwareWalletExplainer_description),
                     color = ZashiColors.Text.textTertiary,
                     style = ZashiTypography.textSm,
                 )
                 Spacer(24.dp)
                 ExplainerRow(
                     icon = R.drawable.ic_link_03,
-                    title = stringResource(R.string.hwWalletExplainer_featureTitle1),
-                    message = stringResource(R.string.hwWalletExplainer_featureDescription1),
+                    title = stringResource(R.string.hardwareWalletExplainer_featureTitle1),
+                    message = stringResource(R.string.hardwareWalletExplainer_featureDescription1),
                 )
                 Spacer(16.dp)
                 ExplainerRow(
                     icon = R.drawable.ic_shield_tick,
-                    title = stringResource(R.string.hwWalletExplainer_featureTitle2),
-                    message = stringResource(R.string.hwWalletExplainer_featureDescription2),
+                    title = stringResource(R.string.hardwareWalletExplainer_featureTitle2),
+                    message = stringResource(R.string.hardwareWalletExplainer_featureDescription2),
                 )
                 Spacer(16.dp)
                 ExplainerRow(
                     icon = R.drawable.ic_cryptocurrency_04,
-                    title = stringResource(R.string.hwWalletExplainer_featureTitle3),
-                    message = stringResource(R.string.hwWalletExplainer_featureDescription3),
+                    title = stringResource(R.string.hardwareWalletExplainer_featureTitle3),
+                    message = stringResource(R.string.hardwareWalletExplainer_featureDescription3),
                 )
                 Spacer(24.dp)
                 ZashiCard(modifier = Modifier.fillMaxWidth()) {
@@ -101,7 +101,7 @@ fun KeystoneExplainerView(
                         )
                         Spacer(8.dp)
                         Text(
-                            text = stringResource(R.string.hwWalletExplainer_infoBoxTitle),
+                            text = stringResource(R.string.hardwareWalletExplainer_infoBoxTitle),
                             color = ZashiColors.Text.textPrimary,
                             style = ZashiTypography.textSm,
                             fontWeight = FontWeight.SemiBold,
@@ -109,7 +109,7 @@ fun KeystoneExplainerView(
                     }
                     Spacer(8.dp)
                     Text(
-                        text = stringResource(R.string.hwWalletExplainer_infoBoxDescription),
+                        text = stringResource(R.string.hardwareWalletExplainer_infoBoxDescription),
                         color = ZashiColors.Text.textTertiary,
                         style = ZashiTypography.textSm,
                     )
@@ -118,7 +118,7 @@ fun KeystoneExplainerView(
                 ZashiButton(
                     state =
                         ButtonState(
-                            text = stringRes(R.string.hwWalletExplainer_cta),
+                            text = stringRes(R.string.hardwareWalletExplainer_cta),
                             onClick = state.onBack,
                         ),
                     modifier = Modifier.fillMaxWidth(),
@@ -132,7 +132,7 @@ fun KeystoneExplainerView(
                 title = {
                     Text(
                         modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp),
-                        text = stringResource(R.string.hwWalletExplainer_title),
+                        text = stringResource(R.string.hardwareWalletExplainer_title),
                         color = ZashiColors.Text.textPrimary,
                         style = ZashiTypography.textXl,
                         fontWeight = FontWeight.SemiBold,
