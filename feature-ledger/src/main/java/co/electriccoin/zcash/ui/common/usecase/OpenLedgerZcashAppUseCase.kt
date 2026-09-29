@@ -6,7 +6,8 @@ import co.electriccoin.zcash.ui.common.repository.LedgerSelectedDeviceRepository
 /**
  * Asks the Ledger the user picked and bonded with to open the Zcash app, over a link of its own
  * that is closed again before this returns. Declines and device errors surface as the SDK's
- * `LedgerException`s. Returns [OpenLedgerZcashAppResult.NoDevice] when process death has emptied
+ * `LedgerException`s, and a request that runs out of time as `LedgerPairingTimedOutException`.
+ * Returns [OpenLedgerZcashAppResult.NoDevice] when process death has emptied
  * [LedgerSelectedDeviceRepository], without talking to any device.
  */
 class OpenLedgerZcashAppUseCase(

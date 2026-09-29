@@ -41,6 +41,10 @@ interface LedgerDeviceDataSource {
      * Connects to [device], asks it to open the Zcash app if it is elsewhere (the user confirms on
      * the device; the link may be reopened while the device switches apps) and closes every
      * transport it opened. Returns once the Zcash app runs; a declined or failed request throws.
+     *
+     * @throws LedgerPairingTimedOutException if the request, the user's confirmation included,
+     *         takes longer than enrollment allows, as [pair] does.
+     * @throws LedgerException for any failure reaching or talking to the device.
      */
     suspend fun openZcashApp(device: LedgerBluetoothDevice)
 
@@ -100,7 +104,7 @@ class LedgerDeviceDataSourceImpl(
 
     /**
      * Every transport opened here, the first one and each reconnect while the device switches apps,
-     * is closed on the way out, as in [pair].
+     * is closed on the way out, and the request is capped as in [pair].
      */
     override suspend fun openZcashApp(device: LedgerBluetoothDevice) {
         val opened = mutableListOf<LedgerApduTransport>()
@@ -108,7 +112,12 @@ class LedgerDeviceDataSourceImpl(
             ledgerScannerProvider.connect(device).also { opened += it }
         }
         try {
-            LedgerZcashApp.ensureZcashAppOpen(reconnect(), reconnect).also { opened += it }
+            withTimeout(PAIRING_TIMEOUT) {
+                LedgerZcashApp.ensureZcashAppOpen(reconnect(), reconnect).also { opened += it }
+            }
+        } catch (e: TimeoutCancellationException) {
+            Twig.warn { "Ledger open app: timed out" }
+            throw LedgerPairingTimedOutException(e)
         } finally {
             withContext(NonCancellable) { opened.distinct().forEach { closeQuietly(it) } }
         }
@@ -162,7 +171,8 @@ class LedgerDeviceDataSourceImpl(
 
     private companion object {
         /**
-         * The cap on the whole pairing, the user's approval on the device included.
+         * The cap on the whole pairing, and on the request to open the Zcash app, the user's
+         * confirmation on the device included.
          */
         val PAIRING_TIMEOUT = 5.minutes
     }

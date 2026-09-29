@@ -6,10 +6,12 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.sdk.exception.LedgerException
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ledger.R
+import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.model.LedgerIssue
 import co.electriccoin.zcash.ui.common.model.LedgerIssueContext
 import co.electriccoin.zcash.ui.common.model.LedgerIssueKind
+import co.electriccoin.zcash.ui.common.model.LedgerPairingTimedOutException
 import co.electriccoin.zcash.ui.common.usecase.OpenLedgerZcashAppResult
 import co.electriccoin.zcash.ui.common.usecase.OpenLedgerZcashAppUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -184,7 +186,8 @@ class LedgerOpenAppVM(
 
     /**
      * On success the page goes back to idle behind the handshake, so returning to it waits for the
-     * user instead of asking the device again.
+     * user instead of asking the device again. A request that runs out of time reads as a device
+     * that disconnected during setup, as on the handshake.
      */
     @Suppress("TooGenericExceptionCaught")
     private suspend fun openApp() {
@@ -202,6 +205,9 @@ class LedgerOpenAppVM(
             }
         } catch (e: CancellationException) {
             throw e
+        } catch (e: LedgerPairingTimedOutException) {
+            Twig.warn { "Ledger enrollment failed: ${e.javaClass.simpleName}" }
+            showIssue(LedgerIssue.disconnectedDuringSetup)
         } catch (e: LedgerException) {
             showIssue(e.toEnrollmentIssue(LedgerIssueContext.ENROLLMENT))
         } catch (e: Exception) {

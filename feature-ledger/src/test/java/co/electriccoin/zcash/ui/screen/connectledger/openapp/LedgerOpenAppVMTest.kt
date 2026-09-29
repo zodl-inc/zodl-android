@@ -4,6 +4,7 @@ import android.app.Application
 import cash.z.ecc.android.sdk.exception.LedgerException
 import co.electriccoin.zcash.ledger.R
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.model.LedgerPairingTimedOutException
 import co.electriccoin.zcash.ui.common.usecase.OpenLedgerZcashAppResult
 import co.electriccoin.zcash.ui.common.usecase.OpenLedgerZcashAppUseCase
 import co.electriccoin.zcash.ui.design.util.StringResource
@@ -189,6 +190,33 @@ class LedgerOpenAppVMTest {
                 assertEquals(R.string.ledger_error_disconnected_title, sheet.title.resourceId())
                 assertEquals(R.string.ledger_error_disconnected_message, sheet.message.resourceId())
             }
+        }
+
+    @Test
+    fun aRequestThatRunsOutOfTimeReadsAsADisconnectAndTryAgainAsksAgain() =
+        runTest(dispatcher) {
+            var attempts = 0
+            val openLedgerZcashApp =
+                mockk<OpenLedgerZcashAppUseCase> {
+                    coEvery { this@mockk.invoke() } coAnswers {
+                        attempts++
+                        throw LedgerPairingTimedOutException()
+                    }
+                }
+            val vm = vm(openLedgerZcashApp = openLedgerZcashApp)
+            collect(vm)
+            runCurrent()
+
+            val sheet = assertNotNull(vm.state.value.errorSheet)
+            assertEquals(R.string.ledger_error_disconnected_title, sheet.title.resourceId())
+            assertEquals(R.string.ledger_error_disconnected_message, sheet.message.resourceId())
+            val primary = assertNotNull(sheet.primary)
+            assertEquals(R.string.ledger_error_tryAgain, primary.text.resourceId())
+
+            primary.onClick()
+            runCurrent()
+
+            assertEquals(2, attempts)
         }
 
     @Test

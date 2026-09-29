@@ -41,7 +41,8 @@ import kotlin.time.Duration.Companion.seconds
  * the transport that step returns with the read deadline and a reconnect, closes every transport it
  * opened, and caps the whole pairing at five minutes. The phone bonded with the device on the scan
  * screen already, so a failure to connect is passed on as the SDK raised it.
- * [LedgerDeviceDataSourceImpl.openZcashApp] does the app step alone and closes the same way.
+ * [LedgerDeviceDataSourceImpl.openZcashApp] does the app step alone, closes the same way and has
+ * the same cap.
  * [LedgerDeviceDataSourceImpl.connect] only asks which app runs, and a failed query leaves that
  * unknown rather than failing the connection.
  *
@@ -319,6 +320,24 @@ class LedgerDeviceDataSourceTest {
             assertFailsWith<LedgerException.AppOpenRejected> { dataSource.openZcashApp(device()) }
 
             coVerify(exactly = 1) { connected.close() }
+        }
+
+    @Test
+    fun anAppOpenStillWaitingAfterFiveMinutesTimesOutAndClosesEveryTransport() =
+        runTest {
+            val connected = mockk<LedgerBluetoothTransport>(relaxed = true)
+            val reconnected = mockk<LedgerBluetoothTransport>(relaxed = true)
+            coEvery { ledgerScannerProvider.connect(any()) } returnsMany listOf(connected, reconnected)
+            coEvery { LedgerZcashApp.ensureZcashAppOpen(connected, any()) } coAnswers {
+                secondArg<suspend () -> LedgerApduTransport>().invoke()
+                awaitCancellation()
+            }
+
+            assertFailsWith<LedgerPairingTimedOutException> { dataSource.openZcashApp(device()) }
+
+            assertEquals(5.minutes.inWholeMilliseconds, currentTime)
+            coVerify(exactly = 1) { connected.close() }
+            coVerify(exactly = 1) { reconnected.close() }
         }
 
     private fun runningApp(isZcash: Boolean) =
