@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.connectledger.scan
 
 import android.app.Application
+import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.sdk.exception.LedgerException
@@ -97,19 +98,11 @@ class LedgerDeviceScanVM(
         val hasDevices = internal.devices.isNotEmpty()
         val isIdle = internal.phase == LedgerScanPhase.IDLE
         val pageIssue = internal.issue?.takeIf { !hasDevices }
+        val page = pageCopy(hasDevices, isIdle, pageIssue)
         return LedgerDeviceScanState(
-            title =
-                when {
-                    hasDevices -> stringRes(R.string.ledger_scan_select_title)
-                    isIdle || pageIssue != null -> stringRes(R.string.ledger_scan_idle_title)
-                    else -> stringRes(R.string.ledger_scan_searching_title)
-                },
-            subtitle =
-                if (hasDevices) {
-                    stringRes(R.string.ledger_scan_select_subtitle)
-                } else {
-                    stringRes(R.string.ledger_scan_searching_subtitle)
-                },
+            title = stringRes(page.title),
+            subtitle = stringRes(page.subtitle),
+            navigation = page.navigation,
             isScanning = internal.phase == LedgerScanPhase.SCANNING && !hasDevices,
             showDeviceSkeletons = !hasDevices && (!isIdle || pageIssue != null),
             devices =
@@ -121,7 +114,7 @@ class LedgerDeviceScanVM(
                         onClick = { onDeviceClick(device.identifier) },
                     )
                 },
-            inlineIssue = pageIssue?.let { LedgerInlineIssueState(it.icon, it.title, it.message) },
+            inlineIssue = pageIssue?.let { LedgerInlineIssueState(it.inlineIcon, it.inlineTitle, it.inlineMessage) },
             primaryButton = createPrimaryButton(internal, hasDevices, pageIssue),
             errorSheet = if (internal.isSheetShown) createErrorSheet(internal) else null,
             permissionRequestNonce = internal.permissionRequestNonce,
@@ -129,6 +122,51 @@ class LedgerDeviceScanVM(
             onBack = ::onBack,
         )
     }
+
+    /**
+     * The page copy and navigation icon per the Figma connect error frames: a Bluetooth issue, or a
+     * device list, reads as the selection step behind a back arrow; no devices found keeps the
+     * searching title over the selection subtitle; any other issue reads as the search behind a
+     * close. Both icons leave the screen the same way.
+     */
+    private fun pageCopy(
+        hasDevices: Boolean,
+        isIdle: Boolean,
+        pageIssue: LedgerIssue?,
+    ): LedgerScanPageCopy =
+        when {
+            hasDevices || pageIssue?.kind in BLUETOOTH_ISSUE_KINDS -> {
+                LedgerScanPageCopy(
+                    title = R.string.ledger_scan_select_title,
+                    subtitle = R.string.ledger_scan_select_subtitle,
+                    navigation = LedgerDeviceScanNavigation.BACK,
+                )
+            }
+
+            pageIssue?.kind == LedgerIssueKind.NO_DEVICES -> {
+                LedgerScanPageCopy(
+                    title = R.string.ledger_scan_searching_title,
+                    subtitle = R.string.ledger_scan_select_subtitle,
+                    navigation = LedgerDeviceScanNavigation.CLOSE,
+                )
+            }
+
+            pageIssue == null && isIdle -> {
+                LedgerScanPageCopy(
+                    title = R.string.ledger_scan_idle_title,
+                    subtitle = R.string.ledger_scan_searching_subtitle,
+                    navigation = LedgerDeviceScanNavigation.CLOSE,
+                )
+            }
+
+            else -> {
+                LedgerScanPageCopy(
+                    title = R.string.ledger_scan_searching_title,
+                    subtitle = R.string.ledger_scan_searching_subtitle,
+                    navigation = LedgerDeviceScanNavigation.CLOSE,
+                )
+            }
+        }
 
     /**
      * Retained devices win over the idle retry: after an issue that keeps the link, the selected
@@ -551,6 +589,19 @@ private data class LedgerScanInternalState(
     val permissionRequestNonce: Int = 0,
     val enableBluetoothRequestNonce: Int = 0,
 )
+
+private data class LedgerScanPageCopy(
+    @get:StringRes val title: Int,
+    @get:StringRes val subtitle: Int,
+    val navigation: LedgerDeviceScanNavigation,
+)
+
+private val BLUETOOTH_ISSUE_KINDS =
+    setOf(
+        LedgerIssueKind.PERMISSIONS,
+        LedgerIssueKind.BLUETOOTH_OFF,
+        LedgerIssueKind.BLUETOOTH_UNAVAILABLE,
+    )
 
 private enum class LedgerScanPhase {
     PERMISSION,

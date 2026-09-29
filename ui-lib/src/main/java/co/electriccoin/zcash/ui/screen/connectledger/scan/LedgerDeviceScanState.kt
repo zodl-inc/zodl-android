@@ -10,6 +10,7 @@ import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerInlineIssueSta
 data class LedgerDeviceScanState(
     val title: StringResource,
     val subtitle: StringResource,
+    val navigation: LedgerDeviceScanNavigation,
     val isScanning: Boolean,
     /**
      * Whether the placeholder rows stand in for devices still being looked for. False once the
@@ -40,8 +41,9 @@ data class LedgerDeviceScanState(
     companion object {
         val previewSearching =
             LedgerDeviceScanState(
-                title = stringRes("Searching for Devices…"),
+                title = stringRes("Searching for Devices..."),
                 subtitle = stringRes("Make sure your Ledger is unlocked and Bluetooth is enabled."),
+                navigation = LedgerDeviceScanNavigation.CLOSE,
                 isScanning = true,
                 showDeviceSkeletons = true,
                 devices = emptyList(),
@@ -57,6 +59,7 @@ data class LedgerDeviceScanState(
             previewSearching.copy(
                 title = stringRes("Select Your Device"),
                 subtitle = stringRes("Select the Ledger device you'd like to connect."),
+                navigation = LedgerDeviceScanNavigation.BACK,
                 isScanning = false,
                 showDeviceSkeletons = false,
                 devices =
@@ -73,13 +76,52 @@ data class LedgerDeviceScanState(
                 primaryButton = ButtonState(stringRes("Connect"), isEnabled = false, isLoading = true),
             )
 
-        val previewError =
+        val previewBluetoothOff =
             previewSearching.copy(
-                title = stringRes("Connect your Ledger"),
+                title = stringRes("Select Your Device"),
+                subtitle = stringRes("Select the Ledger device you'd like to connect."),
+                navigation = LedgerDeviceScanNavigation.BACK,
                 isScanning = false,
                 inlineIssue = LedgerInlineIssueState.preview,
                 primaryButton = ButtonState(stringRes("Try again")),
                 errorSheet = LedgerErrorSheetState.previewBluetoothOff,
             )
+
+        val previewAccessRequired =
+            previewBluetoothOff.copy(
+                inlineIssue = LedgerInlineIssueState.previewAccessRequired,
+                errorSheet = null,
+            )
+
+        val previewNoDevices =
+            previewSearching.copy(
+                subtitle = stringRes("Select the Ledger device you'd like to connect."),
+                isScanning = false,
+                inlineIssue = LedgerInlineIssueState.previewNoDevices,
+                primaryButton = ButtonState(stringRes("Try again")),
+                errorSheet = LedgerErrorSheetState.preview,
+            )
+
+        val previewSomethingWentWrong =
+            previewSearching.copy(
+                isScanning = false,
+                inlineIssue = LedgerInlineIssueState.previewSomethingWentWrong,
+                primaryButton = ButtonState(stringRes("Try again")),
+                errorSheet = null,
+            )
+
+        val previewUnlock =
+            previewSelect.copy(
+                devices = listOf(LedgerDeviceItemState.previewSelected),
+                errorSheet = LedgerErrorSheetState.previewUnlock,
+            )
     }
+}
+
+/**
+ * The top bar's navigation icon; both leave the screen the same way.
+ */
+enum class LedgerDeviceScanNavigation {
+    BACK,
+    CLOSE,
 }

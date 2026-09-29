@@ -163,15 +163,16 @@ class LedgerDeviceScanVMTest {
             runCurrent()
 
             assertEquals(
-                R.string.ledger_scan_idle_title,
+                R.string.ledger_scan_searching_title,
                 vm.state.value.title
                     .resourceId()
             )
             assertEquals(
-                R.string.ledger_scan_searching_subtitle,
+                R.string.ledger_scan_select_subtitle,
                 vm.state.value.subtitle
                     .resourceId()
             )
+            assertEquals(LedgerDeviceScanNavigation.CLOSE, vm.state.value.navigation)
             assertTrue(vm.state.value.showDeviceSkeletons)
             assertEquals(
                 R.string.ledger_scan_retry_cta,
@@ -357,7 +358,7 @@ class LedgerDeviceScanVMTest {
             runCurrent()
             assertSheetTitle(vm, R.string.ledger_error_bluetoothOff_title)
             assertEquals(
-                R.string.ledger_error_bluetoothOff_title,
+                R.string.ledger_error_bluetoothOff_inlineTitle,
                 assertNotNull(vm.state.value.inlineIssue).title.resourceId()
             )
 
