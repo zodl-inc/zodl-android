@@ -1,11 +1,29 @@
 package co.electriccoin.zcash.ui.common.provider
 
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.IOException
+
+/**
+ * `TimeoutCancellationException`'s (message: String) constructor is internal to kotlinx.coroutines
+ * -- tests can't call it directly. A real instance is obtained the same way production code would
+ * ever see one: a `withTimeout` block that actually times out.
+ */
+private fun fakeTimeoutException(): TimeoutCancellationException =
+    runBlocking {
+        try {
+            withTimeout(1) { delay(1_000) }
+            error("expected withTimeout to throw TimeoutCancellationException")
+        } catch (e: TimeoutCancellationException) {
+            e
+        }
+    }
 
 /**
  * F-06 audit fix verification: Tests that voting server failover does NOT retry after timeout.
@@ -24,7 +42,7 @@ class VotingServerFailoverPostTimeoutTest {
      */
     @Test
     fun testTimeoutDoesNotTriggerFailover() {
-        val timeout = TimeoutCancellationException("Request timed out")
+        val timeout = fakeTimeoutException()
         val shouldRetry = shouldTryNextVoteServer(timeout)
 
         assertEquals(
@@ -66,7 +84,7 @@ class VotingServerFailoverPostTimeoutTest {
                         operation = { serverUrl ->
                             attemptedServers.add(serverUrl)
                             // First server times out after possibly delivering the request
-                            throw TimeoutCancellationException("Server took too long")
+                            throw fakeTimeoutException()
                         }
                     )
                 }

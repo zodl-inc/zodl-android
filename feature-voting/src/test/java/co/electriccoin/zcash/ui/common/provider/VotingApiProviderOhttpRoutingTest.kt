@@ -18,6 +18,9 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.serialization.kotlinx.json.json
+import io.mockk.coEvery
+import io.mockk.every
+import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
@@ -180,7 +183,7 @@ class VotingApiProviderOhttpRoutingTest {
                     override suspend fun createTor(): HttpClient = create()
 
                     override suspend fun createOhttp(): OhttpHttpClient =
-                        MockOhttpClient(ohttpRequests, isSupported = !torEnabled && !isCustomServer)
+                        fakeOhttpClient(ohttpRequests, isSupported = !torEnabled && !isCustomServer)
 
                     override suspend fun create(): HttpClient =
                         HttpClient(
@@ -243,27 +246,34 @@ class VotingApiProviderOhttpRoutingTest {
             votingCryptoClient = unusedVotingCryptoClient()
         )
 
-    private class MockOhttpClient(
-        private val requests: MutableList<String>,
-        private val isSupported: Boolean
-    ) : OhttpHttpClient {
-        override fun canHandle(url: String): Boolean = isSupported
-
-        override suspend fun execute(request: OhttpHttpClient.Request): OhttpHttpClient.Response {
-            requests += request.url
-            return OhttpHttpClient.Response(
-                status = 200,
-                headers = emptyList(),
-                body =
-                    when {
-                        request.url.contains("/share-status") -> """{"status":"confirmed"}""".toByteArray()
-                        request.url.contains("/shielded-vote/v1/shares") -> "{}".toByteArray()
-                        request.url.contains("/tx/") -> """{"height":12,"code":0,"log":"","events":[]}""".toByteArray()
-                        else -> "{}".toByteArray()
-                    }
-            )
+    /**
+     * `OhttpHttpClient` is a final class with a private constructor (only buildable via its own
+     * `create(sender, ...)` factory, which performs a real HPKE/BinaryHttp round trip) — it can't
+     * be subclassed. MockK mocks it directly instead, stubbing `canHandle`/`execute` at the exact
+     * boundary `VotingApiProvider` calls, so this test only exercises the routing decision (OHTTP
+     * vs direct), not the OHTTP wire protocol itself (covered separately at the SDK level).
+     */
+    private fun fakeOhttpClient(
+        requests: MutableList<String>,
+        isSupported: Boolean
+    ): OhttpHttpClient =
+        mockk {
+            every { canHandle(any()) } returns isSupported
+            coEvery { execute(any()) } answers {
+                val request = firstArg<OhttpHttpClient.Request>()
+                requests += request.url
+                OhttpHttpClient.Response(
+                    status = 200,
+                    body =
+                        when {
+                            request.url.contains("/share-status") -> """{"status":"confirmed"}""".toByteArray()
+                            request.url.contains("/shielded-vote/v1/shares") -> "{}".toByteArray()
+                            request.url.contains("/tx/") -> """{"height":12,"code":0,"log":"","events":[]}""".toByteArray()
+                            else -> "{}".toByteArray()
+                        }
+                )
+            }
         }
-    }
 
     private class TestConfigurationRepository : ConfigurationRepository {
         override val configurationFlow: StateFlow<Configuration?> = MutableStateFlow(null)
