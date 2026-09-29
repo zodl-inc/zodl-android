@@ -17,10 +17,13 @@ import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
 import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.LedgerRepairTargetRepository
+import co.electriccoin.zcash.ui.common.repository.LedgerRepairTargetRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.LedgerSelectedDeviceRepository
 import co.electriccoin.zcash.ui.common.repository.LedgerSelectedDeviceRepositoryImpl
 import co.electriccoin.zcash.ui.common.usecase.CancelLedgerSigningUseCase
 import co.electriccoin.zcash.ui.common.usecase.CreateLedgerAccountUseCase
+import co.electriccoin.zcash.ui.common.usecase.NavigateToLedgerRepairUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerSigningStateUseCase
 import co.electriccoin.zcash.ui.common.usecase.PairLedgerDeviceUseCase
@@ -62,6 +65,7 @@ val featureLedgerModule =
         singleOf(::LedgerProposalRepositoryImpl) binds
             arrayOf(LedgerProposalRepository::class, LedgerProposalPipeline::class)
         singleOf(::LedgerSelectedDeviceRepositoryImpl) bind LedgerSelectedDeviceRepository::class
+        singleOf(::LedgerRepairTargetRepositoryImpl) bind LedgerRepairTargetRepository::class
 
         factoryOf(::CreateLedgerAccountUseCase)
         factoryOf(::ObserveLedgerDevicesUseCase)
@@ -72,6 +76,7 @@ val featureLedgerModule =
         factoryOf(::SelectLedgerSigningDeviceUseCase)
         factoryOf(::RetryLedgerSigningUseCase)
         factoryOf(::CancelLedgerSigningUseCase)
+        factoryOf(::NavigateToLedgerRepairUseCase)
 
         viewModelOf(::LedgerConnectVM)
         viewModelOf(::LedgerConnectedVM)

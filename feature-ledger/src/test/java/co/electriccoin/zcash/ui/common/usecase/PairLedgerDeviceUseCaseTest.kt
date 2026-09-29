@@ -17,6 +17,8 @@ import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.provider.LedgerAccountBindingProvider
 import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
 import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.LedgerRepairTargetRepository
+import co.electriccoin.zcash.ui.common.repository.LedgerRepairTargetRepositoryImpl
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -32,7 +34,8 @@ import kotlin.test.assertTrue
  * Pairing stashes the result for the birthday screens, unless the wallet already holds an account
  * for that viewing key — in which case nothing is stashed, and the caller is told to offer the
  * existing account instead, or, when that account has lost its Ledger binding, the pairing's binding
- * is stored with it.
+ * is stored with it. Pairing an account again, and pairing a second Ledger, report any other viewing
+ * key as the wrong Ledger and import nothing.
  */
 class PairLedgerDeviceUseCaseTest {
     private val bindingProvider = mockk<LedgerAccountBindingProvider>(relaxed = true)
@@ -114,6 +117,62 @@ class PairLedgerDeviceUseCaseTest {
         }
 
     @Test
+    fun aSecondLedgerIsTheWrongLedgerAndStashesNothing() =
+        runTest {
+            val pairing = pairing(ufvk = "ufvk-second")
+            val first = ledgerAccount(ufvk = "ufvk-first", bound = true)
+            val repository = LedgerPairingRepositoryImpl()
+
+            val result = useCase(pairing, repository, existing = listOf(first)).invoke(device)
+
+            assertEquals(PairLedgerDeviceResult.WrongLedger, result)
+            assertNull(repository.get())
+            coVerify(exactly = 0) { bindingProvider.save(any(), any(), any()) }
+        }
+
+    @Test
+    fun pairingTheTargetAgainWithItsOwnLedgerRebindsItAndClearsTheTarget() =
+        runTest {
+            val pairing = pairing(ufvk = "ufvk-known")
+            val target = ledgerAccount(ufvk = "ufvk-known", bound = false)
+            val repository = LedgerPairingRepositoryImpl()
+            val repairTarget = repairTarget(target)
+
+            val result =
+                useCase(pairing, repository, existing = listOf(target), repairTarget = repairTarget).invoke(device)
+
+            assertEquals(PairLedgerDeviceResult.Rebound(target), result)
+            assertNull(repository.get())
+            assertNull(repairTarget.get())
+            val accountUuid = target.sdkAccount.accountUuid
+            coVerify(exactly = 1) {
+                bindingProvider.save(
+                    accountUuid = accountUuid,
+                    deviceIdentityEncoding = IDENTITY,
+                    zip32AccountIndex = 0L,
+                )
+            }
+        }
+
+    @Test
+    fun pairingTheTargetAgainWithAnotherLedgerIsTheWrongLedgerAndImportsNothing() =
+        runTest {
+            val target = ledgerAccount(ufvk = "ufvk-known", bound = false)
+            listOf(listOf(target), emptyList()).forEach { existing ->
+                val repository = LedgerPairingRepositoryImpl()
+                val repairTarget = repairTarget(target)
+
+                val result =
+                    useCase(pairing(ufvk = "ufvk-other"), repository, existing, repairTarget).invoke(device)
+
+                assertEquals(PairLedgerDeviceResult.WrongLedger, result, "existing=${existing.size}")
+                assertNull(repository.get())
+                assertEquals(target.sdkAccount.accountUuid, repairTarget.get(), "Try again keeps the target")
+            }
+            coVerify(exactly = 0) { bindingProvider.save(any(), any(), any()) }
+        }
+
+    @Test
     fun anEarlierPairingIsReplacedRatherThanKept() =
         runTest {
             val repository = LedgerPairingRepositoryImpl()
@@ -129,12 +188,14 @@ class PairLedgerDeviceUseCaseTest {
         pairing: LedgerAccountPairing,
         repository: LedgerPairingRepository,
         existing: List<WalletAccount>,
+        repairTarget: LedgerRepairTargetRepository = LedgerRepairTargetRepositoryImpl(),
     ) = PairLedgerDeviceUseCase(
         ledgerDeviceDataSource =
             mockk<LedgerDeviceDataSource> {
                 coEvery { pair(any(), any()) } returns pairing
             },
         ledgerPairingRepository = repository,
+        ledgerRepairTargetRepository = repairTarget,
         accountDataSource =
             mockk<AccountDataSource> {
                 coEvery { getAllAccounts() } returns existing
@@ -152,9 +213,15 @@ class PairLedgerDeviceUseCaseTest {
                 )
         }
 
+    private fun repairTarget(account: LedgerAccount) =
+        LedgerRepairTargetRepositoryImpl().apply { set(account.sdkAccount.accountUuid) }
+
+    /**
+     * Each viewing key gets its own UUID, so accounts with different keys are different accounts.
+     */
     private fun sdkAccount(ufvk: String) =
         mockk<Account> {
-            every { accountUuid } returns AccountUuid.new(ByteArray(16) { it.toByte() })
+            every { accountUuid } returns AccountUuid.new(ByteArray(16) { (it + ufvk.hashCode()).toByte() })
             every { this@mockk.ufvk } returns ufvk
         }
 

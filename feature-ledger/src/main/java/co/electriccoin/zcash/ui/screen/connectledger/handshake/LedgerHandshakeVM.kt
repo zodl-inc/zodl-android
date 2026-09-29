@@ -211,8 +211,9 @@ class LedgerHandshakeVM(
 
     /**
      * On success this screen is replaced, so backing out of the birthday screens lands on the scan
-     * screen rather than on a finished pairing. An account that was only missing its binding needs
-     * no birthday: it is connected again at once.
+     * screen rather than on a finished pairing. An account that was only missing its binding, or is
+     * being paired again, needs no birthday: it is connected again at once. The wrong Ledger shows
+     * its issue, and Try again pairs the same device again, which may have switched seeds since.
      *
      * A failure while the phone was still connecting reads as a failed pairing; one after the link
      * was up, including the pairing running out of time, as a device that disconnected during setup.
@@ -231,6 +232,11 @@ class LedgerHandshakeVM(
 
                 is PairLedgerDeviceResult.AlreadyAdded -> {
                     showAlreadyAdded(result.account)
+                }
+
+                is PairLedgerDeviceResult.WrongLedger -> {
+                    Twig.warn { "Ledger enrollment: the Ledger is not the account's" }
+                    showIssue(LedgerIssue.wrongDevice)
                 }
             }
         } catch (e: CancellationException) {

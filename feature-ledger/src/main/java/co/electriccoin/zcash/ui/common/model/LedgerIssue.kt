@@ -169,6 +169,18 @@ data class LedgerIssue(
             )
 
         /**
+         * The Ledger is not the one the account was connected with: signing met another device, or
+         * pairing the account again exported another viewing key.
+         */
+        val wrongDevice: LedgerIssue =
+            issue(
+                LedgerIssueKind.WRONG_DEVICE,
+                LedgerIssueRetry.RECONNECT,
+                R.string.ledger_sign_error_wrongDevice_title,
+                R.string.ledger_sign_error_wrongDevice_message
+            )
+
+        /**
          * The link to the device was lost while a transaction was being signed.
          */
         val disconnectedWhileSigning: LedgerIssue =
@@ -366,7 +378,10 @@ private fun unknownIssue(kind: LedgerIssueKind) =
     ).copy(inlineMessage = stringRes(R.string.ledger_error_unknown_inlineMessage))
 
 /**
- * A device mismatch cannot occur while pairing, so the connect flow has no copy of its own for it.
+ * The SDK raises [LedgerException.DeviceMismatch] only while signing; pairing reads the device once
+ * and cannot, so enrollment reads the exception as a failure nothing more specific describes. A
+ * Ledger that pairs an account again with another viewing key is [LedgerIssue.wrongDevice], which
+ * the handshake shows without an exception.
  */
 private fun wrongDevice(context: LedgerIssueContext) =
     when (context) {
@@ -376,12 +391,7 @@ private fun wrongDevice(context: LedgerIssueContext) =
         }
 
         LedgerIssueContext.SIGNING -> {
-            issue(
-                LedgerIssueKind.WRONG_DEVICE,
-                LedgerIssueRetry.RECONNECT,
-                R.string.ledger_sign_error_wrongDevice_title,
-                R.string.ledger_sign_error_wrongDevice_message
-            )
+            LedgerIssue.wrongDevice
         }
     }
 

@@ -130,6 +130,26 @@ class LedgerHandshakeVMTest {
         }
 
     @Test
+    fun theWrongLedgerShowsItsIssueWithTryAgainAndGoesNowhere() =
+        runTest(dispatcher) {
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+            val pairLedgerDevice =
+                mockk<PairLedgerDeviceUseCase> {
+                    coEvery { this@mockk.invoke(any()) } returns PairLedgerDeviceResult.WrongLedger
+                }
+            val vm = vm(pairLedgerDevice = pairLedgerDevice, navigationRouter = navigationRouter)
+            collect(vm)
+            runCurrent()
+
+            val sheet = assertNotNull(vm.state.value.errorSheet)
+            assertEquals(R.string.ledger_sign_error_wrongDevice_title, sheet.title.resourceId())
+            assertEquals(R.string.ledger_sign_error_wrongDevice_message, sheet.message.resourceId())
+            assertNotNull(vm.state.value.retryButton)
+            assertFalse(vm.state.value.isWaiting)
+            verify(exactly = 0) { navigationRouter.replace(*anyVararg()) }
+        }
+
+    @Test
     fun aMissingDeviceFallsBackToTheWalletRootWithoutTalkingToAnyDevice() =
         runTest(dispatcher) {
             val navigationRouter = mockk<NavigationRouter>(relaxed = true)

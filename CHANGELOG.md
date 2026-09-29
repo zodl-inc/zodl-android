@@ -22,8 +22,9 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   Bluetooth is off, the Zcash app on the Ledger is out of date or needs a restart, or the connection
   fails, and can turn Bluetooth on for you. It tells a failed pairing apart from a Ledger that disconnected during
   setup, and stops waiting for the device after five minutes. A Ledger account whose pairing is
-  missing can be paired again from the signing sheet with Pair Ledger, and after the wrong Ledger
-  the signing sheet asks you to pick the device instead of reconnecting to the same one.
+  missing can be paired again from the signing sheet with Pair Ledger; a different Ledger there shows
+  Wrong Ledger instead of adding a second Ledger account. After the wrong Ledger the signing sheet
+  asks you to pick the device instead of reconnecting to the same one.
 
 ### Changed:
 

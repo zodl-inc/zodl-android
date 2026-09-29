@@ -8,6 +8,7 @@ import co.electriccoin.zcash.ui.common.ledger.LedgerAccountImporter
 import co.electriccoin.zcash.ui.common.ledger.LedgerNavContributor
 import co.electriccoin.zcash.ui.common.ledger.LedgerNavigator
 import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
+import co.electriccoin.zcash.ui.common.repository.LedgerRepairTargetRepository
 import co.electriccoin.zcash.ui.common.usecase.CreateLedgerAccountUseCase
 import co.electriccoin.zcash.ui.dialogComposable
 import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectArgs
@@ -32,10 +33,17 @@ class LedgerAccountImporterImpl(
 
 class LedgerNavigatorImpl(
     private val navigationRouter: NavigationRouter,
+    private val ledgerRepairTargetRepository: LedgerRepairTargetRepository,
 ) : LedgerNavigator {
     override fun forwardToSign() = navigationRouter.forward(LedgerSignArgs)
 
-    override fun forwardToConnect() = navigationRouter.forward(LedgerConnectArgs)
+    /**
+     * Opens the connect flow to add a Ledger, so no account is left as the target of pairing again.
+     */
+    override fun forwardToConnect() {
+        ledgerRepairTargetRepository.clear()
+        navigationRouter.forward(LedgerConnectArgs)
+    }
 
     override fun forwardToConnected() = navigationRouter.forward(LedgerConnectedArgs)
 }

@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.common.model.LedgerIssueKind
 import co.electriccoin.zcash.ui.common.model.LedgerIssueRetry
 import co.electriccoin.zcash.ui.common.model.LedgerSigningState
 import co.electriccoin.zcash.ui.common.usecase.CancelLedgerSigningUseCase
+import co.electriccoin.zcash.ui.common.usecase.NavigateToLedgerRepairUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerSigningStateUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.RetryLedgerSigningUseCase
@@ -21,7 +22,6 @@ import co.electriccoin.zcash.ui.common.usecase.SubmitLedgerProposalUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceItemState
-import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectArgs
 import co.electriccoin.zcash.ui.util.SettingsUtil
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,6 +59,7 @@ class LedgerSignVM(
     private val retryLedgerSigning: RetryLedgerSigningUseCase,
     private val cancelLedgerSigning: CancelLedgerSigningUseCase,
     private val submitLedgerProposal: SubmitLedgerProposalUseCase,
+    private val navigateToLedgerRepair: NavigateToLedgerRepairUseCase,
     private val navigationRouter: NavigationRouter,
 ) : AndroidViewModel(application) {
     private val permissionDenial = MutableStateFlow<PermissionDenial?>(null)
@@ -336,12 +337,11 @@ class LedgerSignVM(
     }
 
     /**
-     * Ends the session the way Cancel does, then opens the Ledger connect flow, which stores the
-     * pairing with the account.
+     * Ends the session the way Cancel does, then opens the Ledger connect flow to pair the account
+     * again, which stores the pairing with it.
      */
     private fun onPairLedgerClick() {
-        cancelLedgerSigning()
-        navigationRouter.forward(LedgerConnectArgs)
+        viewModelScope.launch { navigateToLedgerRepair() }
     }
 }
 

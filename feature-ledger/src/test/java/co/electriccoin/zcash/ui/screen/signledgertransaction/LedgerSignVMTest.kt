@@ -10,6 +10,7 @@ import co.electriccoin.zcash.ui.common.model.LedgerIssueRetry
 import co.electriccoin.zcash.ui.common.model.LedgerSigningDevice
 import co.electriccoin.zcash.ui.common.model.LedgerSigningState
 import co.electriccoin.zcash.ui.common.usecase.CancelLedgerSigningUseCase
+import co.electriccoin.zcash.ui.common.usecase.NavigateToLedgerRepairUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerSigningStateUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.RetryLedgerSigningUseCase
@@ -18,12 +19,10 @@ import co.electriccoin.zcash.ui.common.usecase.StartLedgerSigningUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitLedgerProposalUseCase
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectArgs
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import io.mockk.verifyOrder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -398,18 +397,16 @@ class LedgerSignVMTest {
         }
 
     @Test
-    fun anUnpairedAccountOffersPairLedgerWhichCancelsAndOpensTheConnectFlow() =
+    fun anUnpairedAccountOffersPairLedgerWhichPairsTheAccountAgain() =
         runTest(dispatcher) {
-            val cancelLedgerSigning = mockk<CancelLedgerSigningUseCase>(relaxed = true)
+            val navigateToLedgerRepair = mockk<NavigateToLedgerRepairUseCase>(relaxed = true)
             val retryLedgerSigning = mockk<RetryLedgerSigningUseCase>(relaxed = true)
-            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
             val signingState = MutableStateFlow<LedgerSigningState?>(LedgerSigningState.Failed(LedgerIssue.unbound))
             val vm =
                 vm(
                     signingState = signingState,
                     retryLedgerSigning = retryLedgerSigning,
-                    cancelLedgerSigning = cancelLedgerSigning,
-                    navigationRouter = navigationRouter,
+                    navigateToLedgerRepair = navigateToLedgerRepair,
                 )
             collect(vm)
             runCurrent()
@@ -423,10 +420,7 @@ class LedgerSignVMTest {
             primary.onClick()
             runCurrent()
 
-            verifyOrder {
-                cancelLedgerSigning.invoke()
-                navigationRouter.forward(LedgerConnectArgs)
-            }
+            coVerify(exactly = 1) { navigateToLedgerRepair.invoke() }
             verify(exactly = 0) { retryLedgerSigning.invoke() }
         }
 
@@ -493,6 +487,7 @@ class LedgerSignVMTest {
         retryLedgerSigning: RetryLedgerSigningUseCase = mockk(relaxed = true),
         cancelLedgerSigning: CancelLedgerSigningUseCase = mockk(relaxed = true),
         submitLedgerProposal: SubmitLedgerProposalUseCase = mockk(relaxed = true),
+        navigateToLedgerRepair: NavigateToLedgerRepairUseCase = mockk(relaxed = true),
         navigationRouter: NavigationRouter = mockk(relaxed = true),
     ) = LedgerSignVM(
         application = mockk<Application>(relaxed = true),
@@ -510,6 +505,7 @@ class LedgerSignVMTest {
         retryLedgerSigning = retryLedgerSigning,
         cancelLedgerSigning = cancelLedgerSigning,
         submitLedgerProposal = submitLedgerProposal,
+        navigateToLedgerRepair = navigateToLedgerRepair,
         navigationRouter = navigationRouter,
     )
 }
