@@ -198,7 +198,7 @@ class AccountDataSourceImplTest {
             val account = accounts.single() as LedgerAccount
             assertNull(account.deviceIdentity)
             assertNull(account.zip32AccountIndex)
-            assertFailsWith<IllegalStateException> { account.hdAccountIndex }
+            assertNull(account.hdAccountIndex)
             assertFalse(account.isBound)
         }
 

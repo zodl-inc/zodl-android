@@ -51,8 +51,12 @@ sealed interface WalletAccount : Comparable<WalletAccount> {
     @get:DrawableRes
     val icon: Int
 
-    val hdAccountIndex: Zip32AccountIndex
-        get() = sdkAccount.hdAccountIndex!!
+    /**
+     * The account's ZIP 32 index, or null when it is not known, as for a Ledger account without a
+     * stored binding.
+     */
+    val hdAccountIndex: Zip32AccountIndex?
+        get() = sdkAccount.hdAccountIndex
 
     /**
      * Total transparent + total shielded balance. Null while any contributing balance has not
@@ -163,6 +167,9 @@ data class ZashiAccount(
 ) : WalletAccount {
     override val name: StringResource
         get() = stringRes(co.electriccoin.zcash.ui.R.string.accounts_zashi)
+
+    override val hdAccountIndex: Zip32AccountIndex
+        get() = checkNotNull(sdkAccount.hdAccountIndex)
 
     override val icon: Int
         get() = R.drawable.ic_item_zashi
@@ -305,8 +312,8 @@ data class LedgerAccount(
 
     override val saplingBalance: WalletBalance? = null
 
-    override val hdAccountIndex: Zip32AccountIndex
-        get() = zip32AccountIndex ?: error("Ledger account has no stored binding")
+    override val hdAccountIndex: Zip32AccountIndex?
+        get() = zip32AccountIndex
 
     override val totalBalance: Zatoshi?
         get() {

@@ -7,15 +7,14 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
  * A Ledger account's ZIP 32 index comes from its stored binding, because the SDK account has none
- * — the device never reveals its seed fingerprint — and the interface default would dereference a
- * null. Its printed form redacts the device identity, which is linkable to a transparent address.
+ * — the device never reveals its seed fingerprint — and is null, never a guessed zero, while no
+ * binding is stored. Its printed form redacts the device identity, which is linkable to a transparent address.
  */
 class LedgerAccountTest {
     private val sdkAccount = Account.new(AccountUuid.new(ByteArray(16) { it.toByte() }))
@@ -34,12 +33,11 @@ class LedgerAccountTest {
     }
 
     @Test
-    fun anUnboundAccountRefusesToReportAnIndexRatherThanGuessZero() {
+    fun anUnboundAccountReportsNoIndexRatherThanGuessZero() {
         val unbound = ledger(deviceIdentity = null, index = null)
 
         assertFalse(unbound.isBound)
-        val thrown = assertFailsWith<IllegalStateException> { unbound.hdAccountIndex }
-        assertEquals("Ledger account has no stored binding", thrown.message)
+        assertNull(unbound.hdAccountIndex)
     }
 
     @Test
