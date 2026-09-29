@@ -105,7 +105,7 @@ class LedgerDeviceScanVMPageTest {
     fun bluetoothOffShowsTheSelectionCopyAndItsOwnIndicatorTitle() =
         runTest(dispatcher) {
             val observeLedgerDevices =
-                mockk<ObserveLedgerDevicesUseCase> {
+                mockk<ObserveLedgerDevicesUseCase>(relaxed = true) {
                     every { this@mockk.invoke() } returns
                         flow { throw mockk<LedgerException.BluetoothDisabled>(relaxed = true) }
                 }
@@ -353,7 +353,7 @@ class LedgerDeviceScanVMPageTest {
 
     private fun CoroutineScope.vm(
         observeLedgerDevices: ObserveLedgerDevicesUseCase =
-            mockk {
+            mockk(relaxed = true) {
                 every { this@mockk.invoke() } returns devices
             },
         pairLedgerDevice: PairLedgerDeviceUseCase = mockk(relaxed = true),

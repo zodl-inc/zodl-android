@@ -24,6 +24,11 @@ interface LedgerDeviceDataSource {
     fun observeDevices(): Flow<List<LedgerBluetoothDevice>>
 
     /**
+     * Whether a scan cannot find anything because location is off, which only matters below API 31.
+     */
+    fun isLocationOffForScan(): Boolean
+
+    /**
      * Connects to [device], opens the Zcash app on it if it is elsewhere (the user confirms on the
      * device; the link may be reopened while the device switches apps), asks it to export the
      * ZIP 32 account [zip32AccountIndex] (the user approves the export on the device) and closes
@@ -49,6 +54,8 @@ class LedgerDeviceDataSourceImpl(
     private val ledgerScannerProvider: LedgerScannerProvider,
 ) : LedgerDeviceDataSource {
     override fun observeDevices(): Flow<List<LedgerBluetoothDevice>> = ledgerScannerProvider.devices()
+
+    override fun isLocationOffForScan(): Boolean = ledgerScannerProvider.isLocationOffForScan()
 
     /**
      * Every transport opened here, the first one and each reconnect, is closed on the way out; the

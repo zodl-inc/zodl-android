@@ -32,6 +32,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -83,6 +84,7 @@ class LedgerProposalRepositoryTest {
 
     init {
         every { ledgerDeviceDataSource.observeDevices() } returns devices
+        every { ledgerDeviceDataSource.isLocationOffForScan() } returns false
     }
 
     @Test
@@ -383,6 +385,21 @@ class LedgerProposalRepositoryTest {
 
             coVerify(exactly = 1) { ledgerSigningDataSource.connect(match { it.identifier == "BB" }) }
             assertEquals(LedgerSigningState.Signed, repository.signingState.value)
+        }
+
+    @Test
+    fun locationOffBelowApi31FailsWithTheBluetoothAccessIssueInsteadOfScanning() =
+        runTest(dispatcher) {
+            givenPczt(ledgerAccount())
+            runCurrent()
+            every { ledgerDeviceDataSource.isLocationOffForScan() } returns true
+
+            repository.startSigning()
+            runCurrent()
+
+            assertEquals(LedgerSigningState.Failed(LedgerIssue.locationOff), repository.signingState.value)
+            coVerify(exactly = 0) { ledgerSigningDataSource.connect(any()) }
+            verify(exactly = 0) { ledgerDeviceDataSource.observeDevices() }
         }
 
     @Test

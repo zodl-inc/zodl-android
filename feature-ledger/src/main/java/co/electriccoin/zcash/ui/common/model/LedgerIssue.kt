@@ -107,6 +107,13 @@ data class LedgerIssue(
             )
 
         /**
+         * Location is off below API 31, where a Bluetooth LE scan needs it to find anything. It
+         * reads as the Bluetooth access issue, the one the app has copy for, and like it is fixed
+         * in Settings; the scan checks again on the way back.
+         */
+        val locationOff: LedgerIssue = permissions
+
+        /**
          * A failure nothing more specific describes; looking for the device again may help.
          */
         val unknown: LedgerIssue = unknownIssue(LedgerIssueKind.UNKNOWN)

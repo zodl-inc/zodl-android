@@ -231,7 +231,7 @@ class LedgerDeviceScanVMPairingTest {
         navigationRouter: NavigationRouter = mockk(relaxed = true),
     ) = LedgerDeviceScanVM(
         application = mockk<Application>(relaxed = true),
-        observeLedgerDevices = mockk { every { this@mockk.invoke() } returns devices },
+        observeLedgerDevices = mockk(relaxed = true) { every { this@mockk.invoke() } returns devices },
         pairLedgerDevice = pairLedgerDevice,
         selectWalletAccount = mockk(relaxed = true),
         ledgerPairingRepository = mockk(relaxed = true),

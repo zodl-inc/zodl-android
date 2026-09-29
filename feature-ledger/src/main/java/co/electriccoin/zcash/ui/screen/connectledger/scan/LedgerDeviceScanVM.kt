@@ -477,10 +477,18 @@ class LedgerDeviceScanVM(
 
     private fun onBack() = navigationRouter.back()
 
+    /**
+     * Location being off below API 31 is reported before scanning, as nothing could be found.
+     */
     private fun startScan() {
         pairJob?.cancel()
         pairJob = null
         stopScan()
+        if (observeLedgerDevices.isLocationOffForScan()) {
+            internalState.update { it.copy(canRequestPermissionsAgain = false) }
+            showIssue(LedgerIssue.locationOff)
+            return
+        }
         internalState.update {
             it.copy(
                 phase = LedgerScanPhase.SCANNING,

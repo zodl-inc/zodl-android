@@ -108,6 +108,32 @@ class LedgerDeviceScanVMTest {
         }
 
     @Test
+    fun locationOffBelowApi31ShowsTheBluetoothAccessIssueInsteadOfScanning() =
+        runTest(dispatcher) {
+            val observeLedgerDevices =
+                mockk<ObserveLedgerDevicesUseCase>(relaxed = true) {
+                    every { this@mockk.invoke() } returns devices
+                    every { isLocationOffForScan() } returns true
+                }
+            val vm = vm(observeLedgerDevices = observeLedgerDevices)
+            collect(vm)
+
+            vm.onPermissionsGranted()
+            runCurrent()
+            advanceTimeBy(60.seconds)
+            runCurrent()
+
+            assertFalse(vm.state.value.isScanning)
+            assertSheetTitle(vm, R.string.ledger_error_permissions_title)
+            assertEquals(
+                R.string.ledger_error_permissions_cta,
+                vm.state.value.primaryButton.text
+                    .resourceId()
+            )
+            verify(exactly = 0) { observeLedgerDevices.invoke() }
+        }
+
+    @Test
     fun aSuccessfulPairingLeavesTheScreenRetryableInsteadOfStuckInPairing() =
         runTest(dispatcher) {
             val pairLedgerDevice =
@@ -186,7 +212,7 @@ class LedgerDeviceScanVMTest {
     fun aGenericScanFailureStopsTheTimeoutInsteadOfLettingItFireLater() =
         runTest(dispatcher) {
             val failing =
-                mockk<ObserveLedgerDevicesUseCase> {
+                mockk<ObserveLedgerDevicesUseCase>(relaxed = true) {
                     every { this@mockk.invoke() } returns flow { throw RuntimeException("boom") }
                 }
             val navigateToError = mockk<NavigateToErrorUseCase>(relaxed = true)
@@ -332,7 +358,7 @@ class LedgerDeviceScanVMTest {
     fun bluetoothOffAsksTheSystemToTurnItOnAndScansOnceItIs() =
         runTest(dispatcher) {
             val observeLedgerDevices =
-                mockk<ObserveLedgerDevicesUseCase> {
+                mockk<ObserveLedgerDevicesUseCase>(relaxed = true) {
                     every { this@mockk.invoke() } returnsMany
                         listOf(
                             flow { throw mockk<LedgerException.BluetoothDisabled>(relaxed = true) },
@@ -391,7 +417,7 @@ class LedgerDeviceScanVMTest {
     fun tryAgainAfterARejectedImportAsksTheSameDeviceAgain() =
         runTest(dispatcher) {
             val observeLedgerDevices =
-                mockk<ObserveLedgerDevicesUseCase> {
+                mockk<ObserveLedgerDevicesUseCase>(relaxed = true) {
                     every { this@mockk.invoke() } returns devices
                 }
             val pairLedgerDevice =
@@ -453,7 +479,7 @@ class LedgerDeviceScanVMTest {
     fun tryAgainRestartsTheScanAndGestureDismissDoesNot() =
         runTest(dispatcher) {
             val observeLedgerDevices =
-                mockk<ObserveLedgerDevicesUseCase> {
+                mockk<ObserveLedgerDevicesUseCase>(relaxed = true) {
                     every { this@mockk.invoke() } returns devices
                 }
             val vm = vm(observeLedgerDevices = observeLedgerDevices)
@@ -482,7 +508,7 @@ class LedgerDeviceScanVMTest {
     fun deniedPermissionsShowThePermissionsSheetWithoutScanning() =
         runTest(dispatcher) {
             val observeLedgerDevices =
-                mockk<ObserveLedgerDevicesUseCase> {
+                mockk<ObserveLedgerDevicesUseCase>(relaxed = true) {
                     every { this@mockk.invoke() } returns devices
                 }
             val vm = vm(observeLedgerDevices = observeLedgerDevices)
@@ -571,7 +597,7 @@ class LedgerDeviceScanVMTest {
         runTest(dispatcher) {
             val ledgerPairingRepository = mockk<LedgerPairingRepository>(relaxed = true)
             val observeLedgerDevices =
-                mockk<ObserveLedgerDevicesUseCase> {
+                mockk<ObserveLedgerDevicesUseCase>(relaxed = true) {
                     every { this@mockk.invoke() } returns devices
                 }
             val vm =
@@ -657,7 +683,7 @@ class LedgerDeviceScanVMTest {
 
     private fun CoroutineScope.vm(
         observeLedgerDevices: ObserveLedgerDevicesUseCase =
-            mockk {
+            mockk(relaxed = true) {
                 every { this@mockk.invoke() } returns devices
             },
         pairLedgerDevice: PairLedgerDeviceUseCase = mockk(relaxed = true),

@@ -8,4 +8,9 @@ class ObserveLedgerDevicesUseCase(
     private val ledgerDeviceDataSource: LedgerDeviceDataSource,
 ) {
     operator fun invoke(): Flow<List<LedgerBluetoothDevice>> = ledgerDeviceDataSource.observeDevices()
+
+    /**
+     * Whether a scan cannot find anything because location is off, which only matters below API 31.
+     */
+    fun isLocationOffForScan(): Boolean = ledgerDeviceDataSource.isLocationOffForScan()
 }

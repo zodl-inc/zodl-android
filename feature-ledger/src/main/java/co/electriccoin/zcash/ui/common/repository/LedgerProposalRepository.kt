@@ -349,9 +349,15 @@ class LedgerProposalRepositoryImpl(
     /**
      * Looks for the device; a lone device is connected once the list has settled, several are
      * offered for selection, and so is a lone one after the last session met the wrong Ledger.
-     * Returns null when nothing was found in time, or when the picker stayed empty that long.
+     * Returns null when nothing was found in time, when the picker stayed empty that long, or when
+     * location is off below API 31, where nothing could be found.
      */
     private suspend fun scan(session: Int): LedgerBluetoothDevice? {
+        if (ledgerDeviceDataSource.isLocationOffForScan()) {
+            Twig.info { "Ledger signing: location is off" }
+            publish(session, LedgerSigningState.Failed(LedgerIssue.locationOff))
+            return null
+        }
         Twig.info { "Ledger signing: stage Scanning" }
         publish(session, LedgerSigningState.Scanning)
         val found = MutableStateFlow<List<LedgerBluetoothDevice>>(emptyList())
