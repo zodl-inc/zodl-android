@@ -45,6 +45,7 @@ internal fun LedgerErrorSheet(state: LedgerErrorSheetState?) {
 data class LedgerErrorSheetState(
     @get:DrawableRes
     override val icon: Int,
+    override val isBadge: Boolean,
     override val title: StringResource,
     override val message: StringResource,
     override val primary: ButtonState?,
@@ -56,6 +57,7 @@ data class LedgerErrorSheetState(
         val preview =
             LedgerErrorSheetState(
                 icon = R.drawable.ic_ledger_alert_circle,
+                isBadge = true,
                 title = stringRes("No Devices Found"),
                 message =
                     stringRes(
@@ -70,6 +72,7 @@ data class LedgerErrorSheetState(
         val previewTwoButtons =
             LedgerErrorSheetState(
                 icon = R.drawable.ic_ledger_alert_circle,
+                isBadge = true,
                 title = stringRes("Account Already Added"),
                 message = stringRes("This account is already connected to Zodl."),
                 primary = ButtonState(stringRes("Go to Account")),
@@ -80,6 +83,7 @@ data class LedgerErrorSheetState(
         val previewBluetoothOff =
             LedgerErrorSheetState(
                 icon = R.drawable.ic_ledger_bluetooth_off,
+                isBadge = false,
                 title = stringRes("Bluetooth Off"),
                 message = stringRes("Turn on Bluetooth in Settings to connect to your Ledger."),
                 primary = ButtonState(stringRes("Try again")),
@@ -90,6 +94,7 @@ data class LedgerErrorSheetState(
         val previewUnlock =
             LedgerErrorSheetState(
                 icon = R.drawable.ic_ledger_alert_circle,
+                isBadge = true,
                 title = stringRes("Unlock Your Ledger"),
                 message = stringRes("Unlock your Ledger and open the Zcash app on the device to continue."),
                 primary = ButtonState(stringRes("Try again")),

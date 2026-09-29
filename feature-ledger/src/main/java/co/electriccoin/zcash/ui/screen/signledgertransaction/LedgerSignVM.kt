@@ -241,6 +241,7 @@ class LedgerSignVM(
         canRequestPermissionsAgain: Boolean,
     ) = LedgerSignContent.Issue(
         icon = issue.icon,
+        isBadge = issue.isBadge,
         title = issue.title,
         message = issue.message,
         primary = issuePrimary(issue, canRequestPermissionsAgain),

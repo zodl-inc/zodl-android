@@ -39,7 +39,7 @@ internal fun ColumnScope.LedgerErrorContent(
                 .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        if (state.icon == R.drawable.ic_ledger_alert_circle) {
+        if (state.isBadge) {
             Image(
                 modifier = Modifier.size(44.dp),
                 painter = painterResource(R.drawable.ic_ledger_alert_badge),

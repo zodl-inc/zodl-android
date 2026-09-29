@@ -242,6 +242,7 @@ class LedgerDeviceScanVM(
     private fun issueSheet(internal: LedgerScanInternalState, issue: LedgerIssue) =
         LedgerErrorSheetState(
             icon = issue.icon,
+            isBadge = issue.isBadge,
             title = issue.title,
             message = issue.message,
             primary =
@@ -260,6 +261,7 @@ class LedgerDeviceScanVM(
     private fun alreadyAddedSheet(account: WalletAccount) =
         LedgerErrorSheetState(
             icon = R.drawable.ic_ledger_alert_circle,
+            isBadge = true,
             title = stringRes(R.string.ledger_error_alreadyAdded_title),
             message = stringRes(R.string.ledger_error_alreadyAdded_message),
             primary =

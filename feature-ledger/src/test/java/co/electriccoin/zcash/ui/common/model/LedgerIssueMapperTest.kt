@@ -71,6 +71,15 @@ class LedgerIssueMapperTest {
     }
 
     @Test
+    fun everyKindButTheBluetoothOnesShowsTheWarningBadge() {
+        LedgerIssueKind.entries.forEach { kind ->
+            val expected = kind != LedgerIssueKind.BLUETOOTH_OFF && kind != LedgerIssueKind.BLUETOOTH_UNAVAILABLE
+            assertEquals(expected, kind.isBadge, kind.name)
+            assertEquals(expected, LedgerIssue.unknown.copy(kind = kind).isBadge, kind.name)
+        }
+    }
+
+    @Test
     fun theIssueCarriesTheIconOfItsKind() {
         rows().forEach { row ->
             LedgerIssueContext.entries.forEach { context ->

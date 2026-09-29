@@ -73,6 +73,7 @@ data class LedgerSignSheetState(
                 content =
                     LedgerSignContent.Issue(
                         icon = R.drawable.ic_ledger_alert_circle,
+                        isBadge = true,
                         title = stringRes("Transaction Rejected"),
                         message =
                             stringRes(
@@ -114,6 +115,7 @@ sealed interface LedgerSignContent {
     data class Issue(
         @get:DrawableRes
         override val icon: Int,
+        override val isBadge: Boolean,
         override val title: StringResource,
         override val message: StringResource,
         override val primary: ButtonState?,

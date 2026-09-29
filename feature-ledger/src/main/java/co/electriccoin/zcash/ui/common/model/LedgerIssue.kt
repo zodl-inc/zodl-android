@@ -37,12 +37,17 @@ enum class LedgerIssueRetry {
     NONE,
 }
 
+/**
+ * @param icon the glyph a connect page shows inline for the issue.
+ * @param isBadge whether an error sheet shows the warning badge for the issue instead of [icon].
+ */
 enum class LedgerIssueKind(
-    @get:DrawableRes val icon: Int = R.drawable.ic_ledger_alert_circle
+    @get:DrawableRes val icon: Int = R.drawable.ic_ledger_alert_circle,
+    val isBadge: Boolean = true,
 ) {
     NO_DEVICES,
-    BLUETOOTH_UNAVAILABLE(R.drawable.ic_ledger_bluetooth_off),
-    BLUETOOTH_OFF(R.drawable.ic_ledger_bluetooth_off),
+    BLUETOOTH_UNAVAILABLE(R.drawable.ic_ledger_bluetooth_off, isBadge = false),
+    BLUETOOTH_OFF(R.drawable.ic_ledger_bluetooth_off, isBadge = false),
     PERMISSIONS,
     PAIRING_FAILED,
     LOCKED,
@@ -78,6 +83,9 @@ data class LedgerIssue(
     @get:DrawableRes
     val icon: Int
         get() = kind.icon
+
+    val isBadge: Boolean
+        get() = kind.isBadge
 
     companion object {
         /**
