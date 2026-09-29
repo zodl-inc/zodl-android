@@ -16,15 +16,15 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   in the new Wallets & Hardware picker, on Home and on Receive. Sending, shielding, swapping,
   paying and ZIP-321 payments from a Ledger account now sign on the device over Bluetooth, and tax
   export saves a Ledger account's history as `Ledger_Transaction_History_<year>.csv`; voting and
-  migration do not yet. After you pick your Ledger, an Approve on Your Device screen
-  waits while Zodl connects, opens the Zcash app and asks the Ledger to share the account's viewing
-  key, with Cancel to stop and Retry after a failure. The connect flow explains what to do when
-  Bluetooth is off, the Zcash app on the Ledger is out of date or needs a restart, or the connection
-  fails, and can turn Bluetooth on for you. It tells a failed pairing apart from a Ledger that disconnected during
-  setup, and stops waiting for the device after five minutes. A Ledger account whose pairing is
-  missing or unusable can be paired again from the signing sheet with Pair Ledger; a different Ledger there shows
-  Wrong Ledger instead of adding a second Ledger account. After the wrong Ledger the signing sheet
-  asks you to pick the device instead of reconnecting to the same one.
+  migration do not yet. The connect flow goes one step at a time: turn on and unlock the Ledger,
+  pick it and confirm the Bluetooth pairing code, then open the Zcash app and approve the account
+  export. It explains what to do when Bluetooth is off, the Zcash app on the Ledger is out of date
+  or needs a restart, or the connection fails, and can turn Bluetooth on for you. It tells a failed
+  pairing apart from a Ledger that disconnected during setup, and stops waiting for the device after
+  five minutes. A Ledger account whose pairing is missing or unusable can be paired again from the
+  signing sheet with Pair Ledger; a different Ledger there shows Wrong Ledger instead of adding a
+  second Ledger account. After the wrong Ledger the signing sheet asks you to pick the device
+  instead of reconnecting to the same one.
 
 ### Changed:
 
