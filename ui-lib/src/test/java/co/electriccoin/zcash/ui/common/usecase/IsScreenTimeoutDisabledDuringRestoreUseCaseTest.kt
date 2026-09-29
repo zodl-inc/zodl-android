@@ -17,7 +17,7 @@ import kotlin.test.assertTrue
 
 /**
  * MOB-2041: the screen stays on for the sync the Keep Zodl Open screen announced, including a
- * hardware-wallet import that never enters a restoring state, and is released once the wallet is synced.
+ * hardware-wallet import that never enters a restoring state, and is released once no sync is running.
  */
 class IsScreenTimeoutDisabledDuringRestoreUseCaseTest {
     private val restoringState = MutableStateFlow(WalletRestoringState.SYNCING)
@@ -60,6 +60,21 @@ class IsScreenTimeoutDisabledDuringRestoreUseCaseTest {
             statusFlow.value = Synchronizer.Status.SYNCED
 
             assertFalse(isDisabled())
+        }
+
+    @Test
+    fun anActiveSessionReleasesTheScreenOnceTheSyncStopsShortOfSynced() =
+        runTest {
+            syncSession.value = true
+
+            statusFlow.value = Synchronizer.Status.DISCONNECTED
+            assertFalse(isDisabled())
+
+            statusFlow.value = Synchronizer.Status.STOPPED
+            assertFalse(isDisabled())
+
+            statusFlow.value = Synchronizer.Status.SYNCING
+            assertTrue(isDisabled())
         }
 
     @Test

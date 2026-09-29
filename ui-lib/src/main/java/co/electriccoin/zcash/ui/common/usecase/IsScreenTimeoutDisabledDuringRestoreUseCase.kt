@@ -20,7 +20,9 @@ import kotlinx.coroutines.flow.flowOf
  * The request is the [KeepScreenOnSyncSessionProvider] session, which covers a restore, a resync and a
  * hardware-wallet account import alike. A wallet restored before that session existed still counts
  * through the remembered answer and its restoring state. Either way the screen is released as soon as
- * the synchronizer reports [Synchronizer.Status.SYNCED].
+ * no sync is running: the synchronizer reports [Synchronizer.Status.SYNCED], or the sync stopped short
+ * of it as [Synchronizer.Status.DISCONNECTED] or [Synchronizer.Status.STOPPED]. It is held again if a
+ * sync resumes while the session is still active.
  */
 class IsScreenTimeoutDisabledDuringRestoreUseCase(
     private val walletRepository: WalletRepository,
@@ -38,7 +40,7 @@ class IsScreenTimeoutDisabledDuringRestoreUseCase(
             val isRequested =
                 isSessionActive == true ||
                     (isKeepScreenOnDuringRestore == true && restoringState in KEEP_OPEN_STATES)
-            isRequested && status != Synchronizer.Status.SYNCED
+            isRequested && status !in RELEASING_STATUSES
         }.distinctUntilChanged()
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -47,5 +49,8 @@ class IsScreenTimeoutDisabledDuringRestoreUseCase(
 
     companion object {
         private val KEEP_OPEN_STATES = listOf(WalletRestoringState.RESTORING, WalletRestoringState.RESYNCING)
+
+        private val RELEASING_STATUSES =
+            listOf(Synchronizer.Status.SYNCED, Synchronizer.Status.DISCONNECTED, Synchronizer.Status.STOPPED)
     }
 }
