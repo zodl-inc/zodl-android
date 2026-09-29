@@ -10,7 +10,7 @@
     <string name="ledger_connect_subtitle">Sigue estos pasos para vincular tu Ledger por Bluetooth.</string>
     <string name="ledger_connect_instructions">Instrucciones:</string>
     <string name="ledger_connect_step1">Desbloquea tu dispositivo Ledger</string>
-    <string name="ledger_connect_step2">Instala y abre la aplicación Zcash</string>
+    <string name="ledger_connect_step2">Instala la aplicación Zcash. Zodl la abre por ti; confírmalo en el dispositivo</string>
     <string name="ledger_connect_step3">Activa el Bluetooth</string>
     <string name="ledger_connect_step4">Confirma el dispositivo Ledger</string>
     <string name="ledger_connect_step5">Verifica el código de vinculación Bluetooth</string>
