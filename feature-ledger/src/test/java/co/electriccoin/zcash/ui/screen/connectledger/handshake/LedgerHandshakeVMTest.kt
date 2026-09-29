@@ -165,7 +165,10 @@ class LedgerHandshakeVMTest {
                 val sheet = assertNotNull(vm.state.value.errorSheet)
                 assertEquals(expectedTitle, sheet.title.resourceId())
                 assertFalse(vm.state.value.isConnecting)
-                assertEquals(expectedTitle, assertNotNull(vm.state.value.inlineIssue).title.resourceId())
+                assertEquals(
+                    INLINE_TITLES[expectedTitle] ?: expectedTitle,
+                    assertNotNull(vm.state.value.inlineIssue).title.resourceId()
+                )
             }
         }
 
@@ -378,6 +381,25 @@ class LedgerHandshakeVMTest {
         }
 
     @Test
+    fun thePageWordsItsIssuesLikeTheFigmaWaitingIndicator() =
+        runTest(dispatcher) {
+            val bluetoothOff =
+                assertNotNull(
+                    failingWith(mockk<LedgerException.BluetoothDisabled>(relaxed = true)).state.value.inlineIssue
+                )
+            assertEquals(R.drawable.ic_ledger_bluetooth_off, bluetoothOff.icon)
+            assertEquals(R.string.ledger_error_bluetoothOff_message, bluetoothOff.message.resourceId())
+
+            val unknown =
+                assertNotNull(failingWith(mockk<LedgerException.CapsMismatch>(relaxed = true)).state.value.inlineIssue)
+            assertEquals(R.string.ledger_error_unknown_inlineMessage, unknown.message.resourceId())
+
+            val locked =
+                assertNotNull(failingWith(mockk<LedgerException.WrongApp>(relaxed = true)).state.value.inlineIssue)
+            assertEquals(R.string.ledger_error_locked_message, locked.message.resourceId())
+        }
+
+    @Test
     fun aResumeWhileTheHandshakeRunsDoesNotStartASecondOne() =
         runTest(dispatcher) {
             val pending = CompletableDeferred<PairLedgerDeviceResult>()
@@ -540,3 +562,12 @@ class LedgerHandshakeVMTest {
 }
 
 private const val WRONG_APP_STATUS = 0x6E00
+
+/**
+ * The sheet titles whose issue the page words differently, per the Figma "Waiting Indicator".
+ */
+private val INLINE_TITLES =
+    mapOf(
+        R.string.ledger_error_bluetoothOff_title to R.string.ledger_error_bluetoothOff_inlineTitle,
+        R.string.ledger_error_permissions_title to R.string.ledger_error_permissions_inlineTitle,
+    )

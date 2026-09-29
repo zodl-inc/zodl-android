@@ -116,7 +116,7 @@ class LedgerHandshakeVM(
             }
 
             issue != null -> {
-                LedgerInlineIssueState(issue.icon, issue.title, issue.message)
+                LedgerInlineIssueState(issue.inlineIcon, issue.inlineTitle, issue.inlineMessage)
             }
 
             else -> {

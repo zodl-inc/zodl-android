@@ -54,7 +54,7 @@ data class LedgerHandshakeState(
                 title = stringRes("Connect your Ledger"),
                 isConnecting = false,
                 inlineIssue =
-                    LedgerInlineIssueState.preview.copy(
+                    LedgerInlineIssueState.previewNoDevices.copy(
                         title = stringRes("Unlock Your Ledger"),
                         message =
                             stringRes("Unlock your Ledger and open the Zcash app on the device to continue."),
@@ -66,7 +66,7 @@ data class LedgerHandshakeState(
         val previewAlreadyAdded =
             previewError.copy(
                 inlineIssue =
-                    LedgerInlineIssueState.preview.copy(
+                    LedgerInlineIssueState.previewNoDevices.copy(
                         title = stringRes("Account Already Added"),
                         message = stringRes("This account is already connected to Zodl."),
                     ),

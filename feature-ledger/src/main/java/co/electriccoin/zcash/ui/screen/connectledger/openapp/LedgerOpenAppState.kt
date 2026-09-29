@@ -57,7 +57,7 @@ data class LedgerOpenAppState(
         val previewDeclined =
             preview.copy(
                 inlineIssue =
-                    LedgerInlineIssueState.preview.copy(
+                    LedgerInlineIssueState.previewNoDevices.copy(
                         title = declinedTitle,
                         message = declinedMessage,
                     ),

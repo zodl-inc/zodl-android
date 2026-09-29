@@ -85,7 +85,7 @@ class LedgerOpenAppVM(
         val sheets = issueSheets(internal)
         val issue = internal.issue
         return LedgerOpenAppState(
-            inlineIssue = issue?.let { LedgerInlineIssueState(it.icon, it.title, it.message) },
+            inlineIssue = issue?.let { LedgerInlineIssueState(it.inlineIcon, it.inlineTitle, it.inlineMessage) },
             primaryButton = createPrimaryButton(internal, sheets),
             errorSheet = if (internal.isSheetShown && issue != null) sheets.sheet(issue) else null,
             permissionRequestNonce = internal.permissionRequestNonce,

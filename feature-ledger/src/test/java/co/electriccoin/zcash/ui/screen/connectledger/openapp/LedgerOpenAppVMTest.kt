@@ -359,6 +359,36 @@ class LedgerOpenAppVMTest {
             coVerify(exactly = 2) { openLedgerZcashApp.invoke() }
         }
 
+    @Test
+    fun thePageWordsItsIssuesLikeTheFigmaWaitingIndicator() =
+        runTest(dispatcher) {
+            val pending = CompletableDeferred<OpenLedgerZcashAppResult>()
+            val openLedgerZcashApp =
+                mockk<OpenLedgerZcashAppUseCase> {
+                    coEvery { this@mockk.invoke() } coAnswers { pending.await() }
+                }
+            val denied = vm(openLedgerZcashApp = openLedgerZcashApp)
+            collect(denied)
+            runCurrent()
+            denied.onPermissionsDenied(true)
+            runCurrent()
+            val permissions = assertNotNull(denied.state.value.inlineIssue)
+            assertEquals(R.drawable.ic_ledger_bluetooth_on, permissions.icon)
+            assertEquals(R.string.ledger_error_permissions_inlineTitle, permissions.title.resourceId())
+            assertEquals(R.string.ledger_error_permissions_inlineMessage, permissions.message.resourceId())
+
+            val unknown =
+                assertNotNull(failingWith(mockk<LedgerException.CapsMismatch>(relaxed = true)).state.value.inlineIssue)
+            assertEquals(R.string.ledger_error_unknown_title, unknown.title.resourceId())
+            assertEquals(R.string.ledger_error_unknown_inlineMessage, unknown.message.resourceId())
+
+            val declined =
+                assertNotNull(
+                    failingWith(mockk<LedgerException.AppOpenRejected>(relaxed = true)).state.value.inlineIssue
+                )
+            assertEquals(R.string.ledger_error_openAppRejected_message, declined.message.resourceId())
+        }
+
     private fun openingWith(result: OpenLedgerZcashAppResult) =
         mockk<OpenLedgerZcashAppUseCase> {
             coEvery { this@mockk.invoke() } returns result
