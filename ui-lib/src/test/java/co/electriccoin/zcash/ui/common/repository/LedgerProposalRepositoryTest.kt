@@ -543,6 +543,161 @@ class LedgerProposalRepositoryTest {
             assertEquals(2, signCalls)
         }
 
+    @Test
+    fun afterTheWrongLedgerTheRescanOffersThePickerEvenForALoneDevice() =
+        runTest(dispatcher) {
+            givenPczt(ledgerAccount())
+            runCurrent()
+            var linked = false
+            every { ledgerSigningDataSource.isLinked } answers { linked }
+            coEvery { ledgerSigningDataSource.connect(any()) } answers { linked = true }
+            var signCalls = 0
+            val signed = Pczt(byteArrayOf(5))
+            val mismatch = mockk<LedgerException.DeviceMismatch>(relaxed = true)
+            coEvery { ledgerSigningDataSource.sign(any(), any(), any()) } coAnswers {
+                signCalls++
+                linked = false
+                if (signCalls == 1) throw mismatch else signed
+            }
+
+            devices.value = listOf(device("AA"))
+            repository.startSigning()
+            runCurrent()
+            advanceTimeBy(1.seconds)
+            runCurrent()
+
+            val failed = repository.signingState.value
+            assertTrue(failed is LedgerSigningState.Failed)
+            assertEquals(LedgerIssueKind.WRONG_DEVICE, failed.issue.kind)
+
+            repository.retry()
+            runCurrent()
+            advanceTimeBy(1.seconds)
+            runCurrent()
+
+            val selecting = repository.signingState.value
+            assertTrue(selecting is LedgerSigningState.Selecting)
+            assertEquals(1, selecting.devices.size)
+            assertNull(selecting.selectedIdentifier)
+            coVerify(exactly = 1) { ledgerSigningDataSource.connect(any()) }
+
+            repository.selectDevice("AA")
+            runCurrent()
+
+            assertEquals(LedgerSigningState.Signed, repository.signingState.value)
+            coVerify(exactly = 2) { ledgerSigningDataSource.connect(any()) }
+
+            repository.cancelSigning()
+            runCurrent()
+            repository.startSigning()
+            runCurrent()
+            advanceTimeBy(1.seconds)
+            runCurrent()
+
+            assertEquals(LedgerSigningState.Signed, repository.signingState.value)
+            coVerify(exactly = 3) { ledgerSigningDataSource.connect(any()) }
+        }
+
+    @Test
+    fun aPickerThatStaysEmptyForTheScanTimeoutFailsWithNoDevices() =
+        runTest(dispatcher) {
+            givenPczt(ledgerAccount())
+            runCurrent()
+
+            devices.value = listOf(device("AA"), device("BB"))
+            repository.startSigning()
+            runCurrent()
+            advanceTimeBy(1.seconds)
+            runCurrent()
+            assertTrue(repository.signingState.value is LedgerSigningState.Selecting)
+
+            devices.value = emptyList()
+            runCurrent()
+            advanceTimeBy(19.seconds)
+            runCurrent()
+
+            val stillSelecting = repository.signingState.value
+            assertTrue(stillSelecting is LedgerSigningState.Selecting)
+            assertEquals(0, stillSelecting.devices.size)
+
+            advanceTimeBy(2.seconds)
+            runCurrent()
+
+            val failed = repository.signingState.value
+            assertTrue(failed is LedgerSigningState.Failed)
+            assertEquals(LedgerIssueKind.NO_DEVICES, failed.issue.kind)
+            assertEquals(LedgerIssueRetry.RECONNECT, failed.issue.retry)
+            coVerify(exactly = 0) { ledgerSigningDataSource.connect(any()) }
+        }
+
+    @Test
+    fun aDeviceReturningToAnEmptiedPickerKeepsItOpen() =
+        runTest(dispatcher) {
+            givenPczt(ledgerAccount())
+            runCurrent()
+
+            devices.value = listOf(device("AA"), device("BB"))
+            repository.startSigning()
+            runCurrent()
+            advanceTimeBy(1.seconds)
+            runCurrent()
+
+            devices.value = emptyList()
+            runCurrent()
+            advanceTimeBy(10.seconds)
+            devices.value = listOf(device("AA"))
+            runCurrent()
+            advanceTimeBy(30.seconds)
+            runCurrent()
+
+            assertTrue(repository.signingState.value is LedgerSigningState.Selecting)
+        }
+
+    @Test
+    fun aSignedSessionWithoutAProposalFailsWithoutARetry() =
+        runTest(dispatcher) {
+            givenPczt(ledgerAccount())
+            runCurrent()
+            every { ledgerSigningDataSource.isLinked } returns true
+            coEvery { ledgerSigningDataSource.sign(any(), any(), any()) } returns Pczt(byteArrayOf(5))
+            repository.startSigning()
+            runCurrent()
+            assertEquals(LedgerSigningState.Signed, repository.signingState.value)
+
+            repository.failSignedSessionWithoutProposal()
+
+            val failed = repository.signingState.value
+            assertTrue(failed is LedgerSigningState.Failed)
+            assertEquals(LedgerIssueKind.UNKNOWN, failed.issue.kind)
+            assertEquals(LedgerIssueRetry.NONE, failed.issue.retry)
+        }
+
+    @Test
+    fun failingASessionThatIsNotSignedChangesNothing() =
+        runTest(dispatcher) {
+            givenPczt(ledgerAccount())
+            runCurrent()
+            repository.startSigning()
+            runCurrent()
+            assertEquals(LedgerSigningState.Scanning, repository.signingState.value)
+
+            repository.failSignedSessionWithoutProposal()
+
+            assertEquals(LedgerSigningState.Scanning, repository.signingState.value)
+        }
+
+    @Test
+    fun signingWithoutAPcztFailsWithoutARetry() =
+        runTest(dispatcher) {
+            repository.startSigning()
+            runCurrent()
+
+            val failed = repository.signingState.value
+            assertTrue(failed is LedgerSigningState.Failed)
+            assertEquals(LedgerIssueKind.UNKNOWN, failed.issue.kind)
+            assertEquals(LedgerIssueRetry.NONE, failed.issue.retry)
+        }
+
     private suspend fun givenPczt(
         account: LedgerAccount,
         pczt: Pczt = Pczt(byteArrayOf(1)),

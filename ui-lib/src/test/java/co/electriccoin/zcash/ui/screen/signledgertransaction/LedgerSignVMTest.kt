@@ -18,10 +18,12 @@ import co.electriccoin.zcash.ui.common.usecase.StartLedgerSigningUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitLedgerProposalUseCase
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectArgs
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import io.mockk.verifyOrder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,6 +41,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -311,7 +314,6 @@ class LedgerSignVMTest {
             listOf(
                 LedgerIssueKind.BLUETOOTH_UNAVAILABLE,
                 LedgerIssueKind.NOT_SIGNABLE,
-                LedgerIssueKind.UNBOUND,
             ).forEach { kind ->
                 val signingState =
                     MutableStateFlow<LedgerSigningState?>(
@@ -324,6 +326,92 @@ class LedgerSignVMTest {
                 val content = vm.state.value?.content as LedgerSignContent.Issue
                 assertNull(content.primary, kind.name)
             }
+        }
+
+    @Test
+    fun anIssueThatCannotBeRetriedOffersNoTryAgainWhateverItsKind() =
+        runTest(dispatcher) {
+            listOf(
+                LedgerIssueKind.UNKNOWN,
+                LedgerIssueKind.PAIRING_FAILED,
+                LedgerIssueKind.DISCONNECTED,
+                LedgerIssueKind.LOCKED,
+            ).forEach { kind ->
+                val signingState =
+                    MutableStateFlow<LedgerSigningState?>(
+                        LedgerSigningState.Failed(issue(kind, LedgerIssueRetry.NONE))
+                    )
+                val vm = vm(signingState = signingState)
+                collect(vm)
+                runCurrent()
+
+                val content = vm.state.value?.content as LedgerSignContent.Issue
+                assertNull(content.primary, kind.name)
+                assertTrue(
+                    vm.state.value
+                        ?.cancelButton
+                        ?.isEnabled == true,
+                    kind.name
+                )
+            }
+        }
+
+    @Test
+    fun theSignedSessionWithoutAProposalLeavesOnlyCancel() =
+        runTest(dispatcher) {
+            val signingState =
+                MutableStateFlow<LedgerSigningState?>(LedgerSigningState.Failed(LedgerIssue.unknownWithoutRetry))
+            val vm = vm(signingState = signingState)
+            collect(vm)
+            runCurrent()
+
+            val content = vm.state.value?.content as LedgerSignContent.Issue
+            assertNull(content.primary)
+            assertEquals(
+                R.string.ledger_sign_cancel,
+                vm.state.value
+                    ?.cancelButton
+                    ?.text
+                    ?.resourceId()
+            )
+            assertTrue(
+                vm.state.value
+                    ?.cancelButton
+                    ?.isEnabled == true
+            )
+        }
+
+    @Test
+    fun anUnpairedAccountOffersPairLedgerWhichCancelsAndOpensTheConnectFlow() =
+        runTest(dispatcher) {
+            val cancelLedgerSigning = mockk<CancelLedgerSigningUseCase>(relaxed = true)
+            val retryLedgerSigning = mockk<RetryLedgerSigningUseCase>(relaxed = true)
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+            val signingState = MutableStateFlow<LedgerSigningState?>(LedgerSigningState.Failed(LedgerIssue.unbound))
+            val vm =
+                vm(
+                    signingState = signingState,
+                    retryLedgerSigning = retryLedgerSigning,
+                    cancelLedgerSigning = cancelLedgerSigning,
+                    navigationRouter = navigationRouter,
+                )
+            collect(vm)
+            runCurrent()
+
+            val content = vm.state.value?.content as LedgerSignContent.Issue
+            assertEquals(R.string.ledger_sign_error_unbound_title, content.title.resourceId())
+            assertEquals(R.string.ledger_sign_error_unbound_message, content.message.resourceId())
+            val primary = assertNotNull(content.primary)
+            assertEquals(R.string.ledger_sign_error_unbound_cta, primary.text.resourceId())
+
+            primary.onClick()
+            runCurrent()
+
+            verifyOrder {
+                cancelLedgerSigning.invoke()
+                navigationRouter.forward(LedgerConnectArgs)
+            }
+            verify(exactly = 0) { retryLedgerSigning.invoke() }
         }
 
     @Test

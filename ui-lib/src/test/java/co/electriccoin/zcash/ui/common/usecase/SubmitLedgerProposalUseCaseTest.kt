@@ -59,7 +59,7 @@ class SubmitLedgerProposalUseCaseTest {
         }
 
     @Test
-    fun anEmptyRepositoryReturnsWithoutSubmitting() =
+    fun anEmptyRepositoryFailsTheSessionInsteadOfSubmitting() =
         runTest {
             val fx = useCase()
             every { fx.ledgerProposalRepository.transactionProposal } returns MutableStateFlow(null)
@@ -69,6 +69,7 @@ class SubmitLedgerProposalUseCaseTest {
             coVerify(exactly = 0) { fx.ledgerProposalRepository.getTransactionProposal() }
             coVerify(exactly = 0) { fx.ledgerProposalRepository.submit() }
             verify(exactly = 0) { fx.navigationRouter.replaceAll(*anyVararg()) }
+            verify(exactly = 1) { fx.ledgerProposalRepository.failSignedSessionWithoutProposal() }
         }
 
     @Test

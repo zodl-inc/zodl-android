@@ -27,10 +27,16 @@ class SubmitLedgerProposalUseCase(
 
     /**
      * Submits the proposal the device has signed and replaces the whole back stack with the
-     * Transaction Progress screen. An empty repository leaves nothing to submit.
+     * Transaction Progress screen. An empty repository leaves nothing to submit, so the session
+     * fails instead of staying on its signed state with Cancel disabled.
      */
     suspend operator fun invoke() {
-        val proposal = ledgerProposalRepository.transactionProposal.value ?: return
+        val proposal = ledgerProposalRepository.transactionProposal.value
+        if (proposal == null) {
+            Twig.warn { "Ledger signing: signed without a proposal to submit" }
+            ledgerProposalRepository.failSignedSessionWithoutProposal()
+            return
+        }
         swapRepository.clear()
         submitLedgerProposal(proposal)
         navigationRouter.replaceAll(TransactionProgressArgs)

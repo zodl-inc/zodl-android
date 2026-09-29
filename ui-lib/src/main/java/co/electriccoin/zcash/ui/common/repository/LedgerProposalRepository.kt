@@ -42,12 +42,14 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.selects.select
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -116,6 +118,12 @@ interface LedgerProposalRepository {
      */
     fun cancelSigning()
 
+    /**
+     * Fails a session that reached [LedgerSigningState.Signed] but has no proposal left to submit,
+     * with an issue that offers no retry, so the sheet leaves Cancel Transaction as the way out.
+     */
+    fun failSignedSessionWithoutProposal()
+
     suspend fun submit(): SubmitResult
 
     fun clear()
@@ -174,6 +182,13 @@ class LedgerProposalRepositoryImpl(
 
     @Volatile
     private var lastSelectedIdentifier: String? = null
+
+    /**
+     * Set when the last session connected to a Ledger other than the account's; the next scan then
+     * offers the picker even for a lone device instead of reconnecting to the same wrong one.
+     */
+    @Volatile
+    private var isPickerRequired = false
 
     override suspend fun createProposal(zecSend: ZecSend) {
         createProposalInternal {
@@ -265,7 +280,7 @@ class LedgerProposalRepositoryImpl(
         val pczt = proposalPczt
         if (pczt == null) {
             Twig.warn { "Ledger signing: no PCZT to sign" }
-            signingState.update { LedgerSigningState.Failed(LedgerIssue.unknown) }
+            signingState.update { LedgerSigningState.Failed(LedgerIssue.unknownWithoutRetry) }
             return
         }
         val pendingClose = closeJob
@@ -307,9 +322,12 @@ class LedgerProposalRepositoryImpl(
             sign(session, pczt, account)
         } catch (e: CancellationException) {
             throw e
+        } catch (e: LedgerException.DeviceMismatch) {
+            isPickerRequired = true
+            lastSelectedIdentifier = null
+            publishLedgerFailure(session, e)
         } catch (e: LedgerException) {
-            Twig.warn { "Ledger signing: session failed with ${e.javaClass.simpleName}" }
-            publish(session, LedgerSigningState.Failed(e.toLedgerIssue(LedgerIssueContext.SIGNING)))
+            publishLedgerFailure(session, e)
         } catch (e: LedgerLinkMissingException) {
             Twig.warn { "Ledger signing: session failed with ${e.javaClass.simpleName}" }
             publish(session, LedgerSigningState.Failed(LedgerIssue.disconnectedWhileSigning))
@@ -322,9 +340,18 @@ class LedgerProposalRepositoryImpl(
         }
     }
 
+    private fun publishLedgerFailure(
+        session: Int,
+        e: LedgerException
+    ) {
+        Twig.warn { "Ledger signing: session failed with ${e.javaClass.simpleName}" }
+        publish(session, LedgerSigningState.Failed(e.toLedgerIssue(LedgerIssueContext.SIGNING)))
+    }
+
     /**
      * Looks for the device; a lone device is connected once the list has settled, several are
-     * offered for selection. Returns null when nothing was found in time.
+     * offered for selection, and so is a lone one after the last session met the wrong Ledger.
+     * Returns null when nothing was found in time, or when the picker stayed empty that long.
      */
     private suspend fun scan(session: Int): LedgerBluetoothDevice? {
         Twig.info { "Ledger signing: stage Scanning" }
@@ -353,12 +380,16 @@ class LedgerProposalRepositoryImpl(
                 return@coroutineScope null
             }
             val device =
-                if (settled.size == 1) {
+                if (settled.size == 1 && !isPickerRequired) {
                     settled.single()
                 } else {
                     awaitSelection(session, found)
                 }
             collector.cancel()
+            if (device == null) {
+                Twig.info { "Ledger signing: no device left to select" }
+                publish(session, LedgerSigningState.Failed(LedgerIssue.noDevices))
+            }
             device
         }
     }
@@ -401,10 +432,14 @@ class LedgerProposalRepositoryImpl(
         }
     }
 
+    /**
+     * Waits for the user to pick a device. Returns null once the list has stayed empty for the scan
+     * timeout, as a scan that finds nothing would.
+     */
     private suspend fun awaitSelection(
         session: Int,
         found: StateFlow<List<LedgerBluetoothDevice>>
-    ): LedgerBluetoothDevice {
+    ): LedgerBluetoothDevice? {
         val devices = found.value
         Twig.info { "Ledger signing: stage Selecting" }
         publish(
@@ -417,15 +452,37 @@ class LedgerProposalRepositoryImpl(
                     }
             )
         )
-        var device: LedgerBluetoothDevice? = null
-        while (device == null) {
-            val picked = CompletableDeferred<String>()
-            selection = picked
-            val identifier = picked.await()
-            device = found.value.firstOrNull { it.identifier == identifier }
-        }
+        val device =
+            coroutineScope {
+                val emptied = CompletableDeferred<Unit>()
+                val emptyTimer =
+                    launch {
+                        found.collectLatest { current ->
+                            if (current.isEmpty()) {
+                                delay(SCAN_TIMEOUT)
+                                emptied.complete(Unit)
+                            }
+                        }
+                    }
+                var picked: LedgerBluetoothDevice? = null
+                while (picked == null && !emptied.isCompleted) {
+                    val choice = CompletableDeferred<String>()
+                    selection = choice
+                    val identifier =
+                        select<String?> {
+                            choice.onAwait { it }
+                            emptied.onAwait { null }
+                        }
+                    picked = identifier?.let { id -> found.value.firstOrNull { it.identifier == id } }
+                }
+                emptyTimer.cancel()
+                picked
+            }
         selection = null
-        lastSelectedIdentifier = device.identifier
+        if (device != null) {
+            lastSelectedIdentifier = device.identifier
+            isPickerRequired = false
+        }
         return device
     }
 
@@ -480,6 +537,14 @@ class LedgerProposalRepositoryImpl(
             }
     }
 
+    override fun failSignedSessionWithoutProposal() {
+        synchronized(lock) {
+            if (signingState.value == LedgerSigningState.Signed) {
+                signingState.value = LedgerSigningState.Failed(LedgerIssue.unknownWithoutRetry)
+            }
+        }
+    }
+
     @Suppress("UseCheckOrError", "ThrowingExceptionsWithoutMessageOrCause", "TooGenericExceptionCaught")
     override suspend fun submit(): SubmitResult =
         scope
@@ -526,6 +591,7 @@ class LedgerProposalRepositoryImpl(
     override fun clear() {
         cancelSigning()
         lastSelectedIdentifier = null
+        isPickerRequired = false
 
         pcztWithProofsJob?.cancel()
         pcztWithProofsJob = null

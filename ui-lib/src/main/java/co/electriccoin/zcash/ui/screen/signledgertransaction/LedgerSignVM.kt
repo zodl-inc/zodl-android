@@ -9,6 +9,7 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.LedgerIssue
 import co.electriccoin.zcash.ui.common.model.LedgerIssueKind
+import co.electriccoin.zcash.ui.common.model.LedgerIssueRetry
 import co.electriccoin.zcash.ui.common.model.LedgerSigningState
 import co.electriccoin.zcash.ui.common.usecase.CancelLedgerSigningUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerSigningStateUseCase
@@ -20,6 +21,7 @@ import co.electriccoin.zcash.ui.common.usecase.SubmitLedgerProposalUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceItemState
+import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectArgs
 import co.electriccoin.zcash.ui.util.SettingsUtil
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -240,19 +242,21 @@ class LedgerSignVM(
         icon = issue.icon,
         title = issue.title,
         message = issue.message,
-        primary = issuePrimary(issue.kind, canRequestPermissionsAgain),
+        primary = issuePrimary(issue, canRequestPermissionsAgain),
     )
 
     /**
      * A permission the system can still ask for is requested again in-app; one denied for good
-     * only Settings can grant. Bluetooth that is off is turned on through the system dialog. Kinds
-     * nothing in the app can fix leave Cancel Transaction as the only way on.
+     * only Settings can grant. Bluetooth that is off is turned on through the system dialog. An
+     * account without a Ledger pairing is paired again through the connect flow. Kinds nothing in
+     * the app can fix, and every issue that trying again cannot fix, leave Cancel Transaction as
+     * the only way on.
      */
     private fun issuePrimary(
-        kind: LedgerIssueKind,
+        issue: LedgerIssue,
         canRequestPermissionsAgain: Boolean,
     ): ButtonState? =
-        when (kind) {
+        when (issue.kind) {
             LedgerIssueKind.PERMISSIONS -> {
                 if (canRequestPermissionsAgain) {
                     tryAgain(::onRequestPermissionsAgainClick)
@@ -268,14 +272,20 @@ class LedgerSignVM(
                 tryAgain(::onEnableBluetoothClick)
             }
 
-            LedgerIssueKind.BLUETOOTH_UNAVAILABLE,
-            LedgerIssueKind.NOT_SIGNABLE,
             LedgerIssueKind.UNBOUND -> {
+                ButtonState(
+                    text = stringRes(R.string.ledger_sign_error_unbound_cta),
+                    onClick = ::onPairLedgerClick,
+                )
+            }
+
+            LedgerIssueKind.BLUETOOTH_UNAVAILABLE,
+            LedgerIssueKind.NOT_SIGNABLE -> {
                 null
             }
 
             else -> {
-                tryAgain(::onTryAgainClick)
+                if (issue.retry == LedgerIssueRetry.NONE) null else tryAgain(::onTryAgainClick)
             }
         }
 
@@ -317,6 +327,15 @@ class LedgerSignVM(
     }
 
     private fun onCancelClick() = cancelLedgerSigning()
+
+    /**
+     * Ends the session the way Cancel does, then opens the Ledger connect flow, which stores the
+     * pairing with the account.
+     */
+    private fun onPairLedgerClick() {
+        cancelLedgerSigning()
+        navigationRouter.forward(LedgerConnectArgs)
+    }
 }
 
 private data class PermissionDenial(
