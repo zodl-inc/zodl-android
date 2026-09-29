@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <resources>
 
-    <!-- Ledger connect steps. Placeholder copy until Pablo's design for the step-by-step flow lands. -->
+    <!-- Ledger connect steps -->
     <string name="ledger_step_badge">Paso %1$d de %2$d</string>
-    <string name="ledger_intro_title">Conecta tu Ledger</string>
     <string name="ledger_intro_message">Te guiaremos paso a paso para vincular tu Ledger con Zodl por Bluetooth. Esto es lo que te pediremos:</string>
     <string name="ledger_intro_step1_title">Enciende y desbloquea tu Ledger.</string>
     <string name="ledger_intro_step1_message">Por ahora, déjalo en su pantalla de inicio.</string>
@@ -29,7 +28,6 @@
     <string name="ledger_openApp_check1">Confirma la apertura de la aplicación Zcash en tu Ledger</string>
     <string name="ledger_openApp_check2">¿Aún no la tienes? Instálala desde Mi Ledger en Ledger Live</string>
     <string name="ledger_openApp_check3">Mantén la aplicación abierta hasta terminar la configuración</string>
-    <string name="ledger_handshake_title">Aprueba en tu Ledger</string>
     <string name="ledger_handshake_message">Zodl se está conectando a la aplicación Zcash. Cuando tu Ledger te pida exportar tu cuenta, revisa la solicitud y apruébala.</string>
     <string name="ledger_handshake_callout_title">Tu frase de recuperación está a salvo</string>
     <string name="ledger_handshake_callout_message">Tu frase de recuperación nunca sale de tu Ledger. Zodl solo recibe lo necesario para mostrar tu saldo y preparar transacciones.</string>

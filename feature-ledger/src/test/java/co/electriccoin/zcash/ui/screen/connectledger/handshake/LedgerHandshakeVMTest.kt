@@ -44,6 +44,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import co.electriccoin.zcash.ui.R as UiR
 
 /**
  * The handshake screen asks the device the scan screen bonded with for its account as soon as it
@@ -107,7 +108,7 @@ class LedgerHandshakeVMTest {
 
             val state = vm.state.value
             assertTrue(state.isConnecting)
-            assertEquals(R.string.ledger_handshake_title, state.title.resourceId())
+            assertEquals(UiR.string.ledger_confirm, state.title.resourceId())
             assertEquals(R.string.ledger_handshake_message, state.message.resourceId())
             assertNull(state.primaryButton)
             assertNull(state.inlineIssue)

@@ -41,6 +41,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import co.electriccoin.zcash.ui.R as UiR
 
 /**
  * Asks the Ledger the scan screen bonded with for its account, over a fresh link, once the user
@@ -88,7 +89,7 @@ class LedgerHandshakeVM(
         return LedgerHandshakeState(
             title =
                 if (isConnecting) {
-                    stringRes(R.string.ledger_handshake_title)
+                    stringRes(UiR.string.ledger_confirm)
                 } else {
                     stringRes(R.string.ledger_scan_idle_title)
                 },

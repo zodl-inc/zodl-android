@@ -21,7 +21,7 @@ fun LedgerConnectView(state: LedgerConnectState) {
     LedgerStepLayout(
         navigationAction = { ZashiTopAppBarCloseNavigation(state.onBackClick) },
         step = null,
-        title = stringResource(R.string.ledger_intro_title),
+        title = stringResource(R.string.ledger_scan_idle_title),
         description = stringResource(R.string.ledger_intro_message),
         bottomButton = {
             ZashiButton(
