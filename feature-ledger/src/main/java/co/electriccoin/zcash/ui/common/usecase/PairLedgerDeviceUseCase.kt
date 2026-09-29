@@ -18,8 +18,9 @@ import co.electriccoin.zcash.ui.common.repository.LedgerRepairTargetRepository
  * the wallet holds without a Ledger binding gets the new pairing's binding stored instead, so it can
  * be signed for again.
  *
- * When the flow pairs an account again ([LedgerRepairTargetRepository] holds its UUID), a Ledger
- * that exports any other viewing key is the wrong Ledger. The wallet holds one Ledger account
+ * When the flow pairs an account again ([LedgerRepairTargetRepository] holds its UUID), the pairing
+ * is stored with that account whatever binding it had, since the one it had may be unusable, and a
+ * Ledger that exports any other viewing key is the wrong Ledger. The wallet holds one Ledger account
  * at most, so a viewing key no Ledger account has while another one exists is the wrong Ledger too;
  * nothing is stashed for import either way.
  */
@@ -68,12 +69,7 @@ class PairLedgerDeviceUseCase(
     ): PairLedgerDeviceResult =
         if (existing != null && existing.sdkAccount.accountUuid == target) {
             ledgerRepairTargetRepository.clear()
-            if (existing.isBound) {
-                ledgerPairingRepository.clear()
-                PairLedgerDeviceResult.AlreadyAdded(existing)
-            } else {
-                rebind(existing, pairing)
-            }
+            rebind(existing, pairing)
         } else {
             ledgerPairingRepository.clear()
             PairLedgerDeviceResult.WrongLedger
@@ -101,8 +97,8 @@ sealed interface PairLedgerDeviceResult {
     ) : PairLedgerDeviceResult
 
     /**
-     * The wallet held the account without a Ledger binding; the pairing's binding is now stored
-     * with it.
+     * The pairing's binding is now stored with an account the wallet already held: one without a
+     * Ledger binding, or the account being paired again.
      */
     data class Rebound(
         val account: WalletAccount

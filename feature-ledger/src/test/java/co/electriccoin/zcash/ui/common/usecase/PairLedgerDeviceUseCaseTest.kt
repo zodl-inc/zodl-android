@@ -155,6 +155,29 @@ class PairLedgerDeviceUseCaseTest {
         }
 
     @Test
+    fun pairingABoundTargetAgainReplacesItsBindingBecauseTheStoredOneMayBeUnusable() =
+        runTest {
+            val pairing = pairing(ufvk = "ufvk-known")
+            val target = ledgerAccount(ufvk = "ufvk-known", bound = true)
+            val repository = LedgerPairingRepositoryImpl()
+
+            val result =
+                useCase(pairing, repository, existing = listOf(target), repairTarget = repairTarget(target))
+                    .invoke(device)
+
+            assertEquals(PairLedgerDeviceResult.Rebound(target), result)
+            assertNull(repository.get())
+            val accountUuid = target.sdkAccount.accountUuid
+            coVerify(exactly = 1) {
+                bindingProvider.save(
+                    accountUuid = accountUuid,
+                    deviceIdentityEncoding = IDENTITY,
+                    zip32AccountIndex = 0L,
+                )
+            }
+        }
+
+    @Test
     fun pairingTheTargetAgainWithAnotherLedgerIsTheWrongLedgerAndImportsNothing() =
         runTest {
             val target = ledgerAccount(ufvk = "ufvk-known", bound = false)
