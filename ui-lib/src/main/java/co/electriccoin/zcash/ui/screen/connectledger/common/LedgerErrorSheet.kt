@@ -2,10 +2,12 @@ package co.electriccoin.zcash.ui.screen.connectledger.common
 
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ButtonStyle
@@ -17,6 +19,10 @@ import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connectledger.scan.LedgerDeviceScanTag
 
+/**
+ * Figma pads the sheet body 8 dp at the top and 32 dp at the bottom; the host sheet already adds
+ * 24 dp below its content, so the body adds the remaining 8 dp.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun LedgerErrorSheet(state: LedgerErrorSheetState?) {
@@ -26,7 +32,8 @@ internal fun LedgerErrorSheet(state: LedgerErrorSheetState?) {
             modifier =
                 Modifier
                     .testTag(LedgerDeviceScanTag.ERROR_SHEET)
-                    .animateContentSize(),
+                    .animateContentSize()
+                    .padding(top = 8.dp, bottom = 8.dp),
         )
     }
 }
@@ -75,6 +82,16 @@ data class LedgerErrorSheetState(
                 icon = R.drawable.ic_ledger_bluetooth_off,
                 title = stringRes("Bluetooth Off"),
                 message = stringRes("Turn on Bluetooth in Settings to connect to your Ledger."),
+                primary = ButtonState(stringRes("Try again")),
+                secondary = null,
+                onBack = {},
+            )
+
+        val previewUnlock =
+            LedgerErrorSheetState(
+                icon = R.drawable.ic_ledger_alert_circle,
+                title = stringRes("Unlock Your Ledger"),
+                message = stringRes("Unlock your Ledger and open the Zcash app on the device to continue."),
                 primary = ButtonState(stringRes("Try again")),
                 secondary = null,
                 onBack = {},

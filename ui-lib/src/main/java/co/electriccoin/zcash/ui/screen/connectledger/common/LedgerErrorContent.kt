@@ -50,7 +50,7 @@ internal fun ColumnScope.LedgerErrorContent(
                 modifier =
                     Modifier
                         .size(44.dp)
-                        .background(ZashiColors.Surfaces.bgSecondary, CircleShape),
+                        .background(ZashiColors.Surfaces.bgPrimary, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
@@ -84,6 +84,9 @@ internal fun ColumnScope.LedgerErrorContent(
             )
         }
         state.secondary?.let { secondary ->
+            if (state.primary != null) {
+                Spacer(Modifier.height(BUTTON_GAP_ON_TOUCH_TARGET.dp))
+            }
             ZashiButton(
                 state = secondary,
                 modifier = Modifier.fillMaxWidth(),
@@ -91,3 +94,9 @@ internal fun ColumnScope.LedgerErrorContent(
         }
     }
 }
+
+/**
+ * Figma separates the buttons by 12 dp; each ZashiButton already pads its 40 dp body to a 48 dp
+ * touch target, which leaves 8 dp of that gap, so only the rest is added.
+ */
+private const val BUTTON_GAP_ON_TOUCH_TARGET = 4
