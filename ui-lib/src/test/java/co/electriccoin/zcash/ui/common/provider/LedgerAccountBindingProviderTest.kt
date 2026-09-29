@@ -67,13 +67,12 @@ class LedgerAccountBindingProviderTest {
                 "tpk0-deadbeef|notanumber",
                 "tpk0-deadbeef|-1",
                 "tpk0-deadbeef|4294967296",
-            )
-                .forEach { encoded ->
-                    val store = FakePreferenceProvider()
-                    store.putString(PreferenceKey(bindingKey), encoded)
+            ).forEach { encoded ->
+                val store = FakePreferenceProvider()
+                store.putString(PreferenceKey(bindingKey), encoded)
 
-                    assertNull(provider(store).observe(accountUuid).first(), "encoded=$encoded")
-                }
+                assertNull(provider(store).observe(accountUuid).first(), "encoded=$encoded")
+            }
         }
 
     @Test
