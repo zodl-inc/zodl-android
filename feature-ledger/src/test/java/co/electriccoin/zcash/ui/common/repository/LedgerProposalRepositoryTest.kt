@@ -21,6 +21,7 @@ import co.electriccoin.zcash.ui.common.datasource.LedgerSigningDataSource
 import co.electriccoin.zcash.ui.common.datasource.ProposalDataSource
 import co.electriccoin.zcash.ui.common.datasource.RegularTransactionProposal
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
+import co.electriccoin.zcash.ui.common.model.LedgerIssue
 import co.electriccoin.zcash.ui.common.model.LedgerIssueKind
 import co.electriccoin.zcash.ui.common.model.LedgerIssueRetry
 import co.electriccoin.zcash.ui.common.model.LedgerSigningState
@@ -36,6 +37,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -52,6 +54,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -321,6 +324,65 @@ class LedgerProposalRepositoryTest {
 
             assertEquals(submitResult, repository.submit())
             coVerify(exactly = 1) { proposalDataSource.addProofsToPczt(any()) }
+        }
+
+    @Test
+    fun cancellingOrClearingWithNoSessionOrLinkLeavesTheLinkAlone() =
+        runTest(dispatcher) {
+            repository.cancelSigning()
+            repository.clear()
+            runCurrent()
+
+            coVerify(exactly = 0) { ledgerSigningDataSource.close() }
+            assertNull(repository.signingState.value)
+        }
+
+    @Test
+    fun aConnectStillRunningAfterFiveMinutesFailsAsADisconnectAndClosesTheLink() =
+        runTest(dispatcher) {
+            givenPczt(ledgerAccount())
+            runCurrent()
+            clearMocks(ledgerSigningDataSource, answers = false)
+            coEvery { ledgerSigningDataSource.connect(any()) } coAnswers { awaitCancellation() }
+
+            devices.value = listOf(device("AA"))
+            repository.startSigning()
+            runCurrent()
+            advanceTimeBy(1.seconds)
+            runCurrent()
+            assertEquals(LedgerSigningState.Connecting, repository.signingState.value)
+
+            advanceTimeBy(5.minutes)
+            runCurrent()
+
+            assertEquals(
+                LedgerSigningState.Failed(LedgerIssue.disconnectedWhileSigning),
+                repository.signingState.value
+            )
+            coVerify(exactly = 1) { ledgerSigningDataSource.close() }
+            coVerify(exactly = 0) { ledgerSigningDataSource.sign(any(), any(), any()) }
+        }
+
+    @Test
+    fun aDeviceTappedTheMomentThePickerOpensIsNotLost() =
+        runTest(dispatcher) {
+            givenPczt(ledgerAccount())
+            runCurrent()
+            coEvery { ledgerSigningDataSource.sign(any(), any(), any()) } returns Pczt(byteArrayOf(5))
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                repository.signingState.collect { state ->
+                    if (state is LedgerSigningState.Selecting) repository.selectDevice("BB")
+                }
+            }
+
+            devices.value = listOf(device("AA"), device("BB"))
+            repository.startSigning()
+            runCurrent()
+            advanceTimeBy(1.seconds)
+            runCurrent()
+
+            coVerify(exactly = 1) { ledgerSigningDataSource.connect(match { it.identifier == "BB" }) }
+            assertEquals(LedgerSigningState.Signed, repository.signingState.value)
         }
 
     @Test

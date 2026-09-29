@@ -38,6 +38,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -51,6 +52,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.withTimeout
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -282,13 +285,9 @@ class LedgerProposalRepositoryImpl(
                 publish(session, LedgerSigningState.Failed(LedgerIssue.unbound))
                 return
             }
-            if (!ledgerSigningDataSource.isLinked) {
-                val device = scan(session) ?: return
-                Twig.info { "Ledger signing: stage Connecting" }
-                publish(session, LedgerSigningState.Connecting)
-                ledgerSigningDataSource.connect(device)
+            if (ledgerSigningDataSource.isLinked || scanAndConnect(session)) {
+                sign(session, pczt, account)
             }
-            sign(session, pczt, account)
         } catch (e: CancellationException) {
             throw e
         } catch (e: LedgerException.DeviceMismatch) {
@@ -306,6 +305,36 @@ class LedgerProposalRepositoryImpl(
         } catch (e: Exception) {
             Twig.warn { "Ledger signing: session failed with ${e.javaClass.simpleName}" }
             publish(session, LedgerSigningState.Failed(LedgerIssue.unknown))
+        }
+    }
+
+    /**
+     * Looks for the device and connects to it. Returns false once the session has failed on the way.
+     */
+    private suspend fun scanAndConnect(session: Int): Boolean {
+        val device = scan(session) ?: return false
+        return connect(session, device)
+    }
+
+    /**
+     * Connects to [device] within [CONNECT_TIMEOUT], the cap enrollment puts on its pairing, so a
+     * device that never finishes opening the Zcash app cannot hold the sheet on Connecting. Returns
+     * false once that cap passed, with the link closed and the session failed as a disconnect.
+     */
+    private suspend fun connect(
+        session: Int,
+        device: LedgerBluetoothDevice
+    ): Boolean {
+        Twig.info { "Ledger signing: stage Connecting" }
+        publish(session, LedgerSigningState.Connecting)
+        return try {
+            withTimeout(CONNECT_TIMEOUT) { ledgerSigningDataSource.connect(device) }
+            true
+        } catch (_: TimeoutCancellationException) {
+            Twig.warn { "Ledger signing: connecting timed out" }
+            ledgerSigningDataSource.close()
+            publish(session, LedgerSigningState.Failed(LedgerIssue.disconnectedWhileSigning))
+            false
         }
     }
 
@@ -410,6 +439,8 @@ class LedgerProposalRepositoryImpl(
         found: StateFlow<List<LedgerBluetoothDevice>>
     ): LedgerBluetoothDevice? {
         val devices = found.value
+        var choice = CompletableDeferred<String>()
+        selection = choice
         Twig.info { "Ledger signing: stage Selecting" }
         publish(
             session,
@@ -435,14 +466,16 @@ class LedgerProposalRepositoryImpl(
                     }
                 var picked: LedgerBluetoothDevice? = null
                 while (picked == null && !emptied.isCompleted) {
-                    val choice = CompletableDeferred<String>()
-                    selection = choice
                     val identifier =
                         select<String?> {
                             choice.onAwait { it }
                             emptied.onAwait { null }
                         }
                     picked = identifier?.let { id -> found.value.firstOrNull { it.identifier == id } }
+                    if (picked == null && identifier != null) {
+                        choice = CompletableDeferred()
+                        selection = choice
+                    }
                 }
                 emptyTimer.cancel()
                 picked
@@ -489,9 +522,11 @@ class LedgerProposalRepositoryImpl(
 
     /**
      * The link is closed after the session has unwound; the next session waits for that close, so
-     * it can never close the link the next session opens.
+     * it can never close the link the next session opens. Nothing happens when no session ever ran
+     * and no link is held.
      */
     override fun cancelSigning() {
+        if (isIdle) return
         synchronized(lock) { generation++ }
         sessionJob?.cancel()
         sessionJob = null
@@ -572,6 +607,9 @@ class LedgerProposalRepositoryImpl(
         pcztWithSignatures = null
     }
 
+    private val isIdle: Boolean
+        get() = sessionJob == null && signingState.value == null && !ledgerSigningDataSource.isLinked
+
     private inline fun <T : TransactionProposal> createProposalInternal(block: () -> T): T {
         val proposal =
             try {
@@ -592,6 +630,11 @@ class LedgerProposalRepositoryImpl(
     private companion object {
         val SCAN_TIMEOUT = 20.seconds
         val SETTLE_DELAY = 1.seconds
+
+        /**
+         * The cap on connecting and opening the Zcash app, the same enrollment puts on its pairing.
+         */
+        val CONNECT_TIMEOUT = 5.minutes
     }
 }
 
