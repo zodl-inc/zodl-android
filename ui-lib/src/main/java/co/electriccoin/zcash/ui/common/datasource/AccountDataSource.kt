@@ -29,6 +29,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ClosedSendChannelException
@@ -213,8 +214,9 @@ class AccountDataSourceImpl(
     /**
      * A Ledger account with no binding can never sign, so the import and the binding write are
      * all-or-nothing: if the binding cannot be stored, the just-imported account is deleted again
-     * before the failure propagates. The rollback is best-effort — a failure to undo must not
-     * replace the exception that says what actually went wrong.
+     * before the failure propagates, cancellation included, so the rollback runs non-cancellable.
+     * It is best-effort — a failure to undo must not replace the exception that says what actually
+     * went wrong.
      */
     @Suppress("TooGenericExceptionCaught")
     override suspend fun importLedgerAccount(
@@ -237,8 +239,10 @@ class AccountDataSourceImpl(
                     zip32AccountIndex = pairing.binding.zip32AccountIndex.index,
                 )
             } catch (e: Exception) {
-                runCatching { synchronizer.deleteAccount(created.accountUuid) }
-                    .onFailure { log("failed to roll back the Ledger account import", it) }
+                withContext(NonCancellable) {
+                    runCatching { synchronizer.deleteAccount(created.accountUuid) }
+                        .onFailure { log("failed to roll back the Ledger account import", it) }
+                }
                 throw e
             }
             created

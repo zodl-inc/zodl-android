@@ -21,9 +21,13 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlin.test.Test
@@ -32,6 +36,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * MOB-1723: a null balances snapshot from the synchronizer must propagate as null through every
@@ -296,6 +301,45 @@ class AccountDataSourceImplTest {
 
             assertEquals(bindingFailure.message, thrown.message)
             coVerify(exactly = 1) { synchronizer.deleteAccount(importedUuid) }
+        }
+
+    @Test
+    fun anImportCancelledWhileStoringTheBindingStillRollsBackToTheEnd() =
+        runBlocking {
+            val importedUuid = AccountUuid.new(ByteArray(16) { (it + 1).toByte() })
+            val imported =
+                mockk<Account> {
+                    every { accountUuid } returns importedUuid
+                }
+            var isRolledBack = false
+            val synchronizer =
+                mockk<Synchronizer>(relaxed = true) {
+                    every { accountsFlow } returns MutableStateFlow(listOf(account))
+                    every { walletBalances } returns MutableStateFlow(null)
+                    coEvery { importAccountByUfvk(any()) } returns imported
+                    coEvery { deleteAccount(importedUuid) } coAnswers {
+                        delay(1)
+                        isRolledBack = true
+                        true
+                    }
+                }
+            val saving = CompletableDeferred<Unit>()
+            val ledgerAccountBindingProvider =
+                mockk<LedgerAccountBindingProvider> {
+                    every { observe(any()) } returns MutableStateFlow(null)
+                    coEvery { save(any(), any(), any()) } coAnswers {
+                        saving.complete(Unit)
+                        awaitCancellation()
+                    }
+                }
+            val dataSource = dataSource(synchronizer, ledgerAccountBindingProvider)
+
+            val import = launch { dataSource.importLedgerAccount(pairing = mockk(relaxed = true), birthday = null) }
+            saving.await()
+            import.cancel()
+            import.join()
+
+            assertTrue(isRolledBack)
         }
 
     @Test
