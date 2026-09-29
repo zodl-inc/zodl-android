@@ -14,6 +14,7 @@ import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionArgs
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -94,12 +95,19 @@ class ShieldFundsUseCase(
         }
     }
 
+    /**
+     * A cancelled shield drops its half-made proposal, as nothing but the sign sheet would hold it,
+     * and propagates the cancellation instead of reporting it as a shielding error.
+     */
     @Suppress("TooGenericExceptionCaught")
     private suspend fun createLedgerShieldProposal() {
         try {
             ledgerProposalPipeline.createShieldProposal()
             ledgerProposalPipeline.createPCZTFromProposal()
             ledgerNavigator.forwardToSign()
+        } catch (e: CancellationException) {
+            ledgerProposalPipeline.clear()
+            throw e
         } catch (e: Exception) {
             ledgerProposalPipeline.clear()
             navigateToError(ErrorArgs.ShieldingGeneralError(e))

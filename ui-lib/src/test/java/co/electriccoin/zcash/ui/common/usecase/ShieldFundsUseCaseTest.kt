@@ -16,6 +16,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -112,6 +113,28 @@ class ShieldFundsUseCaseTest {
 
             coVerify(exactly = 1) { ledgerProposalPipeline.clear() }
             verify(exactly = 1) { navigateToError(match<ErrorArgs> { it is ErrorArgs.ShieldingGeneralError }, any()) }
+        }
+
+    @Test
+    fun aCancelledLedgerShieldClearsTheProposalWithoutShowingAnError() =
+        runTest(dispatcher) {
+            val ledgerProposalPipeline =
+                mockk<LedgerProposalPipeline>(relaxed = true) {
+                    coEvery { createPCZTFromProposal() } throws CancellationException("cancelled")
+                }
+            val ledgerNavigator = mockk<LedgerNavigator>(relaxed = true)
+            val navigateToError = mockk<NavigateToErrorUseCase>(relaxed = true)
+
+            ledgerUseCase(
+                ledgerProposalPipeline = ledgerProposalPipeline,
+                ledgerNavigator = ledgerNavigator,
+                navigateToError = navigateToError
+            )(false)
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { ledgerProposalPipeline.clear() }
+            verify(exactly = 0) { navigateToError(any(), any()) }
+            verify(exactly = 0) { ledgerNavigator.forwardToSign() }
         }
 
     private fun useCase(
