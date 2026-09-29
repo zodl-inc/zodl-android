@@ -6,6 +6,7 @@ import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
 import cash.z.ecc.android.sdk.ledger.LedgerDeviceModel
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.LedgerBondingFailedException
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
@@ -48,7 +49,8 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * The scan screen's phases and its mapping from [LedgerException] to the error sheets.
+ * The scan screen's phases, its permission and Bluetooth handling and the sheets it keeps; which
+ * sheet each pairing outcome shows is in [LedgerDeviceScanVMPairingTest].
  *
  * Every [LedgerException] subclass has an internal constructor in the SDK, so the tests stub
  * instances rather than building them.
@@ -209,10 +211,10 @@ class LedgerDeviceScanVMTest {
             runCurrent()
             val softSheet = assertNotNull(soft.state.value.errorSheet)
             assertEquals(R.string.ledger_error_permissions_title, softSheet.title.resourceId())
-            assertEquals(R.string.ledger_error_tryAgain, softSheet.primary.text.resourceId())
+            assertEquals(R.string.ledger_error_tryAgain, assertNotNull(softSheet.primary).text.resourceId())
 
             val nonceBefore = soft.state.value.permissionRequestNonce
-            softSheet.primary
+            assertNotNull(softSheet.primary)
                 .onClick()
             runCurrent()
             assertNull(soft.state.value.errorSheet)
@@ -223,7 +225,7 @@ class LedgerDeviceScanVMTest {
             permanent.onPermissionsDenied(false)
             runCurrent()
             val permanentSheet = assertNotNull(permanent.state.value.errorSheet)
-            assertEquals(R.string.ledger_error_permissions_cta, permanentSheet.primary.text.resourceId())
+            assertEquals(R.string.ledger_error_permissions_cta, assertNotNull(permanentSheet.primary).text.resourceId())
         }
 
     @Test
@@ -263,8 +265,8 @@ class LedgerDeviceScanVMTest {
             assertEquals(R.string.ledger_error_unavailable_title, sheet.title.resourceId())
             assertNull(sheet.secondary)
 
-            assertEquals(R.string.ledger_error_unavailable_cta, sheet.primary.text.resourceId())
-            sheet.primary.onClick()
+            assertEquals(R.string.ledger_error_unavailable_cta, assertNotNull(sheet.primary).text.resourceId())
+            assertNotNull(sheet.primary).onClick()
 
             verify(exactly = 1) { navigationRouter.back() }
         }
@@ -295,56 +297,6 @@ class LedgerDeviceScanVMTest {
             runCurrent()
 
             assertSheetTitle(vm, R.string.ledger_error_noDevices_title)
-        }
-
-    @Test
-    fun pairingFailuresMapToTheirSheets() =
-        runTest(dispatcher) {
-            mapOf(
-                mockk<LedgerException.Timeout>(relaxed = true) to R.string.ledger_error_pairingFailed_title,
-                mockk<LedgerException.PairingRefused>(relaxed = true) to R.string.ledger_error_pairingFailed_title,
-                mockk<LedgerException.ConnectionFailed>(relaxed = true) to R.string.ledger_error_pairingFailed_title,
-                mockk<LedgerException.DeviceNotFound>(relaxed = true) to R.string.ledger_error_pairingFailed_title,
-                mockk<LedgerException.WrongApp>(relaxed = true) to R.string.ledger_error_locked_title,
-                mockk<LedgerException.DeviceRefused>(relaxed = true) to R.string.ledger_error_unknown_title,
-                mockk<LedgerException.DeviceRefused>(relaxed = true) {
-                    every { isTransient } returns true
-                } to R.string.ledger_error_locked_title,
-                mockk<LedgerException.CapsMismatch>(relaxed = true) to R.string.ledger_error_unknown_title,
-                mockk<LedgerException.AppTooOld>(relaxed = true) to R.string.ledger_error_appTooOld_title,
-                mockk<LedgerException.DerivationBudgetExhausted>(relaxed = true) to
-                    R.string.ledger_error_restartApp_title,
-                mockk<LedgerException.UserRejected>(relaxed = true) to R.string.ledger_error_importRejected_title,
-                mockk<LedgerException.Disconnected>(relaxed = true) to R.string.ledger_error_disconnected_title,
-                mockk<LedgerException.BluetoothDisabled>(relaxed = true) to R.string.ledger_error_bluetoothOff_title,
-                mockk<LedgerException.BluetoothUnauthorized>(relaxed = true) to
-                    R.string.ledger_error_permissions_title,
-            ).forEach { (exception, expectedTitle) ->
-                val vm = pairedWithFailure(exception)
-                assertSheetTitle(vm, expectedTitle)
-            }
-        }
-
-    @Test
-    fun aBluetoothUnavailableCarryingAScanCodeIsANoDevicesFailure() =
-        runTest(dispatcher) {
-            val exception =
-                mockk<LedgerException.BluetoothUnavailable>(relaxed = true) {
-                    every { scanErrorCode } returns 1
-                }
-
-            assertSheetTitle(pairedWithFailure(exception), R.string.ledger_error_noDevices_title)
-        }
-
-    @Test
-    fun aLedgerFailureWithoutEnrollmentCopyShowsTheSomethingWentWrongSheet() =
-        runTest(dispatcher) {
-            val navigateToError = mockk<NavigateToErrorUseCase>(relaxed = true)
-            val exception = mockk<LedgerException.DeviceMismatch>(relaxed = true)
-            val vm = pairedWithFailure(exception, navigateToError = navigateToError)
-
-            assertSheetTitle(vm, R.string.ledger_error_unknown_title)
-            verify(exactly = 0) { navigateToError.invoke(any(), any()) }
         }
 
     @Suppress("TooGenericExceptionThrown")
@@ -396,7 +348,7 @@ class LedgerDeviceScanVMTest {
             assertEquals(R.drawable.ic_ledger_bluetooth_off, sheet.icon)
             assertEquals(0, vm.state.value.enableBluetoothRequestNonce)
 
-            sheet.primary.onClick()
+            assertNotNull(sheet.primary).onClick()
             runCurrent()
             assertNull(vm.state.value.errorSheet)
             assertEquals(1, vm.state.value.enableBluetoothRequestNonce)
@@ -420,7 +372,7 @@ class LedgerDeviceScanVMTest {
     @Test
     fun dismissingAnIssueSheetLeavesTheInlineIssueAndAnEnabledTryAgain() =
         runTest(dispatcher) {
-            val vm = pairedWithFailure(mockk<LedgerException.ConnectionFailed>(relaxed = true))
+            val vm = pairedWithFailure(bonding(mockk<LedgerException.ConnectionFailed>(relaxed = true)))
             assertNotNull(vm.state.value.errorSheet).onBack()
             runCurrent()
 
@@ -468,9 +420,10 @@ class LedgerDeviceScanVMTest {
                     .isSelected
             )
 
-            assertNotNull(vm.state.value.errorSheet)
-                .primary
-                .onClick()
+            assertNotNull(
+                vm.state.value.errorSheet
+                    ?.primary
+            ).onClick()
             runCurrent()
 
             coVerify(exactly = 2) { pairLedgerDevice.invoke(device("AA")) }
@@ -487,7 +440,7 @@ class LedgerDeviceScanVMTest {
     @Test
     fun aFailedPairingClearsTheListAndShowsTheInlineIssue() =
         runTest(dispatcher) {
-            val vm = pairedWithFailure(mockk<LedgerException.ConnectionFailed>(relaxed = true))
+            val vm = pairedWithFailure(bonding(mockk<LedgerException.ConnectionFailed>(relaxed = true)))
 
             assertSheetTitle(vm, R.string.ledger_error_pairingFailed_title)
             assertNotNull(vm.state.value.inlineIssue)
@@ -601,9 +554,10 @@ class LedgerDeviceScanVMTest {
                 .onClick()
             runCurrent()
 
-            assertNotNull(vm.state.value.errorSheet)
-                .primary
-                .onClick()
+            assertNotNull(
+                vm.state.value.errorSheet
+                    ?.primary
+            ).onClick()
             runCurrent()
 
             coVerify(exactly = 1) { selectWalletAccount.invoke(existing, false) }
@@ -638,8 +592,10 @@ class LedgerDeviceScanVMTest {
             assertEquals(emptyList(), vm.state.value.devices)
         }
 
+    private fun bonding(exception: LedgerException) = LedgerBondingFailedException(exception)
+
     private fun TestScope.pairedWithFailure(
-        exception: LedgerException,
+        exception: Exception,
         navigateToError: NavigateToErrorUseCase = mockk(relaxed = true),
         navigationRouter: NavigationRouter = mockk(relaxed = true),
     ): LedgerDeviceScanVM {

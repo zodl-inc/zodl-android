@@ -9,10 +9,12 @@ import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.model.LedgerBondingFailedException
 import co.electriccoin.zcash.ui.common.model.LedgerIssue
 import co.electriccoin.zcash.ui.common.model.LedgerIssueContext
 import co.electriccoin.zcash.ui.common.model.LedgerIssueKind
 import co.electriccoin.zcash.ui.common.model.LedgerIssueRetry
+import co.electriccoin.zcash.ui.common.model.LedgerPairingTimedOutException
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.toLedgerIssue
 import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
@@ -28,6 +30,7 @@ import co.electriccoin.zcash.ui.screen.connecthw.neworactive.HWNewOrActiveArgs
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceItemState
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerErrorSheetState
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerInlineIssueState
+import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedArgs
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.util.SettingsUtil
@@ -129,14 +132,15 @@ class LedgerDeviceScanVM(
 
     /**
      * Retained devices win over the idle retry: after an issue that keeps the link, the selected
-     * row and an enabled Connect are how the user tries again.
+     * row and an enabled Connect are how the user tries again. An issue that trying again cannot
+     * fix leaves only a disabled Connect.
      */
     private fun createPrimaryButton(
         internal: LedgerScanInternalState,
         hasDevices: Boolean,
         pageIssue: LedgerIssue?,
     ) = when {
-        pageIssue?.kind == LedgerIssueKind.BLUETOOTH_UNAVAILABLE -> {
+        pageIssue?.retry == LedgerIssueRetry.NONE -> {
             ButtonState(
                 text = stringRes(R.string.ledger_scan_select_cta),
                 isEnabled = false,
@@ -193,16 +197,24 @@ class LedgerDeviceScanVM(
         }
     }
 
+    /**
+     * An issue that trying again cannot fix offers no Try again; Bluetooth being unavailable keeps
+     * its Close.
+     */
     private fun issueSheet(internal: LedgerScanInternalState, issue: LedgerIssue) =
         LedgerErrorSheetState(
             icon = issue.icon,
             title = issue.title,
             message = issue.message,
             primary =
-                ButtonState(
-                    text = issueActionText(internal, issue),
-                    onClick = issueAction(internal, issue),
-                ),
+                if (issue.retry != LedgerIssueRetry.NONE || issue.kind == LedgerIssueKind.BLUETOOTH_UNAVAILABLE) {
+                    ButtonState(
+                        text = issueActionText(internal, issue),
+                        onClick = issueAction(internal, issue),
+                    )
+                } else {
+                    null
+                },
             secondary = null,
             onBack = ::onSheetDismissed,
         )
@@ -342,7 +354,11 @@ class LedgerDeviceScanVM(
     /**
      * A successful pairing leaves the screen idle rather than pairing: backing out of the birthday
      * screens returns here, and a screen still stuck in [LedgerScanPhase.PAIRING] would show
-     * disabled rows and a spinning Connect with no way out.
+     * disabled rows and a spinning Connect with no way out. An account that was only missing its
+     * binding needs no birthday: it is connected again at once.
+     *
+     * A failure while the phone was still connecting reads as a failed pairing; one after the link
+     * was up, including the pairing running out of time, as a device that disconnected during setup.
      */
     @Suppress("TooGenericExceptionCaught")
     private suspend fun pair(device: LedgerBluetoothDevice) {
@@ -350,13 +366,12 @@ class LedgerDeviceScanVM(
             when (val result = pairLedgerDevice(device)) {
                 is PairLedgerDeviceResult.Paired -> {
                     navigationRouter.forward(HWNewOrActiveArgs(HWWalletEnrollment.Ledger))
-                    internalState.update {
-                        it.copy(
-                            phase = LedgerScanPhase.IDLE,
-                            devices = emptyList(),
-                            selectedIdentifier = null,
-                        )
-                    }
+                    resetAfterPairing()
+                }
+
+                is PairLedgerDeviceResult.Rebound -> {
+                    navigationRouter.forward(LedgerConnectedArgs)
+                    resetAfterPairing()
                 }
 
                 is PairLedgerDeviceResult.AlreadyAdded -> {
@@ -365,11 +380,26 @@ class LedgerDeviceScanVM(
             }
         } catch (e: CancellationException) {
             throw e
+        } catch (e: LedgerBondingFailedException) {
+            showIssue(e.ledgerException.toEnrollmentIssue(LedgerIssueContext.ENROLLMENT_PAIRING))
+        } catch (e: LedgerPairingTimedOutException) {
+            Twig.warn { "Ledger enrollment failed: ${e.javaClass.simpleName}" }
+            showIssue(LedgerIssue.disconnectedDuringSetup)
         } catch (e: LedgerException) {
-            showIssue(e.toEnrollmentIssue())
+            showIssue(e.toEnrollmentIssue(LedgerIssueContext.ENROLLMENT))
         } catch (e: Exception) {
             internalState.update { it.copy(phase = LedgerScanPhase.IDLE) }
             navigateToError(ErrorArgs.General(e))
+        }
+    }
+
+    private fun resetAfterPairing() {
+        internalState.update {
+            it.copy(
+                phase = LedgerScanPhase.IDLE,
+                devices = emptyList(),
+                selectedIdentifier = null,
+            )
         }
     }
 
@@ -450,7 +480,7 @@ class LedgerDeviceScanVM(
         } catch (e: CancellationException) {
             throw e
         } catch (e: LedgerException) {
-            showIssue(e.toEnrollmentIssue())
+            showIssue(e.toEnrollmentIssue(LedgerIssueContext.ENROLLMENT_PAIRING))
         } catch (e: Exception) {
             stopScan()
             internalState.update { it.copy(phase = LedgerScanPhase.IDLE) }
@@ -505,9 +535,9 @@ class LedgerDeviceScanVM(
  * Logs only the exception's class and its [LedgerException.reason], which the SDK keeps free of
  * device identifiers.
  */
-private fun LedgerException.toEnrollmentIssue(): LedgerIssue {
+private fun LedgerException.toEnrollmentIssue(context: LedgerIssueContext): LedgerIssue {
     Twig.warn { "Ledger enrollment failed: ${javaClass.simpleName}, reason: $reason" }
-    return toLedgerIssue(LedgerIssueContext.ENROLLMENT)
+    return toLedgerIssue(context)
 }
 
 private data class LedgerScanInternalState(

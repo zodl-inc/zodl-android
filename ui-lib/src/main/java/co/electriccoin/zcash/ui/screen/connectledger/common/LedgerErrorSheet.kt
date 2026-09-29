@@ -40,7 +40,7 @@ data class LedgerErrorSheetState(
     override val icon: Int,
     override val title: StringResource,
     override val message: StringResource,
-    override val primary: ButtonState,
+    override val primary: ButtonState?,
     override val secondary: ButtonState?,
     override val onBack: () -> Unit,
 ) : LedgerErrorContentState,
@@ -73,8 +73,8 @@ data class LedgerErrorSheetState(
         val previewBluetoothOff =
             LedgerErrorSheetState(
                 icon = R.drawable.ic_ledger_bluetooth_off,
-                title = stringRes("Bluetooth Is Off"),
-                message = stringRes("Turn on Bluetooth in Settings to connect your Ledger."),
+                title = stringRes("Bluetooth Off"),
+                message = stringRes("Turn on Bluetooth in Settings to connect to your Ledger."),
                 primary = ButtonState(stringRes("Try again")),
                 secondary = null,
                 onBack = {},

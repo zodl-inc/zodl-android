@@ -9,9 +9,20 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 
 /**
  * Which Ledger flow an issue arose in; a few failures read differently when a transaction is being
- * signed than while an account is being connected.
+ * signed than while an account is being connected, and while connecting, differently before the link
+ * to the device is up than after.
  */
 enum class LedgerIssueContext {
+    /**
+     * Enrollment while the phone connects to the device, the step that bonds the two, before the
+     * link is up. A lost or refused connection here means pairing failed.
+     */
+    ENROLLMENT_PAIRING,
+
+    /**
+     * Enrollment once the link is up: opening the Zcash app and exporting the account. A lost
+     * connection here means the device disconnected during setup.
+     */
     ENROLLMENT,
     SIGNING,
 }
@@ -89,6 +100,12 @@ data class LedgerIssue(
         val unknown: LedgerIssue = unknownIssue(LedgerIssueKind.UNKNOWN)
 
         /**
+         * A failure nothing more specific describes and that trying again cannot fix, such as a
+         * signing session with nothing left to sign.
+         */
+        val unknownWithoutRetry: LedgerIssue = unknown.copy(retry = LedgerIssueRetry.NONE)
+
+        /**
          * The selected account has no usable Ledger binding, so it cannot be signed for until it is
          * connected again.
          */
@@ -98,6 +115,30 @@ data class LedgerIssue(
                 LedgerIssueRetry.NONE,
                 R.string.ledger_sign_error_unbound_title,
                 R.string.ledger_sign_error_unbound_message
+            )
+
+        /**
+         * Connecting to the device, the step that bonds it with the phone, failed or was refused.
+         */
+        val pairingFailed: LedgerIssue =
+            issue(
+                LedgerIssueKind.PAIRING_FAILED,
+                LedgerIssueRetry.RECONNECT,
+                R.string.ledger_error_pairingFailed_title,
+                R.string.ledger_error_pairingFailed_message
+            )
+
+        /**
+         * The link to the device was lost while an account was being connected, after the phone
+         * had reached the device. A [LedgerPairingTimedOutException] reads the same: the transport
+         * is gone either way.
+         */
+        val disconnectedDuringSetup: LedgerIssue =
+            issue(
+                LedgerIssueKind.DISCONNECTED,
+                LedgerIssueRetry.RECONNECT,
+                R.string.ledger_error_disconnected_title,
+                R.string.ledger_error_disconnected_message
             )
 
         /**
@@ -119,8 +160,12 @@ data class LedgerIssue(
  * A [LedgerException.BluetoothUnavailable] carrying a scan error code means the scan itself failed
  * to start; without one the phone has no Bluetooth LE at all, which nothing in the app can fix. A
  * locked device answers with a transient [LedgerException.DeviceRefused], and a device that did not
- * reach the Zcash app with [LedgerException.WrongApp]. A timeout while connecting
- * means pairing failed; while signing, it means the link to the device was lost.
+ * reach the Zcash app with [LedgerException.WrongApp]. A lost connection while the phone connects
+ * to the device means pairing failed; once the link is up, it means the device disconnected.
+ *
+ * While signing, a device that has to be unlocked, switched to the Zcash app or have that app
+ * restarted is looked for again on Try again, so the fresh link opens the Zcash app first; during
+ * enrollment every try connects anew anyway.
  */
 @Suppress("CyclomaticComplexMethod")
 fun LedgerException.toLedgerIssue(context: LedgerIssueContext): LedgerIssue =
@@ -130,17 +175,17 @@ fun LedgerException.toLedgerIssue(context: LedgerIssueContext): LedgerIssue =
         }
 
         is LedgerException.WrongApp -> {
-            locked()
+            locked(context)
         }
 
         is LedgerException.DeviceRefused -> {
-            if (isTransient) locked() else LedgerIssue.unknown
+            if (isTransient) locked(context) else LedgerIssue.unknown
         }
 
         is LedgerException.DerivationBudgetExhausted -> {
             issue(
                 LedgerIssueKind.RESTART_APP,
-                LedgerIssueRetry.SAME_LINK,
+                context.appRetry,
                 R.string.ledger_error_restartApp_title,
                 R.string.ledger_error_restartApp_message
             )
@@ -208,20 +253,14 @@ fun LedgerException.toLedgerIssue(context: LedgerIssueContext): LedgerIssue =
             )
         }
 
+        is LedgerException.PairingRefused -> {
+            LedgerIssue.pairingFailed
+        }
+
         is LedgerException.DeviceNotFound,
         is LedgerException.ConnectionFailed,
-        is LedgerException.PairingRefused,
         is LedgerException.Timeout -> {
-            if (this is LedgerException.Timeout && context == LedgerIssueContext.SIGNING) {
-                LedgerIssue.disconnectedWhileSigning
-            } else {
-                issue(
-                    LedgerIssueKind.PAIRING_FAILED,
-                    LedgerIssueRetry.RECONNECT,
-                    R.string.ledger_error_pairingFailed_title,
-                    R.string.ledger_error_pairingFailed_message
-                )
-            }
+            if (context == LedgerIssueContext.ENROLLMENT_PAIRING) LedgerIssue.pairingFailed else disconnected(context)
         }
 
         is LedgerException.Disconnected -> {
@@ -239,6 +278,7 @@ private fun rejected(
 ): LedgerIssue {
     val retry = if (isRestartable) LedgerIssueRetry.SAME_LINK else LedgerIssueRetry.RECONNECT
     return when (context) {
+        LedgerIssueContext.ENROLLMENT_PAIRING,
         LedgerIssueContext.ENROLLMENT -> {
             issue(
                 LedgerIssueKind.REJECTED,
@@ -259,13 +299,30 @@ private fun rejected(
     }
 }
 
-private fun locked() =
+private fun locked(context: LedgerIssueContext) =
     issue(
         LedgerIssueKind.LOCKED,
-        LedgerIssueRetry.SAME_LINK,
+        context.appRetry,
         R.string.ledger_error_locked_title,
         R.string.ledger_error_locked_message
     )
+
+/**
+ * What Try again does once the user has fixed the app state on the device: while signing, a fresh
+ * link, whose connect opens the Zcash app first; while enrolling, the device kept selected.
+ */
+private val LedgerIssueContext.appRetry: LedgerIssueRetry
+    get() =
+        when (this) {
+            LedgerIssueContext.ENROLLMENT_PAIRING,
+            LedgerIssueContext.ENROLLMENT -> {
+                LedgerIssueRetry.SAME_LINK
+            }
+
+            LedgerIssueContext.SIGNING -> {
+                LedgerIssueRetry.RECONNECT
+            }
+        }
 
 private fun unknownIssue(kind: LedgerIssueKind) =
     issue(
@@ -280,6 +337,7 @@ private fun unknownIssue(kind: LedgerIssueKind) =
  */
 private fun wrongDevice(context: LedgerIssueContext) =
     when (context) {
+        LedgerIssueContext.ENROLLMENT_PAIRING,
         LedgerIssueContext.ENROLLMENT -> {
             unknownIssue(LedgerIssueKind.WRONG_DEVICE)
         }
@@ -299,6 +357,7 @@ private fun wrongDevice(context: LedgerIssueContext) =
  */
 private fun invalidInput(context: LedgerIssueContext) =
     when (context) {
+        LedgerIssueContext.ENROLLMENT_PAIRING,
         LedgerIssueContext.ENROLLMENT -> {
             LedgerIssue.unknown
         }
@@ -310,6 +369,7 @@ private fun invalidInput(context: LedgerIssueContext) =
 
 private fun notSignable(context: LedgerIssueContext) =
     when (context) {
+        LedgerIssueContext.ENROLLMENT_PAIRING,
         LedgerIssueContext.ENROLLMENT -> {
             issue(
                 LedgerIssueKind.NOT_SIGNABLE,
@@ -343,13 +403,9 @@ private fun bluetoothUnavailable(scanErrorCode: Int?) =
 
 private fun disconnected(context: LedgerIssueContext) =
     when (context) {
+        LedgerIssueContext.ENROLLMENT_PAIRING,
         LedgerIssueContext.ENROLLMENT -> {
-            issue(
-                LedgerIssueKind.DISCONNECTED,
-                LedgerIssueRetry.RECONNECT,
-                R.string.ledger_error_disconnected_title,
-                R.string.ledger_error_disconnected_message
-            )
+            LedgerIssue.disconnectedDuringSetup
         }
 
         LedgerIssueContext.SIGNING -> {
