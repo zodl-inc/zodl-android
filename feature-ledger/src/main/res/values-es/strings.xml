@@ -22,6 +22,13 @@
     <string name="ledger_scan_select_cta">Conectar</string>
     <string name="ledger_scan_retry_cta">Intentar de nuevo</string>
 
+    <!-- Approve on device -->
+    <string name="ledger_handshake_title">Aprueba en tu dispositivo</string>
+    <string name="ledger_handshake_message">Aprueba compartir tu clave de visualización con Zodl. Permite que Zodl vea las transacciones de esta cuenta y genere direcciones, pero no puede gastar tus fondos.</string>
+    <string name="ledger_handshake_waiting_title">Esperando la aprobación en tu Ledger</string>
+    <string name="ledger_handshake_waiting_subtitle">Revisa la pantalla de tu dispositivo para confirmar.</string>
+    <string name="ledger_handshake_retry">Reintentar</string>
+
     <!-- Error sheets -->
     <string name="ledger_error_tryAgain">Intentar de nuevo</string>
     <string name="ledger_error_noDevices_title">No se encontraron dispositivos</string>

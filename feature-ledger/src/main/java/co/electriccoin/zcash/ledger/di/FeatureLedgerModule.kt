@@ -17,6 +17,8 @@ import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
 import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepositoryImpl
 import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepositoryImpl
+import co.electriccoin.zcash.ui.common.repository.LedgerSelectedDeviceRepository
+import co.electriccoin.zcash.ui.common.repository.LedgerSelectedDeviceRepositoryImpl
 import co.electriccoin.zcash.ui.common.usecase.CancelLedgerSigningUseCase
 import co.electriccoin.zcash.ui.common.usecase.CreateLedgerAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
@@ -28,6 +30,7 @@ import co.electriccoin.zcash.ui.common.usecase.StartLedgerSigningUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitLedgerProposalUseCase
 import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectVM
 import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedVM
+import co.electriccoin.zcash.ui.screen.connectledger.handshake.LedgerHandshakeVM
 import co.electriccoin.zcash.ui.screen.connectledger.scan.LedgerDeviceScanVM
 import co.electriccoin.zcash.ui.screen.signledgertransaction.LedgerSignVM
 import org.koin.core.module.dsl.factoryOf
@@ -58,6 +61,7 @@ val featureLedgerModule =
         singleOf(::LedgerPairingRepositoryImpl) bind LedgerPairingRepository::class
         singleOf(::LedgerProposalRepositoryImpl) binds
             arrayOf(LedgerProposalRepository::class, LedgerProposalPipeline::class)
+        singleOf(::LedgerSelectedDeviceRepositoryImpl) bind LedgerSelectedDeviceRepository::class
 
         factoryOf(::CreateLedgerAccountUseCase)
         factoryOf(::ObserveLedgerDevicesUseCase)
@@ -72,5 +76,6 @@ val featureLedgerModule =
         viewModelOf(::LedgerConnectVM)
         viewModelOf(::LedgerConnectedVM)
         viewModelOf(::LedgerDeviceScanVM)
+        viewModelOf(::LedgerHandshakeVM)
         viewModelOf(::LedgerSignVM)
     }

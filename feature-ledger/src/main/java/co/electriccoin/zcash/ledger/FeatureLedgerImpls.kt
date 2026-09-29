@@ -14,6 +14,8 @@ import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectArgs
 import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectScreen
 import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedArgs
 import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedScreen
+import co.electriccoin.zcash.ui.screen.connectledger.handshake.LedgerHandshakeArgs
+import co.electriccoin.zcash.ui.screen.connectledger.handshake.LedgerHandshakeScreen
 import co.electriccoin.zcash.ui.screen.connectledger.scan.LedgerDeviceScanArgs
 import co.electriccoin.zcash.ui.screen.connectledger.scan.LedgerDeviceScanScreen
 import co.electriccoin.zcash.ui.screen.signledgertransaction.LedgerSignArgs
@@ -44,6 +46,7 @@ class LedgerNavContributorImpl : LedgerNavContributor {
             dialogComposable<LedgerSignArgs> { LedgerSignScreen() }
             composable<LedgerConnectArgs> { LedgerConnectScreen() }
             composable<LedgerDeviceScanArgs> { LedgerDeviceScanScreen() }
+            composable<LedgerHandshakeArgs> { LedgerHandshakeScreen() }
             composable<LedgerConnectedArgs> { LedgerConnectedScreen() }
         }
     }
