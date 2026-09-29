@@ -17,22 +17,20 @@ import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.repository.SubmitProposalState
 import kotlinx.coroutines.flow.StateFlow
 
-/*
- * Seam between ui-lib (the app "core") and the feature-ledger module. ui-lib never imports
- * feature-ledger classes — it talks exclusively to these contracts, and the app module wires the
- * implementations in via Koin (`featureLedgerModule`). Shaped the same way MigrationContracts.kt
- * and VotingContracts.kt shape their seams: small, single-purpose interfaces, one per call site.
- * What stays in ui-lib is what the rest of the wallet needs to know about a Ledger account — the
- * LedgerAccount model, its binding storage, and the fail-fast LedgerOperationUnsupportedException
- * arms of spend paths a Ledger cannot sign yet; the device transport, pairing, signing session and
- * the Ledger screens live behind these contracts.
- */
-
 /**
  * The Ledger side of the send pipeline: the proposal of a Ledger account, created by the shared
  * send, pay, ZIP-321, swap and shield flows and read back by their review, submit and progress
  * screens. Signing it on the device is the feature module's business, started through
  * [LedgerNavigator.forwardToSign].
+ *
+ * This and the other contracts in this file are the seam between ui-lib (the app "core") and the
+ * feature-ledger module. ui-lib never imports feature-ledger classes — it talks exclusively to these
+ * contracts, and the app module wires the implementations in via Koin (`featureLedgerModule`).
+ * Shaped the same way MigrationContracts.kt and VotingContracts.kt shape their seams: small,
+ * single-purpose interfaces, one per call site. What stays in ui-lib is what the rest of the wallet
+ * needs to know about a Ledger account — the LedgerAccount model, its binding storage, and the
+ * fail-fast LedgerOperationUnsupportedException arms of spend paths a Ledger cannot sign yet; the
+ * device transport, pairing, signing session and the Ledger screens live behind these contracts.
  */
 interface LedgerProposalPipeline {
     val transactionProposal: StateFlow<TransactionProposal?>
