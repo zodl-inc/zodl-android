@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ledger
 
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import androidx.navigation.toRoute
 import cash.z.ecc.android.sdk.model.BlockHeight
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.ledger.LedgerAccountImporter
@@ -59,7 +60,7 @@ class LedgerNavContributorImpl : LedgerNavContributor {
             composable<LedgerConnectArgs> { LedgerConnectScreen() }
             composable<LedgerTurnOnArgs> { LedgerTurnOnScreen() }
             composable<LedgerDeviceScanArgs> { LedgerDeviceScanScreen() }
-            composable<LedgerOpenAppArgs> { LedgerOpenAppScreen() }
+            composable<LedgerOpenAppArgs> { LedgerOpenAppScreen(it.toRoute()) }
             composable<LedgerHandshakeArgs> { LedgerHandshakeScreen() }
             composable<LedgerConnectedArgs> { LedgerConnectedScreen() }
         }

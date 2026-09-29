@@ -6,10 +6,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerBluetoothPermissionGate
 import kotlinx.serialization.Serializable
 import org.koin.androidx.compose.koinViewModel
+import org.koin.core.parameter.parametersOf
 
 @Composable
-fun LedgerOpenAppScreen() {
-    val vm = koinViewModel<LedgerOpenAppVM>()
+fun LedgerOpenAppScreen(args: LedgerOpenAppArgs) {
+    val vm = koinViewModel<LedgerOpenAppVM> { parametersOf(args) }
     val state by vm.state.collectAsStateWithLifecycle()
 
     LedgerBluetoothPermissionGate(
@@ -24,5 +25,12 @@ fun LedgerOpenAppScreen() {
     LedgerOpenAppView(state)
 }
 
+/**
+ * @param autoOpen whether the screen asks the Ledger to open the Zcash app as soon as it opens;
+ *        false when the app already runs and the flow goes straight on to the handshake, so that
+ *        backing out of it lands on an idle page instead of being sent forward again
+ */
 @Serializable
-data object LedgerOpenAppArgs
+data class LedgerOpenAppArgs(
+    val autoOpen: Boolean = true
+)

@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.common.repository.LedgerSelectedDeviceRepository
 import co.electriccoin.zcash.ui.common.usecase.ConnectLedgerDeviceUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
 import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.screen.connectledger.handshake.LedgerHandshakeArgs
 import co.electriccoin.zcash.ui.screen.connectledger.openapp.LedgerOpenAppArgs
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
@@ -100,7 +101,36 @@ class LedgerDeviceScanVMTest {
             runCurrent()
 
             coVerify(exactly = 1) { connectLedgerDevice.invoke(device("AA")) }
-            verify(exactly = 1) { navigationRouter.forward(LedgerOpenAppArgs) }
+            verify(exactly = 1) { navigationRouter.forward(LedgerOpenAppArgs()) }
+            verify(exactly = 0) { navigationRouter.forward(LedgerOpenAppArgs(autoOpen = false), LedgerHandshakeArgs) }
+        }
+
+    @Test
+    fun aDeviceAlreadyInTheZcashAppGoesStraightToTheHandshakeOverAnIdleOpenAppStep() =
+        runTest(dispatcher) {
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+            val connectLedgerDevice =
+                mockk<ConnectLedgerDeviceUseCase> {
+                    coEvery { this@mockk.invoke(any()) } returns true
+                }
+            val vm = vm(navigationRouter = navigationRouter, connectLedgerDevice = connectLedgerDevice)
+            collect(vm)
+
+            vm.onPermissionsGranted()
+            devices.value = listOf(device("AA"))
+            runCurrent()
+            vm.state.value.devices
+                .first()
+                .onClick()
+            runCurrent()
+            vm.state.value.primaryButton
+                .onClick()
+            runCurrent()
+
+            verify(exactly = 1) { navigationRouter.forward(LedgerOpenAppArgs(autoOpen = false), LedgerHandshakeArgs) }
+            verify(exactly = 0) { navigationRouter.forward(LedgerOpenAppArgs()) }
+            assertEquals(emptyList(), vm.state.value.devices)
+            assertFalse(vm.state.value.primaryButton.isLoading)
         }
 
     @Test
@@ -164,12 +194,12 @@ class LedgerDeviceScanVMTest {
                     .single()
                     .isEnabled
             )
-            verify(exactly = 0) { navigationRouter.forward(LedgerOpenAppArgs) }
+            verify(exactly = 0) { navigationRouter.forward(*anyVararg()) }
 
             bonded.complete(false)
             runCurrent()
 
-            verify(exactly = 1) { navigationRouter.forward(LedgerOpenAppArgs) }
+            verify(exactly = 1) { navigationRouter.forward(LedgerOpenAppArgs()) }
         }
 
     @Test

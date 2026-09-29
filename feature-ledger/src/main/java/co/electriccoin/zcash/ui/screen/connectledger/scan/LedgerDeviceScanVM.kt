@@ -24,6 +24,7 @@ import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceItemStat
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerInlineIssueState
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerIssueSheetBuilder
 import co.electriccoin.zcash.ui.screen.connectledger.common.toEnrollmentIssue
+import co.electriccoin.zcash.ui.screen.connectledger.handshake.LedgerHandshakeArgs
 import co.electriccoin.zcash.ui.screen.connectledger.openapp.LedgerOpenAppArgs
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
@@ -318,12 +319,20 @@ class LedgerDeviceScanVM(
      *
      * Connecting is the step that bonds the phone with the device, so a lost or refused connection
      * here reads as a failed pairing.
+     *
+     * A device that already runs the Zcash app skips the request to open it: the open-the-app step
+     * goes on the back stack idle, under the handshake, so Back from the handshake lands on it
+     * without the device being asked again.
      */
     @Suppress("TooGenericExceptionCaught")
     private suspend fun connect(device: LedgerBluetoothDevice) {
         try {
-            connectLedgerDevice(device)
-            navigationRouter.forward(LedgerOpenAppArgs)
+            val isZcashAppRunning = connectLedgerDevice(device)
+            if (isZcashAppRunning) {
+                navigationRouter.forward(LedgerOpenAppArgs(autoOpen = false), LedgerHandshakeArgs)
+            } else {
+                navigationRouter.forward(LedgerOpenAppArgs())
+            }
             internalState.update {
                 it.copy(
                     phase = LedgerScanPhase.IDLE,

@@ -36,8 +36,10 @@ import kotlinx.coroutines.launch
  * Asks the Ledger the scan screen bonded with to open the Zcash app as soon as the screen opens,
  * and moves on to the handshake once the app runs. The user confirms the request on the device.
  *
- * The request runs only once on its own: coming back from the handshake leaves the page idle, so
- * the already open app does not bounce the user forward again, and the page button asks again.
+ * The request runs only once on its own, and not at all when [LedgerOpenAppArgs.autoOpen] is off
+ * because the scan screen found the app open and went straight on to the handshake: coming back
+ * from the handshake leaves the page idle, so the already open app does not bounce the user forward
+ * again, and the page button asks again.
  * Failures open the same sheets as the other enrollment screens; the phone bonded with the device
  * on the scan screen already, so a lost connection here reads as a device that disconnected during
  * setup rather than a failed pairing. When process death has emptied
@@ -46,12 +48,18 @@ import kotlinx.coroutines.launch
  */
 @Suppress("TooManyFunctions")
 class LedgerOpenAppVM(
+    args: LedgerOpenAppArgs,
     application: Application,
     private val openLedgerZcashApp: OpenLedgerZcashAppUseCase,
     private val navigateToError: NavigateToErrorUseCase,
     private val navigationRouter: NavigationRouter,
 ) : AndroidViewModel(application) {
-    private val internalState = MutableStateFlow(LedgerOpenAppInternalState())
+    private val internalState =
+        MutableStateFlow(
+            LedgerOpenAppInternalState(
+                phase = if (args.autoOpen) LedgerOpenAppPhase.OPENING else LedgerOpenAppPhase.IDLE
+            )
+        )
 
     private var openAppJob: Job? = null
 
@@ -65,7 +73,7 @@ class LedgerOpenAppVM(
             )
 
     init {
-        startOpenApp()
+        if (args.autoOpen) startOpenApp()
     }
 
     override fun onCleared() {

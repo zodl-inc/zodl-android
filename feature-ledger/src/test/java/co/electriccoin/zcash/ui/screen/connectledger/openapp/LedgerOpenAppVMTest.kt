@@ -116,6 +116,41 @@ class LedgerOpenAppVMTest {
         }
 
     @Test
+    fun withoutAutoOpenThePageStartsIdleAndAsksOnlyWhenTheButtonIsTapped() =
+        runTest(dispatcher) {
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+            val openLedgerZcashApp = openingWith(OpenLedgerZcashAppResult.Opened)
+            val vm =
+                vm(
+                    openLedgerZcashApp = openLedgerZcashApp,
+                    navigationRouter = navigationRouter,
+                    args = LedgerOpenAppArgs(autoOpen = false),
+                )
+            collect(vm)
+            runCurrent()
+
+            coVerify(exactly = 0) { openLedgerZcashApp.invoke() }
+            verify(exactly = 0) { navigationRouter.forward(*anyVararg()) }
+            val button = vm.state.value.primaryButton
+            assertEquals(R.string.ledger_connect_continue, button.text.resourceId())
+            assertTrue(button.isEnabled)
+            assertFalse(button.isLoading)
+            assertNull(vm.state.value.errorSheet)
+            assertNull(vm.state.value.inlineIssue)
+
+            vm.onPermissionsGranted()
+            runCurrent()
+            coVerify(exactly = 0) { openLedgerZcashApp.invoke() }
+
+            vm.state.value.primaryButton
+                .onClick()
+            runCurrent()
+
+            coVerify(exactly = 1) { openLedgerZcashApp.invoke() }
+            verify(exactly = 1) { navigationRouter.forward(LedgerHandshakeArgs) }
+        }
+
+    @Test
     fun aDeclinedRequestShowsItsSheetAndEnablesTheButton() =
         runTest(dispatcher) {
             val vm = failingWith(mockk<LedgerException.AppOpenRejected>(relaxed = true))
@@ -385,7 +420,9 @@ class LedgerOpenAppVMTest {
         openLedgerZcashApp: OpenLedgerZcashAppUseCase = mockk(relaxed = true),
         navigateToError: NavigateToErrorUseCase = mockk(relaxed = true),
         navigationRouter: NavigationRouter = mockk(relaxed = true),
+        args: LedgerOpenAppArgs = LedgerOpenAppArgs(),
     ) = LedgerOpenAppVM(
+        args = args,
         application = mockk<Application>(relaxed = true),
         openLedgerZcashApp = openLedgerZcashApp,
         navigateToError = navigateToError,
