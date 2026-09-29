@@ -58,7 +58,16 @@ class LedgerAccountBindingProviderTest {
     @Test
     fun aHalfWrittenOrUnparsableValueReadsAsNoBindingAtAll() =
         runTest {
-            listOf("tpk0-deadbeef", "tpk0-deadbeef|", "|4", "", "|", "tpk0-deadbeef|notanumber")
+            listOf(
+                "tpk0-deadbeef",
+                "tpk0-deadbeef|",
+                "|4",
+                "",
+                "|",
+                "tpk0-deadbeef|notanumber",
+                "tpk0-deadbeef|-1",
+                "tpk0-deadbeef|4294967296",
+            )
                 .forEach { encoded ->
                     val store = FakePreferenceProvider()
                     store.putString(PreferenceKey(bindingKey), encoded)

@@ -64,8 +64,8 @@ private fun bindingDefault(accountUuid: AccountUuid) =
 
 /**
  * Encodes the binding as `<identity>|<index>`. A device identity is `tpk0-` followed by hex, so it
- * never contains the separator. Anything that does not parse reads as no binding at all rather
- * than as a partially recovered one.
+ * never contains the separator. Anything that does not parse, an index outside the ZIP 32 range
+ * included, reads as no binding at all rather than as a partially recovered one.
  */
 private class LedgerBindingPreferenceDefault(
     override val key: PreferenceKey
@@ -73,13 +73,17 @@ private class LedgerBindingPreferenceDefault(
     override suspend fun getValue(preferenceProvider: PreferenceProvider): LedgerAccountBindingData? {
         val encoded = preferenceProvider.getString(key).orEmpty()
         val identity = encoded.substringBeforeLast(SEPARATOR, missingDelimiterValue = "")
-        val index = encoded.substringAfterLast(SEPARATOR, missingDelimiterValue = "").toLongOrNull()
+        val index =
+            encoded
+                .substringAfterLast(SEPARATOR, missingDelimiterValue = "")
+                .toLongOrNull()
+                ?.let { runCatching { Zip32AccountIndex.new(it) }.getOrNull() }
         return if (identity.isEmpty() || index == null) {
             null
         } else {
             LedgerAccountBindingData(
                 deviceIdentityEncoding = identity,
-                zip32AccountIndex = Zip32AccountIndex.new(index),
+                zip32AccountIndex = index,
             )
         }
     }
