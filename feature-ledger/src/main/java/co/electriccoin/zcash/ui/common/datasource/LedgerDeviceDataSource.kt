@@ -8,7 +8,6 @@ import cash.z.ecc.android.sdk.ledger.LedgerDevice
 import cash.z.ecc.android.sdk.ledger.LedgerZcashApp
 import cash.z.ecc.android.sdk.model.Zip32AccountIndex
 import co.electriccoin.zcash.spackle.Twig
-import co.electriccoin.zcash.ui.common.model.LedgerBondingFailedException
 import co.electriccoin.zcash.ui.common.model.LedgerPairingTimedOutException
 import co.electriccoin.zcash.ui.common.model.VersionInfo
 import co.electriccoin.zcash.ui.common.provider.LedgerScannerProvider
@@ -45,11 +44,12 @@ interface LedgerDeviceDataSource {
      * The reads before the export get a short deadline and one retry over a fresh connection;
      * nothing is retried once the export was sent.
      *
-     * @throws LedgerBondingFailedException if connecting to the device, the step that bonds it,
-     *         fails.
+     * The phone has bonded with [device] by the time this runs ([connect]), so a failed connection
+     * here is a device that went away, not a failed pairing.
+     *
      * @throws LedgerPairingTimedOutException if the whole pairing, the user's approval included,
      *         takes longer than enrollment allows.
-     * @throws LedgerException for any failure once the link is up.
+     * @throws LedgerException for any failure reaching or talking to the device.
      */
     suspend fun pair(
         device: LedgerBluetoothDevice,
@@ -80,7 +80,7 @@ class LedgerDeviceDataSourceImpl(
         }
         return try {
             withTimeout(PAIRING_TIMEOUT) {
-                val connected = bond(device).also { opened += it }
+                val connected = reconnect()
                 val appTransport = LedgerZcashApp.ensureZcashAppOpen(connected, reconnect).also { opened += it }
                 LedgerDevice
                     .new(appTransport, VersionInfo.NETWORK)
@@ -97,13 +97,6 @@ class LedgerDeviceDataSourceImpl(
             withContext(NonCancellable) { opened.distinct().forEach { closeQuietly(it) } }
         }
     }
-
-    private suspend fun bond(device: LedgerBluetoothDevice): LedgerApduTransport =
-        try {
-            ledgerScannerProvider.connect(device)
-        } catch (e: LedgerException) {
-            throw LedgerBondingFailedException(e)
-        }
 
     /**
      * A failing close must not replace the outcome of the pairing.

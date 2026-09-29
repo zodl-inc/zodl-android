@@ -1,4 +1,4 @@
-package co.electriccoin.zcash.ui.screen.connectledger.connect
+package co.electriccoin.zcash.ui.screen.connectledger.openapp
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
@@ -23,7 +23,7 @@ import co.electriccoin.zcash.ledger.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
-import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
+import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
 import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.component.zashiFrostedHeader
@@ -35,7 +35,7 @@ import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LedgerConnectView(state: LedgerConnectState) {
+fun LedgerOpenAppView(state: LedgerOpenAppState) {
     val hazeState = rememberZashiFrostState()
     BlankBgScaffold(
         topBar = {
@@ -44,7 +44,7 @@ fun LedgerConnectView(state: LedgerConnectState) {
                     Modifier
                         .fillMaxWidth()
                         .zashiFrostedHeader(hazeState),
-                navigationAction = { ZashiTopAppBarCloseNavigation(state.onBackClick) },
+                navigationAction = { ZashiTopAppBarBackNavigation(state.onBackClick) },
                 colors =
                     ZcashTheme.colors.topAppBarColors.copyColors(
                         containerColor = Color.Transparent
@@ -72,14 +72,14 @@ fun LedgerConnectView(state: LedgerConnectState) {
                 )
                 Spacer(Modifier.height(24.dp))
                 Text(
-                    text = stringResource(R.string.ledger_connect_turnOn_title),
+                    text = stringResource(R.string.ledger_openApp_title),
                     style = ZashiTypography.header6,
                     color = ZashiColors.Text.textPrimary,
                     fontWeight = FontWeight.SemiBold,
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    text = stringResource(R.string.ledger_connect_turnOn_message),
+                    text = stringResource(R.string.ledger_openApp_message),
                     style = ZashiTypography.textSm,
                     color = ZashiColors.Text.textTertiary,
                 )
@@ -89,7 +89,7 @@ fun LedgerConnectView(state: LedgerConnectState) {
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .testTag(LedgerConnectTag.CONNECT_BTN),
+                            .testTag(LedgerOpenAppTag.CONTINUE_BTN),
                     text = stringResource(R.string.ledger_connect_continue),
                     onClick = state.onContinueClick,
                 )
@@ -102,5 +102,5 @@ fun LedgerConnectView(state: LedgerConnectState) {
 @Composable
 private fun Preview() =
     ZcashTheme {
-        LedgerConnectView(state = LedgerConnectState.preview)
+        LedgerOpenAppView(state = LedgerOpenAppState.preview)
     }

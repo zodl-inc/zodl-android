@@ -1,16 +1,14 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <resources>
 
-    <!-- Ledger connect instructions -->
-    <string name="ledger_connect_title">Connect Hardware Wallet</string>
-    <string name="ledger_connect_subtitle">Follow these steps to pair your Ledger via Bluetooth.</string>
-    <string name="ledger_connect_instructions">Instructions:</string>
-    <string name="ledger_connect_step1">Unlock your Ledger device</string>
-    <string name="ledger_connect_step2">Install the Zcash app. Zodl opens it for you; confirm on the device</string>
-    <string name="ledger_connect_step3">Enable Bluetooth</string>
-    <string name="ledger_connect_step4">Confirm the Ledger device</string>
-    <string name="ledger_connect_step5">Verify the Bluetooth pairing code</string>
-    <string name="ledger_connect_cta">Connect</string>
+    <!-- Ledger connect steps. Placeholder copy until Pablo's design for the step-by-step flow lands. -->
+    <string name="ledger_connect_turnOn_title">Turn On and Unlock Your Ledger</string>
+    <string name="ledger_connect_turnOn_message">Keep your Ledger on its home screen for now; you\'ll open the Zcash app in a later step. Make sure Bluetooth is on.</string>
+    <string name="ledger_connect_continue">Continue</string>
+    <string name="ledger_openApp_title">Open the Zcash App</string>
+    <string name="ledger_openApp_message">On your Ledger, install the Zcash app with Ledger Live if you haven\'t yet, then open it.</string>
+    <string name="ledger_handshake_title">Connecting to Your Ledger</string>
+    <string name="ledger_handshake_message">When your Ledger asks, approve exporting your account.</string>
 
     <!-- Device scan and selection -->
     <string name="ledger_scan_idle_title">Connect your Ledger</string>
@@ -20,11 +18,10 @@
     <string name="ledger_scan_select_title">Select Your Device</string>
     <string name="ledger_scan_select_subtitle">Select the Ledger device you\'d like to connect.</string>
     <string name="ledger_scan_select_cta">Connect</string>
+    <string name="ledger_scan_connecting_subtitle">Confirm the same pairing code on your phone and on your Ledger if asked.</string>
     <string name="ledger_scan_retry_cta">Try again</string>
 
     <!-- Approve on device -->
-    <string name="ledger_handshake_title">Approve on Your Device</string>
-    <string name="ledger_handshake_message">Approve sharing your viewing key with Zodl. It allows Zodl to view this account’s transactions and generate addresses, but it cannot spend your funds.</string>
     <string name="ledger_handshake_waiting_title">Waiting for approval on your Ledger</string>
     <string name="ledger_handshake_waiting_subtitle">Check your device screen to confirm.</string>
     <string name="ledger_handshake_retry">Retry</string>

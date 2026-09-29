@@ -8,7 +8,7 @@ import io.mockk.verify
 import kotlin.test.Test
 
 /**
- * The two ends of the Ledger flow: the instructions screen leads into the scan, and the success
+ * The two ends of the Ledger flow: the turn-on screen leads into the scan, and the success
  * screen only unwinds to the wallet root.
  */
 class LedgerConnectVMTest {

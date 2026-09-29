@@ -6,6 +6,7 @@ import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
 import cash.z.ecc.android.sdk.ledger.LedgerDeviceModel
 import co.electriccoin.zcash.ledger.R
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.model.LedgerPairingTimedOutException
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.repository.LedgerSelectedDeviceRepository
 import co.electriccoin.zcash.ui.common.usecase.PairLedgerDeviceResult
@@ -16,6 +17,8 @@ import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.screen.connecthw.HWWalletEnrollment
 import co.electriccoin.zcash.ui.screen.connecthw.neworactive.HWNewOrActiveArgs
 import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedArgs
+import co.electriccoin.zcash.ui.screen.error.ErrorArgs
+import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -41,13 +44,12 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import co.electriccoin.zcash.ui.design.R as DesignR
 
 /**
- * The approve screen pairs the device the scan screen picked as soon as it opens, hands a fresh
- * pairing on to the New/Active question and a re-bound account on to Connected, and stops the
- * pairing on Cancel, back and disposal. Which sheet each failure shows is in
- * [LedgerHandshakeVMIssueTest].
+ * The handshake screen asks the device the scan screen bonded with for its account as soon as it
+ * opens, hands a fresh pairing on to the New/Active question and a re-bound account on to
+ * Connected, and maps failures to sheets in which a lost link reads as a disconnect during setup:
+ * the phone bonded with the device on the scan screen already.
  *
  * Every [LedgerException] subclass has an internal constructor in the SDK, so the tests stub
  * instances rather than building them.
@@ -75,7 +77,24 @@ class LedgerHandshakeVMTest {
     }
 
     @Test
-    fun whileThePairingRunsThePageWaitsWithOnlyCancel() =
+    fun theHandshakeStartsOnItsOwnAndAFreshPairingReplacesTheScreenWithNewOrActive() =
+        runTest(dispatcher) {
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+            val pairLedgerDevice =
+                mockk<PairLedgerDeviceUseCase> {
+                    coEvery { this@mockk.invoke(any()) } returns PairLedgerDeviceResult.Paired
+                }
+            val vm = vm(pairLedgerDevice = pairLedgerDevice, navigationRouter = navigationRouter)
+            collect(vm)
+            runCurrent()
+
+            coVerify(exactly = 1) { pairLedgerDevice.invoke(device) }
+            verify(exactly = 1) { navigationRouter.replace(HWNewOrActiveArgs(HWWalletEnrollment.Ledger)) }
+            verify(exactly = 0) { navigationRouter.forward(HWNewOrActiveArgs(HWWalletEnrollment.Ledger)) }
+        }
+
+    @Test
+    fun whileTheHandshakeRunsThePageShowsOnlyTheSpinner() =
         runTest(dispatcher) {
             val pending = CompletableDeferred<PairLedgerDeviceResult>()
             val pairLedgerDevice =
@@ -87,29 +106,104 @@ class LedgerHandshakeVMTest {
             runCurrent()
 
             val state = vm.state.value
-            assertTrue(state.isWaiting)
-            assertEquals(DesignR.string.general_cancel, state.cancelButton.text.resourceId())
-            assertEquals(ButtonStyle.DESTRUCTIVE1, state.cancelButton.style)
-            assertNull(state.retryButton)
+            assertTrue(state.isConnecting)
+            assertEquals(R.string.ledger_handshake_title, state.title.resourceId())
+            assertEquals(R.string.ledger_handshake_message, state.message.resourceId())
+            assertNull(state.primaryButton)
+            assertNull(state.inlineIssue)
             assertNull(state.errorSheet)
-            coVerify(exactly = 1) { pairLedgerDevice.invoke(device) }
         }
 
     @Test
-    fun aFreshPairingReplacesTheScreenWithNewOrActive() =
+    fun aMissingDeviceFallsBackToTheWalletRootWithoutTalkingToAnyDevice() =
         runTest(dispatcher) {
             val navigationRouter = mockk<NavigationRouter>(relaxed = true)
-            val pairLedgerDevice =
-                mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } returns PairLedgerDeviceResult.Paired
-                }
-            val vm = vm(pairLedgerDevice = pairLedgerDevice, navigationRouter = navigationRouter)
+            val pairLedgerDevice = mockk<PairLedgerDeviceUseCase>(relaxed = true)
+            val vm =
+                vm(
+                    pairLedgerDevice = pairLedgerDevice,
+                    navigationRouter = navigationRouter,
+                    selectedDevice = null,
+                )
             collect(vm)
             runCurrent()
 
-            verify(exactly = 1) { navigationRouter.replace(HWNewOrActiveArgs(HWWalletEnrollment.Ledger)) }
-            verify(exactly = 0) { navigationRouter.replace(LedgerConnectedArgs) }
-            assertNull(vm.state.value.errorSheet)
+            verify(exactly = 1) { navigationRouter.backToRoot() }
+            coVerify(exactly = 0) { pairLedgerDevice.invoke(any()) }
+        }
+
+    @Test
+    fun handshakeFailuresMapToTheirSheets() =
+        runTest(dispatcher) {
+            mapOf(
+                mockk<LedgerException.WrongApp>(relaxed = true) {
+                    every { statusWord } returns WRONG_APP_STATUS
+                } to R.string.ledger_error_locked_title,
+                mockk<LedgerException.WrongApp>(relaxed = true) {
+                    every { statusWord } returns null
+                } to R.string.ledger_error_disconnected_title,
+                mockk<LedgerException.DeviceRefused>(relaxed = true) {
+                    every { isTransient } returns true
+                } to R.string.ledger_error_locked_title,
+                mockk<LedgerException.UserRejected>(relaxed = true) to R.string.ledger_error_importRejected_title,
+                mockk<LedgerException.AppTooOld>(relaxed = true) to R.string.ledger_error_appTooOld_title,
+                mockk<LedgerException.DerivationBudgetExhausted>(relaxed = true) to
+                    R.string.ledger_error_restartApp_title,
+                mockk<LedgerException.Disconnected>(relaxed = true) to R.string.ledger_error_disconnected_title,
+                mockk<LedgerException.ConnectionFailed>(relaxed = true) to R.string.ledger_error_disconnected_title,
+                mockk<LedgerException.DeviceNotFound>(relaxed = true) to R.string.ledger_error_disconnected_title,
+                mockk<LedgerException.Timeout>(relaxed = true) to R.string.ledger_error_disconnected_title,
+                mockk<LedgerException.PairingRefused>(relaxed = true) to R.string.ledger_error_pairingFailed_title,
+                LedgerPairingTimedOutException() to R.string.ledger_error_disconnected_title,
+                mockk<LedgerException.BluetoothDisabled>(relaxed = true) to R.string.ledger_error_bluetoothOff_title,
+                mockk<LedgerException.BluetoothUnauthorized>(relaxed = true) to
+                    R.string.ledger_error_permissions_title,
+                mockk<LedgerException.CapsMismatch>(relaxed = true) to R.string.ledger_error_unknown_title,
+            ).forEach { (exception, expectedTitle) ->
+                val vm = failingWith(exception)
+
+                val sheet = assertNotNull(vm.state.value.errorSheet)
+                assertEquals(expectedTitle, sheet.title.resourceId())
+                assertFalse(vm.state.value.isConnecting)
+                assertEquals(expectedTitle, assertNotNull(vm.state.value.inlineIssue).title.resourceId())
+            }
+        }
+
+    @Test
+    fun aLostConnectionReadsAsADisconnectDuringSetupRatherThanAFailedPairing() =
+        runTest(dispatcher) {
+            val vm = failingWith(mockk<LedgerException.ConnectionFailed>(relaxed = true))
+
+            val sheet = assertNotNull(vm.state.value.errorSheet)
+            assertEquals(R.string.ledger_error_disconnected_title, sheet.title.resourceId())
+            assertEquals(R.string.ledger_error_disconnected_message, sheet.message.resourceId())
+        }
+
+    @Test
+    fun aHandshakeThatTimedOutReadsAsADisconnectDuringSetupWithTryAgain() =
+        runTest(dispatcher) {
+            val vm = failingWith(LedgerPairingTimedOutException())
+
+            val sheet = assertNotNull(vm.state.value.errorSheet)
+            assertEquals(R.string.ledger_error_disconnected_title, sheet.title.resourceId())
+            assertEquals(R.string.ledger_error_disconnected_message, sheet.message.resourceId())
+            assertEquals(R.string.ledger_error_tryAgain, assertNotNull(sheet.primary).text.resourceId())
+            assertEquals(
+                R.string.ledger_error_tryAgain,
+                assertNotNull(vm.state.value.primaryButton).text.resourceId()
+            )
+        }
+
+    @Test
+    fun anIssueThatCannotBeRetriedOffersNoTryAgainAnywhere() =
+        runTest(dispatcher) {
+            val vm = failingWith(mockk<LedgerException.TransactionNotSignable>(relaxed = true))
+
+            val sheet = assertNotNull(vm.state.value.errorSheet)
+            assertNull(sheet.primary)
+            assertNull(sheet.secondary)
+            assertNull(vm.state.value.primaryButton)
+            assertNotNull(vm.state.value.inlineIssue)
         }
 
     @Test
@@ -144,31 +238,64 @@ class LedgerHandshakeVMTest {
             val sheet = assertNotNull(vm.state.value.errorSheet)
             assertEquals(R.string.ledger_sign_error_wrongDevice_title, sheet.title.resourceId())
             assertEquals(R.string.ledger_sign_error_wrongDevice_message, sheet.message.resourceId())
-            assertNotNull(vm.state.value.retryButton)
-            assertFalse(vm.state.value.isWaiting)
+            assertNotNull(vm.state.value.primaryButton)
+            assertFalse(vm.state.value.isConnecting)
             verify(exactly = 0) { navigationRouter.replace(*anyVararg()) }
         }
 
     @Test
-    fun aMissingDeviceFallsBackToTheWalletRootWithoutTalkingToAnyDevice() =
+    fun tryAgainRunsTheHandshakeAgainOnTheSameDevice() =
         runTest(dispatcher) {
             val navigationRouter = mockk<NavigationRouter>(relaxed = true)
-            val pairLedgerDevice = mockk<PairLedgerDeviceUseCase>(relaxed = true)
-            val vm =
-                vm(
-                    pairLedgerDevice = pairLedgerDevice,
-                    navigationRouter = navigationRouter,
-                    selectedDevice = null,
-                )
+            var attempts = 0
+            val pairLedgerDevice =
+                mockk<PairLedgerDeviceUseCase> {
+                    coEvery { this@mockk.invoke(any()) } coAnswers {
+                        attempts++
+                        if (attempts == 1) {
+                            throw mockk<LedgerException.WrongApp>(relaxed = true)
+                        }
+                        PairLedgerDeviceResult.Paired
+                    }
+                }
+            val vm = vm(pairLedgerDevice = pairLedgerDevice, navigationRouter = navigationRouter)
             collect(vm)
             runCurrent()
 
-            verify(exactly = 1) { navigationRouter.backToRoot() }
-            coVerify(exactly = 0) { pairLedgerDevice.invoke(any()) }
+            val sheet = assertNotNull(vm.state.value.errorSheet)
+            assertEquals(R.string.ledger_error_tryAgain, assertNotNull(sheet.primary).text.resourceId())
+            assertNotNull(sheet.primary).onClick()
+            runCurrent()
+
+            coVerify(exactly = 2) { pairLedgerDevice.invoke(device) }
+            verify(exactly = 1) { navigationRouter.replace(HWNewOrActiveArgs(HWWalletEnrollment.Ledger)) }
         }
 
     @Test
-    fun anAccountAlreadyInTheWalletShowsTheAlreadyAddedSheetOverThePageWithOnlyCancel() =
+    fun dismissingTheSheetLeavesTheIssueAndATryAgainButtonOnThePage() =
+        runTest(dispatcher) {
+            val vm = failingWith(mockk<LedgerException.UserRejected>(relaxed = true))
+
+            assertNotNull(vm.state.value.errorSheet).onBack()
+            runCurrent()
+
+            assertNull(vm.state.value.errorSheet)
+            assertEquals(
+                R.string.ledger_error_importRejected_title,
+                assertNotNull(vm.state.value.inlineIssue).title.resourceId()
+            )
+            val button = assertNotNull(vm.state.value.primaryButton)
+            assertEquals(R.string.ledger_error_tryAgain, button.text.resourceId())
+            assertTrue(button.isEnabled)
+            assertEquals(
+                R.string.ledger_scan_idle_title,
+                vm.state.value.title
+                    .resourceId()
+            )
+        }
+
+    @Test
+    fun anAccountAlreadyInTheWalletShowsTheAlreadyAddedSheet() =
         runTest(dispatcher) {
             val pairLedgerDevice =
                 mockk<PairLedgerDeviceUseCase> {
@@ -182,13 +309,15 @@ class LedgerHandshakeVMTest {
             val sheet = assertNotNull(vm.state.value.errorSheet)
             assertEquals(R.string.ledger_error_alreadyAdded_title, sheet.title.resourceId())
             assertEquals(ButtonStyle.SECONDARY, assertNotNull(sheet.secondary).style)
-            assertFalse(vm.state.value.isWaiting)
-            assertNull(vm.state.value.retryButton)
 
             assertNotNull(sheet.secondary).onClick()
             runCurrent()
+
             assertNull(vm.state.value.errorSheet)
-            assertFalse(vm.state.value.isWaiting)
+            assertEquals(
+                R.string.ledger_error_alreadyAdded_primary,
+                assertNotNull(vm.state.value.primaryButton).text.resourceId()
+            )
         }
 
     @Test
@@ -222,211 +351,52 @@ class LedgerHandshakeVMTest {
         }
 
     @Test
-    fun retryOnThePageRunsThePairingAgainOnTheSameDevice() =
+    fun deniedPermissionsShowThePermissionsSheetAndGrantingThemRestartsTheHandshake() =
         runTest(dispatcher) {
-            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
-            var attempts = 0
+            val pending = CompletableDeferred<PairLedgerDeviceResult>()
             val pairLedgerDevice =
                 mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } coAnswers {
-                        attempts++
-                        if (attempts == 1) {
-                            throw mockk<LedgerException.UserRejected>(relaxed = true)
-                        }
-                        PairLedgerDeviceResult.Paired
-                    }
+                    coEvery { this@mockk.invoke(any()) } coAnswers { pending.await() }
                 }
-            val vm = vm(pairLedgerDevice = pairLedgerDevice, navigationRouter = navigationRouter)
-            collect(vm)
-            runCurrent()
-
-            assertNotNull(vm.state.value.errorSheet).onBack()
-            runCurrent()
-            val retry = assertNotNull(vm.state.value.retryButton)
-            assertEquals(R.string.ledger_handshake_retry, retry.text.resourceId())
-            assertEquals(ButtonStyle.PRIMARY, retry.style)
-            retry.onClick()
-            runCurrent()
-
-            coVerify(exactly = 2) { pairLedgerDevice.invoke(device) }
-            verify(exactly = 1) { navigationRouter.replace(HWNewOrActiveArgs(HWWalletEnrollment.Ledger)) }
-        }
-
-    @Test
-    fun theSheetsTryAgainRunsThePairingAgainAndWaits() =
-        runTest(dispatcher) {
-            var attempts = 0
-            val pairLedgerDevice =
-                mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } coAnswers {
-                        attempts++
-                        if (attempts == 1) {
-                            throw mockk<LedgerException.Disconnected>(relaxed = true)
-                        }
-                        CompletableDeferred<PairLedgerDeviceResult>().await()
-                    }
-                }
-            val vm = vm(pairLedgerDevice = pairLedgerDevice)
-            collect(vm)
-            runCurrent()
-
-            val sheet = assertNotNull(vm.state.value.errorSheet)
-            assertEquals(R.string.ledger_error_tryAgain, assertNotNull(sheet.primary).text.resourceId())
-            assertNotNull(sheet.primary).onClick()
-            runCurrent()
-
-            coVerify(exactly = 2) { pairLedgerDevice.invoke(device) }
-            assertTrue(vm.state.value.isWaiting)
-            assertNull(vm.state.value.retryButton)
-            assertNull(vm.state.value.errorSheet)
-        }
-
-    @Test
-    fun cancelStopsARunningPairingAndGoesBack() =
-        runTest(dispatcher) {
-            var isCancelled = false
-            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
-            val vm = vm(pairLedgerDevice = waitingForever { isCancelled = true }, navigationRouter = navigationRouter)
-            collect(vm)
-            runCurrent()
-            assertFalse(isCancelled)
-
-            vm.state.value.cancelButton
-                .onClick()
-            runCurrent()
-
-            assertTrue(isCancelled)
-            verify(exactly = 1) { navigationRouter.back() }
-            verify(exactly = 0) { navigationRouter.backToRoot() }
-        }
-
-    @Test
-    fun backStopsARunningPairingAndGoesBack() =
-        runTest(dispatcher) {
-            var isCancelled = false
-            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
-            val vm = vm(pairLedgerDevice = waitingForever { isCancelled = true }, navigationRouter = navigationRouter)
-            collect(vm)
-            runCurrent()
-
-            vm.state.value.onBack()
-            runCurrent()
-
-            assertTrue(isCancelled)
-            verify(exactly = 1) { navigationRouter.back() }
-        }
-
-    @Test
-    fun cancelAfterAFailureGoesBackWithoutPairingAgain() =
-        runTest(dispatcher) {
-            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
-            val pairLedgerDevice =
-                mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } throws mockk<LedgerException.UserRejected>(relaxed = true)
-                }
-            val vm = vm(pairLedgerDevice = pairLedgerDevice, navigationRouter = navigationRouter)
-            collect(vm)
-            runCurrent()
-
-            vm.state.value.cancelButton
-                .onClick()
-            runCurrent()
-
-            verify(exactly = 1) { navigationRouter.back() }
-            coVerify(exactly = 1) { pairLedgerDevice.invoke(device) }
-        }
-
-    @Test
-    fun leavingTheScreenCancelsARunningPairing() =
-        runTest(dispatcher) {
-            var isCancelled = false
-            val vm = vm(pairLedgerDevice = waitingForever { isCancelled = true })
-            collect(vm)
-            runCurrent()
-            assertFalse(isCancelled)
-
-            vm.triggerOnCleared()
-            runCurrent()
-
-            assertTrue(isCancelled)
-        }
-
-    @Test
-    fun deniedPermissionsCancelThePairingAndGrantingThemRestartsIt() =
-        runTest(dispatcher) {
-            var cancellations = 0
-            val pairLedgerDevice = waitingForever { cancellations++ }
             val vm = vm(pairLedgerDevice = pairLedgerDevice)
             collect(vm)
             runCurrent()
 
             vm.onPermissionsDenied(false)
             runCurrent()
-            assertEquals(1, cancellations)
             val sheet = assertNotNull(vm.state.value.errorSheet)
             assertEquals(R.string.ledger_error_permissions_title, sheet.title.resourceId())
             assertEquals(R.string.ledger_error_permissions_cta, assertNotNull(sheet.primary).text.resourceId())
-            assertFalse(vm.state.value.isWaiting)
+            assertFalse(vm.state.value.isConnecting)
 
             vm.onPermissionsGranted()
             runCurrent()
 
-            assertTrue(vm.state.value.isWaiting)
+            assertTrue(vm.state.value.isConnecting)
             assertNull(vm.state.value.errorSheet)
             coVerify(exactly = 2) { pairLedgerDevice.invoke(device) }
         }
 
     @Test
-    fun aResumeWhileThePairingRunsDoesNotStartASecondOne() =
+    fun aResumeWhileTheHandshakeRunsDoesNotStartASecondOne() =
         runTest(dispatcher) {
-            val pairLedgerDevice = waitingForever {}
+            val pending = CompletableDeferred<PairLedgerDeviceResult>()
+            val pairLedgerDevice =
+                mockk<PairLedgerDeviceUseCase> {
+                    coEvery { this@mockk.invoke(any()) } coAnswers { pending.await() }
+                }
             val vm = vm(pairLedgerDevice = pairLedgerDevice)
             collect(vm)
             runCurrent()
 
             vm.onPermissionsGranted()
-            vm.onBluetoothEnabled()
             runCurrent()
 
             coVerify(exactly = 1) { pairLedgerDevice.invoke(device) }
         }
 
-    /**
-     * The running attempt is checked before the device is looked up, so a restart while it runs
-     * can never send the flow to the wallet root, even once the device has gone.
-     */
     @Test
-    fun aRestartWhileThePairingRunsLeavesItAloneEvenWithoutASelectedDevice() =
-        runTest(dispatcher) {
-            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
-            val pairLedgerDevice = waitingForever {}
-            val ledgerSelectedDeviceRepository =
-                mockk<LedgerSelectedDeviceRepository>(relaxed = true) {
-                    every { get() } returnsMany listOf(device, null)
-                }
-            val vm =
-                LedgerHandshakeVM(
-                    application = mockk<Application>(relaxed = true),
-                    pairLedgerDevice = pairLedgerDevice,
-                    selectWalletAccount = mockk(relaxed = true),
-                    ledgerSelectedDeviceRepository = ledgerSelectedDeviceRepository,
-                    navigateToError = mockk(relaxed = true),
-                    navigationRouter = navigationRouter,
-                )
-            collect(vm)
-            runCurrent()
-
-            vm.onBluetoothEnabled()
-            runCurrent()
-
-            verify(exactly = 0) { navigationRouter.backToRoot() }
-            verify(exactly = 1) { ledgerSelectedDeviceRepository.get() }
-            coVerify(exactly = 1) { pairLedgerDevice.invoke(device) }
-            assertTrue(vm.state.value.isWaiting)
-        }
-
-    @Test
-    fun bluetoothOffAsksTheSystemToTurnItOnAndPairsAgainOnceItIs() =
+    fun bluetoothOffAsksTheSystemToTurnItOnAndRetriesOnceItIs() =
         runTest(dispatcher) {
             var attempts = 0
             val pairLedgerDevice =
@@ -456,20 +426,82 @@ class LedgerHandshakeVMTest {
 
             vm.onBluetoothEnabled()
             runCurrent()
-            assertTrue(vm.state.value.isWaiting)
+            assertTrue(vm.state.value.isConnecting)
             coVerify(exactly = 2) { pairLedgerDevice.invoke(device) }
         }
 
-    private fun waitingForever(onCancelled: () -> Unit) =
-        mockk<PairLedgerDeviceUseCase> {
-            coEvery { this@mockk.invoke(any()) } coAnswers {
-                try {
-                    awaitCancellation()
-                } finally {
-                    onCancelled()
+    @Suppress("TooGenericExceptionThrown")
+    @Test
+    fun aNonLedgerFailureGoesToTheGeneralErrorScreenAndLeavesARetryBehind() =
+        runTest(dispatcher) {
+            val navigateToError = mockk<NavigateToErrorUseCase>(relaxed = true)
+            val failure = IllegalStateException("boom")
+            val pairLedgerDevice =
+                mockk<PairLedgerDeviceUseCase> {
+                    coEvery { this@mockk.invoke(any()) } throws failure
                 }
-            }
+            val vm = vm(pairLedgerDevice = pairLedgerDevice, navigateToError = navigateToError)
+            collect(vm)
+            runCurrent()
+
+            verify(exactly = 1) { navigateToError.invoke(ErrorArgs.General(failure), any()) }
+            assertNull(vm.state.value.errorSheet)
+            assertEquals(
+                R.string.ledger_error_unknown_title,
+                assertNotNull(vm.state.value.inlineIssue).title.resourceId()
+            )
+            assertNotNull(vm.state.value.primaryButton)
         }
+
+    @Test
+    fun backReturnsToTheOpenTheAppScreen() =
+        runTest(dispatcher) {
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+            val vm = failingWith(mockk<LedgerException.UserRejected>(relaxed = true), navigationRouter)
+
+            vm.state.value.onBack()
+
+            verify(exactly = 1) { navigationRouter.back() }
+        }
+
+    @Test
+    fun leavingTheScreenCancelsARunningHandshake() =
+        runTest(dispatcher) {
+            var isCancelled = false
+            val pairLedgerDevice =
+                mockk<PairLedgerDeviceUseCase> {
+                    coEvery { this@mockk.invoke(any()) } coAnswers {
+                        try {
+                            awaitCancellation()
+                        } finally {
+                            isCancelled = true
+                        }
+                    }
+                }
+            val vm = vm(pairLedgerDevice = pairLedgerDevice)
+            collect(vm)
+            runCurrent()
+            assertFalse(isCancelled)
+
+            vm.triggerOnCleared()
+            runCurrent()
+
+            assertTrue(isCancelled)
+        }
+
+    private fun TestScope.failingWith(
+        exception: Exception,
+        navigationRouter: NavigationRouter = mockk(relaxed = true),
+    ): LedgerHandshakeVM {
+        val pairLedgerDevice =
+            mockk<PairLedgerDeviceUseCase> {
+                coEvery { this@mockk.invoke(any()) } throws exception
+            }
+        val vm = vm(pairLedgerDevice = pairLedgerDevice, navigationRouter = navigationRouter)
+        collect(vm)
+        runCurrent()
+        return vm
+    }
 
     private fun StringResource.resourceId(): Int = (this as StringResource.ByResource).resource
 
@@ -491,6 +523,7 @@ class LedgerHandshakeVMTest {
     private fun vm(
         pairLedgerDevice: PairLedgerDeviceUseCase = mockk(relaxed = true),
         selectWalletAccount: SelectWalletAccountUseCase = mockk(relaxed = true),
+        navigateToError: NavigateToErrorUseCase = mockk(relaxed = true),
         navigationRouter: NavigationRouter = mockk(relaxed = true),
         selectedDevice: LedgerBluetoothDevice? = device,
     ) = LedgerHandshakeVM(
@@ -501,7 +534,9 @@ class LedgerHandshakeVMTest {
             mockk<LedgerSelectedDeviceRepository>(relaxed = true) {
                 every { get() } returns selectedDevice
             },
-        navigateToError = mockk(relaxed = true),
+        navigateToError = navigateToError,
         navigationRouter = navigationRouter,
     )
 }
+
+private const val WRONG_APP_STATUS = 0x6E00

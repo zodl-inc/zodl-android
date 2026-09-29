@@ -9,11 +9,9 @@ import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ledger.R
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.NavigationRouter
-import co.electriccoin.zcash.ui.common.model.LedgerBondingFailedException
 import co.electriccoin.zcash.ui.common.model.LedgerIssue
 import co.electriccoin.zcash.ui.common.model.LedgerIssueContext
 import co.electriccoin.zcash.ui.common.model.LedgerIssueKind
-import co.electriccoin.zcash.ui.common.model.LedgerIssueRetry
 import co.electriccoin.zcash.ui.common.model.LedgerPairingTimedOutException
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.repository.LedgerSelectedDeviceRepository
@@ -21,11 +19,11 @@ import co.electriccoin.zcash.ui.common.usecase.PairLedgerDeviceResult
 import co.electriccoin.zcash.ui.common.usecase.PairLedgerDeviceUseCase
 import co.electriccoin.zcash.ui.common.usecase.SelectWalletAccountUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
-import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connecthw.HWWalletEnrollment
 import co.electriccoin.zcash.ui.screen.connecthw.neworactive.HWNewOrActiveArgs
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerErrorSheetState
+import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerInlineIssueState
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerIssueSheetBuilder
 import co.electriccoin.zcash.ui.screen.connectledger.common.ledgerAlreadyAddedSheet
 import co.electriccoin.zcash.ui.screen.connectledger.common.toEnrollmentIssue
@@ -43,16 +41,15 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import co.electriccoin.zcash.ui.design.R as DesignR
 
 /**
- * Pairs the Ledger picked on the scan screen as soon as the screen opens: connects to it, opens
- * the Zcash app on it and asks it to export the account, which the user approves on the device.
+ * Asks the Ledger the scan screen bonded with for its account, over a fresh link, once the user
+ * has opened the Zcash app on it. The handshake starts as soon as the screen opens.
  *
  * The device comes from [LedgerSelectedDeviceRepository]; when process death has emptied it, the
  * flow falls back to the wallet root. The transport each attempt opens is closed by the data
- * source before [PairLedgerDeviceUseCase] returns, and a running attempt is cancelled on Cancel,
- * on back, on a permission denial and in [onCleared].
+ * source before [PairLedgerDeviceUseCase] returns, and a running attempt is cancelled in
+ * [onCleared].
  */
 @Suppress("TooManyFunctions")
 class LedgerHandshakeVM(
@@ -65,7 +62,7 @@ class LedgerHandshakeVM(
 ) : AndroidViewModel(application) {
     private val internalState = MutableStateFlow(LedgerHandshakeInternalState())
 
-    private var pairJob: Job? = null
+    private var handshakeJob: Job? = null
 
     val state: StateFlow<LedgerHandshakeState> =
         internalState
@@ -77,25 +74,29 @@ class LedgerHandshakeVM(
             )
 
     init {
-        startPairing()
+        startHandshake()
     }
 
     override fun onCleared() {
-        cancelPairing()
+        handshakeJob?.cancel()
+        handshakeJob = null
         super.onCleared()
     }
 
     private fun createState(internal: LedgerHandshakeInternalState): LedgerHandshakeState {
         val sheets = issueSheets(internal)
+        val isConnecting = internal.phase == LedgerHandshakePhase.CONNECTING
         return LedgerHandshakeState(
-            isWaiting = internal.phase == LedgerHandshakePhase.WAITING,
-            cancelButton =
-                ButtonState(
-                    text = stringRes(DesignR.string.general_cancel),
-                    style = ButtonStyle.DESTRUCTIVE1,
-                    onClick = ::onBack,
-                ),
-            retryButton = createRetryButton(internal, sheets),
+            title =
+                if (isConnecting) {
+                    stringRes(R.string.ledger_handshake_title)
+                } else {
+                    stringRes(R.string.ledger_scan_idle_title)
+                },
+            message = stringRes(R.string.ledger_handshake_message),
+            isConnecting = isConnecting,
+            inlineIssue = createInlineIssue(internal),
+            primaryButton = createPrimaryButton(internal, sheets),
             errorSheet = if (internal.isSheetShown) createErrorSheet(internal, sheets) else null,
             permissionRequestNonce = internal.permissionRequestNonce,
             enableBluetoothRequestNonce = internal.enableBluetoothRequestNonce,
@@ -103,23 +104,51 @@ class LedgerHandshakeVM(
         )
     }
 
-    /**
-     * Repeats the sheet's own action, which for most issues runs the pairing again. An issue that
-     * trying again cannot fix, and an account already in the wallet, leave only Cancel.
-     */
-    private fun createRetryButton(
+    private fun createInlineIssue(internal: LedgerHandshakeInternalState): LedgerInlineIssueState? {
+        val issue = internal.issue
+        return when {
+            internal.alreadyAdded != null -> {
+                LedgerInlineIssueState(
+                    icon = R.drawable.ic_ledger_alert_circle,
+                    title = stringRes(R.string.ledger_error_alreadyAdded_title),
+                    message = stringRes(R.string.ledger_error_alreadyAdded_message),
+                )
+            }
+
+            issue != null -> {
+                LedgerInlineIssueState(issue.icon, issue.title, issue.message)
+            }
+
+            else -> {
+                null
+            }
+        }
+    }
+
+    private fun createPrimaryButton(
         internal: LedgerHandshakeInternalState,
         sheets: LedgerIssueSheetBuilder,
     ): ButtonState? {
+        val alreadyAdded = internal.alreadyAdded
         val issue = internal.issue
-        return if (issue != null && issue.retry != LedgerIssueRetry.NONE) {
-            ButtonState(
-                text = stringRes(R.string.ledger_handshake_retry),
-                style = ButtonStyle.PRIMARY,
-                onClick = sheets.action(issue),
-            )
-        } else {
-            null
+        return when {
+            alreadyAdded != null -> {
+                ButtonState(
+                    text = stringRes(R.string.ledger_error_alreadyAdded_primary),
+                    onClick = { onGoToAccountClick(alreadyAdded) },
+                )
+            }
+
+            issue != null && sheets.hasAction(issue) -> {
+                ButtonState(
+                    text = sheets.actionText(issue),
+                    onClick = sheets.action(issue),
+                )
+            }
+
+            else -> {
+                null
+            }
         }
     }
 
@@ -150,7 +179,7 @@ class LedgerHandshakeVM(
     private fun issueSheets(internal: LedgerHandshakeInternalState) =
         LedgerIssueSheetBuilder(
             canRequestPermissionsAgain = internal.canRequestPermissionsAgain,
-            onTryAgain = ::startPairing,
+            onTryAgain = ::startHandshake,
             onRequestPermissionsAgain = ::onRequestPermissionsAgainClick,
             onOpenSettings = ::onOpenSettingsClick,
             onEnableBluetooth = ::onEnableBluetoothClick,
@@ -159,67 +188,70 @@ class LedgerHandshakeVM(
         )
 
     /**
-     * Also restarts after a permissions issue: permissions revoked since the scan make the pairing
-     * fail while the system dialog is still up, and granting them should not need another tap.
+     * Also restarts after a permissions issue: permissions revoked since the scan make the
+     * handshake fail while the system dialog is still up, and granting them should not need
+     * another tap.
      */
     fun onPermissionsGranted() {
         val internal = internalState.value
         if (internal.phase == LedgerHandshakePhase.PERMISSION || internal.issue?.kind == LedgerIssueKind.PERMISSIONS) {
-            startPairing()
+            startHandshake()
         }
     }
 
     fun onPermissionsDenied(canRequestAgain: Boolean) {
-        cancelPairing()
+        handshakeJob?.cancel()
+        handshakeJob = null
         internalState.update { it.copy(canRequestPermissionsAgain = canRequestAgain) }
         showIssue(LedgerIssue.permissions)
     }
 
     /**
-     * The system dialog turned Bluetooth on, so the pairing can be tried again.
+     * The system dialog turned Bluetooth on, so the handshake can be tried again.
      */
-    fun onBluetoothEnabled() = startPairing()
+    fun onBluetoothEnabled() = startHandshake()
 
     /**
-     * The user declined the system dialog, so the sheet comes back over the page.
+     * The user declined the system dialog. The inline issue stayed on the page throughout, so only
+     * the sheet has to come back.
      */
     fun onBluetoothEnableDeclined() {
         internalState.update { it.copy(isSheetShown = it.issue != null) }
     }
 
     /**
-     * Each attempt opens a fresh transport to the selected device. A running attempt is left alone
-     * before the device is looked up, so a restart can never unwind the flow under it.
+     * Each attempt opens a fresh transport to the device the scan screen bonded with.
      */
-    private fun startPairing() {
-        if (pairJob?.isActive == true) return
+    private fun startHandshake() {
         val device = ledgerSelectedDeviceRepository.get()
         if (device == null) {
             navigationRouter.backToRoot()
             return
         }
+        if (handshakeJob?.isActive == true) return
         internalState.update {
             it.copy(
-                phase = LedgerHandshakePhase.WAITING,
+                phase = LedgerHandshakePhase.CONNECTING,
                 issue = null,
                 alreadyAdded = null,
                 isSheetShown = false,
             )
         }
-        pairJob = viewModelScope.launch { pair(device) }
+        handshakeJob = viewModelScope.launch { handshake(device) }
     }
 
     /**
-     * On success this screen is replaced, so backing out of the birthday screens lands on the scan
-     * screen rather than on a finished pairing. An account that was only missing its binding, or is
-     * being paired again, needs no birthday: it is connected again at once. The wrong Ledger shows
-     * its issue, and Try again pairs the same device again, which may have switched seeds since.
+     * On success this screen is replaced, so backing out of the birthday screens lands on the
+     * open-the-app screen rather than on a finished handshake. An account that was only missing its
+     * binding, or is being paired again, needs no birthday: it is connected again at once. The wrong
+     * Ledger shows its issue, and Try again pairs the same device again, which may have switched
+     * seeds since.
      *
-     * A failure while the phone was still connecting reads as a failed pairing; one after the link
-     * was up, including the pairing running out of time, as a device that disconnected during setup.
+     * The phone bonded with the device on the scan screen, so a lost connection here, including the
+     * handshake running out of time, reads as a device that disconnected during setup.
      */
     @Suppress("TooGenericExceptionCaught")
-    private suspend fun pair(device: LedgerBluetoothDevice) {
+    private suspend fun handshake(device: LedgerBluetoothDevice) {
         try {
             when (val result = pairLedgerDevice(device)) {
                 is PairLedgerDeviceResult.Paired -> {
@@ -241,8 +273,6 @@ class LedgerHandshakeVM(
             }
         } catch (e: CancellationException) {
             throw e
-        } catch (e: LedgerBondingFailedException) {
-            showIssue(e.ledgerException.toEnrollmentIssue(LedgerIssueContext.ENROLLMENT_PAIRING))
         } catch (e: LedgerPairingTimedOutException) {
             Twig.warn { "Ledger enrollment failed: ${e.javaClass.simpleName}" }
             showIssue(LedgerIssue.disconnectedDuringSetup)
@@ -281,7 +311,7 @@ class LedgerHandshakeVM(
 
     /**
      * Back to [LedgerHandshakePhase.PERMISSION]: returning from Settings with the permission
-     * granted restarts the pairing through the screen's ON_RESUME hook.
+     * granted restarts the handshake through the screen's ON_RESUME hook.
      */
     private fun onOpenSettingsClick() {
         internalState.update { it.copy(isSheetShown = false, phase = LedgerHandshakePhase.PERMISSION) }
@@ -303,20 +333,7 @@ class LedgerHandshakeVM(
         internalState.update { it.copy(isSheetShown = false) }
     }
 
-    /**
-     * Cancel, the back arrow and system back all land here. A pairing still waiting on the device
-     * is dropped at once rather than when the screen is disposed, so the device is not left holding
-     * an export nobody will read.
-     */
-    private fun onBack() {
-        cancelPairing()
-        navigationRouter.back()
-    }
-
-    private fun cancelPairing() {
-        pairJob?.cancel()
-        pairJob = null
-    }
+    private fun onBack() = navigationRouter.back()
 
     private fun showIssue(issue: LedgerIssue) {
         internalState.update {
@@ -342,7 +359,7 @@ class LedgerHandshakeVM(
 }
 
 private data class LedgerHandshakeInternalState(
-    val phase: LedgerHandshakePhase = LedgerHandshakePhase.WAITING,
+    val phase: LedgerHandshakePhase = LedgerHandshakePhase.CONNECTING,
     val issue: LedgerIssue? = null,
     val alreadyAdded: WalletAccount? = null,
     val isSheetShown: Boolean = false,
@@ -353,6 +370,6 @@ private data class LedgerHandshakeInternalState(
 
 private enum class LedgerHandshakePhase {
     PERMISSION,
-    WAITING,
+    CONNECTING,
     IDLE,
 }

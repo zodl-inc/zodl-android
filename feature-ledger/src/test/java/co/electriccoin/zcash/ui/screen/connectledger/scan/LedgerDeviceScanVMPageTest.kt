@@ -6,8 +6,10 @@ import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
 import cash.z.ecc.android.sdk.ledger.LedgerDeviceModel
 import co.electriccoin.zcash.ledger.R
 import co.electriccoin.zcash.ui.common.provider.LEDGER_SCAN_TIMEOUT
+import co.electriccoin.zcash.ui.common.usecase.ConnectLedgerDeviceUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
 import co.electriccoin.zcash.ui.design.util.StringResource
+import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
@@ -175,7 +177,7 @@ class LedgerDeviceScanVMPageTest {
                 mockk<LedgerException.BluetoothUnavailable>(relaxed = true) {
                     every { scanErrorCode } returns null
                 }
-            val vm = scannedWithFailure(exception)
+            val vm = connectedWithFailure(exception)
 
             assertPage(
                 vm,
@@ -192,9 +194,9 @@ class LedgerDeviceScanVMPageTest {
         }
 
     @Test
-    fun aFailedScanShowsTheSearchingCopyBehindACloseAndTheSheetCopyInline() =
+    fun aFailedConnectionShowsTheSearchingCopyBehindACloseAndTheSheetCopyInline() =
         runTest(dispatcher) {
-            val vm = scannedWithFailure(mockk<LedgerException.ConnectionFailed>(relaxed = true))
+            val vm = connectedWithFailure(mockk<LedgerException.ConnectionFailed>(relaxed = true))
 
             assertPage(
                 vm,
@@ -213,7 +215,7 @@ class LedgerDeviceScanVMPageTest {
     @Test
     fun anUnknownFailureBreaksTheIndicatorMessageOverTwoLines() =
         runTest(dispatcher) {
-            val vm = scannedWithFailure(mockk<LedgerException.Internal>(relaxed = true))
+            val vm = connectedWithFailure(mockk<LedgerException.Internal>(relaxed = true))
 
             assertPage(
                 vm,
@@ -237,7 +239,7 @@ class LedgerDeviceScanVMPageTest {
     fun anIssueThatKeepsTheDeviceShowsTheSelectionWithoutAnIndicator() =
         runTest(dispatcher) {
             val vm =
-                scannedWithFailure(
+                connectedWithFailure(
                     mockk<LedgerException.WrongApp>(relaxed = true) { every { statusWord } returns WRONG_APP_STATUS }
                 )
 
@@ -249,10 +251,6 @@ class LedgerDeviceScanVMPageTest {
                 LedgerDeviceScanNavigation.BACK
             )
             assertNull(vm.state.value.inlineIssue)
-            vm.state.value.devices
-                .single()
-                .onClick()
-            runCurrent()
             assertTrue(vm.state.value.primaryButton.isEnabled)
         }
 
@@ -280,21 +278,22 @@ class LedgerDeviceScanVMPageTest {
         assertEquals(message, inline.message.resourceId())
     }
 
-    /**
-     * The scan lists a device and then fails, so the tests can tell whether the issue keeps it.
-     */
-    private fun TestScope.scannedWithFailure(exception: Exception): LedgerDeviceScanVM {
-        val observeLedgerDevices =
-            mockk<ObserveLedgerDevicesUseCase>(relaxed = true) {
-                every { this@mockk.invoke() } returns
-                    flow {
-                        emit(listOf(device("AA")))
-                        throw exception
-                    }
+    private fun TestScope.connectedWithFailure(exception: LedgerException): LedgerDeviceScanVM {
+        val connectLedgerDevice =
+            mockk<ConnectLedgerDeviceUseCase> {
+                coEvery { this@mockk.invoke(any()) } throws exception
             }
-        val vm = vm(observeLedgerDevices = observeLedgerDevices)
+        val vm = vm(connectLedgerDevice = connectLedgerDevice)
         collect(vm)
         vm.onPermissionsGranted()
+        devices.value = listOf(device("AA"))
+        runCurrent()
+        vm.state.value.devices
+            .first()
+            .onClick()
+        runCurrent()
+        vm.state.value.primaryButton
+            .onClick()
         runCurrent()
         return vm
     }
@@ -322,9 +321,11 @@ class LedgerDeviceScanVMPageTest {
             mockk(relaxed = true) {
                 every { this@mockk.invoke() } returns devices
             },
+        connectLedgerDevice: ConnectLedgerDeviceUseCase = mockk(relaxed = true),
     ) = LedgerDeviceScanVM(
         application = mockk<Application>(relaxed = true),
         observeLedgerDevices = observeLedgerDevices,
+        connectLedgerDevice = connectLedgerDevice,
         ledgerPairingRepository = mockk(relaxed = true),
         ledgerSelectedDeviceRepository = mockk(relaxed = true),
         navigateToError = mockk(relaxed = true),

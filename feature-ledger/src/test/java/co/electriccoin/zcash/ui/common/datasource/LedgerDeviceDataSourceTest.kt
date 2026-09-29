@@ -9,7 +9,6 @@ import cash.z.ecc.android.sdk.ledger.LedgerDevice
 import cash.z.ecc.android.sdk.ledger.LedgerDeviceModel
 import cash.z.ecc.android.sdk.ledger.LedgerZcashApp
 import cash.z.ecc.android.sdk.model.Zip32AccountIndex
-import co.electriccoin.zcash.ui.common.model.LedgerBondingFailedException
 import co.electriccoin.zcash.ui.common.model.LedgerPairingTimedOutException
 import co.electriccoin.zcash.ui.common.provider.LedgerScannerProvider
 import io.mockk.coEvery
@@ -36,7 +35,8 @@ import kotlin.time.Duration.Companion.seconds
 /**
  * [LedgerDeviceDataSourceImpl.pair] brings the device to the Zcash app before pairing, pairs over
  * the transport that step returns with the read deadline and a reconnect, closes every transport it
- * opened, tags a failure to connect as a bonding failure, and caps the whole pairing at five minutes.
+ * opened, and caps the whole pairing at five minutes. The phone bonded with the device on the scan
+ * screen already, so a failure to connect is passed on as the SDK raised it.
  *
  * `LedgerDevice.new` loads the SDK's native backend and `LedgerZcashApp` talks to a device, so both
  * are mocked at their object boundary.
@@ -173,20 +173,20 @@ class LedgerDeviceDataSourceTest {
         }
 
     @Test
-    fun aFailureToConnectIsABondingFailureAndNothingElseRuns() =
+    fun aFailureToConnectSurfacesAsItIsAndNothingElseRuns() =
         runTest {
-            val refused = mockk<LedgerException.ConnectionFailed>(relaxed = true)
-            coEvery { ledgerScannerProvider.connect(any()) } throws refused
+            val lost = mockk<LedgerException.ConnectionFailed>(relaxed = true)
+            coEvery { ledgerScannerProvider.connect(any()) } throws lost
 
-            val failure = assertFailsWith<LedgerBondingFailedException> { dataSource.pair(device(), account) }
+            val failure = assertFailsWith<LedgerException.ConnectionFailed> { dataSource.pair(device(), account) }
 
-            assertSame(refused, failure.ledgerException)
+            assertSame(lost, failure)
             coVerify(exactly = 0) { LedgerZcashApp.ensureZcashAppOpen(any(), any()) }
             coVerify(exactly = 0) { LedgerDevice.new(any(), any()) }
         }
 
     @Test
-    fun aFailedReconnectOnceTheLinkWasUpIsNotABondingFailure() =
+    fun aFailedReconnectSurfacesAsItIsAndClosesTheFirstTransport() =
         runTest {
             val connected = mockk<LedgerBluetoothTransport>(relaxed = true)
             val lost = mockk<LedgerException.ConnectionFailed>(relaxed = true)

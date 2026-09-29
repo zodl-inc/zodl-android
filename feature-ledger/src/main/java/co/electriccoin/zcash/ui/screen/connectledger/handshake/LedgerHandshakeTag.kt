@@ -1,7 +1,6 @@
 package co.electriccoin.zcash.ui.screen.connectledger.handshake
 
 object LedgerHandshakeTag {
-    const val CANCEL_BTN = "LEDGER_HANDSHAKE_CANCEL"
-    const val RETRY_BTN = "LEDGER_HANDSHAKE_RETRY"
-    const val WAITING_INDICATOR = "LEDGER_HANDSHAKE_WAITING_INDICATOR"
+    const val PRIMARY_BTN = "LEDGER_HANDSHAKE_PRIMARY"
+    const val SPINNER = "LEDGER_HANDSHAKE_SPINNER"
 }
