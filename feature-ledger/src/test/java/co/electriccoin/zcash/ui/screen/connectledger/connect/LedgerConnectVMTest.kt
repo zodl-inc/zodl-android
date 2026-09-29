@@ -2,29 +2,29 @@ package co.electriccoin.zcash.ui.screen.connectledger.connect
 
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedVM
-import co.electriccoin.zcash.ui.screen.connectledger.scan.LedgerDeviceScanArgs
+import co.electriccoin.zcash.ui.screen.connectledger.turnon.LedgerTurnOnArgs
 import io.mockk.mockk
 import io.mockk.verify
 import kotlin.test.Test
 
 /**
- * The two ends of the Ledger flow: the turn-on screen leads into the scan, and the success
+ * The two ends of the Ledger flow: the intro screen leads into the turn-on step, and the success
  * screen only unwinds to the wallet root.
  */
 class LedgerConnectVMTest {
     @Test
-    fun theInstructionsScreenContinuesToTheScan() {
+    fun theIntroScreenContinuesToTheTurnOnStep() {
         val navigationRouter = mockk<NavigationRouter>(relaxed = true)
 
         LedgerConnectVM(navigationRouter)
             .state.value
             .onContinueClick()
 
-        verify(exactly = 1) { navigationRouter.forward(LedgerDeviceScanArgs) }
+        verify(exactly = 1) { navigationRouter.forward(LedgerTurnOnArgs) }
     }
 
     @Test
-    fun theInstructionsScreenCloseGoesBack() {
+    fun theIntroScreenCloseGoesBack() {
         val navigationRouter = mockk<NavigationRouter>(relaxed = true)
 
         LedgerConnectVM(navigationRouter)

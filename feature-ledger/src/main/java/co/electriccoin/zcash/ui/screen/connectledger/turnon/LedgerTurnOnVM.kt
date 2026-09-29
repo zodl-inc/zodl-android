@@ -1,18 +1,18 @@
-package co.electriccoin.zcash.ui.screen.connectledger.connect
+package co.electriccoin.zcash.ui.screen.connectledger.turnon
 
 import androidx.lifecycle.ViewModel
 import co.electriccoin.zcash.ui.NavigationRouter
-import co.electriccoin.zcash.ui.screen.connectledger.turnon.LedgerTurnOnArgs
+import co.electriccoin.zcash.ui.screen.connectledger.scan.LedgerDeviceScanArgs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class LedgerConnectVM(
+class LedgerTurnOnVM(
     private val navigationRouter: NavigationRouter,
 ) : ViewModel() {
-    val state: StateFlow<LedgerConnectState> =
+    val state: StateFlow<LedgerTurnOnState> =
         MutableStateFlow(
-            LedgerConnectState(
+            LedgerTurnOnState(
                 onBackClick = ::onBack,
                 onContinueClick = ::onContinue,
             )
@@ -20,5 +20,5 @@ class LedgerConnectVM(
 
     private fun onBack() = navigationRouter.back()
 
-    private fun onContinue() = navigationRouter.forward(LedgerTurnOnArgs)
+    private fun onContinue() = navigationRouter.forward(LedgerDeviceScanArgs)
 }

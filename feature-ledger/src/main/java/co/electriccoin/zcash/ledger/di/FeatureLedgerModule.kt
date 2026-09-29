@@ -37,6 +37,7 @@ import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedVM
 import co.electriccoin.zcash.ui.screen.connectledger.handshake.LedgerHandshakeVM
 import co.electriccoin.zcash.ui.screen.connectledger.openapp.LedgerOpenAppVM
 import co.electriccoin.zcash.ui.screen.connectledger.scan.LedgerDeviceScanVM
+import co.electriccoin.zcash.ui.screen.connectledger.turnon.LedgerTurnOnVM
 import co.electriccoin.zcash.ui.screen.signledgertransaction.LedgerSignVM
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
@@ -82,6 +83,7 @@ val featureLedgerModule =
         factoryOf(::NavigateToLedgerRepairUseCase)
 
         viewModelOf(::LedgerConnectVM)
+        viewModelOf(::LedgerTurnOnVM)
         viewModelOf(::LedgerConnectedVM)
         viewModelOf(::LedgerDeviceScanVM)
         viewModelOf(::LedgerOpenAppVM)
