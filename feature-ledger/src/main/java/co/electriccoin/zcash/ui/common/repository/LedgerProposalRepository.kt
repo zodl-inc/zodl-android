@@ -143,6 +143,10 @@ class LedgerProposalRepositoryImpl(
 
     /**
      * Guards [generation] together with every state write that depends on it.
+     *
+     * A monitor rather than a Mutex: [startSigning], [cancelSigning] and
+     * [failSignedSessionWithoutProposal] take it from the UI without a coroutine, and no guarded
+     * block suspends, so a session coroutine never holds it across a suspension point.
      */
     private val lock = Any()
 
