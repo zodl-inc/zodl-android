@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.common.provider
 
+import co.electriccoin.lightwallet.client.OhttpHttpClient
 import co.electriccoin.zcash.configuration.model.map.Configuration
 import co.electriccoin.zcash.ui.common.model.voting.ChainCommitmentTreeLatestResponse
 import co.electriccoin.zcash.ui.common.model.voting.ChainCommitmentTreeLeavesResponse
@@ -14,7 +15,6 @@ import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigSelection
 import co.electriccoin.zcash.ui.common.repository.VotingChainConfigState
 import co.electriccoin.zcash.ui.common.repository.VotingCustomChainConfig
-import co.electriccoin.lightwallet.client.OhttpHttpClient
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -392,6 +392,7 @@ class KtorVotingApiProviderTest {
                     httpClientProvider =
                         object : HttpClientProvider {
                             override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
                             override suspend fun supportsKtorTimeouts(): Boolean = false
 
                             override suspend fun createTor(): HttpClient = create()
@@ -460,6 +461,7 @@ class KtorVotingApiProviderTest {
                     httpClientProvider =
                         object : HttpClientProvider {
                             override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
                             override suspend fun supportsKtorTimeouts(): Boolean = false
 
                             override suspend fun createTor(): HttpClient = create()
@@ -545,6 +547,7 @@ class KtorVotingApiProviderTest {
                     httpClientProvider =
                         object : HttpClientProvider {
                             override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
                             override suspend fun supportsKtorTimeouts(): Boolean = true
 
                             override suspend fun createTor(): HttpClient = create()
@@ -693,6 +696,7 @@ class KtorVotingApiProviderTest {
                     httpClientProvider =
                         object : HttpClientProvider {
                             override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
                             override suspend fun supportsKtorTimeouts(): Boolean = true
 
                             override suspend fun createTor(): HttpClient = create()
@@ -765,6 +769,7 @@ class KtorVotingApiProviderTest {
                     httpClientProvider =
                         object : HttpClientProvider {
                             override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
                             override suspend fun supportsKtorTimeouts(): Boolean = false
 
                             override suspend fun createTor(): HttpClient = create()
@@ -837,6 +842,7 @@ class KtorVotingApiProviderTest {
                     httpClientProvider =
                         object : HttpClientProvider {
                             override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
                             override suspend fun supportsKtorTimeouts(): Boolean = true
 
                             override suspend fun createTor(): HttpClient = create()
@@ -922,6 +928,7 @@ class KtorVotingApiProviderTest {
                     httpClientProvider =
                         object : HttpClientProvider {
                             override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
                             override suspend fun supportsKtorTimeouts(): Boolean = false
 
                             override suspend fun createTor(): HttpClient = create()
@@ -1010,6 +1017,7 @@ class KtorVotingApiProviderTest {
     ): HttpClientProvider =
         object : HttpClientProvider {
             override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
             override suspend fun supportsKtorTimeouts(): Boolean = true
 
             override suspend fun createTor(): HttpClient = create()
@@ -1070,6 +1078,7 @@ class KtorVotingApiProviderTest {
             httpClientProvider =
                 object : HttpClientProvider {
                     override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
                     override suspend fun supportsKtorTimeouts(): Boolean = true
 
                     override suspend fun createTor(): HttpClient = create()
@@ -1202,6 +1211,7 @@ class KtorVotingApiProviderTest {
         private val responseOverrides: Map<String, TestResponse>
     ) : HttpClientProvider {
         override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
         override suspend fun supportsKtorTimeouts(): Boolean = supportsKtorTimeouts
 
         override suspend fun createTor(): HttpClient = create()
@@ -1265,6 +1275,7 @@ class KtorVotingApiProviderTest {
         private val responses: Map<String, MockResponse>
     ) : HttpClientProvider {
         override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
         override suspend fun supportsKtorTimeouts(): Boolean = true
 
         override suspend fun createTor(): HttpClient = create()
