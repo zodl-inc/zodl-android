@@ -32,6 +32,7 @@ import co.electriccoin.zcash.ui.common.model.LedgerSigningState
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.SwapQuote
 import co.electriccoin.zcash.ui.common.model.toLedgerIssue
+import co.electriccoin.zcash.ui.common.provider.LEDGER_SCAN_TIMEOUT
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -372,7 +373,7 @@ class LedgerProposalRepositoryImpl(
                 }
             val timer =
                 launch {
-                    delay(SCAN_TIMEOUT)
+                    delay(LEDGER_SCAN_TIMEOUT)
                     timedOut.update { true }
                 }
             val settled = awaitSettledDevices(found, timedOut)
@@ -465,7 +466,7 @@ class LedgerProposalRepositoryImpl(
                     launch {
                         found.collectLatest { current ->
                             if (current.isEmpty()) {
-                                delay(SCAN_TIMEOUT)
+                                delay(LEDGER_SCAN_TIMEOUT)
                                 emptied.complete(Unit)
                             }
                         }
@@ -634,7 +635,6 @@ class LedgerProposalRepositoryImpl(
     }
 
     private companion object {
-        val SCAN_TIMEOUT = 20.seconds
         val SETTLE_DELAY = 1.seconds
 
         /**

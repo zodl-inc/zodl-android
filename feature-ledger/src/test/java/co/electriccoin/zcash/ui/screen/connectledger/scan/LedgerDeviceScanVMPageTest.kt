@@ -6,6 +6,7 @@ import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
 import cash.z.ecc.android.sdk.ledger.LedgerDeviceModel
 import co.electriccoin.zcash.ledger.R
 import co.electriccoin.zcash.ui.common.model.LedgerBondingFailedException
+import co.electriccoin.zcash.ui.common.provider.LEDGER_SCAN_TIMEOUT
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
 import co.electriccoin.zcash.ui.common.usecase.PairLedgerDeviceResult
 import co.electriccoin.zcash.ui.common.usecase.PairLedgerDeviceUseCase
@@ -84,7 +85,7 @@ class LedgerDeviceScanVMPageTest {
             collect(vm)
 
             vm.onPermissionsGranted()
-            advanceTimeBy(31.seconds)
+            advanceTimeBy(LEDGER_SCAN_TIMEOUT + 1.seconds)
             runCurrent()
 
             assertPage(

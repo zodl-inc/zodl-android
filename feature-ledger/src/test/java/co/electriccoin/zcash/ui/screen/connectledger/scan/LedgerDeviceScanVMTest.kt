@@ -8,6 +8,7 @@ import co.electriccoin.zcash.ledger.R
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.model.LedgerBondingFailedException
 import co.electriccoin.zcash.ui.common.model.WalletAccount
+import co.electriccoin.zcash.ui.common.provider.LEDGER_SCAN_TIMEOUT
 import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
 import co.electriccoin.zcash.ui.common.usecase.PairLedgerDeviceResult
@@ -183,7 +184,7 @@ class LedgerDeviceScanVMTest {
             )
             assertTrue(vm.state.value.showDeviceSkeletons)
 
-            advanceTimeBy(31.seconds)
+            advanceTimeBy(LEDGER_SCAN_TIMEOUT + 1.seconds)
             runCurrent()
             assertNotNull(vm.state.value.errorSheet).onBack()
             runCurrent()
@@ -223,7 +224,7 @@ class LedgerDeviceScanVMTest {
             runCurrent()
             verify(exactly = 1) { navigateToError.invoke(any(), any()) }
 
-            advanceTimeBy(31.seconds)
+            advanceTimeBy(LEDGER_SCAN_TIMEOUT + 1.seconds)
             runCurrent()
 
             assertNull(vm.state.value.errorSheet)
@@ -314,13 +315,13 @@ class LedgerDeviceScanVMTest {
         }
 
     @Test
-    fun aScanThatFindsNothingWithinThirtySecondsShowsTheNoDevicesSheet() =
+    fun aScanThatFindsNothingWithinTheScanTimeoutShowsTheNoDevicesSheet() =
         runTest(dispatcher) {
             val vm = vm()
             collect(vm)
 
             vm.onPermissionsGranted()
-            advanceTimeBy(31.seconds)
+            advanceTimeBy(LEDGER_SCAN_TIMEOUT + 1.seconds)
             runCurrent()
 
             assertSheetTitle(vm, R.string.ledger_error_noDevices_title)
@@ -486,7 +487,7 @@ class LedgerDeviceScanVMTest {
             collect(vm)
 
             vm.onPermissionsGranted()
-            advanceTimeBy(31.seconds)
+            advanceTimeBy(LEDGER_SCAN_TIMEOUT + 1.seconds)
             runCurrent()
             assertNotNull(vm.state.value.errorSheet)
 

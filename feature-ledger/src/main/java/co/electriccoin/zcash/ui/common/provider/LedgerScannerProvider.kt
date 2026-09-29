@@ -8,6 +8,14 @@ import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
 import cash.z.ecc.android.sdk.ledger.LedgerBluetoothScanner
 import cash.z.ecc.android.sdk.ledger.LedgerBluetoothTransport
 import kotlinx.coroutines.flow.Flow
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
+
+/**
+ * How long a Ledger scan, while connecting an account or signing, looks for a device before it
+ * reports that none was found.
+ */
+val LEDGER_SCAN_TIMEOUT: Duration = 30.seconds
 
 /**
  * The app's only entry point to the SDK's Bluetooth LE scanner. SDK Ledger types stop at this

@@ -26,6 +26,7 @@ import co.electriccoin.zcash.ui.common.model.LedgerIssueKind
 import co.electriccoin.zcash.ui.common.model.LedgerIssueRetry
 import co.electriccoin.zcash.ui.common.model.LedgerSigningState
 import co.electriccoin.zcash.ui.common.model.SubmitResult
+import co.electriccoin.zcash.ui.common.provider.LEDGER_SCAN_TIMEOUT
 import io.mockk.clearMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -146,14 +147,14 @@ class LedgerProposalRepositoryTest {
         }
 
     @Test
-    fun twentySecondsWithoutADeviceFailsWithNoDevices() =
+    fun theScanTimeoutWithoutADeviceFailsWithNoDevices() =
         runTest(dispatcher) {
             givenPczt(ledgerAccount())
             runCurrent()
 
             repository.startSigning()
             runCurrent()
-            advanceTimeBy(21.seconds)
+            advanceTimeBy(LEDGER_SCAN_TIMEOUT + 1.seconds)
             runCurrent()
 
             val failed = repository.signingState.value
@@ -516,7 +517,7 @@ class LedgerProposalRepositoryTest {
             assertEquals(LedgerSigningState.Scanning, repository.signingState.value)
             coVerify(exactly = 0) { ledgerSigningDataSource.connect(any()) }
 
-            advanceTimeBy(20.seconds)
+            advanceTimeBy(LEDGER_SCAN_TIMEOUT)
             runCurrent()
 
             val failed = repository.signingState.value
@@ -692,7 +693,7 @@ class LedgerProposalRepositoryTest {
 
             devices.value = emptyList()
             runCurrent()
-            advanceTimeBy(19.seconds)
+            advanceTimeBy(LEDGER_SCAN_TIMEOUT - 1.seconds)
             runCurrent()
 
             val stillSelecting = repository.signingState.value
@@ -726,7 +727,7 @@ class LedgerProposalRepositoryTest {
             advanceTimeBy(10.seconds)
             devices.value = listOf(device("AA"))
             runCurrent()
-            advanceTimeBy(30.seconds)
+            advanceTimeBy(LEDGER_SCAN_TIMEOUT + 10.seconds)
             runCurrent()
 
             assertTrue(repository.signingState.value is LedgerSigningState.Selecting)

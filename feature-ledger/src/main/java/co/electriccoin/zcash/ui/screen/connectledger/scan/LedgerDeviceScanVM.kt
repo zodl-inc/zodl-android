@@ -18,6 +18,7 @@ import co.electriccoin.zcash.ui.common.model.LedgerIssueRetry
 import co.electriccoin.zcash.ui.common.model.LedgerPairingTimedOutException
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.toLedgerIssue
+import co.electriccoin.zcash.ui.common.provider.LEDGER_SCAN_TIMEOUT
 import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
 import co.electriccoin.zcash.ui.common.usecase.PairLedgerDeviceResult
@@ -46,7 +47,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.time.Duration.Companion.seconds
 
 /**
  * Drives the scan/select/pair phases of Ledger enrollment.
@@ -504,7 +504,7 @@ class LedgerDeviceScanVM(
         scanJob = viewModelScope.launch { scan() }
         scanTimeoutJob =
             viewModelScope.launch {
-                delay(SCAN_TIMEOUT)
+                delay(LEDGER_SCAN_TIMEOUT)
                 if (internalState.value.devices.isEmpty()) {
                     showIssue(LedgerIssue.noDevices)
                 }
@@ -619,5 +619,3 @@ private enum class LedgerScanPhase {
     PAIRING,
     IDLE,
 }
-
-private val SCAN_TIMEOUT = 30.seconds
