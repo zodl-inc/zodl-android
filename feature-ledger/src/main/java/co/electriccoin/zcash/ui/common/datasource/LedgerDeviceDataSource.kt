@@ -29,10 +29,13 @@ interface LedgerDeviceDataSource {
 
     /**
      * Opens a link to [device], bonding with it first if the phone has not yet (the OS shows its
-     * pairing prompt and the device a code), and closes it again. No command reaches the device, so
-     * the Zcash app need not be open on it.
+     * pairing prompt and the device a code), asks the device which app it runs and closes the link
+     * again. Only that query reaches the device, so the Zcash app need not be open on it.
+     *
+     * @return whether the device reported the Zcash app running; false when it runs another app or
+     *         the query failed, which leaves the connection itself a success.
      */
-    suspend fun connect(device: LedgerBluetoothDevice)
+    suspend fun connect(device: LedgerBluetoothDevice): Boolean
 
     /**
      * Connects to [device], asks it to open the Zcash app if it is elsewhere (the user confirms on
@@ -71,7 +74,29 @@ class LedgerDeviceDataSourceImpl(
 
     override fun isLocationOffForScan(): Boolean = ledgerScannerProvider.isLocationOffForScan()
 
-    override suspend fun connect(device: LedgerBluetoothDevice) = ledgerScannerProvider.connect(device).close()
+    override suspend fun connect(device: LedgerBluetoothDevice): Boolean {
+        val transport = ledgerScannerProvider.connect(device)
+        return try {
+            isZcashAppRunning(transport)
+        } finally {
+            withContext(NonCancellable) { closeQuietly(transport) }
+        }
+    }
+
+    /**
+     * The bond is in place once the link is up, so a query that fails only leaves the running app
+     * unknown; the flow then asks the device to open the Zcash app as it would anyway.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun isZcashAppRunning(transport: LedgerApduTransport): Boolean =
+        try {
+            LedgerZcashApp.currentApp(transport).isZcash
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Twig.info { "Ledger connect: the running app is unknown: ${e.javaClass.simpleName}" }
+            false
+        }
 
     /**
      * Every transport opened here, the first one and each reconnect while the device switches apps,

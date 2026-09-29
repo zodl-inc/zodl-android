@@ -5,20 +5,20 @@ import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
 import cash.z.ecc.android.sdk.ledger.LedgerDeviceModel
 import co.electriccoin.zcash.ui.common.datasource.LedgerDeviceDataSource
 import co.electriccoin.zcash.ui.common.repository.LedgerSelectedDeviceRepositoryImpl
-import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
-import io.mockk.just
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertSame
+import kotlin.test.assertTrue
 
 /**
  * Connecting bonds with the device and remembers it for the handshake, but only once the link was
- * actually opened.
+ * actually opened, and passes on whether the device runs the Zcash app already.
  */
 class ConnectLedgerDeviceUseCaseTest {
     private val device =
@@ -34,13 +34,27 @@ class ConnectLedgerDeviceUseCaseTest {
         runTest {
             val dataSource =
                 mockk<LedgerDeviceDataSource> {
-                    coEvery { connect(any()) } just Runs
+                    coEvery { connect(any()) } returns false
                 }
             val repository = LedgerSelectedDeviceRepositoryImpl()
 
-            ConnectLedgerDeviceUseCase(dataSource, repository).invoke(device)
+            assertFalse(ConnectLedgerDeviceUseCase(dataSource, repository).invoke(device))
 
             coVerify(exactly = 1) { dataSource.connect(device) }
+            assertSame(device, repository.get())
+        }
+
+    @Test
+    fun aDeviceAlreadyInTheZcashAppIsReportedAndRemembered() =
+        runTest {
+            val dataSource =
+                mockk<LedgerDeviceDataSource> {
+                    coEvery { connect(any()) } returns true
+                }
+            val repository = LedgerSelectedDeviceRepositoryImpl()
+
+            assertTrue(ConnectLedgerDeviceUseCase(dataSource, repository).invoke(device))
+
             assertSame(device, repository.get())
         }
 
@@ -65,7 +79,7 @@ class ConnectLedgerDeviceUseCaseTest {
         runTest {
             val dataSource =
                 mockk<LedgerDeviceDataSource> {
-                    coEvery { connect(any()) } just Runs
+                    coEvery { connect(any()) } returns false
                 }
             val repository = LedgerSelectedDeviceRepositoryImpl()
             ConnectLedgerDeviceUseCase(dataSource, repository).invoke(device)

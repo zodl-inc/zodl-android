@@ -15,11 +15,9 @@ import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.screen.connectledger.openapp.LedgerOpenAppArgs
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
-import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
-import io.mockk.just
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.CompletableDeferred
@@ -76,7 +74,7 @@ class LedgerDeviceScanVMTest {
             val navigationRouter = mockk<NavigationRouter>(relaxed = true)
             val connectLedgerDevice =
                 mockk<ConnectLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } just Runs
+                    coEvery { this@mockk.invoke(any()) } returns false
                 }
             val vm = vm(navigationRouter = navigationRouter, connectLedgerDevice = connectLedgerDevice)
             collect(vm)
@@ -135,7 +133,7 @@ class LedgerDeviceScanVMTest {
     fun whileConnectingTheRowsAreLockedAndThePairingCodeHintIsShown() =
         runTest(dispatcher) {
             val navigationRouter = mockk<NavigationRouter>(relaxed = true)
-            val bonded = CompletableDeferred<Unit>()
+            val bonded = CompletableDeferred<Boolean>()
             val connectLedgerDevice =
                 mockk<ConnectLedgerDeviceUseCase> {
                     coEvery { this@mockk.invoke(any()) } coAnswers { bonded.await() }
@@ -168,7 +166,7 @@ class LedgerDeviceScanVMTest {
             )
             verify(exactly = 0) { navigationRouter.forward(LedgerOpenAppArgs) }
 
-            bonded.complete(Unit)
+            bonded.complete(false)
             runCurrent()
 
             verify(exactly = 1) { navigationRouter.forward(LedgerOpenAppArgs) }
@@ -179,7 +177,7 @@ class LedgerDeviceScanVMTest {
         runTest(dispatcher) {
             val connectLedgerDevice =
                 mockk<ConnectLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } just Runs
+                    coEvery { this@mockk.invoke(any()) } returns false
                 }
             val vm = vm(connectLedgerDevice = connectLedgerDevice)
             collect(vm)
