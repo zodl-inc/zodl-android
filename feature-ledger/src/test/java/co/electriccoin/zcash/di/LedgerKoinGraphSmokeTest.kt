@@ -21,7 +21,10 @@ import co.electriccoin.zcash.ui.common.usecase.SelectWalletAccountUseCase
 import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectVM
 import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedVM
 import co.electriccoin.zcash.ui.screen.connectledger.handshake.LedgerHandshakeVM
+import co.electriccoin.zcash.ui.screen.connectledger.openapp.LedgerOpenAppArgs
+import co.electriccoin.zcash.ui.screen.connectledger.openapp.LedgerOpenAppVM
 import co.electriccoin.zcash.ui.screen.connectledger.scan.LedgerDeviceScanVM
+import co.electriccoin.zcash.ui.screen.connectledger.turnon.LedgerTurnOnVM
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.screen.signledgertransaction.LedgerSignVM
 import io.mockk.mockk
@@ -71,6 +74,8 @@ class LedgerKoinGraphSmokeTest {
 
                 single<SynchronizerProvider> { mockk(relaxed = true) }
                 single<LedgerAccountBindingProvider> { mockk(relaxed = true) }
+
+                factory { LedgerOpenAppArgs() }
             }
 
         koin =
@@ -91,8 +96,18 @@ class LedgerKoinGraphSmokeTest {
     }
 
     @Test
+    fun ledgerTurnOnVM_resolvesFromKoin() {
+        koin.koin.get<LedgerTurnOnVM>()
+    }
+
+    @Test
     fun ledgerDeviceScanVM_resolvesFromKoin() {
         koin.koin.get<LedgerDeviceScanVM>()
+    }
+
+    @Test
+    fun ledgerOpenAppVM_resolvesFromKoin() {
+        koin.koin.get<LedgerOpenAppVM>()
     }
 
     @Test
