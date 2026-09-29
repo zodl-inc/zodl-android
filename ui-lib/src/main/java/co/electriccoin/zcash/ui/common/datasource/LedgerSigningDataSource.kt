@@ -2,10 +2,11 @@ package co.electriccoin.zcash.ui.common.datasource
 
 import cash.z.ecc.android.sdk.exception.LedgerException
 import cash.z.ecc.android.sdk.ledger.LedgerAccountBinding
+import cash.z.ecc.android.sdk.ledger.LedgerApduTransport
 import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
-import cash.z.ecc.android.sdk.ledger.LedgerBluetoothTransport
 import cash.z.ecc.android.sdk.ledger.LedgerDeviceIdentity
 import cash.z.ecc.android.sdk.ledger.LedgerSigningProgress
+import cash.z.ecc.android.sdk.ledger.LedgerZcashApp
 import cash.z.ecc.android.sdk.model.Pczt
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
@@ -29,7 +30,12 @@ interface LedgerSigningDataSource {
     val isLinked: Boolean
 
     /**
-     * Opens a link to [device], closing a link held from an earlier attempt first.
+     * Opens a link to [device], closing a link held from an earlier attempt first, and makes sure the
+     * device runs the Zcash app, asking it to open the app if it is on its dashboard or in another app.
+     *
+     * @throws LedgerException.AppNotInstalled if the device has no Zcash app.
+     * @throws LedgerException.AppOpenRejected if the user declines opening it on the device.
+     * @throws LedgerException for every other device or link failure; no link is held afterwards.
      */
     suspend fun connect(device: LedgerBluetoothDevice)
 
@@ -72,16 +78,32 @@ class LedgerSigningDataSourceImpl(
     private val mutex = Mutex()
 
     @Volatile
-    private var transport: LedgerBluetoothTransport? = null
+    private var transport: LedgerApduTransport? = null
 
     override val isLinked: Boolean
         get() = transport != null
 
+    /**
+     * Connects and makes sure the device runs the Zcash app, opening it if needed, before any signing
+     * command is sent. The link kept is the one the app was confirmed on.
+     */
+    @Suppress("TooGenericExceptionCaught")
     override suspend fun connect(device: LedgerBluetoothDevice) =
         mutex.withLock {
             closeLink()
             Twig.info { "Ledger signing: connecting" }
-            transport = ledgerScannerProvider.connect(device)
+            val connected = ledgerScannerProvider.connect(device)
+            transport =
+                try {
+                    LedgerZcashApp.ensureZcashAppOpen(connected) { ledgerScannerProvider.connect(device) }
+                } catch (e: CancellationException) {
+                    withContext(NonCancellable) { connected.close() }
+                    throw e
+                } catch (e: Exception) {
+                    Twig.warn { "Ledger signing: the Zcash app is not ready: ${e.javaClass.simpleName}" }
+                    connected.close()
+                    throw e
+                }
         }
 
     @Suppress("TooGenericExceptionCaught")

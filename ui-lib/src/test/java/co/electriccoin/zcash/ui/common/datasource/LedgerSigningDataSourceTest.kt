@@ -6,6 +6,7 @@ import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
 import cash.z.ecc.android.sdk.ledger.LedgerBluetoothTransport
 import cash.z.ecc.android.sdk.ledger.LedgerDeviceIdentity
 import cash.z.ecc.android.sdk.ledger.LedgerDeviceModel
+import cash.z.ecc.android.sdk.ledger.LedgerZcashApp
 import cash.z.ecc.android.sdk.model.Account
 import cash.z.ecc.android.sdk.model.AccountUuid
 import cash.z.ecc.android.sdk.model.Pczt
@@ -56,6 +57,8 @@ class LedgerSigningDataSourceTest {
     fun setUp() {
         mockkObject(LedgerDeviceIdentity.Companion)
         coEvery { LedgerDeviceIdentity.new(any()) } returns mockk(relaxed = true)
+        mockkObject(LedgerZcashApp)
+        coEvery { LedgerZcashApp.ensureZcashAppOpen(any(), any()) } answers { firstArg() }
     }
 
     @AfterTest
@@ -185,6 +188,41 @@ class LedgerSigningDataSourceTest {
             coVerify(exactly = 1) { first.close() }
             coVerify(exactly = 0) { second.close() }
             assertTrue(dataSource.isLinked)
+        }
+
+    @Test
+    fun signingUsesTheLinkTheZcashAppWasConfirmedOn() =
+        runTest {
+            val connected = mockk<LedgerBluetoothTransport>(relaxed = true)
+            val afterAppSwitch = mockk<LedgerBluetoothTransport>(relaxed = true)
+            coEvery { ledgerScannerProvider.connect(any()) } returns connected
+            coEvery { LedgerZcashApp.ensureZcashAppOpen(connected, any()) } returns afterAppSwitch
+            coEvery { synchronizer.signPcztWithLedger(any(), any(), any(), any(), any()) } returns Pczt(byteArrayOf(1))
+
+            dataSource.connect(device())
+            dataSource.sign(Pczt(byteArrayOf(0)), ledgerAccount()) { }
+
+            coVerify(exactly = 1) { LedgerZcashApp.ensureZcashAppOpen(connected, any()) }
+            coVerify(exactly = 1) {
+                synchronizer.signPcztWithLedger(any(), any(), any(), transport = afterAppSwitch, onProgress = any())
+            }
+            coVerify(exactly = 1) { afterAppSwitch.close() }
+        }
+
+    @Test
+    fun aZcashAppThatCannotBeOpenedClosesTheLinkBeforeAnySigning() =
+        runTest {
+            val connected = mockk<LedgerBluetoothTransport>(relaxed = true)
+            coEvery { ledgerScannerProvider.connect(any()) } returns connected
+            val declined = mockk<LedgerException.AppOpenRejected>(relaxed = true)
+            coEvery { LedgerZcashApp.ensureZcashAppOpen(any(), any()) } throws declined
+
+            val thrown = assertFailsWith<LedgerException.AppOpenRejected> { dataSource.connect(device()) }
+
+            assertSame(declined, thrown)
+            coVerify(exactly = 1) { connected.close() }
+            assertFalse(dataSource.isLinked)
+            coVerify(exactly = 0) { synchronizer.signPcztWithLedger(any(), any(), any(), any(), any()) }
         }
 
     private fun device(identifier: String = "AA") =
