@@ -173,9 +173,10 @@ class LedgerDeviceScanVM(
         }
 
     /**
-     * Retained devices win over the idle retry: after an issue that keeps the link, the selected
+     * Retained devices win over an issue's retry: after an issue that keeps the link, the selected
      * row and an enabled Connect are how the user tries again. An issue that trying again cannot
-     * fix leaves only a disabled Connect.
+     * fix leaves only a disabled Connect, and so does the idle page, which offers no Try again: it
+     * scans again on its own once the user is back on it.
      */
     private fun createPrimaryButton(
         internal: LedgerScanInternalState,
@@ -216,8 +217,8 @@ class LedgerDeviceScanVM(
 
         internal.phase == LedgerScanPhase.IDLE -> {
             ButtonState(
-                text = stringRes(R.string.ledger_scan_retry_cta),
-                onClick = ::onTryAgainClick,
+                text = stringRes(R.string.ledger_scan_select_cta),
+                isEnabled = false,
             )
         }
 
@@ -241,8 +242,15 @@ class LedgerDeviceScanVM(
             onDismiss = ::onSheetDismissed,
         )
 
+    /**
+     * The screen reports granted permissions on every resume, so this also restarts the scan when
+     * the user comes back to the idle page a successful connection left behind.
+     */
     fun onPermissionsGranted() {
-        if (internalState.value.phase == LedgerScanPhase.PERMISSION) {
+        val internal = internalState.value
+        val isIdleWithoutIssue =
+            internal.phase == LedgerScanPhase.IDLE && internal.issue == null && internal.devices.isEmpty()
+        if (internal.phase == LedgerScanPhase.PERMISSION || isIdleWithoutIssue) {
             startScan()
         }
     }
@@ -315,7 +323,8 @@ class LedgerDeviceScanVM(
     /**
      * A successful connection leaves the screen idle rather than connecting: backing out of the
      * screens that follow returns here, and a screen still stuck in [LedgerScanPhase.CONNECTING]
-     * would show disabled rows and a spinning Connect with no way out.
+     * would show disabled rows and a spinning Connect with no way out. The idle page scans again
+     * as soon as the user is back on it.
      *
      * Connecting is the step that bonds the phone with the device, so a lost or refused connection
      * here reads as a failed pairing. A device that answers locked shows the Unlock sheet and keeps

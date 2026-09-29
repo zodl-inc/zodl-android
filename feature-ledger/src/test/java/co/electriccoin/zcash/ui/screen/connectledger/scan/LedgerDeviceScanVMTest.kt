@@ -203,7 +203,7 @@ class LedgerDeviceScanVMTest {
         }
 
     @Test
-    fun aSuccessfulConnectionLeavesTheScreenRetryableInsteadOfStuckInConnecting() =
+    fun aSuccessfulConnectionLeavesTheScreenIdleWithoutTryAgainInsteadOfStuckInConnecting() =
         runTest(dispatcher) {
             val connectLedgerDevice =
                 mockk<ConnectLedgerDeviceUseCase> {
@@ -224,8 +224,8 @@ class LedgerDeviceScanVMTest {
             runCurrent()
 
             val button = vm.state.value.primaryButton
-            assertEquals(R.string.ledger_scan_retry_cta, button.text.resourceId())
-            assertTrue(button.isEnabled)
+            assertEquals(R.string.ledger_scan_select_cta, button.text.resourceId())
+            assertFalse(button.isEnabled)
             assertFalse(button.isLoading)
             assertEquals(emptyList(), vm.state.value.devices)
             assertEquals(
@@ -235,6 +235,40 @@ class LedgerDeviceScanVMTest {
             )
             assertFalse(vm.state.value.showDeviceSkeletons)
             assertFalse(vm.state.value.isScanning)
+        }
+
+    @Test
+    fun comingBackToTheIdlePageAfterAConnectionScansAgain() =
+        runTest(dispatcher) {
+            val observeLedgerDevices =
+                mockk<ObserveLedgerDevicesUseCase>(relaxed = true) {
+                    every { this@mockk.invoke() } returns devices
+                }
+            val connectLedgerDevice =
+                mockk<ConnectLedgerDeviceUseCase> {
+                    coEvery { this@mockk.invoke(any()) } returns false
+                }
+            val vm = vm(observeLedgerDevices = observeLedgerDevices, connectLedgerDevice = connectLedgerDevice)
+            collect(vm)
+
+            vm.onPermissionsGranted()
+            devices.value = listOf(device("AA"))
+            runCurrent()
+            vm.state.value.devices
+                .first()
+                .onClick()
+            runCurrent()
+            vm.state.value.primaryButton
+                .onClick()
+            runCurrent()
+            assertFalse(vm.state.value.isScanning)
+
+            devices.value = emptyList()
+            vm.onPermissionsGranted()
+            runCurrent()
+
+            assertTrue(vm.state.value.isScanning)
+            verify(exactly = 2) { observeLedgerDevices.invoke() }
         }
 
     @Test
