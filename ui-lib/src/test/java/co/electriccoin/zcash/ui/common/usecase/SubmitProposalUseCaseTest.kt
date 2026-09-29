@@ -4,6 +4,8 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.SwapTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
+import co.electriccoin.zcash.ui.common.ledger.LedgerNavigator
+import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.SubmitResult
@@ -13,12 +15,10 @@ import co.electriccoin.zcash.ui.common.repository.BiometricRepository
 import co.electriccoin.zcash.ui.common.repository.BiometricsCancelledException
 import co.electriccoin.zcash.ui.common.repository.BiometricsFailureException
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
-import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.MetadataRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionArgs
-import co.electriccoin.zcash.ui.screen.signledgertransaction.LedgerSignArgs
 import co.electriccoin.zcash.ui.screen.transactionprogress.TransactionProgressArgs
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -110,9 +110,8 @@ class SubmitProposalUseCaseTest {
 
             fx.useCase()
 
-            verify(exactly = 1) { fx.navigationRouter.forward(LedgerSignArgs) }
+            verify(exactly = 1) { fx.ledgerNavigator.forwardToSign() }
             verify(exactly = 0) { fx.swapRepository.clear() }
-            coVerify(exactly = 0) { fx.ledgerProposalRepository.submit() }
             verify(exactly = 0) { fx.prefillSend.clear() }
             verify(exactly = 0) { fx.navigationRouter.replace(*anyVararg()) }
         }
@@ -194,7 +193,7 @@ class SubmitProposalUseCaseTest {
 
     private fun Fixtures.givenLedger(proposal: TransactionProposal) {
         coEvery { accountDataSource.getSelectedAccount() } returns mockk<LedgerAccount>()
-        coEvery { ledgerProposalRepository.getTransactionProposal() } returns proposal
+        coEvery { ledgerProposalPipeline.getTransactionProposal() } returns proposal
     }
 
     private fun Fixtures.givenZashi(
@@ -219,7 +218,8 @@ class SubmitProposalUseCaseTest {
         val accountDataSource = mockk<AccountDataSource>(relaxed = true)
         val zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true)
         val keystoneProposalRepository = mockk<KeystoneProposalRepository>(relaxed = true)
-        val ledgerProposalRepository = mockk<LedgerProposalRepository>(relaxed = true)
+        val ledgerProposalPipeline = mockk<LedgerProposalPipeline>(relaxed = true)
+        val ledgerNavigator = mockk<LedgerNavigator>(relaxed = true)
         val biometricRepository = mockk<BiometricRepository>(relaxed = true)
         val swapRepository = mockk<SwapRepository>(relaxed = true)
         val metadataRepository = mockk<MetadataRepository>(relaxed = true)
@@ -231,7 +231,8 @@ class SubmitProposalUseCaseTest {
                 accountDataSource = accountDataSource,
                 zashiProposalRepository = zashiProposalRepository,
                 keystoneProposalRepository = keystoneProposalRepository,
-                ledgerProposalRepository = ledgerProposalRepository,
+                ledgerProposalPipeline = ledgerProposalPipeline,
+                ledgerNavigator = ledgerNavigator,
                 biometricRepository = biometricRepository,
                 swapRepository = swapRepository,
                 metadataRepository = metadataRepository,

@@ -10,7 +10,7 @@ import kotlin.reflect.typeOf
 /**
  * Which hardware wallet is being enrolled, and everything the shared enrollment screens need to
  * finish it. Keystone carries the UR its QR flow scanned; Ledger carries nothing, because its
- * pairing is held by `LedgerPairingRepository` until the account is imported.
+ * pairing is held by the Ledger feature (see `LedgerAccountImporter`) until the account is imported.
  */
 @Serializable
 sealed interface HWWalletEnrollment {

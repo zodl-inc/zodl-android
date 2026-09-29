@@ -1,0 +1,50 @@
+package co.electriccoin.zcash.ledger
+
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.compose.composable
+import cash.z.ecc.android.sdk.model.BlockHeight
+import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.ledger.LedgerAccountImporter
+import co.electriccoin.zcash.ui.common.ledger.LedgerNavContributor
+import co.electriccoin.zcash.ui.common.ledger.LedgerNavigator
+import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
+import co.electriccoin.zcash.ui.common.usecase.CreateLedgerAccountUseCase
+import co.electriccoin.zcash.ui.dialogComposable
+import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectArgs
+import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectScreen
+import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedArgs
+import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedScreen
+import co.electriccoin.zcash.ui.screen.connectledger.scan.LedgerDeviceScanArgs
+import co.electriccoin.zcash.ui.screen.connectledger.scan.LedgerDeviceScanScreen
+import co.electriccoin.zcash.ui.screen.signledgertransaction.LedgerSignArgs
+import co.electriccoin.zcash.ui.screen.signledgertransaction.LedgerSignScreen
+
+class LedgerAccountImporterImpl(
+    private val ledgerPairingRepository: LedgerPairingRepository,
+    private val createLedgerAccount: CreateLedgerAccountUseCase,
+) : LedgerAccountImporter {
+    override fun hasPendingPairing(): Boolean = ledgerPairingRepository.get() != null
+
+    override suspend fun importAccount(birthday: BlockHeight?) = createLedgerAccount(birthday)
+}
+
+class LedgerNavigatorImpl(
+    private val navigationRouter: NavigationRouter,
+) : LedgerNavigator {
+    override fun forwardToSign() = navigationRouter.forward(LedgerSignArgs)
+
+    override fun forwardToConnect() = navigationRouter.forward(LedgerConnectArgs)
+
+    override fun forwardToConnected() = navigationRouter.forward(LedgerConnectedArgs)
+}
+
+class LedgerNavContributorImpl : LedgerNavContributor {
+    override fun contribute(navGraphBuilder: NavGraphBuilder) {
+        with(navGraphBuilder) {
+            dialogComposable<LedgerSignArgs> { LedgerSignScreen() }
+            composable<LedgerConnectArgs> { LedgerConnectScreen() }
+            composable<LedgerDeviceScanArgs> { LedgerDeviceScanScreen() }
+            composable<LedgerConnectedArgs> { LedgerConnectedScreen() }
+        }
+    }
+}

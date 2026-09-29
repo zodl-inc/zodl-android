@@ -22,9 +22,6 @@ import co.electriccoin.zcash.ui.screen.connecthw.estimation.HWEstimationVM
 import co.electriccoin.zcash.ui.screen.connecthw.height.HWHeightVM
 import co.electriccoin.zcash.ui.screen.connecthw.neworactive.HWNewOrActiveVM
 import co.electriccoin.zcash.ui.screen.connectkeystone.connect.KeystoneConnectVM
-import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectVM
-import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedVM
-import co.electriccoin.zcash.ui.screen.connectledger.scan.LedgerDeviceScanVM
 import co.electriccoin.zcash.ui.screen.contact.AddGenericABContactVM
 import co.electriccoin.zcash.ui.screen.contact.AddZashiABContactVM
 import co.electriccoin.zcash.ui.screen.contact.UpdateGenericABContactVM
@@ -77,7 +74,6 @@ import co.electriccoin.zcash.ui.screen.scankeystone.viewmodel.ScanKeystoneSignIn
 import co.electriccoin.zcash.ui.screen.selectkeystoneaccount.viewmodel.SelectKeystoneAccountViewModel
 import co.electriccoin.zcash.ui.screen.send.SendViewModel
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionVM
-import co.electriccoin.zcash.ui.screen.signledgertransaction.LedgerSignVM
 import co.electriccoin.zcash.ui.screen.support.viewmodel.SupportViewModel
 import co.electriccoin.zcash.ui.screen.swap.SwapVM
 import co.electriccoin.zcash.ui.screen.swap.ab.AddSwapABContactVM
@@ -218,9 +214,5 @@ val viewModelModule =
         viewModelOf(::HWEstimationVM)
         viewModelOf(::HWHeightVM)
         viewModelOf(::ChooseHWWalletVM)
-        viewModelOf(::LedgerConnectVM)
-        viewModelOf(::LedgerConnectedVM)
-        viewModelOf(::LedgerDeviceScanVM)
-        viewModelOf(::LedgerSignVM)
         viewModelOf(::KeepOpenVM)
     }

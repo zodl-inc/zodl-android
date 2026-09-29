@@ -12,11 +12,11 @@ import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.MigrationSweepTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.RegularTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.ShieldTransactionProposal
+import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.migration.MigrationNavigator
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
-import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.screen.send.Send
@@ -47,7 +47,7 @@ class CancelProposalFlowUseCaseTest {
                 CancelProposalFlowUseCase(
                     zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true),
                     keystoneProposalRepository = keystoneProposalRepository,
-                    ledgerProposalRepository = mockk<LedgerProposalRepository>(relaxed = true),
+                    ledgerProposalPipeline = mockk<LedgerProposalPipeline>(relaxed = true),
                     navigationRouter = router,
                     observeClearSend = mockk<ObserveClearSendUseCase>(relaxed = true),
                     accountDataSource =
@@ -78,7 +78,7 @@ class CancelProposalFlowUseCaseTest {
                 CancelProposalFlowUseCase(
                     zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true),
                     keystoneProposalRepository = keystoneProposalRepository,
-                    ledgerProposalRepository = mockk<LedgerProposalRepository>(relaxed = true),
+                    ledgerProposalPipeline = mockk<LedgerProposalPipeline>(relaxed = true),
                     navigationRouter = router,
                     observeClearSend = mockk<ObserveClearSendUseCase>(relaxed = true),
                     accountDataSource =
@@ -106,8 +106,8 @@ class CancelProposalFlowUseCaseTest {
                     memo = Memo(""),
                     proposal = mockk<Proposal>()
                 )
-            val ledgerProposalRepository =
-                mockk<LedgerProposalRepository>(relaxed = true) {
+            val ledgerProposalPipeline =
+                mockk<LedgerProposalPipeline>(relaxed = true) {
                     coEvery { getTransactionProposal() } returns proposal
                 }
             val router = FakeNavigationRouter()
@@ -115,7 +115,7 @@ class CancelProposalFlowUseCaseTest {
                 CancelProposalFlowUseCase(
                     zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true),
                     keystoneProposalRepository = mockk<KeystoneProposalRepository>(relaxed = true),
-                    ledgerProposalRepository = ledgerProposalRepository,
+                    ledgerProposalPipeline = ledgerProposalPipeline,
                     navigationRouter = router,
                     observeClearSend = mockk<ObserveClearSendUseCase>(relaxed = true),
                     accountDataSource =
@@ -128,7 +128,7 @@ class CancelProposalFlowUseCaseTest {
 
             useCase()
 
-            coVerify(exactly = 1) { ledgerProposalRepository.clear() }
+            coVerify(exactly = 1) { ledgerProposalPipeline.clear() }
             assertEquals(1, router.backToCalls.size)
             assertEquals(Send::class, router.backToCalls.single())
             assertEquals(0, router.backCalls)

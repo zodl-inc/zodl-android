@@ -7,9 +7,9 @@ import cash.z.ecc.android.sdk.model.Zatoshi
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.RegularTransactionProposal
 import co.electriccoin.zcash.ui.common.datasource.SendTransactionProposal
+import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.model.LedgerOperationUnsupportedException
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
-import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.common.usecase.ObserveProposalUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitIncreaseEphemeralGapLimitUseCase
@@ -105,7 +105,7 @@ class EphemeralLockVMTest {
         submitIncreaseEphemeralGapLimit = submitIncreaseEphemeralGapLimit,
         zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true),
         keystoneProposalRepository = mockk<KeystoneProposalRepository>(relaxed = true),
-        ledgerProposalRepository = mockk<LedgerProposalRepository>(relaxed = true),
+        ledgerProposalPipeline = mockk<LedgerProposalPipeline>(relaxed = true),
         navigateToError = navigateToError,
     )
 

@@ -2,7 +2,7 @@ package co.electriccoin.zcash.ui.common.usecase
 
 import cash.z.ecc.android.sdk.exception.InitializeException
 import cash.z.ecc.android.sdk.model.BlockHeight
-import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
+import co.electriccoin.zcash.ui.common.ledger.LedgerAccountImporter
 import co.electriccoin.zcash.ui.screen.connecthw.HWWalletEnrollment
 
 /**
@@ -12,8 +12,7 @@ import co.electriccoin.zcash.ui.screen.connecthw.HWWalletEnrollment
 class CreateHWWalletAccountUseCase(
     private val parseKeystoneUrToZashiAccounts: ParseKeystoneUrToZashiAccountsUseCase,
     private val createKeystoneAccount: CreateKeystoneAccountUseCase,
-    private val createLedgerAccount: CreateLedgerAccountUseCase,
-    private val ledgerPairingRepository: LedgerPairingRepository,
+    private val ledgerAccountImporter: LedgerAccountImporter,
 ) {
     /**
      * Whether [enrollment] still carries what the import needs. A Ledger pairing lives in memory
@@ -32,7 +31,7 @@ class CreateHWWalletAccountUseCase(
             }
 
             is HWWalletEnrollment.Ledger -> {
-                ledgerPairingRepository.get() != null
+                ledgerAccountImporter.hasPendingPairing()
             }
         }
 
@@ -48,7 +47,7 @@ class CreateHWWalletAccountUseCase(
             }
 
             is HWWalletEnrollment.Ledger -> {
-                createLedgerAccount(birthday)
+                ledgerAccountImporter.importAccount(birthday)
             }
         }
     }

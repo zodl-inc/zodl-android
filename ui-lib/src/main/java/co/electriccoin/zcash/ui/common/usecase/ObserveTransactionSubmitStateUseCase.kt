@@ -1,11 +1,11 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
+import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
-import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.filterNotNull
@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 
 class ObserveTransactionSubmitStateUseCase(
     private val keystoneProposalRepository: KeystoneProposalRepository,
-    private val ledgerProposalRepository: LedgerProposalRepository,
+    private val ledgerProposalPipeline: LedgerProposalPipeline,
     private val zashiProposalRepository: ZashiProposalRepository,
     private val accountDataSource: AccountDataSource,
 ) {
@@ -24,7 +24,7 @@ class ObserveTransactionSubmitStateUseCase(
             .flatMapLatest {
                 when (it) {
                     is KeystoneAccount -> keystoneProposalRepository.submitState
-                    is LedgerAccount -> ledgerProposalRepository.submitState
+                    is LedgerAccount -> ledgerProposalPipeline.submitState
                     is ZashiAccount -> zashiProposalRepository.submitState
                 }
             }

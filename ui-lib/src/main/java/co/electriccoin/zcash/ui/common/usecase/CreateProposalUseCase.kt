@@ -6,11 +6,11 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.InsufficientFundsException
 import co.electriccoin.zcash.ui.common.datasource.TexUnsupportedOnKSException
+import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
-import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.screen.insufficientfunds.InsufficientFundsArgs
 import co.electriccoin.zcash.ui.screen.reviewtransaction.ReviewTransactionArgs
@@ -18,7 +18,7 @@ import co.electriccoin.zcash.ui.screen.texunsupported.TEXUnsupportedArgs
 
 class CreateProposalUseCase(
     private val keystoneProposalRepository: KeystoneProposalRepository,
-    private val ledgerProposalRepository: LedgerProposalRepository,
+    private val ledgerProposalPipeline: LedgerProposalPipeline,
     private val zashiProposalRepository: ZashiProposalRepository,
     private val accountDataSource: AccountDataSource,
     private val navigationRouter: NavigationRouter,
@@ -34,8 +34,8 @@ class CreateProposalUseCase(
                 }
 
                 is LedgerAccount -> {
-                    ledgerProposalRepository.createProposal(normalized)
-                    ledgerProposalRepository.createPCZTFromProposal()
+                    ledgerProposalPipeline.createProposal(normalized)
+                    ledgerProposalPipeline.createPCZTFromProposal()
                 }
 
                 is ZashiAccount -> {
@@ -47,16 +47,16 @@ class CreateProposalUseCase(
             val isLedger = accountDataSource.getSelectedAccount() is LedgerAccount
             navigationRouter.forward(TEXUnsupportedArgs(isLedger = isLedger))
             keystoneProposalRepository.clear()
-            ledgerProposalRepository.clear()
+            ledgerProposalPipeline.clear()
             zashiProposalRepository.clear()
         } catch (_: InsufficientFundsException) {
             keystoneProposalRepository.clear()
-            ledgerProposalRepository.clear()
+            ledgerProposalPipeline.clear()
             zashiProposalRepository.clear()
             navigationRouter.forward(InsufficientFundsArgs)
         } catch (e: Exception) {
             keystoneProposalRepository.clear()
-            ledgerProposalRepository.clear()
+            ledgerProposalPipeline.clear()
             zashiProposalRepository.clear()
             throw e
         }

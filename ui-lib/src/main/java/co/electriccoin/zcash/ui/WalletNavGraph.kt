@@ -9,6 +9,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
 import androidx.navigation.toRoute
+import co.electriccoin.zcash.ui.common.ledger.LedgerNavContributor
 import co.electriccoin.zcash.ui.common.migration.MigrationNavContributor
 import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
 import co.electriccoin.zcash.ui.common.voting.VotingNavContributor
@@ -53,12 +54,6 @@ import co.electriccoin.zcash.ui.screen.connectkeystone.connected.KeystoneConnect
 import co.electriccoin.zcash.ui.screen.connectkeystone.connected.KeystoneConnectedScreen
 import co.electriccoin.zcash.ui.screen.connectkeystone.explainer.KeystoneExplainerScreen
 import co.electriccoin.zcash.ui.screen.connectkeystone.explainer.KeystoneExplainerScreenArgs
-import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectArgs
-import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectScreen
-import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedArgs
-import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedScreen
-import co.electriccoin.zcash.ui.screen.connectledger.scan.LedgerDeviceScanArgs
-import co.electriccoin.zcash.ui.screen.connectledger.scan.LedgerDeviceScanScreen
 import co.electriccoin.zcash.ui.screen.contact.AddGenericABContactArgs
 import co.electriccoin.zcash.ui.screen.contact.AddGenericABContactScreen
 import co.electriccoin.zcash.ui.screen.contact.AddZashiABContactArgs
@@ -171,8 +166,6 @@ import co.electriccoin.zcash.ui.screen.send.Send
 import co.electriccoin.zcash.ui.screen.send.WrapSend
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionArgs
 import co.electriccoin.zcash.ui.screen.signkeystonetransaction.SignKeystoneTransactionScreen
-import co.electriccoin.zcash.ui.screen.signledgertransaction.LedgerSignArgs
-import co.electriccoin.zcash.ui.screen.signledgertransaction.LedgerSignScreen
 import co.electriccoin.zcash.ui.screen.swap.SwapArgs
 import co.electriccoin.zcash.ui.screen.swap.SwapScreen
 import co.electriccoin.zcash.ui.screen.swap.ab.AddSwapABContactArgs
@@ -270,7 +263,6 @@ fun NavGraphBuilder.walletNavGraph(
         composable<ScanKeystoneSignInRequest> { WrapScanKeystoneSignInRequest() }
         composable<ScanKeystonePCZTRequest> { WrapScanKeystonePCZTRequest() }
         composable<SignKeystoneTransactionArgs> { SignKeystoneTransactionScreen() }
-        dialogComposable<LedgerSignArgs> { LedgerSignScreen() }
         dialogComposable<AccountListArgs> { AccountListScreen() }
         composable<ScanArgs> { ScanZashiAddressScreen(it.toRoute()) }
         composable(NavigationTargets.EXPORT_PRIVATE_DATA) { WrapExportPrivateData() }
@@ -297,9 +289,6 @@ fun NavGraphBuilder.walletNavGraph(
         composable<RequestArgs> { RequestScreen(it.toRoute()) }
         composable<ConnectKeystoneArgs> { ConnectKeystoneScreen() }
         composable<ChooseHWWalletArgs> { ChooseHWWalletScreen() }
-        composable<LedgerConnectArgs> { LedgerConnectScreen() }
-        composable<LedgerDeviceScanArgs> { LedgerDeviceScanScreen() }
-        composable<LedgerConnectedArgs> { LedgerConnectedScreen() }
         dialogComposable<KeystoneExplainerScreenArgs> { KeystoneExplainerScreen() }
         composable<HWNewOrActiveArgs>(typeMap = HWWalletEnrollmentNavType.typeMap) {
             HWNewOrActiveScreen(it.toRoute())
@@ -393,6 +382,9 @@ fun NavGraphBuilder.walletNavGraph(
         // Voting destinations are contributed by the feature-voting module — see
         // VotingNavContributor in VotingContracts.kt (wired via Koin in the app module).
         org.koin.mp.KoinPlatform.getKoin().getAll<VotingNavContributor>().forEach {
+            it.contribute(this)
+        }
+        org.koin.mp.KoinPlatform.getKoin().getAll<LedgerNavContributor>().forEach {
             it.contribute(this)
         }
     }

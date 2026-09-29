@@ -3,15 +3,15 @@ package co.electriccoin.zcash.ui.common.usecase
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.MessageAvailabilityDataSource
+import co.electriccoin.zcash.ui.common.ledger.LedgerNavigator
+import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.SubmitResult
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
-import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
-import co.electriccoin.zcash.ui.screen.signledgertransaction.LedgerSignArgs
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -80,37 +80,37 @@ class ShieldFundsUseCaseTest {
     @Test
     fun ledgerAccountCreatesProposalAndPcztThenOpensTheSignSheet() =
         runTest(dispatcher) {
-            val ledgerProposalRepository = mockk<LedgerProposalRepository>(relaxed = true)
-            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+            val ledgerProposalPipeline = mockk<LedgerProposalPipeline>(relaxed = true)
+            val ledgerNavigator = mockk<LedgerNavigator>(relaxed = true)
 
             ledgerUseCase(
-                ledgerProposalRepository = ledgerProposalRepository,
-                navigationRouter = navigationRouter
+                ledgerProposalPipeline = ledgerProposalPipeline,
+                ledgerNavigator = ledgerNavigator
             )(false)
             advanceUntilIdle()
 
-            coVerify(exactly = 1) { ledgerProposalRepository.createShieldProposal() }
-            coVerify(exactly = 1) { ledgerProposalRepository.createPCZTFromProposal() }
-            verify(exactly = 1) { navigationRouter.forward(LedgerSignArgs) }
-            coVerify(exactly = 0) { ledgerProposalRepository.clear() }
+            coVerify(exactly = 1) { ledgerProposalPipeline.createShieldProposal() }
+            coVerify(exactly = 1) { ledgerProposalPipeline.createPCZTFromProposal() }
+            verify(exactly = 1) { ledgerNavigator.forwardToSign() }
+            coVerify(exactly = 0) { ledgerProposalPipeline.clear() }
         }
 
     @Test
     fun aLedgerFailureClearsTheProposalAndShowsTheShieldingGeneralError() =
         runTest(dispatcher) {
-            val ledgerProposalRepository =
-                mockk<LedgerProposalRepository>(relaxed = true) {
+            val ledgerProposalPipeline =
+                mockk<LedgerProposalPipeline>(relaxed = true) {
                     coEvery { createShieldProposal() } throws RuntimeException("boom")
                 }
             val navigateToError = mockk<NavigateToErrorUseCase>(relaxed = true)
 
             ledgerUseCase(
-                ledgerProposalRepository = ledgerProposalRepository,
+                ledgerProposalPipeline = ledgerProposalPipeline,
                 navigateToError = navigateToError
             )(false)
             advanceUntilIdle()
 
-            coVerify(exactly = 1) { ledgerProposalRepository.clear() }
+            coVerify(exactly = 1) { ledgerProposalPipeline.clear() }
             verify(exactly = 1) { navigateToError(match<ErrorArgs> { it is ErrorArgs.ShieldingGeneralError }, any()) }
         }
 
@@ -119,7 +119,8 @@ class ShieldFundsUseCaseTest {
         navigateToError: NavigateToErrorUseCase
     ) = ShieldFundsUseCase(
         keystoneProposalRepository = mockk<KeystoneProposalRepository>(relaxed = true),
-        ledgerProposalRepository = mockk<LedgerProposalRepository>(relaxed = true),
+        ledgerProposalPipeline = mockk<LedgerProposalPipeline>(relaxed = true),
+        ledgerNavigator = mockk<LedgerNavigator>(relaxed = true),
         zashiProposalRepository =
             mockk<ZashiProposalRepository>(relaxed = true) { coEvery { submit() } returns submitResult },
         navigationRouter = mockk<NavigationRouter>(relaxed = true),
@@ -130,14 +131,15 @@ class ShieldFundsUseCaseTest {
     )
 
     private fun ledgerUseCase(
-        ledgerProposalRepository: LedgerProposalRepository,
-        navigationRouter: NavigationRouter = mockk(relaxed = true),
+        ledgerProposalPipeline: LedgerProposalPipeline,
+        ledgerNavigator: LedgerNavigator = mockk(relaxed = true),
         navigateToError: NavigateToErrorUseCase = mockk(relaxed = true),
     ) = ShieldFundsUseCase(
         keystoneProposalRepository = mockk<KeystoneProposalRepository>(relaxed = true),
-        ledgerProposalRepository = ledgerProposalRepository,
+        ledgerProposalPipeline = ledgerProposalPipeline,
+        ledgerNavigator = ledgerNavigator,
         zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true),
-        navigationRouter = navigationRouter,
+        navigationRouter = mockk<NavigationRouter>(relaxed = true),
         accountDataSource =
             mockk<AccountDataSource> { coEvery { getSelectedAccount() } returns mockk<LedgerAccount>() },
         navigateToError = navigateToError,

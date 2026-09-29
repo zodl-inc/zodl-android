@@ -1,9 +1,8 @@
 package co.electriccoin.zcash.ui.common.usecase
 
 import cash.z.ecc.android.sdk.exception.InitializeException
-import cash.z.ecc.android.sdk.ledger.LedgerAccountPairing
 import cash.z.ecc.android.sdk.model.BlockHeight
-import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
+import co.electriccoin.zcash.ui.common.ledger.LedgerAccountImporter
 import co.electriccoin.zcash.ui.screen.connecthw.HWWalletEnrollment
 import com.keystone.module.ZcashAccount
 import com.keystone.module.ZcashAccounts
@@ -30,34 +29,34 @@ class CreateHWWalletAccountUseCaseTest {
             val account = mockk<ZcashAccount>()
             val accounts = mockk<ZcashAccounts> { every { this@mockk.accounts } returns listOf(account) }
             val createKeystoneAccount = mockk<CreateKeystoneAccountUseCase>(relaxed = true)
-            val createLedgerAccount = mockk<CreateLedgerAccountUseCase>(relaxed = true)
+            val ledgerAccountImporter = mockk<LedgerAccountImporter>(relaxed = true)
             val useCase =
                 useCase(
                     accountsForUr = accounts,
                     createKeystoneAccount = createKeystoneAccount,
-                    createLedgerAccount = createLedgerAccount,
+                    ledgerAccountImporter = ledgerAccountImporter,
                 )
 
             useCase(HWWalletEnrollment.Keystone(UR), birthday)
 
             coVerify(exactly = 1) { createKeystoneAccount.invoke(accounts, account, birthday) }
-            coVerify(exactly = 0) { createLedgerAccount.invoke(any()) }
+            coVerify(exactly = 0) { ledgerAccountImporter.importAccount(any()) }
         }
 
     @Test
     fun aLedgerEnrollmentImportsThroughTheLedgerUseCase() =
         runTest {
             val createKeystoneAccount = mockk<CreateKeystoneAccountUseCase>(relaxed = true)
-            val createLedgerAccount = mockk<CreateLedgerAccountUseCase>(relaxed = true)
+            val ledgerAccountImporter = mockk<LedgerAccountImporter>(relaxed = true)
             val useCase =
                 useCase(
                     createKeystoneAccount = createKeystoneAccount,
-                    createLedgerAccount = createLedgerAccount,
+                    ledgerAccountImporter = ledgerAccountImporter,
                 )
 
             useCase(HWWalletEnrollment.Ledger, birthday)
 
-            coVerify(exactly = 1) { createLedgerAccount.invoke(birthday) }
+            coVerify(exactly = 1) { ledgerAccountImporter.importAccount(birthday) }
             coVerify(exactly = 0) { createKeystoneAccount.invoke(any(), any(), any()) }
         }
 
@@ -83,16 +82,16 @@ class CreateHWWalletAccountUseCaseTest {
             useCase(parseThrows = true).isReady(HWWalletEnrollment.Keystone(UR))
         )
 
-        assertTrue(useCase(pairing = mockk(relaxed = true)).isReady(HWWalletEnrollment.Ledger))
-        assertFalse(useCase(pairing = null).isReady(HWWalletEnrollment.Ledger))
+        assertTrue(useCase(hasPendingPairing = true).isReady(HWWalletEnrollment.Ledger))
+        assertFalse(useCase(hasPendingPairing = false).isReady(HWWalletEnrollment.Ledger))
     }
 
     private fun useCase(
         accountsForUr: ZcashAccounts = mockk { every { accounts } returns listOf(mockk()) },
         parseThrows: Boolean = false,
-        pairing: LedgerAccountPairing? = mockk(relaxed = true),
+        hasPendingPairing: Boolean = true,
         createKeystoneAccount: CreateKeystoneAccountUseCase = mockk(relaxed = true),
-        createLedgerAccount: CreateLedgerAccountUseCase = mockk(relaxed = true),
+        ledgerAccountImporter: LedgerAccountImporter = mockk(relaxed = true),
     ) = CreateHWWalletAccountUseCase(
         parseKeystoneUrToZashiAccounts =
             mockk {
@@ -104,10 +103,9 @@ class CreateHWWalletAccountUseCaseTest {
                 }
             },
         createKeystoneAccount = createKeystoneAccount,
-        createLedgerAccount = createLedgerAccount,
-        ledgerPairingRepository =
-            mockk<LedgerPairingRepository> {
-                every { get() } returns pairing
+        ledgerAccountImporter =
+            ledgerAccountImporter.also {
+                every { it.hasPendingPairing() } returns hasPendingPairing
             },
     )
 }

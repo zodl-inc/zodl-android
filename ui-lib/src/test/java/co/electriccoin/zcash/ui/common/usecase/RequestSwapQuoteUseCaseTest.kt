@@ -6,6 +6,7 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.InsufficientFundsException
 import co.electriccoin.zcash.ui.common.datasource.TexUnsupportedOnKSException
+import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.model.FakeSwapQuote
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
@@ -19,7 +20,6 @@ import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
-import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.SwapAssetsData
 import co.electriccoin.zcash.ui.common.repository.SwapQuoteData
 import co.electriccoin.zcash.ui.common.repository.SwapRepository
@@ -67,7 +67,7 @@ class RequestSwapQuoteUseCaseTest {
     private val navigateToError = mockk<NavigateToErrorUseCase>(relaxed = true)
     private val zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true)
     private val keystoneProposalRepository = mockk<KeystoneProposalRepository>(relaxed = true)
-    private val ledgerProposalRepository = mockk<LedgerProposalRepository>(relaxed = true)
+    private val ledgerProposalPipeline = mockk<LedgerProposalPipeline>(relaxed = true)
     private val swapRepository = mockk<SwapRepository>(relaxed = true)
     private val accountDataSource = mockk<AccountDataSource>()
 
@@ -105,8 +105,8 @@ class RequestSwapQuoteUseCaseTest {
     fun exactInputLedgerCreatesProposalAndPcztAndForwards() =
         runBlocking {
             useCase(swapQuote(originAsset = zec, destinationAsset = btc), ledger()).exactInput()
-            coVerify { ledgerProposalRepository.createExactInputSwapProposal(any(), any()) }
-            coVerify { ledgerProposalRepository.createPCZTFromProposal() }
+            coVerify { ledgerProposalPipeline.createExactInputSwapProposal(any(), any()) }
+            coVerify { ledgerProposalPipeline.createPCZTFromProposal() }
             assertForwardedToQuote()
         }
 
@@ -131,11 +131,11 @@ class RequestSwapQuoteUseCaseTest {
     @Test
     fun exactInputLedgerInsufficientFundsClearsEveryRepository() =
         runBlocking {
-            coEvery { ledgerProposalRepository.createExactInputSwapProposal(any(), any()) } throws
+            coEvery { ledgerProposalPipeline.createExactInputSwapProposal(any(), any()) } throws
                 InsufficientFundsException()
             useCase(swapQuote(originAsset = zec, destinationAsset = btc), ledger()).exactInput()
             assertNavigatedToInsufficientFunds()
-            coVerify(exactly = 1) { ledgerProposalRepository.clear() }
+            coVerify(exactly = 1) { ledgerProposalPipeline.clear() }
             coVerify(exactly = 1) { keystoneProposalRepository.clear() }
             coVerify(exactly = 1) { zashiProposalRepository.clear() }
         }
@@ -152,11 +152,11 @@ class RequestSwapQuoteUseCaseTest {
     @Test
     fun exactInputLedgerTexUnsupportedNamesTheLedgerInTheCopy() =
         runBlocking {
-            coEvery { ledgerProposalRepository.createExactInputSwapProposal(any(), any()) } throws
+            coEvery { ledgerProposalPipeline.createExactInputSwapProposal(any(), any()) } throws
                 TexUnsupportedOnKSException()
             useCase(swapQuote(originAsset = zec, destinationAsset = btc), ledger()).exactInput()
             assertNavigatedToTexUnsupported(isLedger = true)
-            coVerify(exactly = 1) { ledgerProposalRepository.clear() }
+            coVerify(exactly = 1) { ledgerProposalPipeline.clear() }
         }
 
     @Test
@@ -178,10 +178,10 @@ class RequestSwapQuoteUseCaseTest {
     @Test
     fun exactInputLedgerGenericErrorClearsEveryRepository() =
         runBlocking {
-            coEvery { ledgerProposalRepository.createExactInputSwapProposal(any(), any()) } throws TestException()
+            coEvery { ledgerProposalPipeline.createExactInputSwapProposal(any(), any()) } throws TestException()
             useCase(swapQuote(originAsset = zec, destinationAsset = btc), ledger()).exactInput()
             assertNavigatedToError()
-            coVerify(exactly = 1) { ledgerProposalRepository.clear() }
+            coVerify(exactly = 1) { ledgerProposalPipeline.clear() }
         }
 
     @Test
@@ -217,8 +217,8 @@ class RequestSwapQuoteUseCaseTest {
     fun exactOutputLedgerCreatesProposalAndPcztAndForwards() =
         runBlocking {
             useCase(exactOutputQuote(), ledger()).exactOutput()
-            coVerify { ledgerProposalRepository.createExactOutputSwapProposal(any(), any()) }
-            coVerify { ledgerProposalRepository.createPCZTFromProposal() }
+            coVerify { ledgerProposalPipeline.createExactOutputSwapProposal(any(), any()) }
+            coVerify { ledgerProposalPipeline.createPCZTFromProposal() }
             assertForwardedToQuote()
         }
 
@@ -295,8 +295,8 @@ class RequestSwapQuoteUseCaseTest {
         runBlocking {
             useCase(flexQuote(), ledger()).exactInput()
             assertNavigatedToError()
-            coVerify(exactly = 0) { ledgerProposalRepository.createExactInputSwapProposal(any(), any()) }
-            coVerify(exactly = 1) { ledgerProposalRepository.clear() }
+            coVerify(exactly = 0) { ledgerProposalPipeline.createExactInputSwapProposal(any(), any()) }
+            coVerify(exactly = 1) { ledgerProposalPipeline.clear() }
             coVerify(exactly = 1) { keystoneProposalRepository.clear() }
             coVerify(exactly = 1) { zashiProposalRepository.clear() }
         }
@@ -500,7 +500,7 @@ class RequestSwapQuoteUseCaseTest {
             swapRepository = swapRepository,
             zashiProposalRepository = zashiProposalRepository,
             keystoneProposalRepository = keystoneProposalRepository,
-            ledgerProposalRepository = ledgerProposalRepository,
+            ledgerProposalPipeline = ledgerProposalPipeline,
             accountDataSource = accountDataSource,
             synchronizerProvider = synchronizerProvider
         )

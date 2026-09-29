@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.ledger.LedgerNavigator
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
@@ -12,7 +13,6 @@ import co.electriccoin.zcash.ui.common.usecase.GetWalletAccountsUseCase
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connectkeystone.connect.ConnectKeystoneArgs
-import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectArgs
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.WhileSubscribed
@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.stateIn
 class ChooseHWWalletVM(
     getWalletAccounts: GetWalletAccountsUseCase,
     private val navigationRouter: NavigationRouter,
+    private val ledgerNavigator: LedgerNavigator,
 ) : ViewModel() {
     val state: StateFlow<ChooseHWWalletState> =
         getWalletAccounts
@@ -57,7 +58,7 @@ class ChooseHWWalletVM(
 
     private fun onKeystoneClick() = navigationRouter.forward(ConnectKeystoneArgs)
 
-    private fun onLedgerClick() = navigationRouter.forward(LedgerConnectArgs)
+    private fun onLedgerClick() = ledgerNavigator.forwardToConnect()
 
     private fun onBack() = navigationRouter.back()
 }

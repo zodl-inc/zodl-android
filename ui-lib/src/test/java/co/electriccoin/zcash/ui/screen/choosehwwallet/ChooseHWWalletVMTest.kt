@@ -4,12 +4,12 @@ import cash.z.ecc.android.sdk.model.Account
 import cash.z.ecc.android.sdk.model.AccountUuid
 import cash.z.ecc.android.sdk.model.Zip32AccountIndex
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.ledger.LedgerNavigator
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.usecase.GetWalletAccountsUseCase
 import co.electriccoin.zcash.ui.screen.connectkeystone.connect.ConnectKeystoneArgs
-import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectArgs
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -85,7 +85,8 @@ class ChooseHWWalletVMTest {
     @Test
     fun eachCardRoutesToItsVendorConnectFlow() {
         val navigationRouter = mockk<NavigationRouter>(relaxed = true)
-        val vm = vm(accounts = emptyList(), navigationRouter = navigationRouter)
+        val ledgerNavigator = mockk<LedgerNavigator>(relaxed = true)
+        val vm = vm(accounts = emptyList(), navigationRouter = navigationRouter, ledgerNavigator = ledgerNavigator)
 
         vm.state.value.cards
             .first { it.testTag == ChooseHWWalletTag.KEYSTONE_CARD }
@@ -95,12 +96,13 @@ class ChooseHWWalletVMTest {
             .onClick()
 
         verify(exactly = 1) { navigationRouter.forward(ConnectKeystoneArgs) }
-        verify(exactly = 1) { navigationRouter.forward(LedgerConnectArgs) }
+        verify(exactly = 1) { ledgerNavigator.forwardToConnect() }
     }
 
     private fun vm(
         accounts: List<WalletAccount>?,
         navigationRouter: NavigationRouter = mockk(relaxed = true),
+        ledgerNavigator: LedgerNavigator = mockk(relaxed = true),
     ): ChooseHWWalletVM {
         val getWalletAccounts =
             mockk<GetWalletAccountsUseCase> {
@@ -109,6 +111,7 @@ class ChooseHWWalletVMTest {
         return ChooseHWWalletVM(
             getWalletAccounts = getWalletAccounts,
             navigationRouter = navigationRouter,
+            ledgerNavigator = ledgerNavigator,
         )
     }
 

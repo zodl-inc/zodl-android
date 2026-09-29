@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import cash.z.ecc.sdk.ANDROID_STATE_FLOW_TIMEOUT
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
+import co.electriccoin.zcash.ui.common.ledger.LedgerNavigator
 import co.electriccoin.zcash.ui.common.provider.IsKeepScreenOnDuringRestoreProvider
 import co.electriccoin.zcash.ui.common.provider.KeepScreenOnSyncSessionProvider
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -13,7 +14,6 @@ import co.electriccoin.zcash.ui.design.component.ZashiDisclaimerState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.common.KeepOpenState
 import co.electriccoin.zcash.ui.screen.connectkeystone.connected.KeystoneConnectedArgs
-import co.electriccoin.zcash.ui.screen.connectledger.connected.LedgerConnectedArgs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
@@ -28,6 +28,7 @@ class KeepOpenVM(
     private val isKeepScreenOnDuringRestoreProvider: IsKeepScreenOnDuringRestoreProvider,
     private val keepScreenOnSyncSessionProvider: KeepScreenOnSyncSessionProvider,
     private val navigationRouter: NavigationRouter,
+    private val ledgerNavigator: LedgerNavigator,
 ) : AndroidViewModel(application) {
     private val isChecked = MutableStateFlow(true)
 
@@ -116,7 +117,7 @@ class KeepOpenVM(
         when (flow) {
             KeepOpenFlow.RESTORE, KeepOpenFlow.RESYNC -> navigationRouter.backToRoot()
             KeepOpenFlow.KEYSTONE -> navigationRouter.forward(KeystoneConnectedArgs)
-            KeepOpenFlow.LEDGER -> navigationRouter.forward(LedgerConnectedArgs)
+            KeepOpenFlow.LEDGER -> ledgerNavigator.forwardToConnected()
         }
     }
 }

@@ -2,9 +2,9 @@ package co.electriccoin.zcash.ui.common.usecase
 
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
+import co.electriccoin.zcash.ui.common.ledger.LedgerProposalPipeline
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.repository.KeystoneProposalRepository
-import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 import co.electriccoin.zcash.ui.common.repository.SubmitProposalState
 import co.electriccoin.zcash.ui.common.repository.ZashiProposalRepository
 import io.mockk.coEvery
@@ -28,14 +28,14 @@ class LedgerProposalDispatchTest {
     fun observeProposalReadsTheLedgerRepositoryForALedgerAccount() =
         runTest {
             val proposal = mockk<TransactionProposal>()
-            val ledgerProposalRepository =
-                mockk<LedgerProposalRepository>(relaxed = true) {
+            val ledgerProposalPipeline =
+                mockk<LedgerProposalPipeline>(relaxed = true) {
                     every { transactionProposal } returns MutableStateFlow(proposal)
                 }
             val useCase =
                 ObserveProposalUseCase(
                     keystoneProposalRepository = mockk<KeystoneProposalRepository>(relaxed = true),
-                    ledgerProposalRepository = ledgerProposalRepository,
+                    ledgerProposalPipeline = ledgerProposalPipeline,
                     zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true),
                     accountDataSource =
                         mockk<AccountDataSource> {
@@ -50,14 +50,14 @@ class LedgerProposalDispatchTest {
     fun getProposalReadsTheLedgerRepositoryForALedgerAccount() =
         runTest {
             val proposal = mockk<TransactionProposal>()
-            val ledgerProposalRepository =
-                mockk<LedgerProposalRepository>(relaxed = true) {
+            val ledgerProposalPipeline =
+                mockk<LedgerProposalPipeline>(relaxed = true) {
                     coEvery { getTransactionProposal() } returns proposal
                 }
             val useCase =
                 GetProposalUseCase(
                     keystoneProposalRepository = mockk<KeystoneProposalRepository>(relaxed = true),
-                    ledgerProposalRepository = ledgerProposalRepository,
+                    ledgerProposalPipeline = ledgerProposalPipeline,
                     zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true),
                     accountDataSource =
                         mockk<AccountDataSource> {
@@ -72,14 +72,14 @@ class LedgerProposalDispatchTest {
     fun observeTransactionSubmitStateReadsTheLedgerRepositoryForALedgerAccount() =
         runTest {
             val state = SubmitProposalState.Submitting
-            val ledgerProposalRepository =
-                mockk<LedgerProposalRepository>(relaxed = true) {
+            val ledgerProposalPipeline =
+                mockk<LedgerProposalPipeline>(relaxed = true) {
                     every { submitState } returns MutableStateFlow<SubmitProposalState?>(state)
                 }
             val useCase =
                 ObserveTransactionSubmitStateUseCase(
                     keystoneProposalRepository = mockk<KeystoneProposalRepository>(relaxed = true),
-                    ledgerProposalRepository = ledgerProposalRepository,
+                    ledgerProposalPipeline = ledgerProposalPipeline,
                     zashiProposalRepository = mockk<ZashiProposalRepository>(relaxed = true),
                     accountDataSource =
                         mockk<AccountDataSource> {

@@ -45,8 +45,6 @@ import co.electriccoin.zcash.ui.common.provider.LastNetworkActivityStorageProvid
 import co.electriccoin.zcash.ui.common.provider.LastNetworkActivityStorageProviderImpl
 import co.electriccoin.zcash.ui.common.provider.LedgerAccountBindingProvider
 import co.electriccoin.zcash.ui.common.provider.LedgerAccountBindingProviderImpl
-import co.electriccoin.zcash.ui.common.provider.LedgerScannerProvider
-import co.electriccoin.zcash.ui.common.provider.LedgerScannerProviderImpl
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
 import co.electriccoin.zcash.ui.common.provider.NearApiProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
@@ -137,7 +135,6 @@ val providerModule =
         factoryOf(::KeystoneSDKProviderImpl) bind KeystoneSDKProvider::class
         singleOf(::LastNetworkActivityStorageProviderImpl) bind LastNetworkActivityStorageProvider::class
         singleOf(::LedgerAccountBindingProviderImpl) bind LedgerAccountBindingProvider::class
-        singleOf(::LedgerScannerProviderImpl) bind LedgerScannerProvider::class
         factoryOf(::IsBackgroundExecutionAvailableProvider)
         singleOf(::SdkEncryptedPreferenceRecoveryProviderImpl) bind SdkEncryptedPreferenceRecoveryProvider::class
     }
