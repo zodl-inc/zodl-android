@@ -80,6 +80,17 @@ class LedgerIssueMapperTest {
     }
 
     @Test
+    fun theAppTooOldCopyNamesTheMinimumZcashAppVersion() {
+        val issue = mockk<LedgerException.AppTooOld>(relaxed = true).toLedgerIssue(LedgerIssueContext.ENROLLMENT)
+
+        assertEquals(
+            StringResource.ByResource(R.string.ledger_error_appTooOld_message, listOf("3.6.0")),
+            issue.message
+        )
+        assertEquals(issue.message, issue.inlineMessage)
+    }
+
+    @Test
     fun theIssueCarriesTheIconOfItsKind() {
         rows().forEach { row ->
             LedgerIssueContext.entries.forEach { context ->

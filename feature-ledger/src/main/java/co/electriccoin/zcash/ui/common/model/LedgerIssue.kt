@@ -221,11 +221,11 @@ fun LedgerException.toLedgerIssue(context: LedgerIssueContext): LedgerIssue =
         }
 
         is LedgerException.AppTooOld -> {
-            issue(
-                LedgerIssueKind.APP_TOO_OLD,
-                LedgerIssueRetry.RECONNECT,
-                R.string.ledger_error_appTooOld_title,
-                R.string.ledger_error_appTooOld_message
+            LedgerIssue(
+                kind = LedgerIssueKind.APP_TOO_OLD,
+                retry = LedgerIssueRetry.RECONNECT,
+                title = stringRes(R.string.ledger_error_appTooOld_title),
+                message = stringRes(R.string.ledger_error_appTooOld_message, LEDGER_ZCASH_APP_MIN_VERSION),
             )
         }
 
@@ -440,6 +440,12 @@ private fun disconnected(context: LedgerIssueContext) =
             LedgerIssue.disconnectedWhileSigning
         }
     }
+
+/**
+ * The oldest Zcash app on the Ledger that can sign PCZTs; the SDK refuses an older one with
+ * [LedgerException.AppTooOld].
+ */
+internal const val LEDGER_ZCASH_APP_MIN_VERSION = "3.6.0"
 
 private fun issue(
     kind: LedgerIssueKind,
