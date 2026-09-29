@@ -55,6 +55,7 @@ import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceRow
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerErrorSheet
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerInlineIssue
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerInlineIssueState
+import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerStepBadge
 import com.valentinilk.shimmer.shimmer
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -100,6 +101,8 @@ fun LedgerDeviceScanView(state: LedgerDeviceScanState) {
                     contentDescription = null,
                 )
                 Spacer(Modifier.height(24.dp))
+                LedgerStepBadge(step = 2)
+                Spacer(Modifier.height(12.dp))
                 Text(
                     text = state.title.getValue(),
                     style = ZashiTypography.header6,

@@ -73,7 +73,9 @@ data class LedgerDeviceScanState(
         val previewConnecting =
             previewSelect.copy(
                 subtitle =
-                    stringRes("Confirm the same pairing code on your phone and on your Ledger if asked."),
+                    stringRes(
+                        "Check that the code on your phone matches the one on your Ledger, then confirm on both."
+                    ),
                 devices = previewSelect.devices.map { it.copy(isEnabled = false) },
                 primaryButton = ButtonState(stringRes("Connect"), isEnabled = false, isLoading = true),
             )

@@ -34,8 +34,12 @@ data class LedgerHandshakeState(
     companion object {
         val previewConnecting =
             LedgerHandshakeState(
-                title = stringRes("Connecting to Your Ledger"),
-                message = stringRes("When your Ledger asks, approve exporting your account."),
+                title = stringRes("Approve on Your Ledger"),
+                message =
+                    stringRes(
+                        "Zodl is connecting to the Zcash app. When your Ledger asks to export your account, " +
+                            "check the request and approve it."
+                    ),
                 isConnecting = true,
                 inlineIssue = null,
                 primaryButton = null,
