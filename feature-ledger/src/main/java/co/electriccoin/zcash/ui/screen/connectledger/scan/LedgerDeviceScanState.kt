@@ -70,12 +70,6 @@ data class LedgerDeviceScanState(
                 primaryButton = ButtonState(stringRes("Connect")),
             )
 
-        val previewPairing =
-            previewSelect.copy(
-                devices = previewSelect.devices.map { it.copy(isEnabled = false) },
-                primaryButton = ButtonState(stringRes("Connect"), isEnabled = false, isLoading = true),
-            )
-
         val previewBluetoothOff =
             previewSearching.copy(
                 title = stringRes("Select Your Device"),

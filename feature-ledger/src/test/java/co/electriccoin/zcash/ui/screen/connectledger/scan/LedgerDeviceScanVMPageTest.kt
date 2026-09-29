@@ -5,13 +5,9 @@ import cash.z.ecc.android.sdk.exception.LedgerException
 import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
 import cash.z.ecc.android.sdk.ledger.LedgerDeviceModel
 import co.electriccoin.zcash.ledger.R
-import co.electriccoin.zcash.ui.common.model.LedgerBondingFailedException
 import co.electriccoin.zcash.ui.common.provider.LEDGER_SCAN_TIMEOUT
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
-import co.electriccoin.zcash.ui.common.usecase.PairLedgerDeviceResult
-import co.electriccoin.zcash.ui.common.usecase.PairLedgerDeviceUseCase
 import co.electriccoin.zcash.ui.design.util.StringResource
-import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
@@ -179,7 +175,7 @@ class LedgerDeviceScanVMPageTest {
                 mockk<LedgerException.BluetoothUnavailable>(relaxed = true) {
                     every { scanErrorCode } returns null
                 }
-            val vm = pairedWithFailure(exception)
+            val vm = scannedWithFailure(exception)
 
             assertPage(
                 vm,
@@ -196,9 +192,9 @@ class LedgerDeviceScanVMPageTest {
         }
 
     @Test
-    fun aFailedPairingShowsTheSearchingCopyBehindACloseAndTheSheetCopyInline() =
+    fun aFailedScanShowsTheSearchingCopyBehindACloseAndTheSheetCopyInline() =
         runTest(dispatcher) {
-            val vm = pairedWithFailure(bonding(mockk<LedgerException.ConnectionFailed>(relaxed = true)))
+            val vm = scannedWithFailure(mockk<LedgerException.ConnectionFailed>(relaxed = true))
 
             assertPage(
                 vm,
@@ -217,7 +213,7 @@ class LedgerDeviceScanVMPageTest {
     @Test
     fun anUnknownFailureBreaksTheIndicatorMessageOverTwoLines() =
         runTest(dispatcher) {
-            val vm = pairedWithFailure(mockk<LedgerException.Internal>(relaxed = true))
+            val vm = scannedWithFailure(mockk<LedgerException.Internal>(relaxed = true))
 
             assertPage(
                 vm,
@@ -241,7 +237,7 @@ class LedgerDeviceScanVMPageTest {
     fun anIssueThatKeepsTheDeviceShowsTheSelectionWithoutAnIndicator() =
         runTest(dispatcher) {
             val vm =
-                pairedWithFailure(
+                scannedWithFailure(
                     mockk<LedgerException.WrongApp>(relaxed = true) { every { statusWord } returns WRONG_APP_STATUS }
                 )
 
@@ -253,42 +249,12 @@ class LedgerDeviceScanVMPageTest {
                 LedgerDeviceScanNavigation.BACK
             )
             assertNull(vm.state.value.inlineIssue)
+            vm.state.value.devices
+                .single()
+                .onClick()
+            runCurrent()
             assertTrue(vm.state.value.primaryButton.isEnabled)
         }
-
-    @Test
-    fun anAccountAlreadyAddedShowsTheSelectionWithoutAnIndicator() =
-        runTest(dispatcher) {
-            val pairLedgerDevice =
-                mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } returns
-                        PairLedgerDeviceResult.AlreadyAdded(mockk(relaxed = true))
-                }
-            val vm = vm(pairLedgerDevice = pairLedgerDevice)
-            collect(vm)
-
-            vm.onPermissionsGranted()
-            devices.value = listOf(device("AA"))
-            runCurrent()
-            vm.state.value.devices
-                .first()
-                .onClick()
-            runCurrent()
-            vm.state.value.primaryButton
-                .onClick()
-            runCurrent()
-
-            assertSheetTitle(vm, R.string.ledger_error_alreadyAdded_title)
-            assertPage(
-                vm,
-                R.string.ledger_scan_select_title,
-                R.string.ledger_scan_select_subtitle,
-                LedgerDeviceScanNavigation.BACK
-            )
-            assertNull(vm.state.value.inlineIssue)
-        }
-
-    private fun bonding(exception: LedgerException) = LedgerBondingFailedException(exception)
 
     private fun assertPage(
         vm: LedgerDeviceScanVM,
@@ -314,22 +280,21 @@ class LedgerDeviceScanVMPageTest {
         assertEquals(message, inline.message.resourceId())
     }
 
-    private fun TestScope.pairedWithFailure(exception: Exception): LedgerDeviceScanVM {
-        val pairLedgerDevice =
-            mockk<PairLedgerDeviceUseCase> {
-                coEvery { this@mockk.invoke(any()) } throws exception
+    /**
+     * The scan lists a device and then fails, so the tests can tell whether the issue keeps it.
+     */
+    private fun TestScope.scannedWithFailure(exception: Exception): LedgerDeviceScanVM {
+        val observeLedgerDevices =
+            mockk<ObserveLedgerDevicesUseCase>(relaxed = true) {
+                every { this@mockk.invoke() } returns
+                    flow {
+                        emit(listOf(device("AA")))
+                        throw exception
+                    }
             }
-        val vm = vm(pairLedgerDevice = pairLedgerDevice)
+        val vm = vm(observeLedgerDevices = observeLedgerDevices)
         collect(vm)
         vm.onPermissionsGranted()
-        devices.value = listOf(device("AA"))
-        runCurrent()
-        vm.state.value.devices
-            .first()
-            .onClick()
-        runCurrent()
-        vm.state.value.primaryButton
-            .onClick()
         runCurrent()
         return vm
     }
@@ -357,13 +322,11 @@ class LedgerDeviceScanVMPageTest {
             mockk(relaxed = true) {
                 every { this@mockk.invoke() } returns devices
             },
-        pairLedgerDevice: PairLedgerDeviceUseCase = mockk(relaxed = true),
     ) = LedgerDeviceScanVM(
         application = mockk<Application>(relaxed = true),
         observeLedgerDevices = observeLedgerDevices,
-        pairLedgerDevice = pairLedgerDevice,
-        selectWalletAccount = mockk(relaxed = true),
         ledgerPairingRepository = mockk(relaxed = true),
+        ledgerSelectedDeviceRepository = mockk(relaxed = true),
         navigateToError = mockk(relaxed = true),
         navigationRouter = mockk(relaxed = true),
     )

@@ -6,22 +6,13 @@ import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
 import cash.z.ecc.android.sdk.ledger.LedgerDeviceModel
 import co.electriccoin.zcash.ledger.R
 import co.electriccoin.zcash.ui.NavigationRouter
-import co.electriccoin.zcash.ui.common.model.LedgerBondingFailedException
-import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.provider.LEDGER_SCAN_TIMEOUT
 import co.electriccoin.zcash.ui.common.repository.LedgerPairingRepository
+import co.electriccoin.zcash.ui.common.repository.LedgerSelectedDeviceRepository
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
-import co.electriccoin.zcash.ui.common.usecase.PairLedgerDeviceResult
-import co.electriccoin.zcash.ui.common.usecase.PairLedgerDeviceUseCase
-import co.electriccoin.zcash.ui.common.usecase.SelectWalletAccountUseCase
-import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.StringResource
-import co.electriccoin.zcash.ui.screen.connecthw.HWWalletEnrollment
-import co.electriccoin.zcash.ui.screen.connecthw.neworactive.HWNewOrActiveArgs
-import co.electriccoin.zcash.ui.screen.error.ErrorArgs
+import co.electriccoin.zcash.ui.screen.connectledger.handshake.LedgerHandshakeArgs
 import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
-import io.mockk.coEvery
-import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -50,8 +41,9 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * The scan screen's phases, its permission and Bluetooth handling and the sheets it keeps; which
- * sheet each pairing outcome shows is in [LedgerDeviceScanVMPairingTest].
+ * The scan screen's phases, its permission and Bluetooth handling, the sheets it keeps and the
+ * hand-off of the selected device to the handshake screen, which runs the pairing and is covered
+ * by LedgerHandshakeVMTest.
  *
  * Every [LedgerException] subclass has an internal constructor in the SDK, so the tests stub
  * instances rather than building them.
@@ -73,14 +65,15 @@ class LedgerDeviceScanVMTest {
     }
 
     @Test
-    fun scanningThenSelectingThenPairingNavigatesOnward() =
+    fun scanningThenSelectingThenConnectingHandsTheDeviceToTheHandshake() =
         runTest(dispatcher) {
             val navigationRouter = mockk<NavigationRouter>(relaxed = true)
-            val pairLedgerDevice =
-                mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } returns PairLedgerDeviceResult.Paired
-                }
-            val vm = vm(navigationRouter = navigationRouter, pairLedgerDevice = pairLedgerDevice)
+            val ledgerSelectedDeviceRepository = mockk<LedgerSelectedDeviceRepository>(relaxed = true)
+            val vm =
+                vm(
+                    navigationRouter = navigationRouter,
+                    ledgerSelectedDeviceRepository = ledgerSelectedDeviceRepository,
+                )
             collect(vm)
 
             vm.onPermissionsGranted()
@@ -103,9 +96,8 @@ class LedgerDeviceScanVMTest {
                 .onClick()
             runCurrent()
 
-            verify(exactly = 1) {
-                navigationRouter.forward(HWNewOrActiveArgs(HWWalletEnrollment.Ledger))
-            }
+            verify(exactly = 1) { ledgerSelectedDeviceRepository.set(device("AA")) }
+            verify(exactly = 1) { navigationRouter.forward(LedgerHandshakeArgs) }
         }
 
     @Test
@@ -135,13 +127,14 @@ class LedgerDeviceScanVMTest {
         }
 
     @Test
-    fun aSuccessfulPairingLeavesTheScreenRetryableInsteadOfStuckInPairing() =
+    fun connectLeavesTheScreenIdleAndReturningToItConnectsNothingOnItsOwn() =
         runTest(dispatcher) {
-            val pairLedgerDevice =
-                mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } returns PairLedgerDeviceResult.Paired
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+            val observeLedgerDevices =
+                mockk<ObserveLedgerDevicesUseCase>(relaxed = true) {
+                    every { this@mockk.invoke() } returns devices
                 }
-            val vm = vm(pairLedgerDevice = pairLedgerDevice)
+            val vm = vm(observeLedgerDevices = observeLedgerDevices, navigationRouter = navigationRouter)
             collect(vm)
 
             vm.onPermissionsGranted()
@@ -166,6 +159,12 @@ class LedgerDeviceScanVMTest {
                     .resourceId()
             )
             assertFalse(vm.state.value.showDeviceSkeletons)
+            assertFalse(vm.state.value.isScanning)
+
+            vm.onPermissionsGranted()
+            runCurrent()
+            verify(exactly = 1) { navigationRouter.forward(LedgerHandshakeArgs) }
+            verify(exactly = 1) { observeLedgerDevices.invoke() }
             assertFalse(vm.state.value.isScanning)
         }
 
@@ -286,7 +285,7 @@ class LedgerDeviceScanVMTest {
                 mockk<LedgerException.BluetoothUnavailable>(relaxed = true) {
                     every { scanErrorCode } returns null
                 }
-            val vm = pairedWithFailure(exception, navigationRouter = navigationRouter)
+            val vm = scannedWithFailure(exception, navigationRouter = navigationRouter)
 
             val sheet = vm.state.value.errorSheet
             assertNotNull(sheet)
@@ -306,7 +305,7 @@ class LedgerDeviceScanVMTest {
                 mockk<LedgerException.BluetoothUnavailable>(relaxed = true) {
                     every { scanErrorCode } returns null
                 }
-            val vm = pairedWithFailure(exception)
+            val vm = scannedWithFailure(exception)
 
             val button = vm.state.value.primaryButton
             assertEquals(R.string.ledger_scan_select_cta, button.text.resourceId())
@@ -325,34 +324,6 @@ class LedgerDeviceScanVMTest {
             runCurrent()
 
             assertSheetTitle(vm, R.string.ledger_error_noDevices_title)
-        }
-
-    @Suppress("TooGenericExceptionThrown")
-    @Test
-    fun aNonLedgerPairingFailureGoesToTheGeneralErrorScreen() =
-        runTest(dispatcher) {
-            val navigateToError = mockk<NavigateToErrorUseCase>(relaxed = true)
-            val failure = IllegalStateException("boom")
-            val pairLedgerDevice =
-                mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } throws failure
-                }
-            val vm = vm(pairLedgerDevice = pairLedgerDevice, navigateToError = navigateToError)
-            collect(vm)
-
-            vm.onPermissionsGranted()
-            devices.value = listOf(device("AA"))
-            runCurrent()
-            vm.state.value.devices
-                .first()
-                .onClick()
-            runCurrent()
-            vm.state.value.primaryButton
-                .onClick()
-            runCurrent()
-
-            verify(exactly = 1) { navigateToError.invoke(ErrorArgs.General(failure), any()) }
-            assertNull(vm.state.value.errorSheet)
         }
 
     @Test
@@ -400,7 +371,7 @@ class LedgerDeviceScanVMTest {
     @Test
     fun dismissingAnIssueSheetLeavesTheInlineIssueAndAnEnabledTryAgain() =
         runTest(dispatcher) {
-            val vm = pairedWithFailure(bonding(mockk<LedgerException.ConnectionFailed>(relaxed = true)))
+            val vm = scannedWithFailure(mockk<LedgerException.ConnectionFailed>(relaxed = true))
             assertNotNull(vm.state.value.errorSheet).onBack()
             runCurrent()
 
@@ -415,60 +386,9 @@ class LedgerDeviceScanVMTest {
         }
 
     @Test
-    fun tryAgainAfterARejectedImportAsksTheSameDeviceAgain() =
+    fun aFailedScanClearsTheListAndShowsTheInlineIssue() =
         runTest(dispatcher) {
-            val observeLedgerDevices =
-                mockk<ObserveLedgerDevicesUseCase>(relaxed = true) {
-                    every { this@mockk.invoke() } returns devices
-                }
-            val pairLedgerDevice =
-                mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } throws
-                        mockk<LedgerException.UserRejected>(relaxed = true) { every { isRestartable } returns true }
-                }
-            val vm = vm(observeLedgerDevices = observeLedgerDevices, pairLedgerDevice = pairLedgerDevice)
-            collect(vm)
-
-            vm.onPermissionsGranted()
-            devices.value = listOf(device("AA"))
-            runCurrent()
-            vm.state.value.devices
-                .first()
-                .onClick()
-            runCurrent()
-            vm.state.value.primaryButton
-                .onClick()
-            runCurrent()
-
-            assertSheetTitle(vm, R.string.ledger_error_importRejected_title)
-            assertNull(vm.state.value.inlineIssue)
-            assertTrue(
-                vm.state.value.devices
-                    .single()
-                    .isSelected
-            )
-
-            assertNotNull(
-                vm.state.value.errorSheet
-                    ?.primary
-            ).onClick()
-            runCurrent()
-
-            coVerify(exactly = 2) { pairLedgerDevice.invoke(device("AA")) }
-            verify(exactly = 1) { observeLedgerDevices.invoke() }
-            assertSheetTitle(vm, R.string.ledger_error_importRejected_title)
-            assertNull(vm.state.value.inlineIssue)
-            assertTrue(
-                vm.state.value.devices
-                    .single()
-                    .isSelected
-            )
-        }
-
-    @Test
-    fun aFailedPairingClearsTheListAndShowsTheInlineIssue() =
-        runTest(dispatcher) {
-            val vm = pairedWithFailure(bonding(mockk<LedgerException.ConnectionFailed>(relaxed = true)))
+            val vm = scannedWithFailure(mockk<LedgerException.ConnectionFailed>(relaxed = true))
 
             assertSheetTitle(vm, R.string.ledger_error_pairingFailed_title)
             assertNotNull(vm.state.value.inlineIssue)
@@ -559,80 +479,10 @@ class LedgerDeviceScanVMTest {
         }
 
     @Test
-    fun aDeviceAlreadyInTheWalletShowsTheAlreadyAddedSheet() =
-        runTest(dispatcher) {
-            val pairLedgerDevice =
-                mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } returns
-                        PairLedgerDeviceResult.AlreadyAdded(mockk(relaxed = true))
-                }
-            val vm = vm(pairLedgerDevice = pairLedgerDevice)
-            collect(vm)
-
-            vm.onPermissionsGranted()
-            devices.value = listOf(device("AA"))
-            runCurrent()
-            vm.state.value.devices
-                .first()
-                .onClick()
-            runCurrent()
-            vm.state.value.primaryButton
-                .onClick()
-            runCurrent()
-
-            assertSheetTitle(vm, R.string.ledger_error_alreadyAdded_title)
-            val secondary =
-                assertNotNull(
-                    vm.state.value.errorSheet
-                        ?.secondary
-                )
-            assertEquals(ButtonStyle.SECONDARY, secondary.style)
-        }
-
-    @Test
-    fun goToAccountSelectsTheExistingAccountAndUnwindsToTheRoot() =
-        runTest(dispatcher) {
-            val existing = mockk<WalletAccount>(relaxed = true)
-            val selectWalletAccount = mockk<SelectWalletAccountUseCase>(relaxed = true)
-            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
-            val pairLedgerDevice =
-                mockk<PairLedgerDeviceUseCase> {
-                    coEvery { this@mockk.invoke(any()) } returns PairLedgerDeviceResult.AlreadyAdded(existing)
-                }
-            val vm =
-                vm(
-                    pairLedgerDevice = pairLedgerDevice,
-                    selectWalletAccount = selectWalletAccount,
-                    navigationRouter = navigationRouter,
-                )
-            collect(vm)
-
-            vm.onPermissionsGranted()
-            devices.value = listOf(device("AA"))
-            runCurrent()
-            vm.state.value.devices
-                .first()
-                .onClick()
-            runCurrent()
-            vm.state.value.primaryButton
-                .onClick()
-            runCurrent()
-
-            assertNotNull(
-                vm.state.value.errorSheet
-                    ?.primary
-            ).onClick()
-            runCurrent()
-
-            coVerify(exactly = 1) { selectWalletAccount.invoke(existing, false) }
-            verify(exactly = 0) { navigationRouter.back() }
-            verify(exactly = 1) { navigationRouter.backToRoot() }
-        }
-
-    @Test
-    fun leavingTheScreenStopsTheScanAndReleasesAnyPendingPairing() =
+    fun leavingTheScreenStopsTheScanAndReleasesTheSelectedDeviceAndAnyPendingPairing() =
         runTest(dispatcher) {
             val ledgerPairingRepository = mockk<LedgerPairingRepository>(relaxed = true)
+            val ledgerSelectedDeviceRepository = mockk<LedgerSelectedDeviceRepository>(relaxed = true)
             val observeLedgerDevices =
                 mockk<ObserveLedgerDevicesUseCase>(relaxed = true) {
                     every { this@mockk.invoke() } returns devices
@@ -641,6 +491,7 @@ class LedgerDeviceScanVMTest {
                 vm(
                     observeLedgerDevices = observeLedgerDevices,
                     ledgerPairingRepository = ledgerPairingRepository,
+                    ledgerSelectedDeviceRepository = ledgerSelectedDeviceRepository,
                 )
             collect(vm)
             vm.onPermissionsGranted()
@@ -651,38 +502,30 @@ class LedgerDeviceScanVMTest {
             runCurrent()
 
             verify(exactly = 1) { ledgerPairingRepository.clear() }
+            verify(exactly = 1) { ledgerSelectedDeviceRepository.clear() }
             devices.value = listOf(device("AA"))
             runCurrent()
             assertEquals(emptyList(), vm.state.value.devices)
         }
 
-    private fun bonding(exception: LedgerException) = LedgerBondingFailedException(exception)
-
-    private fun TestScope.pairedWithFailure(
+    /**
+     * The scan lists a device and then fails, so the tests can tell whether the issue keeps it.
+     */
+    private fun TestScope.scannedWithFailure(
         exception: Exception,
-        navigateToError: NavigateToErrorUseCase = mockk(relaxed = true),
         navigationRouter: NavigationRouter = mockk(relaxed = true),
     ): LedgerDeviceScanVM {
-        val pairLedgerDevice =
-            mockk<PairLedgerDeviceUseCase> {
-                coEvery { this@mockk.invoke(any()) } throws exception
+        val observeLedgerDevices =
+            mockk<ObserveLedgerDevicesUseCase>(relaxed = true) {
+                every { this@mockk.invoke() } returns
+                    flow {
+                        emit(listOf(device("AA")))
+                        throw exception
+                    }
             }
-        val vm =
-            vm(
-                pairLedgerDevice = pairLedgerDevice,
-                navigateToError = navigateToError,
-                navigationRouter = navigationRouter,
-            )
+        val vm = vm(observeLedgerDevices = observeLedgerDevices, navigationRouter = navigationRouter)
         collect(vm)
         vm.onPermissionsGranted()
-        devices.value = listOf(device("AA"))
-        runCurrent()
-        vm.state.value.devices
-            .first()
-            .onClick()
-        runCurrent()
-        vm.state.value.primaryButton
-            .onClick()
         runCurrent()
         return vm
     }
@@ -723,17 +566,15 @@ class LedgerDeviceScanVMTest {
             mockk(relaxed = true) {
                 every { this@mockk.invoke() } returns devices
             },
-        pairLedgerDevice: PairLedgerDeviceUseCase = mockk(relaxed = true),
-        selectWalletAccount: SelectWalletAccountUseCase = mockk(relaxed = true),
         ledgerPairingRepository: LedgerPairingRepository = mockk(relaxed = true),
+        ledgerSelectedDeviceRepository: LedgerSelectedDeviceRepository = mockk(relaxed = true),
         navigateToError: NavigateToErrorUseCase = mockk(relaxed = true),
         navigationRouter: NavigationRouter = mockk(relaxed = true),
     ) = LedgerDeviceScanVM(
         application = mockk<Application>(relaxed = true),
         observeLedgerDevices = observeLedgerDevices,
-        pairLedgerDevice = pairLedgerDevice,
-        selectWalletAccount = selectWalletAccount,
         ledgerPairingRepository = ledgerPairingRepository,
+        ledgerSelectedDeviceRepository = ledgerSelectedDeviceRepository,
         navigateToError = navigateToError,
         navigationRouter = navigationRouter,
     )
