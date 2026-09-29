@@ -86,6 +86,10 @@ class LedgerIssueMapperTest {
         val unknown = Copy(R.string.ledger_error_unknown_title, R.string.ledger_error_unknown_message)
         val restartApp = Copy(R.string.ledger_error_restartApp_title, R.string.ledger_error_restartApp_message)
         val appTooOld = Copy(R.string.ledger_error_appTooOld_title, R.string.ledger_error_appTooOld_message)
+        val appNotInstalled =
+            Copy(R.string.ledger_error_appNotInstalled_title, R.string.ledger_error_appNotInstalled_message)
+        val openAppRejected =
+            Copy(R.string.ledger_error_openAppRejected_title, R.string.ledger_error_openAppRejected_message)
         val wrongDevice =
             Copy(R.string.ledger_sign_error_wrongDevice_title, R.string.ledger_sign_error_wrongDevice_message)
         val unbound = Copy(R.string.ledger_sign_error_unbound_title, R.string.ledger_sign_error_unbound_message)
@@ -158,6 +162,22 @@ class LedgerIssueMapperTest {
                 LedgerIssueRetry.RECONNECT,
                 appTooOld,
                 appTooOld
+            ),
+            Row(
+                "AppNotInstalled",
+                mockk<LedgerException.AppNotInstalled>(relaxed = true),
+                LedgerIssueKind.APP_NOT_INSTALLED,
+                LedgerIssueRetry.RECONNECT,
+                appNotInstalled,
+                appNotInstalled
+            ),
+            Row(
+                "AppOpenRejected",
+                mockk<LedgerException.AppOpenRejected>(relaxed = true),
+                LedgerIssueKind.OPEN_APP_REJECTED,
+                LedgerIssueRetry.RECONNECT,
+                openAppRejected,
+                openAppRejected
             ),
             Row(
                 "DeviceMismatch",

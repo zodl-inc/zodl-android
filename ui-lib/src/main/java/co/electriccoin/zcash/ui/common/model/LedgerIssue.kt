@@ -36,6 +36,8 @@ enum class LedgerIssueKind(
     PAIRING_FAILED,
     LOCKED,
     APP_TOO_OLD,
+    APP_NOT_INSTALLED,
+    OPEN_APP_REJECTED,
     RESTART_APP,
     WRONG_DEVICE,
     REJECTED,
@@ -116,7 +118,8 @@ data class LedgerIssue(
  *
  * A [LedgerException.BluetoothUnavailable] carrying a scan error code means the scan itself failed
  * to start; without one the phone has no Bluetooth LE at all, which nothing in the app can fix. A
- * locked device answers with a transient [LedgerException.DeviceRefused]. A timeout while connecting
+ * locked device answers with a transient [LedgerException.DeviceRefused], and a device that did not
+ * reach the Zcash app with [LedgerException.WrongApp]. A timeout while connecting
  * means pairing failed; while signing, it means the link to the device was lost.
  */
 @Suppress("CyclomaticComplexMethod")
@@ -149,6 +152,24 @@ fun LedgerException.toLedgerIssue(context: LedgerIssueContext): LedgerIssue =
                 LedgerIssueRetry.RECONNECT,
                 R.string.ledger_error_appTooOld_title,
                 R.string.ledger_error_appTooOld_message
+            )
+        }
+
+        is LedgerException.AppNotInstalled -> {
+            issue(
+                LedgerIssueKind.APP_NOT_INSTALLED,
+                LedgerIssueRetry.RECONNECT,
+                R.string.ledger_error_appNotInstalled_title,
+                R.string.ledger_error_appNotInstalled_message
+            )
+        }
+
+        is LedgerException.AppOpenRejected -> {
+            issue(
+                LedgerIssueKind.OPEN_APP_REJECTED,
+                LedgerIssueRetry.RECONNECT,
+                R.string.ledger_error_openAppRejected_title,
+                R.string.ledger_error_openAppRejected_message
             )
         }
 

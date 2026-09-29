@@ -52,6 +52,10 @@
     <string name="ledger_error_bluetoothOff_message">Activa el Bluetooth en Ajustes para conectar tu Ledger.</string>
     <string name="ledger_error_appTooOld_title">Actualiza la aplicación Zcash</string>
     <string name="ledger_error_appTooOld_message">La aplicación Zcash de tu Ledger está desactualizada. Actualízala a la versión 3.6.0 o posterior con Ledger Live e inténtalo de nuevo.</string>
+    <string name="ledger_error_appNotInstalled_title">Instala la aplicación Zcash</string>
+    <string name="ledger_error_appNotInstalled_message">La aplicación Zcash no está instalada en tu Ledger. Instálala con Ledger Live e inténtalo de nuevo.</string>
+    <string name="ledger_error_openAppRejected_title">Abre la aplicación Zcash</string>
+    <string name="ledger_error_openAppRejected_message">Rechazaste abrir la aplicación Zcash en tu Ledger. Inténtalo de nuevo y confírmalo en el dispositivo.</string>
     <string name="ledger_error_restartApp_title">Reinicia la aplicación Zcash</string>
     <string name="ledger_error_restartApp_message">Cierra y vuelve a abrir la aplicación Zcash en tu Ledger e inténtalo de nuevo.</string>
     <string name="ledger_error_unknown_title">Algo salió mal</string>
