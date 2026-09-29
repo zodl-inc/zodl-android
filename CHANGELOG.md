@@ -17,7 +17,10 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   paying and ZIP-321 payments from a Ledger account now sign on the device over Bluetooth; voting,
   migration and tax export do not yet. The connect flow explains what to do when Bluetooth is off,
   the Zcash app on the Ledger is out of date or needs a restart, or the connection fails, and can
-  turn Bluetooth on for you.
+  turn Bluetooth on for you. It tells a failed pairing apart from a Ledger that disconnected during
+  setup, and stops waiting for the device after five minutes. A Ledger account whose pairing is
+  missing can be paired again from the signing sheet with Pair Ledger, and after the wrong Ledger
+  the signing sheet asks you to pick the device instead of reconnecting to the same one.
 
 ### Fixed:
 
