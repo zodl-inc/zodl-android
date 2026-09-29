@@ -43,7 +43,8 @@ import kotlinx.coroutines.launch
  * Signing starts once the gate reports the permissions granted, which it also does on every resume,
  * so coming back from Settings with the permission granted starts the session without a tap.
  *
- * Cancel is disabled once the device has signed, as submission is then under way.
+ * Cancel is disabled once the device has signed, as submission is then under way. A sheet that goes
+ * away any other way stops the session it leaves behind.
  *
  * An empty repository at start means the process was recreated under the sheet: there is nothing
  * left to sign, so the wallet root is shown instead.
@@ -327,6 +328,11 @@ class LedgerSignVM(
     }
 
     private fun onCancelClick() = cancelLedgerSigning()
+
+    override fun onCleared() {
+        cancelLedgerSigning.stopSession()
+        super.onCleared()
+    }
 
     /**
      * Ends the session the way Cancel does, then opens the Ledger connect flow, which stores the

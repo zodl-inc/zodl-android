@@ -184,6 +184,22 @@ class LedgerSignVMTest {
         }
 
     @Test
+    fun aClearedSheetStopsItsSessionWithoutNavigating() =
+        runTest(dispatcher) {
+            val cancelLedgerSigning = mockk<CancelLedgerSigningUseCase>(relaxed = true)
+            val vm = vm(cancelLedgerSigning = cancelLedgerSigning)
+            runCurrent()
+
+            LedgerSignVM::class.java
+                .getDeclaredMethod("onCleared")
+                .apply { isAccessible = true }
+                .invoke(vm)
+
+            verify(exactly = 1) { cancelLedgerSigning.stopSession() }
+            verify(exactly = 0) { cancelLedgerSigning.invoke() }
+        }
+
+    @Test
     fun onBackIsANoOp() =
         runTest(dispatcher) {
             val navigationRouter = mockk<NavigationRouter>(relaxed = true)

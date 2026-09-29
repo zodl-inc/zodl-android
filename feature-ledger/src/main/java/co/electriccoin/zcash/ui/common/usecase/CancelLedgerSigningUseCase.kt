@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.common.usecase
 
 import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.datasource.ShieldTransactionProposal
+import co.electriccoin.zcash.ui.common.model.LedgerSigningState
 import co.electriccoin.zcash.ui.common.repository.LedgerProposalRepository
 
 /**
@@ -19,5 +20,15 @@ class CancelLedgerSigningUseCase(
             ledgerProposalRepository.cancelSigning()
         }
         navigationRouter.back()
+    }
+
+    /**
+     * Stops the session of a sign sheet that is gone, without navigating. A session that has signed
+     * is left alone, as its submission is under way.
+     */
+    fun stopSession() {
+        if (ledgerProposalRepository.signingState.value != LedgerSigningState.Signed) {
+            ledgerProposalRepository.cancelSigning()
+        }
     }
 }
