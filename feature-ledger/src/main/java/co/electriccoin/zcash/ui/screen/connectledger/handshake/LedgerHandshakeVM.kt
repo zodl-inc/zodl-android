@@ -48,8 +48,8 @@ import kotlinx.coroutines.launch
  *
  * The device comes from [LedgerSelectedDeviceRepository]; when process death has emptied it, the
  * flow falls back to the wallet root. The transport each attempt opens is closed by the data
- * source before [PairLedgerDeviceUseCase] returns, and a running attempt is cancelled in
- * [onCleared].
+ * source before [PairLedgerDeviceUseCase] returns, and a running attempt is cancelled on back
+ * and in [onCleared].
  */
 @Suppress("TooManyFunctions")
 class LedgerHandshakeVM(
@@ -78,8 +78,7 @@ class LedgerHandshakeVM(
     }
 
     override fun onCleared() {
-        handshakeJob?.cancel()
-        handshakeJob = null
+        cancelHandshake()
         super.onCleared()
     }
 
@@ -200,8 +199,7 @@ class LedgerHandshakeVM(
     }
 
     fun onPermissionsDenied(canRequestAgain: Boolean) {
-        handshakeJob?.cancel()
-        handshakeJob = null
+        cancelHandshake()
         internalState.update { it.copy(canRequestPermissionsAgain = canRequestAgain) }
         showIssue(LedgerIssue.permissions)
     }
@@ -333,7 +331,19 @@ class LedgerHandshakeVM(
         internalState.update { it.copy(isSheetShown = false) }
     }
 
-    private fun onBack() = navigationRouter.back()
+    /**
+     * A handshake still waiting on the device is dropped at once rather than when the screen is
+     * disposed, so the device is not left holding an export nobody will read.
+     */
+    private fun onBack() {
+        cancelHandshake()
+        navigationRouter.back()
+    }
+
+    private fun cancelHandshake() {
+        handshakeJob?.cancel()
+        handshakeJob = null
+    }
 
     private fun showIssue(issue: LedgerIssue) {
         internalState.update {

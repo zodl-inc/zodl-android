@@ -487,6 +487,33 @@ class LedgerHandshakeVMTest {
         }
 
     @Test
+    fun backCancelsARunningHandshake() =
+        runTest(dispatcher) {
+            var isCancelled = false
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+            val pairLedgerDevice =
+                mockk<PairLedgerDeviceUseCase> {
+                    coEvery { this@mockk.invoke(any()) } coAnswers {
+                        try {
+                            awaitCancellation()
+                        } finally {
+                            isCancelled = true
+                        }
+                    }
+                }
+            val vm = vm(pairLedgerDevice = pairLedgerDevice, navigationRouter = navigationRouter)
+            collect(vm)
+            runCurrent()
+            assertFalse(isCancelled)
+
+            vm.state.value.onBack()
+            runCurrent()
+
+            assertTrue(isCancelled)
+            verify(exactly = 1) { navigationRouter.back() }
+        }
+
+    @Test
     fun leavingTheScreenCancelsARunningHandshake() =
         runTest(dispatcher) {
             var isCancelled = false
