@@ -10,7 +10,7 @@
     <string name="ledger_intro_step2_title">Pair it with your phone.</string>
     <string name="ledger_intro_step2_message">Pick your Ledger and check that both screens show the same code.</string>
     <string name="ledger_intro_step3_title">Open the Zcash app.</string>
-    <string name="ledger_intro_step3_message">Install it with Ledger Live first if you haven\'t yet.</string>
+    <string name="ledger_intro_step3_message">Zodl asks your Ledger to open it; just confirm on the device.</string>
     <string name="ledger_intro_step4_title">Approve on your Ledger.</string>
     <string name="ledger_intro_step4_message">Confirm sharing your account with Zodl.</string>
     <string name="ledger_intro_callout_title">Stay Close</string>
@@ -22,11 +22,11 @@
     <string name="ledger_connect_turnOn_check2">Bluetooth is on on your phone</string>
     <string name="ledger_connect_turnOn_check3">Your Ledger is close to your phone</string>
     <string name="ledger_connect_turnOn_callout_title">Don\'t open the Zcash app yet</string>
-    <string name="ledger_connect_turnOn_callout_message">Pairing works best from the home screen. We\'ll tell you when to open it.</string>
+    <string name="ledger_connect_turnOn_callout_message">Pairing works best from the home screen. We\'ll ask your Ledger to open the Zcash app in a later step.</string>
     <string name="ledger_connect_continue">Continue</string>
     <string name="ledger_openApp_title">Open the Zcash App</string>
-    <string name="ledger_openApp_message">Your Ledger is paired. Now open the Zcash app on it.</string>
-    <string name="ledger_openApp_check1">Open the Zcash app on your Ledger</string>
+    <string name="ledger_openApp_message">Zodl is asking your Ledger to open the Zcash app. Confirm \"Open Zcash?\" on your Ledger.</string>
+    <string name="ledger_openApp_check1">Confirm opening the Zcash app on your Ledger</string>
     <string name="ledger_openApp_check2">Don\'t have it yet? Install it from My Ledger in Ledger Live</string>
     <string name="ledger_openApp_check3">Keep the app open until setup is done</string>
     <string name="ledger_handshake_title">Approve on Your Ledger</string>
