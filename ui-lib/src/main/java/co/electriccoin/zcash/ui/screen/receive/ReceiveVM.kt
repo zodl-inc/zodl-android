@@ -17,7 +17,7 @@ import co.electriccoin.zcash.ui.design.component.IconButtonState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByAddress
 import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressState.ColorMode.DEFAULT
-import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressState.ColorMode.KEYSTONE
+import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressState.ColorMode.HW_WALLET
 import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressState.ColorMode.ZASHI
 import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressType.Sapling
 import co.electriccoin.zcash.ui.screen.receive.ReceiveAddressType.Transparent
@@ -128,8 +128,9 @@ class ReceiveVM(
         isExpanded = isExpanded,
         colorMode =
             when (account) {
-                is KeystoneAccount -> if (type == Unified) KEYSTONE else DEFAULT
-                is LedgerAccount -> if (type == Unified) KEYSTONE else DEFAULT
+                is KeystoneAccount,
+                is LedgerAccount -> if (type == Unified) HW_WALLET else DEFAULT
+
                 is ZashiAccount -> if (type == Unified) ZASHI else DEFAULT
             },
         infoIconButton =
