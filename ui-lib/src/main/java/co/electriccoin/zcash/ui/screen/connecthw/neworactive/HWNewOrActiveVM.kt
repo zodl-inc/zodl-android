@@ -13,6 +13,7 @@ import co.electriccoin.zcash.ui.common.usecase.ErrorMapperUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.screen.connecthw.brandingOf
 import co.electriccoin.zcash.ui.screen.connecthw.date.HWDateArgs
+import co.electriccoin.zcash.ui.screen.connecthw.importOrReturnToRoot
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 
@@ -64,7 +65,7 @@ class HWNewOrActiveVM(
 
     private fun onNewDeviceClick() =
         createAccountLce.execute {
-            createHWWalletAccount(args.enrollment, birthday = null)
+            createHWWalletAccount.importOrReturnToRoot(args.enrollment, birthday = null, navigationRouter)
         }
 
     private fun onActiveDeviceClick() =
