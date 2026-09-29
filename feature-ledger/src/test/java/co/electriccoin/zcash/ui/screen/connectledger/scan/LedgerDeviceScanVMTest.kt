@@ -521,6 +521,42 @@ class LedgerDeviceScanVMTest {
             verify(exactly = 0) { observeLedgerDevices.invoke() }
         }
 
+    /**
+     * The gate reports only "granted" on the resume after Settings granted the permissions, so that
+     * alone has to start the scan and keep the sheet down.
+     */
+    @Test
+    fun grantingThePermissionsInSettingsStartsTheScanOnResumeWithoutTheSheet() =
+        runTest(dispatcher) {
+            val observeLedgerDevices =
+                mockk<ObserveLedgerDevicesUseCase>(relaxed = true) {
+                    every { this@mockk.invoke() } returns devices
+                }
+            val vm = vm(observeLedgerDevices = observeLedgerDevices)
+            collect(vm)
+            vm.onPermissionsDenied(false)
+            runCurrent()
+
+            assertNotNull(
+                vm.state.value.errorSheet
+                    ?.primary
+            ).onClick()
+            runCurrent()
+            assertNull(vm.state.value.errorSheet)
+
+            vm.onPermissionsGranted()
+            runCurrent()
+
+            assertTrue(vm.state.value.isScanning)
+            assertNull(vm.state.value.errorSheet)
+            assertNull(vm.state.value.inlineIssue)
+            verify(exactly = 1) { observeLedgerDevices.invoke() }
+
+            devices.value = listOf(device("AA"))
+            runCurrent()
+            assertEquals(1, vm.state.value.devices.size)
+        }
+
     @Test
     fun aDeviceAlreadyInTheWalletShowsTheAlreadyAddedSheet() =
         runTest(dispatcher) {
