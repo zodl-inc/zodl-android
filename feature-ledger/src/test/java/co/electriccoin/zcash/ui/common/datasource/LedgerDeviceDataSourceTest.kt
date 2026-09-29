@@ -37,6 +37,7 @@ import kotlin.time.Duration.Companion.seconds
  * the transport that step returns with the read deadline and a reconnect, closes every transport it
  * opened, and caps the whole pairing at five minutes. The phone bonded with the device on the scan
  * screen already, so a failure to connect is passed on as the SDK raised it.
+ * [LedgerDeviceDataSourceImpl.openZcashApp] does the app step alone and closes the same way.
  *
  * `LedgerDevice.new` loads the SDK's native backend and `LedgerZcashApp` talks to a device, so both
  * are mocked at their object boundary.
@@ -202,6 +203,55 @@ class LedgerDeviceDataSourceTest {
             val failure = assertFailsWith<LedgerException.ConnectionFailed> { dataSource.pair(device(), account) }
 
             assertSame(lost, failure)
+            coVerify(exactly = 1) { connected.close() }
+        }
+
+    @Test
+    fun openingTheAppClosesEveryTransportTheAppSwitchOpened() =
+        runTest {
+            val connected = mockk<LedgerBluetoothTransport>(relaxed = true)
+            val reconnected = mockk<LedgerBluetoothTransport>(relaxed = true)
+            coEvery { ledgerScannerProvider.connect(any()) } returnsMany listOf(connected, reconnected)
+            coEvery { LedgerZcashApp.ensureZcashAppOpen(connected, any()) } coAnswers {
+                secondArg<suspend () -> LedgerApduTransport>().invoke()
+            }
+
+            dataSource.openZcashApp(device())
+
+            coVerifyOrder {
+                ledgerScannerProvider.connect(any())
+                LedgerZcashApp.ensureZcashAppOpen(connected, any())
+                ledgerScannerProvider.connect(any())
+                reconnected.close()
+            }
+            coVerify(exactly = 1) { connected.close() }
+            coVerify(exactly = 0) { LedgerDevice.new(any(), any()) }
+        }
+
+    @Test
+    fun openingAnAlreadyOpenAppClosesTheFirstTransport() =
+        runTest {
+            val connected = mockk<LedgerBluetoothTransport>(relaxed = true)
+            coEvery { ledgerScannerProvider.connect(any()) } returns connected
+            coEvery { LedgerZcashApp.ensureZcashAppOpen(connected, any()) } returns connected
+
+            dataSource.openZcashApp(device())
+
+            coVerify(exactly = 1) { ledgerScannerProvider.connect(any()) }
+            coVerify(exactly = 1) { connected.close() }
+        }
+
+    @Test
+    fun aDeclinedAppOpenClosesTheFirstTransportAndRethrows() =
+        runTest {
+            val connected = mockk<LedgerBluetoothTransport>(relaxed = true)
+            coEvery { ledgerScannerProvider.connect(any()) } returns connected
+            coEvery {
+                LedgerZcashApp.ensureZcashAppOpen(connected, any())
+            } throws mockk<LedgerException.AppOpenRejected>(relaxed = true)
+
+            assertFailsWith<LedgerException.AppOpenRejected> { dataSource.openZcashApp(device()) }
+
             coVerify(exactly = 1) { connected.close() }
         }
 

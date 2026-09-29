@@ -35,6 +35,13 @@ interface LedgerDeviceDataSource {
     suspend fun connect(device: LedgerBluetoothDevice)
 
     /**
+     * Connects to [device], asks it to open the Zcash app if it is elsewhere (the user confirms on
+     * the device; the link may be reopened while the device switches apps) and closes every
+     * transport it opened. Returns once the Zcash app runs; a declined or failed request throws.
+     */
+    suspend fun openZcashApp(device: LedgerBluetoothDevice)
+
+    /**
      * Connects to [device], opens the Zcash app on it if it is elsewhere (the user confirms on the
      * device; the link may be reopened while the device switches apps), asks it to export the
      * ZIP 32 account [zip32AccountIndex] (the user approves the export on the device) and closes
@@ -65,6 +72,22 @@ class LedgerDeviceDataSourceImpl(
     override fun isLocationOffForScan(): Boolean = ledgerScannerProvider.isLocationOffForScan()
 
     override suspend fun connect(device: LedgerBluetoothDevice) = ledgerScannerProvider.connect(device).close()
+
+    /**
+     * Every transport opened here, the first one and each reconnect while the device switches apps,
+     * is closed on the way out, as in [pair].
+     */
+    override suspend fun openZcashApp(device: LedgerBluetoothDevice) {
+        val opened = mutableListOf<LedgerApduTransport>()
+        val reconnect: suspend () -> LedgerApduTransport = {
+            ledgerScannerProvider.connect(device).also { opened += it }
+        }
+        try {
+            LedgerZcashApp.ensureZcashAppOpen(reconnect(), reconnect).also { opened += it }
+        } finally {
+            withContext(NonCancellable) { opened.distinct().forEach { closeQuietly(it) } }
+        }
+    }
 
     /**
      * Every transport opened here, the first one and each reconnect, is closed on the way out; the
@@ -99,7 +122,7 @@ class LedgerDeviceDataSourceImpl(
     }
 
     /**
-     * A failing close must not replace the outcome of the pairing.
+     * A failing close must not replace the outcome of the step that opened the transport.
      */
     @Suppress("TooGenericExceptionCaught")
     private suspend fun closeQuietly(transport: LedgerApduTransport) {
@@ -108,7 +131,7 @@ class LedgerDeviceDataSourceImpl(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Twig.warn { "Ledger pairing: closing a transport failed: ${e.javaClass.simpleName}" }
+            Twig.warn { "Ledger enrollment: closing a transport failed: ${e.javaClass.simpleName}" }
         }
     }
 
