@@ -86,6 +86,75 @@ class LedgerIssueMapperTest {
         )
     }
 
+    /**
+     * The Figma "Waiting Indicator" rewords five issues; every other one shows the sheet's copy.
+     */
+    @Test
+    fun theInlineCopyFollowsTheWaitingIndicatorAndOtherwiseTheSheet() {
+        val context = LedgerIssueContext.ENROLLMENT_PAIRING
+        val permissions = LedgerIssue.permissions
+        assertEquals(R.drawable.ic_ledger_bluetooth_on, permissions.inlineIcon)
+        assertEquals(R.drawable.ic_ledger_alert_circle, permissions.icon)
+        assertInline(
+            permissions,
+            R.string.ledger_error_permissions_inlineTitle,
+            R.string.ledger_error_permissions_inlineMessage
+        )
+
+        val bluetoothOff = mockk<LedgerException.BluetoothDisabled>(relaxed = true).toLedgerIssue(context)
+        assertEquals(R.drawable.ic_ledger_bluetooth_off, bluetoothOff.inlineIcon)
+        assertInline(
+            bluetoothOff,
+            R.string.ledger_error_bluetoothOff_inlineTitle,
+            R.string.ledger_error_bluetoothOff_message
+        )
+
+        val unavailable =
+            mockk<LedgerException.BluetoothUnavailable>(relaxed = true) { every { scanErrorCode } returns null }
+                .toLedgerIssue(context)
+        assertEquals(R.drawable.ic_ledger_bluetooth_off, unavailable.inlineIcon)
+        assertInline(
+            unavailable,
+            R.string.ledger_error_unavailable_inlineTitle,
+            R.string.ledger_error_unavailable_message
+        )
+
+        assertInline(
+            LedgerIssue.noDevices,
+            R.string.ledger_error_noDevices_inlineTitle,
+            R.string.ledger_error_noDevices_message
+        )
+
+        listOf(
+            mockk<LedgerException.Internal>(relaxed = true).toLedgerIssue(context),
+            LedgerIssue.unknownWithoutRetry,
+            mockk<LedgerException.TransactionNotSignable>(relaxed = true).toLedgerIssue(context),
+        ).forEach { issue ->
+            assertInline(issue, R.string.ledger_error_unknown_title, R.string.ledger_error_unknown_inlineMessage)
+        }
+
+        listOf(
+            LedgerIssue.pairingFailed,
+            LedgerIssue.disconnectedDuringSetup,
+            mockk<LedgerException.AppTooOld>(relaxed = true).toLedgerIssue(context),
+            mockk<LedgerException.AppNotInstalled>(relaxed = true).toLedgerIssue(context),
+            mockk<LedgerException.AppOpenRejected>(relaxed = true).toLedgerIssue(context),
+        ).forEach { issue ->
+            assertEquals(issue.title, issue.inlineTitle, issue.kind.name)
+            assertEquals(issue.message, issue.inlineMessage, issue.kind.name)
+            assertEquals(issue.icon, issue.inlineIcon, issue.kind.name)
+        }
+    }
+
+    private fun assertInline(
+        issue: LedgerIssue,
+        title: Int,
+        message: Int,
+    ) {
+        assertEquals(title, issue.inlineTitle.resourceId(), issue.kind.name)
+        assertEquals(message, issue.inlineMessage.resourceId(), issue.kind.name)
+    }
+
     private fun assertIssue(
         row: Row,
         context: LedgerIssueContext,

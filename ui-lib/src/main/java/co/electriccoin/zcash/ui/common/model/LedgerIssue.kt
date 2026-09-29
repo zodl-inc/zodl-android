@@ -60,12 +60,20 @@ enum class LedgerIssueKind(
 
 /**
  * A Ledger failure as the user sees it, shared by the connect flow and the signing sheet.
+ *
+ * [title], [message] and [icon] are the error sheet's; [inlineIcon], [inlineTitle] and
+ * [inlineMessage] are what a connect page keeps showing over its placeholder rows, which the Figma
+ * "Waiting Indicator" words differently for a few issues and otherwise shares with the sheet.
  */
 data class LedgerIssue(
     val kind: LedgerIssueKind,
     val retry: LedgerIssueRetry,
     val title: StringResource,
     val message: StringResource,
+    @get:DrawableRes
+    val inlineIcon: Int = kind.icon,
+    val inlineTitle: StringResource = title,
+    val inlineMessage: StringResource = message,
 ) {
     @get:DrawableRes
     val icon: Int
@@ -81,7 +89,7 @@ data class LedgerIssue(
                 LedgerIssueRetry.RECONNECT,
                 R.string.ledger_error_noDevices_title,
                 R.string.ledger_error_noDevices_message
-            )
+            ).copy(inlineTitle = stringRes(R.string.ledger_error_noDevices_inlineTitle))
 
         /**
          * The runtime Bluetooth permissions were denied.
@@ -92,6 +100,10 @@ data class LedgerIssue(
                 LedgerIssueRetry.RECONNECT,
                 R.string.ledger_error_permissions_title,
                 R.string.ledger_error_permissions_message
+            ).copy(
+                inlineIcon = R.drawable.ic_ledger_bluetooth_on,
+                inlineTitle = stringRes(R.string.ledger_error_permissions_inlineTitle),
+                inlineMessage = stringRes(R.string.ledger_error_permissions_inlineMessage),
             )
 
         /**
@@ -250,7 +262,7 @@ fun LedgerException.toLedgerIssue(context: LedgerIssueContext): LedgerIssue =
                 LedgerIssueRetry.RECONNECT,
                 R.string.ledger_error_bluetoothOff_title,
                 R.string.ledger_error_bluetoothOff_message
-            )
+            ).copy(inlineTitle = stringRes(R.string.ledger_error_bluetoothOff_inlineTitle))
         }
 
         is LedgerException.PairingRefused -> {
@@ -324,13 +336,17 @@ private val LedgerIssueContext.appRetry: LedgerIssueRetry
             }
         }
 
+/**
+ * "Something Went Wrong"; the inline issue breaks its message over two lines where the sheet runs it
+ * on.
+ */
 private fun unknownIssue(kind: LedgerIssueKind) =
     issue(
         kind,
         LedgerIssueRetry.RECONNECT,
         R.string.ledger_error_unknown_title,
         R.string.ledger_error_unknown_message
-    )
+    ).copy(inlineMessage = stringRes(R.string.ledger_error_unknown_inlineMessage))
 
 /**
  * A device mismatch cannot occur while pairing, so the connect flow has no copy of its own for it.
@@ -371,12 +387,7 @@ private fun notSignable(context: LedgerIssueContext) =
     when (context) {
         LedgerIssueContext.ENROLLMENT_PAIRING,
         LedgerIssueContext.ENROLLMENT -> {
-            issue(
-                LedgerIssueKind.NOT_SIGNABLE,
-                LedgerIssueRetry.NONE,
-                R.string.ledger_error_unknown_title,
-                R.string.ledger_error_unknown_message
-            )
+            unknownIssue(LedgerIssueKind.NOT_SIGNABLE).copy(retry = LedgerIssueRetry.NONE)
         }
 
         LedgerIssueContext.SIGNING -> {
@@ -398,7 +409,7 @@ private fun bluetoothUnavailable(scanErrorCode: Int?) =
             LedgerIssueRetry.NONE,
             R.string.ledger_error_unavailable_title,
             R.string.ledger_error_unavailable_message
-        )
+        ).copy(inlineTitle = stringRes(R.string.ledger_error_unavailable_inlineTitle))
     }
 
 private fun disconnected(context: LedgerIssueContext) =

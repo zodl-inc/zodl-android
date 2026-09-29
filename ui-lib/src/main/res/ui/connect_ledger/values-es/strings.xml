@@ -18,7 +18,7 @@
 
     <!-- Device scan and selection -->
     <string name="ledger_scan_idle_title">Conecta tu Ledger</string>
-    <string name="ledger_scan_searching_title">Buscando dispositivos…</string>
+    <string name="ledger_scan_searching_title">Buscando dispositivos...</string>
     <string name="ledger_scan_searching_subtitle">Asegúrate de que tu Ledger esté desbloqueado y el Bluetooth activado.</string>
     <string name="ledger_scan_searching_cta">Buscando</string>
     <string name="ledger_scan_select_title">Selecciona tu dispositivo</string>
@@ -29,6 +29,7 @@
     <!-- Error sheets -->
     <string name="ledger_error_tryAgain">Intentar de nuevo</string>
     <string name="ledger_error_noDevices_title">No se encontraron dispositivos</string>
+    <string name="ledger_error_noDevices_inlineTitle">No se encontraron dispositivos</string>
     <string name="ledger_error_noDevices_message">No encontramos ningún dispositivo Ledger cerca. Asegúrate de que tu Ledger esté desbloqueado y el Bluetooth activado.</string>
     <string name="ledger_error_locked_title">Desbloquea tu Ledger</string>
     <string name="ledger_error_locked_message">Desbloquea tu Ledger y abre la aplicación Zcash en el dispositivo para continuar.</string>
@@ -40,15 +41,19 @@
     <string name="ledger_error_disconnected_message">Tu Ledger se desconectó durante la configuración. Comprueba la conexión e inténtalo de nuevo.</string>
     <string name="ledger_error_unavailable_title">Bluetooth no disponible</string>
     <string name="ledger_error_unavailable_message">Este dispositivo no puede usar Bluetooth, así que no puede conectarse a un dispositivo Ledger.</string>
+    <string name="ledger_error_unavailable_inlineTitle">Bluetooth no disponible en tu dispositivo</string>
     <string name="ledger_error_unavailable_cta">Cerrar</string>
     <string name="ledger_error_permissions_title">Se requiere acceso a Bluetooth</string>
     <string name="ledger_error_permissions_message">Zodl necesita acceso a Bluetooth para conectarse a tu Ledger. Activa el Bluetooth en Ajustes para continuar.</string>
+    <string name="ledger_error_permissions_inlineTitle">Zodl necesita acceso a Bluetooth para conectarse a tu Ledger.</string>
+    <string name="ledger_error_permissions_inlineMessage">Activa el Bluetooth en Ajustes para continuar.</string>
     <string name="ledger_error_permissions_cta">Abrir ajustes del sistema</string>
     <string name="ledger_error_alreadyAdded_title">La cuenta ya fue añadida</string>
     <string name="ledger_error_alreadyAdded_message">Esta cuenta ya está conectada a Zodl.</string>
     <string name="ledger_error_alreadyAdded_primary">Ir a la cuenta</string>
     <string name="ledger_error_alreadyAdded_secondary">Cancelar</string>
     <string name="ledger_error_bluetoothOff_title">Bluetooth desactivado</string>
+    <string name="ledger_error_bluetoothOff_inlineTitle">El Bluetooth está desactivado en tu dispositivo</string>
     <string name="ledger_error_bluetoothOff_message">Activa el Bluetooth en Ajustes para conectarte a tu Ledger.</string>
     <string name="ledger_error_appTooOld_title">Actualiza la aplicación Zcash</string>
     <string name="ledger_error_appTooOld_message">La aplicación Zcash de tu Ledger está desactualizada. Actualízala a la versión 3.6.0 o posterior con Ledger Live e inténtalo de nuevo.</string>
@@ -60,6 +65,7 @@
     <string name="ledger_error_restartApp_message">Cierra y vuelve a abrir la aplicación Zcash en tu Ledger e inténtalo de nuevo.</string>
     <string name="ledger_error_unknown_title">Algo salió mal</string>
     <string name="ledger_error_unknown_message">Zodl no pudo conectarse a tu Ledger. Asegúrate de que esté desbloqueado y cerca, e inténtalo de nuevo.</string>
+    <string name="ledger_error_unknown_inlineMessage">Zodl no pudo conectarse a tu Ledger.\nAsegúrate de que esté desbloqueado y cerca, e inténtalo de nuevo.</string>
 
     <!-- Signing sheet -->
     <string name="ledger_sign_title">Confirmar transacción</string>

@@ -18,7 +18,7 @@
 
     <!-- Device scan and selection -->
     <string name="ledger_scan_idle_title">Connect your Ledger</string>
-    <string name="ledger_scan_searching_title">Searching for Devices…</string>
+    <string name="ledger_scan_searching_title">Searching for Devices...</string>
     <string name="ledger_scan_searching_subtitle">Make sure your Ledger is unlocked and Bluetooth is enabled.</string>
     <string name="ledger_scan_searching_cta">Searching</string>
     <string name="ledger_scan_select_title">Select Your Device</string>
@@ -29,6 +29,7 @@
     <!-- Error sheets -->
     <string name="ledger_error_tryAgain">Try again</string>
     <string name="ledger_error_noDevices_title">No Devices Found</string>
+    <string name="ledger_error_noDevices_inlineTitle">No devices found</string>
     <string name="ledger_error_noDevices_message">We couldn\'t find any Ledger devices nearby. Make sure your Ledger hardware is unlocked and Bluetooth is turned on.</string>
     <string name="ledger_error_locked_title">Unlock Your Ledger</string>
     <string name="ledger_error_locked_message">Unlock your Ledger and open the Zcash app on the device to continue.</string>
@@ -39,16 +40,20 @@
     <string name="ledger_error_disconnected_title">Ledger Disconnected</string>
     <string name="ledger_error_disconnected_message">Your Ledger disconnected during setup. Check the connection and try again.</string>
     <string name="ledger_error_unavailable_title">Bluetooth Unavailable</string>
-    <string name="ledger_error_unavailable_message">This device can\'t use Bluetooth, so it can\'t connect to a Ledger device.</string>
+    <string name="ledger_error_unavailable_message">This device can’t use Bluetooth, so it can’t connect to a Ledger device.</string>
+    <string name="ledger_error_unavailable_inlineTitle">Bluetooth unavailable on your device</string>
     <string name="ledger_error_unavailable_cta">Close</string>
     <string name="ledger_error_permissions_title">Bluetooth Access Required</string>
     <string name="ledger_error_permissions_message">Zodl needs Bluetooth access to connect to your Ledger. Turn on Bluetooth in Settings to continue.</string>
+    <string name="ledger_error_permissions_inlineTitle">Zodl needs Bluetooth access to connect to your Ledger.</string>
+    <string name="ledger_error_permissions_inlineMessage">Turn on Bluetooth in Settings to continue.</string>
     <string name="ledger_error_permissions_cta">Open System Settings</string>
     <string name="ledger_error_alreadyAdded_title">Account Already Added</string>
     <string name="ledger_error_alreadyAdded_message">This account is already connected to Zodl.</string>
     <string name="ledger_error_alreadyAdded_primary">Go to Account</string>
     <string name="ledger_error_alreadyAdded_secondary">Cancel</string>
     <string name="ledger_error_bluetoothOff_title">Bluetooth Off</string>
+    <string name="ledger_error_bluetoothOff_inlineTitle">Bluetooth is off on your device</string>
     <string name="ledger_error_bluetoothOff_message">Turn on Bluetooth in Settings to connect to your Ledger.</string>
     <string name="ledger_error_appTooOld_title">Update the Zcash App</string>
     <string name="ledger_error_appTooOld_message">The Zcash app on your Ledger is out of date. Update it to version 3.6.0 or newer with Ledger Live, then try again.</string>
@@ -59,7 +64,8 @@
     <string name="ledger_error_restartApp_title">Restart the Zcash App</string>
     <string name="ledger_error_restartApp_message">Close and reopen the Zcash app on your Ledger, then try again.</string>
     <string name="ledger_error_unknown_title">Something Went Wrong</string>
-    <string name="ledger_error_unknown_message">Zodl couldn\'t connect to your Ledger. Make sure it\'s unlocked and nearby, then try again.</string>
+    <string name="ledger_error_unknown_message">Zodl couldn’t connect to your Ledger. Make sure it’s unlocked and nearby, then try again.</string>
+    <string name="ledger_error_unknown_inlineMessage">Zodl couldn’t connect to your Ledger.\nMake sure it’s unlocked and nearby, then try again.</string>
 
     <!-- Signing sheet -->
     <string name="ledger_sign_title">Confirm Transaction</string>
