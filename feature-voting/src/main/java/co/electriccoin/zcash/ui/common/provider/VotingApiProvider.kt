@@ -236,7 +236,10 @@ class KtorVotingApiProvider(
 
     override suspend fun fetchActiveVotingSession(): VotingSession? =
         try {
-            executeWithVoteServerFailover(ACTIVE_ROUNDS_PATH) { baseUrl ->
+            executeWithVoteServerFailover(
+                ACTIVE_ROUNDS_PATH,
+                shouldTryNext = ::shouldTryNextVoteServerForRead,
+            ) { baseUrl ->
                 val response = voteServerGet<ChainActiveRoundResponse>("$baseUrl$ACTIVE_ROUNDS_PATH")
                 response.round?.toVotingSession()?.let { session ->
                     authenticateVotingSession(session)
@@ -251,7 +254,10 @@ class KtorVotingApiProvider(
         }
 
     override suspend fun fetchAllRounds(): RoundsListResult =
-        executeWithVoteServerFailover(ROUNDS_PATH) { baseUrl ->
+        executeWithVoteServerFailover(
+            ROUNDS_PATH,
+            shouldTryNext = ::shouldTryNextVoteServerForRead,
+        ) { baseUrl ->
             val response =
                 voteServerGet<ChainRoundsResponse>("$baseUrl$ROUNDS_PATH") {
                     noCache()
@@ -275,7 +281,7 @@ class KtorVotingApiProvider(
                 path = ENDORSED_ROUNDS_PATH,
                 shouldTryNext = { throwable ->
                     failureStatuses += (throwable as? ResponseException)?.response?.status
-                    shouldTryNextVoteServer(throwable)
+                    shouldTryNextVoteServerForRead(throwable)
                 },
             ) { baseUrl ->
                 voteServerGet<ZodlEndorsedRoundsResponse>("$baseUrl$ENDORSED_ROUNDS_PATH") {
@@ -291,16 +297,15 @@ class KtorVotingApiProvider(
         }
     }
 
-    // MOB-1811: these two writes go through the same withVoteServerFailover bound as every read,
-    // so a Tor-slow-but-alive server now gets its payload re-POSTed to the next server after
-    // voteServerFailoverTimeoutMillis instead of hanging indefinitely. Accepted trade-off, not a
-    // new hazard: the body is re-posted byte-identical, so at most one of the two attempts can
-    // land on-chain (the second is a spent-nullifier rejection) — this ambiguity already existed
-    // via 5xx/IOException failover before this fix, the timeout only makes it more likely under a
-    // dropping (not refusing) Tor connection. The #2481 reconcile/VAN-probe recovery machinery
-    // covers exactly this case. Follow-up idea (not implemented here): probe fetchTxConfirmation
-    // for the previous attempt's VAN before re-posting specifically after a timeout, to shrink the
-    // "transaction failed" UX window rather than only rely on the recovery re-run.
+    // MOB-1811 / F-06: these two writes go through withVoteServerFailover's default
+    // shouldTryNextVoteServer (no override passed here), which -- unlike the read call sites above,
+    // which opt back into it via shouldTryNextVoteServerForRead -- does NOT retry a
+    // TimeoutCancellationException on the next server: a timeout here means the vote/delegation
+    // POST may already have been delivered and processed, so failing over would risk double-
+    // submission (the second attempt landing as a spent-nullifier rejection, or worse if the
+    // target doesn't de-duplicate). The timeout is surfaced to the caller instead. The #2481
+    // reconcile/VAN-probe recovery machinery is what handles the resulting "did it actually land"
+    // ambiguity, not an automatic retry here.
     override suspend fun submitDelegation(registration: DelegationRegistration): TxResult =
         executeWithVoteServerFailover(DELEGATE_VOTE_PATH) { baseUrl ->
             voteServerPost(
@@ -322,7 +327,10 @@ class KtorVotingApiProvider(
 
     override suspend fun fetchTallyResults(roundIdHex: String): TallyResults {
         val ballotDivisorZatoshi = votingCryptoClient.ballotDivisorZatoshi()
-        return executeWithVoteServerFailover(tallyResultsPath(roundIdHex)) { baseUrl ->
+        return executeWithVoteServerFailover(
+            tallyResultsPath(roundIdHex),
+            shouldTryNext = ::shouldTryNextVoteServerForRead,
+        ) { baseUrl ->
             voteServerGet<ChainTallyResultsResponse>("$baseUrl${tallyResultsPath(roundIdHex)}")
                 .toTallyResults(roundIdHex, ballotDivisorZatoshi)
         }
@@ -634,7 +642,10 @@ class KtorVotingApiProvider(
 
     override suspend fun fetchCommitmentTreeLatest(roundIdHex: String): CommitmentTreeLatest {
         val path = commitmentTreeLatestPath(roundIdHex)
-        return executeWithVoteServerFailover(path) { baseUrl ->
+        return executeWithVoteServerFailover(
+            path,
+            shouldTryNext = ::shouldTryNextVoteServerForRead,
+        ) { baseUrl ->
             val tree = voteServerGet<ChainCommitmentTreeLatestResponse>("$baseUrl$path").tree
             require(tree.height >= 0) { "Commitment tree height must be non-negative" }
             require(tree.nextIndex >= 0) { "Commitment tree next_index must be non-negative" }
@@ -650,7 +661,10 @@ class KtorVotingApiProvider(
         require(fromHeight >= 0) { "fromHeight must be non-negative" }
         require(toHeight >= fromHeight) { "toHeight must be at least fromHeight" }
         val path = commitmentTreeLeavesPath(roundIdHex, fromHeight, toHeight)
-        return executeWithVoteServerFailover(path) { baseUrl ->
+        return executeWithVoteServerFailover(
+            path,
+            shouldTryNext = ::shouldTryNextVoteServerForRead,
+        ) { baseUrl ->
             voteServerGet<ChainCommitmentTreeLeavesResponse>("$baseUrl$path").toModel()
         }
     }

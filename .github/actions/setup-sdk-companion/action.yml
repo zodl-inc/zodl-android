@@ -34,6 +34,14 @@ runs:
       run: |
         PIN="$(grep -m1 '^SDK_COMMIT_PIN=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')"
         [ -z "${PIN}" ] || [[ "${PIN}" =~ ^[0-9a-f]{40}$ ]] || { echo '::error::SDK_COMMIT_PIN must be a full 40-char commit sha'; exit 1; }
+        # Fail loudly here rather than letting the checkout step below fail on an empty token, and
+        # never silently widen to a broader repo-scoped secret if SDK_COMPANION_TOKEN isn't set --
+        # that would grant this job whatever else that broader secret can reach, not just
+        # contents:read on the one companion repo it actually needs.
+        if [ -n "${PIN}" ] && [ -z "${{ inputs.sdk-token }}" ]; then
+          echo "::error::SDK_COMMIT_PIN is set to '${PIN}' but no sdk-token input was provided. Configure the SDK_COMPANION_TOKEN secret (contents:read on the SDK repository) rather than substituting a broader-scoped secret." >&2
+          exit 1
+        fi
         TARGET="${{ github.event.pull_request.base.ref || github.base_ref || github.ref_name }}"
         if [ -n "${PIN}" ] && [ "${TARGET}" != "main" ] && [[ "${TARGET}" != maint/* ]]; then
           echo "::error::SDK_COMMIT_PIN is set to '${PIN}' but this workflow's target branch is '${TARGET}'. SDK_COMMIT_PIN is only supported on main, maint/* branches, and branches targeting them — clear it before merging into release/review branches, which must always build against a real published SDK version." >&2

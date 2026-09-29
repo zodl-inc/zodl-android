@@ -179,7 +179,7 @@ private class KtorLogger : Logger {
 // that must be sent exactly once (gateway replay cache returns 409 on duplicate nonce).
 // Covers both helper endpoints (/shares, /share-status) and direct voting POSTs
 // (/delegate-vote, /cast-vote) which can route through OHTTP when Tor is OFF.
-private fun String.isVotingPath(): Boolean =
+internal fun String.isVotingPath(): Boolean =
     contains("/shielded-vote/v1/shares") ||
         contains("/shielded-vote/v1/share-status/") ||
         contains("/shielded-vote/v1/delegate-vote") ||

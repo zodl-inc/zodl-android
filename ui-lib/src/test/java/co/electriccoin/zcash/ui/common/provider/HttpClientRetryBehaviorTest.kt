@@ -61,23 +61,10 @@ class HttpClientRetryBehaviorTest {
                         install(HttpRequestRetry) {
                             maxRetries = 4
                             retryIf { request, response ->
-                                val url = request.url.toString()
-                                // Simplified version of isVotingPath() for testing
-                                val isVoting =
-                                    url.contains("/shielded-vote/v1/shares") ||
-                                        url.contains("/shielded-vote/v1/share-status/") ||
-                                        url.contains("/shielded-vote/v1/delegate-vote") ||
-                                        url.contains("/shielded-vote/v1/cast-vote")
-                                !isVoting && response.status.value in 500..599
+                                !request.url.toString().isVotingPath() && response.status.value in 500..599
                             }
                             retryOnExceptionIf { request, _ ->
-                                val url = request.url.toString()
-                                val isVoting =
-                                    url.contains("/shielded-vote/v1/shares") ||
-                                        url.contains("/shielded-vote/v1/share-status/") ||
-                                        url.contains("/shielded-vote/v1/delegate-vote") ||
-                                        url.contains("/shielded-vote/v1/cast-vote")
-                                !isVoting
+                                !request.url.toString().isVotingPath()
                             }
                             exponentialDelay()
                         }
@@ -129,22 +116,10 @@ class HttpClientRetryBehaviorTest {
                     install(HttpRequestRetry) {
                         maxRetries = 4
                         retryIf { request, response ->
-                            val url = request.url.toString()
-                            val isVoting =
-                                url.contains("/shielded-vote/v1/shares") ||
-                                    url.contains("/shielded-vote/v1/share-status/") ||
-                                    url.contains("/shielded-vote/v1/delegate-vote") ||
-                                    url.contains("/shielded-vote/v1/cast-vote")
-                            !isVoting && response.status.value in 500..599
+                            !request.url.toString().isVotingPath() && response.status.value in 500..599
                         }
                         retryOnExceptionIf { request, _ ->
-                            val url = request.url.toString()
-                            val isVoting =
-                                url.contains("/shielded-vote/v1/shares") ||
-                                    url.contains("/shielded-vote/v1/share-status/") ||
-                                    url.contains("/shielded-vote/v1/delegate-vote") ||
-                                    url.contains("/shielded-vote/v1/cast-vote")
-                            !isVoting
+                            !request.url.toString().isVotingPath()
                         }
                         exponentialDelay()
                     }
@@ -193,23 +168,10 @@ class HttpClientRetryBehaviorTest {
                     install(HttpRequestRetry) {
                         maxRetries = 4
                         retryIf { request, response ->
-                            val url = request.url.toString()
-                            val isVoting =
-                                url.contains("/shielded-vote/v1/shares") ||
-                                    url.contains("/shielded-vote/v1/share-status/") ||
-                                    url.contains("/shielded-vote/v1/delegate-vote") ||
-                                    url.contains("/shielded-vote/v1/cast-vote")
-                            // Assume no exchange rate host for this test
-                            !isVoting && response.status.value in 500..599
+                            !request.url.toString().isVotingPath() && response.status.value in 500..599
                         }
                         retryOnExceptionIf { request, _ ->
-                            val url = request.url.toString()
-                            val isVoting =
-                                url.contains("/shielded-vote/v1/shares") ||
-                                    url.contains("/shielded-vote/v1/share-status/") ||
-                                    url.contains("/shielded-vote/v1/delegate-vote") ||
-                                    url.contains("/shielded-vote/v1/cast-vote")
-                            !isVoting
+                            !request.url.toString().isVotingPath()
                         }
                         exponentialDelay()
                     }
@@ -254,13 +216,7 @@ class HttpClientRetryBehaviorTest {
                     install(HttpRequestRetry) {
                         maxRetries = 4
                         retryOnExceptionIf { request, _ ->
-                            val url = request.url.toString()
-                            val isVoting =
-                                url.contains("/shielded-vote/v1/shares") ||
-                                    url.contains("/shielded-vote/v1/share-status/") ||
-                                    url.contains("/shielded-vote/v1/delegate-vote") ||
-                                    url.contains("/shielded-vote/v1/cast-vote")
-                            !isVoting
+                            !request.url.toString().isVotingPath()
                         }
                         exponentialDelay()
                     }
@@ -304,13 +260,8 @@ class HttpClientRetryBehaviorTest {
                 "https://example.com/api/data",
             )
 
-        // Helper function matching the production isVotingPath()
-        fun String.isVotingPath(): Boolean =
-            contains("/shielded-vote/v1/shares") ||
-                contains("/shielded-vote/v1/share-status/") ||
-                contains("/shielded-vote/v1/delegate-vote") ||
-                contains("/shielded-vote/v1/cast-vote")
-
+        // Uses the real production isVotingPath() (internal, same package) -- not a
+        // reimplementation -- so a future change to it is caught here automatically.
         votingPaths.forEach { path ->
             assertTrue(
                 "Path $path should be identified as voting path",
@@ -340,12 +291,6 @@ class HttpClientRetryBehaviorTest {
                 "/delegate-vote" to "/shielded-vote/v1/delegate-vote",
                 "/cast-vote" to "/shielded-vote/v1/cast-vote",
             )
-
-        fun String.isVotingPath(): Boolean =
-            contains("/shielded-vote/v1/shares") ||
-                contains("/shielded-vote/v1/share-status/") ||
-                contains("/shielded-vote/v1/delegate-vote") ||
-                contains("/shielded-vote/v1/cast-vote")
 
         endpoints.forEach { (name, path) ->
             val testUrl = "https://vote.example.com$path"

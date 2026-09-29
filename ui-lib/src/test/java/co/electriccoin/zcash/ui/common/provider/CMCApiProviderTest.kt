@@ -44,11 +44,7 @@ class CMCApiProviderTest {
                     ?.price
             )
             assertTrue(httpClientProvider.requestedUrls.all { it.contains(CMC_API_HOST) })
-            // MOB-1520: the app must never send the CMC key; the gateway injects it.
-            assertFalse(
-                httpClientProvider.requestedUrls.any { it.contains("X-CMC_PRO_API_KEY") },
-                "CMC key must not be sent by the app (gateway injects it)"
-            )
+            httpClientProvider.capturedRequests.forEach(::assertNoCmcApiKeyHeader)
         }
 
     @Test
@@ -72,12 +68,18 @@ class CMCApiProviderTest {
             )
             assertEquals(listOf("USD"), response.data.map { it.symbol })
             assertTrue(httpClientProvider.requestedUrls.all { it.contains(CMC_API_HOST) })
-            // MOB-1520: the app must never send the CMC key; the gateway injects it.
-            assertFalse(
-                httpClientProvider.requestedUrls.any { it.contains("X-CMC_PRO_API_KEY") },
-                "CMC key must not be sent by the app (gateway injects it)"
-            )
+            httpClientProvider.capturedRequests.forEach(::assertNoCmcApiKeyHeader)
         }
+}
+
+private fun assertNoCmcApiKeyHeader(request: OhttpHttpClient.Request) {
+    // MOB-1520: the app must never send X-CMC_PRO_API_KEY; the gateway injects it server-side.
+    // Asserted against the actual request headers (not the URL) so a regression that reintroduces
+    // the header would actually fail this test.
+    assertFalse(
+        request.headers.any { it.first.equals("X-CMC_PRO_API_KEY", ignoreCase = true) },
+        "CMC key must not be sent by the app (gateway injects it)"
+    )
 }
 
 private const val RATE = 42.0
@@ -95,6 +97,7 @@ private class RecordingHttpClientProvider : HttpClientProvider {
     var createOhttpCalls = 0
         private set
     val requestedUrls = mutableListOf<String>()
+    val capturedRequests = mutableListOf<OhttpHttpClient.Request>()
 
     override suspend fun create(): HttpClient {
         createCalls++
@@ -113,6 +116,7 @@ private class RecordingHttpClientProvider : HttpClientProvider {
             coEvery { execute(any()) } answers {
                 val request = firstArg<OhttpHttpClient.Request>()
                 requestedUrls += request.url
+                capturedRequests += request
                 val body =
                     if (request.url.contains(FIAT_MAP_PATH)) {
                         FIAT_MAP_JSON
