@@ -22,6 +22,12 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   missing can be paired again from the signing sheet with Pair Ledger, and after the wrong Ledger
   the signing sheet asks you to pick the device instead of reconnecting to the same one.
 
+### Changed:
+
+- Disconnect Hardware Wallet in Advanced Settings now shows only while a Keystone or Ledger account
+  is selected, and disconnects that account; it used to show whenever the wallet held a Keystone
+  account, whichever account was selected.
+
 ### Fixed:
 
 - Choosing to keep the screen on while Zodl syncs now works after connecting a Ledger or a Keystone,
