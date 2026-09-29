@@ -218,15 +218,17 @@ class LedgerHandshakeVM(
     }
 
     /**
-     * Each attempt opens a fresh transport to the device the scan screen bonded with.
+     * Each attempt opens a fresh transport to the device the scan screen bonded with. A running
+     * attempt is left alone before the device is looked up, so a restart can never unwind the flow
+     * under it.
      */
     private fun startHandshake() {
+        if (handshakeJob?.isActive == true) return
         val device = ledgerSelectedDeviceRepository.get()
         if (device == null) {
             navigationRouter.backToRoot()
             return
         }
-        if (handshakeJob?.isActive == true) return
         internalState.update {
             it.copy(
                 phase = LedgerHandshakePhase.CONNECTING,

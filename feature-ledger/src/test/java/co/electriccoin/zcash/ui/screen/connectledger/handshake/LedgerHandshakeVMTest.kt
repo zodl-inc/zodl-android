@@ -418,6 +418,39 @@ class LedgerHandshakeVMTest {
         }
 
     @Test
+    fun aRestartWhileTheHandshakeRunsLeavesItAloneEvenWithoutASelectedDevice() =
+        runTest(dispatcher) {
+            val pending = CompletableDeferred<PairLedgerDeviceResult>()
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+            val pairLedgerDevice =
+                mockk<PairLedgerDeviceUseCase> {
+                    coEvery { this@mockk.invoke(any()) } coAnswers { pending.await() }
+                }
+            val ledgerSelectedDeviceRepository =
+                mockk<LedgerSelectedDeviceRepository>(relaxed = true) {
+                    every { get() } returnsMany listOf(device, null)
+                }
+            val vm =
+                LedgerHandshakeVM(
+                    application = mockk<Application>(relaxed = true),
+                    pairLedgerDevice = pairLedgerDevice,
+                    selectWalletAccount = mockk(relaxed = true),
+                    ledgerSelectedDeviceRepository = ledgerSelectedDeviceRepository,
+                    navigateToError = mockk(relaxed = true),
+                    navigationRouter = navigationRouter,
+                )
+            collect(vm)
+            runCurrent()
+
+            vm.onBluetoothEnabled()
+            runCurrent()
+
+            verify(exactly = 0) { navigationRouter.backToRoot() }
+            coVerify(exactly = 1) { pairLedgerDevice.invoke(device) }
+            assertTrue(vm.state.value.isConnecting)
+        }
+
+    @Test
     fun bluetoothOffAsksTheSystemToTurnItOnAndRetriesOnceItIs() =
         runTest(dispatcher) {
             var attempts = 0
