@@ -184,6 +184,7 @@ private fun Footer(
             state = state.secondaryButton,
             defaultPrimaryColors = ZashiButtonDefaults.secondaryColors(),
         )
+        Spacer(8.dp)
         ZashiButton(
             modifier = Modifier.fillMaxWidth(),
             state = state.primaryButton,

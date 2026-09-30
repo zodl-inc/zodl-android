@@ -48,7 +48,7 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 ### Changed:
 
 - Buttons are now at least 48 dp tall by default, matching the design system. Compact buttons set a smaller
-  `minHeight` instead of a fixed height, so they still grow for wrapped text.
+  `minHeight` instead of a fixed height, so they still grow for wrapped text, and stacked buttons keep an 8 dp gap.
 
 ## [3.14.0 (2738)] - 2026-09-16
 

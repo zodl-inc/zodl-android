@@ -188,6 +188,7 @@ private fun ContactViewInternal(
         )
 
         state.negativeButton?.let {
+            Spacer(8.dp)
             ZashiButton(
                 state = it,
                 modifier = Modifier.fillMaxWidth().testTag(ABContactTag.DELETE_BUTTON),
