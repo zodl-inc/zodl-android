@@ -8,7 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
 import kotlin.math.abs
@@ -49,12 +49,28 @@ internal fun SheetOpenFractionTracker(onFraction: (Float) -> Unit) {
     Spacer(
         Modifier.onGloballyPositioned { coordinates ->
             val sheet = coordinates.parentLayoutCoordinates ?: return@onGloballyPositioned
-            val windowHeight = coordinates.findRootCoordinates().size.height
-            val sheetHeight = minOf(sheet.size.height, windowHeight)
-            if (sheetHeight <= 0) return@onGloballyPositioned
-            onFraction(((windowHeight - sheet.positionInWindow().y) / sheetHeight).coerceIn(0f, 1f))
+            sheetOpenFraction(
+                rootHeight = coordinates.findRootCoordinates().size.height,
+                sheetTop = sheet.positionInRoot().y,
+                sheetHeight = sheet.size.height,
+            )?.let(onFraction)
         }
     )
+}
+
+/**
+ * The share of a sheet of [sheetHeight] whose top edge sits at [sheetTop] that shows above the bottom of a root
+ * [rootHeight] tall, from 0 to 1; a sheet taller than the root counts as open once it fills the root. Null for a
+ * sheet with no height yet.
+ */
+internal fun sheetOpenFraction(
+    rootHeight: Int,
+    sheetTop: Float,
+    sheetHeight: Int,
+): Float? {
+    val visibleHeight = minOf(sheetHeight, rootHeight)
+    if (visibleHeight <= 0) return null
+    return ((rootHeight - sheetTop) / visibleHeight).coerceIn(0f, 1f)
 }
 
 /**
