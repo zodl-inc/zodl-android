@@ -44,7 +44,6 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import co.electriccoin.zcash.ui.R as UiR
 
 /**
  * The handshake screen asks the device the scan screen bonded with for its account as soon as it
@@ -95,7 +94,7 @@ class LedgerHandshakeVMTest {
         }
 
     @Test
-    fun whileTheHandshakeRunsThePageShowsOnlyTheSpinner() =
+    fun whileTheHandshakeRunsThePageWaitsBehindADisabledConnect() =
         runTest(dispatcher) {
             val pending = CompletableDeferred<PairLedgerDeviceResult>()
             val pairLedgerDevice =
@@ -108,10 +107,10 @@ class LedgerHandshakeVMTest {
 
             val state = vm.state.value
             assertTrue(state.isConnecting)
-            assertEquals(UiR.string.ledger_confirm, state.title.resourceId())
+            assertEquals(R.string.ledger_handshake_title, state.title.resourceId())
             assertEquals(R.string.ledger_handshake_message, state.message.resourceId())
-            assertNull(state.primaryButton)
-            assertNull(state.inlineIssue)
+            assertEquals(R.string.ledger_scan_select_cta, state.primaryButton.text.resourceId())
+            assertFalse(state.primaryButton.isEnabled)
             assertNull(state.errorSheet)
         }
 
@@ -166,10 +165,6 @@ class LedgerHandshakeVMTest {
                 val sheet = assertNotNull(vm.state.value.errorSheet)
                 assertEquals(expectedTitle, sheet.title.resourceId())
                 assertFalse(vm.state.value.isConnecting)
-                assertEquals(
-                    INLINE_TITLES[expectedTitle] ?: expectedTitle,
-                    assertNotNull(vm.state.value.inlineIssue).title.resourceId()
-                )
             }
         }
 
@@ -184,7 +179,7 @@ class LedgerHandshakeVMTest {
         }
 
     @Test
-    fun aHandshakeThatTimedOutReadsAsADisconnectDuringSetupWithTryAgain() =
+    fun aHandshakeThatTimedOutReadsAsADisconnectDuringSetupWithTryAgainAndRetry() =
         runTest(dispatcher) {
             val vm = failingWith(LedgerPairingTimedOutException())
 
@@ -193,8 +188,9 @@ class LedgerHandshakeVMTest {
             assertEquals(R.string.ledger_error_disconnected_message, sheet.message.resourceId())
             assertEquals(R.string.ledger_error_tryAgain, assertNotNull(sheet.primary).text.resourceId())
             assertEquals(
-                R.string.ledger_error_tryAgain,
-                assertNotNull(vm.state.value.primaryButton).text.resourceId()
+                R.string.ledger_handshake_retry,
+                vm.state.value.primaryButton.text
+                    .resourceId()
             )
         }
 
@@ -206,8 +202,12 @@ class LedgerHandshakeVMTest {
             val sheet = assertNotNull(vm.state.value.errorSheet)
             assertNull(sheet.primary)
             assertNull(sheet.secondary)
-            assertNull(vm.state.value.primaryButton)
-            assertNotNull(vm.state.value.inlineIssue)
+            assertEquals(
+                R.string.ledger_scan_select_cta,
+                vm.state.value.primaryButton.text
+                    .resourceId()
+            )
+            assertFalse(vm.state.value.primaryButton.isEnabled)
         }
 
     @Test
@@ -242,7 +242,11 @@ class LedgerHandshakeVMTest {
             val sheet = assertNotNull(vm.state.value.errorSheet)
             assertEquals(R.string.ledger_sign_error_wrongDevice_title, sheet.title.resourceId())
             assertEquals(R.string.ledger_sign_error_wrongDevice_message, sheet.message.resourceId())
-            assertNotNull(vm.state.value.primaryButton)
+            assertEquals(
+                R.string.ledger_handshake_retry,
+                vm.state.value.primaryButton.text
+                    .resourceId()
+            )
             assertFalse(vm.state.value.isConnecting)
             verify(exactly = 0) { navigationRouter.replace(*anyVararg()) }
         }
@@ -276,7 +280,7 @@ class LedgerHandshakeVMTest {
         }
 
     @Test
-    fun dismissingTheSheetLeavesTheIssueAndATryAgainButtonOnThePage() =
+    fun dismissingTheSheetLeavesTheHeaderAndAnEnabledRetry() =
         runTest(dispatcher) {
             val vm = failingWith(mockk<LedgerException.UserRejected>(relaxed = true))
 
@@ -284,15 +288,12 @@ class LedgerHandshakeVMTest {
             runCurrent()
 
             assertNull(vm.state.value.errorSheet)
-            assertEquals(
-                R.string.ledger_error_importRejected_title,
-                assertNotNull(vm.state.value.inlineIssue).title.resourceId()
-            )
-            val button = assertNotNull(vm.state.value.primaryButton)
-            assertEquals(R.string.ledger_error_tryAgain, button.text.resourceId())
+            assertFalse(vm.state.value.isConnecting)
+            val button = vm.state.value.primaryButton
+            assertEquals(R.string.ledger_handshake_retry, button.text.resourceId())
             assertTrue(button.isEnabled)
             assertEquals(
-                R.string.ledger_scan_idle_title,
+                R.string.ledger_handshake_title,
                 vm.state.value.title
                     .resourceId()
             )
@@ -320,7 +321,8 @@ class LedgerHandshakeVMTest {
             assertNull(vm.state.value.errorSheet)
             assertEquals(
                 R.string.ledger_error_alreadyAdded_primary,
-                assertNotNull(vm.state.value.primaryButton).text.resourceId()
+                vm.state.value.primaryButton.text
+                    .resourceId()
             )
         }
 
@@ -382,22 +384,39 @@ class LedgerHandshakeVMTest {
         }
 
     @Test
-    fun thePageWordsItsIssuesLikeTheFigmaWaitingIndicator() =
+    fun retryPairsTheSameDeviceAgainAndWaitsBehindADisabledConnect() =
         runTest(dispatcher) {
-            val bluetoothOff =
-                assertNotNull(
-                    failingWith(mockk<LedgerException.BluetoothDisabled>(relaxed = true)).state.value.inlineIssue
-                )
-            assertEquals(R.drawable.ic_ledger_bluetooth_off, bluetoothOff.icon)
-            assertEquals(R.string.ledger_error_bluetoothOff_message, bluetoothOff.message.resourceId())
+            val pending = CompletableDeferred<PairLedgerDeviceResult>()
+            var attempts = 0
+            val pairLedgerDevice =
+                mockk<PairLedgerDeviceUseCase> {
+                    coEvery { this@mockk.invoke(any()) } coAnswers {
+                        attempts++
+                        if (attempts == 1) {
+                            throw mockk<LedgerException.UserRejected>(relaxed = true)
+                        }
+                        pending.await()
+                    }
+                }
+            val vm = vm(pairLedgerDevice = pairLedgerDevice)
+            collect(vm)
+            runCurrent()
+            assertNotNull(vm.state.value.errorSheet).onBack()
+            runCurrent()
 
-            val unknown =
-                assertNotNull(failingWith(mockk<LedgerException.CapsMismatch>(relaxed = true)).state.value.inlineIssue)
-            assertEquals(R.string.ledger_error_unknown_inlineMessage, unknown.message.resourceId())
+            vm.state.value.primaryButton
+                .onClick()
+            runCurrent()
 
-            val locked =
-                assertNotNull(failingWith(mockk<LedgerException.WrongApp>(relaxed = true)).state.value.inlineIssue)
-            assertEquals(R.string.ledger_error_locked_message, locked.message.resourceId())
+            coVerify(exactly = 2) { pairLedgerDevice.invoke(device) }
+            assertTrue(vm.state.value.isConnecting)
+            assertNull(vm.state.value.errorSheet)
+            assertEquals(
+                R.string.ledger_scan_select_cta,
+                vm.state.value.primaryButton.text
+                    .resourceId()
+            )
+            assertFalse(vm.state.value.primaryButton.isEnabled)
         }
 
     @Test
@@ -502,11 +521,7 @@ class LedgerHandshakeVMTest {
 
             verify(exactly = 1) { navigateToError.invoke(ErrorArgs.General(failure), any()) }
             assertNull(vm.state.value.errorSheet)
-            assertEquals(
-                R.string.ledger_error_unknown_title,
-                assertNotNull(vm.state.value.inlineIssue).title.resourceId()
-            )
-            assertNotNull(vm.state.value.primaryButton)
+            assertTrue(vm.state.value.primaryButton.isEnabled)
         }
 
     @Test
@@ -624,11 +639,3 @@ class LedgerHandshakeVMTest {
 
 private const val WRONG_APP_STATUS = 0x6E00
 
-/**
- * The sheet titles whose issue the page words differently, per the Figma "Waiting Indicator".
- */
-private val INLINE_TITLES =
-    mapOf(
-        R.string.ledger_error_bluetoothOff_title to R.string.ledger_error_bluetoothOff_inlineTitle,
-        R.string.ledger_error_permissions_title to R.string.ledger_error_permissions_inlineTitle,
-    )

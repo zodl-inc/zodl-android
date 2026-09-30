@@ -23,7 +23,6 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connecthw.HWWalletEnrollment
 import co.electriccoin.zcash.ui.screen.connecthw.neworactive.HWNewOrActiveArgs
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerErrorSheetState
-import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerInlineIssueState
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerIssueSheetBuilder
 import co.electriccoin.zcash.ui.screen.connectledger.common.ledgerAlreadyAddedSheet
 import co.electriccoin.zcash.ui.screen.connectledger.common.toEnrollmentIssue
@@ -41,7 +40,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import co.electriccoin.zcash.ui.R as UiR
 
 /**
  * Asks the Ledger the scan screen bonded with for its account, over a fresh link, once the user
@@ -87,15 +85,9 @@ class LedgerHandshakeVM(
         val sheets = issueSheets(internal)
         val isConnecting = internal.phase == LedgerHandshakePhase.CONNECTING
         return LedgerHandshakeState(
-            title =
-                if (isConnecting) {
-                    stringRes(UiR.string.ledger_confirm)
-                } else {
-                    stringRes(R.string.ledger_scan_idle_title)
-                },
+            title = stringRes(R.string.ledger_handshake_title),
             message = stringRes(R.string.ledger_handshake_message),
             isConnecting = isConnecting,
-            inlineIssue = createInlineIssue(internal),
             primaryButton = createPrimaryButton(internal, sheets),
             errorSheet = if (internal.isSheetShown) createErrorSheet(internal, sheets) else null,
             permissionRequestNonce = internal.permissionRequestNonce,
@@ -104,31 +96,16 @@ class LedgerHandshakeVM(
         )
     }
 
-    private fun createInlineIssue(internal: LedgerHandshakeInternalState): LedgerInlineIssueState? {
-        val issue = internal.issue
-        return when {
-            internal.alreadyAdded != null -> {
-                LedgerInlineIssueState(
-                    icon = R.drawable.ic_ledger_alert_circle,
-                    title = stringRes(R.string.ledger_error_alreadyAdded_title),
-                    message = stringRes(R.string.ledger_error_alreadyAdded_message),
-                )
-            }
-
-            issue != null -> {
-                LedgerInlineIssueState(issue.inlineIcon, issue.inlineTitle, issue.inlineMessage)
-            }
-
-            else -> {
-                null
-            }
-        }
-    }
-
+    /**
+     * The Figma CTA slot: a disabled Connect while the Ledger is asked, and Retry, which pairs the
+     * same device again, once an issue has stopped it. An issue only Settings or a missing radio can
+     * fix words the button after the sheet's action, one that trying again cannot fix leaves the
+     * disabled Connect, and an account already in the wallet offers Go to Account.
+     */
     private fun createPrimaryButton(
         internal: LedgerHandshakeInternalState,
         sheets: LedgerIssueSheetBuilder,
-    ): ButtonState? {
+    ): ButtonState {
         val alreadyAdded = internal.alreadyAdded
         val issue = internal.issue
         return when {
@@ -141,13 +118,16 @@ class LedgerHandshakeVM(
 
             issue != null && sheets.hasAction(issue) -> {
                 ButtonState(
-                    text = sheets.actionText(issue),
+                    text = sheets.actionText(issue, tryAgainText = stringRes(R.string.ledger_handshake_retry)),
                     onClick = sheets.action(issue),
                 )
             }
 
             else -> {
-                null
+                ButtonState(
+                    text = stringRes(R.string.ledger_scan_select_cta),
+                    isEnabled = false,
+                )
             }
         }
     }

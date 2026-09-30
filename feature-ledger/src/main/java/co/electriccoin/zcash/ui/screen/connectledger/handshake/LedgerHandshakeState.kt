@@ -4,20 +4,20 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerErrorSheetState
-import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerInlineIssueState
 
 data class LedgerHandshakeState(
     val title: StringResource,
     val message: StringResource,
+    /**
+     * Whether the Ledger is being asked for the account; the page then shows the placeholder rows
+     * with the waiting indicator over them.
+     */
     val isConnecting: Boolean,
     /**
-     * What went wrong, kept on the page after the [errorSheet] is dismissed.
+     * A disabled Connect while the handshake runs; afterwards it retries, or repeats the sheet's
+     * primary action.
      */
-    val inlineIssue: LedgerInlineIssueState?,
-    /**
-     * Absent while the handshake runs; afterwards it repeats the sheet's primary action.
-     */
-    val primaryButton: ButtonState?,
+    val primaryButton: ButtonState,
     val errorSheet: LedgerErrorSheetState?,
     /**
      * Bumped whenever the view model wants the screen to launch the runtime permission request
@@ -37,12 +37,11 @@ data class LedgerHandshakeState(
                 title = stringRes("Approve on Your Ledger"),
                 message =
                     stringRes(
-                        "Zodl is connecting to the Zcash app. When your Ledger asks to export your account, " +
-                            "check the request and approve it."
+                        "Your Ledger will ask to share your Zcash account with Zodl. " +
+                            "Check the request and approve it."
                     ),
                 isConnecting = true,
-                inlineIssue = null,
-                primaryButton = null,
+                primaryButton = ButtonState(stringRes("Connect"), isEnabled = false),
                 errorSheet = null,
                 permissionRequestNonce = 0,
                 enableBluetoothRequestNonce = 0,
@@ -51,25 +50,15 @@ data class LedgerHandshakeState(
 
         val previewError =
             previewConnecting.copy(
-                title = stringRes("Connect your Ledger"),
                 isConnecting = false,
-                inlineIssue =
-                    LedgerInlineIssueState.previewNoDevices.copy(
-                        title = stringRes("Unlock Your Ledger"),
-                        message =
-                            stringRes("Unlock your Ledger and open the Zcash app on the device to continue."),
-                    ),
-                primaryButton = ButtonState(stringRes("Try again")),
+                primaryButton = ButtonState(stringRes("Retry")),
                 errorSheet = LedgerErrorSheetState.preview,
             )
 
+        val previewErrorDismissed = previewError.copy(errorSheet = null)
+
         val previewAlreadyAdded =
             previewError.copy(
-                inlineIssue =
-                    LedgerInlineIssueState.previewNoDevices.copy(
-                        title = stringRes("Account Already Added"),
-                        message = stringRes("This account is already connected to Zodl."),
-                    ),
                 primaryButton = ButtonState(stringRes("Go to Account")),
                 errorSheet = LedgerErrorSheetState.previewTwoButtons,
             )
