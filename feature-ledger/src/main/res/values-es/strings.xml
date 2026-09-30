@@ -60,6 +60,7 @@
     <string name="ledger_error_noDevices_message">No encontramos ningún dispositivo Ledger cerca. Asegúrate de que tu Ledger esté desbloqueado y el Bluetooth activado.</string>
     <string name="ledger_error_locked_title">Desbloquea tu Ledger</string>
     <string name="ledger_error_locked_message">Desbloquea tu Ledger y abre la aplicación Zcash en el dispositivo para continuar.</string>
+    <string name="ledger_error_locked_enrollment_message">Desbloquea tu Ledger para continuar.</string>
     <string name="ledger_error_pairingFailed_title">Error de vinculación</string>
     <string name="ledger_error_pairingFailed_message">No pudimos vincularnos con tu Ledger. Inténtalo de nuevo desde los ajustes de tu dispositivo.</string>
     <string name="ledger_error_importRejected_title">Importación rechazada</string>

@@ -96,7 +96,7 @@ data class LedgerErrorSheetState(
                 icon = R.drawable.ic_ledger_alert_circle,
                 isBadge = true,
                 title = stringRes("Unlock Your Ledger"),
-                message = stringRes("Unlock your Ledger and open the Zcash app on the device to continue."),
+                message = stringRes("Unlock your Ledger to continue."),
                 primary = ButtonState(stringRes("Try again")),
                 secondary = null,
                 onBack = {},

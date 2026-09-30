@@ -340,12 +340,25 @@ private fun rejected(
     }
 }
 
+/**
+ * Enrollment asks for the Zcash app only after pairing, so its Unlock sheet leaves out opening the
+ * app, which the turn-on step tells the user not to do yet; signing keeps it.
+ */
 private fun locked(context: LedgerIssueContext) =
     issue(
         LedgerIssueKind.LOCKED,
         context.appRetry,
         R.string.ledger_error_locked_title,
-        R.string.ledger_error_locked_message
+        when (context) {
+            LedgerIssueContext.ENROLLMENT_PAIRING,
+            LedgerIssueContext.ENROLLMENT -> {
+                R.string.ledger_error_locked_enrollment_message
+            }
+
+            LedgerIssueContext.SIGNING -> {
+                R.string.ledger_error_locked_message
+            }
+        }
     )
 
 /**

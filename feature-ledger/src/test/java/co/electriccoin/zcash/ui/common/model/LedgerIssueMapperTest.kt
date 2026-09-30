@@ -197,6 +197,7 @@ class LedgerIssueMapperTest {
         val importRejected = Copies.importRejected
         val signRejected = Copies.signRejected
         val locked = Copies.locked
+        val enrollmentLocked = Copies.enrollmentLocked
         val unknown = Copies.unknown
         val pairingFailed = Expected(LedgerIssueKind.PAIRING_FAILED, LedgerIssueRetry.RECONNECT, Copies.pairingFailed)
         val setupDisconnected =
@@ -220,7 +221,7 @@ class LedgerIssueMapperTest {
             Row.same(
                 "WrongApp with a status word",
                 mockk<LedgerException.WrongApp>(relaxed = true) { every { statusWord } returns WRONG_APP_STATUS },
-                enrollment = Expected(LedgerIssueKind.LOCKED, LedgerIssueRetry.SAME_LINK, locked),
+                enrollment = Expected(LedgerIssueKind.LOCKED, LedgerIssueRetry.SAME_LINK, enrollmentLocked),
                 signing = Expected(LedgerIssueKind.LOCKED, LedgerIssueRetry.RECONNECT, locked),
             ),
             Row.same(
@@ -232,7 +233,7 @@ class LedgerIssueMapperTest {
             Row.same(
                 "transient DeviceRefused",
                 mockk<LedgerException.DeviceRefused>(relaxed = true) { every { isTransient } returns true },
-                enrollment = Expected(LedgerIssueKind.LOCKED, LedgerIssueRetry.SAME_LINK, locked),
+                enrollment = Expected(LedgerIssueKind.LOCKED, LedgerIssueRetry.SAME_LINK, enrollmentLocked),
                 signing = Expected(LedgerIssueKind.LOCKED, LedgerIssueRetry.RECONNECT, locked),
             ),
             Row.all(
@@ -357,6 +358,8 @@ class LedgerIssueMapperTest {
             Copy(R.string.ledger_error_importRejected_title, R.string.ledger_error_importRejected_message)
         val signRejected = Copy(R.string.ledger_sign_error_rejected_title, R.string.ledger_sign_error_rejected_message)
         val locked = Copy(R.string.ledger_error_locked_title, R.string.ledger_error_locked_message)
+        val enrollmentLocked =
+            Copy(R.string.ledger_error_locked_title, R.string.ledger_error_locked_enrollment_message)
         val unknown = Copy(R.string.ledger_error_unknown_title, R.string.ledger_error_unknown_message)
         val restartApp = Copy(R.string.ledger_error_restartApp_title, R.string.ledger_error_restartApp_message)
         val appTooOld = Copy(R.string.ledger_error_appTooOld_title, R.string.ledger_error_appTooOld_message)
