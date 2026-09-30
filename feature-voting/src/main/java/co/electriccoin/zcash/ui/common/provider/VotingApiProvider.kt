@@ -699,19 +699,6 @@ class KtorVotingApiProvider(
      * the rejection detail the caller needs, so it is parsed and reported as confirmed with its
      * non-zero code.
      *
-     * The GET carries the same per-attempt bound the POST path gets (MOB-1811), so one dropping
-     * Tor connection cannot stall a confirmation poll past its own budget.
-     * [TimeoutCancellationException] is caught before [CancellationException] on purpose - it
-     * extends it, and it is this bound firing rather than a genuine outer cancellation (see
-     * [withTorRequestTimeoutFallback]'s TRAP doc).
-     */
-    /**
-     * [TxConfirmationLookup.NotIndexed] is a 404 - this server knows nothing about the transaction
-     * yet. [TxConfirmationLookup.Unavailable] is anything that leaves the question unanswered: a
-     * transport failure, an attempt that outran its bound, or an unexpected status. A 422 carries
-     * the rejection detail the caller needs, so it is parsed and reported as confirmed with its
-     * non-zero code.
-     *
      * Routes through OHTTP for predefined servers when Tor is off (fail-closed via
      * [resolveVoteRoute] -- an unsupported destination throws rather than silently falling back to
      * a direct clearnet request). The direct/Tor path carries the same per-attempt bound the POST
@@ -797,7 +784,6 @@ class KtorVotingApiProvider(
             TxConfirmationLookup.Unavailable
         }
     }
-
 
     override suspend fun fetchCommitmentTreeLatest(roundIdHex: String): CommitmentTreeLatest {
         val path = commitmentTreeLatestPath(roundIdHex)

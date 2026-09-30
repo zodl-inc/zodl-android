@@ -463,6 +463,8 @@ class KtorVotingApiProviderTest {
                             override suspend fun createTor(): HttpClient = create()
 
                             override suspend fun create(): HttpClient = configClient(sharedRequests)
+
+                            override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
                         },
                     configurationRepository = TestConfigurationRepository(),
                     votingChainConfigRepository = TestVotingChainConfigRepository(),
@@ -502,6 +504,8 @@ class KtorVotingApiProviderTest {
 
                             override suspend fun create(): HttpClient =
                                 twoVoteServerClient(confirmationHosts, HttpStatusCode.NotFound)
+
+                            override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
                         },
                     configurationRepository = TestConfigurationRepository(),
                     votingChainConfigRepository = TestVotingChainConfigRepository(),
@@ -535,6 +539,8 @@ class KtorVotingApiProviderTest {
 
                             override suspend fun create(): HttpClient =
                                 twoVoteServerClient(confirmationHosts, HttpStatusCode.NotFound)
+
+                            override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
                         },
                     configurationRepository = TestConfigurationRepository(),
                     votingChainConfigRepository = TestVotingChainConfigRepository(),
@@ -566,6 +572,8 @@ class KtorVotingApiProviderTest {
 
                             override suspend fun create(): HttpClient =
                                 twoVoteServerClient(confirmationHosts, HttpStatusCode.BadGateway)
+
+                            override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
                         },
                     configurationRepository = TestConfigurationRepository(),
                     votingChainConfigRepository = TestVotingChainConfigRepository(),
