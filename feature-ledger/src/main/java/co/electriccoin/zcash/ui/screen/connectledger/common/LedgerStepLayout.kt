@@ -26,7 +26,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import co.electriccoin.zcash.ledger.R
@@ -131,16 +133,31 @@ internal fun LedgerStepLayout(
 private fun LedgerStepTitle(step: Int) {
     Text(
         text = stringResource(R.string.ledger_flow_title),
-        style = ZashiTypography.textSm,
+        style = UntrimmedTextSm,
         color = ZashiColors.Text.textTertiary,
     )
     Text(
         text = stringResource(R.string.ledger_flow_step, step, LEDGER_STEP_COUNT),
-        style = ZashiTypography.textSm,
+        style = UntrimmedTextSm,
         color = ZashiColors.Text.textPrimary,
         fontWeight = FontWeight.Medium,
     )
 }
+
+/**
+ * Text SM with its full 20 sp line box kept: the default line height style trims the first line's
+ * top and the last line's bottom, which pulls single-line Texts stacked in Figma's 20 px boxes
+ * closer together than drawn.
+ */
+private val UntrimmedTextSm: TextStyle
+    @Composable get() =
+        ZashiTypography.textSm.copy(
+            lineHeightStyle =
+                LineHeightStyle(
+                    alignment = LineHeightStyle.Alignment.Proportional,
+                    trim = LineHeightStyle.Trim.None,
+                )
+        )
 
 /**
  * A card listing what should be true before the user moves on, one [LedgerChecklistItem] per item.
