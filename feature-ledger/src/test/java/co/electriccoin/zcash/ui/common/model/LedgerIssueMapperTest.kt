@@ -32,6 +32,26 @@ class LedgerIssueMapperTest {
         rows().forEach { row -> assertIssue(row, LedgerIssueContext.SIGNING, row.signing) }
     }
 
+    /**
+     * Once the link is up, only a locked device reads as just Unlock: a device that answered the
+     * request to open the Zcash app without reaching it still has to open it.
+     */
+    @Test
+    fun onceTheLinkIsUpOnlyALockedDeviceLeavesOutOpeningTheZcashApp() {
+        val lockedDevice =
+            mockk<LedgerException.DeviceRefused>(relaxed = true) { every { isTransient } returns true }
+                .toLedgerIssue(LedgerIssueContext.ENROLLMENT)
+        val appNotReached =
+            mockk<LedgerException.WrongApp>(relaxed = true) { every { statusWord } returns WRONG_APP_STATUS }
+                .toLedgerIssue(LedgerIssueContext.ENROLLMENT)
+
+        assertEquals(R.string.ledger_error_locked_enrollment_message, lockedDevice.message.resourceId())
+        assertEquals(R.string.ledger_error_locked_message, appNotReached.message.resourceId())
+        assertEquals(lockedDevice.title, appNotReached.title)
+        assertEquals(lockedDevice.icon, appNotReached.icon)
+        assertEquals(lockedDevice.kind, appNotReached.kind)
+    }
+
     @Test
     fun theNamedIssuesCarryTheirKindRetryAndCopy() {
         assertExpected(
@@ -218,10 +238,11 @@ class LedgerIssueMapperTest {
                 enrollment = Expected(LedgerIssueKind.REJECTED, LedgerIssueRetry.RECONNECT, importRejected),
                 signing = Expected(LedgerIssueKind.REJECTED, LedgerIssueRetry.RECONNECT, signRejected),
             ),
-            Row.same(
+            Row(
                 "WrongApp with a status word",
                 mockk<LedgerException.WrongApp>(relaxed = true) { every { statusWord } returns WRONG_APP_STATUS },
-                enrollment = Expected(LedgerIssueKind.LOCKED, LedgerIssueRetry.SAME_LINK, enrollmentLocked),
+                pairing = Expected(LedgerIssueKind.LOCKED, LedgerIssueRetry.SAME_LINK, enrollmentLocked),
+                enrollment = Expected(LedgerIssueKind.LOCKED, LedgerIssueRetry.SAME_LINK, locked),
                 signing = Expected(LedgerIssueKind.LOCKED, LedgerIssueRetry.RECONNECT, locked),
             ),
             Row.same(

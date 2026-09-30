@@ -216,7 +216,11 @@ fun LedgerException.toLedgerIssue(context: LedgerIssueContext): LedgerIssue =
         }
 
         is LedgerException.WrongApp -> {
-            if (statusWord == null) disconnected(context).copy(retry = context.appRetry) else locked(context)
+            if (statusWord == null) {
+                disconnected(context).copy(retry = context.appRetry)
+            } else {
+                locked(context, isZcashAppClosed = true)
+            }
         }
 
         is LedgerException.DeviceRefused -> {
@@ -341,25 +345,38 @@ private fun rejected(
 }
 
 /**
- * Enrollment asks for the Zcash app only after pairing, so its Unlock sheet leaves out opening the
- * app, which the turn-on step tells the user not to do yet; signing keeps it.
+ * Enrollment asks for the Zcash app only after pairing, so a locked device's Unlock sheet leaves out
+ * opening the app, which the turn-on step tells the user not to do yet. Once the link is up, a
+ * device that could not reach the Zcash app keeps asking for it, and so does signing.
+ *
+ * @param isZcashAppClosed whether the device answered without reaching the Zcash app, rather than
+ *        refusing because it is locked
  */
-private fun locked(context: LedgerIssueContext) =
-    issue(
-        LedgerIssueKind.LOCKED,
-        context.appRetry,
-        R.string.ledger_error_locked_title,
-        when (context) {
-            LedgerIssueContext.ENROLLMENT_PAIRING,
-            LedgerIssueContext.ENROLLMENT -> {
+private fun locked(
+    context: LedgerIssueContext,
+    isZcashAppClosed: Boolean = false,
+) = issue(
+    LedgerIssueKind.LOCKED,
+    context.appRetry,
+    R.string.ledger_error_locked_title,
+    when (context) {
+        LedgerIssueContext.ENROLLMENT_PAIRING -> {
+            R.string.ledger_error_locked_enrollment_message
+        }
+
+        LedgerIssueContext.ENROLLMENT -> {
+            if (isZcashAppClosed) {
+                R.string.ledger_error_locked_message
+            } else {
                 R.string.ledger_error_locked_enrollment_message
             }
-
-            LedgerIssueContext.SIGNING -> {
-                R.string.ledger_error_locked_message
-            }
         }
-    )
+
+        LedgerIssueContext.SIGNING -> {
+            R.string.ledger_error_locked_message
+        }
+    }
+)
 
 /**
  * What Try again does once the user has fixed the app state on the device: while signing, a fresh
