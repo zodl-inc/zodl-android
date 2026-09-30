@@ -359,6 +359,7 @@ internal fun List<TransactionSubmitResult>.toSubmitResult(): SubmitResult {
     val successCount = count { it is TransactionSubmitResult.Success }
     val txIds = map { it.txIdString() }
     val failures = filterIsInstance<TransactionSubmitResult.Failure>()
+    val hasNotAttempted = any { it is TransactionSubmitResult.NotAttempted }
     val hasTimeoutFailure =
         failures.any { it.grpcError && it.description == MULTI_SUBMIT_TIMEOUT_DESCRIPTION }
     val grpcFailureReason =
@@ -390,6 +391,12 @@ internal fun List<TransactionSubmitResult>.toSubmitResult(): SubmitResult {
         }
 
         firstNonGrpcFailure != null -> {
+            SubmitResult.Partial(txIds = txIds, statuses = map { it.statusDescription() })
+        }
+
+        hasNotAttempted -> {
+            // The SDK can only retry a transaction after submit() registered an endpoint for it.
+            // Keeping an untouched leg pending would promise a retry that cannot happen.
             SubmitResult.Partial(txIds = txIds, statuses = map { it.statusDescription() })
         }
 
