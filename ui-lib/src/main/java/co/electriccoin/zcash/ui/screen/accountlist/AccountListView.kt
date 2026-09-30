@@ -4,10 +4,13 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -43,7 +46,6 @@ import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.imageRes
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByAddress
-import kotlinx.collections.immutable.persistentListOf
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -133,6 +135,11 @@ private fun BottomSheetContent(
     }
 }
 
+/**
+ * One account of the sheet as Figma draws it: a 40 dp logo 12 dp from a Text SM Medium name, the
+ * abbreviated address in Text XS right under it. The logo and text sit together in the content
+ * slot because [BaseListItem]'s leading slot is spaced for a 48 dp item.
+ */
 @Composable
 private fun ZashiAccountListItem(
     state: ZashiAccountListItemState,
@@ -141,27 +148,38 @@ private fun ZashiAccountListItem(
     BaseListItem(
         modifier = modifier,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-        leading = {
-            ZashiListItemDefaults.LeadingItem(
-                modifier = it,
-                icon = imageRes(state.icon),
-                badge =
-                    if (state.isSelected) {
-                        imageRes(co.electriccoin.zcash.ui.R.drawable.ic_account_selected_badge)
-                    } else {
-                        null
-                    },
-                contentDescription = state.title.getValue()
-            )
-        },
+        leading = null,
         content = {
-            ZashiListItemDefaults.ContentItem(
+            Row(
                 modifier = it,
-                text = state.title.getValue(),
-                subtitle = state.subtitle.getValue(),
-                titleIcons = persistentListOf(),
-                isEnabled = true
-            )
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ZashiListItemDefaults.LeadingItem(
+                    modifier = Modifier.size(40.dp),
+                    icon = imageRes(state.icon),
+                    badge =
+                        if (state.isSelected) {
+                            imageRes(co.electriccoin.zcash.ui.R.drawable.ic_account_selected_badge)
+                        } else {
+                            null
+                        },
+                    contentDescription = state.title.getValue()
+                )
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = state.title.getValue(),
+                        style = ZashiTypography.textSm,
+                        fontWeight = FontWeight.Medium,
+                        color = ZashiColors.Text.textPrimary,
+                    )
+                    Text(
+                        text = state.subtitle.getValue(),
+                        style = ZashiTypography.textXs,
+                        color = ZashiColors.Text.textTertiary,
+                    )
+                }
+            }
         },
         trailing = {
             ZashiListItemDefaults.TrailingItem(
