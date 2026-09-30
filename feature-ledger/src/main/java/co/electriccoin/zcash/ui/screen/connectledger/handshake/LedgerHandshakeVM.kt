@@ -193,8 +193,7 @@ class LedgerHandshakeVM(
     fun onBluetoothEnabled() = startHandshake()
 
     /**
-     * The user declined the system dialog. The inline issue stayed on the page throughout, so only
-     * the sheet has to come back.
+     * The user declined the system dialog, so the Bluetooth sheet it was opened from comes back.
      */
     fun onBluetoothEnableDeclined() {
         internalState.update { it.copy(isSheetShown = it.issue != null) }
