@@ -31,6 +31,8 @@ import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.util.SettingsUtil
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -45,9 +47,9 @@ import kotlinx.coroutines.launch
  * Drives the scan/select/connect phases of Ledger enrollment. Connecting only bonds the phone with
  * the device; the Zcash app is opened, and the account exported, on the screens that follow.
  *
- * Nothing Bluetooth-related outlives this screen: the scan job is cancelled in [onCleared], and
- * the transport a connection opens is closed by the data source before
- * [ConnectLedgerDeviceUseCase] returns. Device identifiers are used only as list keys — never
+ * Nothing Bluetooth-related outlives this screen: the scan job is cancelled in [onCleared], a
+ * running connection on back, on denied permissions and in [onCleared], and the transport a
+ * connection opens is closed by the data source before [ConnectLedgerDeviceUseCase] returns. Device identifiers are used only as list keys — never
  * logged.
  */
 @Suppress("TooManyFunctions")
@@ -84,8 +86,7 @@ class LedgerDeviceScanVM(
      */
     override fun onCleared() {
         stopScan()
-        connectJob?.cancel()
-        connectJob = null
+        cancelConnect()
         ledgerSelectedDeviceRepository.clear()
         ledgerPairingRepository.clear()
         super.onCleared()
@@ -246,6 +247,7 @@ class LedgerDeviceScanVM(
     }
 
     fun onPermissionsDenied(canRequestAgain: Boolean) {
+        cancelConnect()
         internalState.update { it.copy(canRequestPermissionsAgain = canRequestAgain) }
         showIssue(LedgerIssue.permissions)
     }
@@ -323,11 +325,15 @@ class LedgerDeviceScanVM(
      * A device that already runs the Zcash app skips the request to open it: the open-the-app step
      * goes on the back stack idle, under the handshake, so Back from the handshake lands on it
      * without the device being asked again.
+     *
+     * A connection that completes after it was cancelled is dropped, so it cannot push the next
+     * step over the screen the user went back to.
      */
     @Suppress("TooGenericExceptionCaught")
     private suspend fun connect(device: LedgerBluetoothDevice) {
         try {
             val isZcashAppRunning = connectLedgerDevice(device)
+            currentCoroutineContext().ensureActive()
             if (isZcashAppRunning) {
                 navigationRouter.forward(LedgerOpenAppArgs(autoOpen = false), LedgerHandshakeArgs)
             } else {
@@ -378,14 +384,32 @@ class LedgerDeviceScanVM(
         internalState.update { it.copy(isSheetShown = false) }
     }
 
-    private fun onBack() = navigationRouter.back()
+    /**
+     * A connection still waiting on the device is dropped at once rather than when the screen is
+     * disposed, so it cannot move the flow on while the screen is on its way out.
+     */
+    private fun onBack() {
+        cancelConnect()
+        navigationRouter.back()
+    }
+
+    /**
+     * Leaves [LedgerScanPhase.CONNECTING] for idle, so the page never shows a spinning Connect with
+     * nothing behind it.
+     */
+    private fun cancelConnect() {
+        connectJob?.cancel()
+        connectJob = null
+        internalState.update {
+            if (it.phase == LedgerScanPhase.CONNECTING) it.copy(phase = LedgerScanPhase.IDLE) else it
+        }
+    }
 
     /**
      * Location being off below API 31 is reported before scanning, as nothing could be found.
      */
     private fun startScan() {
-        connectJob?.cancel()
-        connectJob = null
+        cancelConnect()
         stopScan()
         if (observeLedgerDevices.isLocationOffForScan()) {
             internalState.update { it.copy(canRequestPermissionsAgain = false) }
