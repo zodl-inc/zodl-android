@@ -4,11 +4,14 @@ import cash.z.ecc.android.sdk.model.Account
 import cash.z.ecc.android.sdk.model.AccountUuid
 import cash.z.ecc.android.sdk.model.Zip32AccountIndex
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.ledger.LedgerNavigator
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.usecase.GetWalletAccountsUseCase
+import co.electriccoin.zcash.ui.design.util.imageRes
+import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connectkeystone.connect.ConnectKeystoneArgs
 import io.mockk.every
 import io.mockk.mockk
@@ -80,6 +83,22 @@ class ChooseHWWalletVMTest {
         val vm = vm(accounts = listOf(keystoneAccount(), ledgerAccount()))
 
         assertEquals(emptyList(), vm.state.value.cards)
+    }
+
+    @Test
+    fun theHeaderAndEachPhotoCardFollowTheConnectHardwareWalletFrame() {
+        val state = vm(accounts = emptyList()).state.value
+
+        assertEquals(stringRes(R.string.chooseHWWallet_title), state.title)
+        assertEquals(stringRes(R.string.chooseHWWallet_subtitle), state.subtitle)
+        assertEquals(
+            listOf(imageRes(R.drawable.img_hw_wallet_keystone), imageRes(R.drawable.img_hw_wallet_ledger)),
+            state.cards.map { it.image }
+        )
+        assertEquals(
+            listOf(stringRes(R.string.accounts_keystone), stringRes(R.string.accounts_ledger)),
+            state.cards.map { it.contentDescription }
+        )
     }
 
     @Test

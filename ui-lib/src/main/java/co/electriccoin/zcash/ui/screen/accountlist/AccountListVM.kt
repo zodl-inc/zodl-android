@@ -13,6 +13,7 @@ import co.electriccoin.zcash.ui.common.usecase.GetWalletAccountsUseCase
 import co.electriccoin.zcash.ui.common.usecase.SelectWalletAccountUseCase
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.ButtonState
+import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.stringResByAddress
 import co.electriccoin.zcash.ui.screen.choosehwwallet.ChooseHWWalletArgs
@@ -52,6 +53,7 @@ class AccountListVM(
                     addWalletButton =
                         ButtonState(
                             text = stringRes(co.electriccoin.zcash.ui.R.string.hwWallet_connect),
+                            style = ButtonStyle.SECONDARY,
                             onClick = ::onAddWalletButtonClicked
                         ).takeIf { hasUnconnectedHWVendor(accounts) }
                 )

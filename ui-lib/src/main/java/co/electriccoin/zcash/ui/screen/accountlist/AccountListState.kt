@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.screen.accountlist
 import androidx.annotation.DrawableRes
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.ButtonState
+import co.electriccoin.zcash.ui.design.component.ButtonStyle
 import co.electriccoin.zcash.ui.design.component.ModalBottomSheetState
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.StyledStringResource
@@ -47,7 +48,7 @@ data class AccountListState(
                         ),
                     ),
                 isLoading = false,
-                addWalletButton = ButtonState(stringRes("Connect Hardware Wallet")),
+                addWalletButton = ButtonState(stringRes("Connect Hardware Wallet"), style = ButtonStyle.SECONDARY),
                 onBack = {},
             )
 

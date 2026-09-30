@@ -75,9 +75,10 @@ fun ChooseHWWalletView(state: ChooseHWWalletState) {
                     Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .scaffoldPadding(padding),
+                        .scaffoldPadding(padding, start = CARD_INSET.dp, end = CARD_INSET.dp),
             ) {
                 Text(
+                    modifier = Modifier.padding(horizontal = TEXT_EXTRA_INSET.dp),
                     text = state.title.getValue(),
                     style = ZashiTypography.header6,
                     color = ZashiColors.Text.textPrimary,
@@ -85,6 +86,7 @@ fun ChooseHWWalletView(state: ChooseHWWalletState) {
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
+                    modifier = Modifier.padding(horizontal = TEXT_EXTRA_INSET.dp),
                     text = state.subtitle.getValue(),
                     style = ZashiTypography.textMd,
                     color = ZashiColors.Text.textTertiary,
@@ -122,6 +124,13 @@ private fun HWWalletCard(state: HWWalletCardState) {
         )
     }
 }
+
+/**
+ * The Figma picker insets its cards 16 dp from the screen edge, 8 dp less than the header text.
+ */
+private const val CARD_INSET = 16
+
+private const val TEXT_EXTRA_INSET = 8
 
 @PreviewScreens
 @Composable

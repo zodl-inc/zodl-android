@@ -108,7 +108,7 @@ private fun BottomSheetContent(
                         Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 24.dp),
-                    defaultPrimaryColors =
+                    defaultSecondaryColors =
                         ZashiButtonDefaults.secondaryColors(
                             borderColor = ZashiColors.Btns.Secondary.btnSecondaryBorder
                         )
@@ -140,7 +140,7 @@ private fun ZashiAccountListItem(
 ) {
     BaseListItem(
         modifier = modifier,
-        contentPadding = ZashiListItemDefaults.contentPadding,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         leading = {
             ZashiListItemDefaults.LeadingItem(
                 modifier = it,
