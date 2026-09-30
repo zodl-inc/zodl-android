@@ -255,6 +255,19 @@ private fun ByteArray.toHexString(): String =
 
 private const val HEX_RADIX = 16
 private const val MIN_PROPOSALS = 1
+
+// Verified against zcash_voting 5.1.0 (Milan's review of PR #6, nit -- the 15->50 widening
+// itself was a deliberate, already-documented circuit-driven change, commit 6a381b43a: "The vote
+// chain's circuit update (zcash_voting 4.0.0-rc.1, voting-circuits 0.12.0) widens proposal ids
+// from 1..=15 to 1..=50", but that commit predates this branch's bump to 5.1.0, so the bound
+// needed re-confirming against the new version). MIN_PROPOSAL_ID/MAX_PROPOSAL_ID/MIN_OPTIONS/
+// MAX_OPTIONS below match crates.io zcash_voting-5.1.0's own src/types.rs exactly:
+// `pub const MIN_PROPOSAL_ID: u32 = 1;` / `pub const MAX_PROPOSAL_ID: u32 = 50;` /
+// `pub const MIN_VOTE_OPTIONS: u32 = 2;` / `pub const MAX_VOTE_OPTIONS: u32 = 8;`. MAX_PROPOSALS
+// isn't a crate constant of its own -- proposal ids must be unique (see the caller's
+// proposalIds.add check) within 1..MAX_PROPOSAL_ID, so a round can never have more than
+// MAX_PROPOSAL_ID distinct proposals regardless; this mirrors that same bound for the
+// round-size check rather than introducing an independent one.
 private const val MAX_PROPOSALS = 50
 private const val MIN_PROPOSAL_ID = 1
 private const val MAX_PROPOSAL_ID = 50

@@ -36,7 +36,8 @@ import co.electriccoin.zcash.ui.screen.transactionhistory.EMPTY_GRADIENT_THRESHO
 @Composable
 fun CommonErrorScreen(
     state: CommonErrorScreenState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    shimmerColor: Color = ZashiColors.Surfaces.bgSecondary
 ) {
     Box(
         modifier = modifier
@@ -44,6 +45,7 @@ fun CommonErrorScreen(
         CommonShimmerLoadingScreen(
             modifier = Modifier.padding(top = 22.dp),
             shimmerItemsCount = 3,
+            color = shimmerColor,
             disableShimmer = true,
             showDivider = false,
             contentPaddingValues = PaddingValues(horizontal = 24.dp, vertical = 10.dp)

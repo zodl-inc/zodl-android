@@ -128,6 +128,7 @@ fun SwapAssetPickerView(state: SwapAssetPickerState?) {
                         is SwapAssetPickerDataState.Error -> {
                             CommonErrorScreen(
                                 state = innerState.data,
+                                shimmerColor = ZashiColors.Surfaces.bgTertiary,
                                 modifier =
                                     Modifier
                                         .fillMaxSize()
@@ -138,6 +139,7 @@ fun SwapAssetPickerView(state: SwapAssetPickerState?) {
                         SwapAssetPickerDataState.Loading -> {
                             CommonShimmerLoadingScreen(
                                 shimmerItemsCount = 10,
+                                color = ZashiColors.Surfaces.bgTertiary,
                                 modifier =
                                     Modifier
                                         .fillMaxSize()
@@ -149,6 +151,7 @@ fun SwapAssetPickerView(state: SwapAssetPickerState?) {
                         is SwapAssetPickerDataState.Success -> {
                             if (innerState.data.items.isEmpty()) {
                                 CommonEmptyScreen(
+                                    shimmerColor = ZashiColors.Surfaces.bgTertiary,
                                     modifier =
                                         Modifier
                                             .fillMaxSize()

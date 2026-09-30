@@ -34,6 +34,7 @@ jobs:
         timeout-minutes: 30
         uses: ./.github/actions/setup-sdk-companion
         with:
+          sdk-repo: ${{ vars.SDK_COMPANION_REPO }}
           sdk-token: ${{ secrets.SDK_COMPANION_TOKEN }}
           cargo-app-id: ${{ secrets.CARGO_PRIVATE_APP_ID }}
           cargo-app-private-key: ${{ secrets.CARGO_PRIVATE_APP_KEY }}

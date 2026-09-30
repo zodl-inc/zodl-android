@@ -1,0 +1,5 @@
+Added:
+- We added support for coinholder polls with up to 50 questions.
+
+Changed:
+- We made submitting your votes in coinholder polls faster.

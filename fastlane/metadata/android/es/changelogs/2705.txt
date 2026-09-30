@@ -1,0 +1,10 @@
+Añadido:
+- Añadimos Dash, Bitcoin Cash, ZEC en Solana y ZEC en NEAR a Swap y CrossPay.
+- Añadimos todas las monedas fiduciarias de CoinMarketCap a Conversión de Moneda.
+
+Cambiado:
+- Añadimos una advertencia de reembolso para transacciones de Swap y CrossPay inferiores a $300.
+- Incluimos el estado de conexión de Tor en los correos de soporte.
+
+Corregido:
+- Corregimos los recordatorios de respaldo que quedaban ocultos por avisos de migración o error.

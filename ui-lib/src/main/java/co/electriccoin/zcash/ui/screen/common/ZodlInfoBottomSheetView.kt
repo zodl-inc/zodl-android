@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.screen.common
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -18,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.component.ButtonState
+import co.electriccoin.zcash.ui.design.component.ModalBottomSheetState
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
@@ -41,18 +43,54 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun InfoBottomSheetView(
-    onBack: () -> Unit,
+fun ZodlInfoBottomSheetView(
+    onBack: (() -> Unit)? = null,
     primaryButton: ButtonState? = null,
     secondaryButton: ButtonState? = null,
     sheetState: SheetState = rememberScreenModalBottomSheetState(),
+    contentPadding: PaddingValues = ZodlInfoBottomSheetDefaults.contentPadding,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    ZodlInfoBottomSheetView(
+        state =
+            remember(onBack) {
+                onBack?.let { dismiss ->
+                    object : ModalBottomSheetState {
+                        override val onBack: () -> Unit = dismiss
+                    }
+                }
+            },
+        primaryButton = primaryButton,
+        secondaryButton = secondaryButton,
+        sheetState = sheetState,
+        contentPadding = contentPadding,
+        content = { content() },
+    )
+}
+
+object ZodlInfoBottomSheetDefaults {
+    val contentPadding = PaddingValues(horizontal = 24.dp)
+}
+
+/**
+ * The sheet-as-screen variant: [state] null keeps the sheet hidden, otherwise [content] receives the
+ * non-null state, and the wrapper wires [ModalBottomSheetState.onBack] to back press, scrim tap and drag.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun <T : ModalBottomSheetState> ZodlInfoBottomSheetView(
+    state: T?,
+    primaryButton: ButtonState? = null,
+    secondaryButton: ButtonState? = null,
+    sheetState: SheetState = rememberScreenModalBottomSheetState(),
+    contentPadding: PaddingValues = ZodlInfoBottomSheetDefaults.contentPadding,
+    content: @Composable ColumnScope.(state: T) -> Unit,
+) {
     ZashiScreenModalBottomSheet(
-        onDismissRequest = onBack,
+        state = state,
         sheetState = sheetState,
         dragHandle = null,
-    ) { contentPadding ->
+    ) { innerState, sheetPadding ->
         val hazeState = rememberZashiFrostState()
         var headerHeight by remember { mutableStateOf(0.dp) }
         Box(modifier = Modifier.weight(1f, false)) {
@@ -63,19 +101,22 @@ fun InfoBottomSheetView(
                         .zashiFrostSource(hazeState)
                         .verticalScroll(rememberScrollState())
                         .padding(
-                            start = 24.dp,
-                            end = 24.dp,
                             top = headerHeight,
-                            bottom = contentPadding.calculateBottomPadding(),
+                            bottom = sheetPadding.calculateBottomPadding(),
                         ),
             ) {
-                content()
+                Column(modifier = Modifier.padding(contentPadding)) {
+                    content(innerState)
+                }
                 if (primaryButton != null) {
                     Spacer(32.dp)
                     secondaryButton?.let {
                         ZashiButton(
                             state = it,
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(ZodlInfoBottomSheetDefaults.contentPadding),
                             defaultPrimaryColors =
                                 ZashiButtonDefaults.secondaryColors(
                                     borderColor = ZashiColors.Btns.Secondary.btnSecondaryBorder
@@ -84,7 +125,10 @@ fun InfoBottomSheetView(
                     }
                     ZashiButton(
                         state = primaryButton,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(ZodlInfoBottomSheetDefaults.contentPadding),
                     )
                 }
             }

@@ -20,12 +20,12 @@ import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiScreenModalBottomSheet
+import co.electriccoin.zcash.ui.design.component.ZodlRadioOptionCard
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.theme.ThemeOption
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,7 +76,7 @@ private fun BottomSheetContent(
                 if (index > 0) {
                     Spacer(12.dp)
                 }
-                ThemeOption(
+                ZodlRadioOptionCard(
                     modifier = Modifier.fillMaxWidth(),
                     isChecked = option.isChecked,
                     title = stringResource(option.titleRes),

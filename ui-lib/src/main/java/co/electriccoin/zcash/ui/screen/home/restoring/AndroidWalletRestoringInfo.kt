@@ -17,7 +17,7 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.common.InfoBottomSheetView
+import co.electriccoin.zcash.ui.screen.common.ZodlInfoBottomSheetView
 import kotlinx.serialization.Serializable
 import org.koin.androidx.compose.koinViewModel
 
@@ -26,7 +26,7 @@ import org.koin.androidx.compose.koinViewModel
 fun AndroidWalletRestoringInfo() {
     val viewModel = koinViewModel<WalletRestoringInfoViewModel>()
     val state by viewModel.state.collectAsStateWithLifecycle()
-    InfoBottomSheetView(
+    ZodlInfoBottomSheetView(
         onBack = state.onBack,
         primaryButton =
             ButtonState(

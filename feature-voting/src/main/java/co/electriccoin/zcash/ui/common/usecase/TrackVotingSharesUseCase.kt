@@ -1,21 +1,21 @@
 package co.electriccoin.zcash.ui.common.usecase
 
+import cash.z.ecc.android.sdk.VotingShareTrackingSession
 import cash.z.ecc.android.sdk.model.ZcashNetwork
-import co.electriccoin.zcash.ui.common.model.voting.ShareConfirmationResult
-import co.electriccoin.zcash.ui.common.model.voting.VotingShareDelegationRecord
-import co.electriccoin.zcash.ui.common.model.voting.toEncryptedSharesJson
-import co.electriccoin.zcash.ui.common.model.voting.toSharePayloads
-import co.electriccoin.zcash.ui.common.model.voting.withSubmitAt
+import cash.z.ecc.android.sdk.model.voting.VotingShareTrackingQuiescence
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
+import co.electriccoin.zcash.ui.common.provider.acquireVotingTorLeaseOrNull
+import co.electriccoin.zcash.ui.common.repository.VotingRecoveryPhase
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
-import kotlin.math.max
-import kotlin.math.min
 
 sealed interface VotingShareTrackingResult {
     data object Completed : VotingShareTrackingResult
@@ -25,6 +25,21 @@ sealed interface VotingShareTrackingResult {
     ) : VotingShareTrackingResult
 }
 
+/**
+ * voting-5.0.0 production-completion note: `trackShares` is now a cancellable session
+ * ([VotingCryptoClient.openShareTrackingSession]), replacing the standalone JNI export that had
+ * no reachable cancel path and caused indefinite hangs under WorkManager. [cancel] lets
+ * [co.electriccoin.zcash.work.VotingShareTrackingWorker] interrupt an in-flight [invoke] call for
+ * the same [roundId] within seconds rather than leaving an orphaned native thread running for the
+ * full WorkManager execution-time-limit window. (The worker reaches this from a coroutine that
+ * polls `isStopped`, not from an overridden `onStopped()` -- `CoroutineWorker.onStopped()` is
+ * `final` on the androidx.work version this app resolves; see the worker's KDoc for detail.)
+ *
+ * `activeSessions` is a companion-scoped map (not an instance field) for the same reason
+ * `attemptCounts` below is: Koin provides this use case via `factoryOf`, so a fresh instance
+ * backs every retried `VotingShareTrackingWorker` run, but `cancel()` must be able to reach a
+ * session opened by a *different* instance's still-in-flight [invoke] call.
+ */
 class TrackVotingSharesUseCase(
     private val votingRecoveryRepository: VotingRecoveryRepository,
     private val votingCryptoClient: VotingCryptoClient,
@@ -51,11 +66,12 @@ class TrackVotingSharesUseCase(
                         }.getOrDefault(emptyList())
                     }
             if (roundVoteServerUrls.isEmpty()) {
-                return@withContext VotingShareTrackingResult.Pending(DEFAULT_DELAY_MILLIS)
+                return@withContext VotingShareTrackingResult.Pending(nextDelayMillis(roundId))
             }
 
+            val synchronizer = synchronizerProvider.getSynchronizer()
             val walletDbPath = synchronizerProvider.getVotingWalletDbPath()
-            val networkId = synchronizerProvider.getSynchronizer().network.toVotingNetworkId()
+            val networkId = synchronizer.network.toVotingNetworkId()
             val votingDbPath =
                 File(walletDbPath)
                     .parentFile
@@ -68,176 +84,138 @@ class TrackVotingSharesUseCase(
 
             try {
                 votingCryptoClient.setWalletId(dbHandle, accountUuidString, networkId)
-                val shareDelegations = votingCryptoClient.getShareDelegations(dbHandle, roundId)
-                if (shareDelegations.isEmpty()) {
-                    return@withContext VotingShareTrackingResult.Completed
-                }
-
-                val nowEpochSeconds = System.currentTimeMillis() / MILLIS_PER_SECOND
-                var nextDelayMillis = DEFAULT_DELAY_MILLIS
-
-                shareDelegations
-                    .filterNot { delegation -> delegation.confirmed }
-                    .forEach { delegation ->
-                        val firstCheckAt =
-                            delegation.submitAt
-                                .takeIf { submitAt -> submitAt > 0L }
-                                ?.plus(CHECK_GRACE_SECONDS)
-                                ?: 0L
-                        if (firstCheckAt > nowEpochSeconds) {
-                            nextDelayMillis =
-                                min(
-                                    nextDelayMillis,
-                                    ((firstCheckAt - nowEpochSeconds) * MILLIS_PER_SECOND)
-                                        .coerceAtLeast(MIN_DELAY_MILLIS)
-                                )
-                            return@forEach
-                        }
-
-                        val statusProbeUrls =
-                            delegation.sentToUrls
-                                .map { url -> url.trimEnd('/') }
-                                .filter(String::isNotEmpty)
-                                .ifEmpty { roundVoteServerUrls }
-                                .distinct()
-                        val isConfirmed =
-                            statusProbeUrls.any { helperBaseUrl ->
-                                runCatching {
-                                    votingApiProvider.fetchShareStatus(
-                                        helperBaseUrl = helperBaseUrl,
-                                        roundIdHex = roundId,
-                                        nullifierHex = delegation.nullifier.toLowerHex()
-                                    )
-                                }.getOrNull() == ShareConfirmationResult.CONFIRMED
+                // Same Tor-optional policy as SubmitVotesUseCase.kt -- null when Tor is disabled,
+                // a Tor init failure propagates. Released in its own finally, after the session
+                // is closed, so a throw from openShareTrackingSession cannot leak it either.
+                val torLease = synchronizer.acquireVotingTorLeaseOrNull()
+                val report =
+                    try {
+                        val session = votingCryptoClient.openShareTrackingSession(dbHandle, roundId)
+                        registerSession(roundId, session)
+                        try {
+                            session.run(
+                                torLease = torLease,
+                                helperUrls = roundVoteServerUrls,
+                                voteEndTimeSeconds = recovery.voteEndEpochSeconds ?: -1L
+                            )
+                        } finally {
+                            unregisterSession(roundId, session)
+                            withContext(NonCancellable) {
+                                session.close()
                             }
-
-                        if (isConfirmed) {
-                            votingCryptoClient.markShareConfirmed(
-                                dbHandle = dbHandle,
-                                roundId = roundId,
-                                bundleIndex = delegation.bundleIndex,
-                                proposalId = delegation.proposalId,
-                                shareIndex = delegation.shareIndex
-                            )
-                            return@forEach
                         }
-
-                        val resubmitAt = delegation.resubmitAt(recovery.voteEndEpochSeconds)
-                        if (resubmitAt == null) {
-                            return@forEach
-                        }
-                        if (resubmitAt > nowEpochSeconds) {
-                            nextDelayMillis =
-                                min(
-                                    nextDelayMillis,
-                                    ((resubmitAt - nowEpochSeconds) * MILLIS_PER_SECOND).coerceAtLeast(MIN_DELAY_MILLIS)
-                                )
-                            return@forEach
-                        }
-                        if (recovery.voteEndEpochSeconds != null &&
-                            recovery.voteEndEpochSeconds <= nowEpochSeconds + RESUBMIT_CUTOFF_SECONDS
-                        ) {
-                            return@forEach
-                        }
-
-                        val proposalSelection =
-                            recovery.proposalSelections[delegation.proposalId]
-                                ?: return@forEach
-                        val commitmentRecord =
-                            votingCryptoClient.getCommitmentBundle(
-                                dbHandle = dbHandle,
-                                roundId = roundId,
-                                bundleIndex = delegation.bundleIndex,
-                                proposalId = delegation.proposalId
-                            ) ?: return@forEach
-                        if (commitmentRecord.vcTreePosition <= 0L) {
-                            return@forEach
-                        }
-
-                        val payload =
-                            votingCryptoClient
-                                .buildSharePayloadsJson(
-                                    encSharesJson = commitmentRecord.bundle.encShares.toEncryptedSharesJson(),
-                                    commitmentJson = commitmentRecord.bundleJson,
-                                    voteDecision = proposalSelection.choiceId,
-                                    numOptions = proposalSelection.numOptions,
-                                    vcTreePosition = commitmentRecord.vcTreePosition,
-                                    singleShareMode = recovery.singleShareMode == true
-                                ).toSharePayloads()
-                                .map { generated -> generated.withSubmitAt(0) }
-                                .firstOrNull { generated ->
-                                    generated.encShare.shareIndex == delegation.shareIndex
-                                } ?: return@forEach
-
-                        val acceptedServers =
-                            runCatching {
-                                votingApiProvider.resubmitShare(
-                                    payload = payload,
-                                    candidateUrls = roundVoteServerUrls,
-                                    excludeUrls = delegation.sentToUrls
-                                )
-                            }.getOrDefault(emptyList())
-
-                        if (acceptedServers.isNotEmpty()) {
-                            votingCryptoClient.addSentServers(
-                                dbHandle = dbHandle,
-                                roundId = roundId,
-                                bundleIndex = delegation.bundleIndex,
-                                proposalId = delegation.proposalId,
-                                shareIndex = delegation.shareIndex,
-                                newUrls = acceptedServers
-                            )
-                            nextDelayMillis = min(nextDelayMillis, POST_RESUBMIT_DELAY_MILLIS)
-                        }
+                    } finally {
+                        torLease?.release()
                     }
 
-                val hasPendingShares =
-                    votingCryptoClient
-                        .getShareDelegations(dbHandle, roundId)
-                        .any { delegation -> !delegation.confirmed }
-                if (hasPendingShares) {
-                    VotingShareTrackingResult.Pending(nextDelayMillis.coerceAtLeast(MIN_DELAY_MILLIS))
-                } else {
-                    VotingShareTrackingResult.Completed
+                when (report?.quiescence) {
+                    is VotingShareTrackingQuiescence.NothingToTrack,
+                    is VotingShareTrackingQuiescence.AllConfirmed -> {
+                        resetDelay(roundId)
+                        votingRecoveryRepository.setPhase(
+                            accountUuidString,
+                            roundId,
+                            VotingRecoveryPhase.SHARES_SUBMITTED
+                        )
+                        VotingShareTrackingResult.Completed
+                    }
+
+                    is VotingShareTrackingQuiescence.VoteEndReached -> {
+                        // The vote window closed with shares still outstanding -- nothing left
+                        // to usefully retry; treat as terminal-complete rather than looping
+                        // forever past a round that can no longer accept share deliveries.
+                        resetDelay(roundId)
+                        VotingShareTrackingResult.Completed
+                    }
+
+                    is VotingShareTrackingQuiescence.Cancelled,
+                    is VotingShareTrackingQuiescence.AlreadyDriving,
+                    is VotingShareTrackingQuiescence.Failing,
+                    is VotingShareTrackingQuiescence.PassBudgetExhausted,
+                    is VotingShareTrackingQuiescence.Unknown,
+                    null -> {
+                        VotingShareTrackingResult.Pending(nextDelayMillis(roundId))
+                    }
                 }
             } finally {
-                votingCryptoClient.closeVotingDb(dbHandle)
+                withContext(NonCancellable) {
+                    votingCryptoClient.closeVotingDb(dbHandle)
+                }
             }
         }
 
-    private fun ByteArray.toLowerHex(): String =
-        joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and BYTE_MASK) }
+    /**
+     * Cancels [roundId]'s in-flight [invoke] call, if one opened a session on this or another
+     * `TrackVotingSharesUseCase` instance. A no-op if none is active -- this must be safe to call
+     * unconditionally from [co.electriccoin.zcash.work.VotingShareTrackingWorker]'s stop-signal
+     * handling, which cannot know whether `invoke` had reached the session-open point yet when
+     * the stop signal arrived.
+     *
+     * Known, accepted race: this is keyed purely by [roundId] (the only thing a caller like the
+     * worker's stop-signal handling has), not by a specific session reference, so it cannot
+     * distinguish "the session I meant to cancel" from "whatever session currently owns this
+     * roundId". Under `VotingShareTrackingScheduler`'s `ExistingWorkPolicy.REPLACE`, at most one
+     * worker run is normally in flight per round, but if a stale run's [cancel] call is suspended
+     * on [activeSessionsMutex] at the exact moment a *new* run for the same [roundId] calls
+     * [registerSession] first, the stale call could cancel the new session instead of a
+     * stale/absent one. The window is narrow (a single mutex-acquisition race) and not closed
+     * here -- fixing it would need session-identity-aware cancellation (e.g. cancel tokens), which
+     * is more machinery than this task's scope warrants.
+     */
+    suspend fun cancel(roundId: String) {
+        activeSessionsMutex.withLock { activeSessions[roundId] }?.cancel()
+    }
+
+    private suspend fun registerSession(
+        roundId: String,
+        session: VotingShareTrackingSession
+    ) = activeSessionsMutex.withLock { activeSessions[roundId] = session }
+
+    private suspend fun unregisterSession(
+        roundId: String,
+        session: VotingShareTrackingSession
+    ) = activeSessionsMutex.withLock {
+        if (activeSessions[roundId] === session) {
+            activeSessions.remove(roundId)
+        }
+    }
 
     private companion object {
-        const val CHECK_GRACE_SECONDS = 10L
-        const val RESUBMIT_CUTOFF_SECONDS = 10L
-        const val MIN_DELAY_MILLIS = 3_000L
         const val DEFAULT_DELAY_MILLIS = 15_000L
-        const val POST_RESUBMIT_DELAY_MILLIS = 10_000L
-        const val MILLIS_PER_SECOND = 1_000L
-        const val BYTE_MASK = 0xff
+        const val MAX_DELAY_MILLIS = 120_000L
+
+        // Caps the exponential-backoff shift itself, well before coerceIn's MAX_DELAY_MILLIS
+        // clamp would anyway -- keeps `1L shl attempt` from ever approaching Long's own shift
+        // range regardless of how many consecutive attempts a stuck round accumulates.
+        const val MAX_BACKOFF_SHIFT = 32
+
+        private val activeSessionsMutex = Mutex()
+        private val activeSessions = mutableMapOf<String, VotingShareTrackingSession>()
+
+        // Per-round consecutive-incomplete-attempt counter. Lives on the companion (i.e. shared
+        // by every `TrackVotingSharesUseCase` instance), not as an instance field, because Koin
+        // provides this use case via `factoryOf` (see FeatureVotingModule) rather than as a
+        // singleton -- a fresh instance is injected into each new `VotingShareTrackingWorker`
+        // WorkManager creates for a retried run, so per-instance state would not survive across
+        // those retries. `VotingShareTrackingScheduler.schedule` enqueues with
+        // `ExistingWorkPolicy.REPLACE` on a per-round unique work name, so at most one call for a
+        // given `roundId` is ever in flight at a time; a plain synchronized map is therefore
+        // enough -- no jitter or cross-process persistence needed for this cadence gap.
+        private val attemptCounts = mutableMapOf<String, Int>()
+
+        @Synchronized
+        private fun nextDelayMillis(roundId: String): Long {
+            val attempt = (attemptCounts[roundId] ?: 0) + 1
+            attemptCounts[roundId] = attempt
+            val backedOff = DEFAULT_DELAY_MILLIS * (1L shl (attempt - 1).coerceAtMost(MAX_BACKOFF_SHIFT))
+            return backedOff.coerceIn(DEFAULT_DELAY_MILLIS, MAX_DELAY_MILLIS)
+        }
+
+        @Synchronized
+        private fun resetDelay(roundId: String) {
+            attemptCounts.remove(roundId)
+        }
     }
 }
-
-private fun VotingShareDelegationRecord.resubmitAt(voteEndEpochSeconds: Long?): Long? {
-    if (submitAt <= 0L || voteEndEpochSeconds == null) {
-        return null
-    }
-
-    val remainingAtSubmit = (voteEndEpochSeconds - submitAt).coerceAtLeast(0L)
-    val overdueThreshold =
-        max(
-            RESUBMIT_MIN_DELAY_SECONDS,
-            min(
-                RESUBMIT_MAX_DELAY_SECONDS,
-                remainingAtSubmit / OVERDUE_THRESHOLD_DIVISOR
-            )
-        )
-    return submitAt + overdueThreshold
-}
-
-private const val RESUBMIT_MIN_DELAY_SECONDS = 30L
-private const val RESUBMIT_MAX_DELAY_SECONDS = 3_600L
-private const val OVERDUE_THRESHOLD_DIVISOR = 4
 
 private fun ZcashNetwork.toVotingNetworkId() = if (isMainnet()) 1 else 0

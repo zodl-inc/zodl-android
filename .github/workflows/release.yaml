@@ -277,6 +277,7 @@ jobs:
           exit 1
 
       - name: Purge Cloudflare cache for foss.zodl.com
+        continue-on-error: true
         run: |
           CF_API_TOKEN=$(aws secretsmanager get-secret-value \
             --secret-id /infra/cloudflare/api_token \
@@ -288,20 +289,42 @@ jobs:
             --query SecretString --output text)
           echo "::add-mask::${ZONE_ID}"
 
-          PURGE_SUCCESS=$(curl -s -X POST \
-            "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/purge_cache" \
-            -H "Authorization: Bearer ${CF_API_TOKEN}" \
-            -H "Content-Type: application/json" \
-            --data '{
-              "files": [
-                "https://foss.zodl.com/fdroid/repo/app-zcashmainnet-foss-release-full-externallibs.apk",
-                "https://foss.zodl.com/fdroid/repo/app-zcashmainnet-foss-release.apk",
-                "https://foss.zodl.com/fdroid/repo/index-v2.json",
-                "https://foss.zodl.com/fdroid/repo/entry.jar"
-              ]
-            }' | jq -r '.success')
-          echo "CF purge result: ${PURGE_SUCCESS}"
+          PURGE_SUCCESS="false"
+          for attempt in 1 2 3; do
+            # No -f: keep response body even on 4xx/5xx so errors are diagnosable.
+            # -w appends the real HTTP status as a trailing line; the || fallback
+            # only fires on network-level failures (DNS, timeout) and yields 000.
+            RAW=$(curl -s -m 30 -w '\n%{http_code}' -X POST \
+              "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/purge_cache" \
+              -H "Authorization: Bearer ${CF_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data '{
+                "files": [
+                  "https://foss.zodl.com/fdroid/repo/app-zcashmainnet-foss-release-full-externallibs.apk",
+                  "https://foss.zodl.com/fdroid/repo/app-zcashmainnet-foss-release.apk",
+                  "https://foss.zodl.com/fdroid/repo/index-v2.json",
+                  "https://foss.zodl.com/fdroid/repo/entry.jar"
+                ]
+              }') || RAW=$'{"success":false,"error":"network_failure"}\n000'
+            HTTP_STATUS=$(printf '%s\n' "${RAW}" | tail -n1)
+            PURGE_RESULT=$(printf '%s\n' "${RAW}" | sed '$d')
+            PURGE_SUCCESS=$(printf '%s' "${PURGE_RESULT}" | jq -r '.success // false' 2>/dev/null || echo "false")
+            PURGE_SUCCESS="${PURGE_SUCCESS:-false}"
+            echo "CF purge attempt ${attempt}: http=${HTTP_STATUS} success=${PURGE_SUCCESS} response=${PURGE_RESULT}"
+            [ "${PURGE_SUCCESS}" = "true" ] && break
+            # Key off the HTTP status, not CF's errors[].code (those are in the
+            # thousands, e.g. 9109/10000). 4xx = permanent (auth/permission/bad
+            # zone) — never retry. 429 is the one transient 4xx; 5xx/000 retry.
+            case "${HTTP_STATUS}" in
+              429) ;;
+              4[0-9][0-9])
+                echo "::warning::CF purge permanent error (HTTP ${HTTP_STATUS}) — skipping retries"
+                break
+                ;;
+            esac
+            [ "${attempt}" -lt 3 ] && sleep 10
+          done
+
           if [ "${PURGE_SUCCESS}" != "true" ]; then
-            echo "::error::Cloudflare cache purge failed"
-            exit 1
+            echo "::warning::Cloudflare cache purge failed after retries (non-blocking)"
           fi

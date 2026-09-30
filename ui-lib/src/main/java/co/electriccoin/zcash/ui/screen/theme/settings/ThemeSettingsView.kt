@@ -1,8 +1,5 @@
 package co.electriccoin.zcash.ui.screen.theme.settings
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -10,23 +7,16 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -37,6 +27,7 @@ import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
+import co.electriccoin.zcash.ui.design.component.ZodlRadioOptionCard
 import co.electriccoin.zcash.ui.design.component.rememberZashiFrostState
 import co.electriccoin.zcash.ui.design.component.zashiFrostSource
 import co.electriccoin.zcash.ui.design.component.zashiFrostedFooter
@@ -49,13 +40,9 @@ import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.theme.ThemeOption
+import co.electriccoin.zcash.ui.screen.common.ScreenLogoHeader
 
 private val CONTENT_TOP_SPACING = 28.dp
-
-private val HEADER_ICON_SIZE = 40.dp
-
-private val HEADER_ICON_OVERLAP = 3.dp
 
 @Composable
 internal fun ThemeSettingsView(state: ThemeSettingsState) {
@@ -111,7 +98,7 @@ internal fun ThemeSettingsView(state: ThemeSettingsState) {
                             top = paddingValues.calculateTopPadding() + CONTENT_TOP_SPACING
                         )
             ) {
-                ThemeSettingsHeader()
+                ScreenLogoHeader(icon = R.drawable.ic_settings_theme)
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = stringResource(R.string.theme_settings_title),
@@ -131,7 +118,7 @@ internal fun ThemeSettingsView(state: ThemeSettingsState) {
                         if (index > 0) {
                             Spacer(modifier = Modifier.height(12.dp))
                         }
-                        ThemeOption(
+                        ZodlRadioOptionCard(
                             modifier = Modifier.fillMaxWidth(),
                             isChecked = option.isChecked,
                             title = stringResource(option.mode.titleRes),
@@ -141,44 +128,6 @@ internal fun ThemeSettingsView(state: ThemeSettingsState) {
                     }
                 }
             }
-        }
-    }
-}
-
-/**
- * The screen's logo + palette header: the app's own logo circle overlapped by a circle carrying the same
- * palette glyph used for the [R.string.settings_theme] row, re-tinted with [ZashiColors.Text.textPrimary] so
- * it stays legible against [ZashiColors.Surfaces.bgTertiary] in both appearances. The glyph occupies the
- * inner half of its own vector, so the icon is drawn at the full circle size - the same way the Settings row
- * draws it - which renders the artwork at the intended ~20dp.
- */
-@Composable
-private fun ThemeSettingsHeader(modifier: Modifier = Modifier) {
-    Box(
-        contentAlignment = Alignment.CenterStart,
-        modifier = modifier
-    ) {
-        Image(
-            painter = painterResource(co.electriccoin.zcash.ui.design.R.drawable.ic_item_zashi),
-            contentDescription = null,
-            modifier = Modifier.size(HEADER_ICON_SIZE)
-        )
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier =
-                Modifier
-                    .size(HEADER_ICON_SIZE)
-                    .offset(x = HEADER_ICON_SIZE - HEADER_ICON_OVERLAP)
-                    .clip(CircleShape)
-                    .background(ZashiColors.Surfaces.bgTertiary)
-                    .border(2.dp, ZashiColors.Surfaces.bgPrimary, CircleShape)
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_settings_theme),
-                contentDescription = null,
-                tint = ZashiColors.Text.textPrimary,
-                modifier = Modifier.size(HEADER_ICON_SIZE)
-            )
         }
     }
 }

@@ -1,13 +1,15 @@
 package co.electriccoin.zcash.ui.common.repository
 
-import android.util.Log
-import cash.z.ecc.android.sdk.model.Pczt
+import cash.z.ecc.android.sdk.ext.toHex
+import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.ZcashNetwork
+import cash.z.ecc.android.sdk.model.voting.VotingDelegationInputs
+import cash.z.ecc.android.sdk.model.voting.VotingKeystoneSignatureInput
+import cash.z.ecc.android.sdk.model.voting.VotingKeystoneSigningRequest
+import cash.z.ecc.android.sdk.model.voting.VotingProposalRosterEntry
 import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.model.KeystoneAccount
-import co.electriccoin.zcash.ui.common.model.voting.isDelegationSetupOverwrite
 import co.electriccoin.zcash.ui.common.model.voting.requireKnownPolyLen
-import co.electriccoin.zcash.ui.common.model.voting.votingBundleRawWeights
 import co.electriccoin.zcash.ui.common.provider.KeystoneSDKProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
@@ -16,6 +18,7 @@ import co.electriccoin.zcash.ui.common.usecase.ResolveVotingRoundSessionUseCase
 import com.sparrowwallet.hummingbird.UR
 import com.sparrowwallet.hummingbird.UREncoder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -58,6 +61,23 @@ class VotingKeystoneWrongSignatureException(
         "Signed Keystone PCZT does not match pending bundle $currentBundleIndex"
     )
 
+/**
+ * voting-5.0.0 production-completion note: rebuilt against the SDK's already-existing
+ * [cash.z.ecc.android.sdk.VotingRoundSession.getKeystoneSigningRequests]/
+ * [cash.z.ecc.android.sdk.VotingDbSession.storeKeystoneSignatures] -- both were fully implemented
+ * on the SDK side already; this class's job is only to (a) get a [VotingKeystoneSessionHolder]-
+ * retained session's delegation pipeline built, (b) turn one [VotingKeystoneSigningRequest] into a
+ * scannable [UREncoder] and back, and (c) re-implement the duplicate/wrong-device-scan detection
+ * client-side, since the crate's own `store_keystone_signatures_batch` guard only fires on a
+ * genuine sighash/rk mismatch against already-*persisted* bundle columns, not against the
+ * currently-pending, not-yet-signed request.
+ *
+ * Idempotent per-call design (mirroring Vizor Wallet's shipping implementation on the same
+ * crate): [createPcztEncoder] always derives the next bundle still needing a signature from
+ * durable state rather than tracking "what have I already asked for" itself, so a killed and
+ * relaunched app simply re-derives the same state without bespoke recovery bookkeeping beyond
+ * what `VotingHomeHooksImpl.recoverPendingRouteIfNeeded` already does (untouched by this task).
+ */
 interface VotingKeystoneRepository {
     suspend fun createPcztEncoder(
         accountUuid: String,
@@ -73,32 +93,28 @@ interface VotingKeystoneRepository {
     )
 }
 
+@Suppress("LongParameterList")
 class VotingKeystoneRepositoryImpl(
     private val accountDataSource: AccountDataSource,
+    private val votingKeystoneSessionHolder: VotingKeystoneSessionHolder,
+    private val votingCryptoClient: VotingCryptoClient,
     private val resolveVotingRoundSession: ResolveVotingRoundSessionUseCase,
     private val votingRecoveryRepository: VotingRecoveryRepository,
-    private val votingCryptoClient: VotingCryptoClient,
     private val votingHotkeySeedProvider: VotingHotkeySeedProvider,
-    private val votingProofPrecomputeRepository: VotingProofPrecomputeRepository,
     private val synchronizerProvider: SynchronizerProvider,
-    private val keystoneSDKProvider: KeystoneSDKProvider
+    private val keystoneSDKProvider: KeystoneSDKProvider,
+    private val votingProofPrecomputeRepository: VotingProofPrecomputeRepository,
 ) : VotingKeystoneRepository {
+    @Suppress("LongMethod")
     override suspend fun createPcztEncoder(
         accountUuid: String,
         roundId: String
     ): VotingKeystoneSigningBundle =
         withContext(Dispatchers.IO) {
-            val selectedAccount =
-                requireNotNull(accountDataSource.getSelectedAccount() as? KeystoneAccount) {
-                    "Keystone account is required for voting signature flow"
-                }
-            val selectedAccountUuid = selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId()
-            require(selectedAccountUuid == accountUuid) {
-                "Selected Keystone account changed during the voting signature flow"
-            }
+            val selectedAccount = requireSelectedKeystoneAccount(accountUuid)
             val sessionContext = resolveVotingRoundSession(roundId)
             val session = sessionContext.session
-            val sessionRoundId = session.voteRoundId.toLowerHex()
+            val sessionRoundId = session.voteRoundId.toHex()
             require(sessionRoundId.equals(roundId, ignoreCase = true)) {
                 "Round $roundId does not match active session $sessionRoundId"
             }
@@ -107,7 +123,9 @@ class VotingKeystoneRepositoryImpl(
                 requireNotNull(votingRecoveryRepository.get(accountUuid, roundId)) {
                     "Voting round $roundId has not been prepared"
                 }
-            val bundleCount = recovery.bundleCount ?: error("Voting round $roundId has no prepared bundle count")
+            val bundleCount =
+                recovery.bundleCount
+                    ?: error("Voting round $roundId has no prepared bundle count")
             val nextUnsignedBundleIndex =
                 (0 until bundleCount)
                     .firstOrNull { index -> index !in recovery.keystoneBundleSignatures }
@@ -115,187 +133,98 @@ class VotingKeystoneRepositoryImpl(
 
             val synchronizer = synchronizerProvider.getSynchronizer()
             val walletDbPath = synchronizerProvider.getVotingWalletDbPath()
-            val networkId = synchronizer.network.toVotingNetworkId()
-            val allNotesJson =
-                votingCryptoClient.getWalletNotesJson(
-                    walletDbPath = walletDbPath,
-                    snapshotHeight = session.snapshotHeight,
-                    networkId = networkId,
-                    accountUuidBytes = selectedAccount.sdkAccount.accountUuid.value
-                )
-            val bundleRawWeights = votingBundleRawWeights(allNotesJson)
-            val memoWeightZatoshi =
-                bundleRawWeights.getOrNull(nextUnsignedBundleIndex)
-                    ?: error("Voting round $roundId has no raw memo weight for bundle $nextUnsignedBundleIndex")
-
-            val pendingRequest =
-                recovery.pendingKeystoneRequest
-                    ?.takeIf { request ->
-                        request.bundleIndex == nextUnsignedBundleIndex &&
-                            request.bundleIndex !in recovery.keystoneBundleSignatures
-                    }
-            if (pendingRequest != null) {
-                return@withContext VotingKeystoneSigningBundle(
-                    roundId = roundId,
-                    roundTitle = session.title,
-                    bundleIndex = pendingRequest.bundleIndex,
-                    bundleCount = bundleCount,
-                    actionIndex = pendingRequest.actionIndex,
-                    memoWeightZatoshi = memoWeightZatoshi,
-                    encoder = keystoneSDKProvider.generatePczt(pendingRequest.decodeRedactedPczt())
-                )
-            }
-            if (recovery.pendingKeystoneRequest != null) {
-                Log.i(TAG, "Clearing stale Keystone voting request for round $roundId")
-                votingRecoveryRepository.clearPendingKeystoneRequest(accountUuid, roundId)
-            }
-
-            val hotkeySeed = getHotkeySeed(accountUuid, roundId, recovery)
-            val bundleIndex = nextUnsignedBundleIndex
-
-            val accountIndex =
-                selectedAccount.sdkAccount.hdAccountIndex
-                    ?.index
-                    ?.toInt()
-                    ?: error("Keystone account is missing ZIP-32 account index")
-            val ufvk =
-                selectedAccount.sdkAccount.ufvk
-                    ?: error("Keystone account is missing UFVK")
-            val seedFingerprint =
-                selectedAccount.sdkAccount.seedFingerprint
-                    ?: error("Keystone account is missing seed fingerprint")
-
             val votingDbPath = deriveVotingDbPath(walletDbPath)
-
-            val dbHandle = votingCryptoClient.openVotingDb(votingDbPath)
-            check(dbHandle != 0L) { "Failed to open voting DB at $votingDbPath" }
-
-            val (signingBundle, pendingPrecomputeRequest) =
-                try {
-                    votingCryptoClient.setWalletId(
-                        dbHandle,
-                        accountUuid,
-                        networkId
-                    )
-                    votingCryptoClient.generateNoteWitnessesJson(
-                        dbHandle = dbHandle,
-                        roundId = roundId,
-                        bundleIndex = bundleIndex,
-                        walletDbPath = walletDbPath,
-                        networkId = networkId,
-                        notesJson = allNotesJson
-                    )
-                    val fvkBytes = votingCryptoClient.extractOrchardFvkFromUfvk(ufvk, networkId)
-                    // Keystone signing starts by building a governance PCZT. Multi-bundle rounds
-                    // legitimately have other bundles already past this point (round-level phase
-                    // can't tell them apart from this one — 2026-08-10), so this always attempts
-                    // construct rather than pre-checking phase. By this point the caller has
-                    // already returned early via `pendingRequest` above for any bundle whose
-                    // redacted PCZT is still cached app-side, so a setup-overwrite refusal here
-                    // means the Rust-side PCZT survived while the app's own cache of it didn't.
-                    // In practice this is triggered by Android process death: buildGovernancePczt
-                    // commits its native-side state synchronously inside this JNI call, but
-                    // storePendingKeystoneRequest() below (which persists the app's own redacted-
-                    // PCZT cache) is a distinct, later step — if the OS kills the process in that
-                    // window (routine backgrounding/memory pressure, made more likely by a slow
-                    // Halo2 proving operation), the native side is left committed while the app's
-                    // cache never got written. This is NOT reachable via a plain reinstall: the
-                    // crate's SQLite DB and this recovery cache both live in the same app-private
-                    // storage, so a real reinstall wipes them symmetrically. Either way, there's
-                    // no redacted PCZT left to hand back to the user, so the only way forward is
-                    // to reset this round's unsigned setup and mint a fresh one — which draws a
-                    // fresh `alpha`, so the rebuilt bundle is flagged via
-                    // markBundleRebuiltSinceProof below to force SubmitVotesUseCase to re-prove
-                    // rather than pairing a stale proof (computed for the old alpha) with the new
-                    // bundle fields.
-                    val governancePczt =
-                        runCatching {
-                            votingCryptoClient.buildGovernancePczt(
-                                dbHandle = dbHandle,
-                                roundId = roundId,
-                                bundleIndex = bundleIndex,
-                                fvkBytes = fvkBytes,
-                                hotkeySeed = hotkeySeed,
-                                accountIndex = accountIndex,
-                                notesJson = allNotesJson,
-                                seedFingerprint = seedFingerprint,
-                                roundName = session.title
-                            )
-                        }.recoverCatching { throwable ->
-                            if (!throwable.isDelegationSetupOverwrite()) throw throwable
-                            Log.i(
-                                TAG,
-                                "Keystone governance PCZT setup for round $roundId bundle $bundleIndex " +
-                                    "looks corrupted; resetting and rebuilding once"
-                            )
-                            votingCryptoClient.resetVotingSessionState(dbHandle, roundId)
-                            votingCryptoClient
-                                .buildGovernancePczt(
-                                    dbHandle = dbHandle,
-                                    roundId = roundId,
-                                    bundleIndex = bundleIndex,
-                                    fvkBytes = fvkBytes,
-                                    hotkeySeed = hotkeySeed,
-                                    accountIndex = accountIndex,
-                                    notesJson = allNotesJson,
-                                    seedFingerprint = seedFingerprint,
-                                    roundName = session.title
-                                ).also {
-                                    votingRecoveryRepository.markBundleRebuiltSinceProof(
-                                        accountUuid = accountUuid,
-                                        roundId = roundId,
-                                        bundleIndex = bundleIndex
-                                    )
-                                }
-                        }.getOrThrow()
-                    val redactedPcztBytes =
-                        synchronizer
-                            .redactPcztForSigner(Pczt(governancePczt.pcztBytes))
-                            .toByteArray()
-                    votingRecoveryRepository.storePendingKeystoneRequest(
-                        accountUuid = accountUuid,
-                        roundId = roundId,
-                        bundleIndex = bundleIndex,
-                        actionIndex = governancePczt.actionIndex,
-                        redactedPczt = redactedPcztBytes,
-                        expectedSighash = governancePczt.sighash,
-                        expectedRk = governancePczt.rk
-                    )
-                    val precomputeRequest =
-                        VotingDelegationPirPrecomputeRequest(
-                            accountUuid = accountUuid,
-                            walletId = accountUuid,
-                            votingDbPath = votingDbPath,
-                            roundId = roundId,
-                            bundleIndex = bundleIndex,
-                            pirEndpoints = sessionContext.serviceConfig.pirEndpoints.map { endpoint -> endpoint.url },
-                            pirLayout = sessionContext.serviceConfig.pirLayout.requireKnownPolyLen(),
-                            expectedSnapshotHeight = session.snapshotHeight,
-                            networkId = networkId,
-                            notesJson = allNotesJson
-                        )
-                    VotingKeystoneSigningBundle(
-                        roundId = roundId,
-                        roundTitle = session.title,
-                        bundleIndex = bundleIndex,
-                        bundleCount = bundleCount,
-                        actionIndex = governancePczt.actionIndex,
-                        memoWeightZatoshi = memoWeightZatoshi,
-                        encoder = keystoneSDKProvider.generatePczt(redactedPcztBytes)
-                    ) to precomputeRequest
-                } finally {
-                    votingCryptoClient.closeVotingDb(dbHandle)
-                }
-            runCatching {
-                votingProofPrecomputeRepository.startDelegationPirPrecompute(pendingPrecomputeRequest)
-            }.onFailure { throwable ->
-                Log.w(
-                    TAG,
-                    "Skipping Keystone voting PIR precompute for round $roundId bundle $bundleIndex",
-                    throwable
-                )
+            val networkId = synchronizer.network.toVotingNetworkId()
+            val hotkeySecret = getHotkeySeed(accountUuid, roundId, recovery)
+            val voteServerUrls =
+                sessionContext.serviceConfig.voteServers
+                    .map { endpoint -> endpoint.url.trimEnd('/') }
+                    .distinct()
+            // Mirrors SubmitVotesUseCase's identical guard on its own two voteServerUrls
+            // derivations (Milan's review of PR #6, nit): without it, an empty list reaches
+            // ensureDelegationPipeline as chainEndpoints below and fails deep inside the native
+            // delegation pipeline with an unhelpful error instead of surfacing this misconfigured
+            // service config clearly, up front.
+            if (voteServerUrls.isEmpty()) {
+                error("Voting round $roundId has no configured vote server URL")
             }
-            signingBundle
+            val pirLayout = sessionContext.serviceConfig.pirLayout
+            val treeStateBytes = synchronizer.getTreeState(BlockHeight.new(session.snapshotHeight))
+
+            val delegationInputs =
+                VotingDelegationInputs(
+                    walletDbPath = walletDbPath,
+                    // Canonical dashed UUID, NOT the hex account-scope id used for setWalletId --
+                    // the native side parses this with `uuid::Uuid::parse_str` to look the
+                    // account up inside the real wallet database (see toCanonicalUuidString).
+                    accountUuid = selectedAccount.sdkAccount.accountUuid.toCanonicalUuidString(),
+                    anchorTreeStateBytes = treeStateBytes,
+                    hotkeySecret = hotkeySecret,
+                    pirEndpoints = sessionContext.serviceConfig.pirEndpoints.map { endpoint -> endpoint.url },
+                    pirDepth = pirLayout.requireKnownPolyLen().pirDepth,
+                    pirTier0Layers = pirLayout.tier0Layers,
+                    pirTier1Layers = pirLayout.tier1Layers,
+                    pirPolyLen = pirLayout.polyLen,
+                    keystone = true,
+                    softwareSeed = null,
+                    keystoneSig = null,
+                    keystoneSighash = null,
+                    snapshotHeight = session.snapshotHeight,
+                    eaPk = session.eaPK,
+                    ncRoot = session.ncRoot,
+                    nullifierImtRoot = session.nullifierIMTRoot
+                )
+
+            // The Sign screen reaches the delegation pipeline here, well before SubmitVotesUseCase
+            // runs, so SubmitVotesUseCase's own cancelAndAwaitPrecompute call does not cover this
+            // path. Without cancelling here too, a still-running background precompute job
+            // (PrecomputeVotingSnapshotBundlesUseCase / WarmVotingPirProofsUseCase) contends with
+            // ensureDelegationPipeline below for the same native (dbPath, walletId) lock, parking
+            // the Sign screen with no progress indication for however long the precompute job
+            // takes to finish on its own.
+            votingProofPrecomputeRepository.cancelAndAwaitPrecompute(accountUuid, roundId)
+
+            votingKeystoneSessionHolder.ensureDelegationPipeline(
+                roundId = roundId,
+                votingDbPath = votingDbPath,
+                accountUuidString = accountUuid,
+                networkId = networkId,
+                proposals =
+                    session.proposals.map { proposal ->
+                        VotingProposalRosterEntry(proposalId = proposal.id, numOptions = proposal.options.size)
+                    },
+                hotkeySecret = hotkeySecret,
+                chainEndpoints = voteServerUrls,
+                ceremonyStartSeconds = session.ceremonyStart.epochSecond,
+                voteEndTimeSeconds = session.voteEndTime.epochSecond,
+                delegationInputs = delegationInputs
+            )
+
+            val request =
+                votingKeystoneSessionHolder
+                    .getKeystoneSigningRequests(roundId, listOf(nextUnsignedBundleIndex))
+                    .firstOrNull { it.bundleIndex == nextUnsignedBundleIndex }
+                    ?: error("Round $roundId returned no signing request for bundle $nextUnsignedBundleIndex")
+
+            votingRecoveryRepository.storePendingKeystoneRequest(
+                accountUuid = accountUuid,
+                roundId = roundId,
+                bundleIndex = request.bundleIndex,
+                actionIndex = request.actionIndex,
+                redactedPczt = request.redactedPcztBytes,
+                expectedSighash = request.pcztSighash,
+                expectedRk = request.rk
+            )
+
+            VotingKeystoneSigningBundle(
+                roundId = roundId,
+                roundTitle = session.title,
+                bundleIndex = request.bundleIndex,
+                bundleCount = request.bundleCount,
+                actionIndex = request.actionIndex,
+                memoWeightZatoshi = request.delegatedWeightZatoshi,
+                encoder = keystoneSDKProvider.generatePczt(request.redactedPcztBytes)
+            )
         }
 
     override suspend fun storeBundleSignature(
@@ -305,13 +234,7 @@ class VotingKeystoneRepositoryImpl(
         actionIndex: Int,
         signedPcztUr: UR
     ) = withContext(Dispatchers.IO) {
-        val selectedAccount =
-            requireNotNull(accountDataSource.getSelectedAccount() as? KeystoneAccount) {
-                "Keystone account is required for voting signature flow"
-            }
-        require(selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId() == accountUuid) {
-            "Selected Keystone account changed during the voting signature flow"
-        }
+        requireSelectedKeystoneAccount(accountUuid)
         val recovery =
             requireNotNull(votingRecoveryRepository.get(accountUuid, roundId)) {
                 "Voting round $roundId has not been prepared"
@@ -326,49 +249,131 @@ class VotingKeystoneRepositoryImpl(
         require(pendingRequest.actionIndex == actionIndex) {
             "Signed Keystone action $actionIndex does not match pending action ${pendingRequest.actionIndex}"
         }
-        val bundleCount = recovery.bundleCount ?: error("Voting round $roundId has no prepared bundle count")
+        val bundleCount =
+            recovery.bundleCount
+                ?: error("Voting round $roundId has no prepared bundle count")
+
         val signedPcztBytes = keystoneSDKProvider.parsePczt(signedPcztUr)
-        val sighash = votingCryptoClient.extractPcztSighash(signedPcztBytes)
+
+        // Sighash first, mismatch check second, signature last -- the order the pre-rewrite
+        // implementation used (c62038c3a:331-343), and worth preserving: extractSpendAuthSig
+        // throws on a PCZT that carries no signed action, which is exactly what a wrong-device
+        // scan looks like. Pulling the signature before rejectMismatchedKeystoneSighash would
+        // surface that case as a generic RuntimeException (-> ScanValidationState.INVALID)
+        // instead of the WRONG_SIGNATURE notice this class's detection exists to produce.
+        // Neither order can accept a bad signature; only the error the user sees differs.
+        //
+        // Nothing about the PCZT binary format is parsed app-side: both helpers are stateless SDK
+        // calls wrapping `zcash_voting::action::extract_pczt_sighash`/`extract_spend_auth_sig`,
+        // which do a real `pczt::Pczt::parse` -- hand-rolling that byte layout in Kotlin could
+        // silently yield a wrong-but-well-formed signature.
+        val scannedSighash = votingCryptoClient.extractPcztSighash(signedPcztBytes)
+
         rejectMismatchedKeystoneSighash(
-            scannedSighash = sighash,
-            expectedSighash = pendingRequest.decodeExpectedSighash(),
-            existingSignatures = recovery.keystoneBundleSignatures,
-            currentBundleIndex = bundleIndex,
-            bundleCount = bundleCount
+            scannedSighash = scannedSighash,
+            pendingBundleIndex = pendingRequest.bundleIndex,
+            requests = knownSighashRequests(recovery, pendingRequest, bundleCount)
         )
+
+        // extractSpendAuthSig tries actionIndex first and otherwise scans every action, which
+        // stays unambiguous because a governance PCZT has exactly one signable action; the
+        // actionIndex assertion above makes that fallback a belt-and-braces path, not the normal
+        // one. Shape note versus the task brief: the brief specified `Pair<sig, rk>`, but `rk` is
+        // never recoverable from the signed PCZT -- Keystone redacts it. `rk` is the crate's own
+        // value, carried on VotingKeystoneSigningRequest.rk and persisted in the pending request.
         val spendAuthSig =
-            votingCryptoClient.extractSpendAuthSignatureFromSignedPczt(
+            votingCryptoClient.extractSpendAuthSig(
                 signedPcztBytes = signedPcztBytes,
                 actionIndex = actionIndex
             )
-        // Persist the signature crate-side first, so it's protected by
+
+        // Persist the signature crate-side first, so it is protected by
         // `resetVotingSessionState`'s preservation guard even if the local recovery-repository
-        // write below never happens. The rk/sighash passed here are the crate-computed values
-        // from the governance PCZT this signature was produced for (checked for consistency
-        // above via rejectMismatchedKeystoneSighash), the best available proxy at this call site
-        // for the SDK's documented "already verified" pair — the actual spend-auth-sig-vs-rk
-        // check only becomes possible once a delegation proof exists, at submission time in
-        // SubmitVotesUseCase, which independently re-asserts these same values against the
-        // crate's own submission result.
+        // write below never happens. The rk/sighash passed here are the crate's own values from
+        // the governance PCZT this signature was produced for (consistency-checked above via
+        // rejectMismatchedKeystoneSighash), matching the SDK's documented "already verified"
+        // contract -- the native side additionally re-verifies `sig` against `rk`/`sighash`
+        // with RedPallas before writing (see storeKeystoneSignaturesNative).
         pendingRequest.decodeExpectedRk()?.let { rk ->
             persistKeystoneSignatureCrateSide(
                 accountUuid = accountUuid,
                 roundId = roundId,
                 bundleIndex = bundleIndex,
                 keystoneSig = spendAuthSig,
-                keystoneSighash = sighash,
+                keystoneSighash = scannedSighash,
                 rk = rk
             )
         }
+
         votingRecoveryRepository.storeKeystoneBundleSignature(
             accountUuid = accountUuid,
             roundId = roundId,
             bundleIndex = bundleIndex,
             spendAuthSig = spendAuthSig,
-            sighash = sighash,
+            sighash = scannedSighash,
             rk = pendingRequest.decodeExpectedRk()
         )
     }
+
+    /**
+     * The sighash-bearing requests this device can compare a freshly scanned signature against:
+     * the currently-pending, not-yet-signed bundle plus every bundle already carrying a stored
+     * signature. Reconstructed from durable local state rather than re-fetched from the round
+     * session, because only the pending bundle's request is live at scan time.
+     */
+    private fun knownSighashRequests(
+        recovery: VotingRecoverySnapshot,
+        pendingRequest: VotingPendingKeystoneRequest,
+        bundleCount: Int
+    ): List<VotingKeystoneSigningRequest> =
+        buildList {
+            add(
+                sighashOnlyRequest(
+                    bundleIndex = pendingRequest.bundleIndex,
+                    actionIndex = pendingRequest.actionIndex,
+                    sighash = pendingRequest.decodeExpectedSighash(),
+                    rk = pendingRequest.decodeExpectedRk(),
+                    bundleCount = bundleCount
+                )
+            )
+            recovery.keystoneBundleSignatures.forEach { (signedBundleIndex, signature) ->
+                if (signedBundleIndex != pendingRequest.bundleIndex) {
+                    add(
+                        sighashOnlyRequest(
+                            bundleIndex = signedBundleIndex,
+                            actionIndex = 0,
+                            sighash = signature.decodeSighash(),
+                            rk = signature.decodeRk(),
+                            bundleCount = bundleCount
+                        )
+                    )
+                }
+            }
+        }
+
+    /**
+     * A [VotingKeystoneSigningRequest] carrying only the fields
+     * [rejectMismatchedKeystoneSighash] actually compares. Not a real signing request — never
+     * hand one of these to the SDK.
+     */
+    private fun sighashOnlyRequest(
+        bundleIndex: Int,
+        actionIndex: Int,
+        sighash: ByteArray,
+        rk: ByteArray?,
+        bundleCount: Int
+    ) = VotingKeystoneSigningRequest(
+        pcztBytes = ByteArray(0),
+        redactedPcztBytes = ByteArray(0),
+        pcztSighash = sighash,
+        rk = rk ?: ByteArray(0),
+        actionIndex = actionIndex,
+        displayMemo = "",
+        eligibleWeightZatoshi = 0,
+        delegatedWeightZatoshi = 0,
+        bundleCount = bundleCount,
+        bundleIndex = bundleIndex
+    )
 
     private suspend fun persistKeystoneSignatureCrateSide(
         accountUuid: String,
@@ -378,44 +383,44 @@ class VotingKeystoneRepositoryImpl(
         keystoneSighash: ByteArray,
         rk: ByteArray
     ) {
-        val votingDbPath = resolveVotingDbPath()
+        val votingDbPath = deriveVotingDbPath(synchronizerProvider.getVotingWalletDbPath())
         val networkId = synchronizerProvider.getSynchronizer().network.toVotingNetworkId()
         val dbHandle = votingCryptoClient.openVotingDb(votingDbPath)
         check(dbHandle != 0L) { "Failed to open voting DB at $votingDbPath" }
         try {
             votingCryptoClient.setWalletId(dbHandle, accountUuid, networkId)
-            votingCryptoClient.storeKeystoneSignature(
+            votingCryptoClient.storeKeystoneSignatures(
                 dbHandle = dbHandle,
                 roundId = roundId,
-                bundleIndex = bundleIndex,
-                keystoneSig = keystoneSig,
-                keystoneSighash = keystoneSighash,
-                rk = rk
+                signatures =
+                    listOf(
+                        VotingKeystoneSignatureInput(
+                            bundleIndex = bundleIndex,
+                            sig = keystoneSig,
+                            sighash = keystoneSighash,
+                            rk = rk
+                        )
+                    )
             )
         } finally {
-            votingCryptoClient.closeVotingDb(dbHandle)
+            // NonCancellable: see SkipRemainingKeystoneBundlesUseCase's identical close -- a
+            // cancelled scan screen must not leak the DB handle and its shared native lock.
+            withContext(NonCancellable) {
+                votingCryptoClient.closeVotingDb(dbHandle)
+            }
         }
     }
 
-    private suspend fun resolveVotingDbPath(): String =
-        deriveVotingDbPath(synchronizerProvider.getVotingWalletDbPath())
-
-    private fun deriveVotingDbPath(walletDbPath: String): String =
-        File(walletDbPath)
-            .parentFile
-            ?.resolve("voting.sqlite3")
-            ?.absolutePath
-            ?: error("Unable to derive voting DB path from $walletDbPath")
-
-    private fun ZcashNetwork.toVotingNetworkId() =
-        when (this) {
-            ZcashNetwork.Mainnet -> 1
-            ZcashNetwork.Testnet -> 0
-            else -> error("Unsupported voting network: $this")
+    private suspend fun requireSelectedKeystoneAccount(accountUuid: String): KeystoneAccount {
+        val selectedAccount =
+            requireNotNull(accountDataSource.getSelectedAccount() as? KeystoneAccount) {
+                "Keystone account is required for voting signature flow"
+            }
+        require(selectedAccount.sdkAccount.accountUuid.toVotingAccountScopeId() == accountUuid) {
+            "Selected Keystone account changed during the voting signature flow"
         }
-
-    private fun ByteArray.toLowerHex(): String =
-        joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and BYTE_MASK) }
+        return selectedAccount
+    }
 
     private suspend fun getHotkeySeed(
         accountUuid: String,
@@ -433,39 +438,46 @@ class VotingKeystoneRepositoryImpl(
             ?: error("Voting round $roundId has no stored hotkey seed")
     }
 
-    private fun rejectMismatchedKeystoneSighash(
-        scannedSighash: ByteArray,
-        expectedSighash: ByteArray,
-        existingSignatures: Map<Int, VotingKeystoneBundleSignature>,
-        currentBundleIndex: Int,
-        bundleCount: Int
-    ) {
-        if (scannedSighash.contentEquals(expectedSighash)) {
-            return
-        }
+    private fun deriveVotingDbPath(walletDbPath: String): String =
+        File(walletDbPath)
+            .parentFile
+            ?.resolve("voting.sqlite3")
+            ?.absolutePath
+            ?: error("Unable to derive voting DB path from $walletDbPath")
+}
 
-        val duplicateBundleIndex =
-            existingSignatures.entries
-                .firstOrNull { (_, signature) ->
-                    scannedSighash.contentEquals(signature.decodeSighash())
-                }?.key
-
-        if (duplicateBundleIndex != null) {
-            throw VotingKeystoneDuplicateSignatureException(
-                signedBundleIndex = duplicateBundleIndex,
-                currentBundleIndex = currentBundleIndex,
-                bundleCount = bundleCount
+/**
+ * Distinguishes a stale re-scanned QR (matches an already-recorded signature for a *different*
+ * bundle than [pendingBundleIndex]) from a genuinely wrong device/PCZT (matches neither) -- has
+ * no SDK equivalent (the crate's own batch-store guard only fires post-persistence), so this
+ * client-side check is a deliberate re-implementation of the pre-4.0 behavior, not a gap.
+ */
+internal fun rejectMismatchedKeystoneSighash(
+    scannedSighash: ByteArray,
+    pendingBundleIndex: Int,
+    requests: List<VotingKeystoneSigningRequest>
+) {
+    val matchingRequest = requests.firstOrNull { it.pcztSighash.contentEquals(scannedSighash) }
+    when {
+        matchingRequest == null -> {
+            throw VotingKeystoneWrongSignatureException(
+                currentBundleIndex = pendingBundleIndex,
+                bundleCount = requests.firstOrNull()?.bundleCount ?: 0
             )
         }
 
-        throw VotingKeystoneWrongSignatureException(
-            currentBundleIndex = currentBundleIndex,
-            bundleCount = bundleCount
-        )
-    }
+        matchingRequest.bundleIndex != pendingBundleIndex -> {
+            throw VotingKeystoneDuplicateSignatureException(
+                signedBundleIndex = matchingRequest.bundleIndex,
+                currentBundleIndex = pendingBundleIndex,
+                bundleCount = matchingRequest.bundleCount
+            )
+        }
 
-    private companion object {
-        const val TAG = "VotingKeystoneRepository"
-        const val BYTE_MASK = 0xff
+        else -> {
+            Unit
+        }
     }
 }
+
+private fun ZcashNetwork.toVotingNetworkId() = if (isMainnet()) 1 else 0

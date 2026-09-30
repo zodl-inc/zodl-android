@@ -1,6 +1,9 @@
 package co.electriccoin.zcash.ui.design.component
 
+import android.view.WindowManager
+import androidx.activity.compose.LocalActivity
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -45,13 +48,17 @@ import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.orDark
 
+/**
+ * A QR code card that opens itself fullscreen on tap. While [QrState.isBlurred] the code is blurred (dimmed
+ * below Android S, with [ZashiHiddenContentOverlay] carrying [QrState.hiddenLabel]) and the tap is disabled.
+ */
 @Composable
 fun ZashiQr(
     state: QrState,
     modifier: Modifier = Modifier,
     qrSize: Dp = ZashiQrDefaults.width,
     colors: QrCodeColors = QrCodeDefaults.colors(),
-    contentPadding: PaddingValues = QrCodeDefaults.contentPadding()
+    contentPadding: PaddingValues = QrCodeDefaults.contentPadding(),
 ) {
     var isFullscreenDialogVisible by remember { mutableStateOf(false) }
 
@@ -60,6 +67,7 @@ fun ZashiQr(
         modifier =
             modifier
                 .clickable(
+                    enabled = !state.isBlurred,
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     onClick = {
@@ -84,8 +92,16 @@ fun ZashiQr(
                 )
         ) {
             val parent = LocalView.current.parent
+            val activityWindow = LocalActivity.current?.window
+            val activityFlags = activityWindow?.attributes?.flags ?: 0
+            val isActivitySecured = (activityFlags and WindowManager.LayoutParams.FLAG_SECURE) != 0
             SideEffect {
-                (parent as? DialogWindowProvider)?.window?.setDimAmount(FULLSCREEN_DIM)
+                (parent as? DialogWindowProvider)?.window?.let { window ->
+                    window.setDimAmount(FULLSCREEN_DIM)
+                    if (isActivitySecured) {
+                        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                    }
+                }
             }
             BrightenScreen()
             ConfigurationOverride(isDarkTheme = false) {
@@ -109,6 +125,7 @@ private fun ZashiQrInternal(
     modifier: Modifier = Modifier,
 ) {
     val qrSizePx = with(LocalDensity.current) { qrSize.roundToPx() }
+    val blur by animateDpAsState(if (state.isBlurred) BLUR_RADIUS else 0.dp, label = "qrBlur")
     var bitmap: ImageBitmap by remember {
         mutableStateOf(getQrCode(state.qrData, qrSizePx, colors))
     }
@@ -130,24 +147,36 @@ private fun ZashiQrInternal(
         color = colors.background,
     ) {
         Box(
-            modifier = Modifier.padding(contentPadding)
+            contentAlignment = Alignment.Center,
         ) {
-            Image(
-                modifier = Modifier,
-                bitmap = bitmap,
-                contentDescription = state.contentDescription?.getValue(),
-            )
-
-            if (centerImage != null) {
+            Box(
+                modifier =
+                    Modifier
+                        .blurCompat(blur, BLUR_RADIUS)
+                        .padding(contentPadding)
+            ) {
                 Image(
-                    modifier =
-                        Modifier
-                            .size(64.dp)
-                            .align(Alignment.Center),
-                    painter = painterResource(centerImage),
-                    contentDescription = null,
+                    modifier = Modifier,
+                    bitmap = bitmap,
+                    contentDescription = state.contentDescription?.getValue(),
                 )
+
+                if (centerImage != null) {
+                    Image(
+                        modifier =
+                            Modifier
+                                .size(64.dp)
+                                .align(Alignment.Center),
+                        painter = painterResource(centerImage),
+                        contentDescription = null,
+                    )
+                }
             }
+            ZashiHiddenContentOverlay(
+                isHidden = state.isBlurred,
+                text = state.hiddenLabel?.getValue(),
+                modifier = Modifier.align(Alignment.Center),
+            )
         }
     }
 }
@@ -219,6 +248,12 @@ data class QrState(
     val qrData: String,
     val contentDescription: StringResource? = null,
     @param:DrawableRes val centerImage: Int? = null,
+    /** A blurred QR is not clickable, so it never opens its fullscreen dialog. */
+    val isBlurred: Boolean = false,
+    /** Shown in the reveal hint drawn over a blurred QR on devices that cannot blur (below Android S). */
+    val hiddenLabel: StringResource? = null,
 )
 
 private const val FULLSCREEN_DIM = .9f
+
+private val BLUR_RADIUS = 16.5.dp

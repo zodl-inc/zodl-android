@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.screen.voting.proposallist
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -175,7 +177,23 @@ private fun VotingHeader(
                 style = ZashiTypography.textXl,
                 color = ZashiColors.Text.textPrimary,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f)
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .let { titleModifier ->
+                            // Debug-only testing shortcut -- see
+                            // VoteProposalListState.onRoundTitleLongClick's own doc comment.
+                            // No gesture is attached at all (not even a disabled one) when this
+                            // is null, so there is nothing to feel or discover in a release build.
+                            val onLongClick = state.onRoundTitleLongClick
+                            if (onLongClick == null) {
+                                titleModifier
+                            } else {
+                                titleModifier.pointerInput(onLongClick) {
+                                    detectTapGestures(onLongPress = { onLongClick() })
+                                }
+                            }
+                        }
             )
 
             state.snapshotHeight?.let { snapshotHeight ->

@@ -21,6 +21,21 @@ sealed class VoteSubmissionStatus {
         val progress: Float
     ) : VoteSubmissionStatus()
 
+    /**
+     * The round-driver's single `roundSession.run()` call is in flight. [completedProposals]/
+     * [totalProposals] are the run's own ratcheted proposal tally (see
+     * `VotingSubmissionProgress.RunningRound`'s doc comment) -- `null` until the round-driver's
+     * first `PlanRefreshed` event arrives. [proofProgress] is the most recently reported 0..1
+     * proving fraction, `null` when the most recent event didn't carry one. [isRetrying] mirrors
+     * `VotingSubmissionProgress.RunningRound.isRetrying` -- see its own doc comment.
+     */
+    data class RunningRound(
+        val completedProposals: Int?,
+        val totalProposals: Int?,
+        val proofProgress: Float?,
+        val isRetrying: Boolean = false
+    ) : VoteSubmissionStatus()
+
     data object Completed : VoteSubmissionStatus()
 
     data class LocalAuthFailed(
@@ -40,7 +55,8 @@ sealed class VoteSubmissionStatus {
 internal fun VoteSubmissionStatus.isInFlight() =
     this is VoteSubmissionStatus.LocalAuthorizing ||
         this is VoteSubmissionStatus.Authorizing ||
-        this is VoteSubmissionStatus.Submitting
+        this is VoteSubmissionStatus.Submitting ||
+        this is VoteSubmissionStatus.RunningRound
 
 internal fun VoteSubmissionStatus.isFailure() =
     this is VoteSubmissionStatus.LocalAuthFailed ||

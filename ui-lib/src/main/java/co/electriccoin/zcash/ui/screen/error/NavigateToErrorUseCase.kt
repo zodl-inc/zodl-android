@@ -21,7 +21,6 @@ class NavigateToErrorUseCase(
             is ErrorArgs.SyncError -> navigateToSyncError(args, navigate)
             is ErrorArgs.General -> navigationRouter.navigate(ErrorDialog)
             is ErrorArgs.ShieldingGeneralError -> navigationRouter.navigate(ErrorDialog)
-            is ErrorArgs.SynchronizerTorInitError -> navigationRouter.navigate(ErrorDialog)
             is ErrorArgs.KeystoneFirmwareUpdateRequired -> navigationRouter.navigate(ErrorBottomSheet)
             is ErrorArgs.KeystoneAccountUnsupported -> navigationRouter.navigate(ErrorBottomSheet)
         }
@@ -97,8 +96,6 @@ sealed interface ErrorArgs {
     data class General(
         val exception: Exception
     ) : ErrorArgs
-
-    data object SynchronizerTorInitError : ErrorArgs
 
     /**
      * The scanned Keystone-signed PCZT came from firmware below the minimum supported version

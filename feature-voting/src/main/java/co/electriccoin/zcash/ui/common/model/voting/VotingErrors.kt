@@ -128,14 +128,17 @@ sealed interface VotingErrors {
     /**
      * A spent-nullifier response referenced a successful transaction whose commitment-tree leaves
      * do not contain the exact vote commitment currently being recovered.
+     *
+     * [bundleIndex]/[proposalId] are `null` when the round driver's failure report does not name
+     * them (a step failure carries at most a bundle index, never a proposal).
      */
     data class RecoveredVoteCommitmentMismatch(
         val roundId: String,
-        val bundleIndex: Int,
-        val proposalId: Int
+        val bundleIndex: Int?,
+        val proposalId: Int?
     ) : VotingErrors {
         override val userMessage =
-            "Recovered transaction does not match round $roundId bundle $bundleIndex proposal $proposalId"
+            "Recovered transaction does not match round $roundId${location(bundleIndex, proposalId)}"
     }
 
     /**
@@ -145,12 +148,11 @@ sealed interface VotingErrors {
      */
     data class RecoveredVoteVerificationUnavailable(
         val roundId: String,
-        val bundleIndex: Int,
-        val proposalId: Int
+        val bundleIndex: Int?,
+        val proposalId: Int?
     ) : VotingErrors {
         override val userMessage =
-            "Could not verify the recovered transaction for round $roundId " +
-                "bundle $bundleIndex proposal $proposalId"
+            "Could not verify the recovered transaction for round $roundId${location(bundleIndex, proposalId)}"
     }
 
     /**
@@ -162,6 +164,11 @@ sealed interface VotingErrors {
         override val userMessage = detail
     }
 }
+
+private fun location(
+    bundleIndex: Int?,
+    proposalId: Int?
+): String = bundleIndex?.let { " bundle $it" }.orEmpty() + proposalId?.let { " proposal $it" }.orEmpty()
 
 /**
  * Exception wrapper used at coroutine boundaries that already map failures to voting error UI.

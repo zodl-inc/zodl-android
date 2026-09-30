@@ -9,7 +9,7 @@
     <ID>CyclomaticComplexMethod:MigrationKeystoneScanVM.kt$MigrationKeystoneScanVM$fun onScanned(result: String)</ID>
     <ID>CyclomaticComplexMethod:MigrationProgressScreen.kt$@Suppress("LongParameterList") @Composable private fun TransferProgressTimelineRow( title: String, statusLabel: StringResource, isReadyNow: Boolean, amount: StringResource?, fiatAmount: StringResource?, state: TransferRowState, isLast: Boolean, index: Int = 0, @DrawableRes icon: Int? = null, // Non-null only for the collapsed "Split Balance" summary row — renders a "Show details ⌄" // line under the subtitle (Figma "PR App Designs Q3'26" node 5207:16023), not a whole-row // click target. onShowDetails: (() -&gt; Unit)? = null, )</ID>
     <ID>CyclomaticComplexMethod:PrepareVotingRoundUseCase.kt$PrepareVotingRoundUseCase$suspend operator fun invoke(roundId: String): VotingRoundPreparationResult</ID>
-    <ID>CyclomaticComplexMethod:SubmitVotesUseCase.kt$SubmitVotesUseCase$@Suppress("TooGenericExceptionCaught") suspend operator fun invoke( roundId: String, choices: Map&lt;Int, Int&gt;, onProgress: (VotingSubmissionProgress) -&gt; Unit = {} ): VotingSubmissionResult</ID>
+    <ID>CyclomaticComplexMethod:SubmitVotesUseCase.kt$SubmitVotesUseCase$@Suppress("LongMethod") suspend operator fun invoke( roundId: String, choices: Map&lt;Int, Int&gt;, onProgress: (VotingSubmissionProgress) -&gt; Unit = {} ): VotingSubmissionResult</ID>
     <ID>CyclomaticComplexMethod:TrackVotingSharesUseCase.kt$TrackVotingSharesUseCase$suspend operator fun invoke(roundId: String): VotingShareTrackingResult</ID>
     <ID>CyclomaticComplexMethod:TransactionProgressVM.kt$TransactionProgressVM$private suspend fun createSuccessState( proposal: TransactionProposal, result: SubmitResult.Success ): TransactionProgressState</ID>
     <ID>CyclomaticComplexMethod:VoteConfirmSubmissionVM.kt$VoteConfirmSubmissionVM$private fun buildButtonState( isPrepared: Boolean, isKeystone: Boolean, keystoneSignedBundles: Int, preparedBundleCount: Int, hasPendingKeystoneRequest: Boolean, isSubmitting: Boolean, status: VoteSubmissionStatus )</ID>
@@ -21,8 +21,10 @@
     <ID>InstanceOfCheckForException:VotingApiProvider.kt$KtorVotingApiProvider$exception is CancellationException</ID>
     <ID>InstanceOfCheckForException:VotingServerFailoverException.kt$exception is CancellationException</ID>
     <ID>InvalidRange:KeystoneBatchChunkingTest.kt$KeystoneBatchChunkingTest$3 until 3</ID>
+    <ID>LargeClass:KtorVotingApiProviderTest.kt$KtorVotingApiProviderTest</ID>
     <ID>LargeClass:SubmitVotesUseCase.kt$SubmitVotesUseCase</ID>
     <ID>LargeClass:SubmitVotesUseCaseProgressTest.kt$SubmitVotesUseCaseProgressTest</ID>
+    <ID>LargeClass:VotingApiProvider.kt$KtorVotingApiProvider : VotingApiProvider</ID>
     <ID>LoopWithTooManyJumpStatements:VotingChainConfigRepository.kt$for</ID>
     <ID>LoopWithTooManyJumpStatements:VotingRecoveryRepository.kt$VotingRecoveryRepositoryImpl$for</ID>
     <ID>MagicNumber:MigrationFlowPreviews.kt$3</ID>
@@ -84,8 +86,10 @@
     <ID>TooGenericExceptionCaught:VoteChainConfigVM.kt$VoteChainConfigVM$throwable: Throwable</ID>
     <ID>TooGenericExceptionCaught:VoteCoinholderPollingVM.kt$VoteCoinholderPollingVM$throwable: Throwable</ID>
     <ID>TooGenericExceptionCaught:VoteProposalDetailVM.kt$VoteProposalDetailVM$throwable: Throwable</ID>
+    <ID>TooGenericExceptionCaught:VoteProposalListVM.kt$VoteProposalListVM$throwable: Throwable</ID>
     <ID>TooGenericExceptionCaught:VotingApiProvider.kt$KtorVotingApiProvider$exception: Exception</ID>
     <ID>TooGenericExceptionCaught:VotingApiProvider.kt$KtorVotingApiProvider$throwable: Throwable</ID>
+    <ID>TooGenericExceptionCaught:VotingProofPrecomputeRepository.kt$VotingProofPrecomputeRepositoryImpl$throwable: Throwable</ID>
     <ID>TooGenericExceptionCaught:VotingServerFailoverException.kt$exception: Exception</ID>
     <ID>TooGenericExceptionThrown:MigrationKeystoneSignVMTest.kt$MigrationKeystoneSignVMTest$throw RuntimeException("first attempt fails")</ID>
     <ID>TooManyFunctions:MigrationDriveOnce.kt$MigrationDriveOnce</ID>

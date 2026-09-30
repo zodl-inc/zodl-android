@@ -17,6 +17,7 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.provider.RoundsListResult
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepositoryImpl
+import io.ktor.client.HttpClient
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -76,9 +77,20 @@ class RefreshVotingRoundsUseCaseTest {
         override suspend fun submitDelegation(registration: DelegationRegistration): TxResult =
             error("unused")
 
+        override suspend fun submitDelegation(
+            registration: DelegationRegistration,
+            client: HttpClient
+        ): TxResult = error("unused")
+
         override suspend fun submitVoteCommitment(
             bundle: VoteCommitmentBundle,
             signature: CastVoteSignature
+        ): TxResult = error("unused")
+
+        override suspend fun submitVoteCommitment(
+            bundle: VoteCommitmentBundle,
+            signature: CastVoteSignature,
+            client: HttpClient
         ): TxResult = error("unused")
 
         override suspend fun fetchTallyResults(roundIdHex: String): TallyResults =
@@ -99,8 +111,18 @@ class RefreshVotingRoundsUseCaseTest {
             excludeUrls: List<String>
         ): List<String> = error("unused")
 
-        override suspend fun fetchTxConfirmation(txHash: String): TxConfirmation? =
-            error("unused")
+        override suspend fun fetchTxConfirmation(
+            txHash: String,
+            preferredServerUrl: String?,
+            consultOthers: Boolean
+        ): TxConfirmation? = error("unused")
+
+        override suspend fun fetchTxConfirmation(
+            txHash: String,
+            client: HttpClient,
+            preferredServerUrl: String?,
+            consultOthers: Boolean
+        ): TxConfirmation? = error("unused")
 
         override suspend fun fetchCommitmentTreeLatest(roundIdHex: String): CommitmentTreeLatest =
             error("unused")

@@ -109,6 +109,32 @@ internal fun VoteSubmissionBottomSection(state: VoteConfirmSubmissionState) {
                     )
                 }
 
+                is VoteSubmissionStatus.RunningRound -> {
+                    val total = status.totalProposals
+                    if (status.isRetrying) {
+                        // Takes priority over the normal N-of-M display below: during the
+                        // silent retry-delay gap (see SubmitVotesUseCase.
+                        // runRoundWithBundleFailureRetry's onRetrying callback), the screen
+                        // would otherwise show the exact same "Submitting vote X of Y..." text
+                        // it showed a moment ago, indistinguishable from a frozen app.
+                        stringRes(R.string.coinVote_confirmSubmission_progressRetrying)
+                    } else if (total != null && total > 0) {
+                        // completedProposals counts finished proposals (0..total-1 while the
+                        // round runs), but the string reads as "currently working on vote X of
+                        // Y" -- a 1-indexed current-item count. Without the +1 the label showed
+                        // "vote 0 of Y" at the very start and jumped straight from "Y-1 of Y" to
+                        // done, skipping the Yth vote entirely (reported by Michal, iOS thread
+                        // https://zodl.slack.com/archives/C0B4F0CUWMC/p1790242548417319).
+                        stringRes(
+                            R.string.coinVote_confirmSubmission_progressSubmittingVoteCount,
+                            ((status.completedProposals ?: 0) + 1).coerceAtMost(total),
+                            total
+                        )
+                    } else {
+                        stringRes(R.string.coinVote_submission_continuedProcessingTitle)
+                    }
+                }
+
                 else -> {
                     null
                 }
@@ -152,6 +178,16 @@ private fun VoteConfirmSubmissionState.submissionProgress(): Float {
         is VoteSubmissionStatus.Submitting -> {
             val offset = if (includesAuthorizationProgress) delegationWeight else 0f
             (offset + status.progress * (1f - offset)).coerceIn(0f, 1f)
+        }
+
+        is VoteSubmissionStatus.RunningRound -> {
+            val offset = if (includesAuthorizationProgress) delegationWeight else 0f
+            // status.proofProgress is already a 0..1 fraction of the WHOLE round's remaining
+            // work (VotingRoundProgressTracker sums every proposal currently in flight, not
+            // just the current step's own bundle) -- null only before anything measurable
+            // exists yet, parked at the delegation-phase boundary in that case.
+            val wholeRoundProgress = status.proofProgress ?: 0f
+            (offset + wholeRoundProgress * (1f - offset)).coerceIn(0f, 1f)
         }
 
         else -> {

@@ -20,7 +20,6 @@ import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.spackle.process.ProcessNameCompat
 import co.electriccoin.zcash.ui.common.provider.CrashReportingStorageProvider
 import co.electriccoin.zcash.ui.common.provider.MigrationNotifier
-import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.repository.ApplicationStateRepository
 import co.electriccoin.zcash.ui.common.repository.AutomaticServerRepository
 import co.electriccoin.zcash.ui.common.repository.FlexaRepository
@@ -28,11 +27,8 @@ import co.electriccoin.zcash.ui.common.repository.HomeMessageCacheRepository
 import co.electriccoin.zcash.ui.common.repository.WalletRepository
 import co.electriccoin.zcash.ui.common.repository.WalletSnapshotRepository
 import co.electriccoin.zcash.ui.common.usecase.ObserveSeedMismatchUseCase
-import co.electriccoin.zcash.ui.screen.error.ErrorArgs
-import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.voting.di.featureVotingModule
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 import org.koin.android.ext.koin.androidContext
@@ -51,8 +47,6 @@ class ZcashApplication : CoroutineApplication() {
     }
     private val walletRepository: WalletRepository by inject()
     private val automaticServerRepository: AutomaticServerRepository by inject()
-    private val synchronizerProvider: SynchronizerProvider by inject()
-    private val navigateToError: NavigateToErrorUseCase by inject()
     private val migrationNotifier: MigrationNotifier by inject()
     private val observeSeedMismatch: ObserveSeedMismatchUseCase by inject()
 
@@ -100,7 +94,6 @@ class ZcashApplication : CoroutineApplication() {
         applicationStateRepository.init()
         automaticServerRepository.init()
         walletRepository.init()
-        observeSynchronizerError()
         applicationScope.launch { observeSeedMismatch() }
     }
 
@@ -114,18 +107,6 @@ class ZcashApplication : CoroutineApplication() {
         applicationScope.launch(Dispatchers.Default) {
             runCatching { Synchronizer.preloadNativeLibrary() }
                 .onFailure { Twig.info { "SDK native library preload failed; will load lazily: $it" } }
-        }
-    }
-
-    private fun observeSynchronizerError() {
-        applicationScope.launch {
-            synchronizerProvider.synchronizer
-                .map { it?.initializationError }
-                .collect {
-                    if (it == Synchronizer.InitializationError.TOR_NOT_AVAILABLE) {
-                        navigateToError(ErrorArgs.SynchronizerTorInitError)
-                    }
-                }
         }
     }
 

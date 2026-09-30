@@ -1,20 +1,13 @@
 package co.electriccoin.zcash.ui.design.component
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement.spacedBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,17 +16,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.spackle.AndroidApiVersion
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
-import co.electriccoin.zcash.ui.design.theme.dimensions.ZashiDimensions
 import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 
 @Suppress("MagicNumber")
@@ -111,38 +100,11 @@ fun ZashiSeedText(
             }
         }
 
-        AnimatedVisibility(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.Center),
-            visible = !AndroidApiVersion.isAtLeastS && state.isRevealed.not(),
-            enter = fadeIn(),
-            exit = fadeOut(),
-        ) {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 18.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.ic_reveal),
-                    contentDescription = null,
-                    colorFilter = ColorFilter.tint(ZashiColors.Text.textPrimary)
-                )
-
-                Spacer(Modifier.height(ZashiDimensions.Spacing.spacingMd))
-
-                Text(
-                    text = stringResource(R.string.seed_recovery_reveal),
-                    style = ZashiTypography.textLg,
-                    fontWeight = FontWeight.SemiBold,
-                    color = ZashiColors.Text.textPrimary
-                )
-            }
-        }
+        ZashiHiddenContentOverlay(
+            isHidden = !state.isRevealed,
+            text = stringResource(R.string.seed_recovery_reveal),
+            modifier = Modifier.align(Alignment.Center),
+        )
     }
 }
 

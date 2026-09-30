@@ -10,7 +10,6 @@ interface SwapAsset {
     val tokenIcon: ImageResource
     val usdPrice: BigDecimal?
     val assetId: String
-    val contractAddress: String?
     val decimals: Int
     val blockchain: SwapBlockchain
 

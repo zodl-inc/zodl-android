@@ -6,7 +6,6 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.KeystoneFirmwareVersion
 import co.electriccoin.zcash.ui.common.model.SubmitResult
-import co.electriccoin.zcash.ui.common.usecase.OptInExchangeRateAndTorUseCase
 import co.electriccoin.zcash.ui.common.usecase.SendEmailUseCase
 import co.electriccoin.zcash.ui.common.viewmodel.STACKTRACE_LIMIT
 import co.electriccoin.zcash.ui.design.component.ButtonState
@@ -23,8 +22,7 @@ class ErrorVM(
     args: ErrorArgs,
     private val navigateToErrorBottom: NavigateToErrorUseCase,
     private val navigationRouter: NavigationRouter,
-    private val sendEmailUseCase: SendEmailUseCase,
-    private val optInExchangeRateAndTor: OptInExchangeRateAndTorUseCase
+    private val sendEmailUseCase: SendEmailUseCase
 ) : ViewModel() {
     val state: StateFlow<ErrorState> = MutableStateFlow(createState(args)).asStateFlow()
 
@@ -41,27 +39,9 @@ class ErrorVM(
             is ErrorArgs.ShieldingError -> createShieldingErrorState(args)
             is ErrorArgs.General -> createGeneralErrorState(args)
             is ErrorArgs.ShieldingGeneralError -> createGeneralShieldingErrorState(args)
-            is ErrorArgs.SynchronizerTorInitError -> createSdkSynchronizerError()
             is ErrorArgs.KeystoneFirmwareUpdateRequired -> createKeystoneFirmwareUpdateRequiredState(args)
             is ErrorArgs.KeystoneAccountUnsupported -> createKeystoneAccountUnsupportedState(args)
         }
-
-    private fun createSdkSynchronizerError(): ErrorState =
-        ErrorState(
-            title = stringRes(R.string.torSetup_alert_title),
-            message = stringRes(R.string.torSetup_alert_msg),
-            positive =
-                ButtonState(
-                    text = stringRes(R.string.torSetup_alert_disable),
-                    onClick = ::onDisableTorClick
-                ),
-            negative =
-                ButtonState(
-                    text = stringRes(R.string.torSetup_alert_dontDisable),
-                    onClick = { navigationRouter.back() }
-                ),
-            onBack = ::onBack,
-        )
 
     private fun createSyncErrorState(args: ErrorArgs.SyncError) =
         ErrorState(
@@ -255,6 +235,4 @@ class ErrorVM(
                 sendEmailUseCase(exception)
             }
         }
-
-    private fun onDisableTorClick() = viewModelScope.launch { optInExchangeRateAndTor(false) }
 }

@@ -85,6 +85,45 @@ data class VotingDelegationPirPrecomputeResult(
     val fetchedCount: Long
 )
 
+/**
+ * The bundle- and round-independent PIR proof cache warm-up result from
+ * [co.electriccoin.zcash.ui.common.provider.VotingCryptoClient.precomputePirProofs]. [servedRoot]
+ * is the 32-byte IMT root the connected PIR server served for this warm-up. Distinct from
+ * [VotingDelegationPirPrecomputeResult] (scoped to one delegation bundle, no served root).
+ */
+data class VotingPirWarmupResult(
+    val cachedCount: Long,
+    val fetchedCount: Long,
+    val servedRoot: ByteArray
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is VotingPirWarmupResult) return false
+        return cachedCount == other.cachedCount &&
+            fetchedCount == other.fetchedCount &&
+            servedRoot.contentEquals(other.servedRoot)
+    }
+
+    override fun hashCode(): Int {
+        var result = cachedCount.hashCode()
+        result = 31 * result + fetchedCount.hashCode()
+        result = 31 * result + servedRoot.contentHashCode()
+        return result
+    }
+}
+
+/**
+ * The result of [co.electriccoin.zcash.ui.common.provider.VotingCryptoClient.precomputeSnapshotBundles]:
+ * the round's persisted bundle count/eligible weight plus one PIR warm-up report per bundle, in
+ * bundle-index order (each entry reuses [VotingDelegationPirPrecomputeResult]'s cached/fetched
+ * shape).
+ */
+data class VotingSnapshotBundlePrecomputeResult(
+    val bundleCount: Int,
+    val eligibleWeight: Long,
+    val bundleReports: List<VotingDelegationPirPrecomputeResult>
+)
+
 data class VotingDelegationSubmission(
     val proof: ByteArray,
     val rk: ByteArray,

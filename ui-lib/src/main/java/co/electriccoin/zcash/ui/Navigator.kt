@@ -24,6 +24,7 @@ interface Navigator {
     suspend fun executeCommand(command: CustomNavigationCommand)
 }
 
+@Suppress("TooManyFunctions")
 class NavigatorImpl(
     private val activity: Activity,
     private val navController: NavHostController,
@@ -40,6 +41,7 @@ class NavigatorImpl(
             is NavigationCommand.Forward -> forward(command)
             is NavigationCommand.Replace -> replace(command)
             is NavigationCommand.ReplaceAll -> replaceAll(command)
+            is NavigationCommand.ReplaceFrom -> replaceFrom(command)
             NavigationCommand.Back -> navController.popBackStack()
             is NavigationCommand.BackTo -> backTo(command)
             NavigationCommand.BackToRoot -> backToRoot()
@@ -117,6 +119,50 @@ class NavigatorImpl(
                                 popUpTo(it) {
                                     inclusive = false
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @SuppressLint("RestrictedApi")
+    @OptIn(InternalSerializationApi::class)
+    private suspend fun replaceFrom(command: NavigationCommand.ReplaceFrom) {
+        val popUpToId = command.route.serializer().generateHashCode()
+        command.routes.forEachIndexed { index, route ->
+            when (route) {
+                co.electriccoin.zcash.ui.screen.flexa.Flexa -> {
+                    if (index == 0) {
+                        navController.popBackStack(destinationId = popUpToId, inclusive = true)
+                    }
+
+                    if (index != command.routes.lastIndex) {
+                        throw UnsupportedOperationException("Flexa can be opened as last screen only")
+                    }
+
+                    createFlexaFlow(flexaViewModel)
+                }
+
+                is ExternalUrl -> {
+                    if (index == 0) {
+                        navController.popBackStack(destinationId = popUpToId, inclusive = true)
+                    }
+
+                    if (index != command.routes.lastIndex) {
+                        throw UnsupportedOperationException("External url can be opened as last screen only")
+                    }
+
+                    applicationStateProvider.onThirdPartyUiShown()
+                    startWebBrowser(route)
+                }
+
+                else -> {
+                    navController.executeNavigation(route = route) {
+                        if (index == 0) {
+                            popUpTo(popUpToId) {
+                                inclusive = true
                             }
                         }
                     }
