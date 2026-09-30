@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -155,10 +154,7 @@ private fun ConfirmationButton(
 ) {
     if (isUnverifiedPollWarning) {
         ZashiButton(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp),
+            modifier = Modifier.fillMaxWidth(),
             state = state,
             contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
             defaultSecondaryColors =
