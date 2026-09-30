@@ -32,12 +32,17 @@ interface LedgerSigningDataSource {
     /**
      * Opens a link to [device], closing a link held from an earlier attempt first, and makes sure the
      * device runs the Zcash app, asking it to open the app if it is on its dashboard or in another app.
+     * [onOpeningZcashApp] is called at most once, before that request, when the device answered that
+     * it runs another app; it is not called when the Zcash app already runs or the answer is unknown.
      *
      * @throws LedgerException.AppNotInstalled if the device has no Zcash app.
      * @throws LedgerException.AppOpenRejected if the user declines opening it on the device.
      * @throws LedgerException for every other device or link failure; no link is held afterwards.
      */
-    suspend fun connect(device: LedgerBluetoothDevice)
+    suspend fun connect(
+        device: LedgerBluetoothDevice,
+        onOpeningZcashApp: () -> Unit,
+    )
 
     /**
      * Signs [pczt] for [account] over the open link. The link is closed on success and after every
@@ -86,15 +91,23 @@ class LedgerSigningDataSourceImpl(
     /**
      * Connects and makes sure the device runs the Zcash app, opening it if needed, before any signing
      * command is sent. The link kept is the one the app was confirmed on.
+     *
+     * The running app is asked for once up front, only to tell the user to answer the device's
+     * prompt; it costs one more query, and a query that stalls closes the link, which the open's
+     * first query then replaces with a fresh connection, at most about 10 seconds later.
      */
     @Suppress("TooGenericExceptionCaught")
-    override suspend fun connect(device: LedgerBluetoothDevice) =
+    override suspend fun connect(
+        device: LedgerBluetoothDevice,
+        onOpeningZcashApp: () -> Unit,
+    ) =
         mutex.withLock {
             closeLink()
             Twig.info { "Ledger signing: connecting" }
             val connected = ledgerScannerProvider.connect(device)
             transport =
                 try {
+                    if (isOtherAppRunning(connected)) onOpeningZcashApp()
                     LedgerZcashApp.ensureZcashAppOpen(connected) { ledgerScannerProvider.connect(device) }
                 } catch (e: CancellationException) {
                     withContext(NonCancellable) { connected.close() }
@@ -161,6 +174,21 @@ class LedgerSigningDataSourceImpl(
     override suspend fun close() =
         mutex.withLock {
             closeLink()
+        }
+
+    /**
+     * False when the Zcash app runs, and when the query fails: the open that follows then finds out
+     * for itself.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun isOtherAppRunning(connected: LedgerApduTransport): Boolean =
+        try {
+            !LedgerZcashApp.currentApp(connected).isZcash
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Twig.info { "Ledger signing: the running app is unknown: ${e.javaClass.simpleName}" }
+            false
         }
 
     /**

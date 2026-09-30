@@ -325,6 +325,9 @@ class LedgerProposalRepositoryImpl(
      * Connects to [device] within [CONNECT_TIMEOUT], the cap enrollment puts on its pairing, so a
      * device that never finishes opening the Zcash app cannot hold the sheet on Connecting. Returns
      * false once that cap passed, with the link closed and the session failed as a disconnect.
+     *
+     * [LedgerSigningState.OpeningZcashApp] is shown only while this session still is on
+     * [LedgerSigningState.Connecting].
      */
     private suspend fun connect(
         session: Int,
@@ -333,13 +336,24 @@ class LedgerProposalRepositoryImpl(
         Twig.info { "Ledger signing: stage Connecting" }
         publish(session, LedgerSigningState.Connecting)
         return try {
-            withTimeout(CONNECT_TIMEOUT) { ledgerSigningDataSource.connect(device) }
+            withTimeout(CONNECT_TIMEOUT) {
+                ledgerSigningDataSource.connect(device) { publishOpeningZcashApp(session) }
+            }
             true
         } catch (_: TimeoutCancellationException) {
             Twig.warn { "Ledger signing: connecting timed out" }
             ledgerSigningDataSource.close()
             publish(session, LedgerSigningState.Failed(LedgerIssue.disconnectedWhileSigning))
             false
+        }
+    }
+
+    private fun publishOpeningZcashApp(session: Int) {
+        synchronized(lock) {
+            if (generation == session && signingState.value == LedgerSigningState.Connecting) {
+                Twig.info { "Ledger signing: stage OpeningZcashApp" }
+                signingState.value = LedgerSigningState.OpeningZcashApp
+            }
         }
     }
 

@@ -37,6 +37,12 @@ sealed interface LedgerSigningState {
 
     data object Connecting : LedgerSigningState
 
+    /**
+     * The device was connected on its dashboard or in another app and is being asked to open the
+     * Zcash app; it shows "Open Zcash?" until the user answers.
+     */
+    data object OpeningZcashApp : LedgerSigningState
+
     data object Preparing : LedgerSigningState
 
     /**

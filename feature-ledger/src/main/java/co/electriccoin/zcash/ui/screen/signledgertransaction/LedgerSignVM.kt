@@ -176,6 +176,10 @@ class LedgerSignVM(
                 progress(R.string.ledger_sign_connecting)
             }
 
+            LedgerSigningState.OpeningZcashApp -> {
+                progress(R.string.ledger_sign_openingApp)
+            }
+
             LedgerSigningState.Preparing -> {
                 progress(R.string.ledger_sign_preparing)
             }

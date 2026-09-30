@@ -50,7 +50,7 @@ class LedgerProposalRepositoryScanTest : LedgerProposalRepositoryTestBase() {
             advanceTimeBy(1.seconds)
             runCurrent()
 
-            coVerify(exactly = 1) { ledgerSigningDataSource.connect(match { it.identifier == "AA" }) }
+            coVerify(exactly = 1) { ledgerSigningDataSource.connect(match { it.identifier == "AA" }, any()) }
             assertEquals(LedgerSigningState.Signed, repository.signingState.value)
         }
 
@@ -69,7 +69,7 @@ class LedgerProposalRepositoryScanTest : LedgerProposalRepositoryTestBase() {
             val state = repository.signingState.value
             assertTrue(state is LedgerSigningState.Selecting)
             assertEquals(2, state.devices.size)
-            coVerify(exactly = 0) { ledgerSigningDataSource.connect(any()) }
+            coVerify(exactly = 0) { ledgerSigningDataSource.connect(any(), any()) }
         }
 
     @Test
@@ -90,7 +90,7 @@ class LedgerProposalRepositoryScanTest : LedgerProposalRepositoryTestBase() {
             repository.selectDevice("BB")
             runCurrent()
 
-            coVerify(exactly = 1) { ledgerSigningDataSource.connect(match { it.identifier == "BB" }) }
+            coVerify(exactly = 1) { ledgerSigningDataSource.connect(match { it.identifier == "BB" }, any()) }
             assertEquals(LedgerSigningState.Signed, repository.signingState.value)
         }
 
@@ -116,7 +116,7 @@ class LedgerProposalRepositoryScanTest : LedgerProposalRepositoryTestBase() {
             givenPczt(ledgerAccount())
             runCurrent()
             clearMocks(ledgerSigningDataSource, answers = false)
-            coEvery { ledgerSigningDataSource.connect(any()) } coAnswers { awaitCancellation() }
+            coEvery { ledgerSigningDataSource.connect(any(), any()) } coAnswers { awaitCancellation() }
 
             devices.value = listOf(device("AA"))
             repository.startSigning()
@@ -154,7 +154,7 @@ class LedgerProposalRepositoryScanTest : LedgerProposalRepositoryTestBase() {
             advanceTimeBy(1.seconds)
             runCurrent()
 
-            coVerify(exactly = 1) { ledgerSigningDataSource.connect(match { it.identifier == "BB" }) }
+            coVerify(exactly = 1) { ledgerSigningDataSource.connect(match { it.identifier == "BB" }, any()) }
             assertEquals(LedgerSigningState.Signed, repository.signingState.value)
         }
 
@@ -169,7 +169,7 @@ class LedgerProposalRepositoryScanTest : LedgerProposalRepositoryTestBase() {
             runCurrent()
 
             assertEquals(LedgerSigningState.Failed(LedgerIssue.locationOff), repository.signingState.value)
-            coVerify(exactly = 0) { ledgerSigningDataSource.connect(any()) }
+            coVerify(exactly = 0) { ledgerSigningDataSource.connect(any(), any()) }
             verify(exactly = 0) { ledgerDeviceDataSource.observeDevices() }
         }
 
@@ -188,7 +188,7 @@ class LedgerProposalRepositoryScanTest : LedgerProposalRepositoryTestBase() {
             runCurrent()
 
             assertEquals(LedgerSigningState.Scanning, repository.signingState.value)
-            coVerify(exactly = 0) { ledgerSigningDataSource.connect(any()) }
+            coVerify(exactly = 0) { ledgerSigningDataSource.connect(any(), any()) }
 
             advanceTimeBy(LEDGER_SCAN_TIMEOUT)
             runCurrent()
@@ -234,7 +234,7 @@ class LedgerProposalRepositoryScanTest : LedgerProposalRepositoryTestBase() {
             runCurrent()
             var linked = false
             every { ledgerSigningDataSource.isLinked } answers { linked }
-            coEvery { ledgerSigningDataSource.connect(any()) } answers { linked = true }
+            coEvery { ledgerSigningDataSource.connect(any(), any()) } answers { linked = true }
             var signCalls = 0
             val signed = Pczt(byteArrayOf(5))
             val mismatch = mockk<LedgerException.DeviceMismatch>(relaxed = true)
@@ -263,13 +263,13 @@ class LedgerProposalRepositoryScanTest : LedgerProposalRepositoryTestBase() {
             assertTrue(selecting is LedgerSigningState.Selecting)
             assertEquals(1, selecting.devices.size)
             assertNull(selecting.selectedIdentifier)
-            coVerify(exactly = 1) { ledgerSigningDataSource.connect(any()) }
+            coVerify(exactly = 1) { ledgerSigningDataSource.connect(any(), any()) }
 
             repository.selectDevice("AA")
             runCurrent()
 
             assertEquals(LedgerSigningState.Signed, repository.signingState.value)
-            coVerify(exactly = 2) { ledgerSigningDataSource.connect(any()) }
+            coVerify(exactly = 2) { ledgerSigningDataSource.connect(any(), any()) }
 
             repository.cancelSigning()
             runCurrent()
@@ -279,7 +279,7 @@ class LedgerProposalRepositoryScanTest : LedgerProposalRepositoryTestBase() {
             runCurrent()
 
             assertEquals(LedgerSigningState.Signed, repository.signingState.value)
-            coVerify(exactly = 3) { ledgerSigningDataSource.connect(any()) }
+            coVerify(exactly = 3) { ledgerSigningDataSource.connect(any(), any()) }
         }
 
     @Test
@@ -311,7 +311,7 @@ class LedgerProposalRepositoryScanTest : LedgerProposalRepositoryTestBase() {
             assertTrue(failed is LedgerSigningState.Failed)
             assertEquals(LedgerIssueKind.NO_DEVICES, failed.issue.kind)
             assertEquals(LedgerIssueRetry.RECONNECT, failed.issue.retry)
-            coVerify(exactly = 0) { ledgerSigningDataSource.connect(any()) }
+            coVerify(exactly = 0) { ledgerSigningDataSource.connect(any(), any()) }
         }
 
     @Test

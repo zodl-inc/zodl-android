@@ -6,6 +6,7 @@ import cash.z.ecc.android.sdk.ledger.LedgerBluetoothDevice
 import cash.z.ecc.android.sdk.ledger.LedgerBluetoothTransport
 import cash.z.ecc.android.sdk.ledger.LedgerDeviceIdentity
 import cash.z.ecc.android.sdk.ledger.LedgerDeviceModel
+import cash.z.ecc.android.sdk.ledger.LedgerRunningApp
 import cash.z.ecc.android.sdk.ledger.LedgerZcashApp
 import cash.z.ecc.android.sdk.model.Account
 import cash.z.ecc.android.sdk.model.AccountUuid
@@ -25,6 +26,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertSame
@@ -58,6 +60,7 @@ class LedgerSigningDataSourceTest {
         mockkObject(LedgerDeviceIdentity.Companion)
         coEvery { LedgerDeviceIdentity.new(any()) } returns mockk(relaxed = true)
         mockkObject(LedgerZcashApp)
+        coEvery { LedgerZcashApp.currentApp(any()) } returns runningApp(isZcash = true)
         coEvery { LedgerZcashApp.ensureZcashAppOpen(any(), any()) } answers { firstArg() }
     }
 
@@ -72,7 +75,7 @@ class LedgerSigningDataSourceTest {
             val signed = Pczt(byteArrayOf(1))
             coEvery { synchronizer.signPcztWithLedger(any(), any(), any(), any(), any()) } returns signed
 
-            dataSource.connect(device())
+            dataSource.connect(device()) { }
             val result = dataSource.sign(Pczt(byteArrayOf(0)), ledgerAccount()) { }
 
             assertSame(signed, result)
@@ -88,7 +91,7 @@ class LedgerSigningDataSourceTest {
             val rejected = mockk<LedgerException.UserRejected>(relaxed = true) { every { isRestartable } returns true }
             coEvery { synchronizer.signPcztWithLedger(any(), any(), any(), any(), any()) } throws rejected
 
-            dataSource.connect(device())
+            dataSource.connect(device()) { }
             assertFailsWith<LedgerException.UserRejected> {
                 dataSource.sign(Pczt(byteArrayOf(0)), ledgerAccount()) { }
             }
@@ -105,7 +108,7 @@ class LedgerSigningDataSourceTest {
             val disconnected = mockk<LedgerException.Disconnected>(relaxed = true)
             coEvery { synchronizer.signPcztWithLedger(any(), any(), any(), any(), any()) } throws disconnected
 
-            dataSource.connect(device())
+            dataSource.connect(device()) { }
             assertFailsWith<LedgerException.Disconnected> {
                 dataSource.sign(Pczt(byteArrayOf(0)), ledgerAccount()) { }
             }
@@ -122,7 +125,7 @@ class LedgerSigningDataSourceTest {
             val timeout = mockk<LedgerException.Timeout>(relaxed = true)
             coEvery { synchronizer.signPcztWithLedger(any(), any(), any(), any(), any()) } throws timeout
 
-            dataSource.connect(device())
+            dataSource.connect(device()) { }
             assertFailsWith<LedgerException.Timeout> {
                 dataSource.sign(Pczt(byteArrayOf(0)), ledgerAccount()) { }
             }
@@ -139,7 +142,7 @@ class LedgerSigningDataSourceTest {
             coEvery { synchronizer.signPcztWithLedger(any(), any(), any(), any(), any()) } throws
                 CancellationException("boom")
 
-            dataSource.connect(device())
+            dataSource.connect(device()) { }
             assertFailsWith<CancellationException> {
                 dataSource.sign(Pczt(byteArrayOf(0)), ledgerAccount()) { }
             }
@@ -155,7 +158,7 @@ class LedgerSigningDataSourceTest {
             coEvery { ledgerScannerProvider.connect(any()) } returns transport
             coEvery { LedgerDeviceIdentity.new(any()) } throws IllegalArgumentException("corrupt")
 
-            dataSource.connect(device())
+            dataSource.connect(device()) { }
             assertFailsWith<LedgerBindingUnusableException> {
                 dataSource.sign(Pczt(byteArrayOf(0)), ledgerAccount()) { }
             }
@@ -182,8 +185,8 @@ class LedgerSigningDataSourceTest {
             val second = mockk<LedgerBluetoothTransport>(relaxed = true)
             coEvery { ledgerScannerProvider.connect(any()) } returnsMany listOf(first, second)
 
-            dataSource.connect(device("AA"))
-            dataSource.connect(device("BB"))
+            dataSource.connect(device("AA")) { }
+            dataSource.connect(device("BB")) { }
 
             coVerify(exactly = 1) { first.close() }
             coVerify(exactly = 0) { second.close() }
@@ -199,7 +202,7 @@ class LedgerSigningDataSourceTest {
             coEvery { LedgerZcashApp.ensureZcashAppOpen(connected, any()) } returns afterAppSwitch
             coEvery { synchronizer.signPcztWithLedger(any(), any(), any(), any(), any()) } returns Pczt(byteArrayOf(1))
 
-            dataSource.connect(device())
+            dataSource.connect(device()) { }
             dataSource.sign(Pczt(byteArrayOf(0)), ledgerAccount()) { }
 
             coVerify(exactly = 1) { LedgerZcashApp.ensureZcashAppOpen(connected, any()) }
@@ -217,12 +220,110 @@ class LedgerSigningDataSourceTest {
             val declined = mockk<LedgerException.AppOpenRejected>(relaxed = true)
             coEvery { LedgerZcashApp.ensureZcashAppOpen(any(), any()) } throws declined
 
-            val thrown = assertFailsWith<LedgerException.AppOpenRejected> { dataSource.connect(device()) }
+            val thrown = assertFailsWith<LedgerException.AppOpenRejected> { dataSource.connect(device()) { } }
 
             assertSame(declined, thrown)
             coVerify(exactly = 1) { connected.close() }
             assertFalse(dataSource.isLinked)
             coVerify(exactly = 0) { synchronizer.signPcztWithLedger(any(), any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun aDeviceInAnotherAppReportsOpeningTheZcashAppOnceBeforeTheOpen() =
+        runTest {
+            val connected = mockk<LedgerBluetoothTransport>(relaxed = true)
+            coEvery { ledgerScannerProvider.connect(any()) } returns connected
+            coEvery { LedgerZcashApp.currentApp(connected) } returns runningApp(isZcash = false)
+            var reports = 0
+            var reportsWhenOpening = -1
+            coEvery { LedgerZcashApp.ensureZcashAppOpen(connected, any()) } answers {
+                reportsWhenOpening = reports
+                firstArg()
+            }
+
+            dataSource.connect(device()) { reports++ }
+
+            assertEquals(1, reports)
+            assertEquals(1, reportsWhenOpening)
+            coVerify(exactly = 1) { LedgerZcashApp.currentApp(connected) }
+            coVerify(exactly = 1) { LedgerZcashApp.ensureZcashAppOpen(connected, any()) }
+            assertTrue(dataSource.isLinked)
+        }
+
+    @Test
+    fun aDeviceAlreadyInTheZcashAppReportsNothing() =
+        runTest {
+            val connected = mockk<LedgerBluetoothTransport>(relaxed = true)
+            coEvery { ledgerScannerProvider.connect(any()) } returns connected
+            var reports = 0
+
+            dataSource.connect(device()) { reports++ }
+
+            assertEquals(0, reports)
+            coVerify(exactly = 1) { LedgerZcashApp.ensureZcashAppOpen(connected, any()) }
+            assertTrue(dataSource.isLinked)
+        }
+
+    @Test
+    fun aFailedAppQueryReportsNothingAndStillOpensTheAppOnTheSameLink() =
+        runTest {
+            listOf(
+                mockk<LedgerException.Timeout>(relaxed = true),
+                mockk<LedgerException.Disconnected>(relaxed = true),
+                mockk<LedgerException.DeviceRefused>(relaxed = true),
+                IllegalStateException("query"),
+            ).forEach { failure ->
+                val connected = mockk<LedgerBluetoothTransport>(relaxed = true)
+                coEvery { ledgerScannerProvider.connect(any()) } returns connected
+                coEvery { LedgerZcashApp.currentApp(connected) } throws failure
+                var reports = 0
+
+                dataSource.connect(device()) { reports++ }
+
+                assertEquals(0, reports, "reports after ${failure.javaClass.simpleName}")
+                coVerify(exactly = 1) { LedgerZcashApp.ensureZcashAppOpen(connected, any()) }
+                coVerify(exactly = 0) { connected.close() }
+                assertTrue(dataSource.isLinked)
+            }
+        }
+
+    @Test
+    fun cancellationDuringTheAppQueryClosesTheLinkAndRethrows() =
+        runTest {
+            val connected = mockk<LedgerBluetoothTransport>(relaxed = true)
+            coEvery { ledgerScannerProvider.connect(any()) } returns connected
+            coEvery { LedgerZcashApp.currentApp(connected) } throws CancellationException("cancelled")
+            var reports = 0
+
+            assertFailsWith<CancellationException> { dataSource.connect(device()) { reports++ } }
+
+            assertEquals(0, reports)
+            coVerify(exactly = 1) { connected.close() }
+            coVerify(exactly = 0) { LedgerZcashApp.ensureZcashAppOpen(any(), any()) }
+            assertFalse(dataSource.isLinked)
+        }
+
+    @Test
+    fun aDeclinedOpenAfterTheReportClosesTheLinkAndThrowsAppOpenRejected() =
+        runTest {
+            val connected = mockk<LedgerBluetoothTransport>(relaxed = true)
+            coEvery { ledgerScannerProvider.connect(any()) } returns connected
+            coEvery { LedgerZcashApp.currentApp(connected) } returns runningApp(isZcash = false)
+            val declined = mockk<LedgerException.AppOpenRejected>(relaxed = true)
+            coEvery { LedgerZcashApp.ensureZcashAppOpen(any(), any()) } throws declined
+            var reports = 0
+
+            val thrown = assertFailsWith<LedgerException.AppOpenRejected> { dataSource.connect(device()) { reports++ } }
+
+            assertSame(declined, thrown)
+            assertEquals(1, reports)
+            coVerify(exactly = 1) { connected.close() }
+            assertFalse(dataSource.isLinked)
+        }
+
+    private fun runningApp(isZcash: Boolean) =
+        mockk<LedgerRunningApp> {
+            every { this@mockk.isZcash } returns isZcash
         }
 
     private fun device(identifier: String = "AA") =

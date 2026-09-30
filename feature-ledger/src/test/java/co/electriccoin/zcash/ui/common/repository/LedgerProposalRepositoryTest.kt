@@ -122,7 +122,7 @@ class LedgerProposalRepositoryTest : LedgerProposalRepositoryTestBase() {
             runCurrent()
 
             assertEquals(LedgerSigningState.Signed, repository.signingState.value)
-            coVerify(exactly = 0) { ledgerSigningDataSource.connect(any()) }
+            coVerify(exactly = 0) { ledgerSigningDataSource.connect(any(), any()) }
         }
 
     @Test
@@ -132,7 +132,7 @@ class LedgerProposalRepositoryTest : LedgerProposalRepositoryTestBase() {
             runCurrent()
             var linked = false
             every { ledgerSigningDataSource.isLinked } answers { linked }
-            coEvery { ledgerSigningDataSource.connect(any()) } answers { linked = true }
+            coEvery { ledgerSigningDataSource.connect(any(), any()) } answers { linked = true }
             var signCalls = 0
             val signed = Pczt(byteArrayOf(5))
             val disconnected = mockk<LedgerException.Disconnected>(relaxed = true)
@@ -162,7 +162,7 @@ class LedgerProposalRepositoryTest : LedgerProposalRepositoryTestBase() {
             runCurrent()
 
             assertEquals(LedgerSigningState.Signed, repository.signingState.value)
-            coVerify(exactly = 2) { ledgerSigningDataSource.connect(any()) }
+            coVerify(exactly = 2) { ledgerSigningDataSource.connect(any(), any()) }
         }
 
     @Test
@@ -348,7 +348,7 @@ class LedgerProposalRepositoryTest : LedgerProposalRepositoryTestBase() {
             assertTrue(failed is LedgerSigningState.Failed)
             assertEquals(LedgerIssueKind.UNBOUND, failed.issue.kind)
             assertEquals(LedgerIssueRetry.NONE, failed.issue.retry)
-            coVerify(exactly = 0) { ledgerSigningDataSource.connect(any()) }
+            coVerify(exactly = 0) { ledgerSigningDataSource.connect(any(), any()) }
         }
 
     /**
