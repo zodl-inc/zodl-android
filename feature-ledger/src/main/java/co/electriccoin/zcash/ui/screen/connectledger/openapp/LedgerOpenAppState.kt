@@ -3,16 +3,11 @@ package co.electriccoin.zcash.ui.screen.connectledger.openapp
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerErrorSheetState
-import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerInlineIssueState
 
 data class LedgerOpenAppState(
     /**
-     * What went wrong, kept on the page after the [errorSheet] is dismissed.
-     */
-    val inlineIssue: LedgerInlineIssueState?,
-    /**
-     * Loading and disabled while the Ledger is being asked to open the Zcash app; otherwise it asks
-     * again, or repeats the sheet's primary action after a failure.
+     * Continue, loading and disabled while the Ledger is being asked to open the Zcash app; otherwise
+     * it asks again, or repeats the sheet's primary action after a failure.
      */
     val primaryButton: ButtonState,
     val errorSheet: LedgerErrorSheetState?,
@@ -31,7 +26,6 @@ data class LedgerOpenAppState(
     companion object {
         val preview =
             LedgerOpenAppState(
-                inlineIssue = null,
                 primaryButton = ButtonState(stringRes("Continue")),
                 errorSheet = null,
                 permissionRequestNonce = 0,
@@ -56,12 +50,6 @@ data class LedgerOpenAppState(
 
         val previewDeclined =
             preview.copy(
-                inlineIssue =
-                    LedgerInlineIssueState.previewNoDevices.copy(
-                        title = declinedTitle,
-                        message = declinedMessage,
-                    ),
-                primaryButton = ButtonState(stringRes("Try again")),
                 errorSheet =
                     LedgerErrorSheetState.preview.copy(
                         title = declinedTitle,

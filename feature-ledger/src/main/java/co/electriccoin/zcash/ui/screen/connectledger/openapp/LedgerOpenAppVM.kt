@@ -16,7 +16,6 @@ import co.electriccoin.zcash.ui.common.usecase.OpenLedgerZcashAppResult
 import co.electriccoin.zcash.ui.common.usecase.OpenLedgerZcashAppUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.stringRes
-import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerInlineIssueState
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerIssueSheetBuilder
 import co.electriccoin.zcash.ui.screen.connectledger.common.toEnrollmentIssue
 import co.electriccoin.zcash.ui.screen.connectledger.handshake.LedgerHandshakeArgs
@@ -87,7 +86,6 @@ class LedgerOpenAppVM(
         val sheets = issueSheets(internal)
         val issue = internal.issue
         return LedgerOpenAppState(
-            inlineIssue = issue?.let { LedgerInlineIssueState(it.inlineIcon, it.inlineTitle, it.inlineMessage) },
             primaryButton = createPrimaryButton(internal, sheets),
             errorSheet = if (internal.isSheetShown && issue != null) sheets.sheet(issue) else null,
             permissionRequestNonce = internal.permissionRequestNonce,
@@ -97,7 +95,9 @@ class LedgerOpenAppVM(
     }
 
     /**
-     * An issue that trying again cannot fix leaves only a disabled Continue.
+     * The page button stays Continue: it asks the Ledger again after an issue that trying again
+     * fixes, and only an issue needing Settings or no Bluetooth at all words it after the sheet's
+     * action. An issue that trying again cannot fix leaves only a disabled Continue.
      */
     private fun createPrimaryButton(
         internal: LedgerOpenAppInternalState,
@@ -108,7 +108,7 @@ class LedgerOpenAppVM(
         return when {
             issue != null && !isOpening && sheets.hasAction(issue) -> {
                 ButtonState(
-                    text = sheets.actionText(issue),
+                    text = sheets.actionText(issue, tryAgainText = stringRes(R.string.ledger_connect_continue)),
                     onClick = sheets.action(issue),
                 )
             }

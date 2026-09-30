@@ -58,7 +58,14 @@ internal class LedgerIssueSheetBuilder(
     fun hasAction(issue: LedgerIssue): Boolean =
         issue.retry != LedgerIssueRetry.NONE || issue.kind == LedgerIssueKind.BLUETOOTH_UNAVAILABLE
 
-    fun actionText(issue: LedgerIssue): StringResource =
+    /**
+     * @param tryAgainText the label for an issue that trying again fixes; a page's own button may
+     * word it after its step rather than as the sheet's Try again
+     */
+    fun actionText(
+        issue: LedgerIssue,
+        tryAgainText: StringResource = stringRes(R.string.ledger_error_tryAgain),
+    ): StringResource =
         when {
             issue.kind == LedgerIssueKind.BLUETOOTH_UNAVAILABLE -> {
                 stringRes(R.string.ledger_error_unavailable_cta)
@@ -69,7 +76,7 @@ internal class LedgerIssueSheetBuilder(
             }
 
             else -> {
-                stringRes(R.string.ledger_error_tryAgain)
+                tryAgainText
             }
         }
 

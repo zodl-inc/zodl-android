@@ -76,7 +76,6 @@ class LedgerOpenAppVMTest {
             assertFalse(button.isEnabled)
             assertEquals(R.string.ledger_connect_continue, button.text.resourceId())
             assertNull(vm.state.value.errorSheet)
-            assertNull(vm.state.value.inlineIssue)
         }
 
     @Test
@@ -137,7 +136,6 @@ class LedgerOpenAppVMTest {
             assertTrue(button.isEnabled)
             assertFalse(button.isLoading)
             assertNull(vm.state.value.errorSheet)
-            assertNull(vm.state.value.inlineIssue)
 
             vm.onPermissionsGranted()
             runCurrent()
@@ -159,11 +157,8 @@ class LedgerOpenAppVMTest {
             val sheet = assertNotNull(vm.state.value.errorSheet)
             assertEquals(R.string.ledger_error_openAppRejected_title, sheet.title.resourceId())
             assertEquals(R.string.ledger_error_tryAgain, assertNotNull(sheet.primary).text.resourceId())
-            assertEquals(
-                R.string.ledger_error_openAppRejected_title,
-                assertNotNull(vm.state.value.inlineIssue).title.resourceId()
-            )
             val button = vm.state.value.primaryButton
+            assertEquals(R.string.ledger_connect_continue, button.text.resourceId())
             assertTrue(button.isEnabled)
             assertFalse(button.isLoading)
         }
@@ -252,7 +247,7 @@ class LedgerOpenAppVMTest {
 
             coVerify(exactly = 2) { openLedgerZcashApp.invoke() }
             verify(exactly = 1) { navigationRouter.forward(LedgerHandshakeArgs) }
-            assertNull(vm.state.value.inlineIssue)
+            assertNull(vm.state.value.errorSheet)
         }
 
     @Test
@@ -319,8 +314,9 @@ class LedgerOpenAppVMTest {
             verify(exactly = 1) { navigateToError.invoke(ErrorArgs.General(failure), any()) }
             assertNull(vm.state.value.errorSheet)
             assertEquals(
-                R.string.ledger_error_unknown_title,
-                assertNotNull(vm.state.value.inlineIssue).title.resourceId()
+                R.string.ledger_connect_continue,
+                vm.state.value.primaryButton.text
+                    .resourceId()
             )
             assertTrue(vm.state.value.primaryButton.isEnabled)
         }
@@ -388,7 +384,7 @@ class LedgerOpenAppVMTest {
         }
 
     @Test
-    fun thePageWordsItsIssuesLikeTheFigmaWaitingIndicator() =
+    fun thePageButtonKeepsContinueUnlessOnlySettingsCanFixTheIssue() =
         runTest(dispatcher) {
             val pending = CompletableDeferred<OpenLedgerZcashAppResult>()
             val openLedgerZcashApp =
@@ -398,23 +394,24 @@ class LedgerOpenAppVMTest {
             val denied = vm(openLedgerZcashApp = openLedgerZcashApp)
             collect(denied)
             runCurrent()
-            denied.onPermissionsDenied(true)
+            denied.onPermissionsDenied(false)
             runCurrent()
-            val permissions = assertNotNull(denied.state.value.inlineIssue)
-            assertEquals(R.drawable.ic_ledger_bluetooth_on, permissions.icon)
-            assertEquals(R.string.ledger_error_permissions_inlineTitle, permissions.title.resourceId())
-            assertEquals(R.string.ledger_error_permissions_inlineMessage, permissions.message.resourceId())
+            assertEquals(
+                R.string.ledger_error_permissions_cta,
+                denied.state.value.primaryButton.text
+                    .resourceId()
+            )
 
-            val unknown =
-                assertNotNull(failingWith(mockk<LedgerException.CapsMismatch>(relaxed = true)).state.value.inlineIssue)
-            assertEquals(R.string.ledger_error_unknown_title, unknown.title.resourceId())
-            assertEquals(R.string.ledger_error_unknown_inlineMessage, unknown.message.resourceId())
-
-            val declined =
-                assertNotNull(
-                    failingWith(mockk<LedgerException.AppOpenRejected>(relaxed = true)).state.value.inlineIssue
-                )
-            assertEquals(R.string.ledger_error_openAppRejected_message, declined.message.resourceId())
+            val declined = failingWith(mockk<LedgerException.AppOpenRejected>(relaxed = true))
+            assertEquals(
+                R.string.ledger_connect_continue,
+                declined.state.value.primaryButton.text
+                    .resourceId()
+            )
+            assertEquals(
+                R.string.ledger_error_tryAgain,
+                assertNotNull(declined.state.value.errorSheet?.primary).text.resourceId()
+            )
         }
 
     private fun openingWith(result: OpenLedgerZcashAppResult) =

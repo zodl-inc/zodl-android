@@ -26,10 +26,12 @@
     <string name="ledger_connect_turnOn_callout_message">Pairing works best from the home screen. Zodl opens the Zcash app for you in step 3.</string>
     <string name="ledger_connect_continue">Continue</string>
     <string name="ledger_openApp_title">Open the Zcash App</string>
-    <string name="ledger_openApp_message">Zodl is asking your Ledger to open the Zcash app. Confirm \"Open Zcash?\" on your Ledger.</string>
-    <string name="ledger_openApp_check1">Confirm opening the Zcash app on your Ledger</string>
-    <string name="ledger_openApp_check2">Don\'t have it yet? Install it from My Ledger in Ledger Live</string>
+    <string name="ledger_openApp_message">Confirm on your Ledger to open the Zcash app.</string>
+    <string name="ledger_openApp_check1">Confirm “Open Zcash” on your Ledger</string>
+    <string name="ledger_openApp_check2">Keep the Zcash app open until setup is done</string>
     <string name="ledger_openApp_check3">Keep the app open until setup is done</string>
+    <string name="ledger_openApp_callout_title">Don’t Have the Zcash App?</string>
+    <string name="ledger_openApp_callout_message">Install it from My Ledger in Ledger Wallet, then come back.</string>
     <string name="ledger_handshake_message">Zodl is connecting to the Zcash app. When your Ledger asks to export your account, check the request and approve it.</string>
     <string name="ledger_handshake_callout_title">Your Recovery Phrase Stays Safe</string>
     <string name="ledger_handshake_callout_message">Your recovery phrase never leaves your Ledger. Zodl only receives what it needs to show your balance and prepare transactions.</string>
