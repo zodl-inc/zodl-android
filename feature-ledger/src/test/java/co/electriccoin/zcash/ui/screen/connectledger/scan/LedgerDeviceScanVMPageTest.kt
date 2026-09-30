@@ -36,8 +36,7 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * The scan page behind each Figma connect error frame: its title, subtitle and navigation icon,
- * and the indicator it shows over the placeholder rows, or none where the device list stays.
+ * The scan page behind each Figma connect error frame: its title and subtitle, and the indicator it shows over the placeholder rows, or none where the device list stays.
  *
  * Every [LedgerException] subclass has an internal constructor in the SDK, so the tests stub
  * instances rather than building them.
@@ -59,7 +58,7 @@ class LedgerDeviceScanVMPageTest {
     }
 
     @Test
-    fun theSearchShowsTheSearchingCopyBehindAClose() =
+    fun theSearchShowsTheSearchingCopy() =
         runTest(dispatcher) {
             val vm = vm()
             collect(vm)
@@ -70,8 +69,7 @@ class LedgerDeviceScanVMPageTest {
             assertPage(
                 vm,
                 R.string.ledger_scan_searching_title,
-                R.string.ledger_scan_searching_subtitle,
-                LedgerDeviceScanNavigation.CLOSE
+                R.string.ledger_scan_searching_subtitle
             )
             assertNull(vm.state.value.inlineIssue)
         }
@@ -89,8 +87,7 @@ class LedgerDeviceScanVMPageTest {
             assertPage(
                 vm,
                 R.string.ledger_scan_searching_title,
-                R.string.ledger_scan_select_subtitle,
-                LedgerDeviceScanNavigation.CLOSE
+                R.string.ledger_scan_select_subtitle
             )
             assertInlineIssue(
                 vm,
@@ -117,8 +114,7 @@ class LedgerDeviceScanVMPageTest {
             assertPage(
                 vm,
                 R.string.ledger_scan_select_title,
-                R.string.ledger_scan_select_subtitle,
-                LedgerDeviceScanNavigation.BACK
+                R.string.ledger_scan_select_subtitle
             )
             assertInlineIssue(
                 vm,
@@ -129,7 +125,7 @@ class LedgerDeviceScanVMPageTest {
         }
 
     @Test
-    fun aListedDeviceShowsTheSelectionCopyBehindABackArrow() =
+    fun aListedDeviceShowsTheSelectionCopy() =
         runTest(dispatcher) {
             val vm = vm()
             collect(vm)
@@ -141,8 +137,7 @@ class LedgerDeviceScanVMPageTest {
             assertPage(
                 vm,
                 R.string.ledger_scan_select_title,
-                R.string.ledger_scan_select_subtitle,
-                LedgerDeviceScanNavigation.BACK
+                R.string.ledger_scan_select_subtitle
             )
         }
 
@@ -158,8 +153,7 @@ class LedgerDeviceScanVMPageTest {
             assertPage(
                 vm,
                 R.string.ledger_scan_select_title,
-                R.string.ledger_scan_select_subtitle,
-                LedgerDeviceScanNavigation.BACK
+                R.string.ledger_scan_select_subtitle
             )
             assertInlineIssue(
                 vm,
@@ -182,8 +176,7 @@ class LedgerDeviceScanVMPageTest {
             assertPage(
                 vm,
                 R.string.ledger_scan_select_title,
-                R.string.ledger_scan_select_subtitle,
-                LedgerDeviceScanNavigation.BACK
+                R.string.ledger_scan_select_subtitle
             )
             assertInlineIssue(
                 vm,
@@ -194,15 +187,14 @@ class LedgerDeviceScanVMPageTest {
         }
 
     @Test
-    fun aFailedConnectionShowsTheSearchingCopyBehindACloseAndTheSheetCopyInline() =
+    fun aFailedConnectionShowsTheSearchingCopyAndTheSheetCopyInline() =
         runTest(dispatcher) {
             val vm = connectedWithFailure(mockk<LedgerException.ConnectionFailed>(relaxed = true))
 
             assertPage(
                 vm,
                 R.string.ledger_scan_searching_title,
-                R.string.ledger_scan_searching_subtitle,
-                LedgerDeviceScanNavigation.CLOSE
+                R.string.ledger_scan_searching_subtitle
             )
             assertInlineIssue(
                 vm,
@@ -220,8 +212,7 @@ class LedgerDeviceScanVMPageTest {
             assertPage(
                 vm,
                 R.string.ledger_scan_searching_title,
-                R.string.ledger_scan_searching_subtitle,
-                LedgerDeviceScanNavigation.CLOSE
+                R.string.ledger_scan_searching_subtitle
             )
             assertInlineIssue(
                 vm,
@@ -247,8 +238,7 @@ class LedgerDeviceScanVMPageTest {
             assertPage(
                 vm,
                 R.string.ledger_scan_select_title,
-                R.string.ledger_scan_select_subtitle,
-                LedgerDeviceScanNavigation.BACK
+                R.string.ledger_scan_select_subtitle
             )
             assertNull(vm.state.value.inlineIssue)
             assertTrue(vm.state.value.primaryButton.isEnabled)
@@ -258,12 +248,10 @@ class LedgerDeviceScanVMPageTest {
         vm: LedgerDeviceScanVM,
         title: Int,
         subtitle: Int,
-        navigation: LedgerDeviceScanNavigation,
     ) {
         val state = vm.state.value
         assertEquals(title, state.title.resourceId())
         assertEquals(subtitle, state.subtitle.resourceId())
-        assertEquals(navigation, state.navigation)
     }
 
     private fun assertInlineIssue(

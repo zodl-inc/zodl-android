@@ -39,8 +39,8 @@
     <string name="ledger_scan_searching_title">Buscando dispositivos...</string>
     <string name="ledger_scan_searching_subtitle">Asegúrate de que tu Ledger esté desbloqueado y el Bluetooth activado.</string>
     <string name="ledger_scan_searching_cta">Buscando</string>
-    <string name="ledger_scan_select_title">Selecciona tu dispositivo</string>
-    <string name="ledger_scan_select_subtitle">Selecciona el dispositivo Ledger que quieres conectar.</string>
+    <string name="ledger_scan_select_title">Selecciona tu Ledger</string>
+    <string name="ledger_scan_select_subtitle">Después de tocar Conectar, comprueba que el código de tu teléfono coincida con el de tu Ledger.</string>
     <string name="ledger_scan_select_cta">Conectar</string>
     <string name="ledger_scan_connecting_subtitle">Comprueba que el código de tu teléfono coincida con el de tu Ledger y luego confírmalo en ambos.</string>
     <string name="ledger_scan_retry_cta">Intentar de nuevo</string>

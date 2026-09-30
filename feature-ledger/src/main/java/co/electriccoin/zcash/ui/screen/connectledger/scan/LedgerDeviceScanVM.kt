@@ -100,13 +100,7 @@ class LedgerDeviceScanVM(
         val page = pageCopy(hasDevices, isIdle, pageIssue)
         return LedgerDeviceScanState(
             title = stringRes(page.title),
-            subtitle =
-                if (hasDevices && isConnecting) {
-                    stringRes(R.string.ledger_scan_connecting_subtitle)
-                } else {
-                    stringRes(page.subtitle)
-                },
-            navigation = page.navigation,
+            subtitle = stringRes(page.subtitle),
             isScanning = internal.phase == LedgerScanPhase.SCANNING && !hasDevices,
             showDeviceSkeletons = !hasDevices && (!isIdle || pageIssue != null),
             devices =
@@ -128,10 +122,9 @@ class LedgerDeviceScanVM(
     }
 
     /**
-     * The page copy and navigation icon per the Figma connect error frames: a Bluetooth issue, or a
-     * device list, reads as the selection step behind a back arrow; no devices found keeps the
-     * searching title over the selection subtitle; any other issue reads as the search behind a
-     * close. Both icons leave the screen the same way.
+     * The page copy per the Figma connect frames: a Bluetooth issue, or a device list, reads as the
+     * selection step; no devices found keeps the searching title over the selection subtitle; any
+     * other issue reads as the search.
      */
     private fun pageCopy(
         hasDevices: Boolean,
@@ -143,7 +136,6 @@ class LedgerDeviceScanVM(
                 LedgerScanPageCopy(
                     title = R.string.ledger_scan_select_title,
                     subtitle = R.string.ledger_scan_select_subtitle,
-                    navigation = LedgerDeviceScanNavigation.BACK,
                 )
             }
 
@@ -151,15 +143,13 @@ class LedgerDeviceScanVM(
                 LedgerScanPageCopy(
                     title = R.string.ledger_scan_searching_title,
                     subtitle = R.string.ledger_scan_select_subtitle,
-                    navigation = LedgerDeviceScanNavigation.CLOSE,
                 )
             }
 
             pageIssue == null && isIdle -> {
                 LedgerScanPageCopy(
-                    title = R.string.ledger_scan_idle_title,
+                    title = R.string.ledger_flow_title,
                     subtitle = R.string.ledger_scan_searching_subtitle,
-                    navigation = LedgerDeviceScanNavigation.CLOSE,
                 )
             }
 
@@ -167,7 +157,6 @@ class LedgerDeviceScanVM(
                 LedgerScanPageCopy(
                     title = R.string.ledger_scan_searching_title,
                     subtitle = R.string.ledger_scan_searching_subtitle,
-                    navigation = LedgerDeviceScanNavigation.CLOSE,
                 )
             }
         }
@@ -225,8 +214,9 @@ class LedgerDeviceScanVM(
         else -> {
             ButtonState(
                 text = stringRes(R.string.ledger_scan_searching_cta),
+                icon = R.drawable.ic_ledger_loading.takeIf { internal.phase == LedgerScanPhase.SCANNING },
                 isEnabled = false,
-                isLoading = internal.phase == LedgerScanPhase.SCANNING,
+                isIconRotating = internal.phase == LedgerScanPhase.SCANNING,
             )
         }
     }
@@ -490,7 +480,6 @@ private data class LedgerScanInternalState(
 private data class LedgerScanPageCopy(
     @get:StringRes val title: Int,
     @get:StringRes val subtitle: Int,
-    val navigation: LedgerDeviceScanNavigation,
 )
 
 private val BLUETOOTH_ISSUE_KINDS =

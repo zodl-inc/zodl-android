@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.connectledger.scan
 
+import co.electriccoin.zcash.ledger.R
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
@@ -10,7 +11,6 @@ import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerInlineIssueSta
 data class LedgerDeviceScanState(
     val title: StringResource,
     val subtitle: StringResource,
-    val navigation: LedgerDeviceScanNavigation,
     val isScanning: Boolean,
     /**
      * Whether the placeholder rows stand in for devices still being looked for. False once the
@@ -43,12 +43,17 @@ data class LedgerDeviceScanState(
             LedgerDeviceScanState(
                 title = stringRes("Searching for Devices..."),
                 subtitle = stringRes("Make sure your Ledger is unlocked and Bluetooth is enabled."),
-                navigation = LedgerDeviceScanNavigation.CLOSE,
                 isScanning = true,
                 showDeviceSkeletons = true,
                 devices = emptyList(),
                 inlineIssue = null,
-                primaryButton = ButtonState(stringRes("Searching"), isEnabled = false, isLoading = true),
+                primaryButton =
+                    ButtonState(
+                        text = stringRes("Searching"),
+                        icon = R.drawable.ic_ledger_loading,
+                        isEnabled = false,
+                        isIconRotating = true,
+                    ),
                 errorSheet = null,
                 permissionRequestNonce = 0,
                 enableBluetoothRequestNonce = 0,
@@ -57,9 +62,8 @@ data class LedgerDeviceScanState(
 
         val previewSelect =
             previewSearching.copy(
-                title = stringRes("Select Your Device"),
-                subtitle = stringRes("Select the Ledger device you'd like to connect."),
-                navigation = LedgerDeviceScanNavigation.BACK,
+                title = stringRes("Select Your Ledger"),
+                subtitle = stringRes(SELECT_SUBTITLE),
                 isScanning = false,
                 showDeviceSkeletons = false,
                 devices =
@@ -70,21 +74,22 @@ data class LedgerDeviceScanState(
                 primaryButton = ButtonState(stringRes("Connect")),
             )
 
+        val previewSelectNone =
+            previewSelect.copy(
+                devices = listOf(LedgerDeviceItemState.preview),
+                primaryButton = ButtonState(stringRes("Connect"), isEnabled = false),
+            )
+
         val previewConnecting =
             previewSelect.copy(
-                subtitle =
-                    stringRes(
-                        "Check that the code on your phone matches the one on your Ledger, then confirm on both."
-                    ),
                 devices = previewSelect.devices.map { it.copy(isEnabled = false) },
                 primaryButton = ButtonState(stringRes("Connect"), isEnabled = false, isLoading = true),
             )
 
         val previewBluetoothOff =
             previewSearching.copy(
-                title = stringRes("Select Your Device"),
-                subtitle = stringRes("Select the Ledger device you'd like to connect."),
-                navigation = LedgerDeviceScanNavigation.BACK,
+                title = stringRes("Select Your Ledger"),
+                subtitle = stringRes(SELECT_SUBTITLE),
                 isScanning = false,
                 inlineIssue = LedgerInlineIssueState.preview,
                 primaryButton = ButtonState(stringRes("Try again")),
@@ -99,7 +104,7 @@ data class LedgerDeviceScanState(
 
         val previewNoDevices =
             previewSearching.copy(
-                subtitle = stringRes("Select the Ledger device you'd like to connect."),
+                subtitle = stringRes(SELECT_SUBTITLE),
                 isScanning = false,
                 inlineIssue = LedgerInlineIssueState.previewNoDevices,
                 primaryButton = ButtonState(stringRes("Try again")),
@@ -122,10 +127,5 @@ data class LedgerDeviceScanState(
     }
 }
 
-/**
- * The top bar's navigation icon; both leave the screen the same way.
- */
-enum class LedgerDeviceScanNavigation {
-    BACK,
-    CLOSE,
-}
+private const val SELECT_SUBTITLE =
+    "After you tap Connect, check that the code on your phone matches the one on your Ledger."

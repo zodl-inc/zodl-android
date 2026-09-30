@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -49,6 +50,7 @@ internal fun LedgerDeviceRow(
         modifier =
             modifier
                 .fillMaxWidth()
+                .selectionShadow(state.isSelected)
                 .clip(RoundedCornerShape(12.dp))
                 .background(ZashiColors.Surfaces.bgPrimary)
                 .selectionBorder(state.isSelected)
@@ -78,6 +80,18 @@ internal fun LedgerDeviceRow(
         SelectionIndicator(isSelected = state.isSelected)
     }
 }
+
+/**
+ * Figma lifts the selected row with its Shadow SM.
+ */
+private fun Modifier.selectionShadow(isSelected: Boolean) =
+    if (isSelected) {
+        this.shadow(SELECTED_ELEVATION.dp, RoundedCornerShape(12.dp))
+    } else {
+        this
+    }
+
+private const val SELECTED_ELEVATION = 2
 
 /**
  * The selected row is drawn with a heavier, darker stroke; selection is carried by the border and

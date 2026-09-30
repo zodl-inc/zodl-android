@@ -106,6 +106,61 @@ class LedgerDeviceScanVMTest {
         }
 
     @Test
+    fun whileScanningThePageShowsPlaceholderRowsAndADisabledSearchingButtonWithASpinningIcon() =
+        runTest(dispatcher) {
+            val vm = vm()
+            collect(vm)
+
+            vm.onPermissionsGranted()
+            runCurrent()
+
+            val state = vm.state.value
+            assertEquals(R.string.ledger_scan_searching_title, state.title.resourceId())
+            assertEquals(R.string.ledger_scan_searching_subtitle, state.subtitle.resourceId())
+            assertTrue(state.showDeviceSkeletons)
+            assertTrue(state.isScanning)
+            assertEquals(emptyList(), state.devices)
+            assertEquals(R.string.ledger_scan_searching_cta, state.primaryButton.text.resourceId())
+            assertEquals(R.drawable.ic_ledger_loading, state.primaryButton.icon)
+            assertTrue(state.primaryButton.isIconRotating)
+            assertFalse(state.primaryButton.isLoading)
+            assertFalse(state.primaryButton.isEnabled)
+        }
+
+    @Test
+    fun aListedDeviceReplacesThePlaceholdersWithSelectYourLedgerAndConnectWaitsForASelection() =
+        runTest(dispatcher) {
+            val vm = vm()
+            collect(vm)
+
+            vm.onPermissionsGranted()
+            devices.value = listOf(device("AA"))
+            runCurrent()
+
+            val listed = vm.state.value
+            assertEquals(R.string.ledger_scan_select_title, listed.title.resourceId())
+            assertEquals(R.string.ledger_scan_select_subtitle, listed.subtitle.resourceId())
+            assertFalse(listed.showDeviceSkeletons)
+            assertFalse(listed.isScanning)
+            assertFalse(listed.devices.single().isSelected)
+            assertEquals(R.string.ledger_scan_select_cta, listed.primaryButton.text.resourceId())
+            assertNull(listed.primaryButton.icon)
+            assertFalse(listed.primaryButton.isEnabled)
+
+            listed.devices
+                .single()
+                .onClick()
+            runCurrent()
+
+            assertTrue(
+                vm.state.value.devices
+                    .single()
+                    .isSelected
+            )
+            assertTrue(vm.state.value.primaryButton.isEnabled)
+        }
+
+    @Test
     fun aDeviceAlreadyInTheZcashAppGoesStraightToTheHandshakeOverAnIdleOpenAppStep() =
         runTest(dispatcher) {
             val navigationRouter = mockk<NavigationRouter>(relaxed = true)
@@ -183,7 +238,7 @@ class LedgerDeviceScanVMTest {
             runCurrent()
 
             assertEquals(
-                R.string.ledger_scan_connecting_subtitle,
+                R.string.ledger_scan_select_subtitle,
                 vm.state.value.subtitle
                     .resourceId()
             )
@@ -232,7 +287,6 @@ class LedgerDeviceScanVMTest {
                 vm.state.value.subtitle
                     .resourceId()
             )
-            assertEquals(LedgerDeviceScanNavigation.CLOSE, vm.state.value.navigation)
             assertTrue(vm.state.value.showDeviceSkeletons)
             assertEquals(
                 R.string.ledger_scan_retry_cta,

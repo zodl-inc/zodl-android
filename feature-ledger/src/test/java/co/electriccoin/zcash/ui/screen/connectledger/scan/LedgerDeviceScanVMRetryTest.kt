@@ -88,7 +88,7 @@ class LedgerDeviceScanVMRetryTest {
             assertFalse(button.isLoading)
             assertEquals(emptyList(), vm.state.value.devices)
             assertEquals(
-                R.string.ledger_scan_idle_title,
+                R.string.ledger_flow_title,
                 vm.state.value.title
                     .resourceId()
             )
