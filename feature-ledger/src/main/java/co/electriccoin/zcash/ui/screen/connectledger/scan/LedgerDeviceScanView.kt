@@ -47,7 +47,11 @@ fun LedgerDeviceScanView(state: LedgerDeviceScanState) {
         Spacer(LIST_EXTRA_TOP_GAP.dp)
         if (state.devices.isEmpty()) {
             if (state.showDeviceSkeletons) {
-                LedgerDeviceSkeletons(isShimmering = state.isScanning && state.inlineIssue == null) {
+                LedgerDeviceSkeletons(
+                    isShimmering = state.isScanning && state.inlineIssue == null,
+                    fadeStart = SKELETON_FADE_START,
+                    opaqueAt = 1f,
+                ) {
                     state.inlineIssue?.let {
                         LedgerInlineIssue(
                             state = it,
@@ -83,6 +87,12 @@ fun LedgerDeviceScanView(state: LedgerDeviceScanState) {
 private const val LIST_EXTRA_TOP_GAP = 8
 
 private const val INDICATOR_BOTTOM_OFFSET = 24
+
+/**
+ * Figma's step 2 fade covers the placeholder list from y 52 of its 216 dp down, clear at the top
+ * and opaque at the bottom, so the first row stays fully visible.
+ */
+private const val SKELETON_FADE_START = 52f / 216f
 
 @PreviewScreens
 @Composable

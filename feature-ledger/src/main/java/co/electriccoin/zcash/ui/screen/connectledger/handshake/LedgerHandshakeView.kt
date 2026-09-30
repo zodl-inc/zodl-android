@@ -71,7 +71,11 @@ fun LedgerHandshakeView(state: LedgerHandshakeState) {
         },
     ) {
         if (state.isConnecting) {
-            LedgerDeviceSkeletons(isShimmering = false) {
+            LedgerDeviceSkeletons(
+                isShimmering = false,
+                fadeStart = 0f,
+                opaqueAt = SKELETON_OPAQUE_AT,
+            ) {
                 WaitingIndicator(
                     modifier =
                         Modifier
@@ -142,6 +146,11 @@ private const val SPINNER_TURN_MILLIS = 1000
 private const val WAITING_TEXT_MAX_WIDTH = 280
 
 private const val INDICATOR_BOTTOM_OFFSET = 16
+
+/**
+ * Figma's step 4 fade starts at the top of the placeholder list and is opaque from halfway down.
+ */
+private const val SKELETON_OPAQUE_AT = 0.5f
 
 @PreviewScreens
 @Composable

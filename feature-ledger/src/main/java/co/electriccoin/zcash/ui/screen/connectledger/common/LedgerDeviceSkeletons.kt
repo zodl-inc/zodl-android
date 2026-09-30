@@ -28,14 +28,17 @@ import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
 import com.valentinilk.shimmer.shimmer
 
 /**
- * The Figma placeholder list of the Ledger screens: three rows under a gradient that turns fully
- * opaque halfway down, with [overlay] laid over them for an indicator anchored to their lower part.
- * The gradient spans only the rows; Figma's extends into the 20 dp inset beside them, where it lies
- * over the same background and cannot show.
+ * The Figma placeholder list of the Ledger screens: three rows under a gradient that is clear down
+ * to [fadeStart] and fully opaque from [opaqueAt], both fractions of the list's height, with
+ * [overlay] laid over them for an indicator anchored to their lower part. The gradient spans only
+ * the rows; Figma's extends into the 20 dp inset beside them, where it lies over the same
+ * background and cannot show.
  */
 @Composable
 internal fun LedgerDeviceSkeletons(
     isShimmering: Boolean,
+    fadeStart: Float,
+    opaqueAt: Float,
     modifier: Modifier = Modifier,
     overlay: @Composable BoxScope.() -> Unit = {},
 ) {
@@ -84,7 +87,8 @@ internal fun LedgerDeviceSkeletons(
                     .background(
                         Brush.verticalGradient(
                             0f to ZashiColors.Surfaces.bgPrimary.copy(alpha = 0f),
-                            GRADIENT_OPAQUE_AT to ZashiColors.Surfaces.bgPrimary,
+                            fadeStart to ZashiColors.Surfaces.bgPrimary.copy(alpha = 0f),
+                            opaqueAt to ZashiColors.Surfaces.bgPrimary,
                             1f to ZashiColors.Surfaces.bgPrimary,
                         )
                     )
@@ -117,5 +121,3 @@ private const val SKELETON_ROWS = 3
 private const val SKELETON_TITLE_WIDTH = 100
 
 private const val SKELETON_SUBTITLE_WIDTH = 68
-
-private const val GRADIENT_OPAQUE_AT = 0.5f
