@@ -29,7 +29,7 @@ class LedgerConnectVMTest {
 
         LedgerConnectVM(navigationRouter)
             .state.value
-            .onBackClick()
+            .onBack()
 
         verify(exactly = 1) { navigationRouter.back() }
     }
@@ -40,7 +40,7 @@ class LedgerConnectVMTest {
 
         LedgerConnectedVM(navigationRouter)
             .state.value
-            .onClose()
+            .onBack()
 
         verify(exactly = 1) { navigationRouter.backToRoot() }
     }

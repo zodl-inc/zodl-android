@@ -13,7 +13,7 @@ class LedgerTurnOnVM(
     val state: StateFlow<LedgerTurnOnState> =
         MutableStateFlow(
             LedgerTurnOnState(
-                onBackClick = ::onBack,
+                onBack = ::onBack,
                 onContinueClick = ::onContinue,
             )
         ).asStateFlow()

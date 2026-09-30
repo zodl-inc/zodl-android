@@ -1,9 +1,9 @@
 package co.electriccoin.zcash.ui.screen.connectledger.connected
 
 data class LedgerConnectedState(
-    val onClose: () -> Unit,
+    val onBack: () -> Unit,
 ) {
     companion object {
-        val preview = LedgerConnectedState(onClose = {})
+        val preview = LedgerConnectedState(onBack = {})
     }
 }

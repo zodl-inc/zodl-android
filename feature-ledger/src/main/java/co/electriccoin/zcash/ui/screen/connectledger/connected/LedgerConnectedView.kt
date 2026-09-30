@@ -79,7 +79,7 @@ fun LedgerConnectedView(state: LedgerConnectedState) {
                             .fillMaxWidth()
                             .testTag(LedgerConnectedTag.CLOSE_BTN),
                     text = stringResource(R.string.ledger_connected_cta),
-                    onClick = state.onClose,
+                    onClick = state.onBack,
                 )
             }
         }

@@ -27,7 +27,7 @@ class LedgerTurnOnVMTest {
 
         LedgerTurnOnVM(navigationRouter)
             .state.value
-            .onBackClick()
+            .onBack()
 
         verify(exactly = 1) { navigationRouter.back() }
     }

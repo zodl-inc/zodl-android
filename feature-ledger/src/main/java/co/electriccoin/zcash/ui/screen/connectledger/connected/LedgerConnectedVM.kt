@@ -7,16 +7,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * The end of enrollment: the only way on is Close, which unwinds to the wallet root. Back is
- * consumed by the screen, so there is nothing else to handle here.
+ * The end of enrollment: Close and system back both unwind to the wallet root.
  */
 class LedgerConnectedVM(
     private val navigationRouter: NavigationRouter,
 ) : ViewModel() {
     val state: StateFlow<LedgerConnectedState> =
         MutableStateFlow(
-            LedgerConnectedState(onClose = ::onClose)
+            LedgerConnectedState(onBack = ::onBack)
         ).asStateFlow()
 
-    private fun onClose() = navigationRouter.backToRoot()
+    private fun onBack() = navigationRouter.backToRoot()
 }

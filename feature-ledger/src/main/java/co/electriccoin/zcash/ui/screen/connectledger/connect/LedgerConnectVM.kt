@@ -13,7 +13,7 @@ class LedgerConnectVM(
     val state: StateFlow<LedgerConnectState> =
         MutableStateFlow(
             LedgerConnectState(
-                onBackClick = ::onBack,
+                onBack = ::onBack,
                 onContinueClick = ::onContinue,
             )
         ).asStateFlow()

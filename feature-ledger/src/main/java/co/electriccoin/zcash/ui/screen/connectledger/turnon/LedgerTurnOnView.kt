@@ -18,7 +18,7 @@ import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerStepLayout
 @Composable
 fun LedgerTurnOnView(state: LedgerTurnOnState) {
     LedgerStepLayout(
-        navigationAction = { ZashiTopAppBarBackNavigation(state.onBackClick) },
+        navigationAction = { ZashiTopAppBarBackNavigation(state.onBack) },
         step = 1,
         title = stringResource(R.string.ledger_connect_turnOn_title),
         description = stringResource(R.string.ledger_connect_turnOn_message),

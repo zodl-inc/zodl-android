@@ -11,7 +11,7 @@ import org.koin.androidx.compose.koinViewModel
 fun LedgerTurnOnScreen() {
     val vm = koinViewModel<LedgerTurnOnVM>()
     val state by vm.state.collectAsStateWithLifecycle()
-    BackHandler { state.onBackClick() }
+    BackHandler { state.onBack() }
     LedgerTurnOnView(state)
 }
 

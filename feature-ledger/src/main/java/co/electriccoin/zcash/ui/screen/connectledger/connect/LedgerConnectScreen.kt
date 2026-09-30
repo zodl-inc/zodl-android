@@ -11,7 +11,7 @@ import org.koin.androidx.compose.koinViewModel
 fun LedgerConnectScreen() {
     val vm = koinViewModel<LedgerConnectVM>()
     val state by vm.state.collectAsStateWithLifecycle()
-    BackHandler { state.onBackClick() }
+    BackHandler { state.onBack() }
     LedgerConnectView(state)
 }
 
