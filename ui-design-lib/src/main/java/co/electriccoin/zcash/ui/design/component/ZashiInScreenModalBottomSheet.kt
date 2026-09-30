@@ -49,15 +49,14 @@ fun <T : ModalBottomSheetState> ZashiInScreenModalBottomSheet(
             dragHandle = dragHandle
         ) {
             val sheetWindow = rememberSheetDialogWindow()
-            val blurRadiusPx = rememberSheetScrimBlurRadiusPx()
             val openFraction = remember { mutableFloatStateOf(0f) }
             SideEffect {
-                sheetWindow?.applySheetScrim(fraction = openFraction.floatValue, blurRadiusPx = blurRadiusPx)
+                sheetWindow?.applySheetScrim(fraction = openFraction.floatValue)
                 sheetWindow?.enableSheetScrim()
             }
             SheetOpenFractionTracker { fraction ->
                 openFraction.floatValue = fraction
-                sheetWindow?.applySheetScrim(fraction = fraction, blurRadiusPx = blurRadiusPx)
+                sheetWindow?.applySheetScrim(fraction = fraction)
             }
             BackHandler { it.onBack() }
             content(it)

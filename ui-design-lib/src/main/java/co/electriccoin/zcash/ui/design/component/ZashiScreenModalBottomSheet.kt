@@ -58,14 +58,10 @@ fun <T : ModalBottomSheetState> ZashiScreenModalBottomSheet(
     val hostWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
 
     val openFraction = remember { mutableFloatStateOf(0f) }
-    val blurRadiusPx = rememberSheetScrimBlurRadiusPx()
     SideEffect {
         hostWindow?.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT)
         hostWindow?.enableSheetScrim()
-        hostWindow?.applySheetScrim(
-            fraction = if (state != null) openFraction.floatValue else 0f,
-            blurRadiusPx = blurRadiusPx
-        )
+        hostWindow?.applySheetScrim(fraction = if (state != null) openFraction.floatValue else 0f)
         hostWindow?.setWindowAnimations(R.style.ZashiBottomSheetScrimAnimation)
     }
 
@@ -79,7 +75,7 @@ fun <T : ModalBottomSheetState> ZashiScreenModalBottomSheet(
             content = {
                 SheetOpenFractionTracker { fraction ->
                     openFraction.floatValue = fraction
-                    hostWindow?.applySheetScrim(fraction = fraction, blurRadiusPx = blurRadiusPx)
+                    hostWindow?.applySheetScrim(fraction = fraction)
                 }
                 BackHandler {
                     it.onBack()

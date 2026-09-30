@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.design.component
 
-import android.os.Build
 import android.view.View
 import android.view.Window
 import android.view.WindowManager
@@ -10,17 +9,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
-import kotlin.math.roundToInt
-
-/**
- * The blur radius behind a bottom sheet at full opening, in pixels for the current density.
- */
-@Composable
-internal fun rememberSheetScrimBlurRadiusPx(): Float = with(LocalDensity.current) { SCRIM_BLUR_RADIUS.toPx() }
 
 /**
  * The dialog window hosting the calling composable, or null outside a dialog.
@@ -35,27 +25,17 @@ internal fun rememberSheetDialogWindow(): Window? {
 }
 
 /**
- * Lets the window dim and, from Android 12, blur whatever lies behind it; [applySheetScrim] sets how much.
+ * Lets the window dim whatever lies behind it; [applySheetScrim] sets how much.
  */
 internal fun Window.enableSheetScrim() {
     addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
-    }
 }
 
 /**
- * Dims and blurs behind the window in proportion to [fraction], the share of the sheet on screen. The
- * blur needs the device's cross-window blur; where the system has it turned off, only the dim shows.
+ * Dims behind the window in proportion to [fraction], the share of the sheet on screen.
  */
-internal fun Window.applySheetScrim(
-    fraction: Float,
-    blurRadiusPx: Float
-) {
+internal fun Window.applySheetScrim(fraction: Float) {
     setDimAmount(SCRIM_DIM_AMOUNT * fraction)
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        attributes = attributes.apply { blurBehindRadius = (blurRadiusPx * fraction).roundToInt() }
-    }
 }
 
 /**
@@ -81,5 +61,3 @@ internal fun SheetOpenFractionTracker(onFraction: (Float) -> Unit) {
  * the dim amount alone reproduces the default scrim.
  */
 private const val SCRIM_DIM_AMOUNT = 0.32f
-
-private val SCRIM_BLUR_RADIUS = 12.dp

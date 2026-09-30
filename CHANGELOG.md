@@ -15,8 +15,8 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ### Changed:
 
-- The background behind a bottom sheet now darkens and blurs gradually as the sheet opens, closes or is
-  dragged, instead of fading on a timer, and no longer flashes dark for a moment when a sheet opens.
+- The background behind a bottom sheet now darkens gradually as the sheet opens, closes or is dragged,
+  instead of fading on a timer, and no longer flashes dark for a moment when a sheet opens.
 - The currency, swap asset and slippage sheets no longer close when dragged down.
 
 ## [3.14.0 (2738)] - 2026-09-16
