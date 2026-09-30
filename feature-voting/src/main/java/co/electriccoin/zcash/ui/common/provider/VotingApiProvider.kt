@@ -352,6 +352,21 @@ class KtorVotingApiProvider(
             ).toTxResult()
         }
 
+    // Milan's PR #12 review, point 3: as of the voting-round-driver merge from main, this overload
+    // (and submitVoteCommitment's below) has no production caller. SubmitVotesUseCase now submits
+    // delegations/votes exclusively through VotingCryptoClient.openRoundSession's SDK round driver,
+    // which does its own HTTP in Rust (round_session.rs: SessionRoute::Tor via a Tor-only
+    // ZodlVotingRoute, or SessionRoute::Direct via the zcash_voting crate's plain-HTTP DirectRoute
+    // when torLease is null) -- it never calls back into VotingApiProvider. So with Tor off, vote
+    // writes go over plain HTTP with no OHTTP involvement, while reads here (fetchServiceConfig,
+    // fetchAllRounds, fetchTallyResults, fetchTxConfirmationFromServer) still get this class's
+    // OHTTP-aware resolveVoteRoute dispatch. Fixing this needs an OHTTP-capable SessionRoute
+    // variant added to the SDK's round driver (a Rust/SDK-side design decision, not an app-side
+    // gap) -- see the fork's report on PR #12 for the full investigation. Left as-is rather than
+    // deleted: this is still the correct OHTTP-aware shape for a POST if the round driver is ever
+    // taught to call back into an app-supplied client, and the F-06 failover tests
+    // (VotingServerFailoverPostTimeoutTest) exercise the shared shouldTryNextVoteServer/
+    // withVoteServerFailover primitives directly, not this dead call path, so they remain valid.
     override suspend fun submitDelegation(
         registration: DelegationRegistration,
         client: HttpClient
@@ -707,7 +722,7 @@ class KtorVotingApiProvider(
      * purpose - it extends it, and it is this bound firing rather than a genuine outer cancellation
      * (see [withTorRequestTimeoutFallback]'s TRAP doc).
      */
-    @Suppress("TooGenericExceptionCaught", "ReturnCount")
+    @Suppress("TooGenericExceptionCaught")
     private suspend fun HttpClient.fetchTxConfirmationFromServer(
         baseUrl: String,
         txHash: String,
@@ -720,36 +735,7 @@ class KtorVotingApiProvider(
         return try {
             when (val route = resolveVoteRoute(baseUrl, torEnabled, isCustom, ohttpClient)) {
                 is VoteRoute.Ohttp -> {
-                    val response =
-                        try {
-                            route.client.execute(
-                                OhttpHttpClient.Request(
-                                    url = url,
-                                    headers = listOf("Cache-Control" to "no-cache"),
-                                ),
-                            )
-                        } catch (exception: Exception) {
-                            exception.rethrowIfCancellation()
-                            return TxConfirmationLookup.Unavailable
-                        }
-                    Twig.debug { "OHTTP GET $url -> HTTP ${response.status}" }
-                    when {
-                        response.status == HttpStatusCode.NotFound.value -> {
-                            TxConfirmationLookup.NotIndexed
-                        }
-
-                        response.status == HttpStatusCode.UnprocessableEntity.value -> {
-                            TxConfirmationLookup.Confirmed(response.body.decodeToString().toTxConfirmation())
-                        }
-
-                        response.status !in OHTTP_HTTP_SUCCESS -> {
-                            TxConfirmationLookup.Unavailable
-                        }
-
-                        else -> {
-                            TxConfirmationLookup.Confirmed(response.body.decodeToString().toTxConfirmation())
-                        }
-                    }
+                    fetchTxConfirmationViaOhttp(route, url)
                 }
 
                 is VoteRoute.Direct -> {
@@ -762,19 +748,7 @@ class KtorVotingApiProvider(
                 }
             }
         } catch (responseException: ResponseException) {
-            when (responseException.response.status) {
-                HttpStatusCode.UnprocessableEntity -> {
-                    TxConfirmationLookup.Confirmed(responseException.response.bodyAsText().toTxConfirmation())
-                }
-
-                HttpStatusCode.NotFound -> {
-                    TxConfirmationLookup.NotIndexed
-                }
-
-                else -> {
-                    TxConfirmationLookup.Unavailable
-                }
-            }
+            responseException.toTxConfirmationLookup()
         } catch (_: TimeoutCancellationException) {
             TxConfirmationLookup.Unavailable
         } catch (exception: Exception) {
@@ -784,6 +758,63 @@ class KtorVotingApiProvider(
             TxConfirmationLookup.Unavailable
         }
     }
+
+    /**
+     * The OHTTP leg of [fetchTxConfirmationFromServer], split out to keep that function's
+     * cyclomatic complexity under the detekt threshold after merging main's [TxConfirmationLookup]
+     * refactor with this OHTTP dispatch -- behavior is unchanged from the merged version.
+     */
+    @Suppress("TooGenericExceptionCaught")
+    private suspend fun fetchTxConfirmationViaOhttp(
+        route: VoteRoute.Ohttp,
+        url: String
+    ): TxConfirmationLookup {
+        val response =
+            try {
+                route.client.execute(
+                    OhttpHttpClient.Request(
+                        url = url,
+                        headers = listOf("Cache-Control" to "no-cache"),
+                    ),
+                )
+            } catch (exception: Exception) {
+                exception.rethrowIfCancellation()
+                return TxConfirmationLookup.Unavailable
+            }
+        Twig.debug { "OHTTP GET $url -> HTTP ${response.status}" }
+        return when {
+            response.status == HttpStatusCode.NotFound.value -> {
+                TxConfirmationLookup.NotIndexed
+            }
+
+            response.status == HttpStatusCode.UnprocessableEntity.value -> {
+                TxConfirmationLookup.Confirmed(response.body.decodeToString().toTxConfirmation())
+            }
+
+            response.status !in OHTTP_HTTP_SUCCESS -> {
+                TxConfirmationLookup.Unavailable
+            }
+
+            else -> {
+                TxConfirmationLookup.Confirmed(response.body.decodeToString().toTxConfirmation())
+            }
+        }
+    }
+
+    private suspend fun ResponseException.toTxConfirmationLookup(): TxConfirmationLookup =
+        when (response.status) {
+            HttpStatusCode.UnprocessableEntity -> {
+                TxConfirmationLookup.Confirmed(response.bodyAsText().toTxConfirmation())
+            }
+
+            HttpStatusCode.NotFound -> {
+                TxConfirmationLookup.NotIndexed
+            }
+
+            else -> {
+                TxConfirmationLookup.Unavailable
+            }
+        }
 
     override suspend fun fetchCommitmentTreeLatest(roundIdHex: String): CommitmentTreeLatest {
         val path = commitmentTreeLatestPath(roundIdHex)

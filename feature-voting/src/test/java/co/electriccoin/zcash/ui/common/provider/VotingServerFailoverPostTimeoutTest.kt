@@ -88,11 +88,16 @@ class VotingServerFailoverPostTimeoutTest {
                         }
                     )
                 }
-            // Expected: failover should give up after first timeout
+            // Expected: failover should give up after first timeout, surfacing the timeout itself
+            // (withVoteServerFailover re-throws the exception shouldTryNext rejected, rather than
+            // wrapping it in VotingServerFailoverException -- that wrapper is reserved for the case
+            // where every server was actually attempted and failed, so the #2481 reconcile/VAN-probe
+            // machinery downstream can tell "may have landed, stop guessing" apart from "definitely
+            // never reached a server").
             assertTrue("Failover should fail after timeout", result.isFailure)
             assertTrue(
-                "Should fail with VotingServerFailoverException",
-                result.exceptionOrNull() is VotingServerFailoverException
+                "Should surface the raw timeout instead of retrying",
+                result.exceptionOrNull() is TimeoutCancellationException
             )
 
             assertEquals(
