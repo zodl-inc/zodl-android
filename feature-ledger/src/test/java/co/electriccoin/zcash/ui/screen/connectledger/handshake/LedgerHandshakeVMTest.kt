@@ -134,8 +134,12 @@ class LedgerHandshakeVMTest {
             coVerify(exactly = 0) { pairLedgerDevice.invoke(any()) }
         }
 
+    /**
+     * Every failure also leaves an enabled page button behind the sheet, Retry or the sheet's own
+     * action, so dismissing the sheet never strands the user on a dead page.
+     */
     @Test
-    fun handshakeFailuresMapToTheirSheets() =
+    fun handshakeFailuresMapToTheirSheetsAndLeaveAnEnabledPageButton() =
         runTest(dispatcher) {
             mapOf(
                 mockk<LedgerException.WrongApp>(relaxed = true) {
@@ -147,6 +151,9 @@ class LedgerHandshakeVMTest {
                 mockk<LedgerException.DeviceRefused>(relaxed = true) {
                     every { isTransient } returns true
                 } to R.string.ledger_error_locked_title,
+                mockk<LedgerException.DeviceRefused>(relaxed = true) {
+                    every { isTransient } returns false
+                } to R.string.ledger_error_unknown_title,
                 mockk<LedgerException.UserRejected>(relaxed = true) to R.string.ledger_error_importRejected_title,
                 mockk<LedgerException.AppTooOld>(relaxed = true) to R.string.ledger_error_appTooOld_title,
                 mockk<LedgerException.DerivationBudgetExhausted>(relaxed = true) to
@@ -161,13 +168,48 @@ class LedgerHandshakeVMTest {
                 mockk<LedgerException.BluetoothUnauthorized>(relaxed = true) to
                     R.string.ledger_error_permissions_title,
                 mockk<LedgerException.CapsMismatch>(relaxed = true) to R.string.ledger_error_unknown_title,
+                mockk<LedgerException.AppNotInstalled>(relaxed = true) to R.string.ledger_error_appNotInstalled_title,
+                mockk<LedgerException.AppOpenRejected>(relaxed = true) to R.string.ledger_error_openAppRejected_title,
+                mockk<LedgerException.DeviceMismatch>(relaxed = true) to R.string.ledger_error_unknown_title,
+                mockk<LedgerException.MalformedReply>(relaxed = true) to R.string.ledger_error_unknown_title,
+                mockk<LedgerException.Internal>(relaxed = true) to R.string.ledger_error_unknown_title,
+                mockk<LedgerException.InvalidInput>(relaxed = true) to R.string.ledger_error_unknown_title,
+                mockk<LedgerException.BluetoothUnavailable>(relaxed = true) {
+                    every { scanErrorCode } returns 1
+                } to R.string.ledger_error_noDevices_title,
             ).forEach { (exception, expectedTitle) ->
                 val vm = failingWith(exception)
+                val label = exception.javaClass.simpleName
 
-                val sheet = assertNotNull(vm.state.value.errorSheet)
-                assertEquals(expectedTitle, sheet.title.resourceId())
-                assertFalse(vm.state.value.isConnecting)
+                val sheet = assertNotNull(vm.state.value.errorSheet, label)
+                assertEquals(expectedTitle, sheet.title.resourceId(), label)
+                assertFalse(vm.state.value.isConnecting, label)
+                val button = vm.state.value.primaryButton
+                assertTrue(button.isEnabled, label)
+                val sheetAction = assertNotNull(sheet.primary, label).text.resourceId()
+                assertTrue(
+                    button.text.resourceId() in setOf(R.string.ledger_handshake_retry, sheetAction),
+                    label
+                )
             }
+        }
+
+    @Test
+    fun aDeviceThatRefusesForGoodReadsAsSomethingWentWrongWithRetry() =
+        runTest(dispatcher) {
+            val vm =
+                failingWith(
+                    mockk<LedgerException.DeviceRefused>(relaxed = true) {
+                        every { isTransient } returns false
+                    }
+                )
+
+            val sheet = assertNotNull(vm.state.value.errorSheet)
+            assertEquals(R.string.ledger_error_unknown_title, sheet.title.resourceId())
+            assertEquals(R.string.ledger_error_unknown_message, sheet.message.resourceId())
+            val button = vm.state.value.primaryButton
+            assertEquals(R.string.ledger_handshake_retry, button.text.resourceId())
+            assertTrue(button.isEnabled)
         }
 
     @Test
