@@ -25,6 +25,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
@@ -90,6 +91,7 @@ fun ChooseHWWalletView(state: ChooseHWWalletState) {
                     text = state.subtitle.getValue(),
                     style = ZashiTypography.textMd,
                     color = ZashiColors.Text.textTertiary,
+                    lineHeight = BODY_LINE_HEIGHT.sp,
                 )
                 Spacer(Modifier.height(32.dp))
                 state.cards.forEachIndexed { index, card ->
@@ -131,6 +133,11 @@ private fun HWWalletCard(state: HWWalletCardState) {
 private const val CARD_INSET = 16
 
 private const val TEXT_EXTRA_INSET = 8
+
+/**
+ * Figma sets the body in Text MD at 16/22, tighter than the 24 sp line of [ZashiTypography.textMd].
+ */
+private const val BODY_LINE_HEIGHT = 22
 
 @PreviewScreens
 @Composable
