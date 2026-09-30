@@ -85,7 +85,7 @@ internal fun ColumnScope.LedgerErrorContent(
         }
         state.secondary?.let { secondary ->
             if (state.primary != null) {
-                Spacer(Modifier.height(BUTTON_GAP_ON_TOUCH_TARGET.dp))
+                Spacer(Modifier.height(BUTTON_GAP.dp))
             }
             ZashiButton(
                 state = secondary,
@@ -96,7 +96,7 @@ internal fun ColumnScope.LedgerErrorContent(
 }
 
 /**
- * Figma separates the buttons by 12 dp; each ZashiButton already pads its 40 dp body to a 48 dp
- * touch target, which leaves 8 dp of that gap, so only the rest is added.
+ * Figma separates the buttons by 12 dp; ZashiButton bodies are 48 dp tall with no touch-target
+ * padding around them, so the whole gap is added.
  */
-private const val BUTTON_GAP_ON_TOUCH_TARGET = 4
+private const val BUTTON_GAP = 12

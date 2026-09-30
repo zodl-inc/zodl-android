@@ -315,10 +315,7 @@ private fun StepPreview() =
             description = "Turn on your Ledger and enter your PIN.",
             bottomButton = {
                 ZashiButton(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(48.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     text = "Continue",
                     onClick = {},
                 )
@@ -348,10 +345,7 @@ private fun NumberedListPreview() =
             description = "Pair your Ledger with Zodl over Bluetooth in 4 quick steps.",
             bottomButton = {
                 ZashiButton(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .height(48.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     text = "Get Started",
                     onClick = {},
                 )

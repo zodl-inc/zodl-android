@@ -2,7 +2,6 @@ package co.electriccoin.zcash.ui.screen.connectledger.scan
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.runtime.Composable
@@ -39,7 +38,6 @@ fun LedgerDeviceScanView(state: LedgerDeviceScanState) {
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
                         .testTag(LedgerDeviceScanTag.PRIMARY_BTN),
             )
         },

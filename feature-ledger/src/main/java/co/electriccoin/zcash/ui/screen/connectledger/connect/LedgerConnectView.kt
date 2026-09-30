@@ -1,7 +1,6 @@
 package co.electriccoin.zcash.ui.screen.connectledger.connect
 
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -29,7 +28,6 @@ fun LedgerConnectView(state: LedgerConnectState) {
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
                         .testTag(LedgerConnectTag.CONNECT_BTN),
                 text = stringResource(R.string.ledger_intro_cta),
                 onClick = state.onContinueClick,

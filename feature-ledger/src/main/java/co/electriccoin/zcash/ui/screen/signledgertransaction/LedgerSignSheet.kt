@@ -78,9 +78,7 @@ internal fun LedgerSignSheet(state: LedgerSignSheetState?) {
                     )
                 }
             }
-            if (sheetState.content is LedgerSignContent.Progress) {
-                Spacer(12.dp)
-            }
+            CancelButtonGap(sheetState.content)
             ZashiButton(
                 state = sheetState.cancelButton,
                 modifier =
@@ -90,6 +88,28 @@ internal fun LedgerSignSheet(state: LedgerSignSheetState?) {
                         .testTag(LedgerSignTag.CANCEL_BTN),
                 defaultPrimaryColors = ZashiButtonDefaults.destructive2Colors(),
             )
+        }
+    }
+}
+
+/**
+ * Progress keeps 12 dp above Cancel Transaction; a button above it gets the 8 dp stacked-button gap.
+ */
+@Composable
+private fun ColumnScope.CancelButtonGap(content: LedgerSignContent) {
+    when (content) {
+        is LedgerSignContent.Progress -> {
+            Spacer(12.dp)
+        }
+
+        is LedgerSignContent.Devices -> {
+            Spacer(8.dp)
+        }
+
+        is LedgerSignContent.Issue -> {
+            if (content.primary != null) {
+                Spacer(8.dp)
+            }
         }
     }
 }

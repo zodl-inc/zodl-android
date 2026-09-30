@@ -1,7 +1,6 @@
 package co.electriccoin.zcash.ui.screen.connectledger.openapp
 
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -31,7 +30,6 @@ fun LedgerOpenAppView(state: LedgerOpenAppState) {
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .height(48.dp)
                         .testTag(LedgerOpenAppTag.CONTINUE_BTN),
             )
         },
