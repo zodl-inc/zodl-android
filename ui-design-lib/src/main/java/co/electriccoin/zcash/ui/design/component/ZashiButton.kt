@@ -7,8 +7,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -31,6 +31,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ui.design.R
 import co.electriccoin.zcash.ui.design.component.ButtonStyle.DESTRUCTIVE1
@@ -54,6 +55,7 @@ fun ZashiButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    minHeight: Dp = ZashiButtonDefaults.MIN_HEIGHT,
     @DrawableRes icon: Int? = null,
     @DrawableRes trailingIcon: Int? = null,
     hapticFeedbackType: HapticFeedbackType? = null,
@@ -81,6 +83,7 @@ fun ZashiButton(
     ZashiButton(
         state = state,
         modifier = modifier,
+        minHeight = minHeight,
         style = style,
         shape = shape,
         contentPadding = contentPadding,
@@ -94,6 +97,7 @@ fun ZashiButton(
 fun ZashiButton(
     state: ButtonState,
     modifier: Modifier = Modifier,
+    minHeight: Dp = ZashiButtonDefaults.MIN_HEIGHT,
     style: TextStyle = ZashiButtonDefaults.style,
     shape: Shape = ZashiButtonDefaults.shape,
     contentPadding: PaddingValues = ZashiButtonDefaults.contentPadding,
@@ -182,7 +186,7 @@ fun ZashiButton(
             },
         modifier =
             modifier
-                .defaultMinSize(minHeight = ZashiButtonDefaults.MIN_HEIGHT)
+                .heightIn(min = minHeight)
                 .pressMorph(interactionSource),
         interactionSource = interactionSource,
         shape = shape,
@@ -231,8 +235,8 @@ object ZashiButtonDefaults {
     const val IS_LIGHT_THRESHOLD = 0.5f
 
     /**
-     * Default minimum height of the design system's standard button. It applies only when the caller sets no
-     * height constraint of its own, so an explicit `Modifier.height` at the call site still wins.
+     * Default `minHeight` of [ZashiButton], the design system's standard button height. Compact buttons pass a
+     * smaller `minHeight` instead of fixing their height, so wrapped text can still grow them.
      */
     val MIN_HEIGHT = 48.dp
 
