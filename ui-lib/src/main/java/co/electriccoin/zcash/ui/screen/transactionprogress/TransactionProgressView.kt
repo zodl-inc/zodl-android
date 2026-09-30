@@ -112,6 +112,9 @@ private fun BottomBar(state: TransactionProgressState) {
                         .testTag(TransactionProgressTag.TX_PROGRESS_SECONDARY_BUTTON)
             )
         }
+        if (state.secondaryButton != null && state.primaryButton != null) {
+            Spacer(8.dp)
+        }
         if (state.primaryButton != null) {
             ZashiButton(
                 state = state.primaryButton,

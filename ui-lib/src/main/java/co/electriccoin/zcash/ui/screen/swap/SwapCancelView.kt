@@ -81,6 +81,7 @@ private fun Error(
             modifier = Modifier.fillMaxWidth(),
             defaultPrimaryColors = ZashiButtonDefaults.destructive1Colors()
         )
+        Spacer(8.dp)
         ZashiButton(
             state = state.positiveButton,
             modifier = Modifier.fillMaxWidth()

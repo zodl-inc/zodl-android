@@ -122,6 +122,7 @@ fun <T : ModalBottomSheetState> ZodlInfoBottomSheetView(
                                     borderColor = ZashiColors.Btns.Secondary.btnSecondaryBorder
                                 ),
                         )
+                        Spacer(8.dp)
                     }
                     ZashiButton(
                         state = primaryButton,
