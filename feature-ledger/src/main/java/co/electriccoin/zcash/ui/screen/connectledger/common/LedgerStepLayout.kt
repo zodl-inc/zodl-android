@@ -29,6 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import co.electriccoin.zcash.ledger.R
@@ -49,7 +50,7 @@ import co.electriccoin.zcash.ui.design.util.scaffoldPadding
 /**
  * The shell shared by the Ledger intro and the connect steps: frosted top bar that names the step
  * when there is one, wordmark, title and description, then [content], with the optional [callout]
- * and the [bottomButton] pushed to the bottom of the page.
+ * and the [bottomButton] pushed to the bottom of the page, [calloutGap] apart.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,6 +62,7 @@ internal fun LedgerStepLayout(
     bottomButton: @Composable ColumnScope.() -> Unit,
     descriptionColor: Color = ZashiColors.Text.textTertiary,
     callout: (@Composable () -> Unit)? = null,
+    calloutGap: Dp = 20.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val hazeState = rememberZashiFrostState()
@@ -117,7 +119,7 @@ internal fun LedgerStepLayout(
                 Spacer(1f)
                 if (callout != null) {
                     callout()
-                    Spacer(20.dp)
+                    Spacer(calloutGap)
                 }
                 bottomButton()
             }

@@ -41,6 +41,7 @@ fun LedgerOpenAppView(state: LedgerOpenAppState) {
                 text = stringResource(R.string.ledger_openApp_callout_message),
             )
         },
+        calloutGap = 24.dp,
     ) {
         LedgerChecklistCard {
             LedgerChecklistItem(number = 1, text = stringResource(R.string.ledger_openApp_check1))
