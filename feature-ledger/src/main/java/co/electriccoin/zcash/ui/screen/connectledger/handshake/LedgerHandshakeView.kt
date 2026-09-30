@@ -10,6 +10,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -58,6 +59,7 @@ fun LedgerHandshakeView(state: LedgerHandshakeState) {
                 modifier =
                     Modifier
                         .fillMaxWidth()
+                        .height(48.dp)
                         .testTag(LedgerHandshakeTag.PRIMARY_BTN),
             )
         },
