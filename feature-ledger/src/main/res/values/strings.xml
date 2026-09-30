@@ -107,6 +107,8 @@
     <!-- Signing error sheets -->
     <string name="ledger_sign_error_rejected_title">Transaction Rejected</string>
     <string name="ledger_sign_error_rejected_message">You rejected the transaction on your Ledger. Try again to review it on your device.</string>
+    <string name="ledger_sign_error_openAppRejected_title">Zcash App Not Opened</string>
+    <string name="ledger_sign_error_openAppRejected_message">You declined opening the Zcash app on your Ledger. Try again and confirm “Open Zcash” on your device.</string>
     <string name="ledger_sign_error_disconnected_message">Your Ledger disconnected before the transaction was signed. Check the connection and try again.</string>
     <string name="ledger_sign_error_wrongDevice_title">Wrong Ledger</string>
     <string name="ledger_sign_error_wrongDevice_message">This isn\'t the Ledger this account was connected with. Connect that Ledger and try again.</string>

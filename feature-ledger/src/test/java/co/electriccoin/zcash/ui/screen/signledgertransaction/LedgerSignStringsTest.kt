@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 
 /**
  * The sign sheet's copy as the resource files hold it: every `ledger_sign_` key in both languages,
- * the English status and body lines as Figma words them, and none of the keys the sheet dropped.
+ * the English lines as Figma words them, and none of the keys the sheet dropped.
  * The files are read from the module directory, which is the unit tests' working directory.
  */
 class LedgerSignStringsTest {
@@ -28,7 +28,7 @@ class LedgerSignStringsTest {
     }
 
     @Test
-    fun theEnglishStatusAndBodyLinesAreFigmasCopy() {
+    fun theEnglishSheetCopyIsFigmas() {
         mapOf(
             "ledger_sign_title" to "Confirm Transaction",
             "ledger_sign_body_beforeReview" to "Keep your Ledger unlocked and nearby.",
@@ -42,6 +42,9 @@ class LedgerSignStringsTest {
             "ledger_sign_awaitingReview" to "Check and approve on your Ledger",
             "ledger_sign_signing" to "Signing your transaction",
             "ledger_sign_cancel" to "Cancel Transaction",
+            "ledger_sign_error_openAppRejected_title" to "Zcash App Not Opened",
+            "ledger_sign_error_openAppRejected_message" to
+                "You declined opening the Zcash app on your Ledger. Try again and confirm “Open Zcash” on your device.",
         ).forEach { (key, value) -> assertEquals(value, english[key], key) }
     }
 

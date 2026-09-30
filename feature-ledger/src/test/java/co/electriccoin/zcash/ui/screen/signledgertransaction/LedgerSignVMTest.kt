@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.screen.signledgertransaction
 
 import android.app.Application
+import cash.z.ecc.android.sdk.exception.LedgerException
 import cash.z.ecc.android.sdk.model.AccountUuid
 import co.electriccoin.zcash.ledger.R
 import co.electriccoin.zcash.ui.NavigationRouter
@@ -8,10 +9,12 @@ import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
 import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.LedgerIssue
+import co.electriccoin.zcash.ui.common.model.LedgerIssueContext
 import co.electriccoin.zcash.ui.common.model.LedgerIssueKind
 import co.electriccoin.zcash.ui.common.model.LedgerIssueRetry
 import co.electriccoin.zcash.ui.common.model.LedgerSigningDevice
 import co.electriccoin.zcash.ui.common.model.LedgerSigningState
+import co.electriccoin.zcash.ui.common.model.toLedgerIssue
 import co.electriccoin.zcash.ui.common.repository.LedgerRepairTargetRepositoryImpl
 import co.electriccoin.zcash.ui.common.usecase.CancelLedgerSigningUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToLedgerRepairUseCase
@@ -331,6 +334,40 @@ class LedgerSignVMTest {
 
             val content = vm.state.value?.content as LedgerSignContent.Issue
             content.primary?.onClick?.invoke()
+            runCurrent()
+
+            verify(exactly = 1) { retryLedgerSigning.invoke() }
+        }
+
+    @Test
+    fun aDeclinedOpenShowsZcashAppNotOpenedWithTryAgainAndCancel() =
+        runTest(dispatcher) {
+            val retryLedgerSigning = mockk<RetryLedgerSigningUseCase>(relaxed = true)
+            val signingState =
+                MutableStateFlow<LedgerSigningState?>(
+                    LedgerSigningState.Failed(
+                        mockk<LedgerException.AppOpenRejected>(relaxed = true)
+                            .toLedgerIssue(LedgerIssueContext.SIGNING)
+                    )
+                )
+            val vm = vm(signingState = signingState, retryLedgerSigning = retryLedgerSigning)
+            collect(vm)
+            runCurrent()
+
+            val content = vm.state.value?.content as LedgerSignContent.Issue
+            assertEquals(R.string.ledger_sign_error_openAppRejected_title, content.title.resourceId())
+            assertEquals(R.string.ledger_sign_error_openAppRejected_message, content.message.resourceId())
+            val primary = assertNotNull(content.primary)
+            assertEquals(R.string.ledger_error_tryAgain, primary.text.resourceId())
+            assertEquals(
+                R.string.ledger_sign_cancel,
+                vm.state.value
+                    ?.cancelButton
+                    ?.text
+                    ?.resourceId()
+            )
+
+            primary.onClick()
             runCurrent()
 
             verify(exactly = 1) { retryLedgerSigning.invoke() }

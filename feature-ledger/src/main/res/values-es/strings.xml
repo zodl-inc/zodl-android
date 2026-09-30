@@ -107,6 +107,8 @@
     <!-- Signing error sheets -->
     <string name="ledger_sign_error_rejected_title">Transacción rechazada</string>
     <string name="ledger_sign_error_rejected_message">Rechazaste la transacción en tu Ledger. Inténtalo de nuevo para revisarla en tu dispositivo.</string>
+    <string name="ledger_sign_error_openAppRejected_title">No se abrió la aplicación Zcash</string>
+    <string name="ledger_sign_error_openAppRejected_message">Rechazaste abrir la aplicación Zcash en tu Ledger. Inténtalo de nuevo y confirma “Open Zcash” en tu dispositivo.</string>
     <string name="ledger_sign_error_disconnected_message">Tu Ledger se desconectó antes de firmar la transacción. Comprueba la conexión e inténtalo de nuevo.</string>
     <string name="ledger_sign_error_wrongDevice_title">Ledger incorrecto</string>
     <string name="ledger_sign_error_wrongDevice_message">Este no es el Ledger con el que se conectó esta cuenta. Conecta ese Ledger e inténtalo de nuevo.</string>

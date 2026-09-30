@@ -52,6 +52,27 @@ class LedgerIssueMapperTest {
         assertEquals(lockedDevice.kind, appNotReached.kind)
     }
 
+    /**
+     * Figma's frame 9 words a declined "Open Zcash" for signing; enrollment keeps its own sheet.
+     */
+    @Test
+    fun aDeclinedOpenReadsAsZcashAppNotOpenedOnlyWhileSigning() {
+        val declined = mockk<LedgerException.AppOpenRejected>(relaxed = true)
+
+        val signing = declined.toLedgerIssue(LedgerIssueContext.SIGNING)
+        assertEquals(R.string.ledger_sign_error_openAppRejected_title, signing.title.resourceId())
+        assertEquals(R.string.ledger_sign_error_openAppRejected_message, signing.message.resourceId())
+        assertEquals(LedgerIssueRetry.RECONNECT, signing.retry)
+
+        listOf(LedgerIssueContext.ENROLLMENT_PAIRING, LedgerIssueContext.ENROLLMENT).forEach { context ->
+            val enrollment = declined.toLedgerIssue(context)
+            assertEquals(R.string.ledger_error_openAppRejected_title, enrollment.title.resourceId(), context.name)
+            assertEquals(R.string.ledger_error_openAppRejected_message, enrollment.message.resourceId(), context.name)
+            assertEquals(signing.kind, enrollment.kind, context.name)
+            assertEquals(signing.icon, enrollment.icon, context.name)
+        }
+    }
+
     @Test
     fun theNamedIssuesCarryTheirKindRetryAndCopy() {
         assertExpected(
@@ -278,10 +299,13 @@ class LedgerIssueMapperTest {
                 mockk<LedgerException.AppNotInstalled>(relaxed = true),
                 Expected(LedgerIssueKind.APP_NOT_INSTALLED, LedgerIssueRetry.RECONNECT, Copies.appNotInstalled),
             ),
-            Row.all(
+            Row.same(
                 "AppOpenRejected",
                 mockk<LedgerException.AppOpenRejected>(relaxed = true),
-                Expected(LedgerIssueKind.OPEN_APP_REJECTED, LedgerIssueRetry.RECONNECT, Copies.openAppRejected),
+                enrollment =
+                    Expected(LedgerIssueKind.OPEN_APP_REJECTED, LedgerIssueRetry.RECONNECT, Copies.openAppRejected),
+                signing =
+                    Expected(LedgerIssueKind.OPEN_APP_REJECTED, LedgerIssueRetry.RECONNECT, Copies.signOpenAppRejected),
             ),
             Row.same(
                 "DeviceMismatch",
@@ -388,6 +412,8 @@ class LedgerIssueMapperTest {
             Copy(R.string.ledger_error_appNotInstalled_title, R.string.ledger_error_appNotInstalled_message)
         val openAppRejected =
             Copy(R.string.ledger_error_openAppRejected_title, R.string.ledger_error_openAppRejected_message)
+        val signOpenAppRejected =
+            Copy(R.string.ledger_sign_error_openAppRejected_title, R.string.ledger_sign_error_openAppRejected_message)
         val wrongDevice =
             Copy(R.string.ledger_sign_error_wrongDevice_title, R.string.ledger_sign_error_wrongDevice_message)
         val unbound = Copy(R.string.ledger_sign_error_unbound_title, R.string.ledger_sign_error_unbound_message)

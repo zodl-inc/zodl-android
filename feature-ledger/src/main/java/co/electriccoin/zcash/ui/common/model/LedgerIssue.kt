@@ -206,7 +206,8 @@ data class LedgerIssue(
  *
  * While signing, a device that has to be unlocked, switched to the Zcash app or have that app
  * restarted is looked for again on Try again, so the fresh link opens the Zcash app first; during
- * enrollment every try connects anew anyway.
+ * enrollment every try connects anew anyway. A declined request to open the Zcash app reads as
+ * Figma's "Zcash App Not Opened" while signing.
  */
 @Suppress("CyclomaticComplexMethod")
 fun LedgerException.toLedgerIssue(context: LedgerIssueContext): LedgerIssue =
@@ -255,12 +256,21 @@ fun LedgerException.toLedgerIssue(context: LedgerIssueContext): LedgerIssue =
         }
 
         is LedgerException.AppOpenRejected -> {
-            issue(
-                LedgerIssueKind.OPEN_APP_REJECTED,
-                LedgerIssueRetry.RECONNECT,
-                R.string.ledger_error_openAppRejected_title,
-                R.string.ledger_error_openAppRejected_message
-            )
+            if (context == LedgerIssueContext.SIGNING) {
+                issue(
+                    LedgerIssueKind.OPEN_APP_REJECTED,
+                    LedgerIssueRetry.RECONNECT,
+                    R.string.ledger_sign_error_openAppRejected_title,
+                    R.string.ledger_sign_error_openAppRejected_message
+                )
+            } else {
+                issue(
+                    LedgerIssueKind.OPEN_APP_REJECTED,
+                    LedgerIssueRetry.RECONNECT,
+                    R.string.ledger_error_openAppRejected_title,
+                    R.string.ledger_error_openAppRejected_message
+                )
+            }
         }
 
         is LedgerException.DeviceMismatch -> {
