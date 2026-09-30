@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.connectledger.handshake
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -20,6 +21,8 @@ fun LedgerHandshakeScreen() {
         onBluetoothEnabled = vm::onBluetoothEnabled,
         onBluetoothEnableDeclined = vm::onBluetoothEnableDeclined,
     )
+
+    BackHandler { state.onBack() }
 
     LedgerHandshakeView(state)
 }

@@ -24,6 +24,8 @@ import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.util.SettingsUtil
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -187,12 +189,16 @@ class LedgerOpenAppVM(
     /**
      * On success the page goes back to idle behind the handshake, so returning to it waits for the
      * user instead of asking the device again. A request that runs out of time reads as a device
-     * that disconnected during setup, as on the handshake.
+     * that disconnected during setup, as on the handshake. A result that arrives after back has
+     * cancelled the request is dropped, so it cannot push the handshake over the screen the user
+     * went back to.
      */
     @Suppress("TooGenericExceptionCaught")
     private suspend fun openApp() {
         try {
-            when (openLedgerZcashApp()) {
+            val result = openLedgerZcashApp()
+            currentCoroutineContext().ensureActive()
+            when (result) {
                 OpenLedgerZcashAppResult.Opened -> {
                     internalState.update { it.copy(phase = LedgerOpenAppPhase.IDLE) }
                     navigationRouter.forward(LedgerHandshakeArgs)

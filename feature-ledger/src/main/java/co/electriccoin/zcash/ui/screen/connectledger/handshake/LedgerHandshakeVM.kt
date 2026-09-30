@@ -32,6 +32,8 @@ import co.electriccoin.zcash.ui.screen.error.NavigateToErrorUseCase
 import co.electriccoin.zcash.ui.util.SettingsUtil
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -230,11 +232,16 @@ class LedgerHandshakeVM(
      *
      * The phone bonded with the device on the scan screen, so a lost connection here, including the
      * handshake running out of time, reads as a device that disconnected during setup.
+     *
+     * A result that arrives after back has cancelled the attempt is dropped, so it cannot navigate
+     * over the screen the user went back to.
      */
     @Suppress("TooGenericExceptionCaught")
     private suspend fun handshake(device: LedgerBluetoothDevice) {
         try {
-            when (val result = pairLedgerDevice(device)) {
+            val result = pairLedgerDevice(device)
+            currentCoroutineContext().ensureActive()
+            when (result) {
                 is PairLedgerDeviceResult.Paired -> {
                     navigationRouter.replace(HWNewOrActiveArgs(HWWalletEnrollment.Ledger))
                 }

@@ -17,6 +17,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
@@ -27,6 +28,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -340,6 +342,36 @@ class LedgerOpenAppVMTest {
             assertTrue(isCancelled)
             verify(exactly = 1) { navigationRouter.back() }
             verify(exactly = 0) { navigationRouter.forward(*anyVararg()) }
+        }
+
+    /**
+     * The device can still answer while the screen is on its way out: an app that opens after back
+     * must not push the handshake over the device picker the user returned to.
+     */
+    @Test
+    fun anAppThatOpensAfterBackDoesNotGoOnToTheHandshake() =
+        runTest(dispatcher) {
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+            val pending = CompletableDeferred<OpenLedgerZcashAppResult>()
+            val openLedgerZcashApp =
+                mockk<OpenLedgerZcashAppUseCase> {
+                    coEvery { this@mockk.invoke() } coAnswers {
+                        withContext(NonCancellable) { pending.await() }
+                    }
+                }
+            val vm = vm(openLedgerZcashApp = openLedgerZcashApp, navigationRouter = navigationRouter)
+            collect(vm)
+            runCurrent()
+
+            vm.state.value.onBack()
+            runCurrent()
+            pending.complete(OpenLedgerZcashAppResult.Opened)
+            runCurrent()
+
+            verify(exactly = 1) { navigationRouter.back() }
+            verify(exactly = 0) { navigationRouter.forward(*anyVararg()) }
+            verify(exactly = 0) { navigationRouter.backToRoot() }
+            assertFalse(vm.state.value.primaryButton.isLoading)
         }
 
     @Test

@@ -26,6 +26,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
@@ -36,6 +37,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -560,6 +562,36 @@ class LedgerHandshakeVMTest {
 
             assertTrue(isCancelled)
             verify(exactly = 1) { navigationRouter.back() }
+        }
+
+    /**
+     * The device can still answer while the screen is on its way out: a pairing that completes
+     * after back must not replace the open-the-app screen the user returned to.
+     */
+    @Test
+    fun aPairingThatCompletesAfterBackDoesNotNavigate() =
+        runTest(dispatcher) {
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+            val pending = CompletableDeferred<PairLedgerDeviceResult>()
+            val pairLedgerDevice =
+                mockk<PairLedgerDeviceUseCase> {
+                    coEvery { this@mockk.invoke(any()) } coAnswers {
+                        withContext(NonCancellable) { pending.await() }
+                    }
+                }
+            val vm = vm(pairLedgerDevice = pairLedgerDevice, navigationRouter = navigationRouter)
+            collect(vm)
+            runCurrent()
+
+            vm.state.value.onBack()
+            runCurrent()
+            pending.complete(PairLedgerDeviceResult.Paired)
+            runCurrent()
+
+            verify(exactly = 1) { navigationRouter.back() }
+            verify(exactly = 0) { navigationRouter.replace(*anyVararg()) }
+            verify(exactly = 0) { navigationRouter.forward(*anyVararg()) }
+            assertNull(vm.state.value.errorSheet)
         }
 
     @Test

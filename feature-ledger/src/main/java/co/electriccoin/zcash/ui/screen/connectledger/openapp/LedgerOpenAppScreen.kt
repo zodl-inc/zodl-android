@@ -1,5 +1,6 @@
 package co.electriccoin.zcash.ui.screen.connectledger.openapp
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -21,6 +22,8 @@ fun LedgerOpenAppScreen(args: LedgerOpenAppArgs) {
         onBluetoothEnabled = vm::onBluetoothEnabled,
         onBluetoothEnableDeclined = vm::onBluetoothEnableDeclined,
     )
+
+    BackHandler { state.onBack() }
 
     LedgerOpenAppView(state)
 }
