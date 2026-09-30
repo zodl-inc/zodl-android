@@ -38,6 +38,13 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - Choosing to keep the screen on while Zodl syncs now works after connecting a Ledger or a Keystone,
   and the screen stays on until that sync has finished after a restore or a resync as well.
 
+### Changed:
+
+- The background behind bottom sheets built on the Zashi screen and in-screen sheet wrappers now darkens
+  gradually as the sheet opens, closes or is dragged, instead of fading on a timer, and no longer flashes dark
+  for a moment when a sheet opens.
+- The currency, swap asset and slippage sheets no longer close when dragged down.
+
 ## [3.14.0 (2738)] - 2026-09-16
 
 ### Added:
