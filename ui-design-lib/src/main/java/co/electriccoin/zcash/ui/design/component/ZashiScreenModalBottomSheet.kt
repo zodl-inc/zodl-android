@@ -57,10 +57,13 @@ fun <T : ModalBottomSheetState> ZashiScreenModalBottomSheet(
     val hostWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
 
     val openFraction = remember { mutableFloatStateOf(0f) }
-    SideEffect {
+    DisposableEffect(hostWindow) {
         hostWindow?.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT)
-        hostWindow?.setSheetScrim(fraction = if (state != null) openFraction.floatValue else 0f)
         hostWindow?.setWindowAnimations(R.style.ZashiBottomSheetScrimAnimation)
+        onDispose { }
+    }
+    SideEffect {
+        hostWindow?.setSheetScrim(fraction = if (state != null) openFraction.floatValue else 0f)
     }
 
     state?.let {
@@ -153,8 +156,9 @@ fun ZashiScreenModalBottomSheet(
 @Composable
 private fun BottomSheetWindowAnimationEffect() {
     val window = currentDialogWindow()
-    SideEffect {
+    DisposableEffect(window) {
         window?.setWindowAnimations(R.style.ZashiBottomSheetDialogAnimation)
+        onDispose { }
     }
 }
 

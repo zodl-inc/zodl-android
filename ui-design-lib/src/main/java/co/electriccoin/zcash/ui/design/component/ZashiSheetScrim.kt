@@ -11,6 +11,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
+import kotlin.math.abs
 
 /**
  * The dialog window hosting the calling composable, or null outside a dialog.
@@ -26,10 +27,16 @@ private fun View.findDialogWindow(): Window? =
 
 /**
  * Lets the window dim whatever lies behind it, in proportion to [fraction], the share of the sheet on screen.
+ * Every attribute write relayouts the window, so writes that would change nothing are skipped.
  */
 internal fun Window.setSheetScrim(fraction: Float) {
-    addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-    setDimAmount(SCRIM_DIM_AMOUNT * fraction)
+    if (attributes.flags and WindowManager.LayoutParams.FLAG_DIM_BEHIND == 0) {
+        addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+    }
+    val dimAmount = SCRIM_DIM_AMOUNT * fraction
+    if (abs(attributes.dimAmount - dimAmount) >= DIM_AMOUNT_TOLERANCE) {
+        setDimAmount(dimAmount)
+    }
 }
 
 /**
@@ -55,3 +62,5 @@ internal fun SheetOpenFractionTracker(onFraction: (Float) -> Unit) {
  * the dim amount alone reproduces the default scrim.
  */
 private const val SCRIM_DIM_AMOUNT = 0.32f
+
+private const val DIM_AMOUNT_TOLERANCE = 0.001f
