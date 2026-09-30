@@ -99,7 +99,7 @@ fun ShieldFundsInfoView(
             modifier = Modifier.fillMaxWidth(),
             defaultPrimaryColors = ZashiButtonDefaults.secondaryColors(),
         )
-        Spacer(4.dp)
+        Spacer(8.dp)
         ZashiButton(state = innerState.primaryButton, modifier = Modifier.fillMaxWidth())
     }
 }
