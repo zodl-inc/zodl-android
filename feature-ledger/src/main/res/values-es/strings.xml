@@ -2,7 +2,6 @@
 <resources>
 
     <!-- Ledger connect steps -->
-    <string name="ledger_step_badge">Paso %1$d de %2$d</string>
     <string name="ledger_flow_title">Conecta tu Ledger</string>
     <string name="ledger_flow_step">Paso %1$d de %2$d</string>
     <string name="ledger_intro_message">Vincula tu Ledger con Zodl por Bluetooth en 4 pasos rápidos.</string>
@@ -29,7 +28,6 @@
     <string name="ledger_openApp_message">Confirma en tu Ledger para abrir la aplicación Zcash.</string>
     <string name="ledger_openApp_check1">Confirma “Open Zcash” en tu Ledger</string>
     <string name="ledger_openApp_check2">Mantén la aplicación Zcash abierta hasta terminar la configuración</string>
-    <string name="ledger_openApp_check3">Mantén la aplicación abierta hasta terminar la configuración</string>
     <string name="ledger_openApp_callout_title">¿No tienes la aplicación Zcash?</string>
     <string name="ledger_openApp_callout_message">Instálala desde Mi Ledger en Ledger Wallet y luego vuelve.</string>
     <string name="ledger_handshake_title">Aprueba en tu Ledger</string>
@@ -38,14 +36,12 @@
     <string name="ledger_handshake_callout_message">Zodl solo recibe lo necesario para mostrar tu saldo y preparar pagos. Cada pago sigue necesitando tu aprobación en tu Ledger.</string>
 
     <!-- Device scan and selection -->
-    <string name="ledger_scan_idle_title">Conecta tu Ledger</string>
     <string name="ledger_scan_searching_title">Buscando dispositivos...</string>
     <string name="ledger_scan_searching_subtitle">Asegúrate de que tu Ledger esté desbloqueado y el Bluetooth activado.</string>
     <string name="ledger_scan_searching_cta">Buscando</string>
     <string name="ledger_scan_select_title">Selecciona tu Ledger</string>
     <string name="ledger_scan_select_subtitle">Después de tocar Conectar, comprueba que el código de tu teléfono coincida con el de tu Ledger.</string>
     <string name="ledger_scan_select_cta">Conectar</string>
-    <string name="ledger_scan_connecting_subtitle">Comprueba que el código de tu teléfono coincida con el de tu Ledger y luego confírmalo en ambos.</string>
     <string name="ledger_scan_retry_cta">Intentar de nuevo</string>
 
     <!-- Approve on device -->

@@ -32,8 +32,6 @@ import androidx.compose.ui.unit.sp
 import co.electriccoin.zcash.ledger.R
 import co.electriccoin.zcash.ui.design.component.BlankBgScaffold
 import co.electriccoin.zcash.ui.design.component.Spacer
-import co.electriccoin.zcash.ui.design.component.ZashiBadge
-import co.electriccoin.zcash.ui.design.component.ZashiBadgeDefaults
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiSmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
@@ -145,17 +143,6 @@ private fun LedgerStepTitle(step: Int) {
 }
 
 /**
- * The "Step N of [LEDGER_STEP_COUNT]" badge above a connect step's title.
- */
-@Composable
-internal fun LedgerStepBadge(step: Int) {
-    ZashiBadge(
-        text = stringResource(R.string.ledger_step_badge, step, LEDGER_STEP_COUNT),
-        colors = ZashiBadgeDefaults.hyperBlueColors(),
-    )
-}
-
-/**
  * A card listing what should be true before the user moves on, one [LedgerChecklistItem] per item.
  * Figma fills it in Gray 50, which [ZashiColors.Utility.Gray.utilityGray50] is by day.
  */
@@ -195,47 +182,6 @@ internal fun LedgerChecklistItem(
             color = ZashiColors.Text.textPrimary,
             fontWeight = FontWeight.Medium,
         )
-    }
-}
-
-@Composable
-internal fun LedgerCheckRow(
-    title: String,
-    subtitle: String? = null,
-) {
-    Row(modifier = Modifier.fillMaxWidth()) {
-        Box(
-            modifier =
-                Modifier
-                    .size(24.dp)
-                    .background(ZashiColors.Surfaces.bgPrimary, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                modifier = Modifier.size(14.dp),
-                painter = painterResource(R.drawable.ic_ledger_check),
-                contentDescription = null,
-                tint = ZashiColors.Text.textPrimary,
-            )
-        }
-        Spacer(12.dp)
-        Column(modifier = Modifier.weight(1f)) {
-            Spacer(2.dp)
-            Text(
-                text = title,
-                style = ZashiTypography.textSm,
-                color = ZashiColors.Text.textPrimary,
-                fontWeight = FontWeight.Medium,
-            )
-            if (subtitle != null) {
-                Spacer(4.dp)
-                Text(
-                    text = subtitle,
-                    style = ZashiTypography.textSm,
-                    color = ZashiColors.Text.textTertiary,
-                )
-            }
-        }
     }
 }
 

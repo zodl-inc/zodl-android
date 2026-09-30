@@ -2,7 +2,6 @@
 <resources>
 
     <!-- Ledger connect steps -->
-    <string name="ledger_step_badge">Step %1$d of %2$d</string>
     <string name="ledger_flow_title">Connect Your Ledger</string>
     <string name="ledger_flow_step">Step %1$d of %2$d</string>
     <string name="ledger_intro_message">Pair your Ledger with Zodl over Bluetooth in 4 quick steps.</string>
@@ -29,7 +28,6 @@
     <string name="ledger_openApp_message">Confirm on your Ledger to open the Zcash app.</string>
     <string name="ledger_openApp_check1">Confirm “Open Zcash” on your Ledger</string>
     <string name="ledger_openApp_check2">Keep the Zcash app open until setup is done</string>
-    <string name="ledger_openApp_check3">Keep the app open until setup is done</string>
     <string name="ledger_openApp_callout_title">Don’t Have the Zcash App?</string>
     <string name="ledger_openApp_callout_message">Install it from My Ledger in Ledger Wallet, then come back.</string>
     <string name="ledger_handshake_title">Approve on Your Ledger</string>
@@ -38,14 +36,12 @@
     <string name="ledger_handshake_callout_message">Zodl only gets what it needs to show your balance and prepare payments. Every payment still needs your approval on your Ledger.</string>
 
     <!-- Device scan and selection -->
-    <string name="ledger_scan_idle_title">Connect your Ledger</string>
     <string name="ledger_scan_searching_title">Searching for Devices...</string>
     <string name="ledger_scan_searching_subtitle">Make sure your Ledger is unlocked and Bluetooth is enabled.</string>
     <string name="ledger_scan_searching_cta">Searching</string>
     <string name="ledger_scan_select_title">Select Your Ledger</string>
     <string name="ledger_scan_select_subtitle">After you tap Connect, check that the code on your phone matches the one on your Ledger.</string>
     <string name="ledger_scan_select_cta">Connect</string>
-    <string name="ledger_scan_connecting_subtitle">Check that the code on your phone matches the one on your Ledger, then confirm on both.</string>
     <string name="ledger_scan_retry_cta">Try again</string>
 
     <!-- Approve on device -->
