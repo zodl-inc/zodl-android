@@ -96,7 +96,7 @@ internal fun ColumnScope.LedgerErrorContent(
 }
 
 /**
- * Figma separates the buttons by 12 dp; ZashiButton bodies are 48 dp tall with no touch-target
- * padding around them, so the whole gap is added.
+ * The 8 dp gap every pair of stacked ZashiButtons keeps; their 48 dp bodies carry no touch-target
+ * padding, so the whole gap is added.
  */
-private const val BUTTON_GAP = 12
+private const val BUTTON_GAP = 8
