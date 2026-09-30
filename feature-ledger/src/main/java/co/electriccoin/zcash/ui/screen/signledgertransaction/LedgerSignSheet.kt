@@ -1,6 +1,13 @@
+@file:Suppress("TooManyFunctions")
+
 package co.electriccoin.zcash.ui.screen.signledgertransaction
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -8,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.SheetValue
@@ -18,10 +24,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import co.electriccoin.zcash.ui.design.component.ButtonState
+import co.electriccoin.zcash.ledger.R
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
@@ -35,10 +42,16 @@ import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceRow
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerErrorContent
+import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerWaitingIndicator
 
 /**
  * Non-dismissable: neither a drag, a tap outside nor system back hides it; only Cancel Transaction
  * or the end of the session leaves it.
+ *
+ * Only the part that changes size animates: the slot between the sheet's top and Cancel Transaction
+ * crossfades and resizes when the content changes kind, and inside the waiting phases the header
+ * stays put while the region under it resizes. A new status within the same kind is a text swap, so
+ * the spinner keeps turning.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,30 +68,45 @@ internal fun LedgerSignSheet(state: LedgerSignSheetState?) {
                 Modifier
                     .fillMaxWidth()
                     .testTag(LedgerSignTag.SHEET)
-                    .animateContentSize()
                     .padding(
                         top = 24.dp,
                         bottom = contentPadding.calculateBottomPadding()
                     ),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            when (val content = sheetState.content) {
-                is LedgerSignContent.Progress -> {
-                    ProgressContent(content)
-                }
+            AnimatedContent(
+                targetState = sheetState.content,
+                modifier = Modifier.weight(1f, false),
+                contentKey = { it is LedgerSignContent.Issue },
+                transitionSpec = { crossfade() },
+                contentAlignment = Alignment.TopCenter,
+                label = "LedgerSignContent",
+            ) { content ->
+                when (content) {
+                    is LedgerSignContent.Issue -> {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            LedgerErrorContent(
+                                state = content,
+                                primaryModifier = Modifier.testTag(LedgerSignTag.PRIMARY_BTN),
+                            )
+                            if (content.primary != null) {
+                                Spacer(STACKED_BUTTON_GAP.dp)
+                            }
+                        }
+                    }
 
-                is LedgerSignContent.Devices -> {
-                    DevicesContent(content)
-                }
+                    is LedgerSignContent.Progress -> {
+                        WaitingContent(content = content, body = content.body)
+                    }
 
-                is LedgerSignContent.Issue -> {
-                    LedgerErrorContent(
-                        state = content,
-                        primaryModifier = Modifier.testTag(LedgerSignTag.PRIMARY_BTN),
-                    )
+                    is LedgerSignContent.Devices -> {
+                        WaitingContent(content = content, body = content.body)
+                    }
                 }
             }
-            CancelButtonGap(sheetState.content)
             ZashiButton(
                 state = sheetState.cancelButton,
                 modifier =
@@ -92,66 +120,97 @@ internal fun LedgerSignSheet(state: LedgerSignSheetState?) {
     }
 }
 
+private fun crossfade() =
+    ContentTransform(
+        targetContentEnter = fadeIn(),
+        initialContentExit = fadeOut(),
+        sizeTransform = SizeTransform(clip = false),
+    )
+
 /**
- * Progress keeps 12 dp above Cancel Transaction; a button above it gets the 8 dp stacked-button gap.
+ * The header, the same in every waiting phase apart from its [body] line, over the spinner and its
+ * status or the device picker.
  */
 @Composable
-private fun ColumnScope.CancelButtonGap(content: LedgerSignContent) {
-    when (content) {
-        is LedgerSignContent.Progress -> {
-            Spacer(12.dp)
-        }
+private fun WaitingContent(
+    content: LedgerSignContent,
+    body: StringResource,
+) {
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Header(body = body)
+        Spacer(24.dp)
+        AnimatedContent(
+            targetState = content,
+            modifier = Modifier.weight(1f, false),
+            contentKey = { it::class },
+            transitionSpec = { crossfade() },
+            contentAlignment = Alignment.TopCenter,
+            label = "LedgerSignWaitingContent",
+        ) { waiting ->
+            when (waiting) {
+                is LedgerSignContent.Progress -> {
+                    ProgressContent(waiting)
+                }
 
-        is LedgerSignContent.Devices -> {
-            Spacer(8.dp)
-        }
+                is LedgerSignContent.Devices -> {
+                    DevicesContent(waiting)
+                }
 
-        is LedgerSignContent.Issue -> {
-            if (content.primary != null) {
-                Spacer(8.dp)
+                is LedgerSignContent.Issue -> {
+                    Unit
+                }
             }
         }
     }
 }
 
+/**
+ * Figma puts Cancel Transaction 44 dp under the status: its 32 dp gap plus the status frame's own
+ * 12 dp bottom padding.
+ */
 @Composable
 private fun ProgressContent(content: LedgerSignContent.Progress) {
     Column(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Header(title = content.title, message = content.message)
-        if (content.isSpinning) {
-            Spacer(16.dp)
-            CircularProgressIndicator(
-                modifier = Modifier.size(24.dp),
-                color = ZashiColors.Text.textPrimary,
-                strokeWidth = 2.dp,
-            )
-        }
-        Spacer(12.dp)
+        LedgerWaitingIndicator(
+            title = content.status.getValue(),
+            modifier = Modifier.testTag(LedgerSignTag.WAITING_INDICATOR),
+        )
+        Spacer(PROGRESS_CANCEL_GAP.dp)
     }
 }
 
+/**
+ * The cards keep their unselected look: a tap connects straight away, so none is ever shown picked.
+ */
 @Composable
-private fun ColumnScope.DevicesContent(content: LedgerSignContent.Devices) {
+private fun DevicesContent(content: LedgerSignContent.Devices) {
     Column(
-        modifier =
-            Modifier
-                .weight(1f, false)
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Header(title = content.title, message = content.message)
-        Spacer(24.dp)
-        Column(Modifier.fillMaxWidth().selectableGroup()) {
+        LedgerWaitingIndicator(
+            title = content.title.getValue(),
+            showSpinner = false,
+        )
+        Spacer(16.dp)
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .selectableGroup(),
+        ) {
             content.devices.forEachIndexed { index, device ->
                 if (index != 0) {
-                    Spacer(12.dp)
+                    Spacer(8.dp)
                 }
                 LedgerDeviceRow(
                     state = device,
@@ -159,16 +218,12 @@ private fun ColumnScope.DevicesContent(content: LedgerSignContent.Devices) {
                 )
             }
         }
-        Spacer(24.dp)
-        PrimaryButton(content.connectButton)
+        Spacer(DEVICES_CANCEL_GAP.dp)
     }
 }
 
 @Composable
-private fun ColumnScope.Header(
-    title: StringResource,
-    message: StringResource,
-) {
+private fun ColumnScope.Header(body: StringResource) {
     Image(
         modifier = Modifier.size(44.dp),
         painter = painterResource(co.electriccoin.zcash.ui.design.R.drawable.ic_item_ledger),
@@ -176,7 +231,7 @@ private fun ColumnScope.Header(
     )
     Spacer(12.dp)
     Text(
-        text = title.getValue(),
+        text = stringResource(R.string.ledger_sign_title),
         style = ZashiTypography.textXl,
         fontWeight = FontWeight.SemiBold,
         color = ZashiColors.Text.textPrimary,
@@ -184,23 +239,22 @@ private fun ColumnScope.Header(
     )
     Spacer(4.dp)
     Text(
-        text = message.getValue(),
+        modifier = Modifier.animateContentSize(),
+        text = body.getValue(),
         style = ZashiTypography.textSm,
         color = ZashiColors.Text.textTertiary,
         textAlign = TextAlign.Center,
     )
 }
 
-@Composable
-private fun PrimaryButton(state: ButtonState) {
-    ZashiButton(
-        state = state,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .testTag(LedgerSignTag.PRIMARY_BTN),
-    )
-}
+private const val PROGRESS_CANCEL_GAP = 44
+
+private const val DEVICES_CANCEL_GAP = 32
+
+/**
+ * An issue's button above Cancel Transaction keeps the 8 dp stacked-button gap.
+ */
+private const val STACKED_BUTTON_GAP = 8
 
 @OptIn(ExperimentalMaterial3Api::class)
 @PreviewScreens
@@ -208,6 +262,14 @@ private fun PrimaryButton(state: ButtonState) {
 private fun ScanningPreview() =
     ZcashTheme {
         LedgerSignSheet(state = LedgerSignSheetState.previewScanning)
+    }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@PreviewScreens
+@Composable
+private fun OpeningZcashAppPreview() =
+    ZcashTheme {
+        LedgerSignSheet(state = LedgerSignSheetState.previewOpeningZcashApp)
     }
 
 @OptIn(ExperimentalMaterial3Api::class)

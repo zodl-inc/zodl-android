@@ -20,6 +20,7 @@ import co.electriccoin.zcash.ui.common.usecase.SelectLedgerSigningDeviceUseCase
 import co.electriccoin.zcash.ui.common.usecase.StartLedgerSigningUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitLedgerProposalUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
+import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceItemState
 import co.electriccoin.zcash.ui.util.SettingsUtil
@@ -69,8 +70,6 @@ class LedgerSignVM(
 
     private val enableBluetoothRequestNonce = MutableStateFlow(0)
 
-    private val selectedIdentifier = MutableStateFlow<String?>(null)
-
     private val hasProposal = CompletableDeferred<Boolean>()
 
     private var repairJob: Job? = null
@@ -81,10 +80,9 @@ class LedgerSignVM(
             permissionDenial,
             permissionRequestNonce,
             enableBluetoothRequestNonce,
-            selectedIdentifier,
-        ) { signingState, denial, permissionNonce, enableBluetoothNonce, selected ->
+        ) { signingState, denial, permissionNonce, enableBluetoothNonce ->
             LedgerSignSheetState(
-                content = createContent(signingState, denial, selected),
+                content = createContent(signingState, denial),
                 cancelButton =
                     ButtonState(
                         text = stringRes(R.string.ledger_sign_cancel),
@@ -157,44 +155,44 @@ class LedgerSignVM(
     private fun createContent(
         signingState: LedgerSigningState?,
         denial: PermissionDenial?,
-        selected: String?,
     ): LedgerSignContent {
         if (denial != null) {
             return issueContent(LedgerIssue.permissions, denial.canRequestAgain)
         }
+        val body = body(signingState)
         return when (signingState) {
             null,
             LedgerSigningState.Scanning -> {
-                progress(R.string.ledger_sign_scanning)
+                progress(body, R.string.ledger_sign_scanning)
             }
 
             is LedgerSigningState.Selecting -> {
-                devicesContent(signingState, selected)
+                devicesContent(body, signingState)
             }
 
             LedgerSigningState.Connecting -> {
-                progress(R.string.ledger_sign_connecting)
+                progress(body, R.string.ledger_sign_connecting)
             }
 
             LedgerSigningState.OpeningZcashApp -> {
-                progress(R.string.ledger_sign_openingApp)
+                progress(body, R.string.ledger_sign_openingApp)
             }
 
             LedgerSigningState.Preparing -> {
-                progress(R.string.ledger_sign_preparing)
+                progress(body, R.string.ledger_sign_preparing)
             }
 
             is LedgerSigningState.Streaming -> {
-                progress(R.string.ledger_sign_streaming)
+                progress(body, R.string.ledger_sign_streaming)
             }
 
             LedgerSigningState.AwaitingReview -> {
-                progress(R.string.ledger_sign_awaitingReview, isSpinning = false)
+                progress(body, R.string.ledger_sign_awaitingReview)
             }
 
             LedgerSigningState.Signing,
             LedgerSigningState.Signed -> {
-                progress(R.string.ledger_sign_signing)
+                progress(body, R.string.ledger_sign_signing)
             }
 
             is LedgerSigningState.Failed -> {
@@ -203,46 +201,51 @@ class LedgerSignVM(
         }
     }
 
+    /**
+     * Once the device shows the transaction, the line under the title asks for its confirmation;
+     * before that, it asks to keep the device ready.
+     */
+    private fun body(signingState: LedgerSigningState?) =
+        when (signingState) {
+            LedgerSigningState.AwaitingReview,
+            LedgerSigningState.Signing,
+            LedgerSigningState.Signed -> {
+                stringRes(R.string.ledger_sign_body_review)
+            }
+
+            else -> {
+                stringRes(R.string.ledger_sign_body_beforeReview)
+            }
+        }
+
     private fun progress(
-        @StringRes message: Int,
-        isSpinning: Boolean = true,
+        body: StringResource,
+        @StringRes status: Int,
     ) = LedgerSignContent.Progress(
-        title = stringRes(R.string.ledger_sign_title),
-        message = stringRes(message),
-        isSpinning = isSpinning,
+        body = body,
+        status = stringRes(status),
     )
 
     /**
-     * A selection made on the sheet wins over the device picked in an earlier attempt; either only
-     * counts while that device is still listed.
+     * A tap on a device connects to it; the repository takes only the first one while the picker
+     * is open.
      */
     private fun devicesContent(
+        body: StringResource,
         selecting: LedgerSigningState.Selecting,
-        selected: String?,
-    ): LedgerSignContent.Devices {
-        val effectiveSelection =
-            (selected ?: selecting.selectedIdentifier)
-                ?.takeIf { identifier -> selecting.devices.any { it.identifier == identifier } }
-        return LedgerSignContent.Devices(
-            title = stringRes(R.string.ledger_sign_select_title),
-            message = stringRes(R.string.ledger_sign_select_message),
-            devices =
-                selecting.devices.map { device ->
-                    LedgerDeviceItemState(
-                        name = stringRes(device.name),
-                        isSelected = device.identifier == effectiveSelection,
-                        isEnabled = true,
-                        onClick = { selectedIdentifier.update { device.identifier } },
-                    )
-                },
-            connectButton =
-                ButtonState(
-                    text = stringRes(R.string.ledger_sign_select_cta),
-                    isEnabled = effectiveSelection != null,
-                    onClick = { effectiveSelection?.let(::onConnectClick) },
-                ),
-        )
-    }
+    ) = LedgerSignContent.Devices(
+        body = body,
+        title = stringRes(R.string.ledger_sign_select_title),
+        devices =
+            selecting.devices.map { device ->
+                LedgerDeviceItemState(
+                    name = stringRes(device.name),
+                    isSelected = false,
+                    isEnabled = true,
+                    onClick = { selectLedgerSigningDevice(device.identifier) },
+                )
+            },
+    )
 
     private fun issueContent(
         issue: LedgerIssue,
@@ -305,15 +308,7 @@ class LedgerSignVM(
             onClick = onClick,
         )
 
-    private fun onConnectClick(identifier: String) {
-        selectedIdentifier.update { null }
-        selectLedgerSigningDevice(identifier)
-    }
-
-    private fun onTryAgainClick() {
-        selectedIdentifier.update { null }
-        retryLedgerSigning()
-    }
+    private fun onTryAgainClick() = retryLedgerSigning()
 
     /**
      * The denial stays on the sheet while the system asks again; the gate reports the answer.

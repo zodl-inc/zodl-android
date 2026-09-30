@@ -93,16 +93,16 @@
 
     <!-- Signing sheet -->
     <string name="ledger_sign_title">Confirmar transacción</string>
-    <string name="ledger_sign_scanning">Buscando tu Ledger…</string>
-    <string name="ledger_sign_select_title">Selecciona tu dispositivo</string>
-    <string name="ledger_sign_select_message">Selecciona el dispositivo Ledger con el que quieres firmar.</string>
-    <string name="ledger_sign_select_cta">Conectar</string>
-    <string name="ledger_sign_connecting">Conectando con tu Ledger…</string>
+    <string name="ledger_sign_body_beforeReview">Mantén tu Ledger desbloqueado y cerca.</string>
+    <string name="ledger_sign_body_review">Confirma la transacción en tu dispositivo Ledger.</string>
+    <string name="ledger_sign_scanning">Buscando tu Ledger</string>
+    <string name="ledger_sign_select_title">Elige tu Ledger</string>
+    <string name="ledger_sign_connecting">Conectando con tu Ledger</string>
     <string name="ledger_sign_openingApp">Abre la app de Zcash en tu Ledger</string>
-    <string name="ledger_sign_preparing">Preparando la transacción…</string>
-    <string name="ledger_sign_streaming">Enviando la transacción a tu Ledger…</string>
-    <string name="ledger_sign_awaitingReview">Confirma la transacción pulsando los dos botones de tu dispositivo Ledger.</string>
-    <string name="ledger_sign_signing">Firmando…</string>
+    <string name="ledger_sign_preparing">Preparando tu transacción</string>
+    <string name="ledger_sign_streaming">Enviando los detalles a tu Ledger</string>
+    <string name="ledger_sign_awaitingReview">Revisa y aprueba en tu Ledger</string>
+    <string name="ledger_sign_signing">Firmando tu transacción</string>
 
     <!-- Signing error sheets -->
     <string name="ledger_sign_error_rejected_title">Transacción rechazada</string>

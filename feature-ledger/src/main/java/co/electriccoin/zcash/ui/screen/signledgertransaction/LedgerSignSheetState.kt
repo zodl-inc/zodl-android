@@ -10,8 +10,8 @@ import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceItemStat
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerErrorContentState
 
 /**
- * The sheet a Ledger signing session runs under. [cancelButton] is there in every phase; the sheet
- * draws it in the destructive colours.
+ * The sheet a Ledger signing session runs under. Its title is the same in every phase, and
+ * [cancelButton] is there in every phase; the sheet draws it in the destructive colours.
  */
 data class LedgerSignSheetState(
     val content: LedgerSignContent,
@@ -31,29 +31,37 @@ data class LedgerSignSheetState(
     companion object {
         private val previewCancel = ButtonState(stringRes("Cancel Transaction"))
 
+        private val previewBodyBeforeReview = stringRes("Keep your Ledger unlocked and nearby.")
+
+        private val previewBodyReview = stringRes("Confirm the transaction on your Ledger device.")
+
         val previewScanning =
             LedgerSignSheetState(
                 content =
                     LedgerSignContent.Progress(
-                        title = stringRes("Confirm Transaction"),
-                        message = stringRes("Looking for your Ledger…"),
-                        isSpinning = true,
+                        body = previewBodyBeforeReview,
+                        status = stringRes("Looking for your Ledger"),
                     ),
                 cancelButton = previewCancel,
                 permissionRequestNonce = 0,
                 enableBluetoothRequestNonce = 0,
             )
 
+        val previewOpeningZcashApp =
+            previewScanning.copy(
+                content =
+                    LedgerSignContent.Progress(
+                        body = previewBodyBeforeReview,
+                        status = stringRes("Open the Zcash app on your Ledger"),
+                    ),
+            )
+
         val previewAwaitingReview =
             previewScanning.copy(
                 content =
                     LedgerSignContent.Progress(
-                        title = stringRes("Confirm Transaction"),
-                        message =
-                            stringRes(
-                                "Confirm the transaction by pressing the two buttons on your Ledger device."
-                            ),
-                        isSpinning = false,
+                        body = previewBodyReview,
+                        status = stringRes("Check and approve on your Ledger"),
                     ),
             )
 
@@ -61,10 +69,13 @@ data class LedgerSignSheetState(
             previewScanning.copy(
                 content =
                     LedgerSignContent.Devices(
-                        title = stringRes("Select Your Device"),
-                        message = stringRes("Select the Ledger device to sign with."),
-                        devices = listOf(LedgerDeviceItemState.previewSelected, LedgerDeviceItemState.preview),
-                        connectButton = ButtonState(stringRes("Connect")),
+                        body = previewBodyBeforeReview,
+                        title = stringRes("Choose your Ledger"),
+                        devices =
+                            listOf(
+                                LedgerDeviceItemState.preview.copy(name = stringRes("Harry Ledger")),
+                                LedgerDeviceItemState.preview.copy(name = stringRes("Office Ledger")),
+                            ),
                     ),
             )
 
@@ -74,10 +85,11 @@ data class LedgerSignSheetState(
                     LedgerSignContent.Issue(
                         icon = R.drawable.ic_ledger_alert_circle,
                         isBadge = true,
-                        title = stringRes("Transaction Rejected"),
+                        title = stringRes("Zcash App Not Opened"),
                         message =
                             stringRes(
-                                "You rejected the transaction on your Ledger. Try again to review it on your device."
+                                "You declined opening the Zcash app on your Ledger. Try again and confirm " +
+                                    "“Open Zcash” on your device."
                             ),
                         primary = ButtonState(stringRes("Try again")),
                     ),
@@ -90,22 +102,22 @@ data class LedgerSignSheetState(
  */
 sealed interface LedgerSignContent {
     /**
-     * A phase of the session the user only waits through, or acts on at the device.
+     * A phase of the session the user only waits through, or acts on at the device: [body] under
+     * the sheet's title, and [status] next to the spinner.
      */
     data class Progress(
-        val title: StringResource,
-        val message: StringResource,
-        val isSpinning: Boolean,
+        val body: StringResource,
+        val status: StringResource,
     ) : LedgerSignContent
 
     /**
-     * More than one Ledger is in range; [connectButton] is enabled once a row is selected.
+     * More than one Ledger is in range, or the last session met the wrong one: [title] heads the
+     * [devices], and a tap on one connects to it.
      */
     data class Devices(
+        val body: StringResource,
         val title: StringResource,
-        val message: StringResource,
         val devices: List<LedgerDeviceItemState>,
-        val connectButton: ButtonState,
     ) : LedgerSignContent
 
     /**

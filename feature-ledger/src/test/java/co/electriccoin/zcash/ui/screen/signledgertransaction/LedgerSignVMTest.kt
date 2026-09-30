@@ -77,32 +77,104 @@ class LedgerSignVMTest {
             collect(vm)
             runCurrent()
 
-            assertProgress(vm, R.string.ledger_sign_scanning, isSpinning = true)
-
-            signingState.value = LedgerSigningState.Connecting
-            runCurrent()
-            assertProgress(vm, R.string.ledger_sign_connecting, isSpinning = true)
-
-            signingState.value = LedgerSigningState.Preparing
-            runCurrent()
-            assertProgress(vm, R.string.ledger_sign_preparing, isSpinning = true)
-
-            signingState.value = LedgerSigningState.Streaming(1, 5)
-            runCurrent()
-            assertProgress(vm, R.string.ledger_sign_streaming, isSpinning = true)
-
-            signingState.value = LedgerSigningState.AwaitingReview
-            runCurrent()
-            assertProgress(vm, R.string.ledger_sign_awaitingReview, isSpinning = false)
-
-            signingState.value = LedgerSigningState.Signing
-            runCurrent()
-            assertProgress(vm, R.string.ledger_sign_signing, isSpinning = true)
+            listOf(
+                null to R.string.ledger_sign_scanning,
+                LedgerSigningState.Scanning to R.string.ledger_sign_scanning,
+                LedgerSigningState.Connecting to R.string.ledger_sign_connecting,
+                LedgerSigningState.OpeningZcashApp to R.string.ledger_sign_openingApp,
+                LedgerSigningState.Preparing to R.string.ledger_sign_preparing,
+                LedgerSigningState.Streaming(0, 0) to R.string.ledger_sign_streaming,
+                LedgerSigningState.Streaming(1, 5) to R.string.ledger_sign_streaming,
+                LedgerSigningState.AwaitingReview to R.string.ledger_sign_awaitingReview,
+                LedgerSigningState.Signing to R.string.ledger_sign_signing,
+                LedgerSigningState.Signed to R.string.ledger_sign_signing,
+            ).forEach { (state, status) ->
+                signingState.value = state
+                runCurrent()
+                assertProgress(vm, status, expectedBody(state), state.toString())
+            }
         }
 
     @Test
-    fun selectingRowsEnableConnectOnlyAfterAClick() =
+    fun theBodySwitchesToTheReviewLineExactlyAtAwaitingReview() =
         runTest(dispatcher) {
+            val signingState = MutableStateFlow<LedgerSigningState?>(LedgerSigningState.Scanning)
+            val vm = vm(signingState = signingState)
+            collect(vm)
+            runCurrent()
+
+            val bodies =
+                listOf(
+                    LedgerSigningState.Scanning,
+                    LedgerSigningState.Selecting(listOf(signingDevice("AA")), selectedIdentifier = null),
+                    LedgerSigningState.Connecting,
+                    LedgerSigningState.OpeningZcashApp,
+                    LedgerSigningState.Preparing,
+                    LedgerSigningState.Streaming(0, 0),
+                    LedgerSigningState.Streaming(3, 7),
+                    LedgerSigningState.AwaitingReview,
+                    LedgerSigningState.Signing,
+                    LedgerSigningState.Signed,
+                ).map { state ->
+                    signingState.value = state
+                    runCurrent()
+                    when (val content = vm.state.value?.content) {
+                        is LedgerSignContent.Progress -> content.body.resourceId()
+                        is LedgerSignContent.Devices -> content.body.resourceId()
+                        else -> null
+                    }
+                }
+
+            assertEquals(
+                List(7) { R.string.ledger_sign_body_beforeReview } + List(3) { R.string.ledger_sign_body_review },
+                bodies
+            )
+        }
+
+    @Test
+    fun awaitingReviewShowsTheSpinnerLikeEveryOtherWaitingPhase() =
+        runTest(dispatcher) {
+            val signingState = MutableStateFlow<LedgerSigningState?>(LedgerSigningState.AwaitingReview)
+            val vm = vm(signingState = signingState)
+            collect(vm)
+            runCurrent()
+
+            val content = vm.state.value?.content
+            assertTrue(content is LedgerSignContent.Progress)
+            assertEquals(R.string.ledger_sign_awaitingReview, content.status.resourceId())
+            assertEquals(R.string.ledger_sign_body_review, content.body.resourceId())
+        }
+
+    @Test
+    fun selectingListsTheDevicesUnderChooseYourLedgerWithoutAConnectButton() =
+        runTest(dispatcher) {
+            val signingState =
+                MutableStateFlow<LedgerSigningState?>(
+                    LedgerSigningState.Selecting(
+                        devices = listOf(signingDevice("AA"), signingDevice("BB")),
+                        selectedIdentifier = "AA",
+                    )
+                )
+            val vm = vm(signingState = signingState)
+            collect(vm)
+            runCurrent()
+
+            val devices = vm.state.value?.content
+            assertTrue(devices is LedgerSignContent.Devices)
+            assertEquals(R.string.ledger_sign_select_title, devices.title.resourceId())
+            assertEquals(R.string.ledger_sign_body_beforeReview, devices.body.resourceId())
+            assertEquals(
+                listOf(stringRes("Ledger Device AA"), stringRes("Ledger Device BB")),
+                devices.devices.map { it.name }
+            )
+            assertTrue(devices.devices.none { it.isSelected })
+            assertTrue(devices.devices.all { it.isEnabled })
+        }
+
+    @Test
+    fun aDeviceTapSelectsThatDeviceStraightAway() =
+        runTest(dispatcher) {
+            val selectLedgerSigningDevice = mockk<SelectLedgerSigningDeviceUseCase>(relaxed = true)
             val signingState =
                 MutableStateFlow<LedgerSigningState?>(
                     LedgerSigningState.Selecting(
@@ -110,19 +182,42 @@ class LedgerSignVMTest {
                         selectedIdentifier = null,
                     )
                 )
-            val vm = vm(signingState = signingState)
+            val vm = vm(signingState = signingState, selectLedgerSigningDevice = selectLedgerSigningDevice)
             collect(vm)
             runCurrent()
 
-            val devicesBefore = vm.state.value?.content as LedgerSignContent.Devices
-            assertFalse(devicesBefore.connectButton.isEnabled)
-
-            devicesBefore.devices.first().onClick()
+            val devices = vm.state.value?.content as LedgerSignContent.Devices
+            devices.devices[1].onClick()
             runCurrent()
 
-            val devicesAfter = vm.state.value?.content as LedgerSignContent.Devices
-            assertTrue(devicesAfter.connectButton.isEnabled)
-            assertTrue(devicesAfter.devices.first().isSelected)
+            verify(exactly = 1) { selectLedgerSigningDevice.invoke("BB") }
+            verify(exactly = 0) { selectLedgerSigningDevice.invoke("AA") }
+            assertTrue((vm.state.value?.content as LedgerSignContent.Devices).devices.none { it.isSelected })
+        }
+
+    @Test
+    fun thePickerFollowsTheDevicesInRange() =
+        runTest(dispatcher) {
+            val signingState =
+                MutableStateFlow<LedgerSigningState?>(
+                    LedgerSigningState.Selecting(devices = listOf(signingDevice("AA")), selectedIdentifier = null)
+                )
+            val vm = vm(signingState = signingState)
+            collect(vm)
+            runCurrent()
+            assertEquals(1, (vm.state.value?.content as LedgerSignContent.Devices).devices.size)
+
+            signingState.value =
+                LedgerSigningState.Selecting(
+                    devices = listOf(signingDevice("AA"), signingDevice("BB"), signingDevice("CC")),
+                    selectedIdentifier = null,
+                )
+            runCurrent()
+
+            assertEquals(
+                listOf(stringRes("Ledger Device AA"), stringRes("Ledger Device BB"), stringRes("Ledger Device CC")),
+                (vm.state.value?.content as LedgerSignContent.Devices).devices.map { it.name }
+            )
         }
 
     @Test
@@ -497,16 +592,30 @@ class LedgerSignVMTest {
             verify(exactly = 1) { startLedgerSigning.invoke() }
         }
 
+    /**
+     * A waiting phase is [LedgerSignContent.Progress], which the sheet always draws with the
+     * spinner; the header title is the sheet's own and the same in every phase.
+     */
     private fun assertProgress(
         vm: LedgerSignVM,
-        expectedMessage: Int,
-        isSpinning: Boolean,
+        expectedStatus: Int,
+        expectedBody: Int,
+        message: String,
     ) {
-        val content = vm.state.value?.content as LedgerSignContent.Progress
-        assertEquals(R.string.ledger_sign_title, content.title.resourceId())
-        assertEquals(expectedMessage, content.message.resourceId())
-        assertEquals(isSpinning, content.isSpinning)
+        val content = vm.state.value?.content
+        assertTrue(content is LedgerSignContent.Progress, message)
+        assertEquals(expectedStatus, content.status.resourceId(), message)
+        assertEquals(expectedBody, content.body.resourceId(), message)
     }
+
+    private fun expectedBody(state: LedgerSigningState?) =
+        when (state) {
+            LedgerSigningState.AwaitingReview,
+            LedgerSigningState.Signing,
+            LedgerSigningState.Signed -> R.string.ledger_sign_body_review
+
+            else -> R.string.ledger_sign_body_beforeReview
+        }
 
     private fun issue(
         kind: LedgerIssueKind,
