@@ -16,13 +16,13 @@ import androidx.compose.ui.window.DialogWindowProvider
  * The dialog window hosting the calling composable, or null outside a dialog.
  */
 @Composable
-internal fun rememberSheetDialogWindow(): Window? {
-    val view = LocalView.current
-    return generateSequence(view.parent) { (it as? View)?.parent }
+internal fun currentDialogWindow(): Window? = LocalView.current.findDialogWindow()
+
+private fun View.findDialogWindow(): Window? =
+    generateSequence(parent) { (it as? View)?.parent }
         .filterIsInstance<DialogWindowProvider>()
         .firstOrNull()
         ?.window
-}
 
 /**
  * Lets the window dim whatever lies behind it; [applySheetScrim] sets how much.

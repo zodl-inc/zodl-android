@@ -1,6 +1,5 @@
 package co.electriccoin.zcash.ui.design.component
 
-import android.view.View
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.ColumnScope
@@ -154,13 +153,8 @@ fun ZashiScreenModalBottomSheet(
  */
 @Composable
 private fun BottomSheetWindowAnimationEffect() {
-    val view = LocalView.current
+    val window = currentDialogWindow()
     SideEffect {
-        val window =
-            generateSequence(view.parent) { (it as? View)?.parent }
-                .filterIsInstance<DialogWindowProvider>()
-                .firstOrNull()
-                ?.window
         window?.setWindowAnimations(R.style.ZashiBottomSheetDialogAnimation)
     }
 }
