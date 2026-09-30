@@ -32,8 +32,8 @@ import co.electriccoin.zcash.ui.util.SettingsUtil
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -49,8 +49,8 @@ import kotlinx.coroutines.launch
  *
  * Nothing Bluetooth-related outlives this screen: the scan job is cancelled in [onCleared], a
  * running connection on back, on denied permissions and in [onCleared], and the transport a
- * connection opens is closed by the data source before [ConnectLedgerDeviceUseCase] returns. Device identifiers are used only as list keys — never
- * logged.
+ * connection opens is closed by the data source before [ConnectLedgerDeviceUseCase] returns.
+ * Device identifiers are used only as list keys — never logged.
  */
 @Suppress("TooManyFunctions")
 class LedgerDeviceScanVM(
