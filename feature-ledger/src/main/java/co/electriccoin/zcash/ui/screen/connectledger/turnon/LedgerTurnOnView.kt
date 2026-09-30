@@ -5,16 +5,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ledger.R
-import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerCallout
-import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerCheckRow
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerChecklistCard
+import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerChecklistItem
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerStepLayout
 
 @Composable
@@ -34,17 +32,18 @@ fun LedgerTurnOnView(state: LedgerTurnOnState) {
                 onClick = state.onContinueClick,
             )
         },
+        callout = {
+            LedgerCallout(
+                title = stringResource(R.string.ledger_connect_turnOn_callout_title),
+                text = stringResource(R.string.ledger_connect_turnOn_callout_message),
+            )
+        },
     ) {
         LedgerChecklistCard {
-            LedgerCheckRow(title = stringResource(R.string.ledger_connect_turnOn_check1))
-            LedgerCheckRow(title = stringResource(R.string.ledger_connect_turnOn_check2))
-            LedgerCheckRow(title = stringResource(R.string.ledger_connect_turnOn_check3))
+            LedgerChecklistItem(number = 1, text = stringResource(R.string.ledger_connect_turnOn_check1))
+            LedgerChecklistItem(number = 2, text = stringResource(R.string.ledger_connect_turnOn_check2))
+            LedgerChecklistItem(number = 3, text = stringResource(R.string.ledger_connect_turnOn_check3))
         }
-        Spacer(16.dp)
-        LedgerCallout(
-            title = stringResource(R.string.ledger_connect_turnOn_callout_title),
-            text = stringResource(R.string.ledger_connect_turnOn_callout_message),
-        )
     }
 }
 

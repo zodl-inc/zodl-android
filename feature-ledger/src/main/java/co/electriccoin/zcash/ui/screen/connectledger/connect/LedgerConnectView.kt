@@ -9,7 +9,7 @@ import androidx.compose.ui.unit.dp
 import co.electriccoin.zcash.ledger.R
 import co.electriccoin.zcash.ui.design.component.Spacer
 import co.electriccoin.zcash.ui.design.component.ZashiButton
-import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarCloseNavigation
+import co.electriccoin.zcash.ui.design.component.ZashiTopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerCallout
@@ -19,9 +19,9 @@ import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerStepLayout
 @Composable
 fun LedgerConnectView(state: LedgerConnectState) {
     LedgerStepLayout(
-        navigationAction = { ZashiTopAppBarCloseNavigation(state.onBackClick) },
+        navigationAction = { ZashiTopAppBarBackNavigation(state.onBackClick) },
         step = null,
-        title = stringResource(R.string.ledger_scan_idle_title),
+        title = stringResource(R.string.ledger_flow_title),
         description = stringResource(R.string.ledger_intro_message),
         bottomButton = {
             ZashiButton(
@@ -31,6 +31,12 @@ fun LedgerConnectView(state: LedgerConnectState) {
                         .testTag(LedgerConnectTag.CONNECT_BTN),
                 text = stringResource(R.string.ledger_intro_cta),
                 onClick = state.onContinueClick,
+            )
+        },
+        callout = {
+            LedgerCallout(
+                title = stringResource(R.string.ledger_intro_callout_title),
+                text = stringResource(R.string.ledger_intro_callout_message),
             )
         },
     ) {
@@ -44,11 +50,6 @@ fun LedgerConnectView(state: LedgerConnectState) {
                 subtitle = stringResource(message),
             )
         }
-        Spacer(24.dp)
-        LedgerCallout(
-            title = stringResource(R.string.ledger_intro_callout_title),
-            text = stringResource(R.string.ledger_intro_callout_message),
-        )
     }
 }
 
