@@ -36,7 +36,8 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * The scan page behind each Figma connect error frame: its title and subtitle, and the indicator it shows over the placeholder rows, or none where the device list stays.
+ * The scan page behind each Figma connect error frame: its title and subtitle, and the indicator
+ * it shows over the placeholder rows, or none where the device list stays.
  *
  * Every [LedgerException] subclass has an internal constructor in the SDK, so the tests stub
  * instances rather than building them.

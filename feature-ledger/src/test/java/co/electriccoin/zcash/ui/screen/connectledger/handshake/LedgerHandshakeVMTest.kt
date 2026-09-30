@@ -638,4 +638,3 @@ class LedgerHandshakeVMTest {
 }
 
 private const val WRONG_APP_STATUS = 0x6E00
-

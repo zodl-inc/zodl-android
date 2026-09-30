@@ -410,7 +410,10 @@ class LedgerOpenAppVMTest {
             )
             assertEquals(
                 R.string.ledger_error_tryAgain,
-                assertNotNull(declined.state.value.errorSheet?.primary).text.resourceId()
+                assertNotNull(
+                    declined.state.value.errorSheet
+                        ?.primary
+                ).text.resourceId()
             )
         }
 
