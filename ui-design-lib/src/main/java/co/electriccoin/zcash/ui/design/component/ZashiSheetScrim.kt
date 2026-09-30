@@ -25,16 +25,10 @@ private fun View.findDialogWindow(): Window? =
         ?.window
 
 /**
- * Lets the window dim whatever lies behind it; [applySheetScrim] sets how much.
+ * Lets the window dim whatever lies behind it, in proportion to [fraction], the share of the sheet on screen.
  */
-internal fun Window.enableSheetScrim() {
+internal fun Window.setSheetScrim(fraction: Float) {
     addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-}
-
-/**
- * Dims behind the window in proportion to [fraction], the share of the sheet on screen.
- */
-internal fun Window.applySheetScrim(fraction: Float) {
     setDimAmount(SCRIM_DIM_AMOUNT * fraction)
 }
 

@@ -59,8 +59,7 @@ fun <T : ModalBottomSheetState> ZashiScreenModalBottomSheet(
     val openFraction = remember { mutableFloatStateOf(0f) }
     SideEffect {
         hostWindow?.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT)
-        hostWindow?.enableSheetScrim()
-        hostWindow?.applySheetScrim(fraction = if (state != null) openFraction.floatValue else 0f)
+        hostWindow?.setSheetScrim(fraction = if (state != null) openFraction.floatValue else 0f)
         hostWindow?.setWindowAnimations(R.style.ZashiBottomSheetScrimAnimation)
     }
 
@@ -74,7 +73,7 @@ fun <T : ModalBottomSheetState> ZashiScreenModalBottomSheet(
             content = {
                 SheetOpenFractionTracker { fraction ->
                     openFraction.floatValue = fraction
-                    hostWindow?.applySheetScrim(fraction = fraction)
+                    hostWindow?.setSheetScrim(fraction = fraction)
                 }
                 BackHandler {
                     it.onBack()

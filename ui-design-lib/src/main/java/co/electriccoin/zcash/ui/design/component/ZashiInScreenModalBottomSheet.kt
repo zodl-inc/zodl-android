@@ -51,12 +51,11 @@ fun <T : ModalBottomSheetState> ZashiInScreenModalBottomSheet(
             val sheetWindow = currentDialogWindow()
             val openFraction = remember { mutableFloatStateOf(0f) }
             SideEffect {
-                sheetWindow?.applySheetScrim(fraction = openFraction.floatValue)
-                sheetWindow?.enableSheetScrim()
+                sheetWindow?.setSheetScrim(fraction = openFraction.floatValue)
             }
             SheetOpenFractionTracker { fraction ->
                 openFraction.floatValue = fraction
-                sheetWindow?.applySheetScrim(fraction = fraction)
+                sheetWindow?.setSheetScrim(fraction = fraction)
             }
             BackHandler { it.onBack() }
             content(it)
