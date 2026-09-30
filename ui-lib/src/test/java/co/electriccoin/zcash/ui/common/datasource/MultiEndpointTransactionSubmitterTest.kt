@@ -416,27 +416,45 @@ class MultiEndpointTransactionSubmitterTest {
         }
 
     @Test
-    fun acceptedTransactionThenGrpcFailureMapsToPartialResult() {
+    fun acceptedTransactionThenGrpcFailureMapsToPendingResult() {
         val firstTransaction = transaction(10)
         val secondTransaction = transaction(11)
-        val thirdTransaction = transaction(12)
 
         val result =
             listOf(
                 TransactionSubmitResult.Success(firstTransaction.txId),
-                failure(secondTransaction, code = -1, grpcError = true),
-                TransactionSubmitResult.NotAttempted(thirdTransaction.txId)
+                failure(secondTransaction, code = -1, grpcError = true)
             ).toSubmitResult()
 
         assertEquals(
-            SubmitResult.Partial(
-                txIds =
-                    listOf(
-                        firstTransaction.txIdString(),
-                        secondTransaction.txIdString(),
-                        thirdTransaction.txIdString()
-                    ),
-                statuses = listOf("success", "grpcFailure", "notAttempted")
+            SubmitResult.GrpcFailure(
+                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString())
+            ),
+            result
+        )
+    }
+
+    @Test
+    fun acceptedTransactionThenTimeoutMapsToPendingResultWithTimeoutMetadata() {
+        val firstTransaction = transaction(12)
+        val secondTransaction = transaction(13)
+
+        val result =
+            listOf(
+                TransactionSubmitResult.Success(firstTransaction.txId),
+                failure(
+                    secondTransaction,
+                    code = -1,
+                    grpcError = true,
+                    description = MULTI_SUBMIT_TIMEOUT_DESCRIPTION
+                )
+            ).toSubmitResult()
+
+        assertEquals(
+            SubmitResult.GrpcFailure(
+                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString()),
+                description = MULTI_SUBMIT_TIMEOUT_DESCRIPTION,
+                reason = SubmitResult.GrpcFailure.Reason.TIMEOUT
             ),
             result
         )
@@ -503,7 +521,27 @@ class MultiEndpointTransactionSubmitterTest {
     }
 
     @Test
-    fun grpcFailurePartialStatusDoesNotExposeDescription() {
+    fun onlyNotAttemptedTransactionsMapToPartialResult() {
+        val firstTransaction = transaction(19)
+        val secondTransaction = transaction(20)
+
+        val result =
+            listOf(
+                TransactionSubmitResult.NotAttempted(firstTransaction.txId),
+                TransactionSubmitResult.NotAttempted(secondTransaction.txId)
+            ).toSubmitResult()
+
+        assertEquals(
+            SubmitResult.Partial(
+                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString()),
+                statuses = listOf("notAttempted", "notAttempted")
+            ),
+            result
+        )
+    }
+
+    @Test
+    fun grpcFailurePendingResultDoesNotExposeDescription() {
         val firstTransaction = transaction(21)
         val secondTransaction = transaction(22)
 
@@ -515,13 +553,17 @@ class MultiEndpointTransactionSubmitterTest {
                     code = -1,
                     description = "private.example.com:443 failed"
                 ),
-                TransactionSubmitResult.NotAttempted(secondTransaction.txId)
+                TransactionSubmitResult.Failure(
+                    txId = secondTransaction.txId,
+                    grpcError = true,
+                    code = -1,
+                    description = "private-backup.example.com:443 failed"
+                )
             ).toSubmitResult()
 
         assertEquals(
-            SubmitResult.Partial(
-                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString()),
-                statuses = listOf("grpcFailure", "notAttempted")
+            SubmitResult.GrpcFailure(
+                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString())
             ),
             result
         )
@@ -594,12 +636,13 @@ class MultiEndpointTransactionSubmitterTest {
     private fun failure(
         transaction: CreatedTransaction,
         code: Int,
-        grpcError: Boolean
+        grpcError: Boolean,
+        description: String = "failure $code"
     ) = TransactionSubmitResult.Failure(
         txId = transaction.txId,
         grpcError = grpcError,
         code = code,
-        description = "failure $code"
+        description = description
     )
 
     private fun endpoint(host: String) =
