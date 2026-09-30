@@ -149,7 +149,7 @@ private fun LedgerStepTitle(step: Int) {
 /**
  * Text SM with its full 20 sp line box kept: the default line height style trims the first line's
  * top and the last line's bottom, which pulls single-line Texts stacked in Figma's 20 px boxes
- * closer together than drawn.
+ * closer together than drawn and lifts a row's text above the top of the badge beside it.
  */
 private val UntrimmedTextSm: TextStyle
     @Composable get() =
@@ -181,7 +181,8 @@ internal fun LedgerChecklistCard(content: @Composable ColumnScope.() -> Unit) {
 }
 
 /**
- * One numbered line of a [LedgerChecklistCard].
+ * One numbered line of a [LedgerChecklistCard], its text's line box top-aligned with the badge as
+ * in Figma.
  */
 @Composable
 internal fun LedgerChecklistItem(
@@ -192,12 +193,9 @@ internal fun LedgerChecklistItem(
         LedgerNumberBadge(number = number)
         Spacer(12.dp)
         Text(
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .padding(top = 2.dp),
+            modifier = Modifier.weight(1f),
             text = text,
-            style = ZashiTypography.textSm,
+            style = UntrimmedTextSm,
             color = ZashiColors.Text.textPrimary,
             fontWeight = FontWeight.Medium,
         )
@@ -205,7 +203,8 @@ internal fun LedgerChecklistItem(
 }
 
 /**
- * One step of the intro's overview: its number, a title and what the step asks for.
+ * One step of the intro's overview: its number, a title and what the step asks for, the title's
+ * line box top-aligned with the badge as in Figma.
  */
 @Composable
 internal fun LedgerNumberedRow(
@@ -222,13 +221,13 @@ internal fun LedgerNumberedRow(
         ) {
             Text(
                 text = title,
-                style = ZashiTypography.textSm,
+                style = UntrimmedTextSm,
                 color = ZashiColors.Text.textPrimary,
                 fontWeight = FontWeight.Medium,
             )
             Text(
                 text = subtitle,
-                style = ZashiTypography.textSm,
+                style = UntrimmedTextSm,
                 color = ZashiColors.Text.textTertiary,
             )
         }
