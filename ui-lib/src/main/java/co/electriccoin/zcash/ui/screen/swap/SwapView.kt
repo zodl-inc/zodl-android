@@ -229,6 +229,7 @@ fun SlippageButton(state: ButtonState, modifier: Modifier = Modifier) {
         Spacer(1f)
         ZashiButton(
             state = state,
+            minHeight = 40.dp,
             contentPadding = PaddingValues(start = 10.dp, end = 12.dp),
             defaultPrimaryColors = ZashiButtonDefaults.tertiaryColors()
         )
