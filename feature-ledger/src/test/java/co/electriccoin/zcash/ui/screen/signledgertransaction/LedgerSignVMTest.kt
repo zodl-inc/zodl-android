@@ -1,14 +1,18 @@
 package co.electriccoin.zcash.ui.screen.signledgertransaction
 
 import android.app.Application
+import cash.z.ecc.android.sdk.model.AccountUuid
 import co.electriccoin.zcash.ledger.R
 import co.electriccoin.zcash.ui.NavigationRouter
+import co.electriccoin.zcash.ui.common.datasource.AccountDataSource
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
+import co.electriccoin.zcash.ui.common.model.LedgerAccount
 import co.electriccoin.zcash.ui.common.model.LedgerIssue
 import co.electriccoin.zcash.ui.common.model.LedgerIssueKind
 import co.electriccoin.zcash.ui.common.model.LedgerIssueRetry
 import co.electriccoin.zcash.ui.common.model.LedgerSigningDevice
 import co.electriccoin.zcash.ui.common.model.LedgerSigningState
+import co.electriccoin.zcash.ui.common.repository.LedgerRepairTargetRepositoryImpl
 import co.electriccoin.zcash.ui.common.usecase.CancelLedgerSigningUseCase
 import co.electriccoin.zcash.ui.common.usecase.NavigateToLedgerRepairUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerSigningStateUseCase
@@ -19,10 +23,13 @@ import co.electriccoin.zcash.ui.common.usecase.StartLedgerSigningUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitLedgerProposalUseCase
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectArgs
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -422,6 +429,47 @@ class LedgerSignVMTest {
 
             coVerify(exactly = 1) { navigateToLedgerRepair.invoke() }
             verify(exactly = 0) { retryLedgerSigning.invoke() }
+        }
+
+    @Test
+    fun aSecondPairLedgerTapWhileTheFirstReadsTheAccountOpensTheConnectFlowOnce() =
+        runTest(dispatcher) {
+            val selectedAccount = CompletableDeferred<LedgerAccount>()
+            val navigationRouter = mockk<NavigationRouter>(relaxed = true)
+            val navigateToLedgerRepair =
+                NavigateToLedgerRepairUseCase(
+                    accountDataSource =
+                        mockk<AccountDataSource> {
+                            coEvery { getSelectedAccount() } coAnswers { selectedAccount.await() }
+                        },
+                    ledgerRepairTargetRepository = LedgerRepairTargetRepositoryImpl(),
+                    cancelLedgerSigning = mockk(relaxed = true),
+                    navigationRouter = navigationRouter,
+                )
+            val signingState = MutableStateFlow<LedgerSigningState?>(LedgerSigningState.Failed(LedgerIssue.unbound))
+            val vm =
+                vm(
+                    signingState = signingState,
+                    navigateToLedgerRepair = navigateToLedgerRepair,
+                    navigationRouter = navigationRouter,
+                )
+            collect(vm)
+            runCurrent()
+
+            val primary = assertNotNull((vm.state.value?.content as LedgerSignContent.Issue).primary)
+            primary.onClick()
+            runCurrent()
+            primary.onClick()
+            runCurrent()
+
+            selectedAccount.complete(
+                mockk {
+                    every { sdkAccount.accountUuid } returns AccountUuid.new(ByteArray(16) { it.toByte() })
+                }
+            )
+            runCurrent()
+
+            verify(exactly = 1) { navigationRouter.forward(LedgerConnectArgs) }
         }
 
     @Test

@@ -24,6 +24,7 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceItemState
 import co.electriccoin.zcash.ui.util.SettingsUtil
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -71,6 +72,8 @@ class LedgerSignVM(
     private val selectedIdentifier = MutableStateFlow<String?>(null)
 
     private val hasProposal = CompletableDeferred<Boolean>()
+
+    private var repairJob: Job? = null
 
     val state: StateFlow<LedgerSignSheetState?> =
         combine(
@@ -338,10 +341,12 @@ class LedgerSignVM(
 
     /**
      * Ends the session the way Cancel does, then opens the Ledger connect flow to pair the account
-     * again, which stores the pairing with it.
+     * again, which stores the pairing with it. A tap while the previous one is still reading the
+     * account is ignored, so the flow opens once.
      */
     private fun onPairLedgerClick() {
-        viewModelScope.launch { navigateToLedgerRepair() }
+        if (repairJob?.isActive == true) return
+        repairJob = viewModelScope.launch { navigateToLedgerRepair() }
     }
 }
 
