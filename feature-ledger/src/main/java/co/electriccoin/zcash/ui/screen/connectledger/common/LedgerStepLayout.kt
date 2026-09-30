@@ -106,6 +106,7 @@ internal fun LedgerStepLayout(
                     style = ZashiTypography.header6,
                     color = ZashiColors.Text.textPrimary,
                     fontWeight = FontWeight.SemiBold,
+                    lineHeight = TITLE_LINE_HEIGHT.sp,
                 )
                 Spacer(8.dp)
                 Text(
@@ -296,6 +297,12 @@ internal fun LedgerCallout(
 }
 
 internal const val LEDGER_STEP_COUNT = 4
+
+/**
+ * Figma sets the step titles in Header 6 at 24/30, tighter than the 32 sp line of
+ * [ZashiTypography.header6]; only a wrapped title shows the difference.
+ */
+private const val TITLE_LINE_HEIGHT = 30
 
 @PreviewScreens
 @Composable
