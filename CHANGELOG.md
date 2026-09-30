@@ -45,6 +45,10 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   for a moment when a sheet opens.
 - The currency, swap asset and slippage sheets no longer close when dragged down.
 
+### Changed:
+
+- Buttons are now at least 48 dp tall, matching the design system.
+
 ## [3.14.0 (2738)] - 2026-09-16
 
 ### Added:

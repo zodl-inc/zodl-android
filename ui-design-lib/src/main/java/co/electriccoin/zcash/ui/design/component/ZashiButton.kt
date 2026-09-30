@@ -7,6 +7,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -179,7 +180,10 @@ fun ZashiButton(
             } else {
                 state.onClick
             },
-        modifier = modifier.pressMorph(interactionSource),
+        modifier =
+            modifier
+                .defaultMinSize(minHeight = ZashiButtonDefaults.MIN_HEIGHT)
+                .pressMorph(interactionSource),
         interactionSource = interactionSource,
         shape = shape,
         contentPadding = contentPadding,
@@ -225,6 +229,12 @@ object ZashiButtonDefaults {
         get() = RoundedCornerShape(12.dp)
 
     const val IS_LIGHT_THRESHOLD = 0.5f
+
+    /**
+     * Default minimum height of the design system's standard button. It applies only when the caller sets no
+     * height constraint of its own, so an explicit `Modifier.height` at the call site still wins.
+     */
+    val MIN_HEIGHT = 48.dp
 
     @Composable
     fun primaryColors(
