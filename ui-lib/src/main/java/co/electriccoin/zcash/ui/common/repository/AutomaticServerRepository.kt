@@ -225,9 +225,13 @@ class AutomaticServerRepositoryImpl(
      * the relay/gateway 502 as transient and retries forever (seen 2026-09-14 with Tor on) - so the only
      * reliable "OHTTP is down" signal is probing the gateway ourselves. While on a clearnet fallback it runs
      * every [FALLBACK_RECOVERY_INTERVAL] to bring the wallet back to OHTTP as soon as the gateway answers.
+     *
+     * The gateway health ticks run only while the app is in the foreground: they stop in the background
+     * and start over (a full [GATEWAY_HEALTH_INTERVAL] after the foreground edge, which itself triggers an
+     * evaluation) when the app returns.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
-    private fun healthTicks(): Flow<SwitchTrigger> =
+    internal fun healthTicks(): Flow<SwitchTrigger> =
         isServerAutomatic
             .flatMapLatest { automatic ->
                 if (!automatic) {
@@ -237,15 +241,34 @@ class AutomaticServerRepositoryImpl(
                         .observe()
                         .distinctUntilChanged()
                         .flatMapLatest { fallbackActive ->
-                            flow {
-                                while (true) {
-                                    delay(if (fallbackActive) FALLBACK_RECOVERY_INTERVAL else GATEWAY_HEALTH_INTERVAL)
-                                    emit(if (fallbackActive) SwitchTrigger.RECOVERY else SwitchTrigger.HEALTH)
-                                }
+                            if (fallbackActive) {
+                                ticks(FALLBACK_RECOVERY_INTERVAL, SwitchTrigger.RECOVERY)
+                            } else {
+                                applicationStateProvider
+                                    .isInForeground
+                                    .distinctUntilChanged()
+                                    .flatMapLatest { foreground ->
+                                        if (foreground) {
+                                            ticks(GATEWAY_HEALTH_INTERVAL, SwitchTrigger.HEALTH)
+                                        } else {
+                                            emptyFlow()
+                                        }
+                                    }
                             }
                         }
                 }
             }
+
+    private fun ticks(
+        interval: Duration,
+        trigger: SwitchTrigger
+    ): Flow<SwitchTrigger> =
+        flow {
+            while (true) {
+                delay(interval)
+                emit(trigger)
+            }
+        }
 
     private suspend fun <T> guarded(
         what: String,
@@ -288,6 +311,9 @@ class AutomaticServerRepositoryImpl(
      * Consecutive failure confirmation: when the current server is a gateway and tier 0 is empty, a
      * CONNECTIVITY trigger (synchronizer error) falls back immediately, but FOREGROUND/HEALTH triggers
      * wait for a second consecutive failure to avoid leaving OHTTP on transient Tor circuit timeouts.
+     *
+     * A HEALTH trigger on the gateway skips the benchmark and only probes the current gateway
+     * ([probeGateway]); every other trigger ranks as described above.
      */
     @Suppress("ReturnCount", "ComplexMethod", "NestedBlockDepth")
     internal suspend fun evaluateServerSwitch(trigger: SwitchTrigger): LightWalletEndpoint? {
@@ -301,8 +327,15 @@ class AutomaticServerRepositoryImpl(
         if (gateways.isEmpty()) return null
         val synchronizer = synchronizerProvider.getSynchronizerOrNull() ?: return null
         return try {
-            val healthyGateways = rankValidated(synchronizer, gateways)
             val onGateway = lightWalletEndpointProvider.isOhttpGateway(current)
+            val healthyGateways =
+                if (trigger == SwitchTrigger.HEALTH && onGateway) {
+                    // Routine health tick on the gateway: only prove the gateway still answers. The full
+                    // benchmark (latency + block fetch per server) is for deciding between servers.
+                    listOf(current).filter { probeGateway(synchronizer, it) }
+                } else {
+                    rankValidated(synchronizer, gateways)
+                }
 
             // Reset consecutive failures when a gateway is healthy, when on a fallback (recovering back
             // to OHTTP), or when switching to automatic mode (implied by being on a non-gateway).
@@ -407,6 +440,18 @@ class AutomaticServerRepositoryImpl(
             }
         }
     }
+
+    /**
+     * Lightweight liveness probe of a single gateway: plain validation (`GetLightdInfo`, Tor-aware), the
+     * cheapest SDK call that proves the gateway answers, capped by [VALIDATION_TIMEOUT].
+     */
+    private suspend fun probeGateway(
+        synchronizer: Synchronizer,
+        gateway: LightWalletEndpoint
+    ): Boolean =
+        withTimeoutOrNull(VALIDATION_TIMEOUT) {
+            runCatching { synchronizer.validateServerEndpoint(application, gateway) }.getOrNull()
+        } == ServerValidation.Valid
 
     private suspend fun syncFallbackFlag(endpoint: LightWalletEndpoint) {
         val active = ServerFallbackPolicy.isFallback(endpoint, lightWalletEndpointProvider::isOhttpGateway)

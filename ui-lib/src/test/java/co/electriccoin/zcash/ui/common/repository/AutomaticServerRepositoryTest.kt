@@ -8,6 +8,7 @@ import cash.z.ecc.android.sdk.model.PersistableWallet
 import cash.z.ecc.android.sdk.type.ServerValidation
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.ui.common.datasource.TransactionProposal
+import co.electriccoin.zcash.ui.common.provider.ApplicationStateProvider
 import co.electriccoin.zcash.ui.common.provider.IsOhttpFallbackActiveProvider
 import co.electriccoin.zcash.ui.common.provider.IsServerSelectionAutomaticProvider
 import co.electriccoin.zcash.ui.common.provider.LightWalletEndpointProvider
@@ -24,16 +25,19 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TestTimeSource
 
@@ -99,11 +103,17 @@ class AutomaticServerRepositoryTest {
 
     // A relaxed mock returns a bare Object for the suspend Boolean getter; back it with a real value.
     private var fallbackActive = false
+    private val fallbackActiveFlow = MutableStateFlow(false)
     private val fallbackFlag =
         mockk<IsOhttpFallbackActiveProvider>(relaxed = true) {
+            every { observe() } returns fallbackActiveFlow
             coEvery { get() } answers { fallbackActive }
             coEvery { store(any()) } answers { fallbackActive = firstArg() }
         }
+
+    private val foreground = MutableStateFlow(true)
+    private val applicationStateProvider =
+        mockk<ApplicationStateProvider>(relaxed = true) { every { isInForeground } returns foreground }
 
     private val repository =
         AutomaticServerRepositoryImpl(
@@ -111,7 +121,7 @@ class AutomaticServerRepositoryTest {
             walletRepository = walletRepository,
             zashiProposalRepository = zashiProposalRepository,
             keystoneProposalRepository = keystoneProposalRepository,
-            applicationStateProvider = mockk(relaxed = true),
+            applicationStateProvider = applicationStateProvider,
             synchronizerProvider = synchronizerProvider,
             persistableWalletProvider = persistableWalletProvider,
             lightWalletEndpointProvider = lightWalletEndpointProvider,
@@ -451,6 +461,7 @@ class AutomaticServerRepositoryTest {
         runTest {
             coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
             stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            stubGatewayProbe(reachable = false)
             val banner = collectBanner()
 
             assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
@@ -459,6 +470,92 @@ class AutomaticServerRepositoryTest {
             assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
             assertEquals(true, banner.last())
             coVerify(exactly = 0) { synchronizer.getFastestServers(fallbacks) }
+        }
+
+    @Test
+    fun healthTriggerOnTheGatewayUsesALightProbeInsteadOfTheBenchmark() =
+        runTest {
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = true, rankedFallbacks = fallbacks)
+            stubGatewayProbe(reachable = true)
+            val banner = collectBanner()
+
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+
+            assertEquals(false, banner.last())
+            coVerify(exactly = 1) { synchronizer.validateServerEndpoint(any(), gateway) }
+            coVerify(exactly = 0) { synchronizer.getFastestServers(any()) }
+        }
+
+    @Test
+    fun healthTriggerOnAClearnetServerStillRanksTheGatewayWithTheBenchmark() =
+        runTest {
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(known.last())
+            stubTiers(gatewayReachable = true, rankedFallbacks = fallbacks)
+
+            assertEquals(gateway, repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+            coVerify(exactly = 1) { synchronizer.getFastestServers(listOf(gateway)) }
+        }
+
+    @Test
+    fun foregroundTriggerOnTheGatewayStillUsesTheBenchmark() =
+        runTest {
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = true, rankedFallbacks = fallbacks)
+
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.FOREGROUND))
+            coVerify(exactly = 1) { synchronizer.getFastestServers(listOf(gateway)) }
+        }
+
+    @Test
+    fun healthTicksRunInTheForegroundAndStopInTheBackground() =
+        runTest {
+            val ticks = mutableListOf<SwitchTrigger>()
+            repository.healthTicks().onEach { ticks += it }.launchIn(backgroundScope)
+            runCurrent()
+
+            advanceTimeBy(2.minutes + 1.seconds)
+            assertEquals(listOf(SwitchTrigger.HEALTH), ticks)
+
+            foreground.value = false
+            runCurrent()
+            advanceTimeBy(10.minutes)
+            assertEquals(listOf(SwitchTrigger.HEALTH), ticks)
+
+            // Back in the foreground the ticks restart with a full interval.
+            foreground.value = true
+            runCurrent()
+            advanceTimeBy(2.minutes - 1.seconds)
+            assertEquals(listOf(SwitchTrigger.HEALTH), ticks)
+            advanceTimeBy(2.seconds)
+            assertEquals(listOf(SwitchTrigger.HEALTH, SwitchTrigger.HEALTH), ticks)
+        }
+
+    @Test
+    fun noHealthTicksWhenTheAppStartsInTheBackground() =
+        runTest {
+            foreground.value = false
+            val ticks = mutableListOf<SwitchTrigger>()
+            repository.healthTicks().onEach { ticks += it }.launchIn(backgroundScope)
+            runCurrent()
+
+            advanceTimeBy(10.minutes)
+
+            assertEquals(emptyList(), ticks)
+        }
+
+    @Test
+    fun fallbackRecoveryTicksKeepTheirOwnIntervalAndAreNotGatedByTheForeground() =
+        runTest {
+            fallbackActiveFlow.value = true
+            foreground.value = false
+            val ticks = mutableListOf<SwitchTrigger>()
+            repository.healthTicks().onEach { ticks += it }.launchIn(backgroundScope)
+            runCurrent()
+
+            advanceTimeBy(5.minutes + 1.seconds)
+
+            assertEquals(listOf(SwitchTrigger.RECOVERY), ticks)
         }
 
     @Test
@@ -479,13 +576,13 @@ class AutomaticServerRepositoryTest {
             coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
             val banner = collectBanner()
 
-            stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            stubGatewayProbe(reachable = false)
             assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
 
-            stubTiers(gatewayReachable = true, rankedFallbacks = fallbacks)
+            stubGatewayProbe(reachable = true)
             assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
 
-            stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            stubGatewayProbe(reachable = false)
             assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
 
             assertEquals(false, banner.last())
@@ -545,6 +642,12 @@ class AutomaticServerRepositoryTest {
             repository.ohttpUnavailable.toList(banner)
         }
         return banner
+    }
+
+    /** The light probe used by HEALTH ticks on the gateway: plain validation of the one gateway. */
+    private fun stubGatewayProbe(reachable: Boolean) {
+        coEvery { synchronizer.validateServerEndpoint(any(), gateway) } returns
+            if (reachable) ServerValidation.Valid else ServerValidation.InValid(IllegalStateException("down"))
     }
 
     /** SDK benchmark per tier: the OHTTP tier validates the gateway or nothing; clearnet ranks as given. */
