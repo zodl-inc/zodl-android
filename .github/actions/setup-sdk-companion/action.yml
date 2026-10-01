@@ -136,7 +136,7 @@ runs:
         app-id: ${{ inputs.cargo-app-id }}
         private-key: ${{ inputs.cargo-app-private-key }}
         owner: zodl-inc
-        repositories: slipstream,slipstream-internal
+        repositories: slipstream,slipstream-internal,ohttp
     - name: Point cargo git fetches at the App token (companion SDK)
       if: steps.pin.outputs.commit != '' && steps.slipstream-token.outputs.token != ''
       shell: bash
