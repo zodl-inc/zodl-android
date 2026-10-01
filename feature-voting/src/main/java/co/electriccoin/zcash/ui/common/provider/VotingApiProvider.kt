@@ -335,15 +335,20 @@ class KtorVotingApiProvider(
         }
     }
 
-    // MOB-1811 / F-06: these two writes go through withVoteServerFailover's default
-    // shouldTryNextVoteServer (no override passed here), which -- unlike the read call sites above,
-    // which opt back into it via shouldTryNextVoteServerForRead -- does NOT retry a
-    // TimeoutCancellationException on the next server: a timeout here means the vote/delegation
-    // POST may already have been delivered and processed, so failing over would risk double-
-    // submission (the second attempt landing as a spent-nullifier rejection, or worse if the
-    // target doesn't de-duplicate). The timeout is surfaced to the caller instead. The #2481
-    // reconcile/VAN-probe recovery machinery is what handles the resulting "did it actually land"
-    // ambiguity, not an automatic retry here.
+    /**
+     * MOB-1811 / F-06: this write (like [submitVoteCommitment]) goes through [withVoteServerFailover]'s
+     * default [shouldTryNextVoteServer], which, unlike the read call sites that opt back in via
+     * [shouldTryNextVoteServerForRead], does NOT fail over on a [TimeoutCancellationException]: the POST may
+     * already have been delivered and processed, so trying the next server risks a double submission. The
+     * timeout is surfaced to the caller, and the reconcile/VAN-probe recovery handles the "did it land"
+     * ambiguity.
+     *
+     * This overload is OHTTP-aware ([voteServerPost]) but has no production caller, nor has
+     * [submitVoteCommitment]: `SubmitVotesUseCase` submits delegations and votes through the SDK round
+     * driver (`VotingCryptoClient.openRoundSession`), which does its own HTTP and never calls back into
+     * this class. With Tor off that driver sends the writes over plain HTTP, not OHTTP; routing them
+     * through OHTTP needs an OHTTP-capable session route in the SDK.
+     */
     override suspend fun submitDelegation(registration: DelegationRegistration): TxResult =
         executeWithVoteServerFailover(DELEGATE_VOTE_PATH) { baseUrl ->
             voteServerPost(
@@ -352,21 +357,7 @@ class KtorVotingApiProvider(
             ).toTxResult()
         }
 
-    // Milan's PR #12 review, point 3: as of the voting-round-driver merge from main, this overload
-    // (and submitVoteCommitment's below) has no production caller. SubmitVotesUseCase now submits
-    // delegations/votes exclusively through VotingCryptoClient.openRoundSession's SDK round driver,
-    // which does its own HTTP in Rust (round_session.rs: SessionRoute::Tor via a Tor-only
-    // ZodlVotingRoute, or SessionRoute::Direct via the zcash_voting crate's plain-HTTP DirectRoute
-    // when torLease is null) -- it never calls back into VotingApiProvider. So with Tor off, vote
-    // writes go over plain HTTP with no OHTTP involvement, while reads here (fetchServiceConfig,
-    // fetchAllRounds, fetchTallyResults, fetchTxConfirmationFromServer) still get this class's
-    // OHTTP-aware resolveVoteRoute dispatch. Fixing this needs an OHTTP-capable SessionRoute
-    // variant added to the SDK's round driver (a Rust/SDK-side design decision, not an app-side
-    // gap) -- see the fork's report on PR #12 for the full investigation. Left as-is rather than
-    // deleted: this is still the correct OHTTP-aware shape for a POST if the round driver is ever
-    // taught to call back into an app-supplied client, and the F-06 failover tests
-    // (VotingServerFailoverPostTimeoutTest) exercise the shared shouldTryNextVoteServer/
-    // withVoteServerFailover primitives directly, not this dead call path, so they remain valid.
+    /** Posts with the supplied [client] as-is, without OHTTP routing. Also has no production caller. */
     override suspend fun submitDelegation(
         registration: DelegationRegistration,
         client: HttpClient
