@@ -62,6 +62,21 @@ class LedgerSignStringsTest {
         }
     }
 
+    /**
+     * The sheet names the device app the way its own status line does, never "aplicación".
+     */
+    @Test
+    fun theSpanishSheetCallsItLaAppDeZcashThroughout() {
+        listOf(
+            "ledger_sign_openingApp",
+            "ledger_sign_error_openAppRejected_title",
+            "ledger_sign_error_openAppRejected_message",
+        ).forEach { key -> assertTrue(spanish.getValue(key).contains("app de Zcash"), key) }
+        spanish
+            .filterKeys { it.startsWith(SIGN_PREFIX) }
+            .forEach { (key, value) -> assertFalse(value.contains("aplicación"), "$key: $value") }
+    }
+
     @Test
     fun theDroppedPickerKeysAreGone() {
         listOf("ledger_sign_select_message", "ledger_sign_select_cta").forEach { key ->
