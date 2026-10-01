@@ -206,7 +206,6 @@
     <string name="choose_server_save_success_dialog_title">Server saved</string>
     <string name="choose_server_save_success_dialog_text">The selected server endpoint has been
         successfully saved.</string>
-    <string name="serverSetup_default">Default</string>
     <string name="serverSetup_ohttpPrivate">Private · OHTTP (default)</string>
     <string name="serverSetup_clearnetNotPrivate">Clearnet · not private (fallback only)</string>
     <string name="serverSetup_performingTest">Performing server test…</string>

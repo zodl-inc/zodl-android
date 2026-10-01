@@ -30,7 +30,9 @@ import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -229,27 +231,24 @@ class ChooseServerVM(
             if (autoStartProbing) {
                 refreshFastestServersUseCase()
             }
-            observeFastestServers()
-                .onEach { fastestServers ->
-                    if (!fastestServers.isLoading && fastestServers.servers != null) {
-                        val clearnetEndpoints = lightWalletEndpointProvider.getFallbackEndpoints()
-                        val fastestClearnet = fastestServers.servers.firstOrNull { it in clearnetEndpoints }
-                        if (fastestClearnet != null) {
-                            innerState.update { inner ->
-                                inner.local?.let {
-                                    inner
-                                        .copy(
-                                            local =
-                                                it.copy(
-                                                    isAutomatic = false,
-                                                    selectedEndpoint = fastestClearnet
-                                                )
-                                        )
-                                } ?: inner
-                            }
-                        }
-                    }
-                }.launchIn(viewModelScope)
+            // Preselect once per ViewModel: the first finished result with a clearnet candidate. Later
+            // emissions (e.g. a refresh) must not overwrite what the user has selected since.
+            viewModelScope.launch {
+                val clearnetEndpoints = lightWalletEndpointProvider.getFallbackEndpoints()
+                val fastestClearnet =
+                    observeFastestServers()
+                        .mapNotNull { fastestServers ->
+                            fastestServers.servers
+                                ?.takeIf { !fastestServers.isLoading }
+                                ?.firstOrNull { it in clearnetEndpoints }
+                        }.first()
+                innerState.first { it.local != null }
+                innerState.update { inner ->
+                    inner.local?.let {
+                        inner.copy(local = it.copy(isAutomatic = false, selectedEndpoint = fastestClearnet))
+                    } ?: inner
+                }
+            }
         }
     }
 
@@ -330,7 +329,6 @@ class ChooseServerVM(
         isManualSelected: Boolean,
     ): ServerState.Default {
         val defaultEndpoint = lightWalletEndpointProvider.getDefaultEndpoint()
-        val isOhttpGateway = lightWalletEndpointProvider.isOhttpGateway(endpoint)
         val isEndpointChecked =
             isManualSelected && !local.isCustomSelected && local.selectedEndpoint == endpoint
         return ServerState.Default(
@@ -344,7 +342,6 @@ class ChooseServerVM(
                     subtitle =
                         when {
                             endpoint == defaultEndpoint -> stringRes(R.string.serverSetup_ohttpPrivate)
-                            isOhttpGateway -> stringRes(R.string.serverSetup_default)
                             else -> stringRes(R.string.serverSetup_clearnetNotPrivate)
                         },
                     hapticFeedbackType = if (isEndpointChecked) null else HapticFeedbackType.SegmentTick,
