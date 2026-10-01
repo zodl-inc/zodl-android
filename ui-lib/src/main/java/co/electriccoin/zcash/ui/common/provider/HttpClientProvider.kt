@@ -222,4 +222,6 @@ private const val DEFAULT_CONNECT_TIMEOUT_MILLIS = 15_000L
 // CMC quote API (X-CMC_PRO_API_KEY) and the voting helper (X-Helper-Token).
 private val SANITIZED_HEADERS = setOf(HttpHeaders.Authorization, "X-CMC_PRO_API_KEY", "X-Helper-Token")
 
-private val HTTP_SERVER_ERRORS = 500..599
+private const val HTTP_SERVER_ERROR_FIRST = 500
+private const val HTTP_SERVER_ERROR_LAST = 599
+private val HTTP_SERVER_ERRORS = HTTP_SERVER_ERROR_FIRST..HTTP_SERVER_ERROR_LAST
