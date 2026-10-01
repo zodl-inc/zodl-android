@@ -58,16 +58,7 @@ class HttpClientRetryBehaviorTest {
                 val client =
                     HttpClient(mockEngine) {
                         expectSuccess = false
-                        install(HttpRequestRetry) {
-                            maxRetries = 4
-                            retryIf { request, response ->
-                                !request.url.toString().isVotingPath() && response.status.value in 500..599
-                            }
-                            retryOnExceptionIf { request, _ ->
-                                !request.url.toString().isVotingPath()
-                            }
-                            exponentialDelay()
-                        }
+                        install(HttpRequestRetry) { configureClearnetRetry() }
                     }
 
                 val result =
@@ -113,16 +104,7 @@ class HttpClientRetryBehaviorTest {
             val client =
                 HttpClient(mockEngine) {
                     expectSuccess = false
-                    install(HttpRequestRetry) {
-                        maxRetries = 4
-                        retryIf { request, response ->
-                            !request.url.toString().isVotingPath() && response.status.value in 500..599
-                        }
-                        retryOnExceptionIf { request, _ ->
-                            !request.url.toString().isVotingPath()
-                        }
-                        exponentialDelay()
-                    }
+                    install(HttpRequestRetry) { configureClearnetRetry() }
                 }
 
             val result =
@@ -165,16 +147,7 @@ class HttpClientRetryBehaviorTest {
             val client =
                 HttpClient(mockEngine) {
                     expectSuccess = false
-                    install(HttpRequestRetry) {
-                        maxRetries = 4
-                        retryIf { request, response ->
-                            !request.url.toString().isVotingPath() && response.status.value in 500..599
-                        }
-                        retryOnExceptionIf { request, _ ->
-                            !request.url.toString().isVotingPath()
-                        }
-                        exponentialDelay()
-                    }
+                    install(HttpRequestRetry) { configureClearnetRetry() }
                 }
 
             val result =
@@ -213,13 +186,7 @@ class HttpClientRetryBehaviorTest {
             val client =
                 HttpClient(mockEngine) {
                     expectSuccess = false
-                    install(HttpRequestRetry) {
-                        maxRetries = 4
-                        retryOnExceptionIf { request, _ ->
-                            !request.url.toString().isVotingPath()
-                        }
-                        exponentialDelay()
-                    }
+                    install(HttpRequestRetry) { configureClearnetRetry() }
                 }
 
             val result =
@@ -237,6 +204,51 @@ class HttpClientRetryBehaviorTest {
             )
 
             client.close()
+        }
+
+    /**
+     * Test that exchange-rate (CMC) requests are NOT retried on 500 errors or on exceptions.
+     */
+    @Test
+    fun testExchangeRateRequestsNotRetried() =
+        runBlocking {
+            val statusAttempts = AtomicInteger(0)
+            val statusClient =
+                HttpClient(
+                    MockEngine {
+                        statusAttempts.incrementAndGet()
+                        respond(
+                            content = ByteReadChannel("Server error"),
+                            status = HttpStatusCode.InternalServerError,
+                            headers = headersOf(HttpHeaders.ContentType, "text/plain")
+                        )
+                    }
+                ) {
+                    expectSuccess = false
+                    install(HttpRequestRetry) { configureClearnetRetry() }
+                }
+
+            val response = statusClient.get("https://$CMC_API_HOST/v1/cryptocurrency/quotes/latest")
+            assertEquals(500, response.status.value)
+            assertEquals("Exchange-rate host must not be retried on 500", 1, statusAttempts.get())
+            statusClient.close()
+
+            val exceptionAttempts = AtomicInteger(0)
+            val exceptionClient =
+                HttpClient(
+                    MockEngine {
+                        exceptionAttempts.incrementAndGet()
+                        throw java.io.IOException("Connection failed")
+                    }
+                ) {
+                    expectSuccess = false
+                    install(HttpRequestRetry) { configureClearnetRetry() }
+                }
+
+            val result = runCatching { exceptionClient.get("https://$CMC_API_HOST/v1/fiat/map") }
+            assertTrue("Request should fail on connection error", result.isFailure)
+            assertEquals("Exchange-rate host must not be retried on exception", 1, exceptionAttempts.get())
+            exceptionClient.close()
         }
 
     /**
@@ -299,12 +311,5 @@ class HttpClientRetryBehaviorTest {
                 testUrl.isVotingPath()
             )
         }
-
-        // Verify count: there should be exactly 4 voting paths checked
-        assertEquals(
-            "isVotingPath() must check exactly 4 voting endpoints",
-            4,
-            endpoints.size
-        )
     }
 }

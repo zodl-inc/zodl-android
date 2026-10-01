@@ -8,6 +8,7 @@ import io.ktor.client.HttpClientConfig
 import io.ktor.client.engine.HttpClientEngineConfig
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpRequestRetry
+import io.ktor.client.plugins.HttpRequestRetryConfig
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
@@ -128,19 +129,7 @@ class HttpClientProviderImpl(
                     chain.proceed(chain.request())
                 }
             }
-            install(HttpRequestRetry) {
-                maxRetries = MAX_RETRIES
-                retryIf { request, response ->
-                    !request.url.toString().isVotingPath() &&
-                        !request.url.host.isExchangeRateHost() &&
-                        response.status.value in 500..599
-                }
-                retryOnExceptionIf { request, _ ->
-                    !request.url.toString().isVotingPath() &&
-                        !request.url.host.isExchangeRateHost()
-                }
-                exponentialDelay()
-            }
+            install(HttpRequestRetry) { configureClearnetRetry() }
         }
 
     private fun <T : HttpClientEngineConfig> HttpClientConfig<T>.configureHttpClient(
@@ -173,6 +162,25 @@ private class KtorLogger : Logger {
     private companion object {
         const val MAX_LOG_CHUNK = 3900
     }
+}
+
+/**
+ * Retry policy of the direct (clearnet) client: 5xx responses and exceptions are retried with exponential
+ * backoff, except for voting paths (ciphertext that must be sent exactly once) and the exchange-rate host.
+ * Shared with the retry behaviour tests so they exercise the production policy, not a copy of it.
+ */
+internal fun HttpRequestRetryConfig.configureClearnetRetry() {
+    maxRetries = MAX_RETRIES
+    retryIf { request, response ->
+        !request.url.toString().isVotingPath() &&
+            !request.url.host.isExchangeRateHost() &&
+            response.status.value in 500..599
+    }
+    retryOnExceptionIf { request, _ ->
+        !request.url.toString().isVotingPath() &&
+            !request.url.host.isExchangeRateHost()
+    }
+    exponentialDelay()
 }
 
 // C-08 fix: Exclude all voting POSTs from retry — they carry OHTTP-encapsulated ciphertext
