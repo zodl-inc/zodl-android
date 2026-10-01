@@ -71,6 +71,7 @@ fun SwapAssetPickerView(state: SwapAssetPickerState?) {
     ZashiScreenModalBottomSheet(
         state = state,
         dragHandle = null,
+        sheetGesturesEnabled = false,
         content = { innerState, _ ->
             val hazeState = rememberZashiFrostState()
             TransparentBgScaffold(

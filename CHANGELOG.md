@@ -13,6 +13,13 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
   as a QR code or key string, revealed behind biometrics and behind a consent sheet for the Full key.
   The chooser carries the logo and name of the selected wallet, Zodl or Keystone.
 
+### Changed:
+
+- The background behind bottom sheets built on the Zashi screen and in-screen sheet wrappers now darkens
+  gradually as the sheet opens, closes or is dragged, instead of fading on a timer, and no longer flashes dark
+  for a moment when a sheet opens.
+- The currency, swap asset and slippage sheets no longer close when dragged down.
+
 ## [3.14.0 (2738)] - 2026-09-16
 
 ### Added:
