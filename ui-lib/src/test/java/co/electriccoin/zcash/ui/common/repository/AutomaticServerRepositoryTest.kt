@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -246,10 +247,7 @@ class AutomaticServerRepositoryTest {
             coEvery { isAutomaticProvider.get() } returns true
             coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
             stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
-            val banner = mutableListOf<Boolean>()
-            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-                repository.ohttpUnavailable.toList(banner)
-            }
+            val banner = collectBanner()
 
             assertNull(repository.evaluateServerSwitch())
             assertEquals(true, banner.last())
@@ -264,10 +262,7 @@ class AutomaticServerRepositoryTest {
             coEvery { isAutomaticProvider.get() } returns true
             coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
             stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
-            val banner = mutableListOf<Boolean>()
-            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-                repository.ohttpUnavailable.toList(banner)
-            }
+            val banner = collectBanner()
 
             // The user leaves automatic mode while an evaluation that started earlier is still running:
             // it then finishes and reports the gateway as unavailable.
@@ -276,6 +271,281 @@ class AutomaticServerRepositoryTest {
 
             assertEquals(false, banner.last())
         }
+
+    /**
+     * The wait is bounded, so this only pins that a snapshot which has not arrived yet still holds the
+     * switch back - [switchIsAppliedAnywayWhenTheLocalBalanceSnapshotNeverArrives] pins the other end.
+     */
+    @Test
+    fun switchCandidateWaitsForTheLocalBalanceSnapshot() =
+        runTest {
+            stubSwitchDecision(balances = null)
+
+            assertNull(withTimeoutOrNull(1.seconds) { repository.resolveSwitchCandidate(SwitchTrigger.CONNECTIVITY) })
+        }
+
+    @Test
+    fun switchCandidateIsReleasedByTheLocalBalanceSnapshot() =
+        runTest {
+            stubSwitchDecision(balances = emptyMap())
+
+            assertEquals(gateway, repository.resolveSwitchCandidate(SwitchTrigger.CONNECTIVITY))
+        }
+
+    @Test
+    fun switchIsAppliedAnywayWhenTheLocalBalanceSnapshotNeverArrives() =
+        runTest {
+            stubSwitchDecision(balances = null)
+
+            assertEquals(gateway, repository.resolveSwitchCandidate(SwitchTrigger.CONNECTIVITY))
+        }
+
+    @Test
+    fun anAppliedSwitchIsConfirmedToTheSdk() =
+        runTest {
+            stubSwitchDecision(balances = emptyMap())
+
+            val edges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(edges, SwitchTrigger.CONNECTIVITY).launchIn(backgroundScope)
+            runCurrent()
+
+            edges.emit(Unit)
+            runCurrent()
+
+            coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(gateway) }
+            coVerify(exactly = 1) { synchronizer.confirmServerSwitch(gateway) }
+        }
+
+    @Test
+    fun aDeclinedSwitchIsNotConfirmedToTheSdk() =
+        runTest {
+            stubSwitchDecision(balances = emptyMap())
+            // The user picks a server manually while the evaluation is running: the first automatic-mode
+            // check (evaluation) still passes, the second (apply) does not.
+            coEvery { isAutomaticProvider.get() } returnsMany listOf(true, false)
+
+            val edges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(edges, SwitchTrigger.CONNECTIVITY).launchIn(backgroundScope)
+            runCurrent()
+
+            edges.emit(Unit)
+            runCurrent()
+
+            coVerify(exactly = 0) { walletRepository.updateWalletEndpoint(any()) }
+            coVerify(exactly = 0) { synchronizer.confirmServerSwitch(any()) }
+        }
+
+    @Test
+    fun aCancelledEvaluationAppliesNothing() =
+        runTest {
+            stubSwitchDecision(balances = emptyMap())
+            coEvery { synchronizer.getFastestServers(any()) } coAnswers { awaitCancellation() }
+
+            val edges = MutableSharedFlow<Unit>()
+            val lane = repository.observeSwitchCandidates(edges).launchIn(backgroundScope)
+            runCurrent()
+
+            edges.emit(Unit)
+            runCurrent()
+            lane.cancelAndJoin()
+
+            coVerify(exactly = 0) { walletRepository.updateWalletEndpoint(any()) }
+            coVerify(exactly = 0) { synchronizer.confirmServerSwitch(any()) }
+        }
+
+    @Test
+    fun aFailedEvaluationStillCountsAgainstTheEvaluationInterval() =
+        runTest {
+            stubSwitchDecision(balances = emptyMap())
+            coEvery { synchronizer.getFastestServers(any()) } throws IllegalStateException("benchmark failed")
+
+            val edges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(edges).launchIn(backgroundScope)
+            runCurrent()
+
+            edges.emit(Unit)
+            runCurrent()
+            edges.emit(Unit)
+            runCurrent()
+
+            coVerify(exactly = 1) { synchronizer.getFastestServers(any()) }
+        }
+
+    @Test
+    fun theLaneSurvivesAFailedEvaluationAndKeepsServingTheNextEdge() =
+        runTest {
+            stubSwitchDecision(balances = emptyMap())
+            coEvery { synchronizer.getFastestServers(any()) } throws IllegalStateException("benchmark failed")
+
+            val edges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(edges, SwitchTrigger.CONNECTIVITY).launchIn(backgroundScope)
+            runCurrent()
+
+            edges.emit(Unit)
+            runCurrent()
+
+            coVerify(exactly = 0) { walletRepository.updateWalletEndpoint(any()) }
+
+            stubTiers(gatewayReachable = true, rankedFallbacks = emptyList())
+            edges.emit(Unit)
+            runCurrent()
+
+            coVerify(exactly = 1) { walletRepository.updateWalletEndpoint(gateway) }
+        }
+
+    @Test
+    fun theLaneSurvivesAFailureToApplyTheSwitch() =
+        runTest {
+            stubSwitchDecision(balances = emptyMap())
+            coEvery { walletRepository.updateWalletEndpoint(any()) } throws IllegalStateException("prefs failed")
+
+            val edges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(edges, SwitchTrigger.CONNECTIVITY).launchIn(backgroundScope)
+            runCurrent()
+
+            edges.emit(Unit)
+            runCurrent()
+            edges.emit(Unit)
+            runCurrent()
+
+            coVerify(exactly = 2) { walletRepository.updateWalletEndpoint(gateway) }
+        }
+
+    @Test
+    fun aSecondForegroundEdgeInsideTheEvaluationIntervalIsNotEvaluated() =
+        runTest {
+            stubSwitchDecision(balances = emptyMap())
+
+            val edges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(edges).launchIn(backgroundScope)
+            runCurrent()
+
+            edges.emit(Unit)
+            runCurrent()
+            edges.emit(Unit)
+            runCurrent()
+
+            coVerify(exactly = 1) { synchronizer.getFastestServers(any()) }
+        }
+
+    @Test
+    fun aForegroundEdgeAfterTheEvaluationIntervalIsEvaluatedAgain() =
+        runTest {
+            stubSwitchDecision(balances = emptyMap())
+
+            val edges = MutableSharedFlow<Unit>()
+            repository.observeSwitchCandidates(edges).launchIn(backgroundScope)
+            runCurrent()
+
+            edges.emit(Unit)
+            runCurrent()
+            timeSource += MINIMUM_EVALUATION_INTERVAL
+            edges.emit(Unit)
+            runCurrent()
+
+            coVerify(exactly = 2) { synchronizer.getFastestServers(any()) }
+        }
+
+    @Test
+    fun gatewayFailureNeedsTwoConsecutiveNonConnectivityTriggersToReportUnavailability() =
+        runTest {
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            val banner = collectBanner()
+
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+            assertEquals(false, banner.last())
+
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+            assertEquals(true, banner.last())
+            coVerify(exactly = 0) { synchronizer.getFastestServers(fallbacks) }
+        }
+
+    @Test
+    fun connectivityTriggerReportsGatewayUnavailabilityWithoutConfirmation() =
+        runTest {
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            val banner = collectBanner()
+
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.CONNECTIVITY))
+
+            assertEquals(true, banner.last())
+        }
+
+    @Test
+    fun gatewaySuccessBetweenFailuresResetsTheConfirmationCounter() =
+        runTest {
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            val banner = collectBanner()
+
+            stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+
+            stubTiers(gatewayReachable = true, rankedFallbacks = fallbacks)
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+
+            stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.HEALTH))
+
+            assertEquals(false, banner.last())
+        }
+
+    @Test
+    fun aGatewayTheBenchmarkCannotRankIsStillHealthyWhenItValidates() =
+        runTest {
+            // Tor circuits can miss the benchmark's fetch thresholds; plain validation decides then.
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            coEvery { synchronizer.validateServerEndpoint(any(), gateway) } returns ServerValidation.Valid
+            val banner = collectBanner()
+
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.CONNECTIVITY))
+
+            assertEquals(false, banner.last())
+        }
+
+    @Test
+    fun aGatewayThatNeitherRanksNorValidatesIsReportedUnavailable() =
+        runTest {
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            coEvery { synchronizer.validateServerEndpoint(any(), gateway) } returns
+                ServerValidation.InValid(IllegalStateException("down"))
+            val banner = collectBanner()
+
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.CONNECTIVITY))
+
+            assertEquals(true, banner.last())
+        }
+
+    @Test
+    fun onAClearnetServerWithTheGatewayBackTheWalletReturnsToTheGateway() =
+        runTest {
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(known.last())
+            stubTiers(gatewayReachable = true, rankedFallbacks = fallbacks)
+
+            assertEquals(gateway, repository.evaluateServerSwitch(SwitchTrigger.RECOVERY))
+        }
+
+    /** A wallet on a clearnet server while the OHTTP gateway answers, so a switch back to it is due. */
+    private fun stubSwitchDecision(balances: Map<AccountUuid, AccountBalance>?) {
+        val wallet = wallet(known.last())
+        coEvery { isAutomaticProvider.get() } returns true
+        coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet
+        persistedWallet.value = wallet
+        localBalances.value = balances
+        stubTiers(gatewayReachable = true, rankedFallbacks = emptyList())
+    }
+
+    private fun TestScope.collectBanner(): List<Boolean> {
+        coEvery { isAutomaticProvider.get() } returns true
+        val banner = mutableListOf<Boolean>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            repository.ohttpUnavailable.toList(banner)
+        }
+        return banner
+    }
 
     /** SDK benchmark per tier: the OHTTP tier validates the gateway or nothing; clearnet ranks as given. */
     private fun stubTiers(gatewayReachable: Boolean, rankedFallbacks: List<LightWalletEndpoint>) {
