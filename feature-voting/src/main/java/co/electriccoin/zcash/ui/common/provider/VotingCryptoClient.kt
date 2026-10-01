@@ -30,6 +30,7 @@ import co.electriccoin.zcash.ui.common.model.voting.VotingPirLayout
 import co.electriccoin.zcash.ui.common.model.voting.VotingPirWarmupResult
 import co.electriccoin.zcash.ui.common.model.voting.VotingSnapshotBundlePrecomputeResult
 import co.electriccoin.zcash.ui.common.model.voting.requireKnownPolyLen
+import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.sync.Mutex
@@ -378,7 +379,9 @@ interface VotingCryptoClient {
     ): ByteArray
 }
 
-class VotingCryptoClientImpl : VotingCryptoClient {
+class VotingCryptoClientImpl(
+    private val votingChainConfigRepository: VotingChainConfigRepository
+) : VotingCryptoClient {
     private val nextDbHandle = AtomicLong(1)
     private val sdkMutex = Mutex()
     private var sdk: VotingSdk? = null
@@ -393,6 +396,10 @@ class VotingCryptoClientImpl : VotingCryptoClient {
     private val mapsMutex = Mutex()
     private val dbPaths = mutableMapOf<Long, String>()
     private val sessions = mutableMapOf<Long, VotingDbSession>()
+
+    // Same source of truth as KtorVotingApiProvider.isCustomVoteServer(): a user-selected custom
+    // voting config means custom servers, which the SDK routes Direct (Tor OFF) instead of OHTTP.
+    private suspend fun isCustomServer(): Boolean = !votingChainConfigRepository.get().isOnDefaultConfig
 
     private suspend fun votingSdk(): VotingSdk =
         sdk ?: sdkMutex.withLock {
@@ -579,7 +586,8 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         withContext(Dispatchers.IO) {
             session(dbHandle)
                 .precomputeDelegationPir(
-                    torLease,
+                    torLease = torLease,
+                    isCustomServer = isCustomServer(),
                     roundId,
                     bundleIndex,
                     pirServerUrl,
@@ -601,7 +609,8 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         withContext(Dispatchers.IO) {
             session(dbHandle)
                 .precomputePirProofs(
-                    torLease,
+                    torLease = torLease,
+                    isCustomServer = isCustomServer(),
                     pirServerUrl,
                     pirLayout.pirDepth,
                     pirLayout.tier0Layers,
@@ -622,7 +631,8 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         withContext(Dispatchers.IO) {
             session(dbHandle)
                 .precomputeSnapshotBundles(
-                    torLease,
+                    torLease = torLease,
+                    isCustomServer = isCustomServer(),
                     roundId,
                     pirServerUrl,
                     pirLayout.pirDepth,
@@ -649,7 +659,8 @@ class VotingCryptoClientImpl : VotingCryptoClient {
         withContext(Dispatchers.IO) {
             session(dbHandle)
                 .openRoundSession(
-                    torLease,
+                    torLease = torLease,
+                    isCustomServer = isCustomServer(),
                     roundId,
                     proposals,
                     hotkeySecret,
