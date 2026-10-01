@@ -313,8 +313,9 @@ class VotingApiProviderOhttpRoutingTest {
 
     /**
      * `OhttpHttpClient` is a final class with a private constructor (only buildable via its own
-     * `create(sender, ...)` factory, which performs a real HPKE/BinaryHttp round trip) — it can't
-     * be subclassed. MockK mocks it directly instead, stubbing `canHandle`/`execute` at the exact
+     * `create(codec, sender, ...)` factory, which needs the native `OhttpCodec`) — it can't
+     * be subclassed, and a JVM test cannot load the native codec. MockK mocks it directly instead,
+     * stubbing `canHandle`/`execute` at the exact
      * boundary `VotingApiProvider` calls, so this test only exercises the routing decision (OHTTP
      * vs direct), not the OHTTP wire protocol itself (covered separately at the SDK level).
      */

@@ -1,6 +1,7 @@
 package co.electriccoin.zcash.ui.common.provider
 
 import android.util.Log
+import cash.z.ecc.android.sdk.util.OhttpCodecFactory
 import co.electriccoin.lightwallet.client.OhttpHttpClient
 import co.electriccoin.zcash.ui.BuildConfig
 import io.ktor.client.HttpClient
@@ -81,6 +82,9 @@ class HttpClientProviderImpl(
                 policyGeneration++
             }
             if (cachedOhttpClient == null) {
+                // The native OHTTP codec (shared zodl-ohttp-client core) comes from the SDK. Obtain it
+                // before the Tor sender so a load failure cannot leak a freshly created sender.
+                val codec = OhttpCodecFactory.create()
                 val senderForTor = if (torNow) synchronizerProvider.getSynchronizer().ohttpSenderOverTor() else null
                 // DEBUG-only: pass trace prefix for request tracking in Grafana
                 val tracePrefix =
@@ -92,11 +96,15 @@ class HttpClientProviderImpl(
                 cachedOhttpClient =
                     if (torNow) {
                         OhttpHttpClient.create(
+                            codec = codec,
                             sender = senderForTor!!,
                             ohttpClientTraceIdPrefix = tracePrefix
                         )
                     } else {
-                        OhttpHttpClient.create(ohttpClientTraceIdPrefix = tracePrefix)
+                        OhttpHttpClient.create(
+                            codec = codec,
+                            ohttpClientTraceIdPrefix = tracePrefix
+                        )
                     }
                 cachedForTorEnabled = torNow
             }

@@ -13,9 +13,9 @@ import io.mockk.mockk
 
 /**
  * `OhttpHttpClient` is a final class with a private constructor (only buildable via its own
- * `create(sender, ...)` factory, which performs a real HPKE/BinaryHttp round trip against a real
- * gateway) -- it can't be subclassed or given a fake [co.electriccoin.lightwallet.client.internal.OhttpSender]
- * without also faking the OHTTP wire protocol. Tests that don't care about OHTTP routing itself
+ * `create(codec, sender, ...)` factory, which needs the native `OhttpCodec` and a real gateway) --
+ * it can't be subclassed, and a JVM test cannot load the native codec. Tests that don't care about
+ * OHTTP routing itself
  * (everything pre-dating the OHTTP feature) use this instead: a MockK mock that always reports
  * [OhttpHttpClient.canHandle] = true and forwards [OhttpHttpClient.execute] to the same MockEngine
  * client the test already built via `create()`/`createTor()`, so existing request-path/count
