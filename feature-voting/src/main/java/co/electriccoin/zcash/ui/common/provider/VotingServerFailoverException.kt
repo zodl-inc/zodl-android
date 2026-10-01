@@ -87,13 +87,9 @@ private fun shouldTryNextVoteServer(
 ): Boolean =
     when (throwable) {
         is TimeoutCancellationException -> retryOnTimeout
-
         is CancellationException -> false
-
         is VotingConfigException -> false
-
         is ResponseException -> throwable.response.status.value >= HTTP_BAD_REQUEST
-
         else -> true
     }
 

@@ -176,7 +176,7 @@ internal fun HttpRequestRetryConfig.configureClearnetRetry() {
     retryIf { request, response ->
         !request.url.toString().isVotingPath() &&
             !request.url.host.isExchangeRateHost() &&
-            response.status.value in 500..599
+            response.status.value in HTTP_SERVER_ERRORS
     }
     retryOnExceptionIf { request, _ ->
         !request.url.toString().isVotingPath() &&
@@ -221,3 +221,5 @@ private const val DEFAULT_CONNECT_TIMEOUT_MILLIS = 15_000L
 // Credential-bearing headers redacted from logs even in debug. The shared client also serves the
 // CMC quote API (X-CMC_PRO_API_KEY) and the voting helper (X-Helper-Token).
 private val SANITIZED_HEADERS = setOf(HttpHeaders.Authorization, "X-CMC_PRO_API_KEY", "X-Helper-Token")
+
+private val HTTP_SERVER_ERRORS = 500..599

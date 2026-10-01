@@ -964,6 +964,7 @@ class KtorVotingApiProvider(
         }
     }
 
+    @Suppress("ThrowsCount") // fail-closed, timeout and unsupported-destination checks
     private suspend fun fetchStaticConfigBytesViaOhttp(
         ohttpClient: OhttpHttpClient,
         url: String,
