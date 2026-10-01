@@ -23,7 +23,6 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -134,6 +133,10 @@ class LedgerProposalRepositoryConnectTest : LedgerProposalRepositoryTestBase() {
             )
         }
 
+    /**
+     * The replacing session is on Connecting when the stale report arrives, so only the generation
+     * check keeps it off the sheet.
+     */
     @Test
     fun aReportFromACancelledSessionNeverReachesTheSessionThatReplacedIt() =
         runTest(dispatcher) {
@@ -155,13 +158,11 @@ class LedgerProposalRepositoryConnectTest : LedgerProposalRepositoryTestBase() {
 
             repository.cancelSigning()
             runCurrent()
-            reports[0].invoke()
-            assertNull(repository.signingState.value)
-
             repository.startSigning()
             runCurrent()
             advanceTimeBy(1.seconds)
             runCurrent()
+            assertEquals(2, reports.size)
             assertEquals(LedgerSigningState.Connecting, repository.signingState.value)
 
             reports[0].invoke()
@@ -171,6 +172,49 @@ class LedgerProposalRepositoryConnectTest : LedgerProposalRepositoryTestBase() {
             assertEquals(LedgerSigningState.OpeningZcashApp, repository.signingState.value)
         }
 
+    /**
+     * Try again starts a new session; a report the failed one left behind arrives while the new one
+     * is on Connecting, so only the generation check keeps it off the sheet.
+     */
+    @Test
+    fun aReportFromAFailedSessionNeverReachesTheSessionItsRetryStarted() =
+        runTest(dispatcher) {
+            givenPczt(ledgerAccount())
+            runCurrent()
+            clearMocks(ledgerSigningDataSource, answers = false)
+            val disconnected = mockk<LedgerException.Disconnected>(relaxed = true)
+            val reports = mutableListOf<() -> Unit>()
+            coEvery { ledgerSigningDataSource.connect(any(), any()) } coAnswers {
+                reports += secondArg<() -> Unit>()
+                if (reports.size == 1) throw disconnected
+                awaitCancellation()
+            }
+
+            devices.value = listOf(device("AA"))
+            repository.startSigning()
+            runCurrent()
+            advanceTimeBy(1.seconds)
+            runCurrent()
+            assertTrue(repository.signingState.value is LedgerSigningState.Failed)
+
+            repository.retry()
+            runCurrent()
+            advanceTimeBy(1.seconds)
+            runCurrent()
+            assertEquals(2, reports.size)
+            assertEquals(LedgerSigningState.Connecting, repository.signingState.value)
+
+            reports[0].invoke()
+            assertEquals(LedgerSigningState.Connecting, repository.signingState.value)
+
+            reports[1].invoke()
+            assertEquals(LedgerSigningState.OpeningZcashApp, repository.signingState.value)
+        }
+
+    /**
+     * The report arrives on Preparing in the same session, so only the Connecting check keeps the
+     * sheet from going back to OpeningZcashApp.
+     */
     @Test
     fun aReportAfterTheSessionLeftConnectingChangesNothing() =
         runTest(dispatcher) {
@@ -195,29 +239,6 @@ class LedgerProposalRepositoryConnectTest : LedgerProposalRepositoryTestBase() {
             assertEquals(LedgerSigningState.Signed, repository.signingState.value)
             report.captured.invoke()
             assertEquals(LedgerSigningState.Signed, repository.signingState.value)
-        }
-
-    @Test
-    fun aRepeatedReportKeepsOpeningZcashApp() =
-        runTest(dispatcher) {
-            givenPczt(ledgerAccount())
-            runCurrent()
-            clearMocks(ledgerSigningDataSource, answers = false)
-            coEvery { ledgerSigningDataSource.connect(any(), any()) } coAnswers {
-                secondArg<() -> Unit>().invoke()
-                secondArg<() -> Unit>().invoke()
-                awaitCancellation()
-            }
-            val seen = recordStates()
-
-            devices.value = listOf(device("AA"))
-            repository.startSigning()
-            runCurrent()
-            advanceTimeBy(1.seconds)
-            runCurrent()
-
-            assertEquals(LedgerSigningState.OpeningZcashApp, repository.signingState.value)
-            assertEquals(1, seen.count { it == LedgerSigningState.OpeningZcashApp })
         }
 
     @Test

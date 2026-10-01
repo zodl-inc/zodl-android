@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 
 /**
  * The sign sheet's copy as the resource files hold it: every `ledger_sign_` key in both languages,
- * the English lines as Figma words them, and none of the keys the sheet dropped.
+ * the English lines as Figma or iOS words them, and none of the keys the sheet dropped.
  * The files are read from the module directory, which is the unit tests' working directory.
  */
 class LedgerSignStringsTest {
@@ -27,8 +27,12 @@ class LedgerSignStringsTest {
         spanishKeys.forEach { key -> assertTrue(spanish.getValue(key).isNotBlank(), key) }
     }
 
+    /**
+     * Figma's wording, except `ledger_sign_body_beforeReview`, which comes from iOS
+     * (`ledger.signSheet.descBeforeReview`); Figma shows the review line in every phase.
+     */
     @Test
-    fun theEnglishSheetCopyIsFigmas() {
+    fun theEnglishSheetCopyMatchesFigmaOrIos() {
         mapOf(
             "ledger_sign_title" to "Confirm Transaction",
             "ledger_sign_body_beforeReview" to "Keep your Ledger unlocked and nearby.",
