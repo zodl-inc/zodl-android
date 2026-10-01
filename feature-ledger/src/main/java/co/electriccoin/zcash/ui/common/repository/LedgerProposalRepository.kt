@@ -157,9 +157,6 @@ class LedgerProposalRepositoryImpl(
     @Volatile
     private var generation = 0
 
-    @Volatile
-    private var lastSelectedIdentifier: String? = null
-
     /**
      * Set when the last session connected to a Ledger other than the account's; the next scan then
      * offers the picker even for a lone device instead of reconnecting to the same wrong one.
@@ -297,7 +294,6 @@ class LedgerProposalRepositoryImpl(
             throw e
         } catch (e: LedgerException.DeviceMismatch) {
             isPickerRequired = true
-            lastSelectedIdentifier = null
             publishLedgerFailure(session, e)
         } catch (e: LedgerException) {
             publishLedgerFailure(session, e)
@@ -424,14 +420,7 @@ class LedgerProposalRepositoryImpl(
         synchronized(lock) {
             val current = signingState.value
             if (current is LedgerSigningState.Selecting && generation == session) {
-                signingState.value =
-                    current.copy(
-                        devices = devices.map { it.toSigningDevice() },
-                        selectedIdentifier =
-                            current.selectedIdentifier?.takeIf { selected ->
-                                devices.any { it.identifier == selected }
-                            }
-                    )
+                signingState.value = current.copy(devices = devices.map { it.toSigningDevice() })
             }
         }
     }
@@ -469,13 +458,7 @@ class LedgerProposalRepositoryImpl(
         Twig.info { "Ledger signing: stage Selecting" }
         publish(
             session,
-            LedgerSigningState.Selecting(
-                devices = devices.map { it.toSigningDevice() },
-                selectedIdentifier =
-                    lastSelectedIdentifier?.takeIf { selected ->
-                        devices.any { it.identifier == selected }
-                    }
-            )
+            LedgerSigningState.Selecting(devices = devices.map { it.toSigningDevice() })
         )
         val device =
             coroutineScope {
@@ -507,7 +490,6 @@ class LedgerProposalRepositoryImpl(
             }
         selection = null
         if (device != null) {
-            lastSelectedIdentifier = device.identifier
             isPickerRequired = false
         }
         return device
@@ -619,7 +601,6 @@ class LedgerProposalRepositoryImpl(
 
     override fun clear() {
         cancelSigning()
-        lastSelectedIdentifier = null
         isPickerRequired = false
 
         pcztWithProofsJob?.cancel()

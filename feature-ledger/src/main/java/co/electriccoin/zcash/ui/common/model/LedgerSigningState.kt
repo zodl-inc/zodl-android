@@ -22,17 +22,16 @@ sealed interface LedgerSigningState {
     data object Scanning : LedgerSigningState
 
     /**
-     * More than one Ledger is in range; the session waits for the user to pick one.
-     * [selectedIdentifier] is the device picked in an earlier attempt, when it is in range again.
+     * More than one Ledger is in range, or the last session met the wrong one; the session waits
+     * for the user to pick one.
      */
     data class Selecting(
         val devices: List<LedgerSigningDevice>,
-        val selectedIdentifier: String?,
     ) : LedgerSigningState {
         /**
          * Overridden to keep the Bluetooth addresses out of logs.
          */
-        override fun toString() = "Selecting(devices=${devices.size}, hasSelection=${selectedIdentifier != null})"
+        override fun toString() = "Selecting(devices=${devices.size})"
     }
 
     data object Connecting : LedgerSigningState

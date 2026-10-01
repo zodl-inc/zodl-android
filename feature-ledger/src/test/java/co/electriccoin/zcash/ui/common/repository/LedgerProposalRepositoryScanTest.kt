@@ -23,8 +23,6 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
@@ -221,7 +219,7 @@ class LedgerProposalRepositoryScanTest : LedgerProposalRepositoryTestBase() {
 
             val state = repository.signingState.value
             assertTrue(state is LedgerSigningState.Selecting)
-            assertNotNull(state.selectedIdentifier)
+            assertEquals(2, state.devices.size)
             val printed = state.toString()
             assertFalse(printed.contains("AA:11"))
             assertFalse(printed.contains("BB:22"))
@@ -262,7 +260,6 @@ class LedgerProposalRepositoryScanTest : LedgerProposalRepositoryTestBase() {
             val selecting = repository.signingState.value
             assertTrue(selecting is LedgerSigningState.Selecting)
             assertEquals(1, selecting.devices.size)
-            assertNull(selecting.selectedIdentifier)
             coVerify(exactly = 1) { ledgerSigningDataSource.connect(any(), any()) }
 
             repository.selectDevice("AA")

@@ -109,7 +109,7 @@ class LedgerSignVMTest {
             val bodies =
                 listOf(
                     LedgerSigningState.Scanning,
-                    LedgerSigningState.Selecting(listOf(signingDevice("AA")), selectedIdentifier = null),
+                    LedgerSigningState.Selecting(listOf(signingDevice("AA"))),
                     LedgerSigningState.Connecting,
                     LedgerSigningState.OpeningZcashApp,
                     LedgerSigningState.Preparing,
@@ -155,7 +155,6 @@ class LedgerSignVMTest {
                 MutableStateFlow<LedgerSigningState?>(
                     LedgerSigningState.Selecting(
                         devices = listOf(signingDevice("AA"), signingDevice("BB")),
-                        selectedIdentifier = "AA",
                     )
                 )
             val vm = vm(signingState = signingState)
@@ -182,7 +181,6 @@ class LedgerSignVMTest {
                 MutableStateFlow<LedgerSigningState?>(
                     LedgerSigningState.Selecting(
                         devices = listOf(signingDevice("AA"), signingDevice("BB")),
-                        selectedIdentifier = null,
                     )
                 )
             val vm = vm(signingState = signingState, selectLedgerSigningDevice = selectLedgerSigningDevice)
@@ -203,7 +201,7 @@ class LedgerSignVMTest {
         runTest(dispatcher) {
             val signingState =
                 MutableStateFlow<LedgerSigningState?>(
-                    LedgerSigningState.Selecting(devices = listOf(signingDevice("AA")), selectedIdentifier = null)
+                    LedgerSigningState.Selecting(devices = listOf(signingDevice("AA")))
                 )
             val vm = vm(signingState = signingState)
             collect(vm)
@@ -213,7 +211,6 @@ class LedgerSignVMTest {
             signingState.value =
                 LedgerSigningState.Selecting(
                     devices = listOf(signingDevice("AA"), signingDevice("BB"), signingDevice("CC")),
-                    selectedIdentifier = null,
                 )
             runCurrent()
 
