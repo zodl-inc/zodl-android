@@ -40,6 +40,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class KtorVotingApiProviderTest {
     @Test
@@ -359,17 +360,50 @@ class KtorVotingApiProviderTest {
 
     // region config-request timeout capability (MOB-1809)
 
+    /**
+     * The Ktor timeout capability only exists on the direct/Tor client. With Tor off the config legs go
+     * through OHTTP instead, where the bound is applied app-side (see the OHTTP tests below).
+     */
     @Test
     fun configRequestsCarryFifteenSecondTimeoutCapabilityWhenSupported() =
         runBlocking {
             val timeoutCapabilities = mutableListOf<Pair<String, Long?>>()
-            val provider = multiEndpointProvider(timeoutCapabilities = timeoutCapabilities)
+            val provider = multiEndpointProvider(timeoutCapabilities = timeoutCapabilities, torEnabled = true)
 
             provider.fetchServiceConfig()
 
             val configPaths = setOf("/static-voting-config.json", "/dynamic-voting-config.json")
             val configCapabilities = timeoutCapabilities.filter { (path, _) -> path in configPaths }
             assertEquals(listOf(15_000L, 15_000L), configCapabilities.map { (_, millis) -> millis })
+        }
+
+    @Test
+    fun ohttpStaticConfigFetchIsBoundedByTheConfigTimeout() =
+        runBlocking {
+            val provider = hangingConfigProvider(hangingPath = "/static-voting-config.json")
+
+            val exception = assertFailsWith<StaticVotingConfigFetchFailedException> { provider.fetchServiceConfig() }
+
+            assertTrue(exception.message.orEmpty().contains("timed out"), exception.message.orEmpty())
+        }
+
+    @Test
+    fun ohttpDynamicConfigFetchIsBoundedByTheConfigTimeoutAndFallsThroughToTheNextMirror() =
+        runBlocking {
+            val requests = mutableListOf<String>()
+            val provider = hangingConfigProvider(hangingPath = "/first-dynamic-voting-config.json", requests = requests)
+
+            val serviceConfig = provider.fetchServiceConfig()
+
+            assertEquals(
+                listOf(
+                    "/static-voting-config.json",
+                    "/first-dynamic-voting-config.json",
+                    "/second-dynamic-voting-config.json"
+                ),
+                requests
+            )
+            assertEquals(1, serviceConfig.voteServers.size)
         }
 
     @Test
@@ -1211,12 +1245,15 @@ class KtorVotingApiProviderTest {
     private fun multiEndpointProvider(
         requestLog: MutableList<String> = mutableListOf(),
         timeoutCapabilities: MutableList<Pair<String, Long?>> = mutableListOf(),
-        configCacheTtlMillis: Long? = null
+        configCacheTtlMillis: Long? = null,
+        torEnabled: Boolean = false
     ): KtorVotingApiProvider =
         KtorVotingApiProvider(
             httpClientProvider =
                 object : HttpClientProvider {
                     override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
+                    override suspend fun isTorEnabled(): Boolean = torEnabled
 
                     override suspend fun supportsKtorTimeouts(): Boolean = true
 
@@ -1269,6 +1306,63 @@ class KtorVotingApiProviderTest {
             votingChainConfigRepository = TestVotingChainConfigRepository(),
             votingCryptoClient = unusedVotingCryptoClient(),
             configCacheTtlMillis = configCacheTtlMillis ?: DEFAULT_TEST_CONFIG_CACHE_TTL_MILLIS
+        )
+
+    /**
+     * Tor off (so the config legs take the OHTTP path) with Ktor timeouts available, where the request on
+     * [hangingPath] never answers: only the app-side bound in front of the OHTTP call can end it.
+     */
+    private fun hangingConfigProvider(
+        hangingPath: String,
+        requests: MutableList<String> = mutableListOf()
+    ): KtorVotingApiProvider =
+        KtorVotingApiProvider(
+            httpClientProvider =
+                object : HttpClientProvider {
+                    override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
+
+                    override suspend fun isTorEnabled(): Boolean = false
+
+                    override suspend fun supportsKtorTimeouts(): Boolean = true
+
+                    override suspend fun createTor(): HttpClient = create()
+
+                    override suspend fun create(): HttpClient =
+                        HttpClient(
+                            MockEngine { request ->
+                                val path = request.url.encodedPath
+                                requests += path
+                                when (path) {
+                                    hangingPath -> {
+                                        awaitCancellation()
+                                    }
+
+                                    "/static-voting-config.json" -> {
+                                        respond(
+                                            content =
+                                                staticConfigJsonV2(
+                                                    listOf(FIRST_DYNAMIC_CONFIG_URL, SECOND_DYNAMIC_CONFIG_URL)
+                                                ),
+                                            status = HttpStatusCode.OK,
+                                            headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                        )
+                                    }
+
+                                    else -> {
+                                        respond(
+                                            content = validDynamicServiceConfigJson(),
+                                            status = HttpStatusCode.OK,
+                                            headers = headersOf(HttpHeaders.ContentType, "application/json")
+                                        )
+                                    }
+                                }
+                            }
+                        ) { expectSuccess = true }
+                },
+            configurationRepository = TestConfigurationRepository(),
+            votingChainConfigRepository = TestVotingChainConfigRepository(),
+            votingCryptoClient = unusedVotingCryptoClient(),
+            configRequestTimeoutMillis = TEST_TIMEOUT_MILLIS
         )
 
     private class SwitchableVotingChainConfigRepository(

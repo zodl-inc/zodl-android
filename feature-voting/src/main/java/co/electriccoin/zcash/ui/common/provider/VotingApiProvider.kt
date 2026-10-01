@@ -979,7 +979,14 @@ class KtorVotingApiProvider(
     ): ByteArray {
         val response =
             try {
-                ohttpClient.execute(OhttpHttpClient.Request(url = url))
+                withTimeout(configRequestTimeoutMillis) {
+                    ohttpClient.execute(OhttpHttpClient.Request(url = url))
+                }
+            } catch (_: TimeoutCancellationException) {
+                throw StaticVotingConfigFetchFailedException(
+                    "Static voting config fetch via OHTTP failed: " +
+                        "request timed out after ${configRequestTimeoutMillis}ms",
+                )
             } catch (exception: Exception) {
                 exception.rethrowIfCancellation()
                 val reason = exception.message ?: exception::class.simpleName
@@ -1114,12 +1121,14 @@ class KtorVotingApiProvider(
     ): String {
         val response =
             try {
-                ohttpClient.execute(
-                    OhttpHttpClient.Request(
-                        url = url.withCacheBustIfNeeded(cacheBustToken),
-                        headers = listOf("Cache-Control" to "no-cache"),
-                    ),
-                )
+                withTimeout(configRequestTimeoutMillis) {
+                    ohttpClient.execute(
+                        OhttpHttpClient.Request(
+                            url = url.withCacheBustIfNeeded(cacheBustToken),
+                            headers = listOf("Cache-Control" to "no-cache"),
+                        ),
+                    )
+                }
             } catch (exception: Exception) {
                 throw exception.toOhttpDynamicVotingConfigException(url)
             }
