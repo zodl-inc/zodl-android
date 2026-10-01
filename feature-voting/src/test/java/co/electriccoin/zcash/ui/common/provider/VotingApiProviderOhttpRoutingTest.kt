@@ -27,6 +27,7 @@ import kotlinx.coroutines.runBlocking
 import java.lang.reflect.Proxy
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 /**
@@ -116,6 +117,69 @@ class VotingApiProviderOhttpRoutingTest {
         }
 
     @Test
+    fun fetchShareStatusFailsClosedWhenOhttpCannotHandlePredefinedServerAndTorDisabled() =
+        runBlocking {
+            val ohttpRequests = mutableListOf<String>()
+            val directRequests = mutableListOf<String>()
+            val provider =
+                providerWithOhttpTracking(
+                    ohttpRequests = ohttpRequests,
+                    directRequests = directRequests,
+                    torEnabled = false,
+                    isCustomServer = false,
+                    ohttpCanHandle = false
+                )
+
+            assertFailsWith<IllegalStateException> {
+                provider.fetchShareStatus(
+                    helperBaseUrl = "https://vote.example.com",
+                    roundIdHex = "round-id",
+                    nullifierHex = "nullifier"
+                )
+            }
+
+            assertTrue(directRequests.isEmpty(), "No direct request may be made, got $directRequests")
+            assertTrue(ohttpRequests.isEmpty(), "No OHTTP request may be made, got $ohttpRequests")
+        }
+
+    @Test
+    fun resubmitShareFailsClosedWhenOhttpCannotHandlePredefinedServerAndTorDisabled() =
+        runBlocking {
+            val ohttpRequests = mutableListOf<String>()
+            val directRequests = mutableListOf<String>()
+            val provider =
+                providerWithOhttpTracking(
+                    ohttpRequests = ohttpRequests,
+                    directRequests = directRequests,
+                    torEnabled = false,
+                    isCustomServer = false,
+                    ohttpCanHandle = false
+                )
+            val share =
+                SharePayload(
+                    sharesHash = ByteArray(32) { 1 },
+                    proposalId = 3,
+                    voteDecision = 1,
+                    encShare = EncryptedShare(c1 = ByteArray(32) { 2 }, c2 = ByteArray(32) { 3 }, shareIndex = 0),
+                    treePosition = 42L,
+                    voteRoundId = "01".repeat(32)
+                )
+
+            // postShare reports a refused route as "not accepted" instead of throwing, but it must
+            // never fall back to a direct request.
+            val accepted =
+                provider.resubmitShare(
+                    payload = share,
+                    candidateUrls = listOf("https://vote.example.com"),
+                    excludeUrls = emptyList()
+                )
+
+            assertTrue(accepted.isEmpty(), "No server may accept the share, got $accepted")
+            assertTrue(directRequests.isEmpty(), "No direct request may be made, got $directRequests")
+            assertTrue(ohttpRequests.isEmpty(), "No OHTTP request may be made, got $ohttpRequests")
+        }
+
+    @Test
     fun shareOperationsUseDirectForCustomServerWhenTorDisabled() =
         runBlocking {
             val directRequests = mutableListOf<String>()
@@ -171,7 +235,8 @@ class VotingApiProviderOhttpRoutingTest {
         ohttpRequests: MutableList<String> = mutableListOf(),
         directRequests: MutableList<String> = mutableListOf(),
         torEnabled: Boolean,
-        isCustomServer: Boolean
+        isCustomServer: Boolean,
+        ohttpCanHandle: Boolean = !torEnabled && !isCustomServer
     ): KtorVotingApiProvider =
         KtorVotingApiProvider(
             httpClientProvider =
@@ -183,7 +248,7 @@ class VotingApiProviderOhttpRoutingTest {
                     override suspend fun createTor(): HttpClient = create()
 
                     override suspend fun createOhttp(): OhttpHttpClient =
-                        fakeOhttpClient(ohttpRequests, isSupported = !torEnabled && !isCustomServer)
+                        fakeOhttpClient(ohttpRequests, isSupported = ohttpCanHandle)
 
                     override suspend fun create(): HttpClient =
                         HttpClient(
