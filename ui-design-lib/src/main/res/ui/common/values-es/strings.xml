@@ -218,6 +218,9 @@
     <string name="serverSetup_clearnetNotPrivate">Clearnet · no privado (solo respaldo)</string>
     <string name="choose_server_multi_server_info">Podemos usar varios servidores para optimizar el rendimiento. Para reducir la exposición de metadatos, selecciona el modo de conexión Manual para elegir un único servidor de tu preferencia y asegúrate de que Tor esté habilitado en Configuración Avanzada.</string>
     <string name="choose_server_clearnet_preselection_message">Los servidores privados son inaccesibles. El servidor público más rápido está preseleccionado — los servidores públicos pueden ver tu dirección IP.</string>
+    <string name="ohttpUnavailable_title">Conexión privada no disponible</string>
+    <string name="ohttpUnavailable_body">Zodl no pudo conectarse a los servidores privados (OHTTP). Puedes seguir esperando o elegir un servidor público. Los servidores públicos pueden ver tu dirección IP.</string>
+    <string name="ohttpUnavailable_chooseServer">Elegir servidor</string>
 
     <!-- ===== connect_keystone ===== -->
     <string name="keystone_addHWWallet_scan">Escanea el código QR de tu dispositivo para conectarte.</string>

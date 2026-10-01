@@ -223,6 +223,9 @@
     <string name="serverSetup_testing">Testing</string>
     <string name="choose_server_multi_server_info">We may use multiple servers to optimize performance. To reduce metadata exposure, choose Manual connection mode to select your single server of choice, and ensure Tor is enabled in Advanced Settings.</string>
     <string name="choose_server_clearnet_preselection_message">Private servers are unreachable. The fastest public server is pre-selected — public servers can see your IP address.</string>
+    <string name="ohttpUnavailable_title">Private connection unavailable</string>
+    <string name="ohttpUnavailable_body">Zodl couldn\'t reach private (OHTTP) servers. You can keep waiting or choose a public server. Public servers can see your IP address.</string>
+    <string name="ohttpUnavailable_chooseServer">Choose server</string>
 
     <!-- ===== connect_keystone ===== -->
     <string name="keystone_addHWWallet_scan">Scan your device’s QR code to connect.</string>

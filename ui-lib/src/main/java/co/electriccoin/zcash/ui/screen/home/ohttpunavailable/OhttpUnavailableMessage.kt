@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.component.ZashiButton
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
@@ -37,15 +39,12 @@ internal fun OhttpUnavailableMessage(
     ) {
         Column {
             Text(
-                text = "Private connection unavailable",
+                text = stringResource(R.string.ohttpUnavailable_title),
                 style = ZashiTypography.textMd,
                 color = ZashiColors.Text.textPrimary
             )
             Text(
-                text =
-                    "Zodl couldn't reach its private (OHTTP) servers. " +
-                        "You can keep waiting or choose a public server in Settings › Server. " +
-                        "Public servers can see your IP address.",
+                text = stringResource(R.string.ohttpUnavailable_body),
                 style = ZashiTypography.textSm,
                 color = ZashiColors.Text.textSecondary,
                 modifier = Modifier.padding(top = ZcashTheme.dimens.spacingSmall)
@@ -53,7 +52,7 @@ internal fun OhttpUnavailableMessage(
             ZashiButton(
                 state =
                     ButtonState(
-                        text = stringRes("Choose server"),
+                        text = stringRes(R.string.ohttpUnavailable_chooseServer),
                         onClick = state.onChooseServer
                     ),
                 modifier = Modifier.padding(top = ZcashTheme.dimens.spacingMid)
