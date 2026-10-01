@@ -46,8 +46,9 @@ import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerErrorContent
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerWaitingIndicator
 
 /**
- * Non-dismissable: neither a drag, a tap outside nor system back hides it; only Cancel Transaction
- * or the end of the session leaves it.
+ * Non-dismissable: neither a drag nor a tap outside hides it; only Cancel Transaction or the end of
+ * the session leaves it. System back reaches [LedgerSignSheetState.onBack], which cancels the
+ * transaction once an issue is shown and does nothing while the session is under way.
  *
  * Only the part that changes size animates: the slot between the sheet's top and Cancel Transaction
  * crossfades and resizes only when an issue replaces a waiting phase or the other way round. Between

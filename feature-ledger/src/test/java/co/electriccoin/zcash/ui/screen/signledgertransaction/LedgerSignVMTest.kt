@@ -303,10 +303,16 @@ class LedgerSignVMTest {
         }
 
     @Test
-    fun onBackIsANoOp() =
+    fun onBackIsANoOpWhileTheSessionIsUnderWay() =
         runTest(dispatcher) {
+            val cancelLedgerSigning = mockk<CancelLedgerSigningUseCase>(relaxed = true)
             val navigationRouter = mockk<NavigationRouter>(relaxed = true)
-            val vm = vm(navigationRouter = navigationRouter)
+            val vm =
+                vm(
+                    signingState = MutableStateFlow(LedgerSigningState.Signing),
+                    cancelLedgerSigning = cancelLedgerSigning,
+                    navigationRouter = navigationRouter,
+                )
             collect(vm)
             runCurrent()
 
@@ -315,8 +321,50 @@ class LedgerSignVMTest {
                 ?.invoke()
             runCurrent()
 
+            verify(exactly = 0) { cancelLedgerSigning.invoke() }
             verify(exactly = 0) { navigationRouter.back() }
             verify(exactly = 0) { navigationRouter.backToRoot() }
+        }
+
+    @Test
+    fun onBackCancelsTheTransactionOnceTheSessionHasFailed() =
+        runTest(dispatcher) {
+            val cancelLedgerSigning = mockk<CancelLedgerSigningUseCase>(relaxed = true)
+            val vm =
+                vm(
+                    signingState =
+                        MutableStateFlow(
+                            LedgerSigningState.Failed(issue(LedgerIssueKind.PAIRING_FAILED, LedgerIssueRetry.RECONNECT))
+                        ),
+                    cancelLedgerSigning = cancelLedgerSigning,
+                )
+            collect(vm)
+            runCurrent()
+
+            vm.state.value
+                ?.onBack
+                ?.invoke()
+            runCurrent()
+
+            verify(exactly = 1) { cancelLedgerSigning.invoke() }
+        }
+
+    @Test
+    fun onBackCancelsTheTransactionOnAPermissionDenial() =
+        runTest(dispatcher) {
+            val cancelLedgerSigning = mockk<CancelLedgerSigningUseCase>(relaxed = true)
+            val vm = vm(cancelLedgerSigning = cancelLedgerSigning)
+            collect(vm)
+            runCurrent()
+
+            vm.onPermissionsDenied(canRequestAgain = true)
+            runCurrent()
+            vm.state.value
+                ?.onBack
+                ?.invoke()
+            runCurrent()
+
+            verify(exactly = 1) { cancelLedgerSigning.invoke() }
         }
 
     @Test

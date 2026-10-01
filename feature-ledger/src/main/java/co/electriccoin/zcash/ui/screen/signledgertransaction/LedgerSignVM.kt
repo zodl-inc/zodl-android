@@ -46,8 +46,9 @@ import kotlinx.coroutines.launch
  * Signing starts once the gate reports the permissions granted, which it also does on every resume,
  * so coming back from Settings with the permission granted starts the session without a tap.
  *
- * Cancel is disabled once the device has signed, as submission is then under way. A sheet that goes
- * away any other way stops the session it leaves behind.
+ * Cancel is disabled once the device has signed, as submission is then under way. System back
+ * cancels the transaction only once an issue is shown; while the session is under way it does
+ * nothing. A sheet that goes away any other way stops the session it leaves behind.
  *
  * An empty repository at start means the process was recreated under the sheet: there is nothing
  * left to sign, so the wallet root is shown instead.
@@ -82,8 +83,9 @@ class LedgerSignVM(
             permissionRequestNonce,
             enableBluetoothRequestNonce,
         ) { signingState, denial, permissionNonce, enableBluetoothNonce ->
+            val content = createContent(signingState, denial)
             LedgerSignSheetState(
-                content = createContent(signingState, denial),
+                content = content,
                 cancelButton =
                     ButtonState(
                         text = stringRes(R.string.ledger_sign_cancel),
@@ -92,7 +94,7 @@ class LedgerSignVM(
                     ),
                 permissionRequestNonce = permissionNonce,
                 enableBluetoothRequestNonce = enableBluetoothNonce,
-                onBack = {},
+                onBack = { onBack(content) },
             )
         }.stateIn(
             scope = viewModelScope,
@@ -334,6 +336,13 @@ class LedgerSignVM(
     }
 
     private fun onCancelClick() = cancelLedgerSigning()
+
+    /**
+     * Back acts as Cancel Transaction once the session has failed or the permissions were denied.
+     */
+    private fun onBack(content: LedgerSignContent) {
+        if (content is LedgerSignContent.Issue) onCancelClick()
+    }
 
     override fun onCleared() {
         cancelLedgerSigning.stopSession()
