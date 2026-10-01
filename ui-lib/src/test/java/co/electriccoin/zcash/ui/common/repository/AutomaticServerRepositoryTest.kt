@@ -24,6 +24,9 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeoutOrNull
@@ -53,7 +56,9 @@ class AutomaticServerRepositoryTest {
     private val fallbacks = listOf(endpoint("zec.rocks"), endpoint("na.zec.rocks"))
     private val known = listOf(gateway) + fallbacks
 
-    private val isAutomaticProvider = mockk<IsServerSelectionAutomaticProvider>(relaxed = true)
+    private val automaticPreference = MutableStateFlow<Boolean?>(true)
+    private val isAutomaticProvider =
+        mockk<IsServerSelectionAutomaticProvider>(relaxed = true) { every { observe() } returns automaticPreference }
     private val persistedWallet = MutableStateFlow<PersistableWallet?>(null)
     private val persistableWalletProvider =
         mockk<PersistableWalletProvider>(relaxed = true) { every { persistableWallet } returns persistedWallet }
@@ -233,6 +238,43 @@ class AutomaticServerRepositoryTest {
             assertNull(repository.evaluateServerSwitch())
             coVerify(exactly = 1) { synchronizer.getFastestServers(listOf(gateway)) }
             coVerify(exactly = 0) { synchronizer.getFastestServers(fallbacks) }
+        }
+
+    @Test
+    fun gatewayUnavailableBannerClearsWhenAutomaticModeIsLeft() =
+        runTest {
+            coEvery { isAutomaticProvider.get() } returns true
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            val banner = mutableListOf<Boolean>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                repository.ohttpUnavailable.toList(banner)
+            }
+
+            assertNull(repository.evaluateServerSwitch())
+            assertEquals(true, banner.last())
+
+            automaticPreference.value = false
+            assertEquals(false, banner.last())
+        }
+
+    @Test
+    fun gatewayUnavailableReportedOutsideAutomaticModeNeverShowsTheBanner() =
+        runTest {
+            coEvery { isAutomaticProvider.get() } returns true
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            val banner = mutableListOf<Boolean>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                repository.ohttpUnavailable.toList(banner)
+            }
+
+            // The user leaves automatic mode while an evaluation that started earlier is still running:
+            // it then finishes and reports the gateway as unavailable.
+            automaticPreference.value = false
+            assertNull(repository.evaluateServerSwitch())
+
+            assertEquals(false, banner.last())
         }
 
     /** SDK benchmark per tier: the OHTTP tier validates the gateway or nothing; clearnet ranks as given. */

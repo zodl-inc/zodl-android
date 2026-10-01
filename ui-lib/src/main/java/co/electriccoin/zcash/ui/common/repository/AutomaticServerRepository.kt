@@ -24,7 +24,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
@@ -77,8 +79,7 @@ class AutomaticServerRepositoryImpl(
 ) : AutomaticServerRepository {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    private val _ohttpUnavailable = kotlinx.coroutines.flow.MutableStateFlow(false)
-    override val ohttpUnavailable: Flow<Boolean> = _ohttpUnavailable
+    private val _ohttpUnavailable = MutableStateFlow(false)
 
     /**
      * Consecutive gateway failures count. Reset to 0 when a gateway is healthy or when automatic mode
@@ -122,6 +123,14 @@ class AutomaticServerRepositoryImpl(
                 }
             }.distinctUntilChanged()
 
+    /**
+     * The "gateway unavailable, pick a server" signal only exists in automatic mode. It is gated here, at
+     * the source, so an evaluation still in flight when the user leaves automatic mode cannot re-raise it.
+     */
+    override val ohttpUnavailable: Flow<Boolean> =
+        combine(_ohttpUnavailable, isServerAutomatic) { unavailable, automatic -> unavailable && automatic }
+            .distinctUntilChanged()
+
     override suspend fun isServerAutomatic(): Boolean {
         val preference = isServerSelectionAutomaticProvider.get()
         // Only the wallet read is guarded; resolving a custom endpoint is needed solely when the
@@ -144,16 +153,6 @@ class AutomaticServerRepositoryImpl(
     }
 
     override fun init() {
-        // Leaving automatic mode makes the automatic lane's "gateway unavailable, pick a server"
-        // banner moot. React to the transition immediately rather than waiting for the next
-        // FOREGROUND/CONNECTIVITY trigger to reach evaluateServerSwitch's own defensive clear below --
-        // otherwise a user who just made the manual choice the banner asked for could see it linger
-        // until the app is next backgrounded and foregrounded.
-        isServerAutomatic
-            .filter { automatic -> !automatic }
-            .onEach { _ohttpUnavailable.value = false }
-            .launchIn(scope)
-
         switchLane(
             merge(
                 applicationStateProvider.observeOnForeground().map { SwitchTrigger.FOREGROUND },
@@ -293,11 +292,6 @@ class AutomaticServerRepositoryImpl(
     @Suppress("ReturnCount", "ComplexMethod", "NestedBlockDepth")
     internal suspend fun evaluateServerSwitch(trigger: SwitchTrigger): LightWalletEndpoint? {
         if (!isServerAutomatic()) {
-            // Being outside automatic mode makes the automatic lane's "gateway unavailable, pick a
-            // server" signal moot. Clear it here so a manual server choice actually dismisses the
-            // banner it was prompting -- nothing else in this class clears it once automatic mode is
-            // off, since healthTicks() also stops firing in that case, so without this the banner would
-            // otherwise persist forever after the user does exactly what it asked.
             _ohttpUnavailable.value = false
             return null
         }
