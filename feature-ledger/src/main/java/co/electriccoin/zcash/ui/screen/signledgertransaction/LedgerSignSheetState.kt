@@ -73,8 +73,8 @@ data class LedgerSignSheetState(
                         title = stringRes("Choose your Ledger"),
                         devices =
                             listOf(
-                                LedgerDeviceItemState.preview.copy(name = stringRes("Harry Ledger")),
-                                LedgerDeviceItemState.preview.copy(name = stringRes("Office Ledger")),
+                                LedgerDeviceItemState.previewButton.copy(name = stringRes("Harry Ledger")),
+                                LedgerDeviceItemState.previewButton.copy(name = stringRes("Office Ledger")),
                             ),
                     ),
             )

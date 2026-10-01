@@ -23,6 +23,7 @@ import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceItemState
+import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceRowRole
 import co.electriccoin.zcash.ui.util.SettingsUtil
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
@@ -242,6 +243,7 @@ class LedgerSignVM(
                     name = stringRes(device.name),
                     isSelected = false,
                     isEnabled = true,
+                    role = LedgerDeviceRowRole.BUTTON,
                     onClick = { selectLedgerSigningDevice(device.identifier) },
                 )
             },

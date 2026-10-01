@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -35,10 +36,11 @@ import co.electriccoin.zcash.ui.design.util.getValue
 import co.electriccoin.zcash.ui.design.util.stringRes
 
 /**
- * A selectable Ledger row, shared by the connect flow and the sign sheet. [testTag] is supplied by
- * the caller and must be positional: a device identifier never goes into the semantics tree. It is
- * a radio button, so its list is expected to be a `selectableGroup`; the selected state is announced
- * from its semantics, which leaves the check icon decorative.
+ * A Ledger row, shared by the connect flow and the sign sheet. [testTag] is supplied by the caller
+ * and must be positional: a device identifier never goes into the semantics tree. A
+ * [LedgerDeviceRowRole.RADIO] row is a radio button, so its list is expected to be a
+ * `selectableGroup`, and the selected state is announced from its semantics, which leaves the check
+ * icon decorative. A [LedgerDeviceRowRole.BUTTON] row is a plain button whose tap acts at once.
  */
 @Composable
 internal fun LedgerDeviceRow(
@@ -54,12 +56,8 @@ internal fun LedgerDeviceRow(
                 .clip(RoundedCornerShape(12.dp))
                 .background(ZashiColors.Surfaces.bgPrimary)
                 .selectionBorder(state.isSelected)
-                .selectable(
-                    selected = state.isSelected,
-                    enabled = state.isEnabled,
-                    role = Role.RadioButton,
-                    onClick = state.onClick,
-                ).padding(horizontal = 16.dp, vertical = 12.dp)
+                .deviceTap(state)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
                 .testTag(testTag),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -80,6 +78,26 @@ internal fun LedgerDeviceRow(
         SelectionIndicator(isSelected = state.isSelected)
     }
 }
+
+private fun Modifier.deviceTap(state: LedgerDeviceItemState) =
+    when (state.role) {
+        LedgerDeviceRowRole.RADIO -> {
+            this.selectable(
+                selected = state.isSelected,
+                enabled = state.isEnabled,
+                role = Role.RadioButton,
+                onClick = state.onClick,
+            )
+        }
+
+        LedgerDeviceRowRole.BUTTON -> {
+            this.clickable(
+                enabled = state.isEnabled,
+                role = Role.Button,
+                onClick = state.onClick,
+            )
+        }
+    }
 
 /**
  * Figma lifts the selected row with its Shadow SM.
@@ -148,6 +166,12 @@ private fun SelectionIndicator(isSelected: Boolean) {
 }
 
 /**
+ * How a row is announced: a pick in a list that a separate button confirms, or a tap that acts at
+ * once.
+ */
+enum class LedgerDeviceRowRole { RADIO, BUTTON }
+
+/**
  * A device row. It deliberately carries no identifier: the only one a scan has is the device's
  * Bluetooth address, a stable hardware identifier that must not reach the semantics tree. The view
  * keys and tags rows by position; the selection itself is tracked inside the view model.
@@ -156,6 +180,7 @@ data class LedgerDeviceItemState(
     val name: StringResource,
     val isSelected: Boolean,
     val isEnabled: Boolean,
+    val role: LedgerDeviceRowRole,
     val onClick: () -> Unit,
 ) {
     companion object {
@@ -164,9 +189,12 @@ data class LedgerDeviceItemState(
                 name = stringRes("Ledger Device 2"),
                 isSelected = false,
                 isEnabled = true,
+                role = LedgerDeviceRowRole.RADIO,
                 onClick = {},
             )
 
         val previewSelected = preview.copy(name = stringRes("Ledger Device 1"), isSelected = true)
+
+        val previewButton = preview.copy(role = LedgerDeviceRowRole.BUTTON)
     }
 }

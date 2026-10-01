@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.SheetValue
@@ -185,7 +184,8 @@ private fun ProgressContent(content: LedgerSignContent.Progress) {
 }
 
 /**
- * The cards keep their unselected look: a tap connects straight away, so none is ever shown picked.
+ * The cards are buttons, not a radio group: a row tap connects straight away, so none is ever shown
+ * picked and the cards keep their unselected look.
  */
 @Composable
 private fun DevicesContent(content: LedgerSignContent.Devices) {
@@ -199,10 +199,7 @@ private fun DevicesContent(content: LedgerSignContent.Devices) {
         )
         Spacer(16.dp)
         Column(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .selectableGroup(),
+            modifier = Modifier.fillMaxWidth(),
         ) {
             content.devices.forEachIndexed { index, device ->
                 if (index != 0) {

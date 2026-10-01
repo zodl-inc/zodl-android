@@ -21,6 +21,7 @@ import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
 import co.electriccoin.zcash.ui.design.component.ButtonState
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceItemState
+import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceRowRole
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerInlineIssueState
 import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerIssueSheetBuilder
 import co.electriccoin.zcash.ui.screen.connectledger.common.toEnrollmentIssue
@@ -110,6 +111,7 @@ class LedgerDeviceScanVM(
                         name = stringRes(device.name ?: device.model.productName),
                         isSelected = device.identifier == internal.selectedIdentifier,
                         isEnabled = !isConnecting,
+                        role = LedgerDeviceRowRole.RADIO,
                         onClick = { onDeviceClick(device.identifier) },
                     )
                 },

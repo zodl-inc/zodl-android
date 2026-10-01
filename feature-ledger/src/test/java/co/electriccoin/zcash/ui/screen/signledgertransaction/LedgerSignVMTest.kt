@@ -26,6 +26,7 @@ import co.electriccoin.zcash.ui.common.usecase.StartLedgerSigningUseCase
 import co.electriccoin.zcash.ui.common.usecase.SubmitLedgerProposalUseCase
 import co.electriccoin.zcash.ui.design.util.StringResource
 import co.electriccoin.zcash.ui.design.util.stringRes
+import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceRowRole
 import co.electriccoin.zcash.ui.screen.connectledger.connect.LedgerConnectArgs
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -149,7 +150,7 @@ class LedgerSignVMTest {
         }
 
     @Test
-    fun selectingListsTheDevicesUnderChooseYourLedgerWithoutAConnectButton() =
+    fun selectingListsTheDevicesAsTapToConnectButtonsUnderChooseYourLedger() =
         runTest(dispatcher) {
             val signingState =
                 MutableStateFlow<LedgerSigningState?>(
@@ -171,6 +172,7 @@ class LedgerSignVMTest {
             )
             assertTrue(devices.devices.none { it.isSelected })
             assertTrue(devices.devices.all { it.isEnabled })
+            assertTrue(devices.devices.all { it.role == LedgerDeviceRowRole.BUTTON })
         }
 
     @Test

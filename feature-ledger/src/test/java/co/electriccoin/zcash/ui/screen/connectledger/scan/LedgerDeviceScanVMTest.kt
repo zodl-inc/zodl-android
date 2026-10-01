@@ -12,6 +12,7 @@ import co.electriccoin.zcash.ui.common.repository.LedgerSelectedDeviceRepository
 import co.electriccoin.zcash.ui.common.usecase.ConnectLedgerDeviceUseCase
 import co.electriccoin.zcash.ui.common.usecase.ObserveLedgerDevicesUseCase
 import co.electriccoin.zcash.ui.design.util.StringResource
+import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerDeviceRowRole
 import co.electriccoin.zcash.ui.screen.connectledger.handshake.LedgerHandshakeArgs
 import co.electriccoin.zcash.ui.screen.connectledger.openapp.LedgerOpenAppArgs
 import co.electriccoin.zcash.ui.screen.error.ErrorArgs
@@ -143,6 +144,7 @@ class LedgerDeviceScanVMTest {
             assertFalse(listed.showDeviceSkeletons)
             assertFalse(listed.isScanning)
             assertFalse(listed.devices.single().isSelected)
+            assertEquals(LedgerDeviceRowRole.RADIO, listed.devices.single().role)
             assertEquals(R.string.ledger_scan_select_cta, listed.primaryButton.text.resourceId())
             assertNull(listed.primaryButton.icon)
             assertFalse(listed.primaryButton.isEnabled)
