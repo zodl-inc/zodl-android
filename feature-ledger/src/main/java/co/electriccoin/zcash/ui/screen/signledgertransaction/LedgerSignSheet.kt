@@ -4,6 +4,8 @@ package co.electriccoin.zcash.ui.screen.signledgertransaction
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
@@ -49,9 +51,10 @@ import co.electriccoin.zcash.ui.screen.connectledger.common.LedgerWaitingIndicat
  * or the end of the session leaves it.
  *
  * Only the part that changes size animates: the slot between the sheet's top and Cancel Transaction
- * crossfades and resizes when the content changes kind, and inside the waiting phases the header
- * stays put while the region under it resizes. A new status within the same kind is a text swap, so
- * the spinner keeps turning.
+ * crossfades and resizes only when an issue replaces a waiting phase or the other way round. Between
+ * waiting phases the header stays put and only the region under it resizes, which the slot follows
+ * without a size animation of its own. A new status within the same kind is a text swap, so the
+ * spinner keeps turning.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,7 +72,7 @@ internal fun LedgerSignSheet(state: LedgerSignSheetState?) {
                     .fillMaxWidth()
                     .testTag(LedgerSignTag.SHEET)
                     .padding(
-                        top = 24.dp,
+                        top = 34.dp,
                         bottom = contentPadding.calculateBottomPadding()
                     ),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -78,7 +81,13 @@ internal fun LedgerSignSheet(state: LedgerSignSheetState?) {
                 targetState = sheetState.content,
                 modifier = Modifier.weight(1f, false),
                 contentKey = { it is LedgerSignContent.Issue },
-                transitionSpec = { crossfade() },
+                transitionSpec = {
+                    if ((initialState is LedgerSignContent.Issue) == (targetState is LedgerSignContent.Issue)) {
+                        ContentTransform(EnterTransition.None, ExitTransition.None, sizeTransform = null)
+                    } else {
+                        crossfade()
+                    }
+                },
                 contentAlignment = Alignment.TopCenter,
                 label = "LedgerSignContent",
             ) { content ->
@@ -98,12 +107,8 @@ internal fun LedgerSignSheet(state: LedgerSignSheetState?) {
                         }
                     }
 
-                    is LedgerSignContent.Progress -> {
-                        WaitingContent(content = content, body = content.body)
-                    }
-
-                    is LedgerSignContent.Devices -> {
-                        WaitingContent(content = content, body = content.body)
+                    is LedgerSignContent.Waiting -> {
+                        WaitingContent(content)
                     }
                 }
             }
@@ -114,7 +119,7 @@ internal fun LedgerSignSheet(state: LedgerSignSheetState?) {
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp)
                         .testTag(LedgerSignTag.CANCEL_BTN),
-                defaultPrimaryColors = ZashiButtonDefaults.destructive2Colors(),
+                defaultPrimaryColors = ZashiButtonDefaults.destructive1Colors(),
             )
         }
     }
@@ -128,14 +133,12 @@ private fun crossfade() =
     )
 
 /**
- * The header, the same in every waiting phase apart from its [body] line, over the spinner and its
- * status or the device picker.
+ * The header, the same in every waiting phase apart from its body line, over the spinner and its
+ * status or the device picker. Only the region under the header resizes when the phase changes
+ * between the two.
  */
 @Composable
-private fun WaitingContent(
-    content: LedgerSignContent,
-    body: StringResource,
-) {
+private fun WaitingContent(content: LedgerSignContent.Waiting) {
     Column(
         modifier =
             Modifier
@@ -143,7 +146,7 @@ private fun WaitingContent(
                 .padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Header(body = body)
+        Header(body = content.body)
         Spacer(24.dp)
         AnimatedContent(
             targetState = content,
@@ -161,10 +164,6 @@ private fun WaitingContent(
                 is LedgerSignContent.Devices -> {
                     DevicesContent(waiting)
                 }
-
-                is LedgerSignContent.Issue -> {
-                    Unit
-                }
             }
         }
     }
@@ -180,10 +179,7 @@ private fun ProgressContent(content: LedgerSignContent.Progress) {
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        LedgerWaitingIndicator(
-            title = content.status.getValue(),
-            modifier = Modifier.testTag(LedgerSignTag.WAITING_INDICATOR),
-        )
+        LedgerWaitingIndicator(title = content.status.getValue())
         Spacer(PROGRESS_CANCEL_GAP.dp)
     }
 }

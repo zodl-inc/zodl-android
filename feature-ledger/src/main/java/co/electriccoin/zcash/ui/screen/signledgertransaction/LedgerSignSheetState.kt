@@ -102,23 +102,30 @@ data class LedgerSignSheetState(
  */
 sealed interface LedgerSignContent {
     /**
-     * A phase of the session the user only waits through, or acts on at the device: [body] under
-     * the sheet's title, and [status] next to the spinner.
+     * A phase drawn under the sheet's header, whose line under the title is [body].
+     */
+    sealed interface Waiting : LedgerSignContent {
+        val body: StringResource
+    }
+
+    /**
+     * A phase of the session the user only waits through, or acts on at the device; [status] sits
+     * next to the spinner.
      */
     data class Progress(
-        val body: StringResource,
+        override val body: StringResource,
         val status: StringResource,
-    ) : LedgerSignContent
+    ) : Waiting
 
     /**
      * More than one Ledger is in range, or the last session met the wrong one: [title] heads the
      * [devices], and a tap on one connects to it.
      */
     data class Devices(
-        val body: StringResource,
+        override val body: StringResource,
         val title: StringResource,
         val devices: List<LedgerDeviceItemState>,
-    ) : LedgerSignContent
+    ) : Waiting
 
     /**
      * A failed session. [primary] is absent where nothing in the app can fix the issue and Cancel
