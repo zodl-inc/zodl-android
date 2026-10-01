@@ -19,6 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -29,7 +32,8 @@ import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 /**
  * The Figma "Waiting Indicator": a spinner turning once a second over a centred title that wraps
  * rather than being cut, with an optional subtitle. Without [showSpinner] only the text is drawn,
- * which the sign sheet's device picker uses as its heading.
+ * which the sign sheet's device picker uses as its heading. The title is a polite live region, so a
+ * screen reader reads out a status that replaces the one shown.
  */
 @Composable
 internal fun LedgerWaitingIndicator(
@@ -51,7 +55,10 @@ internal fun LedgerWaitingIndicator(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
-                modifier = Modifier.widthIn(max = WAITING_TEXT_MAX_WIDTH.dp),
+                modifier =
+                    Modifier
+                        .widthIn(max = WAITING_TEXT_MAX_WIDTH.dp)
+                        .semantics { liveRegion = LiveRegionMode.Polite },
                 text = title,
                 style = ZashiTypography.textMd,
                 color = ZashiColors.Text.textPrimary,
