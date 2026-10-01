@@ -32,6 +32,8 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 - Disconnect Hardware Wallet in Advanced Settings now shows only while a Keystone or Ledger account
   is selected, and disconnects that account; it used to show whenever the wallet held a Keystone
   account, whichever account was selected.
+- The integrations sheet no longer lists Connect Keystone; hardware wallets, Keystone or Ledger, are
+  connected from the accounts sheet.
 
 ### Fixed:
 

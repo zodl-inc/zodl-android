@@ -41,7 +41,6 @@ import co.electriccoin.zcash.ui.common.usecase.GetFilteredActivitiesUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetFlexaStatusUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetHomeMessageUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetIronwoodBalanceUseCase
-import co.electriccoin.zcash.ui.common.usecase.GetKeystoneStatusUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetOrchardBalanceUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetPersistableWalletUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetPreselectedSwapAssetUseCase
@@ -245,7 +244,6 @@ val useCaseModule =
         factoryOf(::ValidateSeedUseCase)
         factoryOf(::RestoreWalletUseCase)
         factoryOf(::NavigateToWalletBackupUseCase)
-        factoryOf(::GetKeystoneStatusUseCase)
         factoryOf(::GetFlexaStatusUseCase)
         factoryOf(::GetHomeMessageUseCase)
         factoryOf(::NavigateToVotingUseCase)

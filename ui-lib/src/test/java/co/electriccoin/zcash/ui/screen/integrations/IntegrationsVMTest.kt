@@ -11,7 +11,6 @@ import co.electriccoin.zcash.ui.common.model.WalletAccount
 import co.electriccoin.zcash.ui.common.model.WalletRestoringState
 import co.electriccoin.zcash.ui.common.model.ZashiAccount
 import co.electriccoin.zcash.ui.common.usecase.GetFlexaStatusUseCase
-import co.electriccoin.zcash.ui.common.usecase.GetKeystoneStatusUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetWalletRestoringStateUseCase
 import co.electriccoin.zcash.ui.common.usecase.Status
@@ -84,6 +83,17 @@ class IntegrationsVMTest {
             assertNull(vm.state.value?.disabledInfo)
         }
 
+    @Test
+    fun theSheetListsFlexaAndMoreButNoHardwareWalletEntry() =
+        runTest {
+            val vm = vm(zashi())
+            collect(vm)
+
+            val items = assertNotNull(vm.state.value).items
+            assertEquals(2, items.size)
+            assertEquals(R.string.settings_flexa, items.first().title.resourceId())
+        }
+
     private fun vm(selectedAccount: WalletAccount) =
         IntegrationsVM(
             getWalletRestoringState =
@@ -97,10 +107,6 @@ class IntegrationsVMTest {
             getFlexaStatus =
                 mockk<GetFlexaStatusUseCase> {
                     every { observe() } returns MutableStateFlow(Status.DISABLED)
-                },
-            getKeystoneStatus =
-                mockk<GetKeystoneStatusUseCase> {
-                    every { observe() } returns MutableStateFlow(Status.ENABLED)
                 },
             navigationRouter = mockk<NavigationRouter>(relaxed = true),
         )
