@@ -104,6 +104,3 @@ internal fun List<String>.normalizedVoteServerUrls(): List<String> =
         .distinct()
 
 private const val HTTP_BAD_REQUEST = 400
-
-// Trivial marker to force a real diff (a bare reopen/base-branch-change with no new commits
-// didn't re-trigger CI here) — safe to remove once this PR's checks have run against `main`.
