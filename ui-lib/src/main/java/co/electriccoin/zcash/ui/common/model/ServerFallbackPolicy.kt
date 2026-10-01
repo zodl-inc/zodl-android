@@ -22,11 +22,6 @@ object ServerFallbackPolicy {
         /** Stay on the gateway and report it is unavailable to the UI. */
         data object StayAndReportGatewayUnavailable : DecisionResult
 
-        /** Use the given OHTTP gateway. */
-        data class UseGateway(
-            val endpoint: LightWalletEndpoint
-        ) : DecisionResult
-
         /** Return to the OHTTP gateway from a clearnet fallback (manual selection recovery). */
         data class ReturnToGateway(
             val endpoint: LightWalletEndpoint
@@ -39,30 +34,24 @@ object ServerFallbackPolicy {
     /**
      * @param current the endpoint the wallet is on right now
      * @param healthyGateways OHTTP gateways that just passed validation (empty = OHTTP unreachable)
-     * @param rankedFallbacks clearnet servers that passed validation, fastest first (unused in automatic mode now)
      * @param isOhttpGateway how to recognize an OHTTP gateway endpoint
      * @return the decision: which endpoint to use or report unavailability
      */
     fun decide(
         current: LightWalletEndpoint,
         healthyGateways: List<LightWalletEndpoint>,
-        @Suppress("UNUSED_PARAMETER") rankedFallbacks: List<LightWalletEndpoint>,
         isOhttpGateway: (LightWalletEndpoint) -> Boolean,
     ): DecisionResult {
         val gateway = healthyGateways.firstOrNull()
         val onGateway = isOhttpGateway(current)
         return when {
-            // OHTTP reachable: stay if already on a gateway, otherwise return to it.
-            gateway != null && onGateway -> DecisionResult.Stay
-
+            // OHTTP reachable but the wallet is on a clearnet server: return to the gateway.
             gateway != null && !onGateway -> DecisionResult.ReturnToGateway(gateway)
 
-            // OHTTP unreachable and on gateway: report unavailability (no auto-fallback).
-            !onGateway && gateway == null -> DecisionResult.Stay
+            // OHTTP unreachable and on the gateway: report unavailability (no auto-fallback).
+            gateway == null && onGateway -> DecisionResult.StayAndReportGatewayUnavailable
 
-            onGateway && gateway == null -> DecisionResult.StayAndReportGatewayUnavailable
-
-            // Nothing reachable: stay put.
+            // Already on a reachable gateway, or on a clearnet server with the gateway still down.
             else -> DecisionResult.Stay
         }
     }

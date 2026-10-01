@@ -18,7 +18,7 @@ class PersistServerSelectionUseCase(
 ) {
     suspend fun persistAutomatic() {
         // Switching to Automatic always starts from the OHTTP gateway; if it turns out to be
-        // unreachable, OhttpFallbackRepository moves the wallet to a clearnet fallback.
+        // unreachable, AutomaticServerRepository reports it to the user (no automatic clearnet fallback).
         isOhttpFallbackActiveProvider.store(false)
         val endpoint = getAutomaticEndpoint()
         persistFlagAndEndpoint(isAutomatic = true, endpoint = endpoint)

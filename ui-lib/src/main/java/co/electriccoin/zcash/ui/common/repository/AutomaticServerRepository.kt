@@ -334,21 +334,10 @@ class AutomaticServerRepositoryImpl(
                 ServerFallbackPolicy.decide(
                     current = current,
                     healthyGateways = healthyGateways,
-                    rankedFallbacks = emptyList(),
                     isOhttpGateway = lightWalletEndpointProvider::isOhttpGateway,
                 )
 
             when (decision) {
-                is ServerFallbackPolicy.DecisionResult.UseGateway -> {
-                    _ohttpUnavailable.value = false
-                    Twig.info {
-                        "Automatic server: OHTTP-first current=${current.host} " +
-                            "gatewayReachable=${healthyGateways.isNotEmpty()} -> ${decision.endpoint.host}"
-                    }
-                    syncFallbackFlag(decision.endpoint)
-                    decision.endpoint
-                }
-
                 is ServerFallbackPolicy.DecisionResult.ReturnToGateway -> {
                     _ohttpUnavailable.value = false
                     Twig.info {
