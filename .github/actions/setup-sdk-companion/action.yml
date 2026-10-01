@@ -45,6 +45,7 @@ runs:
       shell: bash
       env:
         SDK_REPO: ${{ inputs.sdk-repo }}
+        SDK_TOKEN: ${{ inputs.sdk-token }}
       run: |
         PIN="$(grep -m1 '^SDK_COMMIT_PIN=' gradle.properties | cut -d= -f2 | tr -d '[:space:]')"
         [ -z "${PIN}" ] || [[ "${PIN}" =~ ^[0-9a-f]{40}$ ]] || { echo '::error::SDK_COMMIT_PIN must be a full 40-char commit sha'; exit 1; }
@@ -52,8 +53,8 @@ runs:
         # never silently widen to a broader repo-scoped secret if SDK_COMPANION_TOKEN isn't set --
         # that would grant this job whatever else that broader secret can reach, not just
         # contents:read on the one companion repo it actually needs.
-        if [ -n "${PIN}" ] && [ -z "${{ inputs.sdk-token }}" ]; then
-          echo "::error::SDK_COMMIT_PIN is set to '${PIN}' but no sdk-token input was provided. Configure the SDK_COMPANION_TOKEN secret (contents:read on the SDK repository) rather than substituting a broader-scoped secret." >&2
+        if [ -n "${PIN}" ] && [ -z "${SDK_TOKEN}" ]; then
+          echo "::error::SDK_COMMIT_PIN is set to '${PIN}' but no sdk-token input was provided. Configure the SDK_COMPANION_TOKEN secret (contents:read on the companion SDK repository) rather than substituting a broader-scoped secret." >&2
           exit 1
         fi
         TARGET="${{ github.event.pull_request.base.ref || github.base_ref || github.ref_name }}"
@@ -144,20 +145,15 @@ runs:
       run: |
         git config --global url."https://x-access-token:${SLIPSTREAM_TOKEN}@github.com/zodl-inc/".insteadOf "https://github.com/zodl-inc/"
         echo "CARGO_NET_GIT_FETCH_WITH_CLI=true" >> "$GITHUB_ENV"
-    - name: Free disk space before companion SDK Rust build
+    - name: Free the runner tool cache before companion SDK Rust build
       if: steps.pin.outputs.commit != ''
       shell: bash
       run: |
+        # The toolchains the earlier "Free runner disk space" step already removed are not
+        # removed again here; this drops the rest of the runner tool cache to leave room for
+        # Rust cross-compilation. The NDK (27.0.12077973) lives in the Android SDK, not in it.
         echo "Disk space before cleanup:"
         df -h /
-        # Remove unnecessary toolchains and build artifacts to save ~20 GB for Rust cross-compilation.
-        # Keep the NDK we need (27.0.12077973 is already installed) and the active emulator.
-        sudo rm -rf /usr/share/dotnet
-        sudo rm -rf /opt/ghc
-        sudo rm -rf /usr/local/.ghcup
-        sudo rm -rf /opt/hostedtoolcache/CodeQL
-        sudo rm -rf /usr/local/share/boost
-        sudo rm -rf /usr/share/swift
         sudo rm -rf "${AGENT_TOOLSDIRECTORY}" || true
         echo "Disk space after cleanup:"
         df -h /
