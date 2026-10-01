@@ -580,6 +580,8 @@ class VotingConfigWalkTest {
                 KtorVotingApiProvider(
                     httpClientProvider =
                         object : HttpClientProvider {
+                            override suspend fun isTorEnabled(): Boolean = false
+
                             override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
 
                             override suspend fun supportsKtorTimeouts(): Boolean = true
@@ -667,6 +669,8 @@ class VotingConfigWalkTest {
                 KtorVotingApiProvider(
                     httpClientProvider =
                         object : HttpClientProvider {
+                            override suspend fun isTorEnabled(): Boolean = false
+
                             override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
 
                             override suspend fun supportsKtorTimeouts(): Boolean = true
@@ -718,6 +722,8 @@ class VotingConfigWalkTest {
         KtorVotingApiProvider(
             httpClientProvider =
                 object : HttpClientProvider {
+                    override suspend fun isTorEnabled(): Boolean = false
+
                     override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
 
                     override suspend fun supportsKtorTimeouts(): Boolean = true
@@ -756,6 +762,8 @@ class VotingConfigWalkTest {
         KtorVotingApiProvider(
             httpClientProvider =
                 object : HttpClientProvider {
+                    override suspend fun isTorEnabled(): Boolean = false
+
                     override suspend fun createOhttp(): OhttpHttpClient = passthroughOhttpClient { create() }
 
                     override suspend fun supportsKtorTimeouts(): Boolean = true

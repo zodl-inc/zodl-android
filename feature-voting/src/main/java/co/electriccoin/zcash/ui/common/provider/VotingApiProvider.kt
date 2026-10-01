@@ -1196,22 +1196,16 @@ class KtorVotingApiProvider(
      * Resolves the routing strategy for a vote server request.
      * @throws IllegalStateException if the URL cannot be reached (predefined server with Tor off and no OHTTP support)
      */
-    @Suppress("CyclomaticComplexMethod", "ComplexCondition")
     private suspend fun resolveVoteRoute(
         url: String,
         torEnabled: Boolean,
         isCustom: Boolean,
-        ohttpClient: OhttpHttpClient?,
+        ohttpClient: OhttpHttpClient,
     ): VoteRoute {
-        // When OHTTP client is unavailable (null), predefined servers with Tor OFF cannot proceed
-        // → triggers the existing manual-consent fallback path (user must choose a server manually)
-        if (!torEnabled && !isCustom && ohttpClient == null) {
-            error("OHTTP unavailable: cannot reach predefined vote server at $url with Tor disabled")
-        }
-        if (!torEnabled && !isCustom && ohttpClient != null && !ohttpClient.canHandle(url)) {
+        if (!torEnabled && !isCustom && !ohttpClient.canHandle(url)) {
             error("Cannot reach predefined vote server at unsupported destination $url with Tor disabled")
         }
-        return if (!torEnabled && !isCustom && ohttpClient != null && ohttpClient.canHandle(url)) {
+        return if (!torEnabled && !isCustom) {
             VoteRoute.Ohttp(ohttpClient)
         } else {
             val desc =

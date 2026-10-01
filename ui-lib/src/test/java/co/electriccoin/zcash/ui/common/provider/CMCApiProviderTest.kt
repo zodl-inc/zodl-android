@@ -72,10 +72,11 @@ class CMCApiProviderTest {
         }
 }
 
+/**
+ * MOB-1520: the app must never send X-CMC_PRO_API_KEY; the gateway injects it server-side. Asserted against
+ * the actual request headers (not the URL) so a regression that reintroduces the header fails the test.
+ */
 private fun assertNoCmcApiKeyHeader(request: OhttpHttpClient.Request) {
-    // MOB-1520: the app must never send X-CMC_PRO_API_KEY; the gateway injects it server-side.
-    // Asserted against the actual request headers (not the URL) so a regression that reintroduces
-    // the header would actually fail this test.
     assertFalse(
         request.headers.any { it.first.equals("X-CMC_PRO_API_KEY", ignoreCase = true) },
         "CMC key must not be sent by the app (gateway injects it)"
@@ -90,6 +91,8 @@ private const val FIAT_MAP_JSON =
 private const val FIAT_MAP_PATH = "/v1/fiat/map"
 
 private class RecordingHttpClientProvider : HttpClientProvider {
+    override suspend fun isTorEnabled(): Boolean = false
+
     var createCalls = 0
         private set
     var createTorCalls = 0

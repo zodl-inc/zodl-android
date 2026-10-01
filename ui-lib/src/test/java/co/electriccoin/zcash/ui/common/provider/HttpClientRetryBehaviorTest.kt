@@ -252,7 +252,8 @@ class HttpClientRetryBehaviorTest {
         }
 
     /**
-     * Test that the isVotingPath logic correctly identifies all voting endpoints.
+     * Test that the isVotingPath logic correctly identifies all voting endpoints. Uses the real production
+     * isVotingPath() (internal, same package), not a reimplementation.
      */
     @Test
     fun testVotingPathIdentification() {
@@ -272,8 +273,6 @@ class HttpClientRetryBehaviorTest {
                 "https://example.com/api/data",
             )
 
-        // Uses the real production isVotingPath() (internal, same package) -- not a
-        // reimplementation -- so a future change to it is caught here automatically.
         votingPaths.forEach { path ->
             assertTrue(
                 "Path $path should be identified as voting path",

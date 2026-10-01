@@ -74,18 +74,18 @@ internal fun shouldTryNextVoteServer(throwable: Throwable): Boolean =
 internal fun shouldTryNextVoteServerForRead(throwable: Throwable): Boolean =
     shouldTryNextVoteServer(throwable, retryOnTimeout = true)
 
+/**
+ * F-06 audit fix: a [TimeoutCancellationException] means the request may have timed out after delivery.
+ * For POSTs (delegate/cast vote), retrying on another server risks a double submission, so the default
+ * ([retryOnTimeout] = false) surfaces the timeout instead of failing over; idempotent GET call sites opt
+ * back in through [shouldTryNextVoteServerForRead]. The timeout branch must precede
+ * [CancellationException], which it extends.
+ */
 private fun shouldTryNextVoteServer(
     throwable: Throwable,
     retryOnTimeout: Boolean
 ): Boolean =
     when (throwable) {
-        // F-06 audit fix: TimeoutCancellationException means the request may have timed out
-        // after delivery. For POSTs (delegate/cast vote), retrying on another server would
-        // risk double-submission. Return false to surface the timeout error instead of
-        // automatically failing over. MOB-1811's comment assumed timeouts are always safe
-        // to retry, but that's only true for idempotent operations -- which is exactly what
-        // [retryOnTimeout] lets GET call sites opt back into.
-        // Note: This still needs to precede CancellationException since it's a subtype.
         is TimeoutCancellationException -> retryOnTimeout
 
         is CancellationException -> false

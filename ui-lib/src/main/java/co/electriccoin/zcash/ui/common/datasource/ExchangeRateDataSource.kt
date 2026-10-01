@@ -59,7 +59,7 @@ class ExchangeRateDataSourceImpl(
             )
         }
 
-        // The OHTTP gateway injects the CMC key; a build-time key is optional and is stripped anyway.
+        // The OHTTP gateway injects the CMC key; the provider ignores this build-time value and never sends it.
         return getCMCExchangeRate(BuildConfig.ZCASH_CMC_KEY)
     }
 

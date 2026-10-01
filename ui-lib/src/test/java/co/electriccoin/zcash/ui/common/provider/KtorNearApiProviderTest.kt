@@ -237,6 +237,8 @@ class KtorNearApiProviderTest {
     }
 
     private inner class RecordingHttpClientProvider : HttpClientProvider {
+        override suspend fun isTorEnabled(): Boolean = false
+
         override suspend fun createTor(): HttpClient {
             createTorCalls++
             error("NEAR must never use createTor() (OHTTP handles routing)")

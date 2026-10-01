@@ -30,18 +30,20 @@ interface HttpClientProvider {
 
     /**
      * Returns an [OhttpHttpClient] for routing external API requests through the OHTTP gateway.
-     * Handles CMC, NEAR, voting config, Sapling params. With Tor ON, the relay leg goes over Tor
+     * CMC and NEAR always use it, with Tor on or off; the voting config and vote-server calls use it
+     * only with Tor OFF (with Tor ON they go Tor-direct). With Tor ON, the relay leg goes over Tor
      * and the gateway injects secrets server-side (the app never sends them). With Tor OFF, the
      * relay sees the app's clearnet IP (but the gateway, which injects secrets, does not).
      */
     suspend fun createOhttp(): OhttpHttpClient
 
     /**
-     * Whether the user has opted into Tor. Callers that offer an OHTTP path (NEAR, voting config)
-     * must consult this: with Tor ON they go Tor-direct via [create]; with Tor OFF they go through
-     * the OHTTP gateway via [createOhttp]. OHTTP on top of Tor would be a pointless double hop.
+     * Whether the user has opted into Tor. Callers that choose between a direct and an OHTTP path
+     * (voting config, vote servers) must consult this: with Tor ON they go Tor-direct via [create];
+     * with Tor OFF they go through the OHTTP gateway via [createOhttp]. OHTTP on top of Tor would be a
+     * pointless double hop. Abstract on purpose, so an implementation cannot silently report "off".
      */
-    suspend fun isTorEnabled(): Boolean = false
+    suspend fun isTorEnabled(): Boolean
 
     suspend fun supportsKtorTimeouts(): Boolean = true
 }

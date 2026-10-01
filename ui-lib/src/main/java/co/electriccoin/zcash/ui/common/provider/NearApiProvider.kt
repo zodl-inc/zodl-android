@@ -23,6 +23,7 @@ import io.ktor.serialization.kotlinx.json.DefaultJson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import java.net.URLEncoder
 
 typealias GetNearSupportedTokensResponse = List<NearTokenDto>
 
@@ -94,7 +95,7 @@ class KtorNearApiProvider(
 
     override suspend fun checkSwapStatus(depositAddress: String): SwapStatusResponseDto =
         execute(
-            ohttpUrl = "https://near.zodl.com/v0/status?depositAddress=$depositAddress",
+            ohttpUrl = "https://near.zodl.com/v0/status?depositAddress=${depositAddress.urlEncoded()}",
             ohttpMethod = "GET"
         )
 
@@ -111,9 +112,11 @@ class KtorNearApiProvider(
         ohttpBodyJson: String? = null
     ): T =
         withContext(Dispatchers.IO) {
+            // Query parameters (the deposit address) are kept out of logs and error messages.
+            val loggableUrl = ohttpUrl.substringBefore('?')
             val ohttpClient = httpClientProvider.createOhttp()
             if (!ohttpClient.canHandle(ohttpUrl)) {
-                error("No OHTTP proxy mapping for $ohttpUrl")
+                error("No OHTTP proxy mapping for $loggableUrl")
             }
             val response =
                 try {
@@ -126,10 +129,10 @@ class KtorNearApiProvider(
                         )
                     )
                 } catch (e: Exception) {
-                    Twig.warn(e) { "OHTTP $ohttpMethod $ohttpUrl failed" }
+                    Twig.warn(e) { "OHTTP $ohttpMethod $loggableUrl failed" }
                     throw e
                 }
-            Twig.debug { "OHTTP $ohttpMethod $ohttpUrl -> HTTP ${response.status} (${response.body.size} bytes)" }
+            Twig.debug { "OHTTP $ohttpMethod $loggableUrl -> HTTP ${response.status} (${response.body.size} bytes)" }
             if (response.status !in HTTP_SUCCESS) {
                 // Attempt to parse the NEAR error body for typed error handling downstream.
                 val bodyString = response.body.decodeToString()
@@ -148,7 +151,7 @@ class KtorNearApiProvider(
                     )
                 } else {
                     // Non-NEAR error body — throw generic exception with the raw body.
-                    error("OHTTP $ohttpMethod $ohttpUrl returned HTTP ${response.status}: $bodyString")
+                    error("OHTTP $ohttpMethod $loggableUrl returned HTTP ${response.status}: $bodyString")
                 }
             }
             if (T::class == Unit::class) {
@@ -158,7 +161,7 @@ class KtorNearApiProvider(
             try {
                 OHTTP_JSON.decodeFromString<T>(response.body.decodeToString())
             } catch (e: Exception) {
-                Twig.warn(e) { "OHTTP $ohttpMethod $ohttpUrl decode failed" }
+                Twig.warn(e) { "OHTTP $ohttpMethod $loggableUrl decode failed" }
                 throw e
             }
         }
@@ -176,3 +179,5 @@ private val HTTP_SUCCESS = HTTP_SUCCESS_MIN..HTTP_SUCCESS_MAX
  * which only works with `isLenient = true`; a strict `Json {}` fails on `"price":2.37`.
  */
 private val OHTTP_JSON = Json(from = DefaultJson) { ignoreUnknownKeys = true }
+
+private fun String.urlEncoded(): String = URLEncoder.encode(this, Charsets.UTF_8.name())
