@@ -23,7 +23,7 @@ class CMCApiProviderTest {
             val httpClientProvider = RecordingHttpClientProvider()
             val provider = CMCApiProviderImpl(httpClientProvider)
 
-            val response = provider.getExchangeRateQuote(apiKey = "key", fiat = "USD")
+            val response = provider.getExchangeRateQuote(fiat = "USD")
 
             assertEquals(1, httpClientProvider.createOhttpCalls, "CMC must use OHTTP")
             assertEquals(
@@ -53,7 +53,7 @@ class CMCApiProviderTest {
             val httpClientProvider = RecordingHttpClientProvider()
             val provider = CMCApiProviderImpl(httpClientProvider)
 
-            val response = provider.getFiatMap(apiKey = "key")
+            val response = provider.getFiatMap()
 
             assertEquals(1, httpClientProvider.createOhttpCalls, "CMC must use OHTTP")
             assertEquals(

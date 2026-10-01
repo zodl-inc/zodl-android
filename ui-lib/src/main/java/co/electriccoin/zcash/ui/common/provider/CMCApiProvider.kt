@@ -19,13 +19,13 @@ import kotlinx.serialization.json.Json
 
 interface CMCApiProvider {
     @Throws(ResponseException::class)
-    suspend fun getExchangeRateQuote(apiKey: String, fiat: String): GetCMCQuoteResponse
+    suspend fun getExchangeRateQuote(fiat: String): GetCMCQuoteResponse
 
     /**
      * Returns every fiat currency the exchange-rate provider supports, in the provider's own order.
      */
     @Throws(ResponseException::class)
-    suspend fun getFiatMap(apiKey: String): GetCMCFiatMapResponse
+    suspend fun getFiatMap(): GetCMCFiatMapResponse
 }
 
 class CMCApiProviderImpl(
@@ -35,19 +35,18 @@ class CMCApiProviderImpl(
     // MOB-1520: secrets never leave app when Tor ON):
     //   Tor OFF → OHTTP (relay sees app IP, gateway injects X-CMC_PRO_API_KEY)
     //   Tor ON  → Tor→OHTTP (relay sees Tor exit, gateway injects X-CMC_PRO_API_KEY)
-    // The app NEVER sends the key itself — it's stripped with a warning if present (see
-    // OhttpHttpClient.execute → stripSecretsForGateway). The direct (clearnet) client is never
+    // The app holds no CMC key and never sends one. The direct (clearnet) client is never
     // used for this host — HttpClientProvider keeps its backstop.
 
-    override suspend fun getExchangeRateQuote(apiKey: String, fiat: String): GetCMCQuoteResponse =
+    override suspend fun getExchangeRateQuote(fiat: String): GetCMCQuoteResponse =
         execute("https://$CMC_API_HOST/v1/cryptocurrency/quotes/latest?symbol=ZEC&convert=$fiat")
 
-    override suspend fun getFiatMap(apiKey: String): GetCMCFiatMapResponse =
+    override suspend fun getFiatMap(): GetCMCFiatMapResponse =
         execute("https://$CMC_API_HOST/v1/fiat/map")
 
     /**
      * Executes a CMC API request through OHTTP. The gateway injects X-CMC_PRO_API_KEY server-side;
-     * the app no longer sends it (it's stripped if present). With Tor ON, the relay leg goes over
+     * the app sends no key. With Tor ON, the relay leg goes over
      * Tor; with Tor OFF, the relay sees the app's clearnet IP (but CMC never does).
      */
     @Throws(ResponseException::class)

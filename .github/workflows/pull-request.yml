@@ -370,7 +370,6 @@ jobs:
           ORG_GRADLE_PROJECT_ZCASH_DEBUG_APP_NAME_SUFFIX: ""
           ORG_GRADLE_PROJECT_IS_ANDROID_INSTRUMENTATION_TEST_COVERAGE_ENABLED: ${{ matrix.coverage }}
           ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         with:
           api-level: 35
           arch: x86_64
@@ -436,7 +435,6 @@ jobs:
         env:
           ORG_GRADLE_PROJECT_IS_CRASH_ON_STRICT_MODE_VIOLATION: true
           ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         run: |
           ./gradlew :app:assembleZcashmainnetStoreDebug :app:assembleZcashtestnetStoreDebug
       - name: Authenticate to Google Cloud for Firebase Test Lab
@@ -519,7 +517,6 @@ jobs:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: androiddebugkey
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: android
           ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         shell: bash
         run: |
           # This step's worker processes (bundletool's standalone-APK packaging,
@@ -641,7 +638,6 @@ jobs:
           GOOGLE_CLOUD_PROJECT: ${{ vars.FIREBASE_TEST_LAB_PROJECT }}
           ORG_GRADLE_PROJECT_ZCASH_FIREBASE_TEST_LAB_API_KEY_PATH: ${{ steps.auth_test_lab.outputs.credentials_file_path }}
           ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         run: |
           unzip ${BINARIES_ZIP_PATH}
           ./gradlew :app:runFlankSanityConfigRelease

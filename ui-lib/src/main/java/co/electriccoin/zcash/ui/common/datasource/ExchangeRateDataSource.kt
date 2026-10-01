@@ -4,7 +4,6 @@ import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.model.FiatCurrency
 import cash.z.ecc.android.sdk.model.FiatCurrencyConversion
 import cash.z.ecc.android.sdk.model.ObserveFiatCurrencyResult
-import co.electriccoin.zcash.ui.BuildConfig
 import co.electriccoin.zcash.ui.common.provider.CMCApiProvider
 import co.electriccoin.zcash.ui.common.provider.PreferredFiatProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
@@ -42,25 +41,19 @@ class ExchangeRateDataSourceImpl(
     private val synchronizerProvider: SynchronizerProvider,
 ) : ExchangeRateDataSource {
     override suspend fun getExchangeRate(fiatCurrency: FiatCurrency): FiatCurrencyConversion {
-        @Suppress("ThrowsCount")
-        suspend fun getCMCExchangeRate(apiKey: String): FiatCurrencyConversion {
-            val exchangeRate =
-                cmcApiProvider
-                    .getExchangeRateQuote(apiKey = apiKey, fiat = fiatCurrency.code)
-                    .data["ZEC"]
-                    ?.quote
-                    ?.get(fiatCurrency.code)
-                    ?.price
-            val price = exchangeRate ?: throw ExchangeRateUnavailable(message = "Exchange rate not found in response")
-            return FiatCurrencyConversion(
-                timestamp = Clock.System.now(),
-                priceOfZec = price.toDouble(),
-                fiatCurrency = fiatCurrency
-            )
-        }
-
-        // The OHTTP gateway injects the CMC key; the provider ignores this build-time value and never sends it.
-        return getCMCExchangeRate(BuildConfig.ZCASH_CMC_KEY)
+        val exchangeRate =
+            cmcApiProvider
+                .getExchangeRateQuote(fiat = fiatCurrency.code)
+                .data["ZEC"]
+                ?.quote
+                ?.get(fiatCurrency.code)
+                ?.price
+        val price = exchangeRate ?: throw ExchangeRateUnavailable(message = "Exchange rate not found in response")
+        return FiatCurrencyConversion(
+            timestamp = Clock.System.now(),
+            priceOfZec = price.toDouble(),
+            fiatCurrency = fiatCurrency
+        )
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

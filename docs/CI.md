@@ -66,7 +66,7 @@ The Firebase secrets listed below (everything except the repository-level `SLACK
     * `FIREBASE_APP_DIST_FOSS_KEY_BASE64` - Base64 encoded service account JSON with the Firebase App Distribution Admin role in the FOSS Firebase project.
     * `FIREBASE_APP_DIST_RELEASE_KEY_BASE64` - Base64 encoded service account JSON with the Firebase App Distribution Admin role in the release Firebase project.
     * `FIREBASE_DEBUG_KEYSTORE_BASE64` - Base64 encoded shared debug keystore (`androiddebugkey` alias with the default debug passwords).  All distributed builds — debug *and* release build types — are signed with this keystore so that successive deploys keep the same signature and testers can update-install without losing app data.  Note that this deliberately differs from Google Play deployment, which signs with the upload keystore; Firebase-distributed builds are for testing only.
-    * Release variants additionally reuse the `FLEXA_PUBLISHABLE_KEY` and `CMC_PUBLISHABLE_KEY` secrets documented under Release deployment above.
+    * Release variants additionally reuse the `FLEXA_PUBLISHABLE_KEY` secret documented under Release deployment above.
     * `SLACK_WEBHOOK_URL_WALLET_TEAM` - Optional Slack incoming webhook URL for the wallet-team channel.  A final best-effort job posts the deploy result there; it is skipped when the secret is unset and cannot fail the workflow run.
 
 When no `version_code` input is provided, the version code defaults to the git commit count of the selected branch (the build's own default).  Release notes default to an auto-generated string containing the variant, branch, and commit.  The `groups` input defaults to `ec,zodl`, the same tester groups the local `deploy.sh` script distributed to.

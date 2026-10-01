@@ -125,7 +125,6 @@ jobs:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: ${{ secrets.UPLOAD_KEY_ALIAS_PASSWORD }}
           ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         run: |
           ./gradlew clean :app:bundleZcashmainnetStoreRelease :app:packageZcashmainnetStoreReleaseUniversalApk
 
@@ -144,7 +143,6 @@ jobs:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: ${{ secrets.UPLOAD_KEY_ALIAS_PASSWORD }}
           ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         run: |
           ./gradlew clean :app:assembleZcashmainnetFossRelease
 
@@ -152,7 +150,7 @@ jobs:
         run: |
           mv app/build/outputs/apk/zcashmainnetFoss/release/app-zcashmainnet-foss-release.apk artifacts/app-zcashmainnet-foss-release-full-externallibs.apk
 
-      # Second FOSS build with Flexa/CMC keys intentionally NOT injected:
+      # Second FOSS build with the Flexa key intentionally NOT injected:
       # this is the build that f-droid.org's reproducible build farm needs to
       # match (their builders cannot see those secrets). Keep it in sync with
       # the externallibs build above so fdroidserver metadata generation has
@@ -164,7 +162,6 @@ jobs:
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS: ${{ secrets.UPLOAD_KEY_ALIAS }}
           ORG_GRADLE_PROJECT_ZCASH_RELEASE_KEY_ALIAS_PASSWORD: ${{ secrets.UPLOAD_KEY_ALIAS_PASSWORD }}
           # ORG_GRADLE_PROJECT_ZCASH_FLEXA_KEY: ${{ secrets.FLEXA_PUBLISHABLE_KEY }}
-          # ORG_GRADLE_PROJECT_ZCASH_CMC_KEY: ${{ secrets.CMC_PUBLISHABLE_KEY }}
         run: |
           ./gradlew clean :app:assembleZcashmainnetFossRelease
 

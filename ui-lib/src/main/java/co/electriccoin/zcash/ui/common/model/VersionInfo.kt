@@ -39,8 +39,7 @@ data class VersionInfo(
 
         /**
          * CoinMarketCap is always reachable: requests go through the OHTTP gateway, which injects the
-         * API key server-side, so the app no longer needs `ZCASH_CMC_KEY` at build time. The property is
-         * still accepted (and stripped before the request leaves the device) for backward compatibility.
+         * API key server-side, so the app carries no CMC key.
          */
         const val IS_CMC_AVAILABLE = true
 
