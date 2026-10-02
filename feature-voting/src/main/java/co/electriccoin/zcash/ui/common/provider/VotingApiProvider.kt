@@ -905,7 +905,9 @@ class KtorVotingApiProvider(
      */
     suspend fun createIsolatedClient(): HttpClient = httpClientProvider.create()
 
-    private suspend inline fun <T> executeWithKtorTimeoutSupport(crossinline block: suspend HttpClient.(Boolean) -> T): T =
+    private suspend inline fun <T> executeWithKtorTimeoutSupport(
+        crossinline block: suspend HttpClient.(Boolean) -> T,
+    ): T =
         withContext(Dispatchers.IO) {
             val (httpClient, supportsKtorTimeouts) = sharedHttpClient()
             block(httpClient, supportsKtorTimeouts)
@@ -1176,7 +1178,8 @@ internal class DynamicVotingConfigTransientException(
     message: String,
 ) : VotingConfigException(message)
 
-internal fun isRetryableDynamicVotingConfigFailure(throwable: Throwable): Boolean = throwable is DynamicVotingConfigTransientException
+internal fun isRetryableDynamicVotingConfigFailure(throwable: Throwable): Boolean =
+    throwable is DynamicVotingConfigTransientException
 
 /**
  * Thrown when a voting API destination cannot be reached via the required privacy transport
@@ -1527,20 +1530,24 @@ private fun String.hexToBase64String(): String =
         .toByteArray()
         .toBase64String()
 
-private fun ByteArray.toLowerHex(): String = joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and BYTE_MASK) }
+private fun ByteArray.toLowerHex(): String =
+    joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and BYTE_MASK) }
 
 private const val HEX_RADIX = 16
 private const val BYTE_MASK = 0xff
 
-private fun tallyResultsPath(roundIdHex: String): String = "/shielded-vote/v1/tally-results/$roundIdHex"
+private fun tallyResultsPath(roundIdHex: String): String =
+    "/shielded-vote/v1/tally-results/$roundIdHex"
 
-internal fun commitmentTreeLatestPath(roundIdHex: String): String = "/shielded-vote/v1/commitment-tree/$roundIdHex/latest"
+internal fun commitmentTreeLatestPath(roundIdHex: String): String =
+    "/shielded-vote/v1/commitment-tree/$roundIdHex/latest"
 
 internal fun commitmentTreeLeavesPath(
     roundIdHex: String,
     fromHeight: Long,
     toHeight: Long,
-): String = "/shielded-vote/v1/commitment-tree/$roundIdHex/leaves?from_height=$fromHeight&to_height=$toHeight"
+): String =
+    "/shielded-vote/v1/commitment-tree/$roundIdHex/leaves?from_height=$fromHeight&to_height=$toHeight"
 
 internal fun shouldTreatEndorsedRoundsStatusAsEmpty(status: HttpStatusCode): Boolean =
     status == HttpStatusCode.BadRequest || status == HttpStatusCode.NotFound

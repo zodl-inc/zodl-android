@@ -194,7 +194,8 @@ class AutomaticServerRepositoryImpl(
      * Internal test hook: evaluates as a connectivity edge, i.e. an outage the synchronizer already
      * reported, so a single evaluation may leave the gateway (foreground/health need confirmation).
      */
-    internal suspend fun evaluateServerSwitch(): LightWalletEndpoint? = evaluateServerSwitch(trigger = SwitchTrigger.CONNECTIVITY)
+    internal suspend fun evaluateServerSwitch(): LightWalletEndpoint? =
+        evaluateServerSwitch(trigger = SwitchTrigger.CONNECTIVITY)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     internal fun switchLane(triggers: Flow<SwitchTrigger>): Flow<LightWalletEndpoint> =
