@@ -43,7 +43,7 @@ class SkipRemainingKeystoneBundlesUseCaseTest {
             val roundId = "round"
             val recoveryRepository =
                 FakeVotingRecoveryRepository(
-                    snapshot = recoverySnapshot(accountUuid = accountUuid, roundId = roundId)
+                    snapshot = recoverySnapshot(accountUuid = accountUuid, roundId = roundId),
                 )
             val cryptoClient = FakeVotingCryptoClient()
             val sessionHolder = mockk<VotingKeystoneSessionHolder>(relaxed = true)
@@ -53,7 +53,7 @@ class SkipRemainingKeystoneBundlesUseCaseTest {
                     selectedAccount = selectedAccount,
                     cryptoClient = cryptoClient.client,
                     recoveryRepository = recoveryRepository,
-                    sessionHolder = sessionHolder
+                    sessionHolder = sessionHolder,
                 )(accountUuid, roundId)
 
             // The retained Keystone session must be invalidated by this destructive DB mutation,
@@ -66,9 +66,9 @@ class SkipRemainingKeystoneBundlesUseCaseTest {
                     signedBundleCount = 2,
                     skippedBundleCount = 1,
                     signedWeight = 500,
-                    skippedWeight = 100
+                    skippedWeight = 100,
                 ),
-                result
+                result,
             )
             assertEquals(2, recoveryRepository.snapshot?.bundleCount)
             assertEquals(500, recoveryRepository.snapshot?.eligibleWeight)
@@ -80,16 +80,16 @@ class SkipRemainingKeystoneBundlesUseCaseTest {
                     CryptoCall.SetWalletId(
                         dbHandle = DB_HANDLE,
                         walletId = accountUuid,
-                        networkId = 0
+                        networkId = 0,
                     ),
                     CryptoCall.DeleteSkippedBundles(
                         dbHandle = DB_HANDLE,
                         roundId = roundId,
-                        keepCount = 2
+                        keepCount = 2,
                     ),
-                    CryptoCall.CloseVotingDb(DB_HANDLE)
+                    CryptoCall.CloseVotingDb(DB_HANDLE),
                 ),
-                cryptoClient.calls
+                cryptoClient.calls,
             )
         }
 
@@ -103,7 +103,7 @@ class SkipRemainingKeystoneBundlesUseCaseTest {
             val recoveryRepository =
                 FakeVotingRecoveryRepository(
                     snapshot = originalSnapshot,
-                    failOnSkip = true
+                    failOnSkip = true,
                 )
             val cryptoClient = FakeVotingCryptoClient(deletedRows = 0)
 
@@ -112,7 +112,7 @@ class SkipRemainingKeystoneBundlesUseCaseTest {
                     useCase(
                         selectedAccount = selectedAccount,
                         cryptoClient = cryptoClient.client,
-                        recoveryRepository = recoveryRepository
+                        recoveryRepository = recoveryRepository,
                     )(accountUuid, roundId)
                 }
 
@@ -125,16 +125,16 @@ class SkipRemainingKeystoneBundlesUseCaseTest {
                     CryptoCall.SetWalletId(
                         dbHandle = DB_HANDLE,
                         walletId = accountUuid,
-                        networkId = 0
+                        networkId = 0,
                     ),
                     CryptoCall.DeleteSkippedBundles(
                         dbHandle = DB_HANDLE,
                         roundId = roundId,
-                        keepCount = 2
+                        keepCount = 2,
                     ),
-                    CryptoCall.CloseVotingDb(DB_HANDLE)
+                    CryptoCall.CloseVotingDb(DB_HANDLE),
                 ),
-                cryptoClient.calls
+                cryptoClient.calls,
             )
         }
 
@@ -142,13 +142,13 @@ class SkipRemainingKeystoneBundlesUseCaseTest {
         selectedAccount: WalletAccount,
         cryptoClient: VotingCryptoClient,
         recoveryRepository: FakeVotingRecoveryRepository,
-        sessionHolder: VotingKeystoneSessionHolder = mockk(relaxed = true)
+        sessionHolder: VotingKeystoneSessionHolder = mockk(relaxed = true),
     ) = SkipRemainingKeystoneBundlesUseCase(
         getSelectedWalletAccount = GetSelectedWalletAccountUseCase(FakeAccountDataSource(selectedAccount)),
         synchronizerProvider = FakeSynchronizerProvider("/tmp/wallet/data.sqlite3"),
         votingCryptoClient = cryptoClient,
         votingRecoveryRepository = recoveryRepository.repository,
-        votingKeystoneSessionHolder = sessionHolder
+        votingKeystoneSessionHolder = sessionHolder,
     )
 
     private fun keystoneAccount(): KeystoneAccount =
@@ -159,12 +159,12 @@ class SkipRemainingKeystoneBundlesUseCaseTest {
             ironwoodBalance = WalletBalanceFixture.newLong(0, 0, 0),
             transparentAddress = WalletAddressFixture.TRANSPARENT_ADDRESS_STRING,
             transparentBalance = Zatoshi(0),
-            isSelected = true
+            isSelected = true,
         )
 
     private fun recoverySnapshot(
         accountUuid: String,
-        roundId: String
+        roundId: String,
     ) = VotingRecoverySnapshot(
         accountUuid = accountUuid,
         roundId = roundId,
@@ -174,21 +174,21 @@ class SkipRemainingKeystoneBundlesUseCaseTest {
         keystoneBundleSignatures =
             mapOf(
                 0 to signature(),
-                1 to signature()
-            )
+                1 to signature(),
+            ),
     )
 
     private fun signature() =
         VotingKeystoneBundleSignature(
             spendAuthSigBase64 = "signature",
-            sighashBase64 = "sighash"
+            sighashBase64 = "sighash",
         )
 }
 
 private const val DB_HANDLE = 7L
 
 private class FakeAccountDataSource(
-    private val selectedAccountValue: WalletAccount
+    private val selectedAccountValue: WalletAccount,
 ) : AccountDataSource {
     override val allAccounts: StateFlow<List<WalletAccount>?> = MutableStateFlow(listOf(selectedAccountValue))
     override val selectedAccount: Flow<WalletAccount?> = flowOf(selectedAccountValue)
@@ -208,7 +208,7 @@ private class FakeAccountDataSource(
         ufvk: String,
         seedFingerprint: String,
         index: Long,
-        birthday: BlockHeight?
+        birthday: BlockHeight?,
     ): Account = unsupported()
 
     override suspend fun requestNextShieldedAddress(): String = unsupported()
@@ -217,7 +217,7 @@ private class FakeAccountDataSource(
 }
 
 private class FakeSynchronizerProvider(
-    private val walletDbPath: String
+    private val walletDbPath: String,
 ) : SynchronizerProvider {
     private val fakeSynchronizer = synchronizer(walletDbPath)
 
@@ -235,14 +235,14 @@ private class FakeSynchronizerProvider(
 }
 
 private class FakeVotingCryptoClient(
-    private val deletedRows: Long = 1
+    private val deletedRows: Long = 1,
 ) {
     val calls = mutableListOf<CryptoCall>()
 
     val client: VotingCryptoClient =
         Proxy.newProxyInstance(
             VotingCryptoClient::class.java.classLoader,
-            arrayOf(VotingCryptoClient::class.java)
+            arrayOf(VotingCryptoClient::class.java),
         ) { _, method, args ->
             when (method.name) {
                 "openVotingDb" -> {
@@ -255,7 +255,7 @@ private class FakeVotingCryptoClient(
                         CryptoCall.SetWalletId(
                             dbHandle = args.valueAt(0),
                             walletId = args.valueAt(1),
-                            networkId = args.valueAt(2)
+                            networkId = args.valueAt(2),
                         )
                     Unit
                 }
@@ -265,7 +265,7 @@ private class FakeVotingCryptoClient(
                         CryptoCall.DeleteSkippedBundles(
                             dbHandle = args.valueAt(0),
                             roundId = args.valueAt(1),
-                            keepCount = args.valueAt(2)
+                            keepCount = args.valueAt(2),
                         )
                     deletedRows
                 }
@@ -275,7 +275,9 @@ private class FakeVotingCryptoClient(
                     Unit
                 }
 
-                "isCustomServer" -> false
+                "isCustomServer" -> {
+                    false
+                }
 
                 else -> {
                     method.handleObjectMethod(this)
@@ -286,14 +288,14 @@ private class FakeVotingCryptoClient(
 
 private class FakeVotingRecoveryRepository(
     var snapshot: VotingRecoverySnapshot?,
-    private val failOnSkip: Boolean = false
+    private val failOnSkip: Boolean = false,
 ) {
     val skipRequests = mutableListOf<SkipRequest>()
 
     val repository: VotingRecoveryRepository =
         Proxy.newProxyInstance(
             VotingRecoveryRepository::class.java.classLoader,
-            arrayOf(VotingRecoveryRepository::class.java)
+            arrayOf(VotingRecoveryRepository::class.java),
         ) { _, method, args ->
             when (method.name) {
                 "observe" -> {
@@ -313,7 +315,7 @@ private class FakeVotingRecoveryRepository(
                     skipRemainingKeystoneBundles(
                         accountUuid = args.valueAt(0),
                         roundId = args.valueAt(1),
-                        keepCount = args.valueAt(2)
+                        keepCount = args.valueAt(2),
                     )
                 }
 
@@ -326,7 +328,7 @@ private class FakeVotingRecoveryRepository(
     private fun skipRemainingKeystoneBundles(
         accountUuid: String,
         roundId: String,
-        keepCount: Int
+        keepCount: Int,
     ): VotingRecoverySnapshot {
         skipRequests += SkipRequest(accountUuid, roundId, keepCount)
         if (failOnSkip) {
@@ -341,35 +343,35 @@ private class FakeVotingRecoveryRepository(
 private data class SkipRequest(
     val accountUuid: String,
     val roundId: String,
-    val keepCount: Int
+    val keepCount: Int,
 )
 
 private sealed interface CryptoCall {
     data class OpenVotingDb(
-        val dbPath: String
+        val dbPath: String,
     ) : CryptoCall
 
     data class SetWalletId(
         val dbHandle: Long,
         val walletId: String,
-        val networkId: Int
+        val networkId: Int,
     ) : CryptoCall
 
     data class DeleteSkippedBundles(
         val dbHandle: Long,
         val roundId: String,
-        val keepCount: Int
+        val keepCount: Int,
     ) : CryptoCall
 
     data class CloseVotingDb(
-        val dbHandle: Long
+        val dbHandle: Long,
     ) : CryptoCall
 }
 
 private fun synchronizer(walletDbPath: String): Synchronizer =
     Proxy.newProxyInstance(
         Synchronizer::class.java.classLoader,
-        arrayOf(Synchronizer::class.java)
+        arrayOf(Synchronizer::class.java),
     ) { proxy, method, args ->
         when (method.name) {
             "getWalletDbPath" -> walletDbPath
@@ -380,7 +382,7 @@ private fun synchronizer(walletDbPath: String): Synchronizer =
 
 private fun Method.handleObjectMethod(
     proxy: Any,
-    args: Array<Any?>? = null
+    args: Array<Any?>? = null,
 ): Any? =
     when (name) {
         "toString" -> "Fake${declaringClass.simpleName}"

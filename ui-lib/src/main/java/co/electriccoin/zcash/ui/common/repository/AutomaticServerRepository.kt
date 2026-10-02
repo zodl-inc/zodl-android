@@ -117,7 +117,7 @@ class AutomaticServerRepositoryImpl(
                             resolveIsServerSelectionAutomatic(
                                 isAutomaticPreference = null,
                                 currentEndpoint = endpoint,
-                                knownEndpoints = lightWalletEndpointProvider.getEndpoints()
+                                knownEndpoints = lightWalletEndpointProvider.getEndpoints(),
                             )
                         }
                 }
@@ -140,7 +140,7 @@ class AutomaticServerRepositoryImpl(
         return resolveIsServerSelectionAutomatic(
             isAutomaticPreference = preference,
             currentEndpoint = currentEndpoint,
-            knownEndpoints = lightWalletEndpointProvider.getEndpoints()
+            knownEndpoints = lightWalletEndpointProvider.getEndpoints(),
         )
     }
 
@@ -158,7 +158,7 @@ class AutomaticServerRepositoryImpl(
                 applicationStateProvider.observeOnForeground().map { SwitchTrigger.FOREGROUND },
                 connectivityEdges(),
                 healthTicks(),
-            )
+            ),
         ).launchIn(scope)
 
         // Clear stale _ohttpUnavailable when leaving automatic mode so re-entering doesn't show
@@ -168,8 +168,7 @@ class AutomaticServerRepositoryImpl(
                 if (!automatic) {
                     _ohttpUnavailable.value = false
                 }
-            }
-            .launchIn(scope)
+            }.launchIn(scope)
     }
 
     /**
@@ -188,15 +187,14 @@ class AutomaticServerRepositoryImpl(
      */
     internal fun observeSwitchCandidates(
         edges: Flow<Unit>,
-        trigger: SwitchTrigger = SwitchTrigger.FOREGROUND
+        trigger: SwitchTrigger = SwitchTrigger.FOREGROUND,
     ): Flow<LightWalletEndpoint> = switchLane(edges.map { trigger })
 
     /**
      * Internal test hook: evaluates as a connectivity edge, i.e. an outage the synchronizer already
      * reported, so a single evaluation may leave the gateway (foreground/health need confirmation).
      */
-    internal suspend fun evaluateServerSwitch(): LightWalletEndpoint? =
-        evaluateServerSwitch(trigger = SwitchTrigger.CONNECTIVITY)
+    internal suspend fun evaluateServerSwitch(): LightWalletEndpoint? = evaluateServerSwitch(trigger = SwitchTrigger.CONNECTIVITY)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     internal fun switchLane(triggers: Flow<SwitchTrigger>): Flow<LightWalletEndpoint> =
@@ -226,7 +224,7 @@ class AutomaticServerRepositoryImpl(
                     } else {
                         null
                     }
-                }.filterNotNull()
+                }.filterNotNull(),
         )
 
     /**
@@ -271,7 +269,7 @@ class AutomaticServerRepositoryImpl(
 
     private fun ticks(
         interval: Duration,
-        trigger: SwitchTrigger
+        trigger: SwitchTrigger,
     ): Flow<SwitchTrigger> =
         flow {
             while (true) {
@@ -282,7 +280,7 @@ class AutomaticServerRepositoryImpl(
 
     private suspend fun <T> guarded(
         what: String,
-        block: suspend () -> T
+        block: suspend () -> T,
     ): T? =
         runCatching { block() }
             .getOrElse {
@@ -428,7 +426,7 @@ class AutomaticServerRepositoryImpl(
      */
     private suspend fun rankValidated(
         synchronizer: Synchronizer,
-        candidates: List<LightWalletEndpoint>
+        candidates: List<LightWalletEndpoint>,
     ): List<LightWalletEndpoint> {
         val ranked =
             if (candidates.isEmpty()) {
@@ -457,7 +455,7 @@ class AutomaticServerRepositoryImpl(
      */
     private suspend fun probeGateway(
         synchronizer: Synchronizer,
-        gateway: LightWalletEndpoint
+        gateway: LightWalletEndpoint,
     ): Boolean =
         withTimeoutOrNull(VALIDATION_TIMEOUT) {
             runCatching { synchronizer.validateServerEndpoint(application, gateway) }.getOrNull()
@@ -490,7 +488,7 @@ class AutomaticServerRepositoryImpl(
 
 /** What woke the automatic-selection lane; connectivity edges skip the foreground rate limit. */
 enum class SwitchTrigger(
-    val bypassesInterval: Boolean
+    val bypassesInterval: Boolean,
 ) {
     FOREGROUND(bypassesInterval = false),
     CONNECTIVITY(bypassesInterval = true),
@@ -524,7 +522,7 @@ private val TIER_BENCHMARK_TIMEOUT = 90.seconds
  */
 class EvaluationInterval(
     private val minimumInterval: Duration,
-    private val timeSource: TimeSource = ElapsedRealtimeTimeSource
+    private val timeSource: TimeSource = ElapsedRealtimeTimeSource,
 ) {
     @Volatile
     private var lastAttemptAt: TimeMark? = null
@@ -547,7 +545,7 @@ object ElapsedRealtimeTimeSource : TimeSource {
 }
 
 private class ElapsedRealtimeMark(
-    private val startedAt: Long
+    private val startedAt: Long,
 ) : TimeMark {
     override fun elapsedNow(): Duration = (SystemClock.elapsedRealtime() - startedAt).milliseconds
 }

@@ -24,7 +24,6 @@ import co.electriccoin.zcash.ui.common.model.voting.TallyResults
 import co.electriccoin.zcash.ui.common.model.voting.TxConfirmation
 import co.electriccoin.zcash.ui.common.model.voting.TxEvent
 import co.electriccoin.zcash.ui.common.model.voting.TxEventAttribute
-import co.electriccoin.zcash.ui.common.model.voting.TxResult
 import co.electriccoin.zcash.ui.common.model.voting.VoteCommitmentBundle
 import co.electriccoin.zcash.ui.common.model.voting.VotingConfigException
 import co.electriccoin.zcash.ui.common.model.voting.VotingRound
@@ -275,7 +274,6 @@ class KtorVotingApiProvider(
             }
         }
     }
-
 
     override suspend fun fetchTallyResults(roundIdHex: String): TallyResults {
         val ballotDivisorZatoshi = votingCryptoClient.ballotDivisorZatoshi()
@@ -853,70 +851,6 @@ class KtorVotingApiProvider(
         }
     }
 
-    /**
-     * Executes a POST request to a vote-server URL, routing through OHTTP when Tor is OFF for
-     * predefined servers, or direct for custom user-selected voting configs.
-     * Preserves failover semantics: OHTTP transport failures and non-2xx responses are thrown
-     * as exceptions so the caller's failover logic can try the next server.
-     */
-    private suspend fun HttpClient.voteServerPost(
-        url: String,
-        body: String,
-    ): String {
-        val torEnabled = httpClientProvider.isTorEnabled()
-        val isCustom = isCustomVoteServer()
-        val ohttpClient = httpClientProvider.createOhttp()
-
-        return when (val route = resolveVoteRoute(url, torEnabled, isCustom, ohttpClient)) {
-            is VoteRoute.Ohttp -> {
-                val response =
-                    try {
-                        route.client.execute(
-                            OhttpHttpClient.Request(
-                                url = url,
-                                method = "POST",
-                                headers =
-                                    listOf(
-                                        "Content-Type" to "application/json",
-                                        "Cache-Control" to "no-cache",
-                                    ),
-                                body = body.toByteArray(Charsets.UTF_8),
-                            ),
-                        )
-                    } catch (exception: Exception) {
-                        exception.rethrowIfCancellation()
-                        val errorType = exception::class.simpleName ?: "unknown error"
-                        error("Vote server POST via OHTTP failed for $url: $errorType")
-                    }
-                Twig.debug { "OHTTP POST $url -> HTTP ${response.status} (${response.body.size} bytes)" }
-                // 422 carries a JSON error body the caller parses (same as the Tor path below).
-                val accepted =
-                    response.status in OHTTP_HTTP_SUCCESS ||
-                        response.status == HttpStatusCode.UnprocessableEntity.value
-                if (accepted) {
-                    response.body.decodeToString()
-                } else {
-                    error("Vote server POST via OHTTP returned HTTP ${response.status} for $url")
-                }
-            }
-
-            is VoteRoute.Direct -> {
-                Twig.debug { "Vote server POST $url ${route.description}" }
-                try {
-                    post(url) {
-                        setBody(TextContent(body, ContentType.Application.Json))
-                    }.bodyAsText()
-                } catch (responseException: ResponseException) {
-                    if (responseException.response.status == HttpStatusCode.UnprocessableEntity) {
-                        responseException.response.bodyAsText()
-                    } else {
-                        throw responseException
-                    }
-                }
-            }
-        }
-    }
-
     private suspend fun <T> executeWithVoteServerFailover(
         path: String,
         shouldTryNext: (Throwable) -> Boolean = ::shouldTryNextVoteServer,
@@ -932,7 +866,7 @@ class KtorVotingApiProvider(
         client: HttpClient,
         path: String,
         shouldTryNext: (Throwable) -> Boolean = ::shouldTryNextVoteServer,
-        block: suspend HttpClient.(String) -> T
+        block: suspend HttpClient.(String) -> T,
     ): T {
         val serverUrls = configuredVoteServerUrls()
         val supportsKtorTimeouts = httpClientProvider.supportsKtorTimeouts()
@@ -946,7 +880,7 @@ class KtorVotingApiProvider(
         serverUrls: List<String>,
         shouldTryNext: (Throwable) -> Boolean,
         supportsKtorTimeouts: Boolean,
-        block: suspend HttpClient.(String) -> T
+        block: suspend HttpClient.(String) -> T,
     ): T =
         withVoteServerFailover(
             path = path,
@@ -961,7 +895,7 @@ class KtorVotingApiProvider(
                 withTorRequestTimeoutFallback(supportsKtorTimeouts, voteServerFailoverTimeoutMillis) {
                     block(serverUrl)
                 }
-            }
+            },
         )
 
     /**
@@ -971,29 +905,7 @@ class KtorVotingApiProvider(
      */
     suspend fun createIsolatedClient(): HttpClient = httpClientProvider.create()
 
-    private suspend fun HttpClient.postTxResult(
-        url: String,
-        serverUrl: String,
-        body: String
-    ): TxResult =
-        try {
-            post(url) {
-                setBody(TextContent(body, ContentType.Application.Json))
-            }.bodyAsText().toTxResult().copy(acceptedByServerUrl = serverUrl)
-        } catch (responseException: ResponseException) {
-            if (responseException.response.status == HttpStatusCode.UnprocessableEntity) {
-                responseException.response
-                    .bodyAsText()
-                    .toTxResult()
-                    .copy(acceptedByServerUrl = serverUrl)
-            } else {
-                throw responseException
-            }
-        }
-
-    private suspend inline fun <T> executeWithKtorTimeoutSupport(
-        crossinline block: suspend HttpClient.(Boolean) -> T,
-    ): T =
+    private suspend inline fun <T> executeWithKtorTimeoutSupport(crossinline block: suspend HttpClient.(Boolean) -> T): T =
         withContext(Dispatchers.IO) {
             val (httpClient, supportsKtorTimeouts) = sharedHttpClient()
             block(httpClient, supportsKtorTimeouts)
@@ -1117,7 +1029,7 @@ class KtorVotingApiProvider(
 /** What one vote server could tell us about a transaction. */
 private sealed interface TxConfirmationLookup {
     data class Confirmed(
-        val confirmation: TxConfirmation
+        val confirmation: TxConfirmation,
     ) : TxConfirmationLookup
 
     /** The server answered, and it has no record of this transaction yet. */
@@ -1264,8 +1176,7 @@ internal class DynamicVotingConfigTransientException(
     message: String,
 ) : VotingConfigException(message)
 
-internal fun isRetryableDynamicVotingConfigFailure(throwable: Throwable): Boolean =
-    throwable is DynamicVotingConfigTransientException
+internal fun isRetryableDynamicVotingConfigFailure(throwable: Throwable): Boolean = throwable is DynamicVotingConfigTransientException
 
 /**
  * Thrown when a voting API destination cannot be reached via the required privacy transport
@@ -1470,8 +1381,6 @@ private const val TAG = "VotingApiProvider"
 private const val ACTIVE_ROUNDS_PATH = "/shielded-vote/v1/rounds/active"
 private const val ROUNDS_PATH = "/shielded-vote/v1/rounds"
 private const val ENDORSED_ROUNDS_PATH = "/shielded-vote/v1/endorsed-rounds/zodl"
-private const val DELEGATE_VOTE_PATH = "/shielded-vote/v1/delegate-vote"
-private const val CAST_VOTE_PATH = "/shielded-vote/v1/cast-vote"
 private const val RAW_GITHUBUSERCONTENT_HOST = "raw.githubusercontent.com"
 private const val CACHE_BUST_QUERY_PARAM = "zodl_cache_bust"
 private const val TRANSIENT_HTTP_STATUS_MIN = 500
@@ -1567,15 +1476,6 @@ private fun VoteCommitmentBundle.toApiBody(signature: CastVoteSignature): String
         .put("vote_auth_sig", signature.voteAuthSig.toBase64String())
         .toString()
 
-internal fun String.toTxResult(): TxResult {
-    val json = JSONObject(this)
-    return TxResult(
-        txHash = json.optString("tx_hash"),
-        code = json.optNumber("code").toInt(),
-        log = json.optString("log"),
-    )
-}
-
 internal fun String.toTxConfirmation(): TxConfirmation {
     val json = JSONObject(this)
     val events = json.optJSONArray("events")
@@ -1627,18 +1527,14 @@ private fun String.hexToBase64String(): String =
         .toByteArray()
         .toBase64String()
 
-private fun ByteArray.toLowerHex(): String =
-    joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and BYTE_MASK) }
+private fun ByteArray.toLowerHex(): String = joinToString(separator = "") { byte -> "%02x".format(byte.toInt() and BYTE_MASK) }
 
 private const val HEX_RADIX = 16
 private const val BYTE_MASK = 0xff
 
 private fun tallyResultsPath(roundIdHex: String): String = "/shielded-vote/v1/tally-results/$roundIdHex"
 
-private fun txConfirmationPath(txHash: String): String = "/shielded-vote/v1/tx/$txHash"
-
-internal fun commitmentTreeLatestPath(roundIdHex: String): String =
-    "/shielded-vote/v1/commitment-tree/$roundIdHex/latest"
+internal fun commitmentTreeLatestPath(roundIdHex: String): String = "/shielded-vote/v1/commitment-tree/$roundIdHex/latest"
 
 internal fun commitmentTreeLeavesPath(
     roundIdHex: String,
