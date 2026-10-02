@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.common.provider
 import android.util.Log
 import cash.z.ecc.android.sdk.util.OhttpCodecFactory
 import co.electriccoin.lightwallet.client.OhttpHttpClient
+import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.BuildConfig
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
