@@ -7,6 +7,14 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
+### Added:
+
+- We added Zodl to the system share sheet, so a Zcash address, a payment URI, or an image containing a QR code can be shared straight from another app instead of being screenshotted and re-scanned.
+
+### Fixed:
+
+- We preserve edited Send recipients when Android recreates the app and retry unfinished shared payments after screen recreation.
+
 ## [3.14.0 (2738)] - 2026-09-16
 
 ### Added:

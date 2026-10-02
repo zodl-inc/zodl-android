@@ -33,6 +33,7 @@ import co.electriccoin.zcash.ui.common.extension.setContentCompat
 import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationUIState
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationViewModel
+import co.electriccoin.zcash.ui.common.viewmodel.IncomingPaymentViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.OldHomeViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.SecretState
 import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
@@ -46,7 +47,6 @@ import co.electriccoin.zcash.ui.screen.authentication.RETRY_TRIGGER_DELAY
 import co.electriccoin.zcash.ui.screen.authentication.WrapAuthentication
 import co.electriccoin.zcash.ui.screen.authentication.view.AnimationConstants
 import co.electriccoin.zcash.ui.screen.authentication.view.WelcomeAnimationAutostart
-import co.electriccoin.zcash.ui.screen.scan.thirdparty.ThirdPartyScan
 import co.electriccoin.zcash.ui.screen.theme.ThemeVM
 import co.electriccoin.zcash.ui.screen.warning.viewmodel.StorageCheckViewModel
 import co.electriccoin.zcash.work.WorkIds
@@ -79,8 +79,9 @@ class MainActivity : FragmentActivity() {
 
     val configurationOverrideFlow = MutableStateFlow<ConfigurationOverride?>(null)
 
-    private val navigationRouter: NavigationRouter by inject()
     private val migrationAppHooks: MigrationAppHooks by inject()
+
+    private val incomingPaymentViewModel by viewModel<IncomingPaymentViewModel>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,19 +95,25 @@ class MainActivity : FragmentActivity() {
 
         monitorForBackgroundSync()
 
-        if (intent.data != null) {
-            navigationRouter.forward(ThirdPartyScan)
+        // Only on a fresh start: the launching Intent stays attached to the Activity, so replaying
+        // it after a process-death recreation would navigate into Send a second time.
+        if (savedInstanceState == null) {
+            incomingPaymentViewModel.accept(intent)
         }
         handleMigrationIntent(intent)
+        setIntent(Intent(Intent.ACTION_MAIN))
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                incomingPaymentViewModel.processPending()
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-
-        if (intent.data != null) {
-            navigationRouter.forward(ThirdPartyScan)
-        }
+        incomingPaymentViewModel.accept(intent)
         handleMigrationIntent(intent)
+        setIntent(Intent(Intent.ACTION_MAIN))
     }
 
     private fun handleMigrationIntent(intent: Intent): Boolean = migrationAppHooks.handleIntent(intent, lifecycleScope)

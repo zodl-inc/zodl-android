@@ -2,6 +2,7 @@ package co.electriccoin.zcash.di
 
 import co.electriccoin.zcash.ui.common.appbar.ZashiTopAppBarVM
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationViewModel
+import co.electriccoin.zcash.ui.common.viewmodel.IncomingPaymentViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.OldHomeViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.WalletViewModel
 import co.electriccoin.zcash.ui.screen.ScreenTimeoutVM
@@ -109,6 +110,7 @@ val viewModelModule =
         viewModelOf(::WalletViewModel)
         viewModelOf(::IronwoodAnnouncementVM)
         viewModelOf(::AuthenticationViewModel)
+        viewModelOf(::IncomingPaymentViewModel)
         viewModelOf(::OldHomeViewModel)
         viewModelOf(::StorageCheckViewModel)
         viewModelOf(::RestoreSeedVM)
