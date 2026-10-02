@@ -160,6 +160,16 @@ class AutomaticServerRepositoryImpl(
                 healthTicks(),
             )
         ).launchIn(scope)
+
+        // Clear stale _ohttpUnavailable when leaving automatic mode so re-entering doesn't show
+        // the banner immediately until the next evaluation.
+        isServerAutomatic
+            .onEach { automatic ->
+                if (!automatic) {
+                    _ohttpUnavailable.value = false
+                }
+            }
+            .launchIn(scope)
     }
 
     /**

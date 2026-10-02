@@ -244,8 +244,13 @@ class ChooseServerVM(
                         }.first()
                 innerState.first { it.local != null }
                 innerState.update { inner ->
-                    inner.local?.let {
-                        inner.copy(local = it.copy(isAutomatic = false, selectedEndpoint = fastestClearnet))
+                    inner.local?.let { local ->
+                        // Only preselect if the user hasn't already made a selection
+                        if (local.selectedEndpoint == inner.persisted.endpoint) {
+                            inner.copy(local = local.copy(isAutomatic = false, selectedEndpoint = fastestClearnet))
+                        } else {
+                            inner
+                        }
                     } ?: inner
                 }
             }

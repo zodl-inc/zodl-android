@@ -64,6 +64,14 @@ jobs:
             exit 1
           fi
 
+      - name: Refuse to deploy with OHTTP relay URL override
+        shell: bash
+        run: |
+          if [ -n "$ZODL_OHTTP_RELAY_URL_MAINNET" ] || [ -n "$ZODL_OHTTP_RELAY_URL_TESTNET" ]; then
+            echo '::error::OHTTP relay URL override is set — releases must use production relay URLs from zodl-ohttp-client.'
+            exit 1
+          fi
+
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
         with:

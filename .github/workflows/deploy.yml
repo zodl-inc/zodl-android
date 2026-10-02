@@ -86,6 +86,15 @@ jobs:
             echo '::error::SDK_COMMIT_PIN is set — releases must build against a published SDK.'
             exit 1
           fi
+
+      - name: Refuse to deploy with OHTTP relay URL override
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          if [ -n "$ZODL_OHTTP_RELAY_URL_MAINNET" ] || [ -n "$ZODL_OHTTP_RELAY_URL_TESTNET" ]; then
+            echo '::error::OHTTP relay URL override is set — releases must use production relay URLs from zodl-ohttp-client.'
+            exit 1
+          fi
       - name: Set up Java
         uses: ./.github/actions/setup-java
         timeout-minutes: 1
