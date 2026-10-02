@@ -65,13 +65,14 @@ class HttpClientProviderImpl(
     @Volatile
     private var cachedForTorEnabled: Boolean? = null
 
-    @Volatile
-    private var policyGeneration = 0
     private val lock = Mutex()
 
-    // Private coroutine scope for OHTTP client disposal. Uses SupervisorJob so a disposal
-    // failure doesn't cancel other disposals, and Dispatchers.IO for the blocking native
-    // cleanup operations OHTTP disposal may trigger.
+    /**
+     * Coroutine scope for delayed OHTTP client disposal. Uses [SupervisorJob] so a disposal
+     * failure doesn't cancel other disposals, and [Dispatchers.IO] for the blocking native
+     * cleanup operations OHTTP disposal may trigger. The disposal is wrapped in [runCatching]
+     * to prevent exceptions from reaching the uncaught exception handler.
+     */
     private val disposalScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override suspend fun create(): HttpClient =
@@ -90,14 +91,17 @@ class HttpClientProviderImpl(
             if (cachedOhttpClient != null && cachedForTorEnabled != torNow) {
                 val outgoing = cachedOhttpClient
                 cachedOhttpClient = null
-                policyGeneration++
                 // Dispose the outgoing client to clean up its Tor sender. Launch in a background
                 // coroutine with a grace period to allow in-flight requests to complete. OHTTP
                 // over Tor can take tens of seconds, so use a 120s window.
                 outgoing?.let { client ->
                     disposalScope.launch {
                         delay(OHTTP_CLIENT_DISPOSE_GRACE_MS)
-                        client.dispose()
+                        runCatching {
+                            client.dispose()
+                        }.onFailure { error ->
+                            Twig.error(error) { "OHTTP client disposal failed" }
+                        }
                     }
                 }
             }
@@ -105,7 +109,6 @@ class HttpClientProviderImpl(
                 // The native OHTTP codec (shared zodl-ohttp-client core) comes from the SDK. Obtain it
                 // before the Tor sender so a load failure cannot leak a freshly created sender.
                 val codec = OhttpCodecFactory.create()
-                val senderForTor = if (torNow) synchronizerProvider.getSynchronizer().ohttpSenderOverTor() else null
                 // DEBUG-only: pass trace prefix for request tracking in Grafana
                 val tracePrefix =
                     if (BuildConfig.DEBUG && BuildConfig.OHTTP_CLIENT_TRACE_PREFIX.isNotBlank()) {
@@ -115,9 +118,10 @@ class HttpClientProviderImpl(
                     }
                 cachedOhttpClient =
                     if (torNow) {
+                        val sender = synchronizerProvider.getSynchronizer().ohttpSenderOverTor()
                         OhttpHttpClient.create(
                             codec = codec,
-                            sender = senderForTor!!,
+                            sender = sender,
                             ohttpClientTraceIdPrefix = tracePrefix
                         )
                     } else {
@@ -128,7 +132,7 @@ class HttpClientProviderImpl(
                     }
                 cachedForTorEnabled = torNow
             }
-            cachedOhttpClient!!
+            return@withLock cachedOhttpClient!!
         }
 
     override suspend fun createTor() =
@@ -254,5 +258,11 @@ private const val HTTP_SERVER_ERROR_FIRST = 500
 private const val HTTP_SERVER_ERROR_LAST = 599
 private val HTTP_SERVER_ERRORS = HTTP_SERVER_ERROR_FIRST..HTTP_SERVER_ERROR_LAST
 
-// Grace period before disposing an OHTTP client replaced on a Tor toggle (see createOhttp).
+/**
+ * Grace period before disposing an OHTTP client replaced on a Tor toggle. Protects callers
+ * that already obtained the old client before the toggle: they may still be using it for
+ * in-flight requests. OHTTP over Tor can take tens of seconds per request. Memory safety
+ * is already guaranteed by [TorClient]'s internal access mutex; this delay prevents premature
+ * cleanup that would break those in-flight operations.
+ */
 private const val OHTTP_CLIENT_DISPOSE_GRACE_MS = 120_000L
