@@ -1,23 +1,16 @@
 package co.electriccoin.zcash.ui.common.usecase
 
-import co.electriccoin.zcash.ui.common.model.voting.CastVoteSignature
 import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLatest
 import co.electriccoin.zcash.ui.common.model.voting.CommitmentTreeLeafPage
 import co.electriccoin.zcash.ui.common.model.voting.DelegatedShareInfo
-import co.electriccoin.zcash.ui.common.model.voting.DelegationRegistration
 import co.electriccoin.zcash.ui.common.model.voting.PinnedConfigSource
-import co.electriccoin.zcash.ui.common.model.voting.ShareConfirmationResult
 import co.electriccoin.zcash.ui.common.model.voting.SharePayload
 import co.electriccoin.zcash.ui.common.model.voting.TallyResults
-import co.electriccoin.zcash.ui.common.model.voting.TxConfirmation
-import co.electriccoin.zcash.ui.common.model.voting.TxResult
-import co.electriccoin.zcash.ui.common.model.voting.VoteCommitmentBundle
 import co.electriccoin.zcash.ui.common.model.voting.VotingServiceConfig
 import co.electriccoin.zcash.ui.common.model.voting.VotingSession
 import co.electriccoin.zcash.ui.common.provider.RoundsListResult
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.repository.VotingApiRepositoryImpl
-import io.ktor.client.HttpClient
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -74,55 +67,11 @@ class RefreshVotingRoundsUseCaseTest {
             return endorsedRoundIds
         }
 
-        override suspend fun submitDelegation(registration: DelegationRegistration): TxResult =
-            error("unused")
-
-        override suspend fun submitDelegation(
-            registration: DelegationRegistration,
-            client: HttpClient
-        ): TxResult = error("unused")
-
-        override suspend fun submitVoteCommitment(
-            bundle: VoteCommitmentBundle,
-            signature: CastVoteSignature
-        ): TxResult = error("unused")
-
-        override suspend fun submitVoteCommitment(
-            bundle: VoteCommitmentBundle,
-            signature: CastVoteSignature,
-            client: HttpClient
-        ): TxResult = error("unused")
-
         override suspend fun fetchTallyResults(roundIdHex: String): TallyResults =
             error("unused")
 
         override suspend fun delegateShares(shares: List<SharePayload>): List<DelegatedShareInfo> =
             error("unused")
-
-        override suspend fun fetchShareStatus(
-            helperBaseUrl: String,
-            roundIdHex: String,
-            nullifierHex: String
-        ): ShareConfirmationResult = error("unused")
-
-        override suspend fun resubmitShare(
-            payload: SharePayload,
-            candidateUrls: List<String>,
-            excludeUrls: List<String>
-        ): List<String> = error("unused")
-
-        override suspend fun fetchTxConfirmation(
-            txHash: String,
-            preferredServerUrl: String?,
-            consultOthers: Boolean
-        ): TxConfirmation? = error("unused")
-
-        override suspend fun fetchTxConfirmation(
-            txHash: String,
-            client: HttpClient,
-            preferredServerUrl: String?,
-            consultOthers: Boolean
-        ): TxConfirmation? = error("unused")
 
         override suspend fun fetchCommitmentTreeLatest(roundIdHex: String): CommitmentTreeLatest =
             error("unused")
