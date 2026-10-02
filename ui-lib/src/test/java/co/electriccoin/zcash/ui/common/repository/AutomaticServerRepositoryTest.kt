@@ -215,9 +215,11 @@ class AutomaticServerRepositoryTest {
     @Test
     fun ohttpUnavailableIsClearedWhenAutomaticModeIsTurnedOff() =
         runTest {
-            fallbackActive = true
-            fallbackActiveFlow.value = true
-            automaticPreference.value = true
+            coEvery { isAutomaticProvider.get() } returns true
+            coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
+            stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
+            coEvery { synchronizer.validateServerEndpoint(any(), gateway) } returns
+                ServerValidation.InValid(IllegalStateException("down"))
 
             val emissions = mutableListOf<Boolean>()
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
@@ -225,10 +227,15 @@ class AutomaticServerRepositoryTest {
             }
             runCurrent()
 
+            // Trigger evaluation to set ohttpUnavailable to true
+            assertNull(repository.evaluateServerSwitch(SwitchTrigger.CONNECTIVITY))
+            runCurrent()
+
+            // Turn off automatic mode - should clear ohttpUnavailable
             automaticPreference.value = false
             runCurrent()
 
-            assertEquals(listOf(true, false), emissions)
+            assertEquals(listOf(false, true, false), emissions)
             coVerify { fallbackFlag.store(false) }
         }
 
