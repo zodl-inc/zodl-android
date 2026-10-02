@@ -7,6 +7,7 @@ import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import co.electriccoin.zcash.ui.common.provider.VotingApiProvider
 import co.electriccoin.zcash.ui.common.provider.VotingCryptoClient
 import co.electriccoin.zcash.ui.common.provider.acquireVotingTorLeaseOrNull
+import co.electriccoin.zcash.ui.common.repository.VotingChainConfigRepository
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryPhase
 import co.electriccoin.zcash.ui.common.repository.VotingRecoveryRepository
 import co.electriccoin.zcash.ui.common.repository.toVotingAccountScopeId
@@ -46,6 +47,7 @@ class TrackVotingSharesUseCase(
     private val votingApiProvider: VotingApiProvider,
     private val synchronizerProvider: SynchronizerProvider,
     private val getSelectedWalletAccount: GetSelectedWalletAccountUseCase,
+    private val votingChainConfigRepository: VotingChainConfigRepository,
 ) {
     suspend operator fun invoke(roundId: String): VotingShareTrackingResult =
         withContext(Dispatchers.IO) {
@@ -95,7 +97,7 @@ class TrackVotingSharesUseCase(
                         try {
                             session.run(
                                 torLease = torLease,
-                                isCustomServer = false,
+                                isCustomServer = !votingChainConfigRepository.get().isOnDefaultConfig,
                                 helperUrls = roundVoteServerUrls,
                                 voteEndTimeSeconds = recovery.voteEndEpochSeconds ?: -1L
                             )

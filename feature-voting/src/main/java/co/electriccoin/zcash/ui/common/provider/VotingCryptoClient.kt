@@ -308,6 +308,8 @@ interface VotingCryptoClient {
     @Throws(RuntimeException::class)
     suspend fun syncVoteTree(
         dbHandle: Long,
+        torLease: VotingTorLease?,
+        isCustomServer: Boolean,
         roundId: String,
         nodeUrl: String
     ): Long
@@ -701,11 +703,13 @@ class VotingCryptoClientImpl(
 
     override suspend fun syncVoteTree(
         dbHandle: Long,
+        torLease: VotingTorLease?,
+        isCustomServer: Boolean,
         roundId: String,
         nodeUrl: String
     ): Long =
         withContext(Dispatchers.IO) {
-            session(dbHandle).syncVoteTree(roundId, nodeUrl)
+            session(dbHandle).syncVoteTree(torLease, isCustomServer, roundId, nodeUrl)
         }
 
     override suspend fun scheduledShareSubmitAt(

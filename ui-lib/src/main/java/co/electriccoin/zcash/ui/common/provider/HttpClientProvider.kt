@@ -64,6 +64,13 @@ class HttpClientProviderImpl(
     private var policyGeneration = 0
     private val lock = Mutex()
 
+    // Private coroutine scope for OHTTP client disposal. Uses SupervisorJob so a disposal
+    // failure doesn't cancel other disposals, and Dispatchers.IO for the blocking native
+    // cleanup operations OHTTP disposal may trigger.
+    private val disposalScope = kotlinx.coroutines.CoroutineScope(
+        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO
+    )
+
     override suspend fun create(): HttpClient =
         if (isTorEnabledStorageProvider.get() == true) createTor() else createDirect()
 
@@ -82,10 +89,11 @@ class HttpClientProviderImpl(
                 cachedOhttpClient = null
                 policyGeneration++
                 // Dispose the outgoing client to clean up its Tor sender. Launch in a background
-                // coroutine with a small grace period to avoid breaking in-flight requests.
+                // coroutine with a grace period to allow in-flight requests to complete. OHTTP
+                // over Tor can take tens of seconds, so use a 120s window.
                 outgoing?.let { client ->
-                    kotlinx.coroutines.GlobalScope.launch {
-                        kotlinx.coroutines.delay(100)
+                    disposalScope.launch {
+                        kotlinx.coroutines.delay(120_000)
                         client.dispose()
                     }
                 }
