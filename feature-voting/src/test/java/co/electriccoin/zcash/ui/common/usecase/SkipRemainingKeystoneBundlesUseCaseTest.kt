@@ -275,6 +275,8 @@ private class FakeVotingCryptoClient(
                     Unit
                 }
 
+                "isCustomServer" -> false
+
                 else -> {
                     method.handleObjectMethod(this)
                 }
