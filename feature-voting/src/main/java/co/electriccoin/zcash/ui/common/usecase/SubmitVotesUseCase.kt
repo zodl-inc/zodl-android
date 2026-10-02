@@ -500,7 +500,8 @@ class SubmitVotesUseCase(
             chainEndpoints = voteServerUrls,
             ceremonyStartSeconds = session.ceremonyStart.epochSecond,
             voteEndTimeSeconds = session.voteEndTime.epochSecond,
-            delegationInputs = delegationInputs
+            delegationInputs = delegationInputs,
+            isCustomServer = votingCryptoClient.isCustomServer()
         )
 
         votingRecoveryRepository.storeProposalSelections(

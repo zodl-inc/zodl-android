@@ -379,6 +379,13 @@ interface VotingCryptoClient {
         signedPcztBytes: ByteArray,
         actionIndex: Int
     ): ByteArray
+
+    /**
+     * Whether the wallet is configured with a custom voting config (custom vote servers), as opposed
+     * to the default ZODL-bundled config. Used by the SDK's OHTTP routing: custom servers go Direct
+     * (fail-closed when Tor is off), default servers route through the OHTTP gateway when Tor is off.
+     */
+    suspend fun isCustomServer(): Boolean
 }
 
 class VotingCryptoClientImpl(
@@ -401,7 +408,7 @@ class VotingCryptoClientImpl(
 
     // Same source of truth as KtorVotingApiProvider.isCustomVoteServer(): a user-selected custom
     // voting config means custom servers, which the SDK routes Direct (Tor OFF) instead of OHTTP.
-    private suspend fun isCustomServer(): Boolean = !votingChainConfigRepository.get().isOnDefaultConfig
+    suspend fun isCustomServer(): Boolean = !votingChainConfigRepository.get().isOnDefaultConfig
 
     private suspend fun votingSdk(): VotingSdk =
         sdk ?: sdkMutex.withLock {

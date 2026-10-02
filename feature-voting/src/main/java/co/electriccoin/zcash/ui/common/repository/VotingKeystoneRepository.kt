@@ -197,7 +197,8 @@ class VotingKeystoneRepositoryImpl(
                 chainEndpoints = voteServerUrls,
                 ceremonyStartSeconds = session.ceremonyStart.epochSecond,
                 voteEndTimeSeconds = session.voteEndTime.epochSecond,
-                delegationInputs = delegationInputs
+                delegationInputs = delegationInputs,
+                isCustomServer = votingCryptoClient.isCustomServer()
             )
 
             val request =
