@@ -218,23 +218,16 @@ class AutomaticServerRepositoryTest {
             coEvery { isAutomaticProvider.get() } returns true
             coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(gateway)
             stubTiers(gatewayReachable = false, rankedFallbacks = fallbacks)
-            coEvery { synchronizer.validateServerEndpoint(any(), gateway) } returns
-                ServerValidation.InValid(IllegalStateException("down"))
 
             val emissions = mutableListOf<Boolean>()
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
                 repository.ohttpUnavailable.collect { emissions += it }
             }
-            runCurrent()
 
-            // Trigger evaluation to set ohttpUnavailable to true
-            assertNull(repository.evaluateServerSwitch(SwitchTrigger.CONNECTIVITY))
-            runCurrent()
+            assertNull(repository.evaluateServerSwitch())
+            assertEquals(listOf(false, true), emissions)
 
-            // Turn off automatic mode - should clear ohttpUnavailable
             automaticPreference.value = false
-            runCurrent()
-
             assertEquals(listOf(false, true, false), emissions)
             coVerify { fallbackFlag.store(false) }
         }
