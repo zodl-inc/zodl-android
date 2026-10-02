@@ -174,6 +174,52 @@ class VotingKeystoneSessionHolderTest {
             coVerify(exactly = 1) { env.torLeaseA.release() }
         }
 
+    @Test
+    fun `a changed isCustomServer causes a new session instead of reuse`() =
+        runTest {
+            val env = environment()
+            val holder = env.holder()
+
+            env.ensureDelegationPipeline(holder, roundId = ROUND_ID, accountUuidString = ACCOUNT_A)
+
+            coEvery {
+                env.votingCryptoClient.openRoundSession(
+                    dbHandle = DB_HANDLE_B,
+                    torLease = any(),
+                    isCustomServer = true,
+                    roundId = any(),
+                    proposals = any(),
+                    hotkeySecret = any(),
+                    chainEndpoints = any(),
+                    operationEpoch = any(),
+                    configuredHelperUrls = any(),
+                    voteTreeNodeUrls = any(),
+                    ceremonyStartSeconds = any(),
+                    voteEndTimeSeconds = any()
+                )
+            } returns env.roundSessionB
+
+            holder.ensureDelegationPipeline(
+                roundId = ROUND_ID,
+                votingDbPath = "/tmp/voting.sqlite3",
+                accountUuidString = ACCOUNT_A,
+                networkId = 0,
+                proposals = emptyList(),
+                hotkeySecret = ByteArray(0),
+                chainEndpoints = listOf("https://chain.example"),
+                ceremonyStartSeconds = 0L,
+                voteEndTimeSeconds = 0L,
+                delegationInputs = mockk<VotingDelegationInputs>(),
+                isCustomServer = true
+            )
+
+            coVerify(exactly = 1) { env.roundSessionA.close() }
+            coVerify(exactly = 1) { env.votingCryptoClient.closeVotingDb(DB_HANDLE_A) }
+            coVerify(exactly = 2) { env.votingCryptoClient.openVotingDb(any()) }
+            coVerify(exactly = 1) { env.roundSessionA.run(any(), null) }
+            coVerify(exactly = 1) { env.roundSessionB.run(any(), null) }
+        }
+
     private class Environment(
         val synchronizer: Synchronizer,
         val votingCryptoClient: VotingCryptoClient,
@@ -199,7 +245,8 @@ class VotingKeystoneSessionHolderTest {
             chainEndpoints = listOf("https://chain.example"),
             ceremonyStartSeconds = 0L,
             voteEndTimeSeconds = 0L,
-            delegationInputs = mockk<VotingDelegationInputs>()
+            delegationInputs = mockk<VotingDelegationInputs>(),
+            isCustomServer = false
         )
     }
 

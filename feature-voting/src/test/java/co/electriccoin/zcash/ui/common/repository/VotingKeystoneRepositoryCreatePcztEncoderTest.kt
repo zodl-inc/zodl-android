@@ -121,7 +121,8 @@ class VotingKeystoneRepositoryCreatePcztEncoderTest {
                     chainEndpoints = any(),
                     ceremonyStartSeconds = any(),
                     voteEndTimeSeconds = any(),
-                    delegationInputs = any()
+                    delegationInputs = any(),
+                    isCustomServer = any()
                 )
             }
         }
@@ -140,6 +141,7 @@ class VotingKeystoneRepositoryCreatePcztEncoderTest {
             // delegation pipeline instead of surfacing here.
             coVerify(exactly = 0) {
                 env.votingKeystoneSessionHolder.ensureDelegationPipeline(
+                    any(),
                     any(),
                     any(),
                     any(),
