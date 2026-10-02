@@ -17,6 +17,11 @@ import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
 import io.ktor.http.HttpHeaders
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -67,9 +72,7 @@ class HttpClientProviderImpl(
     // Private coroutine scope for OHTTP client disposal. Uses SupervisorJob so a disposal
     // failure doesn't cancel other disposals, and Dispatchers.IO for the blocking native
     // cleanup operations OHTTP disposal may trigger.
-    private val disposalScope = kotlinx.coroutines.CoroutineScope(
-        kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO
-    )
+    private val disposalScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override suspend fun create(): HttpClient =
         if (isTorEnabledStorageProvider.get() == true) createTor() else createDirect()
@@ -93,7 +96,7 @@ class HttpClientProviderImpl(
                 // over Tor can take tens of seconds, so use a 120s window.
                 outgoing?.let { client ->
                     disposalScope.launch {
-                        kotlinx.coroutines.delay(120_000)
+                        delay(OHTTP_CLIENT_DISPOSE_GRACE_MS)
                         client.dispose()
                     }
                 }
@@ -250,3 +253,6 @@ private val SANITIZED_HEADERS = setOf(HttpHeaders.Authorization, "X-CMC_PRO_API_
 private const val HTTP_SERVER_ERROR_FIRST = 500
 private const val HTTP_SERVER_ERROR_LAST = 599
 private val HTTP_SERVER_ERRORS = HTTP_SERVER_ERROR_FIRST..HTTP_SERVER_ERROR_LAST
+
+// Grace period before disposing an OHTTP client replaced on a Tor toggle (see createOhttp).
+private const val OHTTP_CLIENT_DISPOSE_GRACE_MS = 120_000L
