@@ -408,7 +408,7 @@ class VotingCryptoClientImpl(
 
     // Same source of truth as KtorVotingApiProvider.isCustomVoteServer(): a user-selected custom
     // voting config means custom servers, which the SDK routes Direct (Tor OFF) instead of OHTTP.
-    suspend fun isCustomServer(): Boolean = !votingChainConfigRepository.get().isOnDefaultConfig
+    override suspend fun isCustomServer(): Boolean = !votingChainConfigRepository.get().isOnDefaultConfig
 
     private suspend fun votingSdk(): VotingSdk =
         sdk ?: sdkMutex.withLock {
