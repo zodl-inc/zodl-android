@@ -78,8 +78,17 @@ class HttpClientProviderImpl(
             val torNow = isTorEnabled()
             // Invalidate cache if the Tor preference changed
             if (cachedOhttpClient != null && cachedForTorEnabled != torNow) {
+                val outgoing = cachedOhttpClient
                 cachedOhttpClient = null
                 policyGeneration++
+                // Dispose the outgoing client to clean up its Tor sender. Launch in a background
+                // coroutine with a small grace period to avoid breaking in-flight requests.
+                outgoing?.let { client ->
+                    kotlinx.coroutines.GlobalScope.launch {
+                        kotlinx.coroutines.delay(100)
+                        client.dispose()
+                    }
+                }
             }
             if (cachedOhttpClient == null) {
                 // The native OHTTP codec (shared zodl-ohttp-client core) comes from the SDK. Obtain it

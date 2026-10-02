@@ -95,6 +95,7 @@ class TrackVotingSharesUseCase(
                         try {
                             session.run(
                                 torLease = torLease,
+                                isCustomServer = false,
                                 helperUrls = roundVoteServerUrls,
                                 voteEndTimeSeconds = recovery.voteEndEpochSeconds ?: -1L
                             )
