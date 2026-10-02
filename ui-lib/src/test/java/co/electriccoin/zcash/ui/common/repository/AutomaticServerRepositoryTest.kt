@@ -111,6 +111,11 @@ class AutomaticServerRepositoryTest {
             coEvery { store(any()) } answers { fallbackActive = firstArg() }
         }
 
+    // A relaxed mock returns a bare Object for the suspend Boolean getter; back it with a real value.
+    init {
+        coEvery { isAutomaticProvider.get() } returns true
+    }
+
     private val foreground = MutableStateFlow(true)
     private val applicationStateProvider =
         mockk<ApplicationStateProvider>(relaxed = true) { every { isInForeground } returns foreground }
