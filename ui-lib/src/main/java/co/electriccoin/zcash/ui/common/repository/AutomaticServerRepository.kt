@@ -161,15 +161,20 @@ class AutomaticServerRepositoryImpl(
             ),
         ).launchIn(scope)
 
-        // Clear stale _ohttpUnavailable when leaving automatic mode so re-entering doesn't show
-        // the banner immediately until the next evaluation.
-        isServerAutomatic
-            .onEach { automatic ->
-                if (!automatic) {
-                    _ohttpUnavailable.value = false
-                }
-            }.launchIn(scope)
+        clearUnavailableOnManualMode().launchIn(scope)
     }
+
+    /**
+     * Drops a recorded gateway outage as soon as automatic mode is left. [ohttpUnavailable] already hides
+     * it while manual, but without this a stale `true` would bring the banner straight back when the user
+     * re-enters automatic mode, before any evaluation has run.
+     */
+    internal fun clearUnavailableOnManualMode(): Flow<Boolean> =
+        isServerAutomatic.onEach { automatic ->
+            if (!automatic) {
+                _ohttpUnavailable.value = false
+            }
+        }
 
     /**
      * The automatic-selection lane, OHTTP first (see [ServerFallbackPolicy]). Every foreground edge

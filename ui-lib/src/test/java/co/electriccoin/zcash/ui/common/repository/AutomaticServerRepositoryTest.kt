@@ -223,13 +223,19 @@ class AutomaticServerRepositoryTest {
             backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
                 repository.ohttpUnavailable.collect { emissions += it }
             }
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                repository.clearUnavailableOnManualMode().collect {}
+            }
 
             assertNull(repository.evaluateServerSwitch())
             assertEquals(listOf(false, true), emissions)
 
             automaticPreference.value = false
             assertEquals(listOf(false, true, false), emissions)
-            coVerify { fallbackFlag.store(false) }
+
+            // Re-entering automatic mode must not resurrect the outage recorded before leaving it.
+            automaticPreference.value = true
+            assertEquals(listOf(false, true, false), emissions)
         }
 
     @Test
