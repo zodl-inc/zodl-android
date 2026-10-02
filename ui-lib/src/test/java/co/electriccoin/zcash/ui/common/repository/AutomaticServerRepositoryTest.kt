@@ -213,6 +213,26 @@ class AutomaticServerRepositoryTest {
         }
 
     @Test
+    fun ohttpUnavailableIsClearedWhenAutomaticModeIsTurnedOff() =
+        runTest {
+            fallbackActive = true
+            fallbackActiveFlow.value = true
+            automaticPreference.value = true
+
+            val emissions = mutableListOf<Boolean>()
+            backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+                repository.ohttpUnavailable.collect { emissions += it }
+            }
+            runCurrent()
+
+            automaticPreference.value = false
+            runCurrent()
+
+            assertEquals(listOf(true, false), emissions)
+            coVerify { fallbackFlag.store(false) }
+        }
+
+    @Test
     fun manualSelectionSkipsTheSdkBenchmark() =
         runTest {
             coEvery { isAutomaticProvider.get() } returns false
