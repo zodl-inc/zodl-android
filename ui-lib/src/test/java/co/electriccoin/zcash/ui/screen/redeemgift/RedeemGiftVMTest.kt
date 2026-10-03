@@ -293,6 +293,19 @@ class RedeemGiftVMTest {
         }
 
     @Test
+    fun unsubmittedRedeemShowsFailure() =
+        runTest(dispatcher) {
+            val repository = FakeGiftCardRepository(redeemError = GiftCardException.SubmitFailed())
+            val vm = startedVm(repository = repository)
+
+            assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
+            advanceUntilIdle()
+
+            assertEquals(stringRes(R.string.redeemGift_failure_title), statusOf(vm).title)
+            assertNotNull(statusOf(vm).primaryButton)
+        }
+
+    @Test
     fun backLeavesTheFlow() =
         runTest(dispatcher) {
             val router = RecordingNavigationRouter()

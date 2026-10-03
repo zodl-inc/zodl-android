@@ -78,11 +78,21 @@ sealed class GiftCardException(
     ) : GiftCardException("Invalid gift card link", cause)
 
     /** The card was made for a different Zcash network than this wallet's. */
-    class WrongNetwork : GiftCardException("Gift card is for a different network")
+    class WrongNetwork(
+        cause: Throwable? = null
+    ) : GiftCardException("Gift card is for a different network", cause)
 
     /** The handle does not refer to a card held by the repository, e.g. after process death. */
-    class UnknownHandle : GiftCardException("Unknown gift card")
+    class UnknownHandle(
+        cause: Throwable? = null
+    ) : GiftCardException("Unknown gift card", cause)
 
     /** Gift card redemption is not available in this build. */
     class NotAvailable : GiftCardException("Gift card redemption is not available")
+
+    /**
+     * The redemption transaction was created but the network did not accept it. The card has been reset: a new
+     * check reports its true state, and the redemption can be attempted again.
+     */
+    class SubmitFailed : GiftCardException("Gift card redemption was not submitted")
 }

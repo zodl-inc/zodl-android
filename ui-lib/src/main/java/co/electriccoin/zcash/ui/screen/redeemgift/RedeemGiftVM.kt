@@ -424,6 +424,7 @@ class RedeemGiftVM(
             is GiftCardException.NotAvailable -> Phase.NotAvailable
             is GiftCardException.UnknownHandle -> Phase.LinkUnavailable
             is GiftCardException.InvalidLink -> Phase.InvalidLink
+            is GiftCardException.SubmitFailed -> Phase.RedeemFailed
             else -> Phase.InvalidLink
         }
 
