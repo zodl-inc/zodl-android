@@ -99,11 +99,19 @@ class ChooseServerVM(
                                     // Switching from Manual to Automatic always starts from OHTTP.
                                     getAutomaticEndpoint(isFallbackActive = false, persisted = persisted.endpoint)
                                 }
-                            stringRes(
-                                R.string.choose_server_full_server_name,
-                                automaticEndpoint.host,
-                                automaticEndpoint.port
-                            )
+                            if (LightWalletEndpointProvider.isOhttpGatewayHost(automaticEndpoint.host)) {
+                                when (automaticEndpoint.host.lowercase()) {
+                                    "ohttp-gateway.example" -> stringRes(R.string.choose_server_ohttp_gateway_mainnet)
+                                    "ohttp-gateway-testnet.example" -> stringRes(R.string.choose_server_ohttp_gateway_testnet)
+                                    else -> stringRes(R.string.choose_server_full_server_name, automaticEndpoint.host, automaticEndpoint.port)
+                                }
+                            } else {
+                                stringRes(
+                                    R.string.choose_server_full_server_name,
+                                    automaticEndpoint.host,
+                                    automaticEndpoint.port
+                                )
+                            }
                         } else {
                             null
                         },
@@ -304,11 +312,19 @@ class ChooseServerVM(
                 RadioButtonState(
                     text =
                         if (isPersistedEndpointCustom) {
-                            stringRes(
-                                R.string.choose_server_full_server_name,
-                                persisted.endpoint.host,
-                                persisted.endpoint.port,
-                            )
+                            if (LightWalletEndpointProvider.isOhttpGatewayHost(persisted.endpoint.host)) {
+                                when (persisted.endpoint.host.lowercase()) {
+                                    "ohttp-gateway.example" -> stringRes(R.string.choose_server_ohttp_gateway_mainnet)
+                                    "ohttp-gateway-testnet.example" -> stringRes(R.string.choose_server_ohttp_gateway_testnet)
+                                    else -> stringRes(R.string.choose_server_full_server_name, persisted.endpoint.host, persisted.endpoint.port)
+                                }
+                            } else {
+                                stringRes(
+                                    R.string.choose_server_full_server_name,
+                                    persisted.endpoint.host,
+                                    persisted.endpoint.port,
+                                )
+                            }
                         } else {
                             stringRes(R.string.serverSetup_custom)
                         },
@@ -337,11 +353,21 @@ class ChooseServerVM(
         val defaultEndpoint = lightWalletEndpointProvider.getDefaultEndpoint()
         val isEndpointChecked =
             isManualSelected && !local.isCustomSelected && local.selectedEndpoint == endpoint
+        val displayText =
+            if (LightWalletEndpointProvider.isOhttpGatewayHost(endpoint.host)) {
+                when (endpoint.host.lowercase()) {
+                    "ohttp-gateway.example" -> stringRes(R.string.choose_server_ohttp_gateway_mainnet)
+                    "ohttp-gateway-testnet.example" -> stringRes(R.string.choose_server_ohttp_gateway_testnet)
+                    else -> stringRes(R.string.choose_server_full_server_name, endpoint.host, endpoint.port)
+                }
+            } else {
+                stringRes(R.string.choose_server_full_server_name, endpoint.host, endpoint.port)
+            }
         return ServerState.Default(
             key = "default_${endpoint.host}_${endpoint.port}",
             radioButtonState =
                 RadioButtonState(
-                    text = stringRes(R.string.choose_server_full_server_name, endpoint.host, endpoint.port),
+                    text = displayText,
                     isChecked = isEndpointChecked,
                     onClick = { onEndpointClicked(endpoint) },
                     // Clearnet lightwalletd rows (the automatic fallback tier) are flagged as not private.
