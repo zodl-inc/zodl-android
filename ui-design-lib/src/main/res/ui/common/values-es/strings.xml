@@ -439,6 +439,8 @@
     <string name="integrations_near_swap">Haz swap de %s con NEAR Intents</string>
     <string name="integrations_near_swap_message">Haz swap de %s con otras criptomonedas.</string>
     <string name="integrations_coinbase_subtitle_disabled">Coinbase Onramp está temporalmente no disponible.</string>
+    <string name="integrations_redeemGift">Canjear tarjeta de regalo</string>
+    <string name="integrations_redeemGift_subtitle">Escanea o pega una tarjeta de regalo de Zcash para sumar sus fondos a tu billetera.</string>
 
     <!-- ===== keep_open ===== -->
     <string name="restoreInfo_title">¡Mantén Zodl abierto!</string>
@@ -520,6 +522,40 @@
     <string name="receive_help_transparent_desc3">Para proteger tu privacidad, Zodl te guiará para proteger cualquier %s transparente que recibas con un solo clic.</string>
     <string name="receive_info_transparent_bullet_4">No podrás gastar tus %s transparentes hasta que los protejas.</string>
 
+    <!-- ===== redeem_gift ===== -->
+    <string name="redeemGift_title">Canjear tarjeta de regalo</string>
+    <string name="redeemGift_scan_invalid">Esta no es una tarjeta de regalo válida. Escanea el código QR de la tarjeta o copia su enlace e inténtalo de nuevo.</string>
+    <string name="redeemGift_checking_title">Buscando tu regalo…</string>
+    <string name="redeemGift_checking_subtitle">Verificando la tarjeta de regalo en la red de Zcash. Esto puede tardar un momento.</string>
+    <string name="redeemGift_checking_progress"><xliff:g id="percent" example="42">%1$d</xliff:g>%% verificado</string>
+    <string name="redeemGift_ready_title">¡Recibiste un regalo!</string>
+    <string name="redeemGift_ready_messageLabel">Mensaje de quien la envía</string>
+    <string name="redeemGift_ready_destination">Los fondos se enviarán a tu billetera <xliff:g id="wallet" example="Zodl">%1$s</xliff:g>.</string>
+    <string name="redeemGift_redeem">Canjear</string>
+    <string name="redeemGift_pending_title">Tu regalo está en camino</string>
+    <string name="redeemGift_pending_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> necesita algunas confirmaciones más antes de poder canjearse. Seguiremos verificando mientras esta pantalla esté abierta.</string>
+    <string name="redeemGift_empty_title">Nada para canjear</string>
+    <string name="redeemGift_empty_subtitle">Esta tarjeta de regalo ya fue canjeada o todavía no tiene fondos.</string>
+    <string name="redeemGift_invalid_title">Tarjeta de regalo inválida</string>
+    <string name="redeemGift_invalid_subtitle">Este enlace no es una tarjeta de regalo válida. Revisa el enlace e inténtalo de nuevo.</string>
+    <string name="redeemGift_wrongNetwork_title">Red incorrecta</string>
+    <string name="redeemGift_wrongNetwork_subtitle">Esta tarjeta de regalo fue creada para una red de Zcash distinta a la de esta billetera.</string>
+    <string name="redeemGift_linkUnavailable_title">Abre la tarjeta de regalo de nuevo</string>
+    <string name="redeemGift_linkUnavailable_subtitle">El enlace de la tarjeta de regalo ya no está disponible. Escanea su código QR o abre su enlace de nuevo.</string>
+    <string name="redeemGift_notAvailable_title">Todavía no disponible</string>
+    <string name="redeemGift_notAvailable_subtitle">Canjear tarjetas de regalo no está disponible en esta versión de la app.</string>
+    <string name="redeemGift_checkFailed_title">No pudimos verificar tu regalo</string>
+    <string name="redeemGift_checkFailed_subtitle">Algo salió mal al verificar la tarjeta de regalo. Revisa tu conexión e inténtalo de nuevo.</string>
+    <string name="redeemGift_redeeming_title">Canjeando tu regalo…</string>
+    <string name="redeemGift_redeeming_subtitle">Enviando los fondos de la tarjeta de regalo a tu billetera.</string>
+    <string name="redeemGift_success_title">¡Regalo canjeado!</string>
+    <string name="redeemGift_success_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> está en camino a tu billetera. Aparecerá en tu actividad en breve.</string>
+    <string name="redeemGift_success_subtitle_noAmount">Tu regalo está en camino a tu billetera. Aparecerá en tu actividad en breve.</string>
+    <string name="redeemGift_failure_title">El canje falló</string>
+    <string name="redeemGift_failure_subtitle">Algo salió mal al canjear la tarjeta de regalo. Inténtalo de nuevo.</string>
+    <string name="redeemGift_retry">Intentar de nuevo</string>
+    <string name="redeemGift_checkAgain">Verificar de nuevo</string>
+
     <!-- ===== request ===== -->
     <string name="zecKeyboard_invalid">Este monto de transacción no es válido</string>
     <string name="general_next">Siguiente</string>
@@ -582,6 +618,7 @@
     <string name="scan_invalidImage">Esta imagen no contiene una dirección Zcash válida.</string>
     <string name="scan_severalCodesFound">Esta imagen contiene varias direcciones Zcash válidas.</string>
     <string name="scan_torch_content_description">Alternar linterna de la cámara</string>
+    <string name="scan_pasteLink">Pegar enlace</string>
     <string name="gallery_content_description">Galería</string>
     <string name="deeplinkWarning_screenTitle">¡Hola!</string>
     <string name="deeplinkWarning_title">Parece que utilizaste una aplicación de terceros para escanear un pago.</string>

@@ -79,6 +79,7 @@ import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.SmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.TopAppBarBackNavigation
 import co.electriccoin.zcash.ui.design.component.ZashiButton
+import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
@@ -110,7 +111,9 @@ fun ScanView(
     onImageScan: (ImageToQrCodeResult) -> Unit,
     onOpenSettings: () -> Unit,
     onScanStateChange: (ScanScreenState) -> Unit,
-    validationResult: ScanValidationState
+    validationResult: ScanValidationState,
+    onPaste: (() -> Unit)? = null,
+    invalidQrText: String? = null,
 ) = ZcashTheme(appearanceMode = AppearanceMode.DARK) {
     // forces dark theme for this screen
     val permissionState =
@@ -157,6 +160,8 @@ fun ScanView(
                 onOpenSettings = onOpenSettings,
                 onBack = onBack,
                 onScanStateChange = onScanStateChange,
+                onPaste = onPaste,
+                invalidQrText = invalidQrText,
                 permissionState = permissionState,
                 scanState = scanState,
                 setScanState = setScanState,
@@ -188,13 +193,15 @@ fun ScanBottomItems(
     onOpenSettings: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    onPaste: (() -> Unit)? = null,
+    invalidQrText: String? = null,
 ) {
     Column(modifier) {
         var failureText: String? = null
 
         failureText =
             when (validationResult) {
-                ScanValidationState.INVALID -> stringResource(id = R.string.scan_invalidQR)
+                ScanValidationState.INVALID -> invalidQrText ?: stringResource(id = R.string.scan_invalidQR)
                 ScanValidationState.INVALID_IMAGE -> stringResource(id = R.string.scan_invalidImage)
                 ScanValidationState.SEVERAL_CODES_FOUND -> stringResource(id = R.string.scan_severalCodesFound)
                 else -> null
@@ -240,6 +247,19 @@ fun ScanBottomItems(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
+
+        if (onPaste != null) {
+            ZashiButton(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .testTag(ScanTag.PASTE_BUTTON),
+                onClick = onPaste,
+                text = stringResource(id = R.string.scan_pasteLink),
+                colors = ZashiButtonDefaults.secondaryColors()
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+        }
 
         when (scanState) {
             ScanScreenState.Scanning, ScanScreenState.Failed -> {
@@ -299,6 +319,8 @@ private fun ScanMainContent(
     onOpenSettings: () -> Unit,
     onBack: () -> Unit,
     onScanStateChange: (ScanScreenState) -> Unit,
+    onPaste: (() -> Unit)?,
+    invalidQrText: String?,
     permissionState: PermissionState,
     scanState: ScanScreenState,
     setScanState: (ScanScreenState) -> Unit,
@@ -528,6 +550,8 @@ private fun ScanMainContent(
                 onBack = onBack,
                 onOpenSettings = onOpenSettings,
                 scanState = scanState,
+                onPaste = onPaste,
+                invalidQrText = invalidQrText,
                 modifier =
                     Modifier
                         .fillMaxWidth()
@@ -711,7 +735,8 @@ fun ImageAnalysis.qrCodeFlow(framePosition: FramePosition): Flow<String> {
                 QrCodeAnalyzerImpl(
                     framePosition = framePosition,
                     onQrCodeScanned = { result ->
-                        Twig.debug { "Scan result onQrCodeScanned: $result" }
+                        // Never log the content: a scanned gift card link carries a spending secret.
+                        Twig.debug { "Scan result onQrCodeScanned: ${result.length} chars" }
                         // Note that these callbacks aren't tied to the Compose lifecycle, so they could occur
                         // after the view goes away.  Collection needs to occur within the Compose lifecycle
                         // to make this not be a problem.
