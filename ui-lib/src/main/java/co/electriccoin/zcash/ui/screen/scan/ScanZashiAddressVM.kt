@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.sdk.type.AddressType
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
+import co.electriccoin.zcash.ui.common.usecase.NavigateToRedeemGiftCardUseCase
 import co.electriccoin.zcash.ui.common.usecase.OnAddressScannedUseCase
 import co.electriccoin.zcash.ui.common.usecase.OnZip321ScannedUseCase
 import co.electriccoin.zcash.ui.common.usecase.Zip321ParseUriValidationUseCase
@@ -19,7 +20,8 @@ internal class ScanZashiAddressVM(
     private val synchronizerProvider: SynchronizerProvider,
     private val zip321ParseUriValidationUseCase: Zip321ParseUriValidationUseCase,
     private val onAddressScanned: OnAddressScannedUseCase,
-    private val zip321Scanned: OnZip321ScannedUseCase
+    private val zip321Scanned: OnZip321ScannedUseCase,
+    private val navigateToRedeemGiftCard: NavigateToRedeemGiftCardUseCase,
 ) : ViewModel() {
     val state = MutableStateFlow(ScanValidationState.NONE)
 
@@ -31,6 +33,12 @@ internal class ScanZashiAddressVM(
         viewModelScope.launch {
             mutex.withLock {
                 if (!hasBeenScannedSuccessfully) {
+                    // Gift card links go first: they must never reach the ZIP-321 or address parsers (and their
+                    // logging), since they carry a spending secret.
+                    if (navigateToRedeemGiftCard.isGiftCardLink(result)) {
+                        onGiftCardScanned(result)
+                        return@withLock
+                    }
                     runCatching {
                         val zip321ValidationResult = zip321ParseUriValidationUseCase(result)
                         val addressValidationResult = synchronizerProvider.getSynchronizer().validateAddress(result)
@@ -56,6 +64,12 @@ internal class ScanZashiAddressVM(
                 }
             }
         }
+
+    private fun onGiftCardScanned(link: String) {
+        state.update { ScanValidationState.VALID }
+        hasBeenScannedSuccessfully = true
+        navigateToRedeemGiftCard.replaceWithRedeem(link.trim())
+    }
 
     private fun onInvalidScan() {
         hasBeenScannedSuccessfully = false
