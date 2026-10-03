@@ -31,6 +31,7 @@ import co.electriccoin.zcash.ui.common.compose.BindCompLocalProvider
 import co.electriccoin.zcash.ui.common.compose.DisableScreenTimeout
 import co.electriccoin.zcash.ui.common.extension.setContentCompat
 import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
+import co.electriccoin.zcash.ui.common.repository.GiftCardLinkStore
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationUIState
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.OldHomeViewModel
@@ -81,6 +82,7 @@ class MainActivity : FragmentActivity() {
 
     private val navigationRouter: NavigationRouter by inject()
     private val migrationAppHooks: MigrationAppHooks by inject()
+    private val giftCardLinkStore: GiftCardLinkStore by inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,19 +96,37 @@ class MainActivity : FragmentActivity() {
 
         monitorForBackgroundSync()
 
-        if (intent.data != null) {
-            navigationRouter.forward(ThirdPartyScan)
-        }
+        handleViewIntent(intent, isRecreated = savedInstanceState != null)
         handleMigrationIntent(intent)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
 
-        if (intent.data != null) {
+        handleViewIntent(intent, isRecreated = false)
+        handleMigrationIntent(intent)
+    }
+
+    /**
+     * Gift card app links go to the redeem flow, everything else (e.g. `zcash:` URIs) to the third party scan
+     * screen as before. A gift card link is only parked here; RootNavGraph opens it once the wallet is ready.
+     */
+    private fun handleViewIntent(
+        intent: Intent,
+        isRecreated: Boolean
+    ) {
+        val data = intent.data ?: return
+        if (data.host.equals(GIFT_CARD_HOST, ignoreCase = true)) {
+            val isFromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
+            // A recreated activity or a relaunch from recents redelivers the link that was already handled.
+            if (!isRecreated && !isFromHistory && data.scheme.equals("https", ignoreCase = true)) {
+                giftCardLinkStore.setPendingAppLink(data.toString())
+            }
+            // Don't keep the link (it carries a spending secret) around in the activity's intent.
+            intent.data = null
+        } else {
             navigationRouter.forward(ThirdPartyScan)
         }
-        handleMigrationIntent(intent)
     }
 
     private fun handleMigrationIntent(intent: Intent): Boolean = migrationAppHooks.handleIntent(intent, lifecycleScope)
@@ -321,5 +341,8 @@ class MainActivity : FragmentActivity() {
     companion object {
         @VisibleForTesting
         internal val SPLASH_SCREEN_DELAY = 0.seconds
+
+        /** Must match the app link intent filter in the app module's manifest. */
+        private const val GIFT_CARD_HOST = "gift.zodl.com"
     }
 }
