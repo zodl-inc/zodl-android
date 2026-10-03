@@ -23,6 +23,7 @@ import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.screen.connectkeystone.connect.ConnectKeystoneArgs
 import co.electriccoin.zcash.ui.screen.flexa.Flexa
 import co.electriccoin.zcash.ui.screen.more.MoreArgs
+import co.electriccoin.zcash.ui.screen.redeemgift.ScanGiftCardArgs
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.WhileSubscribed
 import kotlinx.coroutines.flow.combine
@@ -73,6 +74,14 @@ class IntegrationsVM(
         onBack = ::onBack,
         items =
             listOfNotNull(
+                // Not tied to the restore state or the account type: redeeming syncs the card's own temporary
+                // wallet and only needs an address of the selected account to send to.
+                ListItemState(
+                    title = stringRes(R.string.integrations_redeemGift),
+                    subtitle = stringRes(R.string.integrations_redeemGift_subtitle),
+                    bigIcon = imageRes(R.drawable.ic_integrations_gift),
+                    onClick = ::onRedeemGiftClick
+                ),
                 ListItemState(
                     // Set the wallet currency by app build is more future-proof, although we hide it from
                     // the UI in the Testnet build
@@ -112,4 +121,6 @@ class IntegrationsVM(
     private fun onFlexaClicked() = navigationRouter.replace(Flexa)
 
     private fun onMoreClick() = navigationRouter.forward(MoreArgs)
+
+    private fun onRedeemGiftClick() = navigationRouter.replace(ScanGiftCardArgs)
 }
