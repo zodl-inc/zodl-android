@@ -411,8 +411,9 @@ class RedeemGiftVM(
     )
 
     private fun pendingSubtitle(phase: Phase.Pending): StringResource {
-        val remaining = phase.confirmationsRemaining?.takeIf { it > 0 }
-            ?: return stringRes(R.string.redeemGift_pending_subtitle, stringRes(phase.pending))
+        val remaining =
+            phase.confirmationsRemaining?.takeIf { it > 0 }
+                ?: return stringRes(R.string.redeemGift_pending_subtitle, stringRes(phase.pending))
         val minutes = ((remaining * BLOCK_TIME_SECONDS) + SECONDS_PER_MINUTE - 1) / SECONDS_PER_MINUTE
         return stringRes(
             R.string.redeemGift_pending_subtitle_confirmations,
