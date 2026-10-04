@@ -53,6 +53,7 @@ class GiftCardLinkStoreTest {
         assertTrue(GiftCardLinkPrefixes.matches(LINK))
         assertTrue(GiftCardLinkPrefixes.matches("  $LINK "))
         assertTrue(GiftCardLinkPrefixes.matches("https://link.vizor.cash/payment-links/open#v1=abc"))
+        assertTrue(GiftCardLinkPrefixes.matches("https://gift.zodl.com#v=1&key=zgift1abc&height=1"))
         assertFalse(GiftCardLinkPrefixes.matches("https://gift.zodl.com/about"))
         assertFalse(GiftCardLinkPrefixes.matches("https://gift.zodl.com.evil.example/#v=1"))
         assertFalse(GiftCardLinkPrefixes.matches("zcash:u1address"))

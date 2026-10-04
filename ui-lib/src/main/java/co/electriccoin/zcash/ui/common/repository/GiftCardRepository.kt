@@ -87,9 +87,12 @@ interface GiftCardRepository {
  */
 internal object GiftCardLinkPrefixes {
     const val ZODL = "https://gift.zodl.com/#"
+
+    /** The same host written without the `/` that browsers insert before the fragment. */
+    const val ZODL_BARE = "https://gift.zodl.com#"
     const val VIZOR = "https://link.vizor.cash/payment-links/open#"
 
-    val all = listOf(ZODL, VIZOR)
+    val all = listOf(ZODL, ZODL_BARE, VIZOR)
 
     fun matches(value: String): Boolean {
         val trimmed = value.trim()
