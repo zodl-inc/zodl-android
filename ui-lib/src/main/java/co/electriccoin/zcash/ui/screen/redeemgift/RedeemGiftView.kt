@@ -202,7 +202,11 @@ private fun ReadyPreview() =
                 amount = stringRes(Zatoshi(10_000_000)),
                 fiatAmount = stringRes("$4.12"),
                 message = stringRes("Welcome to Zcash Summit"),
-                destination = stringRes("The funds will be sent to your Zodl wallet."),
+                destination =
+                    stringRes(
+                        "The funds will be sent to your Zodl wallet. The network fee is paid from the gift card, " +
+                            "so you'll receive slightly less than the amount shown."
+                    ),
                 redeemButton = ButtonState(text = stringRes("Redeem"), style = ButtonStyle.PRIMARY),
                 onBack = {}
             )
@@ -218,7 +222,11 @@ private fun ReadyNoMessagePreview() =
                 amount = stringRes(Zatoshi(10_000_000)),
                 fiatAmount = null,
                 message = null,
-                destination = stringRes("The funds will be sent to your Zodl wallet."),
+                destination =
+                    stringRes(
+                        "The funds will be sent to your Zodl wallet. The network fee is paid from the gift card, " +
+                            "so you'll receive slightly less than the amount shown."
+                    ),
                 redeemButton = ButtonState(text = stringRes("Redeem"), style = ButtonStyle.PRIMARY),
                 onBack = {}
             )

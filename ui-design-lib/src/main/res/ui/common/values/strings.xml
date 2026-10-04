@@ -564,7 +564,7 @@
     <string name="redeemGift_checking_progress"><xliff:g id="percent" example="42">%1$d</xliff:g>%% checked</string>
     <string name="redeemGift_ready_title">You received a gift!</string>
     <string name="redeemGift_ready_messageLabel">Message from the sender</string>
-    <string name="redeemGift_ready_destination">The funds will be sent to your <xliff:g id="wallet" example="Zodl">%1$s</xliff:g> wallet.</string>
+    <string name="redeemGift_ready_destination">The funds will be sent to your <xliff:g id="wallet" example="Zodl">%1$s</xliff:g> wallet. The network fee is paid from the gift card, so you\'ll receive slightly less than the amount shown.</string>
     <string name="redeemGift_redeem">Redeem</string>
     <string name="redeemGift_pending_title">Your gift is on its way</string>
     <string name="redeemGift_pending_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> needs a few more confirmations before it can be redeemed. We\'ll keep checking while this screen is open.</string>
