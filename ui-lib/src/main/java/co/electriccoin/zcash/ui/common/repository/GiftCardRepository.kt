@@ -338,7 +338,7 @@ private fun SdkGiftCardOrigin.toAppOrigin(): GiftCardOrigin =
     when (this) {
         SdkGiftCardOrigin.Zodl -> GiftCardOrigin.ZODL
 
-        SdkGiftCardOrigin.VizorV1,
-        SdkGiftCardOrigin.VizorV2,
-        SdkGiftCardOrigin.VizorV3 -> GiftCardOrigin.VIZOR
+        SdkGiftCardOrigin.LegacyV1,
+        SdkGiftCardOrigin.LegacyV2,
+        SdkGiftCardOrigin.LegacyV3 -> GiftCardOrigin.VIZOR
     }

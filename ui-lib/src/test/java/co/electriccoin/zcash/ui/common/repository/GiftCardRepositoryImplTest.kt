@@ -330,7 +330,7 @@ class GiftCardRepositoryImplTest {
     ) = mockk<GiftCard> {
         every { this@mockk.network } returns network
         every { id } returns CARD_ID
-        every { origin } returns SdkGiftCardOrigin.VizorV2
+        every { origin } returns SdkGiftCardOrigin.LegacyV2
         every { birthdayHeight } returns BlockHeight.new(BIRTHDAY)
         every { statedAmount } returns Zatoshi(AMOUNT)
         every { description } returns message
