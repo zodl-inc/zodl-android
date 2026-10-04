@@ -113,7 +113,8 @@ class RedeemGiftVM(
 
     private fun startCheck(
         handle: GiftCardHandle,
-        showProgress: Boolean
+        showProgress: Boolean,
+        delayFirstAttempt: Boolean = false
     ) {
         checkJob?.cancel()
         checkJob =
@@ -121,7 +122,7 @@ class RedeemGiftVM(
                 var isFirstAttempt = true
                 do {
                     // Funds were found but are not spendable yet: keep re-checking quietly while the user waits.
-                    if (!isFirstAttempt) delay(PENDING_RETRY_INTERVAL)
+                    if (!isFirstAttempt || delayFirstAttempt) delay(PENDING_RETRY_INTERVAL)
                     val result = checkOnce(handle, showProgress = showProgress && isFirstAttempt)
                     phase.value = phaseAfterCheck(result, isQuietRecheck = !isFirstAttempt)
                     isFirstAttempt = false
@@ -137,7 +138,7 @@ class RedeemGiftVM(
         val current = phase.value
         // A quiet re-check of a pending card that fails keeps the pending screen and tries again.
         return if (isQuietRecheck && current is Phase.Pending) {
-            current
+            current.copy(isRechecking = false)
         } else {
             result.exceptionOrNull().toCheckFailurePhase()
         }
@@ -191,9 +192,36 @@ class RedeemGiftVM(
 
     private fun onRetryClick() {
         val handle = summary?.handle ?: return
+        val current = phase.value
+        if (current is Phase.Pending) {
+            recheckPending(handle, current)
+            return
+        }
         // A failed redeem is retried through a fresh check, so that a send that did reach the network is shown as an
         // empty card rather than attempted twice.
         startCheck(handle = handle, showProgress = true)
+    }
+
+    /**
+     * "Check again" on a pending card: the card's wallet is already synced, so the check is near-instant and
+     * replacing the screen with the progress view would just flicker. Instead the button shows it is working,
+     * the pending text is refreshed with the confirmations still needed, and the quiet re-check loop resumes.
+     */
+    private fun recheckPending(
+        handle: GiftCardHandle,
+        current: Phase.Pending
+    ) {
+        if (current.isRechecking) return
+        checkJob?.cancel()
+        checkJob =
+            viewModelScope.launch {
+                phase.value = current.copy(isRechecking = true)
+                val result = checkOnce(handle, showProgress = false)
+                phase.value = phaseAfterCheck(result, isQuietRecheck = true)
+                if (phase.value is Phase.Pending) {
+                    startCheck(handle = handle, showProgress = false, delayFirstAttempt = true)
+                }
+            }
     }
 
     private fun onBack() {
@@ -257,8 +285,12 @@ class RedeemGiftVM(
                     background = PENDING,
                     image = R.drawable.ic_face_star,
                     title = stringRes(R.string.redeemGift_pending_title),
-                    subtitle = stringRes(R.string.redeemGift_pending_subtitle, stringRes(phase.pending)),
-                    primaryButton = retryButton(R.string.redeemGift_checkAgain),
+                    subtitle = pendingSubtitle(phase),
+                    primaryButton =
+                        retryButton(R.string.redeemGift_checkAgain).copy(
+                            isLoading = phase.isRechecking,
+                            isEnabled = !phase.isRechecking
+                        ),
                     secondaryButton = closeButton(),
                 )
             }
@@ -378,6 +410,18 @@ class RedeemGiftVM(
         secondaryButton = null,
     )
 
+    private fun pendingSubtitle(phase: Phase.Pending): StringResource {
+        val remaining = phase.confirmationsRemaining?.takeIf { it > 0 }
+            ?: return stringRes(R.string.redeemGift_pending_subtitle, stringRes(phase.pending))
+        val minutes = ((remaining * BLOCK_TIME_SECONDS) + SECONDS_PER_MINUTE - 1) / SECONDS_PER_MINUTE
+        return stringRes(
+            R.string.redeemGift_pending_subtitle_confirmations,
+            stringRes(phase.pending),
+            remaining,
+            minutes
+        )
+    }
+
     private fun retryButton(
         text: Int,
         style: ButtonStyle = ButtonStyle.PRIMARY
@@ -439,7 +483,8 @@ class RedeemGiftVM(
 
         data class Pending(
             val pending: Zatoshi,
-            val confirmationsRemaining: Int?
+            val confirmationsRemaining: Int?,
+            val isRechecking: Boolean = false
         ) : Phase
 
         data object Empty : Phase
@@ -467,5 +512,7 @@ class RedeemGiftVM(
     companion object {
         val PENDING_RETRY_INTERVAL = 30.seconds
         private const val PERCENT = 100
+        private const val BLOCK_TIME_SECONDS = 75
+        private const val SECONDS_PER_MINUTE = 60
     }
 }

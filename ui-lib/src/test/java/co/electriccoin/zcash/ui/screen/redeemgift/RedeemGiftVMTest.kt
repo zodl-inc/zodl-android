@@ -177,6 +177,61 @@ class RedeemGiftVMTest {
         }
 
     @Test
+    fun checkAgainOnAPendingCardShowsProgressOnTheButtonAndTheConfirmationsLeft() =
+        runTest(dispatcher) {
+            val repository =
+                FakeGiftCardRepository(
+                    statuses =
+                        listOf(
+                            GiftCardStatus.Pending(Zatoshi(GiftCardSummaryFixture.AMOUNT), confirmationsRemaining = 7),
+                            GiftCardStatus.Pending(Zatoshi(GiftCardSummaryFixture.AMOUNT), confirmationsRemaining = 6),
+                            GiftCardStatus.Ready(Zatoshi(GiftCardSummaryFixture.AMOUNT))
+                        )
+                )
+            val vm = startedVm(repository = repository)
+
+            // 7 confirmations × 75 s ≈ 9 minutes.
+            assertEquals(
+                stringRes(
+                    R.string.redeemGift_pending_subtitle_confirmations,
+                    stringRes(Zatoshi(GiftCardSummaryFixture.AMOUNT)),
+                    7,
+                    9
+                ).withStyle(),
+                statusOf(vm).subtitle
+            )
+            val checkAgain = assertNotNull(statusOf(vm).primaryButton)
+            assertEquals(stringRes(R.string.redeemGift_checkAgain), checkAgain.text)
+
+            // "Check again" re-checks in place: the pending screen stays, the button shows it is working.
+            repository.checkGate = CompletableDeferred()
+            checkAgain.onClick()
+            runCurrent()
+            assertEquals(stringRes(R.string.redeemGift_pending_title), statusOf(vm).title)
+            assertTrue(assertNotNull(statusOf(vm).primaryButton).isLoading)
+            assertEquals(2, repository.checkCount)
+
+            repository.checkGate?.complete(Unit)
+            runCurrent()
+            assertEquals(
+                stringRes(
+                    R.string.redeemGift_pending_subtitle_confirmations,
+                    stringRes(Zatoshi(GiftCardSummaryFixture.AMOUNT)),
+                    6,
+                    8
+                ).withStyle(),
+                statusOf(vm).subtitle
+            )
+            assertTrue(!assertNotNull(statusOf(vm).primaryButton).isLoading)
+
+            // The quiet re-check loop resumes after the manual check.
+            advanceTimeBy(RedeemGiftVM.PENDING_RETRY_INTERVAL + 1.seconds)
+            runCurrent()
+            assertEquals(3, repository.checkCount)
+            assertIs<RedeemGiftState.Ready>(vm.state.value)
+        }
+
+    @Test
     fun failingQuietRecheckKeepsThePendingScreen() =
         runTest(dispatcher) {
             val repository =

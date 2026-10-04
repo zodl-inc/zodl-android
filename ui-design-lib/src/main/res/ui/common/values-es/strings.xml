@@ -556,6 +556,7 @@
     <string name="redeemGift_failure_subtitle">Algo salió mal al canjear la tarjeta de regalo. Inténtalo de nuevo.</string>
     <string name="redeemGift_retry">Intentar de nuevo</string>
     <string name="redeemGift_checkAgain">Verificar de nuevo</string>
+    <string name="redeemGift_pending_subtitle_confirmations"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> necesita <xliff:g id="confirmations" example="7">%2$d</xliff:g> confirmaciones más (unos <xliff:g id="minutes" example="9">%3$d</xliff:g> min) antes de poder canjearse. Seguiremos verificando mientras esta pantalla esté abierta.</string>
 
     <!-- ===== request ===== -->
     <string name="zecKeyboard_invalid">Este monto de transacción no es válido</string>
