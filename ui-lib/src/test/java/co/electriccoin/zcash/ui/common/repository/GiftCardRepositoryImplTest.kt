@@ -2,6 +2,7 @@ package co.electriccoin.zcash.ui.common.repository
 
 import android.app.Application
 import cash.z.ecc.android.sdk.GiftCardRedeemer
+import cash.z.ecc.android.sdk.Synchronizer
 import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.FirstClassByteArray
 import cash.z.ecc.android.sdk.model.GiftCard
@@ -19,6 +20,7 @@ import co.electriccoin.zcash.ui.common.model.GiftCardHandle
 import co.electriccoin.zcash.ui.common.model.GiftCardOrigin
 import co.electriccoin.zcash.ui.common.model.GiftCardStatus
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
+import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -28,6 +30,7 @@ import io.mockk.slot
 import io.mockk.unmockkAll
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -45,7 +48,8 @@ import cash.z.ecc.android.sdk.model.GiftCardOrigin as SdkGiftCardOrigin
 
 /**
  * [GiftCardRepositoryImpl] against a mocked SDK: link errors and statuses map to the app's types, the card wallet
- * uses the main wallet's network and endpoint, and redeemers are closed exactly once.
+ * uses the main wallet's network and endpoint, redemptions are recorded in the main wallet, and redeemers are closed
+ * exactly once.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GiftCardRepositoryImplTest {
@@ -55,6 +59,13 @@ class GiftCardRepositoryImplTest {
         }
 
     private val persistableWalletProvider = mockk<PersistableWalletProvider>()
+
+    private val mainSynchronizer = mockk<Synchronizer>()
+
+    private val synchronizerProvider =
+        mockk<SynchronizerProvider> {
+            every { synchronizer } returns MutableStateFlow(mainSynchronizer)
+        }
 
     private val redeemer = mockk<GiftCardRedeemer>()
 
@@ -187,11 +198,56 @@ class GiftCardRepositoryImplTest {
         runTest {
             val repository = repository(this)
             val handle = repository.parse(LINK).handle
-            coEvery { redeemer.redeem(recipient, any()) } returns
+            coEvery { redeemer.redeem(recipient, any(), any()) } returns
                 GiftCardRedeemer.Redemption(fee = Zatoshi(FEE), results = listOf(success(TX_ID)))
 
             assertEquals(success(TX_ID).txIdString(), repository.redeem(handle, ADDRESS))
             assertEquals(1, newRedeemerCalls)
+        }
+
+    @Test
+    fun redeemRecordsTheClaimInTheMainWallet() =
+        runTest {
+            val repository = repository(this)
+            val handle = repository.parse(LINK).handle
+            coEvery { redeemer.redeem(recipient, any(), mainSynchronizer) } returns
+                GiftCardRedeemer.Redemption(
+                    fee = Zatoshi(FEE),
+                    results = listOf(success(TX_ID)),
+                    recordedInDestination = true
+                )
+
+            assertEquals(success(TX_ID).txIdString(), repository.redeem(handle, ADDRESS))
+            coVerify(exactly = 1) { redeemer.redeem(recipient, any(), mainSynchronizer) }
+        }
+
+    @Test
+    fun redeemSucceedsWhenTheMainWalletDidNotRecordTheClaim() =
+        runTest {
+            val repository = repository(this)
+            val handle = repository.parse(LINK).handle
+            coEvery { redeemer.redeem(recipient, any(), mainSynchronizer) } returns
+                GiftCardRedeemer.Redemption(
+                    fee = Zatoshi(FEE),
+                    results = listOf(success(TX_ID)),
+                    recordedInDestination = false
+                )
+
+            assertEquals(success(TX_ID).txIdString(), repository.redeem(handle, ADDRESS))
+            advanceUntilIdle()
+            coVerify(exactly = 0) { redeemer.close() }
+            assertEquals(1, newRedeemerCalls)
+        }
+
+    @Test
+    fun redeemIntoAWalletOnAnotherNetworkIsWrongNetwork() =
+        runTest {
+            // The repository's own supervisor scope: a failed redemption must not cancel the test's scope.
+            val repository = repository()
+            val handle = repository.parse(LINK).handle
+            coEvery { redeemer.redeem(recipient, any(), any()) } throws SdkGiftCardException.NetworkMismatch()
+
+            assertFailsWith<GiftCardException.WrongNetwork> { repository.redeem(handle, ADDRESS) }
         }
 
     @Test
@@ -233,7 +289,7 @@ class GiftCardRepositoryImplTest {
         val repository = repository(this)
         val handle = repository.parse(LINK).handle
         val memo = slot<MemoContent?>()
-        coEvery { redeemer.redeem(recipient, captureNullable(memo)) } returns
+        coEvery { redeemer.redeem(recipient, captureNullable(memo), any()) } returns
             GiftCardRedeemer.Redemption(fee = Zatoshi(FEE), results = listOf(success(TX_ID)))
 
         repository.redeem(handle, ADDRESS)
@@ -246,7 +302,7 @@ class GiftCardRepositoryImplTest {
         runTest {
             val repository = repository(this)
             val handle = repository.parse(LINK).handle
-            coEvery { redeemer.redeem(recipient, any()) } returns
+            coEvery { redeemer.redeem(recipient, any(), any()) } returns
                 GiftCardRedeemer.Redemption(
                     fee = Zatoshi(FEE),
                     results = listOf(TransactionSubmitResult.NotAttempted(TX_ID))
@@ -316,6 +372,7 @@ class GiftCardRepositoryImplTest {
         GiftCardRepositoryImpl(
             application = application,
             persistableWalletProvider = persistableWalletProvider,
+            synchronizerProvider = synchronizerProvider,
         ).also { repository -> scope?.let { repository.scope = it } }
 
     private fun wallet(network: ZcashNetwork) =

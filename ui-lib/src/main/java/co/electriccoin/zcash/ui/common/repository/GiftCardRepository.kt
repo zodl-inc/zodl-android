@@ -16,6 +16,7 @@ import co.electriccoin.zcash.ui.common.model.GiftCardOrigin
 import co.electriccoin.zcash.ui.common.model.GiftCardStatus
 import co.electriccoin.zcash.ui.common.model.GiftCardSummary
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
+import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -106,6 +107,10 @@ internal object GiftCardLinkPrefixes {
  * using, which is the one stored in the [PersistableWalletProvider]'s wallet (the main synchronizer is rebuilt
  * from that same wallet whenever it changes).
  *
+ * The redemption is also recorded in the main synchronizer as a trusted transaction (ZIP 315), so the wallet shows
+ * the claimed funds at once and can spend them after 3 confirmations rather than 10. Failing to record it does not
+ * fail the redemption: the wallet then finds the funds on its next sync, as an ordinary receive.
+ *
  * Redeemers are keyed by [GiftCardHandle]; the SDK keys the card wallet's data on disk by an alias derived from
  * the card itself, so two live redeemers for the same card would share that data. Parsing a card that is already
  * held therefore evicts and closes the earlier redeemer first, and operations on the new one wait for that close.
@@ -117,6 +122,7 @@ internal object GiftCardLinkPrefixes {
 class GiftCardRepositoryImpl(
     private val application: Application,
     private val persistableWalletProvider: PersistableWalletProvider,
+    private val synchronizerProvider: SynchronizerProvider,
 ) : GiftCardRepository {
     internal var scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -195,19 +201,27 @@ class GiftCardRepositoryImpl(
         val recipient = RecipientAddress.new(toAddress, held.network)
         val memo = redeemMemo(label = application.getString(R.string.redeemGift_memo), message = held.card.description)
         val redeemer = held.redeemer
+        // The main wallet, which owns toAddress, is told about the claim right away. Not waited for: without a
+        // loaded synchronizer the redemption goes ahead and the wallet finds the funds on its next sync.
+        val destination = synchronizerProvider.synchronizer.value
         // Runs in this repository's scope: once started, a redemption is never left half done by the caller going
         // away. The SDK serializes any later close() after it.
         val redemption =
             try {
-                scope.async { redeemer.redeem(recipient, memo) }.await()
+                scope.async { redeemer.redeem(recipient, memo, destination) }.await()
             } catch (e: SdkGiftCardException.Closed) {
                 throw GiftCardException.UnknownHandle(e)
+            } catch (e: SdkGiftCardException.NetworkMismatch) {
+                throw GiftCardException.WrongNetwork(e)
             }
         if (!redemption.isSubmitted) {
             // The unsubmitted transaction holds the funds in the card wallet: per the SDK contract, drop that
             // wallet and start over with a fresh one so that the next check sees the card's true state.
             replaceRedeemer(handle, held)
             throw GiftCardException.SubmitFailed()
+        }
+        if (!redemption.recordedInDestination) {
+            Twig.warn { "Gift card redemption not recorded in the wallet as trusted; it will be found on sync" }
         }
         return redemption.results.first().txIdString()
     }
