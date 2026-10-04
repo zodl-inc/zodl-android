@@ -531,6 +531,7 @@
     <string name="redeemGift_ready_title">¡Recibiste un regalo!</string>
     <string name="redeemGift_ready_messageLabel">Mensaje de quien la envía</string>
     <string name="redeemGift_ready_destination">Los fondos se enviarán a tu billetera <xliff:g id="wallet" example="Zodl">%1$s</xliff:g>. La comisión de red se paga desde la tarjeta de regalo, así que recibirás un poco menos del monto que se muestra.</string>
+    <string name="redeemGift_memo">Tarjeta de regalo</string>
     <string name="redeemGift_redeem">Canjear</string>
     <string name="redeemGift_pending_title">Tu regalo está en camino</string>
     <string name="redeemGift_pending_subtitle"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> necesita algunas confirmaciones más antes de poder canjearse. Seguiremos verificando mientras esta pantalla esté abierta.</string>

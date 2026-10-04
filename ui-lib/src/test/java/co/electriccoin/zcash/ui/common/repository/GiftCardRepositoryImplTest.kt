@@ -6,12 +6,14 @@ import cash.z.ecc.android.sdk.model.BlockHeight
 import cash.z.ecc.android.sdk.model.FirstClassByteArray
 import cash.z.ecc.android.sdk.model.GiftCard
 import cash.z.ecc.android.sdk.model.GiftCardLinkError
+import cash.z.ecc.android.sdk.model.MemoContent
 import cash.z.ecc.android.sdk.model.PersistableWallet
 import cash.z.ecc.android.sdk.model.RecipientAddress
 import cash.z.ecc.android.sdk.model.TransactionSubmitResult
 import cash.z.ecc.android.sdk.model.Zatoshi
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.GiftCardException
 import co.electriccoin.zcash.ui.common.model.GiftCardHandle
 import co.electriccoin.zcash.ui.common.model.GiftCardOrigin
@@ -22,6 +24,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
+import io.mockk.slot
 import io.mockk.unmockkAll
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,6 +37,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertSame
 import cash.z.ecc.android.sdk.exception.GiftCardException as SdkGiftCardException
@@ -45,6 +49,11 @@ import cash.z.ecc.android.sdk.model.GiftCardOrigin as SdkGiftCardOrigin
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GiftCardRepositoryImplTest {
+    private val application =
+        mockk<Application>(relaxed = true) {
+            every { getString(R.string.redeemGift_memo) } returns MEMO_LABEL
+        }
+
     private val persistableWalletProvider = mockk<PersistableWalletProvider>()
 
     private val redeemer = mockk<GiftCardRedeemer>()
@@ -178,7 +187,7 @@ class GiftCardRepositoryImplTest {
         runTest {
             val repository = repository(this)
             val handle = repository.parse(LINK).handle
-            coEvery { redeemer.redeem(recipient, null) } returns
+            coEvery { redeemer.redeem(recipient, any()) } returns
                 GiftCardRedeemer.Redemption(fee = Zatoshi(FEE), results = listOf(success(TX_ID)))
 
             assertEquals(success(TX_ID).txIdString(), repository.redeem(handle, ADDRESS))
@@ -186,11 +195,58 @@ class GiftCardRepositoryImplTest {
         }
 
     @Test
+    fun redeemMemoNamesTheGiftCardAndItsMessage() =
+        runTest {
+            assertEquals(MemoContent.fromString("$MEMO_LABEL · $MESSAGE"), redeemMemo(message = MESSAGE))
+        }
+
+    @Test
+    fun redeemMemoNamesTheGiftCardWhenItHasNoMessage() =
+        runTest {
+            assertEquals(MemoContent.fromString(MEMO_LABEL), redeemMemo(message = null))
+        }
+
+    @Test
+    fun redeemMemoNamesTheGiftCardWhenItsMessageIsBlank() =
+        runTest {
+            assertEquals(MemoContent.fromString(MEMO_LABEL), redeemMemo(message = " "))
+        }
+
+    @Test
+    fun redeemMemoCutsALongMessageOnACharacterBoundary() =
+        runTest {
+            // 300 two-byte characters: 600 bytes. After the 13-byte prefix, 499 bytes are left for the message,
+            // which is not a multiple of two, so the cut must step back to a character boundary.
+            val message = "é".repeat(300)
+            assertEquals(600, MemoContent.length(message))
+
+            val memo = redeemMemo(message)
+
+            val text = memo.toStringOrNull()!!
+            assertEquals("$MEMO_LABEL · " + "é".repeat(249), text)
+            assertEquals(511, MemoContent.length(text))
+        }
+
+    /** Parses a card with [message] and redeems it, returning the memo given to the redeemer. */
+    private suspend fun TestScope.redeemMemo(message: String?): MemoContent {
+        coEvery { GiftCard.parse(LINK) } returns card(ZcashNetwork.Mainnet, message = message)
+        val repository = repository(this)
+        val handle = repository.parse(LINK).handle
+        val memo = slot<MemoContent?>()
+        coEvery { redeemer.redeem(recipient, captureNullable(memo)) } returns
+            GiftCardRedeemer.Redemption(fee = Zatoshi(FEE), results = listOf(success(TX_ID)))
+
+        repository.redeem(handle, ADDRESS)
+
+        return assertNotNull(memo.captured)
+    }
+
+    @Test
     fun unsubmittedRedeemFailsAndStartsOverWithAFreshRedeemer() =
         runTest {
             val repository = repository(this)
             val handle = repository.parse(LINK).handle
-            coEvery { redeemer.redeem(recipient, null) } returns
+            coEvery { redeemer.redeem(recipient, any()) } returns
                 GiftCardRedeemer.Redemption(
                     fee = Zatoshi(FEE),
                     results = listOf(TransactionSubmitResult.NotAttempted(TX_ID))
@@ -258,7 +314,7 @@ class GiftCardRepositoryImplTest {
 
     private fun repository(scope: TestScope? = null) =
         GiftCardRepositoryImpl(
-            application = mockk<Application>(relaxed = true),
+            application = application,
             persistableWalletProvider = persistableWalletProvider,
         ).also { repository -> scope?.let { repository.scope = it } }
 
@@ -268,15 +324,17 @@ class GiftCardRepositoryImplTest {
             every { endpoint } returns ENDPOINT
         }
 
-    private fun card(network: ZcashNetwork) =
-        mockk<GiftCard> {
-            every { this@mockk.network } returns network
-            every { id } returns CARD_ID
-            every { origin } returns SdkGiftCardOrigin.VizorV2
-            every { birthdayHeight } returns BlockHeight.new(BIRTHDAY)
-            every { statedAmount } returns Zatoshi(AMOUNT)
-            every { description } returns MESSAGE
-        }
+    private fun card(
+        network: ZcashNetwork,
+        message: String? = MESSAGE
+    ) = mockk<GiftCard> {
+        every { this@mockk.network } returns network
+        every { id } returns CARD_ID
+        every { origin } returns SdkGiftCardOrigin.VizorV2
+        every { birthdayHeight } returns BlockHeight.new(BIRTHDAY)
+        every { statedAmount } returns Zatoshi(AMOUNT)
+        every { description } returns message
+    }
 
     private fun success(txId: FirstClassByteArray) = TransactionSubmitResult.Success(txId)
 
@@ -291,6 +349,7 @@ class GiftCardRepositoryImplTest {
         const val AMOUNT = 10_000_000L
         const val FEE = 10_000L
         const val MESSAGE = "Welcome to Zcash Summit"
+        const val MEMO_LABEL = "Gift card"
         val ENDPOINT = LightWalletEndpoint(host = "zec.rocks", port = 443, isSecure = true)
         val TX_ID = FirstClassByteArray(ByteArray(32) { it.toByte() })
     }

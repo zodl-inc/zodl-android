@@ -4,10 +4,12 @@ import android.app.Application
 import cash.z.ecc.android.sdk.GiftCardRedeemer
 import cash.z.ecc.android.sdk.model.GiftCard
 import cash.z.ecc.android.sdk.model.GiftCardLinkError
+import cash.z.ecc.android.sdk.model.MemoContent
 import cash.z.ecc.android.sdk.model.RecipientAddress
 import cash.z.ecc.android.sdk.model.ZcashNetwork
 import co.electriccoin.lightwallet.client.model.LightWalletEndpoint
 import co.electriccoin.zcash.spackle.Twig
+import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.common.model.GiftCardException
 import co.electriccoin.zcash.ui.common.model.GiftCardHandle
 import co.electriccoin.zcash.ui.common.model.GiftCardOrigin
@@ -61,7 +63,9 @@ interface GiftCardRepository {
     suspend fun check(handle: GiftCardHandle): GiftCardStatus
 
     /**
-     * Sends everything the card holds to [toAddress].
+     * Sends everything the card holds to [toAddress], with a memo that identifies the transaction as a gift card
+     * redemption (and carries the card's message, if any) in the user's history. [toAddress] must therefore be a
+     * shielded address.
      *
      * @return the id of the submitted transaction
      */
@@ -186,12 +190,13 @@ class GiftCardRepositoryImpl(
         val held = held(handle)
         held.priorClose?.join()
         val recipient = RecipientAddress.new(toAddress, held.network)
+        val memo = redeemMemo(label = application.getString(R.string.redeemGift_memo), message = held.card.description)
         val redeemer = held.redeemer
         // Runs in this repository's scope: once started, a redemption is never left half done by the caller going
         // away. The SDK serializes any later close() after it.
         val redemption =
             try {
-                scope.async { redeemer.redeem(recipient) }.await()
+                scope.async { redeemer.redeem(recipient, memo) }.await()
             } catch (e: SdkGiftCardException.Closed) {
                 throw GiftCardException.UnknownHandle(e)
             }
@@ -276,6 +281,43 @@ class GiftCardRepositoryImpl(
         var priorClose: Job? = null
     }
 }
+
+/**
+ * The memo on the redeem transaction: the localized "Gift card" [label], followed by the card's [message] when it
+ * has one. The message is cut on a UTF-8 character boundary so that the memo always fits
+ * [MemoContent.MAX_MEMO_LENGTH_BYTES]; a card's message is never a reason to fail the redemption.
+ */
+private fun redeemMemo(
+    label: String,
+    message: String?
+): MemoContent {
+    val text = message?.replace("\u0000", "")?.trim()?.takeIf { it.isNotEmpty() }
+    val memo =
+        if (text == null) {
+            label
+        } else {
+            val prefix = label + MEMO_MESSAGE_SEPARATOR
+            prefix + text.truncatedToUtf8Bytes(MemoContent.MAX_MEMO_LENGTH_BYTES - MemoContent.length(prefix))
+        }
+    return MemoContent.fromString(memo)
+}
+
+private const val MEMO_MESSAGE_SEPARATOR = " · "
+
+/**
+ * The longest prefix of this string that encodes to at most [maxBytes] UTF-8 bytes, cut on a code point boundary.
+ */
+private fun String.truncatedToUtf8Bytes(maxBytes: Int): String {
+    val bytes = toByteArray(Charsets.UTF_8)
+    if (bytes.size <= maxBytes) return this
+    var end = maxBytes.coerceAtLeast(0)
+    // Step back over the continuation bytes (10xxxxxx) of a code point cut in the middle.
+    while (end > 0 && (bytes[end].toInt() and CONTINUATION_BYTE_MASK) == CONTINUATION_BYTE) end--
+    return String(bytes, 0, end, Charsets.UTF_8)
+}
+
+private const val CONTINUATION_BYTE_MASK = 0xC0
+private const val CONTINUATION_BYTE = 0x80
 
 private fun SdkGiftCardException.InvalidLink.toAppException(): GiftCardException =
     when (reason) {
