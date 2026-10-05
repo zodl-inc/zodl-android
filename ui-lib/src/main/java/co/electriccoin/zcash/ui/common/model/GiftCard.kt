@@ -48,12 +48,9 @@ sealed interface GiftCardStatus {
 
     /**
      * Funds were found but cannot be spent yet.
-     *
-     * @param confirmationsRemaining how many more blocks are needed, when the implementation knows it.
      */
     data class Pending(
-        val pending: Zatoshi,
-        val confirmationsRemaining: Int?
+        val pending: Zatoshi
     ) : GiftCardStatus
 
     /**

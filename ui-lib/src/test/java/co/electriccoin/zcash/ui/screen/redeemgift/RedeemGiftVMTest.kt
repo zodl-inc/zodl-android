@@ -160,7 +160,7 @@ class RedeemGiftVMTest {
                 FakeGiftCardRepository(
                     statuses =
                         listOf(
-                            GiftCardStatus.Pending(Zatoshi(GiftCardSummaryFixture.AMOUNT), confirmationsRemaining = 2),
+                            GiftCardStatus.Pending(Zatoshi(GiftCardSummaryFixture.AMOUNT)),
                             GiftCardStatus.Ready(Zatoshi(GiftCardSummaryFixture.AMOUNT))
                         )
                 )
@@ -177,27 +177,22 @@ class RedeemGiftVMTest {
         }
 
     @Test
-    fun checkAgainOnAPendingCardShowsProgressOnTheButtonAndTheConfirmationsLeft() =
+    fun checkAgainOnAPendingCardShowsProgressOnTheButton() =
         runTest(dispatcher) {
             val repository =
                 FakeGiftCardRepository(
                     statuses =
                         listOf(
-                            GiftCardStatus.Pending(Zatoshi(GiftCardSummaryFixture.AMOUNT), confirmationsRemaining = 7),
-                            GiftCardStatus.Pending(Zatoshi(GiftCardSummaryFixture.AMOUNT), confirmationsRemaining = 6),
+                            GiftCardStatus.Pending(Zatoshi(GiftCardSummaryFixture.AMOUNT)),
+                            GiftCardStatus.Pending(Zatoshi(GiftCardSummaryFixture.AMOUNT)),
                             GiftCardStatus.Ready(Zatoshi(GiftCardSummaryFixture.AMOUNT))
                         )
                 )
             val vm = startedVm(repository = repository)
 
-            // 7 confirmations × 75 s ≈ 9 minutes.
             assertEquals(
-                stringRes(
-                    R.string.redeemGift_pending_subtitle_confirmations,
-                    stringRes(Zatoshi(GiftCardSummaryFixture.AMOUNT)),
-                    7,
-                    9
-                ).withStyle(),
+                stringRes(R.string.redeemGift_pending_subtitle, stringRes(Zatoshi(GiftCardSummaryFixture.AMOUNT)))
+                    .withStyle(),
                 statusOf(vm).subtitle
             )
             val checkAgain = assertNotNull(statusOf(vm).primaryButton)
@@ -213,15 +208,7 @@ class RedeemGiftVMTest {
 
             repository.checkGate?.complete(Unit)
             runCurrent()
-            assertEquals(
-                stringRes(
-                    R.string.redeemGift_pending_subtitle_confirmations,
-                    stringRes(Zatoshi(GiftCardSummaryFixture.AMOUNT)),
-                    6,
-                    8
-                ).withStyle(),
-                statusOf(vm).subtitle
-            )
+            assertEquals(stringRes(R.string.redeemGift_pending_title), statusOf(vm).title)
             assertTrue(!assertNotNull(statusOf(vm).primaryButton).isLoading)
 
             // The quiet re-check loop resumes after the manual check.
@@ -236,7 +223,7 @@ class RedeemGiftVMTest {
         runTest(dispatcher) {
             val repository =
                 FakeGiftCardRepository(
-                    statuses = listOf(GiftCardStatus.Pending(Zatoshi(GiftCardSummaryFixture.AMOUNT), null))
+                    statuses = listOf(GiftCardStatus.Pending(Zatoshi(GiftCardSummaryFixture.AMOUNT)))
                 )
             val vm = startedVm(repository = repository)
 

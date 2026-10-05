@@ -196,7 +196,7 @@ class GiftCardRepositoryImpl(
             }
 
             is GiftCardRedeemer.Status.Pending -> {
-                GiftCardStatus.Pending(pending = status.balance.pending, confirmationsRemaining = null)
+                GiftCardStatus.Pending(pending = status.balance.pending)
             }
 
             GiftCardRedeemer.Status.Empty -> {

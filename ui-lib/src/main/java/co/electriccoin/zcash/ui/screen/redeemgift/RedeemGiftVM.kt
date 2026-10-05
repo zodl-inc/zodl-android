@@ -293,7 +293,7 @@ class RedeemGiftVM(
                     background = PENDING,
                     image = R.drawable.ic_face_star,
                     title = stringRes(R.string.redeemGift_pending_title),
-                    subtitle = pendingSubtitle(phase),
+                    subtitle = stringRes(R.string.redeemGift_pending_subtitle, stringRes(phase.pending)),
                     primaryButton =
                         retryButton(R.string.redeemGift_checkAgain).copy(
                             isLoading = phase.isRechecking,
@@ -418,19 +418,6 @@ class RedeemGiftVM(
         secondaryButton = null,
     )
 
-    private fun pendingSubtitle(phase: Phase.Pending): StringResource {
-        val remaining =
-            phase.confirmationsRemaining?.takeIf { it > 0 }
-                ?: return stringRes(R.string.redeemGift_pending_subtitle, stringRes(phase.pending))
-        val minutes = ((remaining * BLOCK_TIME_SECONDS) + SECONDS_PER_MINUTE - 1) / SECONDS_PER_MINUTE
-        return stringRes(
-            R.string.redeemGift_pending_subtitle_confirmations,
-            stringRes(phase.pending),
-            remaining,
-            minutes
-        )
-    }
-
     private fun retryButton(
         text: Int,
         style: ButtonStyle = ButtonStyle.PRIMARY
@@ -464,7 +451,7 @@ class RedeemGiftVM(
     private fun GiftCardStatus.toPhase(): Phase =
         when (this) {
             is GiftCardStatus.Ready -> Phase.Ready(spendable)
-            is GiftCardStatus.Pending -> Phase.Pending(pending, confirmationsRemaining)
+            is GiftCardStatus.Pending -> Phase.Pending(pending)
             GiftCardStatus.Empty -> Phase.Empty
         }
 
@@ -499,7 +486,6 @@ class RedeemGiftVM(
 
         data class Pending(
             val pending: Zatoshi,
-            val confirmationsRemaining: Int?,
             val isRechecking: Boolean = false
         ) : Phase
 
@@ -528,7 +514,5 @@ class RedeemGiftVM(
     companion object {
         val PENDING_RETRY_INTERVAL = 30.seconds
         private const val PERCENT = 100
-        private const val BLOCK_TIME_SECONDS = 75
-        private const val SECONDS_PER_MINUTE = 60
     }
 }

@@ -49,8 +49,8 @@ import cash.z.ecc.android.sdk.model.GiftCardOrigin as SdkGiftCardOrigin
 
 /**
  * [GiftCardRepositoryImpl] against a mocked SDK: link errors and statuses map to the app's types, the card wallet
- * uses the main wallet's network, endpoint and Tor setting, redemptions are recorded in the main wallet, and redeemers are closed
- * exactly once.
+ * uses the main wallet's network, endpoint and Tor setting, redemptions are recorded in the main wallet, and
+ * redeemers are closed exactly once.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GiftCardRepositoryImplTest {
@@ -138,7 +138,9 @@ class GiftCardRepositoryImplTest {
 
             repository().parse(LINK)
 
-            verify(exactly = 1) { GiftCardRedeemer.new(any(), any(), any(), any(), isTorEnabled = false, alias = any()) }
+            verify(exactly = 1) {
+                GiftCardRedeemer.new(any(), any(), any(), any(), isTorEnabled = false, alias = any())
+            }
         }
 
     @Test
@@ -148,7 +150,9 @@ class GiftCardRepositoryImplTest {
 
             repository().parse(LINK)
 
-            verify(exactly = 1) { GiftCardRedeemer.new(any(), any(), any(), any(), isTorEnabled = false, alias = any()) }
+            verify(exactly = 1) {
+                GiftCardRedeemer.new(any(), any(), any(), any(), isTorEnabled = false, alias = any())
+            }
         }
 
     @Test
@@ -227,7 +231,7 @@ class GiftCardRepositoryImplTest {
             assertEquals(GiftCardStatus.Ready(Zatoshi(200)), repository.check(handle))
 
             coEvery { redeemer.check() } returns GiftCardRedeemer.Status.Pending(balance)
-            assertEquals(GiftCardStatus.Pending(Zatoshi(100), confirmationsRemaining = null), repository.check(handle))
+            assertEquals(GiftCardStatus.Pending(Zatoshi(100)), repository.check(handle))
 
             coEvery { redeemer.check() } returns GiftCardRedeemer.Status.Empty
             assertEquals(GiftCardStatus.Empty, repository.check(handle))
