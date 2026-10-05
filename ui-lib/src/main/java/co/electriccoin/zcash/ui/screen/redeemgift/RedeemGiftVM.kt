@@ -182,6 +182,14 @@ class RedeemGiftVM(
                         Phase.Success(txId = txId, amount = amount)
                     } catch (e: CancellationException) {
                         throw e
+                    } catch (_: GiftCardException.NotChecked) {
+                        // The card's state is unknown, so nothing was sent: check it again, which shows what it
+                        // holds now and offers the redeem again if it can be.
+                        startCheck(handle = handle, showProgress = true)
+                        return@launch
+                    } catch (_: GiftCardException.InUse) {
+                        // Nothing was sent; retrying goes through a fresh check.
+                        Phase.RedeemFailed
                     } catch (e: GiftCardException) {
                         e.toPhase()
                     } catch (_: Exception) {
@@ -463,6 +471,10 @@ class RedeemGiftVM(
     private fun Throwable?.toCheckFailurePhase(): Phase =
         if (this is GiftCardException) toPhase() else Phase.CheckFailed
 
+    /**
+     * [GiftCardException.InUse] (another redemption of this card still holds its wallet) and
+     * [GiftCardException.NotChecked] both lead to the check-failed screen, whose retry checks the card again.
+     */
     private fun Throwable.toPhase(): Phase =
         when (this) {
             is GiftCardException.WrongNetwork -> Phase.WrongNetwork
@@ -470,6 +482,9 @@ class RedeemGiftVM(
             is GiftCardException.UnknownHandle -> Phase.LinkUnavailable
             is GiftCardException.InvalidLink -> Phase.InvalidLink
             is GiftCardException.SubmitFailed -> Phase.RedeemFailed
+            is GiftCardException.NothingToRedeem -> Phase.Empty
+            is GiftCardException.InUse -> Phase.CheckFailed
+            is GiftCardException.NotChecked -> Phase.CheckFailed
             else -> Phase.InvalidLink
         }
 

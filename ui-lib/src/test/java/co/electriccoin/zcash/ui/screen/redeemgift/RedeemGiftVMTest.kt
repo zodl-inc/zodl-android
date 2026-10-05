@@ -348,6 +348,60 @@ class RedeemGiftVMTest {
         }
 
     @Test
+    fun cardInUseDuringCheckCanBeRetried() =
+        runTest(dispatcher) {
+            val repository = FakeGiftCardRepository(checkError = GiftCardException.InUse())
+            val vm = startedVm(repository = repository)
+
+            assertEquals(stringRes(R.string.redeemGift_checkFailed_title), statusOf(vm).title)
+            assertNotNull(statusOf(vm).secondaryButton)
+
+            repository.checkError = null
+            requireNotNull(statusOf(vm).primaryButton).onClick()
+            advanceUntilIdle()
+
+            assertIs<RedeemGiftState.Ready>(vm.state.value)
+        }
+
+    @Test
+    fun cardInUseDuringRedeemShowsARetryableFailure() =
+        runTest(dispatcher) {
+            val repository = FakeGiftCardRepository(redeemError = GiftCardException.InUse())
+            val vm = startedVm(repository = repository)
+
+            assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
+            advanceUntilIdle()
+
+            assertEquals(stringRes(R.string.redeemGift_failure_title), statusOf(vm).title)
+            assertNotNull(statusOf(vm).primaryButton)
+        }
+
+    @Test
+    fun redeemOfAnUncheckedCardChecksItAgain() =
+        runTest(dispatcher) {
+            val repository = FakeGiftCardRepository(redeemError = GiftCardException.NotChecked())
+            val vm = startedVm(repository = repository)
+
+            assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
+            advanceUntilIdle()
+
+            assertEquals(2, repository.checkCount)
+            assertIs<RedeemGiftState.Ready>(vm.state.value)
+        }
+
+    @Test
+    fun redeemOfACardWithNothingAboveTheFeeShowsEmpty() =
+        runTest(dispatcher) {
+            val repository = FakeGiftCardRepository(redeemError = GiftCardException.NothingToRedeem())
+            val vm = startedVm(repository = repository)
+
+            assertIs<RedeemGiftState.Ready>(vm.state.value).redeemButton.onClick()
+            advanceUntilIdle()
+
+            assertEquals(stringRes(R.string.redeemGift_empty_title), statusOf(vm).title)
+        }
+
+    @Test
     fun unsubmittedRedeemShowsFailure() =
         runTest(dispatcher) {
             val repository = FakeGiftCardRepository(redeemError = GiftCardException.SubmitFailed())

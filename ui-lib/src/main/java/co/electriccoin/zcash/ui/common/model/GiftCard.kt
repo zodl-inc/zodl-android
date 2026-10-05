@@ -57,7 +57,8 @@ sealed interface GiftCardStatus {
     ) : GiftCardStatus
 
     /**
-     * Nothing to redeem: the card was already redeemed, or has not been funded yet.
+     * Nothing to redeem: the card was already redeemed, has not been funded yet, or holds no more than the fee a
+     * redemption would pay.
      */
     data object Empty : GiftCardStatus
 }
@@ -89,6 +90,24 @@ sealed class GiftCardException(
 
     /** Gift card redemption is not available in this build. */
     class NotAvailable : GiftCardException("Gift card redemption is not available")
+
+    /**
+     * Another redemption of the same card is still using the card's temporary wallet (for example, one still being
+     * closed). Retrying, or closing and opening the link again, resolves it.
+     */
+    class InUse(
+        cause: Throwable? = null
+    ) : GiftCardException("Gift card is in use", cause)
+
+    /** A redemption was attempted before the card was checked; the card must be checked again first. */
+    class NotChecked(
+        cause: Throwable? = null
+    ) : GiftCardException("Gift card was not checked", cause)
+
+    /** The card holds nothing spendable above the fee a redemption would pay. */
+    class NothingToRedeem(
+        cause: Throwable? = null
+    ) : GiftCardException("Gift card has nothing to redeem", cause)
 
     /**
      * The redemption transaction was created but the network did not accept it. The card has been reset: a new

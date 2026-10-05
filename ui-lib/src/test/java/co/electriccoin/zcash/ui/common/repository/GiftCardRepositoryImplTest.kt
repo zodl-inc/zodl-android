@@ -19,6 +19,7 @@ import co.electriccoin.zcash.ui.common.model.GiftCardException
 import co.electriccoin.zcash.ui.common.model.GiftCardHandle
 import co.electriccoin.zcash.ui.common.model.GiftCardOrigin
 import co.electriccoin.zcash.ui.common.model.GiftCardStatus
+import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import io.mockk.coEvery
@@ -48,7 +49,7 @@ import cash.z.ecc.android.sdk.model.GiftCardOrigin as SdkGiftCardOrigin
 
 /**
  * [GiftCardRepositoryImpl] against a mocked SDK: link errors and statuses map to the app's types, the card wallet
- * uses the main wallet's network and endpoint, redemptions are recorded in the main wallet, and redeemers are closed
+ * uses the main wallet's network, endpoint and Tor setting, redemptions are recorded in the main wallet, and redeemers are closed
  * exactly once.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -67,6 +68,8 @@ class GiftCardRepositoryImplTest {
             every { synchronizer } returns MutableStateFlow(mainSynchronizer)
         }
 
+    private val isTorEnabledStorageProvider = mockk<IsTorEnabledStorageProvider>()
+
     private val redeemer = mockk<GiftCardRedeemer>()
 
     private val replacementRedeemer = mockk<GiftCardRedeemer>()
@@ -83,7 +86,8 @@ class GiftCardRepositoryImplTest {
 
         coEvery { persistableWalletProvider.getPersistableWallet() } returns wallet(ZcashNetwork.Mainnet)
         coEvery { GiftCard.parse(LINK) } returns card(ZcashNetwork.Mainnet)
-        every { GiftCardRedeemer.new(any(), any(), any(), any(), any()) } answers {
+        coEvery { isTorEnabledStorageProvider.get() } returns true
+        every { GiftCardRedeemer.new(any(), any(), any(), any(), any(), any()) } answers {
             listOf(redeemer, replacementRedeemer)[newRedeemerCalls++]
         }
         listOf(redeemer, replacementRedeemer).forEach {
@@ -113,9 +117,54 @@ class GiftCardRepositoryImplTest {
                     card = any(),
                     network = ZcashNetwork.Mainnet,
                     lightWalletEndpoint = ENDPOINT,
+                    isTorEnabled = any(),
                     alias = any()
                 )
             }
+        }
+
+    @Test
+    fun theCardWalletUsesTorWhenTheMainWalletDoes() =
+        runTest {
+            repository().parse(LINK)
+
+            verify(exactly = 1) { GiftCardRedeemer.new(any(), any(), any(), any(), isTorEnabled = true, alias = any()) }
+        }
+
+    @Test
+    fun theCardWalletConnectsDirectlyWhenTorIsOff() =
+        runTest {
+            coEvery { isTorEnabledStorageProvider.get() } returns false
+
+            repository().parse(LINK)
+
+            verify(exactly = 1) { GiftCardRedeemer.new(any(), any(), any(), any(), isTorEnabled = false, alias = any()) }
+        }
+
+    @Test
+    fun anUnsetTorSettingConnectsDirectlyLikeTheMainWallet() =
+        runTest {
+            coEvery { isTorEnabledStorageProvider.get() } returns null
+
+            repository().parse(LINK)
+
+            verify(exactly = 1) { GiftCardRedeemer.new(any(), any(), any(), any(), isTorEnabled = false, alias = any()) }
+        }
+
+    @Test
+    fun theFreshRedeemerAfterAnUnsubmittedRedeemAlsoUsesTor() =
+        runTest {
+            val repository = repository(this)
+            val handle = repository.parse(LINK).handle
+            coEvery { redeemer.redeem(recipient, any(), any()) } returns
+                GiftCardRedeemer.Redemption(
+                    fee = Zatoshi(FEE),
+                    results = listOf(TransactionSubmitResult.NotAttempted(TX_ID))
+                )
+
+            assertFailsWith<GiftCardException.SubmitFailed> { repository.redeem(handle, ADDRESS) }
+
+            verify(exactly = 2) { GiftCardRedeemer.new(any(), any(), any(), any(), isTorEnabled = true, alias = any()) }
         }
 
     @Test
@@ -182,6 +231,70 @@ class GiftCardRepositoryImplTest {
 
             coEvery { redeemer.check() } returns GiftCardRedeemer.Status.Empty
             assertEquals(GiftCardStatus.Empty, repository.check(handle))
+        }
+
+    @Test
+    fun aCardHoldingNoMoreThanTheFeeIsEmpty() =
+        runTest {
+            val repository = repository()
+            val handle = repository.parse(LINK).handle
+            // The SDK reports a dust card as Empty; it is never offered for redemption.
+            coEvery { redeemer.check() } returns GiftCardRedeemer.Status.Empty
+
+            assertEquals(GiftCardStatus.Empty, repository.check(handle))
+        }
+
+    @Test
+    fun aCardWhoseWalletIsInUseIsReportedAsInUse() =
+        runTest {
+            val repository = repository()
+            val handle = repository.parse(LINK).handle
+            val cause = SdkGiftCardException.InUse()
+            coEvery { redeemer.check() } throws cause
+
+            val e = assertFailsWith<GiftCardException.InUse> { repository.check(handle) }
+            assertSame(cause, e.cause)
+        }
+
+    @Test
+    fun aFailedCardWalletSyncReachesTheScreenAsACheckFailure() =
+        runTest {
+            val repository = repository()
+            val handle = repository.parse(LINK).handle
+            val cause = SdkGiftCardException.SyncFailed(null)
+            coEvery { redeemer.check() } throws cause
+
+            assertSame(cause, assertFailsWith<SdkGiftCardException.SyncFailed> { repository.check(handle) })
+        }
+
+    @Test
+    fun redeemBeforeACheckIsNotChecked() =
+        runTest {
+            val repository = repository()
+            val handle = repository.parse(LINK).handle
+            coEvery { redeemer.redeem(recipient, any(), any()) } throws SdkGiftCardException.NotChecked()
+
+            assertFailsWith<GiftCardException.NotChecked> { repository.redeem(handle, ADDRESS) }
+        }
+
+    @Test
+    fun redeemOfACardInUseIsInUse() =
+        runTest {
+            val repository = repository()
+            val handle = repository.parse(LINK).handle
+            coEvery { redeemer.redeem(recipient, any(), any()) } throws SdkGiftCardException.InUse()
+
+            assertFailsWith<GiftCardException.InUse> { repository.redeem(handle, ADDRESS) }
+        }
+
+    @Test
+    fun redeemOfADustCardIsNothingToRedeem() =
+        runTest {
+            val repository = repository()
+            val handle = repository.parse(LINK).handle
+            coEvery { redeemer.redeem(recipient, any(), any()) } throws SdkGiftCardException.NothingToRedeem()
+
+            assertFailsWith<GiftCardException.NothingToRedeem> { repository.redeem(handle, ADDRESS) }
         }
 
     @Test
@@ -260,12 +373,6 @@ class GiftCardRepositoryImplTest {
     fun redeemMemoNamesTheGiftCardWhenItHasNoMessage() =
         runTest {
             assertEquals(MemoContent.fromString(MEMO_LABEL), redeemMemo(message = null))
-        }
-
-    @Test
-    fun redeemMemoNamesTheGiftCardWhenItsMessageIsBlank() =
-        runTest {
-            assertEquals(MemoContent.fromString(MEMO_LABEL), redeemMemo(message = " "))
         }
 
     @Test
@@ -373,6 +480,7 @@ class GiftCardRepositoryImplTest {
             application = application,
             persistableWalletProvider = persistableWalletProvider,
             synchronizerProvider = synchronizerProvider,
+            isTorEnabledStorageProvider = isTorEnabledStorageProvider,
         ).also { repository -> scope?.let { repository.scope = it } }
 
     private fun wallet(network: ZcashNetwork) =

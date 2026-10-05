@@ -15,6 +15,7 @@ import co.electriccoin.zcash.ui.common.model.GiftCardHandle
 import co.electriccoin.zcash.ui.common.model.GiftCardOrigin
 import co.electriccoin.zcash.ui.common.model.GiftCardStatus
 import co.electriccoin.zcash.ui.common.model.GiftCardSummary
+import co.electriccoin.zcash.ui.common.provider.IsTorEnabledStorageProvider
 import co.electriccoin.zcash.ui.common.provider.PersistableWalletProvider
 import co.electriccoin.zcash.ui.common.provider.SynchronizerProvider
 import kotlinx.coroutines.CoroutineScope
@@ -59,7 +60,10 @@ interface GiftCardRepository {
     fun observeCheckProgress(handle: GiftCardHandle): Flow<Float>
 
     /**
-     * Syncs the card's own temporary wallet and reports what it holds.
+     * Syncs the card's own temporary wallet and reports what it holds. A card holding no more than the fee a
+     * redemption would pay is [GiftCardStatus.Empty].
+     *
+     * @throws GiftCardException.InUse when another redemption of the same card is still using its wallet
      */
     suspend fun check(handle: GiftCardHandle): GiftCardStatus
 
@@ -69,6 +73,10 @@ interface GiftCardRepository {
      * shielded address.
      *
      * @return the id of the submitted transaction
+     * @throws GiftCardException.NotChecked when no [check] of this card has completed
+     * @throws GiftCardException.NothingToRedeem when the card holds nothing spendable above the fee
+     * @throws GiftCardException.InUse when another redemption of the same card is still using its wallet
+     * @throws GiftCardException.SubmitFailed when the network did not accept the redemption
      */
     suspend fun redeem(
         handle: GiftCardHandle,
@@ -105,7 +113,9 @@ internal object GiftCardLinkPrefixes {
  * SDK-backed implementation: a [GiftCardRedeemer] per parsed card, which runs the card's temporary wallet beside
  * the main one. The card wallet syncs from, and submits to, the lightwalletd endpoint the main synchronizer is
  * using, which is the one stored in the [PersistableWalletProvider]'s wallet (the main synchronizer is rebuilt
- * from that same wallet whenever it changes).
+ * from that same wallet whenever it changes). It also connects the way the main synchronizer does: over Tor
+ * exactly when the user's Tor setting ([IsTorEnabledStorageProvider]) is on, so the server never sees the user's IP
+ * address next to the card's birthday and claim when the user chose Tor.
  *
  * The redemption is also recorded in the main synchronizer as a trusted transaction (ZIP 315), so the wallet shows
  * the claimed funds at once and can spend them after 3 confirmations rather than 10. Failing to record it does not
@@ -123,6 +133,7 @@ class GiftCardRepositoryImpl(
     private val application: Application,
     private val persistableWalletProvider: PersistableWalletProvider,
     private val synchronizerProvider: SynchronizerProvider,
+    private val isTorEnabledStorageProvider: IsTorEnabledStorageProvider,
 ) : GiftCardRepository {
     internal var scope: CoroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
@@ -176,6 +187,8 @@ class GiftCardRepositoryImpl(
                 held.redeemer.check()
             } catch (e: SdkGiftCardException.Closed) {
                 throw GiftCardException.UnknownHandle(e)
+            } catch (e: SdkGiftCardException.InUse) {
+                throw GiftCardException.InUse(e)
             }
         return when (status) {
             is GiftCardRedeemer.Status.Ready -> {
@@ -213,6 +226,12 @@ class GiftCardRepositoryImpl(
                 throw GiftCardException.UnknownHandle(e)
             } catch (e: SdkGiftCardException.NetworkMismatch) {
                 throw GiftCardException.WrongNetwork(e)
+            } catch (e: SdkGiftCardException.NotChecked) {
+                throw GiftCardException.NotChecked(e)
+            } catch (e: SdkGiftCardException.NothingToRedeem) {
+                throw GiftCardException.NothingToRedeem(e)
+            } catch (e: SdkGiftCardException.InUse) {
+                throw GiftCardException.InUse(e)
             }
         if (!redemption.isSubmitted) {
             // The unsubmitted transaction holds the funds in the card wallet: per the SDK contract, drop that
@@ -235,23 +254,30 @@ class GiftCardRepositoryImpl(
     private fun held(handle: GiftCardHandle): HeldCard =
         synchronized(lock) { cards[handle] } ?: throw GiftCardException.UnknownHandle()
 
-    private fun newRedeemer(
+    /**
+     * A redeemer whose card wallet connects as the main synchronizer does: over Tor exactly when the user's Tor
+     * setting is on (an unset setting means off, as for the main synchronizer). Read at creation, like the endpoint.
+     */
+    private suspend fun newRedeemer(
         card: GiftCard,
         network: ZcashNetwork,
         endpoint: LightWalletEndpoint
-    ): GiftCardRedeemer =
-        try {
+    ): GiftCardRedeemer {
+        val isTorEnabled = isTorEnabledStorageProvider.get() == true
+        return try {
             GiftCardRedeemer.new(
                 context = application,
                 card = card,
                 network = network,
-                lightWalletEndpoint = endpoint
+                lightWalletEndpoint = endpoint,
+                isTorEnabled = isTorEnabled
             )
         } catch (e: SdkGiftCardException.NetworkMismatch) {
             throw GiftCardException.WrongNetwork(e)
         }
+    }
 
-    private fun replaceRedeemer(
+    private suspend fun replaceRedeemer(
         handle: GiftCardHandle,
         held: HeldCard
     ) {
@@ -278,7 +304,8 @@ class GiftCardRepositoryImpl(
                 try {
                     redeemer.close()
                 } catch (e: Exception) {
-                    Twig.error(e) { "Closing a gift card wallet failed" }
+                    // Only the failure's type: its message may carry server or database error text.
+                    Twig.error { "Closing a gift card wallet failed: ${e::class.simpleName}" }
                 }
             }
         closeJobs[alias] = job
@@ -301,20 +328,20 @@ class GiftCardRepositoryImpl(
 
 /**
  * The memo on the redeem transaction: the localized "Gift card" [label], followed by the card's [message] when it
- * has one. The message is cut on a UTF-8 character boundary so that the memo always fits
- * [MemoContent.MAX_MEMO_LENGTH_BYTES]; a card's message is never a reason to fail the redemption.
+ * has one. The message is the SDK's [GiftCard.description], which the SDK has already sanitized (no control or
+ * invisible characters, never blank); here it is only cut on a UTF-8 character boundary so that the memo always fits
+ * [MemoContent.MAX_MEMO_LENGTH_BYTES]. A card's message is never a reason to fail the redemption.
  */
 private fun redeemMemo(
     label: String,
     message: String?
 ): MemoContent {
-    val text = message?.replace("\u0000", "")?.trim()?.takeIf { it.isNotEmpty() }
     val memo =
-        if (text == null) {
+        if (message == null) {
             label
         } else {
             val prefix = label + MEMO_MESSAGE_SEPARATOR
-            prefix + text.truncatedToUtf8Bytes(MemoContent.MAX_MEMO_LENGTH_BYTES - MemoContent.length(prefix))
+            prefix + message.truncatedToUtf8Bytes(MemoContent.MAX_MEMO_LENGTH_BYTES - MemoContent.length(prefix))
         }
     return MemoContent.fromString(memo)
 }
