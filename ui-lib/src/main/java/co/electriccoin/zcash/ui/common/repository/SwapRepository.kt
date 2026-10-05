@@ -107,7 +107,12 @@ data class SwapAssetsData(
     val zecAsset: SwapAsset? = null,
     val isLoading: Boolean = false,
     val error: Exception? = null,
-)
+) {
+    val hasUsableLivePrices: Boolean
+        get() =
+            data?.any { asset -> asset.usdPrice?.let { it > BigDecimal.ZERO } == true } == true &&
+                zecAsset?.usdPrice?.let { it > BigDecimal.ZERO } == true
+}
 
 /** Thrown by [SwapRepository.checkSwapStatus] when the supported-asset list could not be loaded. */
 class SwapAssetsUnavailableException : Exception("Swap assets are unavailable")
@@ -134,17 +139,26 @@ class SwapRepositoryImpl(
     private var requestQuoteJob: Job? = null
 
     override fun requestRefreshAssets() {
-        if (refreshJob?.isActive == true) return
-        refreshJob =
-            scope.launch {
-                hydrateAssetsFromCache()
-                refreshAssetsInternal()
-            }
+        getOrStartRefreshAssetsJob()
     }
 
     override suspend fun requestRefreshAssetsOnce() {
-        scope.launch { refreshAssetsInternal() }.join()
+        getOrStartRefreshAssetsJob().join()
     }
+
+    /**
+     * Both public refresh entry points share this job. Besides avoiding duplicate catalog calls,
+     * hydrating here ensures an on-demand refresh can expose cached metadata just like navigation.
+     */
+    private fun getOrStartRefreshAssetsJob(): Job =
+        synchronized(this) {
+            refreshJob?.takeIf(Job::isActive)
+                ?: scope
+                    .launch {
+                        hydrateAssetsFromCache()
+                        refreshAssetsInternal()
+                    }.also { refreshJob = it }
+        }
 
     @Suppress("TooGenericExceptionCaught")
     private suspend fun refreshAssetsInternal() {
@@ -178,7 +192,9 @@ class SwapRepositoryImpl(
             assets.update { assets ->
                 assets.copy(
                     isLoading = false,
-                    error = e.takeIf { assets.data == null }
+                    // Cached metadata deliberately has no prices. Without an error here the CTA is
+                    // disabled, loading has stopped, and there is no way for the user to retry.
+                    error = e.takeUnless { assets.hasUsableLivePrices }
                 )
             }
         }

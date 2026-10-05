@@ -22,6 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import java.math.BigDecimal
@@ -499,10 +500,23 @@ class SwapRepositoryImplTest {
     }
 
     @Test
-    fun continuousRefreshUsesCachedMetadataWhenNetworkFails() {
+    fun bothRefreshEntryPointsShareSingleFlight() {
+        val dataSource = mockk<SwapDataSource> { coEvery { getSupportedTokens() } coAnswers { awaitCancellation() } }
+        val repository = repository(dataSource)
+
+        repository.requestRefreshAssets()
+        val oneShotRefresh = testScope.launch { repository.requestRefreshAssetsOnce() }
+
+        coVerify(exactly = 1) { dataSource.getSupportedTokens() }
+        oneShotRefresh.cancel()
+    }
+
+    @Test
+    fun cachedMetadataFailureExposesRetryError() {
         val cachedBtc = SwapAssetTestFixture.asset(tokenTicker = "btc", chainTicker = "btc", usdPrice = null)
         val cachedZec = SwapAssetTestFixture.asset(tokenTicker = "zec", chainTicker = "zec", usdPrice = null)
-        val dataSource = mockk<SwapDataSource> { coEvery { getSupportedTokens() } throws RuntimeException("offline") }
+        val failure = RuntimeException("offline")
+        val dataSource = mockk<SwapDataSource> { coEvery { getSupportedTokens() } throws failure }
         val cache = mockk<SwapAssetCacheProvider> { coEvery { get() } returns listOf(cachedZec, cachedBtc) }
         val repository = SwapRepositoryImpl(dataSource, cache).apply { scope = testScope }
 
@@ -511,7 +525,7 @@ class SwapRepositoryImplTest {
         assertEquals(listOf(cachedBtc), repository.assets.value.data)
         assertEquals(cachedZec, repository.assets.value.zecAsset)
         assertFalse(repository.assets.value.isLoading)
-        assertNull(repository.assets.value.error)
+        assertEquals(failure, repository.assets.value.error)
     }
 
     @Test
