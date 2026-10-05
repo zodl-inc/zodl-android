@@ -477,40 +477,52 @@ private fun <T : Any> List<T>.update(predicate: (T) -> Boolean, transform: (T) -
 }
 
 /**
- * Merges [other] into this metadata, keeping the newer per-entry value on a conflict and the
- * newer [MetadataV3.lastUpdated] as the merged top-level value.
+ * Merges [other] into this metadata by one rule: the newer timestamp wins and older data is
+ * dropped. A tie keeps this side, which callers pass as the canonical file.
  */
 private fun MetadataV3.merge(other: MetadataV3): MetadataV3 =
     MetadataV3(
         lastUpdated = maxOf(lastUpdated, other.lastUpdated),
-        accountMetadata = accountMetadata.merge(other.accountMetadata)
+        accountMetadata =
+            accountMetadata.merge(
+                other = other.accountMetadata,
+                otherIsNewer = other.lastUpdated > lastUpdated
+            )
     )
 
-private fun AccountMetadataV3.merge(other: AccountMetadataV3): AccountMetadataV3 =
+private fun AccountMetadataV3.merge(other: AccountMetadataV3, otherIsNewer: Boolean): AccountMetadataV3 =
     AccountMetadataV3(
         bookmarked = bookmarked.mergeById(other.bookmarked, idOf = { it.txId }, lastUpdatedOf = { it.lastUpdated }),
         read = (read.toSet() + other.read).toList(),
         annotations = annotations.mergeById(other.annotations, idOf = { it.txId }, lastUpdatedOf = { it.lastUpdated }),
-        swaps = swaps.merge(other.swaps)
-    )
-
-private fun SwapsMetadataV3.merge(other: SwapsMetadataV3): SwapsMetadataV3 =
-    SwapsMetadataV3(
-        swapIds = swapIds.mergeById(other.swapIds, idOf = { it.depositAddress }, lastUpdatedOf = { it.lastUpdated }),
-        lastUsedAssetHistory = lastUsedAssetHistory + other.lastUsedAssetHistory
+        swaps = swaps.merge(other.swaps, otherIsNewer)
     )
 
 /**
- * Unions two entry lists by [idOf], keeping whichever entry's [lastUpdatedOf] is newer when both
- * sides carry the same id.
+ * [SwapsMetadataV3.lastUsedAssetHistory] is an ordered recency list, not a union: it comes whole
+ * from the side whose top-level timestamp is newer.
+ */
+private fun SwapsMetadataV3.merge(other: SwapsMetadataV3, otherIsNewer: Boolean): SwapsMetadataV3 =
+    SwapsMetadataV3(
+        swapIds = swapIds.mergeById(other.swapIds, idOf = { it.depositAddress }, lastUpdatedOf = { it.lastUpdated }),
+        lastUsedAssetHistory =
+            (if (otherIsNewer) other.lastUsedAssetHistory else lastUsedAssetHistory)
+                .take(MAX_SWAP_ASSETS_IN_HISTORY)
+                .toSet()
+    )
+
+/**
+ * Unions two entry lists by [idOf], keeping whichever entry's [lastUpdatedOf] is newer whenever
+ * the same id appears twice, within one list or across both. A tie keeps the earlier entry, so
+ * this list wins over [other].
  */
 private fun <T> List<T>.mergeById(
     other: List<T>,
     idOf: (T) -> String,
     lastUpdatedOf: (T) -> Instant
 ): List<T> {
-    val merged = associateByTo(LinkedHashMap(), idOf)
-    other.forEach { candidate ->
+    val merged = LinkedHashMap<String, T>()
+    (this + other).forEach { candidate ->
         val id = idOf(candidate)
         val current = merged[id]
         if (current == null || lastUpdatedOf(candidate) > lastUpdatedOf(current)) {
