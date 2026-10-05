@@ -655,6 +655,59 @@ class MetadataDataSourceTest {
         }
 
     @Test
+    fun aCanonicalFileThatTurnsUndecodableBringsTheMergedFilesBack() =
+        runTest {
+            mergeWithFlush(isFlushFailing = { true })
+            every { metadataStorageProvider.setAsideUndecodable(canonicalFile) } returns true
+            val dataSource = dataSource()
+
+            dataSource.observe(key).first { it != null }
+            every { metadataProvider.readMetadataFromFile(canonicalFile, key) } throws DecryptionException()
+            val result = dataSource.observe(key).first { it != null }
+
+            assertEquals(listOf("r1"), result?.accountMetadata?.read)
+            verify(exactly = 2) { metadataProvider.readMetadataFromFile(legacyFile, key) }
+            verify(exactly = 0) { legacyFile.delete() }
+        }
+
+    @Test
+    fun anUnreadableCanonicalFileBringsTheMergedFilesBackWithoutWriting() =
+        runTest {
+            mergeWithFlush(isFlushFailing = { true })
+            val dataSource = dataSource()
+
+            dataSource.observe(key).first { it != null }
+            every { metadataProvider.readMetadataFromFile(canonicalFile, key) } throws IOException()
+            val result = dataSource.observe(key).first { it != null }
+
+            assertEquals(listOf("r1"), result?.accountMetadata?.read)
+            verify(exactly = 2) { metadataProvider.readMetadataFromFile(legacyFile, key) }
+            verify(exactly = 1) { metadataProvider.writeMetadataToFile(any(), any(), any()) }
+            verify(exactly = 0) { legacyFile.delete() }
+        }
+
+    @Test
+    fun aMergedLegacyFileIsMergedAgainWithADifferentKeyList() =
+        runTest {
+            val longerKey = metadataKey(0, 1, 2)
+            every { metadataProvider.syncDirectoryOf(any()) } throws IOException("flush failed")
+            every { metadataStorageProvider.getOrCreateStorageFile(longerKey) } returns canonicalFile
+            every { metadataStorageProvider.getStorageFiles(any()) } returns listOf(canonicalFile, legacyFile)
+            every { metadataProvider.readMetadataFromFile(canonicalFile, any()) } returns metadata(lastUpdated = 1)
+            every { metadataProvider.readMetadataFromFile(legacyFile, any()) } returns
+                metadata(lastUpdated = 2, read = listOf("r1"))
+            val dataSource = dataSource()
+
+            dataSource.observe(key).first { it != null }
+            dataSource.observe(key).first { it != null }
+            dataSource.observe(longerKey).first { it != null }
+
+            verify(exactly = 1) { metadataProvider.readMetadataFromFile(legacyFile, key) }
+            verify(exactly = 1) { metadataProvider.readMetadataFromFile(legacyFile, longerKey) }
+            verify(exactly = 0) { legacyFile.delete() }
+        }
+
+    @Test
     fun updatesReportWhetherTheChangeWasSaved() =
         runTest {
             every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile)

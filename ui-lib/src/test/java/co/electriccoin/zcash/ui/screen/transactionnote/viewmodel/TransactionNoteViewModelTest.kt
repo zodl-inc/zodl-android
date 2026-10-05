@@ -67,6 +67,28 @@ class TransactionNoteViewModelTest {
 
             coVerify(exactly = 1) { createOrUpdate(TX_ID, NOTE) }
             coVerify(exactly = 0) { delete(any()) }
+
+            saveResult.complete(true)
+            advanceUntilIdle()
+            assertFalse(requireNotNull(vm.state().secondaryButton).isLoading)
+        }
+
+    @Test
+    fun aFailedSaveClearsTheLoadingState() =
+        runTest(dispatcher) {
+            val vm = startedVm()
+
+            requireNotNull(vm.state().secondaryButton).onClick()
+            advanceUntilIdle()
+            assertTrue(requireNotNull(vm.state().secondaryButton).isLoading)
+
+            saveResult.complete(false)
+            advanceUntilIdle()
+
+            assertFalse(requireNotNull(vm.state().secondaryButton).isLoading)
+            requireNotNull(vm.state().secondaryButton).onClick()
+            advanceUntilIdle()
+            coVerify(exactly = 2) { createOrUpdate(TX_ID, NOTE) }
         }
 
     @Test
