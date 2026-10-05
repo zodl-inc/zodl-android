@@ -187,6 +187,7 @@ class MetadataDataSourceFileTest {
                 storedSwaps().swapIds.map { it.exactInput }
             )
             markSwap(dataSource, provider = "second", mode = SwapMode.EXACT_INPUT)
+            val markedAt = storedSwaps().swapIds.single().lastUpdated
             dataSource.updateSwap(
                 depositAddress = "deposit",
                 amountOutFormatted = BigDecimal.TEN,
@@ -207,6 +208,7 @@ class MetadataDataSourceFileTest {
             )
 
             val swap = storedSwaps().swapIds.single()
+            assertEquals(markedAt, swap.lastUpdated)
             assertEquals("deposit", swap.depositAddress)
             assertEquals("second", swap.provider)
             assertEquals(SwapStatus.SUCCESS, swap.status)

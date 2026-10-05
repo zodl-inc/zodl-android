@@ -231,6 +231,7 @@ class MetadataStorageProviderTest {
         assertFalse(legacyFile.exists())
     }
 
+    /** deleteStorageFiles logs a failure and never throws, so this passes by returning normally. */
     @Test
     fun deleteStorageFilesNeverThrowsWhenTheStorageIsUnavailable() {
         val failingProvider =

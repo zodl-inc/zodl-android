@@ -668,8 +668,9 @@ private fun AccountMetadataV3.merge(other: AccountMetadataV3, otherIsNewer: Bool
     )
 
 /**
- * Swaps compare [SwapMetadataV3.lastUpdated], the swap's creation time, which updateSwap keeps
- * because it is the activity-list time. [SwapsMetadataV3.lastUsedAssetHistory] is an ordered
+ * Swaps compare [SwapMetadataV3.lastUpdated], the time the swap was last marked with
+ * [MetadataDataSourceImpl.markTxAsSwap], which [MetadataDataSourceImpl.updateSwap] keeps because it
+ * is the activity-list time. [SwapsMetadataV3.lastUsedAssetHistory] is an ordered
  * recency list, not a union: it comes whole from the side whose top-level timestamp is newer.
  */
 private fun SwapsMetadataV3.merge(other: SwapsMetadataV3, otherIsNewer: Boolean): SwapsMetadataV3 =
