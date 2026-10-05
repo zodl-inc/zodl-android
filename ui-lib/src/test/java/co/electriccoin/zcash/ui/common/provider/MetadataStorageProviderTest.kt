@@ -6,8 +6,10 @@ import com.google.crypto.tink.InsecureSecretKeyAccess
 import com.google.crypto.tink.util.SecretBytes
 import io.mockk.every
 import io.mockk.mockk
+import org.junit.Assume.assumeTrue
 import java.io.File
 import java.io.IOException
+import java.nio.file.NoSuchFileException
 import kotlin.io.path.createTempDirectory
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -28,7 +30,8 @@ class MetadataStorageProviderTest {
             context =
                 mockk<Context> {
                     every { filesDir } returns this@MetadataStorageProviderTest.filesDir
-                }
+                },
+            currentTimeMillis = { NOW }
         )
 
     @AfterTest
@@ -126,6 +129,45 @@ class MetadataStorageProviderTest {
     }
 
     @Test
+    fun setAsideUndecodableRetriesUnderTheNextMillisecondWhenTheNameIsTaken() {
+        val key = metadataKey(0, 1)
+        val canonicalFile = metadataFile(key.fileIdentifier(), contents = "canonical")
+        val earlier = metadataFile("${key.fileIdentifier()}.undecodable-$NOW", contents = "earlier")
+
+        assertTrue(provider.setAsideUndecodable(canonicalFile))
+
+        assertFalse(canonicalFile.exists())
+        assertEquals("earlier", earlier.readText())
+        assertEquals("canonical", File(metadataDir, "${key.fileIdentifier()}.undecodable-${NOW + 1}").readText())
+    }
+
+    @Test
+    fun setAsideUndecodableNeverReplacesAnExistingFile() {
+        val key = metadataKey(0, 1)
+        val canonicalFile = metadataFile(key.fileIdentifier(), contents = "canonical")
+        val first = metadataFile("${key.fileIdentifier()}.undecodable-$NOW", contents = "first")
+        val second = metadataFile("${key.fileIdentifier()}.undecodable-${NOW + 1}", contents = "second")
+
+        assertFalse(provider.setAsideUndecodable(canonicalFile))
+
+        assertEquals("canonical", canonicalFile.readText())
+        assertEquals("first", first.readText())
+        assertEquals("second", second.readText())
+    }
+
+    @Test
+    fun sizeOfReportsAnEmptyFileAsZero() {
+        val file = metadataFile(metadataKey(0, 1).fileIdentifier())
+
+        assertEquals(0L, provider.sizeOf(file))
+    }
+
+    @Test
+    fun sizeOfThrowsForAMissingFileInsteadOfReportingZero() {
+        assertFailsWith<NoSuchFileException> { provider.sizeOf(File(metadataDir, "missing")) }
+    }
+
+    @Test
     fun deleteStorageFilesRemovesEveryFileOfTheKeyAndNothingElse() {
         val key = metadataKey(0, 1)
         val (canonicalName, legacyName) = key.fileIdentifiers()
@@ -156,7 +198,7 @@ class MetadataStorageProviderTest {
                 metadataFile("$canonicalName.tmp", contents = "partial"),
                 metadataFile(legacyName, contents = "legacy"),
             )
-        metadataDir.setReadable(false)
+        assumeTrue(metadataDir.setReadable(false) && metadataDir.listFiles() == null)
 
         provider.deleteStorageFiles(key)
 
@@ -179,5 +221,6 @@ class MetadataStorageProviderTest {
 
     private companion object {
         const val SEED_SIZE = 32
+        const val NOW = 1_000L
     }
 }

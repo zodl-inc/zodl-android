@@ -25,21 +25,22 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
 import io.mockk.verifyOrder
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.io.IOException
 import java.math.BigDecimal
+import java.nio.file.NoSuchFileException
 import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 /**
  * A hardware-wallet account can have more than one metadata file on disk (MOB-2039): these
@@ -48,13 +49,16 @@ import kotlin.test.assertEquals
  * point at, that the merge resolves every conflict by the newer timestamp, and that no file is
  * ever lost to a failed write, an undecodable read or a failed listing.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
+@Suppress("LargeClass")
 class MetadataDataSourceTest {
     private val key = metadataKey(0, 1)
-    private val canonicalFile = nonEmptyFile()
-    private val legacyFile = nonEmptyFile()
+    private val canonicalFile = mockk<File>(relaxed = true)
+    private val legacyFile = mockk<File>(relaxed = true)
     private val metadataStorageProvider =
         mockk<MetadataStorageProvider> {
             every { getOrCreateStorageFile(key) } returns canonicalFile
+            every { sizeOf(any()) } returns 1L
         }
     private val metadataProvider = mockk<MetadataProvider>(relaxed = true)
 
@@ -326,7 +330,7 @@ class MetadataDataSourceTest {
     @Test
     fun anUndecodableCanonicalFileIsSetAsideBeforeAnyWriteAndLaterMergedBack() =
         runTest {
-            val setAsideFile = nonEmptyFile()
+            val setAsideFile = mockk<File>(relaxed = true)
             every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile, legacyFile)
             every { metadataStorageProvider.setAsideUndecodable(canonicalFile) } returns true
             every { metadataProvider.readMetadataFromFile(canonicalFile, key) } throws DecryptionException()
@@ -373,7 +377,7 @@ class MetadataDataSourceTest {
     @Test
     fun aZeroByteCanonicalFileCountsAsAbsent() =
         runTest {
-            every { canonicalFile.length() } returns 0L
+            every { metadataStorageProvider.sizeOf(canonicalFile) } returns 0L
             every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile, legacyFile)
             every { metadataProvider.readMetadataFromFile(legacyFile, key) } returns
                 metadata(lastUpdated = 2, read = listOf("r1"))
@@ -454,7 +458,6 @@ class MetadataDataSourceTest {
         runTest {
             every { metadataStorageProvider.getOrCreateStorageFile(key) } throws IOException()
             every { metadataStorageProvider.getStorageFiles(key) } returns listOf(legacyFile)
-            every { legacyFile.length() } returns 1L
             every { metadataProvider.readMetadataFromFile(legacyFile, key) } returns
                 metadata(lastUpdated = 2, read = listOf("r1"))
 
@@ -468,7 +471,7 @@ class MetadataDataSourceTest {
     @Test
     fun aSetAsideFileHoldingTheNewestEntryWinsAThreeFileMerge() =
         runTest {
-            val setAsideFile = nonEmptyFile()
+            val setAsideFile = mockk<File>(relaxed = true)
             every { metadataStorageProvider.getStorageFiles(key) } returns
                 listOf(canonicalFile, setAsideFile, legacyFile)
             every { metadataProvider.readMetadataFromFile(canonicalFile, key) } returns
@@ -492,8 +495,8 @@ class MetadataDataSourceTest {
     @Test
     fun aTieBetweenASetAsideAndALegacyFileKeepsTheFirstInListingOrder() =
         runTest {
-            val setAsideFile = nonEmptyFile()
-            every { canonicalFile.length() } returns 0L
+            val setAsideFile = mockk<File>(relaxed = true)
+            every { metadataStorageProvider.sizeOf(canonicalFile) } returns 0L
             every { metadataStorageProvider.getStorageFiles(key) } returns
                 listOf(canonicalFile, setAsideFile, legacyFile)
             every { metadataProvider.readMetadataFromFile(setAsideFile, key) } returns
@@ -547,14 +550,15 @@ class MetadataDataSourceTest {
             every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile)
             every { metadataProvider.readMetadataFromFile(canonicalFile, key) } returns metadata(lastUpdated = 1)
             val dataSource = dataSource()
-            val updates = collectUpdates(dataSource)
+            val emitted = collectEmissions(dataSource)
 
             every { metadataProvider.writeMetadataToFile(any(), any(), any()) } throws IOException("disk full")
             dataSource.markTxMemoAsRead("failed", key)
             every { metadataProvider.writeMetadataToFile(any(), any(), any()) } just Runs
             dataSource.markTxMemoAsRead("after", key)
+            runCurrent()
 
-            assertEquals(listOf("after"), updates.nextUpdate().accountMetadata.read)
+            assertEquals(listOf(emptyList(), listOf("after")), emitted.map { it.accountMetadata.read })
         }
 
     @Test
@@ -563,14 +567,15 @@ class MetadataDataSourceTest {
             every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile)
             every { metadataProvider.readMetadataFromFile(canonicalFile, key) } returns metadata(lastUpdated = 1)
             val dataSource = dataSource()
-            val updates = collectUpdates(dataSource)
+            val emitted = collectEmissions(dataSource)
 
             every { metadataStorageProvider.getStorageFiles(key) } throws IOException()
             dataSource.markTxMemoAsRead("failed", key)
             every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile)
             dataSource.markTxMemoAsRead("after", key)
+            runCurrent()
 
-            assertEquals(listOf("after"), updates.nextUpdate().accountMetadata.read)
+            assertEquals(listOf(emptyList(), listOf("after")), emitted.map { it.accountMetadata.read })
         }
 
     @Test
@@ -578,6 +583,8 @@ class MetadataDataSourceTest {
         runTest {
             val emptyLegacyFile = mockk<File>(relaxed = true)
             val emptySetAsideFile = mockk<File>(relaxed = true)
+            every { metadataStorageProvider.sizeOf(emptyLegacyFile) } returns 0L
+            every { metadataStorageProvider.sizeOf(emptySetAsideFile) } returns 0L
             every { metadataStorageProvider.getStorageFiles(key) } returns
                 listOf(canonicalFile, emptySetAsideFile, emptyLegacyFile)
             every { metadataProvider.readMetadataFromFile(canonicalFile, key) } returns metadata(lastUpdated = 1)
@@ -617,44 +624,108 @@ class MetadataDataSourceTest {
             verify(exactly = 1) { metadataStorageProvider.deleteStorageFiles(key) }
         }
 
-    private suspend fun observe(): MetadataV3 = checkNotNull(dataSource().observe(key).first { it != null })
+    @Test
+    fun emptyNonCanonicalFilesAreKeptOnAReadOnlyRead() =
+        runTest {
+            val emptyLegacyFile = mockk<File>(relaxed = true)
+            every { metadataStorageProvider.sizeOf(emptyLegacyFile) } returns 0L
+            every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile, emptyLegacyFile)
+            every { metadataProvider.readMetadataFromFile(canonicalFile, key) } throws IOException()
+
+            observe()
+
+            verify(exactly = 0) { emptyLegacyFile.delete() }
+            verify(exactly = 0) { metadataProvider.writeMetadataToFile(any(), any(), any()) }
+        }
+
+    @Test
+    fun aMissingLegacyFileCountsAsAbsent() =
+        runTest {
+            every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile, legacyFile)
+            every { metadataStorageProvider.sizeOf(legacyFile) } throws NoSuchFileException("legacy")
+            every { metadataProvider.readMetadataFromFile(canonicalFile, key) } returns metadata(lastUpdated = 1)
+
+            val result = observe()
+
+            assertEquals(metadata(lastUpdated = 1), result)
+            verify(exactly = 1) { metadataStorageProvider.sizeOf(legacyFile) }
+            verify(exactly = 0) { metadataProvider.readMetadataFromFile(legacyFile, any()) }
+            verify(exactly = 0) { legacyFile.delete() }
+            verify(exactly = 0) { metadataProvider.writeMetadataToFile(any(), any(), any()) }
+        }
+
+    @Test
+    fun aLegacyFileWhoseSizeCannotBeReadIsRetriedAndKept() =
+        runTest {
+            every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile, legacyFile)
+            every { metadataStorageProvider.sizeOf(legacyFile) } throws IOException()
+            every { metadataProvider.readMetadataFromFile(canonicalFile, key) } returns metadata(lastUpdated = 1)
+
+            observe()
+
+            verify(exactly = 3) { metadataStorageProvider.sizeOf(legacyFile) }
+            verify(exactly = 0) { metadataProvider.readMetadataFromFile(legacyFile, any()) }
+            verify(exactly = 0) { legacyFile.delete() }
+            verify(exactly = 0) { metadataProvider.writeMetadataToFile(any(), any(), any()) }
+        }
+
+    @Test
+    fun aCanonicalFileWhoseSizeCannotBeReadMakesTheReadReadOnly() =
+        runTest {
+            every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile, legacyFile)
+            every { metadataStorageProvider.sizeOf(canonicalFile) } throws IOException()
+            every { metadataProvider.readMetadataFromFile(legacyFile, key) } returns
+                metadata(lastUpdated = 2, read = listOf("r1"))
+
+            val result = observe()
+
+            assertEquals(listOf("r1"), result.accountMetadata.read)
+            verify(exactly = 0) { metadataStorageProvider.setAsideUndecodable(any()) }
+            verify(exactly = 0) { metadataProvider.writeMetadataToFile(any(), any(), any()) }
+            verify(exactly = 0) { legacyFile.delete() }
+        }
+
+    @Test
+    fun anErrorWhileReadingIsRethrown() =
+        runTest {
+            every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile)
+            every { metadataStorageProvider.setAsideUndecodable(canonicalFile) } returns true
+            every { metadataProvider.readMetadataFromFile(canonicalFile, key) } throws OutOfMemoryError()
+
+            assertFailsWith<OutOfMemoryError> { observe() }
+            verify(exactly = 0) { metadataStorageProvider.setAsideUndecodable(any()) }
+        }
+
+    @Test
+    fun aSecurityExceptionMakesTheReadReadOnlyWithoutSettingTheFileAside() =
+        runTest {
+            every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile, legacyFile)
+            every { metadataStorageProvider.setAsideUndecodable(canonicalFile) } returns true
+            every { metadataProvider.readMetadataFromFile(canonicalFile, key) } throws SecurityException()
+            every { metadataProvider.readMetadataFromFile(legacyFile, key) } returns metadata(lastUpdated = 2)
+
+            observe()
+
+            verify(exactly = 1) { metadataProvider.readMetadataFromFile(canonicalFile, key) }
+            verify(exactly = 0) { metadataStorageProvider.setAsideUndecodable(any()) }
+            verify(exactly = 0) { metadataProvider.writeMetadataToFile(any(), any(), any()) }
+            verify(exactly = 0) { legacyFile.delete() }
+        }
+
+    private suspend fun TestScope.observe(): MetadataV3 = checkNotNull(dataSource().observe(key).first { it != null })
 
     /**
-     * Collects [dataSource]'s updates after the initial read and returns once the collector
-     * provably receives updates, by repeating a warm-up update until one arrives. A late warm-up
-     * value can still follow, so readers skip those with [nextUpdate].
+     * Starts collecting [dataSource]'s non-null emissions and runs the collector until it waits for
+     * updates, so every later update is either recorded or provably never emitted.
      */
-    private suspend fun TestScope.collectUpdates(dataSource: MetadataDataSourceImpl): Channel<MetadataV3> {
-        val received = Channel<MetadataV3>(Channel.UNLIMITED)
-        backgroundScope.launch(Dispatchers.Default) {
-            dataSource.observe(key).filterNotNull().collect { received.send(it) }
+    private fun TestScope.collectEmissions(dataSource: MetadataDataSourceImpl): List<MetadataV3> {
+        val emitted = mutableListOf<MetadataV3>()
+        backgroundScope.launch {
+            dataSource.observe(key).filterNotNull().collect { emitted += it }
         }
-        realTime { received.receive() }
-        realTime {
-            var warmedUp = false
-            while (!warmedUp) {
-                dataSource.markTxMemoAsRead(WARM_UP_TX_ID, key)
-                warmedUp = withTimeoutOrNull(WARM_UP_TIMEOUT) { received.receive() } != null
-            }
-        }
-        return received
+        runCurrent()
+        return emitted
     }
-
-    private suspend fun Channel<MetadataV3>.nextUpdate(): MetadataV3 =
-        realTime {
-            var update = receive()
-            while (update.accountMetadata.read == listOf(WARM_UP_TX_ID)) {
-                update = receive()
-            }
-            update
-        }
-
-    private suspend fun <T> realTime(block: suspend () -> T): T = withContext(Dispatchers.Default) { block() }
-
-    private fun nonEmptyFile() =
-        mockk<File>(relaxed = true) {
-            every { length() } returns 1L
-        }
 
     private fun swapAsset() =
         mockk<SimpleSwapAsset> {
@@ -662,7 +733,7 @@ class MetadataDataSourceTest {
             every { chainTicker } returns "zec"
         }
 
-    private suspend fun merge(canonical: MetadataV3, legacy: MetadataV3): MetadataV3 {
+    private suspend fun TestScope.merge(canonical: MetadataV3, legacy: MetadataV3): MetadataV3 {
         every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile, legacyFile)
         every { metadataProvider.readMetadataFromFile(canonicalFile, key) } returns canonical
         every { metadataProvider.readMetadataFromFile(legacyFile, key) } returns legacy
@@ -671,11 +742,12 @@ class MetadataDataSourceTest {
 
     private fun MetadataV3.history() = accountMetadata.swaps.lastUsedAssetHistory.toList()
 
-    private fun dataSource() =
+    private fun TestScope.dataSource() =
         MetadataDataSourceImpl(
             metadataStorageProvider = metadataStorageProvider,
             metadataProvider = metadataProvider,
-            simpleSwapAssetProvider = mockk<SimpleSwapAssetProvider>()
+            simpleSwapAssetProvider = mockk<SimpleSwapAssetProvider>(),
+            ioDispatcher = StandardTestDispatcher(testScheduler)
         )
 
     @Suppress("LongParameterList")
@@ -727,7 +799,5 @@ class MetadataDataSourceTest {
 
     private companion object {
         const val SEED_SIZE = 32
-        const val WARM_UP_TIMEOUT = 200L
-        const val WARM_UP_TX_ID = "warm-up"
     }
 }

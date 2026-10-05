@@ -5,6 +5,8 @@ import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.serialization.metadata.MetadataKey
 import java.io.File
 import java.io.IOException
+import java.nio.file.FileAlreadyExistsException
+import java.nio.file.Files
 
 interface MetadataStorageProvider {
     fun getStorageFiles(key: MetadataKey): List<File>
@@ -12,8 +14,14 @@ interface MetadataStorageProvider {
     fun getOrCreateStorageFile(key: MetadataKey): File
 
     /**
+     * The size of [file] in bytes. Throws [java.nio.file.NoSuchFileException] when it does not
+     * exist and another [IOException] when its size cannot be read, never reporting 0 for either.
+     */
+    fun sizeOf(file: File): Long
+
+    /**
      * Renames [file] to "<name>.undecodable-<epochMillis>", where [getStorageFiles] still finds it,
-     * and returns whether the rename landed.
+     * and returns whether the rename landed. Never replaces an existing file.
      */
     fun setAsideUndecodable(file: File): Boolean
 
@@ -26,7 +34,8 @@ interface MetadataStorageProvider {
 }
 
 class MetadataStorageProviderImpl(
-    private val context: Context
+    private val context: Context,
+    private val currentTimeMillis: () -> Long = System::currentTimeMillis
 ) : MetadataStorageProvider {
     /**
      * Every existing file named after one of [key]'s identifiers, in [MetadataKey.fileIdentifiers]
@@ -57,8 +66,24 @@ class MetadataStorageProviderImpl(
         return file
     }
 
-    override fun setAsideUndecodable(file: File): Boolean =
-        file.renameTo(File(file.parentFile, file.name + UNDECODABLE_INFIX + System.currentTimeMillis()))
+    override fun sizeOf(file: File): Long = Files.size(file.toPath())
+
+    /**
+     * A name already taken by an earlier set-aside in the same millisecond gets one retry under the
+     * next millisecond.
+     */
+    override fun setAsideUndecodable(file: File): Boolean {
+        val millis = currentTimeMillis()
+        return moveAside(file, millis) || moveAside(file, millis + 1)
+    }
+
+    private fun moveAside(file: File, millis: Long): Boolean =
+        try {
+            Files.move(file.toPath(), File(file.parentFile, file.name + UNDECODABLE_INFIX + millis).toPath())
+            true
+        } catch (_: FileAlreadyExistsException) {
+            false
+        }
 
     override fun deleteStorageFiles(key: MetadataKey) {
         runCatching {
@@ -66,9 +91,10 @@ class MetadataStorageProviderImpl(
             val dirFiles = dir.listFiles()
             if (dirFiles == null) Twig.error { "Failed to list metadata files for deletion" }
             key.fileIdentifiers().forEach { identifier ->
-                val setAside = dirFiles.orEmpty().filter { it.name.startsWith(identifier + UNDECODABLE_INFIX) }
+                val setAside =
+                    dirFiles.orEmpty().filter { it.isFile && it.name.startsWith(identifier + UNDECODABLE_INFIX) }
                 (listOf(File(dir, identifier), File(dir, identifier + METADATA_TEMP_FILE_SUFFIX)) + setAside)
-                    .filter { it.exists() && !it.delete() }
+                    .filter { !it.delete() && it.exists() }
                     .forEach { _ -> Twig.error { "Failed to delete a metadata file" } }
             }
         }.onFailure { e -> Twig.error(e) { "Failed to delete metadata files" } }

@@ -17,6 +17,8 @@ import co.electriccoin.zcash.ui.common.provider.MetadataProvider
 import co.electriccoin.zcash.ui.common.provider.MetadataStorageProvider
 import co.electriccoin.zcash.ui.common.provider.SimpleSwapAssetProvider
 import co.electriccoin.zcash.ui.common.serialization.metadata.MetadataKey
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -29,6 +31,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.math.BigDecimal
+import java.nio.file.NoSuchFileException
 import java.time.Instant
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -86,6 +89,7 @@ class MetadataDataSourceImpl(
     private val metadataStorageProvider: MetadataStorageProvider,
     private val metadataProvider: MetadataProvider,
     private val simpleSwapAssetProvider: SimpleSwapAssetProvider,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : MetadataDataSource {
     private val mutex = Mutex()
 
@@ -276,7 +280,7 @@ class MetadataDataSourceImpl(
     }
 
     override suspend fun delete(key: MetadataKey) =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             mutex.withLock {
                 metadataStorageProvider.deleteStorageFiles(key)
                 metadataUpdatePipeline.emit(key to null)
@@ -294,16 +298,17 @@ class MetadataDataSourceImpl(
      * files.
      *
      * An empty file carries no data: an empty canonical file counts as absent, and any other empty
-     * file is deleted. A non-empty file that does not decode is never deleted and is retried on
-     * every read. A canonical file that does not decode is first set aside under a name
+     * file is deleted once the read is known to be writable. A file whose size or content cannot be
+     * read, or that does not decode, is never deleted and is retried on every read. A canonical
+     * file that does not decode is first set aside under a name
      * [MetadataStorageProvider.getStorageFiles] keeps finding, so nothing is written over it.
      *
      * The result is read-only, and nothing is written or deleted, when the files cannot be listed,
      * the canonical file cannot be created, the canonical file does not decode and cannot be set
-     * aside, or the canonical file still fails with an [IOException] after every retry.
+     * aside, or the canonical file stays unreadable after every retry.
      */
     private suspend fun readMetadata(key: MetadataKey): MetadataRead =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             val existingFiles =
                 runCatching { metadataStorageProvider.getStorageFiles(key) }
                     .onFailure { e -> Twig.warn(e) { "Failed to list metadata files" } }
@@ -317,14 +322,12 @@ class MetadataDataSourceImpl(
                 return@withContext readOnly(existingFiles ?: listOfNotNull(canonicalFile), key)
             }
 
-            val (emptyOthers, others) =
+            val canonicalRead = readWithRetry(canonicalFile, key)
+            val otherReads =
                 existingFiles
                     .filterNot { it == canonicalFile }
-                    .partition { it.length() == 0L }
-            emptyOthers.forEach { it.delete() }
-
-            val canonicalRead = readNonEmpty(canonicalFile, key)
-            val decodedOthers = others.mapNotNull { file -> readWithRetry(file, key).decoded()?.let { file to it } }
+                    .map { file -> file to readWithRetry(file, key) }
+            val decodedOthers = otherReads.mapNotNull { (file, read) -> read.decoded()?.let { file to it } }
 
             if (!isUsableAsCanonical(canonicalRead, canonicalFile)) {
                 return@withContext MetadataRead(
@@ -332,6 +335,8 @@ class MetadataDataSourceImpl(
                     isWritable = false
                 )
             }
+
+            otherReads.filter { (_, read) -> read == FileRead.Empty }.forEach { (file, _) -> deleteLogged(file) }
 
             val canonicalMetadata = canonicalRead.decoded()
             if (decodedOthers.isEmpty()) {
@@ -343,14 +348,14 @@ class MetadataDataSourceImpl(
 
             val merged = (listOfNotNull(canonicalMetadata) + decodedOthers.map { it.second }).mergeOrDefault()
             if (writeToLocalStorage(merged, key) && syncDirectoryOf(canonicalFile)) {
-                decodedOthers.forEach { (file, _) -> file.delete() }
+                decodedOthers.forEach { (file, _) -> deleteLogged(file) }
             }
             MetadataRead(metadata = merged, isWritable = true)
         }
 
     private suspend fun readOnly(files: List<File>, key: MetadataKey) =
         MetadataRead(
-            metadata = files.mapNotNull { readNonEmpty(it, key).decoded() }.mergeOrDefault(),
+            metadata = files.mapNotNull { readWithRetry(it, key).decoded() }.mergeOrDefault(),
             isWritable = false
         )
 
@@ -360,7 +365,7 @@ class MetadataDataSourceImpl(
      */
     private fun isUsableAsCanonical(read: FileRead, canonicalFile: File): Boolean =
         when (read) {
-            is FileRead.Decoded, FileRead.Absent -> true
+            is FileRead.Decoded, FileRead.Absent, FileRead.Empty -> true
             FileRead.Undecodable -> setAsideUndecodable(canonicalFile)
             FileRead.Unreadable -> false
         }
@@ -375,33 +380,52 @@ class MetadataDataSourceImpl(
             .onFailure { e -> Twig.warn(e) { "Failed to flush the metadata directory" } }
             .isSuccess
 
-    private suspend fun readNonEmpty(file: File, key: MetadataKey): FileRead =
-        if (file.length() > 0) readWithRetry(file, key) else FileRead.Absent
+    private fun deleteLogged(file: File) {
+        if (!file.delete() && file.exists()) {
+            Twig.warn { "Failed to delete a metadata file" }
+        }
+    }
 
     /**
-     * Reads [file], retrying only an [IOException], up to [READ_ATTEMPTS] attempts in total; any
-     * other failure is a decode failure and final at once.
+     * Reads [file], retrying only an [IOException], up to [READ_ATTEMPTS] attempts in total.
      */
     private suspend fun readWithRetry(file: File, key: MetadataKey): FileRead {
         var attempt = 1
-        var read: FileRead? = null
+        var read = readOnce(file, key, isLastAttempt = attempt >= READ_ATTEMPTS)
         while (read == null) {
-            val result = runCatching { metadataProvider.readMetadataFromFile(file, key) }
-            val error = result.exceptionOrNull()
-            read =
-                when {
-                    error == null -> FileRead.Decoded(result.getOrThrow())
-                    error !is IOException -> FileRead.Undecodable
-                    attempt >= READ_ATTEMPTS -> FileRead.Unreadable
-                    else -> null
+            attempt++
+            delay(READ_RETRY_DELAY)
+            read = readOnce(file, key, isLastAttempt = attempt >= READ_ATTEMPTS)
+        }
+        return read
+    }
+
+    /**
+     * One read of [file], sized first so an empty file is never decoded. Returns null when an
+     * [IOException] asks for another attempt. A missing file is [FileRead.Absent], an [IOException]
+     * on the last attempt or a [SecurityException] is [FileRead.Unreadable], and any other
+     * exception is [FileRead.Undecodable]. An [Error] is rethrown.
+     */
+    private fun readOnce(file: File, key: MetadataKey, isLastAttempt: Boolean): FileRead? {
+        val result =
+            runCatching {
+                if (metadataStorageProvider.sizeOf(file) == 0L) {
+                    FileRead.Empty
+                } else {
+                    FileRead.Decoded(metadataProvider.readMetadataFromFile(file, key))
                 }
-            if (error != null && read != null) {
-                Twig.warn(error) { "Failed to read metadata" }
             }
-            if (read == null) {
-                attempt++
-                delay(READ_RETRY_DELAY)
+        val error = result.exceptionOrNull() ?: return result.getOrThrow()
+        val read =
+            when (error) {
+                is Error, is CancellationException -> throw error
+                is NoSuchFileException -> FileRead.Absent
+                is SecurityException -> FileRead.Unreadable
+                is IOException -> if (isLastAttempt) FileRead.Unreadable else null
+                else -> FileRead.Undecodable
             }
+        if (read == FileRead.Unreadable || read == FileRead.Undecodable) {
+            Twig.warn(error) { "Failed to read metadata" }
         }
         return read
     }
@@ -410,7 +434,7 @@ class MetadataDataSourceImpl(
      * Returns whether the write landed. A failed write leaves the previous file content intact.
      */
     private suspend fun writeToLocalStorage(metadata: MetadataV3, key: MetadataKey): Boolean =
-        withContext(Dispatchers.IO) {
+        withContext(ioDispatcher) {
             runCatching {
                 val file = metadataStorageProvider.getOrCreateStorageFile(key)
                 metadataProvider.writeMetadataToFile(file, metadata, key)
@@ -488,7 +512,7 @@ class MetadataDataSourceImpl(
     private suspend fun updateMetadata(
         key: MetadataKey,
         transform: (AccountMetadataV3) -> AccountMetadataV3
-    ) = withContext(Dispatchers.IO) {
+    ) = withContext(ioDispatcher) {
         val read = readMetadata(key)
         if (!read.isWritable) {
             Twig.error { "Skipping the metadata update, the metadata storage is unavailable" }
@@ -531,7 +555,7 @@ class MetadataDataSourceImpl(
 /**
  * The metadata a read produced and whether it may be written back, which it may not when the
  * files could not be listed, the canonical file could not be created, the canonical file does not
- * decode and could not be set aside, or the canonical file kept failing with an [IOException].
+ * decode and could not be set aside, or the canonical file stayed unreadable.
  */
 private data class MetadataRead(
     val metadata: MetadataV3,
@@ -546,13 +570,16 @@ private sealed interface FileRead {
         val metadata: MetadataV3
     ) : FileRead
 
-    /** The file is empty or missing and carries no data. */
+    /** The file does not exist. */
     data object Absent : FileRead
+
+    /** The file exists and is empty, so it carries no data. */
+    data object Empty : FileRead
 
     /** The file was read but does not decrypt or parse. */
     data object Undecodable : FileRead
 
-    /** Reading the file kept failing with an [IOException]. */
+    /** The file's size or content could not be read, after every retry. */
     data object Unreadable : FileRead
 }
 
