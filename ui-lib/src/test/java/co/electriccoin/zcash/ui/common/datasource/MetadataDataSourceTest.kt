@@ -18,6 +18,7 @@ import co.electriccoin.zcash.ui.common.serialization.metadata.DecryptionExceptio
 import co.electriccoin.zcash.ui.common.serialization.metadata.MetadataKey
 import com.google.crypto.tink.InsecureSecretKeyAccess
 import com.google.crypto.tink.util.SecretBytes
+import io.mockk.CapturingSlot
 import io.mockk.Runs
 import io.mockk.every
 import io.mockk.just
@@ -603,52 +604,54 @@ class MetadataDataSourceTest {
         }
 
     @Test
-    fun aFailedDirectoryFlushDeletesNothingWhenTheCanonicalFileReadsBackStale() =
+    fun aFailedDirectoryFlushDeletesNothingAndSkipsTheMergedFilesForTheRestOfTheProcess() =
         runTest {
-            every { metadataProvider.syncDirectoryOf(any()) } throws IOException()
+            val written = mergeWithFlush(isFlushFailing = { true })
+            val dataSource = dataSource()
 
-            merge(canonical = metadata(lastUpdated = 1), legacy = metadata(lastUpdated = 2, read = listOf("r1")))
+            val first = dataSource.observe(key).first { it != null }
+            val second = dataSource.observe(key).first { it != null }
 
-            verifyOrder {
-                metadataProvider.writeMetadataToFile(canonicalFile, any(), key)
-                metadataProvider.syncDirectoryOf(canonicalFile)
-            }
-            verify(exactly = 0) { legacyFile.delete() }
-        }
-
-    @Test
-    fun aFailedDirectoryFlushDeletesNothingWhenTheCanonicalFileNoLongerDecodes() =
-        runTest {
-            every { metadataProvider.syncDirectoryOf(any()) } throws IOException()
-            every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile, legacyFile)
-            every { metadataProvider.readMetadataFromFile(canonicalFile, key) } returns
-                metadata(lastUpdated = 1) andThenThrows DecryptionException()
-            every { metadataProvider.readMetadataFromFile(legacyFile, key) } returns
-                metadata(lastUpdated = 2, read = listOf("r1"))
-
-            observe()
-
+            assertEquals(written.captured, first)
+            assertEquals(written.captured, second)
+            verify(exactly = 1) { metadataProvider.readMetadataFromFile(legacyFile, key) }
             verify(exactly = 2) { metadataProvider.readMetadataFromFile(canonicalFile, key) }
+            verify(exactly = 1) { metadataProvider.writeMetadataToFile(any(), any(), any()) }
             verify(exactly = 0) { legacyFile.delete() }
         }
 
     @Test
-    fun aFailedDirectoryFlushStillDeletesTheMergedFilesOnceTheCanonicalFileReadsBackMerged() =
+    fun aNewProcessMergesAgainAndDeletesOnceTheFlushLands() =
         runTest {
-            val written = slot<MetadataV3>()
-            every { metadataProvider.syncDirectoryOf(any()) } throws IOException()
-            every { metadataProvider.writeMetadataToFile(canonicalFile, capture(written), key) } just Runs
-            every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile, legacyFile)
-            every { metadataProvider.readMetadataFromFile(canonicalFile, key) } answers {
-                if (written.isCaptured) written.captured else metadata(lastUpdated = 1)
-            }
-            every { metadataProvider.readMetadataFromFile(legacyFile, key) } returns
-                metadata(lastUpdated = 2, read = listOf("r1"))
+            var isFlushFailing = true
+            mergeWithFlush(isFlushFailing = { isFlushFailing })
 
-            val result = observe()
+            dataSource().observe(key).first { it != null }
+            verify(exactly = 0) { legacyFile.delete() }
 
-            assertEquals(written.captured, result)
+            isFlushFailing = false
+            dataSource().observe(key).first { it != null }
+
+            verify(exactly = 2) { metadataProvider.readMetadataFromFile(legacyFile, key) }
+            verify(exactly = 2) { metadataProvider.writeMetadataToFile(any(), any(), any()) }
             verify(exactly = 1) { legacyFile.delete() }
+        }
+
+    @Test
+    fun aChangedLegacyFileIsMergedAgainAfterAFailedFlush() =
+        runTest {
+            mergeWithFlush(isFlushFailing = { true })
+            val dataSource = dataSource()
+
+            dataSource.observe(key).first { it != null }
+            every { metadataStorageProvider.lastModifiedOf(legacyFile) } returns 2L
+            dataSource.observe(key).first { it != null }
+            every { metadataStorageProvider.sizeOf(legacyFile) } returns 2L
+            dataSource.observe(key).first { it != null }
+
+            verify(exactly = 3) { metadataProvider.readMetadataFromFile(legacyFile, key) }
+            verify(exactly = 3) { metadataProvider.writeMetadataToFile(any(), any(), any()) }
+            verify(exactly = 0) { legacyFile.delete() }
         }
 
     @Test
@@ -877,6 +880,25 @@ class MetadataDataSourceTest {
             verify(exactly = 0) { metadataProvider.writeMetadataToFile(any(), any(), any()) }
             verify(exactly = 0) { legacyFile.delete() }
         }
+
+    /**
+     * A canonical and a legacy file that merge, a canonical file that reads back whatever was last
+     * written to it, and a directory flush that fails while [isFlushFailing] says so.
+     */
+    private fun mergeWithFlush(isFlushFailing: () -> Boolean): CapturingSlot<MetadataV3> {
+        val written = slot<MetadataV3>()
+        every { metadataProvider.syncDirectoryOf(any()) } answers {
+            if (isFlushFailing()) throw IOException("flush failed")
+        }
+        every { metadataProvider.writeMetadataToFile(canonicalFile, capture(written), key) } just Runs
+        every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile, legacyFile)
+        every { metadataProvider.readMetadataFromFile(canonicalFile, key) } answers {
+            if (written.isCaptured) written.captured else metadata(lastUpdated = 1)
+        }
+        every { metadataProvider.readMetadataFromFile(legacyFile, key) } returns
+            metadata(lastUpdated = 2, read = listOf("r1"))
+        return written
+    }
 
     private suspend fun TestScope.observe(): MetadataV3 = checkNotNull(dataSource().observe(key).first { it != null })
 

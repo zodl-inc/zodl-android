@@ -17,7 +17,6 @@ import kotlinx.coroutines.test.runTest
 import java.io.IOException
 import java.math.BigDecimal
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -77,7 +76,7 @@ class MetadataRepositoryUpdateTest {
         runTest {
             coEvery { metadataDataSource.createOrUpdateTxNote("tx1", "note", key) } throws IOException()
 
-            assertEquals(false, repository.createOrUpdateTxNote("tx1", "note"))
+            assertFalse(repository.createOrUpdateTxNote("tx1", "note"))
         }
 
     private suspend fun markSwap() =

@@ -18,7 +18,6 @@ import co.electriccoin.zcash.ui.common.provider.MetadataStorageProvider
 import co.electriccoin.zcash.ui.common.provider.SimpleSwapAssetProvider
 import co.electriccoin.zcash.ui.common.provider.runCatchingRecoverable
 import co.electriccoin.zcash.ui.common.serialization.metadata.MetadataKey
-import com.google.crypto.tink.InsecureSecretKeyAccess
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -32,9 +31,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.math.BigDecimal
-import java.nio.ByteBuffer
 import java.nio.file.NoSuchFileException
-import java.security.MessageDigest
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -93,6 +90,13 @@ interface MetadataDataSource {
     suspend fun delete(key: MetadataKey)
 }
 
+/**
+ * Reads and writes an account's metadata files, merging every file of a key into the canonical
+ * one. Merged files are deleted only after the write and the directory flush land; after a failed
+ * flush they stay and are skipped for the rest of the process. Undecodable non-canonical and
+ * set-aside files are skipped, not decrypted again, while their path, size, modification time and
+ * the key list are unchanged, and retried in a new process. The canonical file is never skipped.
+ */
 @Suppress("TooManyFunctions")
 class MetadataDataSourceImpl(
     private val metadataStorageProvider: MetadataStorageProvider,
@@ -105,13 +109,22 @@ class MetadataDataSourceImpl(
     private val metadataUpdatePipeline = MutableSharedFlow<Pair<MetadataKey, MetadataV3?>>()
 
     /**
-     * Non-canonical and set-aside files that failed to decode, remembered for the process lifetime
-     * so every read does not decrypt and log them again. An entry matches only while the file's
-     * path, size and modification time and the key's fingerprint are unchanged, so a changed file,
-     * a different key list or a new process retries it. Such a file is never deleted by a read;
-     * deleting the account's metadata still removes it.
+     * Non-canonical and set-aside files that failed to decode, remembered for the process lifetime:
+     * they are skipped, not decrypted again, while their path, size, modification time and the
+     * key's file identifiers are unchanged, and retried once any of these changes or in a new
+     * process. Such a file is never deleted by a read; deleting the account's metadata still
+     * removes it. The canonical file is never skipped.
      */
-    private val undecodableFiles = ConcurrentHashMap.newKeySet<UndecodableFile>()
+    private val undecodableFiles = ConcurrentHashMap.newKeySet<FileSignature>()
+
+    /**
+     * Non-canonical and set-aside files already merged into the canonical file whose directory
+     * flush failed, remembered for the process lifetime on the same terms as [undecodableFiles].
+     * They stay on disk and are skipped for the rest of the process, so a read neither merges nor
+     * writes them again; a new process merges them again, which is idempotent, and deletes them
+     * once the flush lands.
+     */
+    private val mergedFiles = ConcurrentHashMap.newKeySet<FileSignature>()
 
     private val isFlushFailureLogged = AtomicBoolean(false)
 
@@ -312,14 +325,17 @@ class MetadataDataSourceImpl(
      * A hardware-wallet account's metadata key can have more than one file on disk: the SDK
      * derives one key per viewing-key item, and a key read back in a different order than it was
      * derived in names a different file. This reads every file that exists under any of [key]'s
-     * identifiers, merges the ones that decode into one [MetadataV3], writes the result to the
-     * canonical file and, only once that write and the directory flush landed, removes the merged
-     * files.
+     * identifiers, merges the ones that decode into one [MetadataV3] and writes the result to the
+     * canonical file. The merged files are deleted only after both the write and the directory
+     * flush land; after a failed flush they stay on disk and are skipped for the rest of the
+     * process, see [mergedFiles].
      *
      * An empty file carries no data: an empty canonical file counts as absent, and any other empty
      * file is deleted once the read is known to be writable. A file whose size or content cannot be
-     * read, or that does not decode, is never deleted and is retried on every read. A canonical
-     * file that does not decode is first set aside under a name
+     * read, or that does not decode, is never deleted. An undecodable non-canonical or set-aside
+     * file is skipped, not decrypted again, while its path, size, modification time and the key
+     * list are unchanged, and retried in a new process, see [undecodableFiles]. The canonical file
+     * is never skipped; one that does not decode is first set aside under a name
      * [MetadataStorageProvider.getStorageFiles] keeps finding, so nothing is written over it.
      *
      * The result is read-only, and nothing with data is written and nothing is deleted, when the
@@ -339,21 +355,20 @@ class MetadataDataSourceImpl(
                     .onFailure { e -> Twig.warn(e) { "Failed to create metadata file" } }
                     .getOrNull()
 
-            val keyFingerprint = key.fingerprint()
             if (existingFiles == null || canonicalFile == null) {
-                return@withContext readOnly(existingFiles ?: listOfNotNull(canonicalFile), key, keyFingerprint)
+                return@withContext readOnly(existingFiles ?: listOfNotNull(canonicalFile), key)
             }
 
             val canonicalRead = readWithRetry(canonicalFile, key, skipCacheFingerprint = null)
-            val otherReads =
-                existingFiles
-                    .filterNot { it == canonicalFile }
-                    .map { file -> file to readWithRetry(file, key, keyFingerprint) }
-            val decodedOthers = otherReads.mapNotNull { (file, read) -> read.decoded()?.let { file to it } }
+            val others = existingFiles.filterNot { it == canonicalFile }
+            val keyFingerprint = if (others.isEmpty()) null else key.fingerprint()
+            val otherReads = others.map { file -> file to readWithRetry(file, key, keyFingerprint) }
+            val decodedOthers =
+                otherReads.mapNotNull { (file, read) -> (read as? FileRead.Decoded)?.let { file to it } }
 
             if (!setAsideIfUndecodable(canonicalRead, canonicalFile)) {
                 return@withContext MetadataRead(
-                    metadata = decodedOthers.map { it.second }.mergeOrDefault(),
+                    metadata = decodedOthers.map { it.second.metadata }.mergeOrDefault(),
                     isWritable = false
                 )
             }
@@ -368,32 +383,39 @@ class MetadataDataSourceImpl(
                 )
             }
 
-            val merged = (listOfNotNull(canonicalMetadata) + decodedOthers.map { it.second }).mergeOrDefault()
-            if (writeToLocalStorage(merged, key) && isMergeOnDisk(canonicalFile, key, merged)) {
-                decodedOthers.forEach { (file, _) -> deleteLogged(file) }
+            val merged =
+                (listOfNotNull(canonicalMetadata) + decodedOthers.map { it.second.metadata }).mergeOrDefault()
+            if (writeToLocalStorage(merged, key)) {
+                retireMergedFiles(canonicalFile, decodedOthers)
             }
             MetadataRead(metadata = merged, isWritable = true)
         }
 
-    private suspend fun readOnly(files: List<File>, key: MetadataKey, keyFingerprint: String) =
-        MetadataRead(
+    /**
+     * Deletes the files merged into [canonicalFile] once the directory flush lands; after a failed
+     * flush keeps them and remembers them in [mergedFiles] for the rest of the process.
+     */
+    private fun retireMergedFiles(canonicalFile: File, merged: List<Pair<File, FileRead.Decoded>>) {
+        if (syncDirectoryOf(canonicalFile)) {
+            merged.forEach { (file, _) -> deleteLogged(file) }
+        } else {
+            merged.forEach { (_, read) -> read.signature?.let { mergedFiles += it } }
+        }
+    }
+
+    private suspend fun readOnly(files: List<File>, key: MetadataKey): MetadataRead {
+        val canonicalName = key.fileIdentifier()
+        val keyFingerprint = if (files.all { it.name == canonicalName }) null else key.fingerprint()
+        return MetadataRead(
             metadata =
                 files
                     .mapNotNull { file ->
-                        val fingerprint = keyFingerprint.takeIf { file.name != key.fileIdentifier() }
+                        val fingerprint = keyFingerprint.takeIf { file.name != canonicalName }
                         readWithRetry(file, key, fingerprint).decoded()
                     }.mergeOrDefault(),
             isWritable = false
         )
-
-    /**
-     * Whether the merged result written to [canonicalFile] is safe to rely on before the merged
-     * files go: the directory flush landed, or, when it failed after the atomic move, the canonical
-     * file reads back as exactly [merged]. A flush failure is logged once per process.
-     */
-    private suspend fun isMergeOnDisk(canonicalFile: File, key: MetadataKey, merged: MetadataV3): Boolean =
-        syncDirectoryOf(canonicalFile) ||
-            readWithRetry(canonicalFile, key, skipCacheFingerprint = null).decoded() == merged
+    }
 
     /**
      * Sets [canonicalFile] aside when [read] found it undecodable, and returns whether the canonical
@@ -402,7 +424,7 @@ class MetadataDataSourceImpl(
      */
     private fun setAsideIfUndecodable(read: FileRead, canonicalFile: File): Boolean =
         when (read) {
-            is FileRead.Decoded, FileRead.Absent, FileRead.Empty -> true
+            is FileRead.Decoded, FileRead.Absent, FileRead.Empty, FileRead.AlreadyMerged -> true
             FileRead.Undecodable -> setAsideUndecodable(canonicalFile)
             FileRead.Unreadable -> false
         }
@@ -429,7 +451,7 @@ class MetadataDataSourceImpl(
     /**
      * Reads [file] up to [READ_ATTEMPTS] attempts in total, retrying only an [IOException] other
      * than [NoSuchFileException]; see [readOnce] for how each failure is classified. A non-null
-     * [skipCacheFingerprint] lets [undecodableFiles] skip a file already known not to decode.
+     * [skipCacheFingerprint] lets [undecodableFiles] and [mergedFiles] skip a file.
      */
     private suspend fun readWithRetry(file: File, key: MetadataKey, skipCacheFingerprint: String?): FileRead {
         var attempt = 1
@@ -448,7 +470,8 @@ class MetadataDataSourceImpl(
      * other [IOException] returns null to ask for another attempt and is [FileRead.Unreadable] on
      * the last one, and any other exception is [FileRead.Undecodable]. An [Error] or a
      * [kotlinx.coroutines.CancellationException] is rethrown. A file found in [undecodableFiles] is
-     * [FileRead.Undecodable] without being decrypted or logged again.
+     * [FileRead.Undecodable] and one found in [mergedFiles] is [FileRead.AlreadyMerged], neither
+     * decrypted nor logged again.
      */
     private fun readOnce(
         file: File,
@@ -456,18 +479,19 @@ class MetadataDataSourceImpl(
         skipCacheFingerprint: String?,
         isLastAttempt: Boolean
     ): FileRead? {
-        var signature: UndecodableFile? = null
+        var signature: FileSignature? = null
         val result =
             runCatchingRecoverable {
                 val size = metadataStorageProvider.sizeOf(file)
                 signature =
                     skipCacheFingerprint?.let { fingerprint ->
-                        UndecodableFile(file.path, size, metadataStorageProvider.lastModifiedOf(file), fingerprint)
+                        FileSignature(file.path, size, metadataStorageProvider.lastModifiedOf(file), fingerprint)
                     }
                 when {
                     size == 0L -> FileRead.Empty
                     signature?.let { it in undecodableFiles } == true -> FileRead.Undecodable
-                    else -> FileRead.Decoded(metadataProvider.readMetadataFromFile(file, key))
+                    signature?.let { it in mergedFiles } == true -> FileRead.AlreadyMerged
+                    else -> FileRead.Decoded(metadataProvider.readMetadataFromFile(file, key), signature)
                 }
             }
         val error = result.exceptionOrNull() ?: return result.getOrThrow()
@@ -482,20 +506,10 @@ class MetadataDataSourceImpl(
     }
 
     /**
-     * A SHA-256 over every entry of this key, length-prefixed and in order, so a cache can tell key
-     * lists apart without holding raw key bytes.
+     * The key's file identifiers in order, already derived from the key material, so the caches
+     * tell key lists apart without touching the raw key bytes.
      */
-    @OptIn(ExperimentalStdlibApi::class)
-    private fun MetadataKey.fingerprint(): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        val access = InsecureSecretKeyAccess.get()
-        bytes.forEach { entry ->
-            val raw = entry.toByteArray(access)
-            digest.update(ByteBuffer.allocate(Int.SIZE_BYTES).putInt(raw.size).array())
-            digest.update(raw)
-        }
-        return digest.digest().toHexString()
-    }
+    private fun MetadataKey.fingerprint(): String = fileIdentifiers().joinToString(separator = ",")
 
     private fun classifyReadFailure(error: Throwable, isLastAttempt: Boolean): FileRead? =
         when (error) {
@@ -631,10 +645,10 @@ class MetadataDataSourceImpl(
 }
 
 /**
- * A file that failed to decode, as [MetadataDataSourceImpl] remembers it: its path, size and
- * modification time, and a fingerprint of the key it was tried with, never the key itself.
+ * A file as [MetadataDataSourceImpl]'s process-lifetime caches remember it: its path, size and
+ * modification time, and the file identifiers of the key it was read with, never the key itself.
  */
-private data class UndecodableFile(
+private data class FileSignature(
     val path: String,
     val size: Long,
     val lastModified: Long,
@@ -644,7 +658,9 @@ private data class UndecodableFile(
 /**
  * The metadata a read produced and whether it may be written back, which it may not when the
  * files could not be listed, the canonical file could not be created, the canonical file does not
- * decode and could not be set aside, or the canonical file stayed unreadable.
+ * decode and could not be set aside, or the canonical file stayed unreadable. Merged files are
+ * deleted only after the write and the directory flush land; after a failed flush they stay and
+ * are skipped for the rest of the process.
  */
 private data class MetadataRead(
     val metadata: MetadataV3,
@@ -656,8 +672,12 @@ private data class MetadataRead(
  */
 private sealed interface FileRead {
     data class Decoded(
-        val metadata: MetadataV3
+        val metadata: MetadataV3,
+        val signature: FileSignature? = null
     ) : FileRead
+
+    /** The file was already merged into the canonical file earlier in this process. */
+    data object AlreadyMerged : FileRead
 
     /** The file does not exist. */
     data object Absent : FileRead
