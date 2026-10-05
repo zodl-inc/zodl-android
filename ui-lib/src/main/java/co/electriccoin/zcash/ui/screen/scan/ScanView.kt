@@ -200,56 +200,10 @@ fun ScanBottomItems(
     infoText: String? = null,
 ) {
     Column(modifier) {
-        var failureText: String? = null
-
-        failureText =
-            when (validationResult) {
-                ScanValidationState.INVALID -> invalidQrText ?: stringResource(id = R.string.scan_invalidQR)
-                ScanValidationState.INVALID_IMAGE -> stringResource(id = R.string.scan_invalidImage)
-                ScanValidationState.SEVERAL_CODES_FOUND -> stringResource(id = R.string.scan_severalCodesFound)
-                else -> null
-            }
-
-        // Check permission request result, if any
-        failureText =
-            when (scanState) {
-                ScanScreenState.Permission -> {
-                    stringResource(
-                        id = R.string.scan_cameraSettings,
-                        stringResource(id = R.string.app_name)
-                    )
-                }
-
-                ScanScreenState.Failed -> {
-                    stringResource(id = R.string.scan_state_failed)
-                }
-
-                ScanScreenState.Scanning -> {
-                    failureText
-                }
-            }
-
-        // A failure takes the place of the info text while it is shown.
-        val messageText = failureText ?: infoText
-        if (messageText != null) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Image(painter = painterResource(R.drawable.ic_scan_info), contentDescription = messageText)
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = messageText,
-                    style = ZashiTypography.textXs,
-                    color = ZashiColors.Text.textPrimary,
-                    fontWeight = FontWeight.Medium,
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .testTag(if (failureText != null) ScanTag.FAILED_TEXT_STATE else ScanTag.INFO_TEXT)
-                )
-            }
-        }
+        ScanInfoRow(
+            failureText = scanFailureText(validationResult, scanState, invalidQrText),
+            infoText = infoText
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -286,6 +240,65 @@ fun ScanBottomItems(
 
         Spacer(modifier = Modifier.height(20.dp))
         Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
+    }
+}
+
+@Composable
+private fun scanFailureText(
+    validationResult: ScanValidationState,
+    scanState: ScanScreenState,
+    invalidQrText: String?,
+): String? {
+    val validationFailureText =
+        when (validationResult) {
+            ScanValidationState.INVALID -> invalidQrText ?: stringResource(id = R.string.scan_invalidQR)
+            ScanValidationState.INVALID_IMAGE -> stringResource(id = R.string.scan_invalidImage)
+            ScanValidationState.SEVERAL_CODES_FOUND -> stringResource(id = R.string.scan_severalCodesFound)
+            else -> null
+        }
+
+    // Check permission request result, if any
+    return when (scanState) {
+        ScanScreenState.Permission -> {
+            stringResource(
+                id = R.string.scan_cameraSettings,
+                stringResource(id = R.string.app_name)
+            )
+        }
+
+        ScanScreenState.Failed -> {
+            stringResource(id = R.string.scan_state_failed)
+        }
+
+        ScanScreenState.Scanning -> {
+            validationFailureText
+        }
+    }
+}
+
+@Composable
+private fun ScanInfoRow(
+    failureText: String?,
+    infoText: String?,
+) {
+    // A failure takes the place of the info text while it is shown.
+    val messageText = failureText ?: infoText ?: return
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Image(painter = painterResource(R.drawable.ic_scan_info), contentDescription = messageText)
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = messageText,
+            style = ZashiTypography.textXs,
+            color = ZashiColors.Text.textPrimary,
+            fontWeight = FontWeight.Medium,
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .testTag(if (failureText != null) ScanTag.FAILED_TEXT_STATE else ScanTag.INFO_TEXT)
+        )
     }
 }
 
