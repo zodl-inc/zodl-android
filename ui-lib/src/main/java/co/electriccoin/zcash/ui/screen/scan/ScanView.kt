@@ -15,26 +15,21 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -66,7 +61,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -78,13 +72,9 @@ import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.R
 import co.electriccoin.zcash.ui.design.component.SmallTopAppBar
 import co.electriccoin.zcash.ui.design.component.TopAppBarBackNavigation
-import co.electriccoin.zcash.ui.design.component.ZashiButton
-import co.electriccoin.zcash.ui.design.component.ZashiButtonDefaults
 import co.electriccoin.zcash.ui.design.newcomponent.PreviewScreens
 import co.electriccoin.zcash.ui.design.theme.AppearanceMode
 import co.electriccoin.zcash.ui.design.theme.ZcashTheme
-import co.electriccoin.zcash.ui.design.theme.colors.ZashiColors
-import co.electriccoin.zcash.ui.design.theme.typography.ZashiTypography
 import co.electriccoin.zcash.ui.screen.scan.util.QrCodeAnalyzerImpl
 import co.electriccoin.zcash.ui.screen.scankeystone.view.CAMERA_TRANSLUCENT_BORDER
 import co.electriccoin.zcash.ui.screen.scankeystone.view.FramePosition
@@ -185,120 +175,6 @@ fun ScanView(
                 showBack = scanState != ScanScreenState.Scanning,
             )
         }
-    }
-}
-
-@Composable
-fun ScanBottomItems(
-    validationResult: ScanValidationState,
-    scanState: ScanScreenState,
-    onOpenSettings: () -> Unit,
-    onBack: () -> Unit,
-    modifier: Modifier = Modifier,
-    onPaste: (() -> Unit)? = null,
-    invalidQrText: String? = null,
-    infoText: String? = null,
-) {
-    Column(modifier) {
-        ScanInfoRow(
-            failureText = scanFailureText(validationResult, scanState, invalidQrText),
-            infoText = infoText
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        if (onPaste != null) {
-            ZashiButton(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .testTag(ScanTag.PASTE_BUTTON),
-                onClick = onPaste,
-                text = stringResource(id = R.string.scan_pasteLink),
-                colors = ZashiButtonDefaults.secondaryColors()
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-        }
-
-        when (scanState) {
-            ScanScreenState.Scanning, ScanScreenState.Failed -> {
-                ZashiButton(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = onBack,
-                    text = stringResource(id = co.electriccoin.zcash.ui.design.R.string.general_cancel)
-                )
-            }
-
-            ScanScreenState.Permission -> {
-                ZashiButton(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = onOpenSettings,
-                    text = stringResource(id = R.string.scan_openSettings)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-        Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.systemBars))
-    }
-}
-
-@Composable
-private fun scanFailureText(
-    validationResult: ScanValidationState,
-    scanState: ScanScreenState,
-    invalidQrText: String?,
-): String? {
-    val validationFailureText =
-        when (validationResult) {
-            ScanValidationState.INVALID -> invalidQrText ?: stringResource(id = R.string.scan_invalidQR)
-            ScanValidationState.INVALID_IMAGE -> stringResource(id = R.string.scan_invalidImage)
-            ScanValidationState.SEVERAL_CODES_FOUND -> stringResource(id = R.string.scan_severalCodesFound)
-            else -> null
-        }
-
-    // Check permission request result, if any
-    return when (scanState) {
-        ScanScreenState.Permission -> {
-            stringResource(
-                id = R.string.scan_cameraSettings,
-                stringResource(id = R.string.app_name)
-            )
-        }
-
-        ScanScreenState.Failed -> {
-            stringResource(id = R.string.scan_state_failed)
-        }
-
-        ScanScreenState.Scanning -> {
-            validationFailureText
-        }
-    }
-}
-
-@Composable
-private fun ScanInfoRow(
-    failureText: String?,
-    infoText: String?,
-) {
-    // A failure takes the place of the info text while it is shown.
-    val messageText = failureText ?: infoText ?: return
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Image(painter = painterResource(R.drawable.ic_scan_info), contentDescription = messageText)
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = messageText,
-            style = ZashiTypography.textXs,
-            color = ZashiColors.Text.textPrimary,
-            fontWeight = FontWeight.Medium,
-            modifier =
-                Modifier
-                    .weight(1f)
-                    .testTag(if (failureText != null) ScanTag.FAILED_TEXT_STATE else ScanTag.INFO_TEXT)
-        )
     }
 }
 
