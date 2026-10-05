@@ -213,7 +213,7 @@ class RedeemGiftVM(
     /**
      * "Check again" on a pending card: the card's wallet is already synced, so the check is near-instant and
      * replacing the screen with the progress view would just flicker. Instead the button shows it is working,
-     * the pending text is refreshed with the confirmations still needed, and the quiet re-check loop resumes.
+     * and the quiet re-check loop resumes.
      */
     private fun recheckPending(
         handle: GiftCardHandle,
