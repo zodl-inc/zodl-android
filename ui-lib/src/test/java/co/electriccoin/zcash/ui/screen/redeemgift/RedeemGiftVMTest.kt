@@ -15,7 +15,6 @@ import co.electriccoin.zcash.ui.common.repository.GiftCardLinkStoreImpl
 import co.electriccoin.zcash.ui.common.usecase.GetGiftCardDestinationAddressUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetSelectedWalletAccountUseCase
 import co.electriccoin.zcash.ui.common.wallet.ExchangeRateState
-import co.electriccoin.zcash.ui.design.util.pluralStringRes
 import co.electriccoin.zcash.ui.design.util.stringRes
 import co.electriccoin.zcash.ui.design.util.withStyle
 import co.electriccoin.zcash.ui.fixture.FakeGiftCardRepository
@@ -193,9 +192,8 @@ class RedeemGiftVMTest {
 
             // 7 confirmations × 75 s ≈ 9 minutes.
             assertEquals(
-                pluralStringRes(
-                    R.plurals.redeemGift_pending_subtitle_confirmations,
-                    7,
+                stringRes(
+                    R.string.redeemGift_pending_subtitle_confirmations,
                     stringRes(Zatoshi(GiftCardSummaryFixture.AMOUNT)),
                     7,
                     9
@@ -216,9 +214,8 @@ class RedeemGiftVMTest {
             repository.checkGate?.complete(Unit)
             runCurrent()
             assertEquals(
-                pluralStringRes(
-                    R.plurals.redeemGift_pending_subtitle_confirmations,
-                    6,
+                stringRes(
+                    R.string.redeemGift_pending_subtitle_confirmations,
                     stringRes(Zatoshi(GiftCardSummaryFixture.AMOUNT)),
                     6,
                     8
@@ -232,33 +229,6 @@ class RedeemGiftVMTest {
             runCurrent()
             assertEquals(3, repository.checkCount)
             assertIs<RedeemGiftState.Ready>(vm.state.value)
-        }
-
-    @Test
-    fun aPendingCardOneConfirmationAwayAsksForTheSingularForm() =
-        runTest(dispatcher) {
-            val repository =
-                FakeGiftCardRepository(
-                    statuses =
-                        listOf(
-                            GiftCardStatus.Pending(Zatoshi(GiftCardSummaryFixture.AMOUNT), confirmationsRemaining = 1),
-                            // Ends the automatic re-check loop once the test finishes.
-                            GiftCardStatus.Ready(Zatoshi(GiftCardSummaryFixture.AMOUNT))
-                        )
-                )
-            val vm = startedVm(repository = repository)
-
-            // The count selects the plural form; 1 confirmation × 75 s rounds up to 2 minutes.
-            assertEquals(
-                pluralStringRes(
-                    R.plurals.redeemGift_pending_subtitle_confirmations,
-                    1,
-                    stringRes(Zatoshi(GiftCardSummaryFixture.AMOUNT)),
-                    1,
-                    2
-                ).withStyle(),
-                statusOf(vm).subtitle
-            )
         }
 
     @Test

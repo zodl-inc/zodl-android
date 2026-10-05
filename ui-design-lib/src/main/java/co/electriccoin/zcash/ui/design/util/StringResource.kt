@@ -4,7 +4,6 @@ package co.electriccoin.zcash.ui.design.util
 
 import android.content.Context
 import android.icu.util.Currency
-import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -27,15 +26,6 @@ import java.util.Locale
 sealed interface StringResource {
     data class ByResource(
         @param:StringRes val resource: Int,
-        val args: List<Any>
-    ) : StringResource
-
-    /**
-     * A `<plurals>` resource: the variant for [quantity] in the current locale, formatted with [args].
-     */
-    data class ByPluralResource(
-        @param:PluralsRes val resource: Int,
-        val quantity: Int,
         val args: List<Any>
     ) : StringResource
 
@@ -134,18 +124,6 @@ fun stringRes(
     vararg args: Any
 ): StringResource =
     StringResource.ByResource(resource, args.toList())
-
-/**
- * A `<plurals>` resource, choosing its variant for [quantity] by the locale's plural rules and formatting it with
- * [args]. [quantity] only selects the variant: pass it in [args] too when the text shows it.
- */
-@Stable
-fun pluralStringRes(
-    @PluralsRes resource: Int,
-    quantity: Int,
-    vararg args: Any
-): StringResource =
-    StringResource.ByPluralResource(resource, quantity, args.toList())
 
 @Stable
 fun stringRes(value: String): StringResource =
@@ -266,7 +244,6 @@ fun StringResource.getString(
     val string =
         when (this) {
             is StringResource.ByResource -> convertResource(context)
-            is StringResource.ByPluralResource -> convertPluralResource(context)
             is StringResource.ByString -> value
             is StringResource.ByZatoshi -> convertZatoshi()
             is StringResource.ByCurrencyNumber -> convertCurrencyNumber()
@@ -299,14 +276,6 @@ private fun CompositeStringResource.convertComposite(
 private fun StringResource.ByResource.convertResource(context: StringContext) =
     context.context.getString(
         resource,
-        *args.map { if (it is StringResource) it.getString(context) else it }.toTypedArray()
-    )
-
-@Suppress("SpreadOperator")
-private fun StringResource.ByPluralResource.convertPluralResource(context: StringContext) =
-    context.context.resources.getQuantityString(
-        resource,
-        quantity,
         *args.map { if (it is StringResource) it.getString(context) else it }.toTypedArray()
     )
 

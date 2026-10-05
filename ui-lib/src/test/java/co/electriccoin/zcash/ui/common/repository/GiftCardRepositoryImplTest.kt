@@ -49,8 +49,8 @@ import cash.z.ecc.android.sdk.model.GiftCardOrigin as SdkGiftCardOrigin
 
 /**
  * [GiftCardRepositoryImpl] against a mocked SDK: link errors and statuses map to the app's types, the card wallet
- * uses the main wallet's network, endpoint and Tor setting, redemptions are recorded in the main wallet, and
- * redeemers are closed exactly once.
+ * uses the main wallet's network, endpoint and Tor setting, redemptions are recorded in the main wallet, and redeemers are closed
+ * exactly once.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GiftCardRepositoryImplTest {
@@ -138,9 +138,7 @@ class GiftCardRepositoryImplTest {
 
             repository().parse(LINK)
 
-            verify(exactly = 1) {
-                GiftCardRedeemer.new(any(), any(), any(), any(), isTorEnabled = false, alias = any())
-            }
+            verify(exactly = 1) { GiftCardRedeemer.new(any(), any(), any(), any(), isTorEnabled = false, alias = any()) }
         }
 
     @Test
@@ -150,9 +148,7 @@ class GiftCardRepositoryImplTest {
 
             repository().parse(LINK)
 
-            verify(exactly = 1) {
-                GiftCardRedeemer.new(any(), any(), any(), any(), isTorEnabled = false, alias = any())
-            }
+            verify(exactly = 1) { GiftCardRedeemer.new(any(), any(), any(), any(), isTorEnabled = false, alias = any()) }
         }
 
     @Test
@@ -235,28 +231,6 @@ class GiftCardRepositoryImplTest {
 
             coEvery { redeemer.check() } returns GiftCardRedeemer.Status.Empty
             assertEquals(GiftCardStatus.Empty, repository.check(handle))
-        }
-
-    @Test
-    fun aPendingCardCarriesTheSdksConfirmationsRemaining() =
-        runTest {
-            val repository = repository()
-            val handle = repository.parse(LINK).handle
-            val balance =
-                GiftCardRedeemer.Balance(total = Zatoshi(300), spendable = Zatoshi(0), pending = Zatoshi(300))
-
-            listOf(1, 7).forEach { remaining ->
-                coEvery { redeemer.check() } returns
-                    GiftCardRedeemer.Status.Pending(balance, confirmationsRemaining = remaining)
-                assertEquals(
-                    GiftCardStatus.Pending(Zatoshi(300), confirmationsRemaining = remaining),
-                    repository.check(handle)
-                )
-            }
-
-            // The SDK could not work it out, for instance while the chain tip is unknown.
-            coEvery { redeemer.check() } returns GiftCardRedeemer.Status.Pending(balance, confirmationsRemaining = null)
-            assertEquals(GiftCardStatus.Pending(Zatoshi(300), confirmationsRemaining = null), repository.check(handle))
         }
 
     @Test

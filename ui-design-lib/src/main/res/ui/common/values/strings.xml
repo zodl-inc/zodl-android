@@ -592,10 +592,7 @@
     <string name="redeemGift_failure_subtitle">Something went wrong while redeeming the gift card. Try again.</string>
     <string name="redeemGift_retry">Try again</string>
     <string name="redeemGift_checkAgain">Check again</string>
-    <plurals name="redeemGift_pending_subtitle_confirmations">
-        <item quantity="one"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> needs <xliff:g id="confirmations" example="1">%2$d</xliff:g> more confirmation (about <xliff:g id="minutes" example="2">%3$d</xliff:g> min) before it can be redeemed. We\'ll keep checking while this screen is open.</item>
-        <item quantity="other"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> needs <xliff:g id="confirmations" example="7">%2$d</xliff:g> more confirmations (about <xliff:g id="minutes" example="9">%3$d</xliff:g> min) before it can be redeemed. We\'ll keep checking while this screen is open.</item>
-    </plurals>
+    <string name="redeemGift_pending_subtitle_confirmations"><xliff:g id="amount" example="0.1 ZEC">%1$s</xliff:g> needs <xliff:g id="confirmations" example="7">%2$d</xliff:g> more confirmations (about <xliff:g id="minutes" example="9">%3$d</xliff:g> min) before it can be redeemed. We\'ll keep checking while this screen is open.</string>
 
     <!-- ===== request ===== -->
     <string name="zecKeyboard_invalid">This transaction amount is invalid</string>
