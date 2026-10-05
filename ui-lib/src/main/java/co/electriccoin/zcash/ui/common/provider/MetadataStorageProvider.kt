@@ -28,6 +28,12 @@ interface MetadataStorageProvider {
     fun sizeOf(file: File): Long
 
     /**
+     * The last modification time of [file] in epoch milliseconds. Throws an [IOException] when it
+     * cannot be read.
+     */
+    fun lastModifiedOf(file: File): Long
+
+    /**
      * Renames [file] to "<name>.undecodable-<epochMillis>", where [getStorageFiles] still finds it,
      * and returns whether the rename landed. Never replaces an existing file.
      */
@@ -72,6 +78,8 @@ class MetadataStorageProviderImpl(
     }
 
     override fun sizeOf(file: File): Long = Files.size(file.toPath())
+
+    override fun lastModifiedOf(file: File): Long = Files.getLastModifiedTime(file.toPath()).toMillis()
 
     /**
      * A name already taken by an earlier set-aside in the same millisecond gets one retry under the

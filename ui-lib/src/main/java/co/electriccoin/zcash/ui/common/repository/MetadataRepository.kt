@@ -22,6 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.catch
@@ -41,15 +42,31 @@ import java.time.Instant
 
 @Suppress("TooManyFunctions")
 interface MetadataRepository {
-    fun flipTxBookmark(txId: String)
+    /**
+     * Returns whether the change was saved. The write finishes in the repository's own scope even
+     * when the caller is cancelled, and a false result has already been logged.
+     */
+    suspend fun flipTxBookmark(txId: String): Boolean
 
-    fun createOrUpdateTxNote(txId: String, note: String)
+    /**
+     * Returns whether the note was saved; see [flipTxBookmark].
+     */
+    suspend fun createOrUpdateTxNote(txId: String, note: String): Boolean
 
-    fun deleteTxNote(txId: String)
+    /**
+     * Returns whether the note was deleted; see [flipTxBookmark].
+     */
+    suspend fun deleteTxNote(txId: String): Boolean
 
+    /**
+     * A background write: a failure is only logged.
+     */
     fun markTxMemoAsRead(txId: String)
 
-    fun markTxAsSwap(
+    /**
+     * Returns whether the swap was saved; see [flipTxBookmark].
+     */
+    suspend fun markTxAsSwap(
         depositAddress: String,
         provider: String,
         origin: SwapAsset,
@@ -59,8 +76,11 @@ interface MetadataRepository {
         amountOutFormatted: BigDecimal,
         mode: SwapMode,
         status: SwapStatus,
-    )
+    ): Boolean
 
+    /**
+     * A background write from swap status polling: a failure is only logged.
+     */
     fun updateSwap(
         depositAddress: String,
         amountOutFormatted: BigDecimal,
@@ -72,6 +92,9 @@ interface MetadataRepository {
 
     // fun deleteSwap(depositAddress: String)
 
+    /**
+     * A background write: a failure is only logged.
+     */
     fun addSwapAssetToHistory(tokenTicker: String, chainTicker: String)
 
     fun observeTransactionMetadata(transaction: Transaction): Flow<TransactionMetadata>
@@ -114,18 +137,18 @@ class MetadataRepositoryImpl(
                 replay = 1
             )
 
-    override fun flipTxBookmark(txId: String) =
-        updateMetadata {
+    override suspend fun flipTxBookmark(txId: String) =
+        updateMetadataAndAwait {
             metadataDataSource.flipTxAsBookmarked(txId = txId, key = it)
         }
 
-    override fun createOrUpdateTxNote(txId: String, note: String) =
-        updateMetadata {
+    override suspend fun createOrUpdateTxNote(txId: String, note: String) =
+        updateMetadataAndAwait {
             metadataDataSource.createOrUpdateTxNote(txId = txId, key = it, note = note)
         }
 
-    override fun deleteTxNote(txId: String) =
-        updateMetadata {
+    override suspend fun deleteTxNote(txId: String) =
+        updateMetadataAndAwait {
             metadataDataSource.deleteTxNote(txId = txId, key = it)
         }
 
@@ -134,7 +157,7 @@ class MetadataRepositoryImpl(
             metadataDataSource.markTxMemoAsRead(txId = txId, key = it)
         }
 
-    override fun markTxAsSwap(
+    override suspend fun markTxAsSwap(
         depositAddress: String,
         provider: String,
         origin: SwapAsset,
@@ -144,7 +167,7 @@ class MetadataRepositoryImpl(
         amountOutFormatted: BigDecimal,
         mode: SwapMode,
         status: SwapStatus,
-    ) = updateMetadata {
+    ) = updateMetadataAndAwait {
         metadataDataSource.markTxAsSwap(
             depositAddress = depositAddress,
             provider = provider,
@@ -293,20 +316,31 @@ class MetadataRepositoryImpl(
         }
     }
 
+    private fun updateMetadata(block: suspend (MetadataKey) -> Boolean) {
+        scope.launch { updateMetadataLocked(block) }
+    }
+
+    private suspend fun updateMetadataAndAwait(block: suspend (MetadataKey) -> Boolean): Boolean =
+        scope.async { updateMetadataLocked(block) }.await()
+
+    /**
+     * Runs [block] for the selected account's key and returns whether the change was saved,
+     * logging a failure at error.
+     */
     @Suppress("TooGenericExceptionCaught")
-    private fun updateMetadata(block: suspend (MetadataKey) -> Unit) {
-        scope.launch {
-            mutex.withLock {
-                try {
-                    val selectedAccount = accountDataSource.getSelectedAccount()
-                    val key = getMetadataKey(selectedAccount)
-                    block(key)
-                } catch (e: Exception) {
-                    Twig.error(e) { "Unable to update Metadata" }
+    private suspend fun updateMetadataLocked(block: suspend (MetadataKey) -> Boolean): Boolean =
+        mutex.withLock {
+            try {
+                val selectedAccount = accountDataSource.getSelectedAccount()
+                val key = getMetadataKey(selectedAccount)
+                block(key).also { isSaved ->
+                    if (!isSaved) Twig.error { "Unable to update Metadata, the change was not saved" }
                 }
+            } catch (e: Exception) {
+                Twig.error(e) { "Unable to update Metadata" }
+                false
             }
         }
-    }
 
     private suspend fun getMetadataKey(selectedAccount: WalletAccount): MetadataKey {
         val key = metadataKeyStorageProvider.get(selectedAccount.sdkAccount.accountUuid)

@@ -5,7 +5,8 @@ import co.electriccoin.zcash.ui.common.repository.MetadataRepository
 class FlipTransactionBookmarkUseCase(
     private val metadataRepository: MetadataRepository,
 ) {
-    operator fun invoke(txId: String) {
-        metadataRepository.flipTxBookmark(txId)
-    }
+    /**
+     * Returns whether the bookmark change was saved.
+     */
+    suspend operator fun invoke(txId: String): Boolean = metadataRepository.flipTxBookmark(txId)
 }

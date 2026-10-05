@@ -163,6 +163,19 @@ class MetadataStorageProviderTest {
     }
 
     @Test
+    fun lastModifiedOfReadsTheFileModificationTime() {
+        val file = metadataFile(metadataKey(0, 1).fileIdentifier(), contents = "data")
+        file.setLastModified(LAST_MODIFIED)
+
+        assertEquals(LAST_MODIFIED, provider.lastModifiedOf(file))
+    }
+
+    @Test
+    fun lastModifiedOfThrowsForAMissingFile() {
+        assertFailsWith<NoSuchFileException> { provider.lastModifiedOf(File(metadataDir, "missing")) }
+    }
+
+    @Test
     fun sizeOfThrowsForAMissingFileInsteadOfReportingZero() {
         assertFailsWith<NoSuchFileException> { provider.sizeOf(File(metadataDir, "missing")) }
     }
@@ -261,5 +274,6 @@ class MetadataStorageProviderTest {
     private companion object {
         const val SEED_SIZE = 32
         const val NOW = 1_000L
+        const val LAST_MODIFIED = 1_700_000_000_000L
     }
 }

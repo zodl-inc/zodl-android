@@ -7,8 +7,12 @@ class DeleteTransactionNoteUseCase(
     private val metadataRepository: MetadataRepository,
     private val navigationRouter: NavigationRouter
 ) {
-    operator fun invoke(txId: String) {
-        metadataRepository.deleteTxNote(txId)
+    /**
+     * Deletes the note, leaves the note sheet and returns whether the note was deleted.
+     */
+    suspend operator fun invoke(txId: String): Boolean {
+        val isDeleted = metadataRepository.deleteTxNote(txId)
         navigationRouter.back()
+        return isDeleted
     }
 }

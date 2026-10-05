@@ -18,6 +18,7 @@ import co.electriccoin.zcash.ui.common.provider.MetadataStorageProvider
 import co.electriccoin.zcash.ui.common.provider.SimpleSwapAssetProvider
 import co.electriccoin.zcash.ui.common.provider.runCatchingRecoverable
 import co.electriccoin.zcash.ui.common.serialization.metadata.MetadataKey
+import com.google.crypto.tink.InsecureSecretKeyAccess
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -31,24 +32,32 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.math.BigDecimal
+import java.nio.ByteBuffer
 import java.nio.file.NoSuchFileException
+import java.security.MessageDigest
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.milliseconds
 
+/**
+ * Every update returns whether the change was written to disk. A false result means the edit was
+ * not saved, because the storage is read-only for this read or the write failed.
+ */
 interface MetadataDataSource {
     fun observe(key: MetadataKey): Flow<MetadataV3?>
 
-    suspend fun flipTxAsBookmarked(txId: String, key: MetadataKey)
+    suspend fun flipTxAsBookmarked(txId: String, key: MetadataKey): Boolean
 
     suspend fun createOrUpdateTxNote(
         txId: String,
         note: String,
         key: MetadataKey
-    )
+    ): Boolean
 
-    suspend fun deleteTxNote(txId: String, key: MetadataKey)
+    suspend fun deleteTxNote(txId: String, key: MetadataKey): Boolean
 
-    suspend fun markTxMemoAsRead(txId: String, key: MetadataKey)
+    suspend fun markTxMemoAsRead(txId: String, key: MetadataKey): Boolean
 
     suspend fun markTxAsSwap(
         depositAddress: String,
@@ -61,7 +70,7 @@ interface MetadataDataSource {
         amountOutFormatted: BigDecimal,
         status: SwapStatus,
         key: MetadataKey
-    )
+    ): Boolean
 
     suspend fun updateSwap(
         depositAddress: String,
@@ -71,7 +80,7 @@ interface MetadataDataSource {
         origin: SimpleSwapAsset,
         destination: SimpleSwapAsset,
         key: MetadataKey
-    )
+    ): Boolean
 
     // suspend fun deleteSwap(depositAddress: String, key: MetadataKey)
 
@@ -79,7 +88,7 @@ interface MetadataDataSource {
         tokenTicker: String,
         chainTicker: String,
         key: MetadataKey
-    )
+    ): Boolean
 
     suspend fun delete(key: MetadataKey)
 }
@@ -94,6 +103,17 @@ class MetadataDataSourceImpl(
     private val mutex = Mutex()
 
     private val metadataUpdatePipeline = MutableSharedFlow<Pair<MetadataKey, MetadataV3?>>()
+
+    /**
+     * Non-canonical and set-aside files that failed to decode, remembered for the process lifetime
+     * so every read does not decrypt and log them again. An entry matches only while the file's
+     * path, size and modification time and the key's fingerprint are unchanged, so a changed file,
+     * a different key list or a new process retries it. Such a file is never deleted by a read;
+     * deleting the account's metadata still removes it.
+     */
+    private val undecodableFiles = ConcurrentHashMap.newKeySet<UndecodableFile>()
+
+    private val isFlushFailureLogged = AtomicBoolean(false)
 
     override fun observe(key: MetadataKey) =
         flow {
@@ -214,7 +234,7 @@ class MetadataDataSourceImpl(
         origin: SimpleSwapAsset,
         destination: SimpleSwapAsset,
         key: MetadataKey,
-    ) {
+    ): Boolean =
         mutex.withLock {
             updateMetadata(
                 key = key,
@@ -246,7 +266,6 @@ class MetadataDataSourceImpl(
                 }
             )
         }
-    }
 
     // override suspend fun deleteSwap(depositAddress: String, key: MetadataKey) {
     //     updateMetadata(
@@ -320,15 +339,16 @@ class MetadataDataSourceImpl(
                     .onFailure { e -> Twig.warn(e) { "Failed to create metadata file" } }
                     .getOrNull()
 
+            val keyFingerprint = key.fingerprint()
             if (existingFiles == null || canonicalFile == null) {
-                return@withContext readOnly(existingFiles ?: listOfNotNull(canonicalFile), key)
+                return@withContext readOnly(existingFiles ?: listOfNotNull(canonicalFile), key, keyFingerprint)
             }
 
-            val canonicalRead = readWithRetry(canonicalFile, key)
+            val canonicalRead = readWithRetry(canonicalFile, key, skipCacheFingerprint = null)
             val otherReads =
                 existingFiles
                     .filterNot { it == canonicalFile }
-                    .map { file -> file to readWithRetry(file, key) }
+                    .map { file -> file to readWithRetry(file, key, keyFingerprint) }
             val decodedOthers = otherReads.mapNotNull { (file, read) -> read.decoded()?.let { file to it } }
 
             if (!setAsideIfUndecodable(canonicalRead, canonicalFile)) {
@@ -349,17 +369,31 @@ class MetadataDataSourceImpl(
             }
 
             val merged = (listOfNotNull(canonicalMetadata) + decodedOthers.map { it.second }).mergeOrDefault()
-            if (writeToLocalStorage(merged, key) && syncDirectoryOf(canonicalFile)) {
+            if (writeToLocalStorage(merged, key) && isMergeOnDisk(canonicalFile, key, merged)) {
                 decodedOthers.forEach { (file, _) -> deleteLogged(file) }
             }
             MetadataRead(metadata = merged, isWritable = true)
         }
 
-    private suspend fun readOnly(files: List<File>, key: MetadataKey) =
+    private suspend fun readOnly(files: List<File>, key: MetadataKey, keyFingerprint: String) =
         MetadataRead(
-            metadata = files.mapNotNull { readWithRetry(it, key).decoded() }.mergeOrDefault(),
+            metadata =
+                files
+                    .mapNotNull { file ->
+                        val fingerprint = keyFingerprint.takeIf { file.name != key.fileIdentifier() }
+                        readWithRetry(file, key, fingerprint).decoded()
+                    }.mergeOrDefault(),
             isWritable = false
         )
+
+    /**
+     * Whether the merged result written to [canonicalFile] is safe to rely on before the merged
+     * files go: the directory flush landed, or, when it failed after the atomic move, the canonical
+     * file reads back as exactly [merged]. A flush failure is logged once per process.
+     */
+    private suspend fun isMergeOnDisk(canonicalFile: File, key: MetadataKey, merged: MetadataV3): Boolean =
+        syncDirectoryOf(canonicalFile) ||
+            readWithRetry(canonicalFile, key, skipCacheFingerprint = null).decoded() == merged
 
     /**
      * Sets [canonicalFile] aside when [read] found it undecodable, and returns whether the canonical
@@ -380,8 +414,11 @@ class MetadataDataSourceImpl(
 
     private fun syncDirectoryOf(file: File): Boolean =
         runCatchingRecoverable { metadataProvider.syncDirectoryOf(file) }
-            .onFailure { e -> Twig.warn(e) { "Failed to flush the metadata directory" } }
-            .isSuccess
+            .onFailure { e ->
+                if (isFlushFailureLogged.compareAndSet(false, true)) {
+                    Twig.warn(e) { "Failed to flush the metadata directory" }
+                }
+            }.isSuccess
 
     private fun deleteLogged(file: File) {
         if (!file.delete() && file.exists()) {
@@ -391,15 +428,16 @@ class MetadataDataSourceImpl(
 
     /**
      * Reads [file] up to [READ_ATTEMPTS] attempts in total, retrying only an [IOException] other
-     * than [NoSuchFileException]; see [readOnce] for how each failure is classified.
+     * than [NoSuchFileException]; see [readOnce] for how each failure is classified. A non-null
+     * [skipCacheFingerprint] lets [undecodableFiles] skip a file already known not to decode.
      */
-    private suspend fun readWithRetry(file: File, key: MetadataKey): FileRead {
+    private suspend fun readWithRetry(file: File, key: MetadataKey, skipCacheFingerprint: String?): FileRead {
         var attempt = 1
-        var read = readOnce(file, key, isLastAttempt = attempt >= READ_ATTEMPTS)
+        var read = readOnce(file, key, skipCacheFingerprint, isLastAttempt = attempt >= READ_ATTEMPTS)
         while (read == null) {
             attempt++
             delay(READ_RETRY_DELAY)
-            read = readOnce(file, key, isLastAttempt = attempt >= READ_ATTEMPTS)
+            read = readOnce(file, key, skipCacheFingerprint, isLastAttempt = attempt >= READ_ATTEMPTS)
         }
         return read
     }
@@ -409,30 +447,63 @@ class MetadataDataSourceImpl(
      * is [FileRead.Absent] at once, a [SecurityException] is [FileRead.Unreadable] at once, any
      * other [IOException] returns null to ask for another attempt and is [FileRead.Unreadable] on
      * the last one, and any other exception is [FileRead.Undecodable]. An [Error] or a
-     * [kotlinx.coroutines.CancellationException] is rethrown.
+     * [kotlinx.coroutines.CancellationException] is rethrown. A file found in [undecodableFiles] is
+     * [FileRead.Undecodable] without being decrypted or logged again.
      */
-    private fun readOnce(file: File, key: MetadataKey, isLastAttempt: Boolean): FileRead? {
+    private fun readOnce(
+        file: File,
+        key: MetadataKey,
+        skipCacheFingerprint: String?,
+        isLastAttempt: Boolean
+    ): FileRead? {
+        var signature: UndecodableFile? = null
         val result =
             runCatchingRecoverable {
-                if (metadataStorageProvider.sizeOf(file) == 0L) {
-                    FileRead.Empty
-                } else {
-                    FileRead.Decoded(metadataProvider.readMetadataFromFile(file, key))
+                val size = metadataStorageProvider.sizeOf(file)
+                signature =
+                    skipCacheFingerprint?.let { fingerprint ->
+                        UndecodableFile(file.path, size, metadataStorageProvider.lastModifiedOf(file), fingerprint)
+                    }
+                when {
+                    size == 0L -> FileRead.Empty
+                    signature?.let { it in undecodableFiles } == true -> FileRead.Undecodable
+                    else -> FileRead.Decoded(metadataProvider.readMetadataFromFile(file, key))
                 }
             }
         val error = result.exceptionOrNull() ?: return result.getOrThrow()
-        val read =
-            when (error) {
-                is NoSuchFileException -> FileRead.Absent
-                is SecurityException -> FileRead.Unreadable
-                is IOException -> if (isLastAttempt) FileRead.Unreadable else null
-                else -> FileRead.Undecodable
-            }
+        val read = classifyReadFailure(error, isLastAttempt)
+        if (read == FileRead.Undecodable) {
+            signature?.let { undecodableFiles += it }
+        }
         if (read == FileRead.Unreadable || read == FileRead.Undecodable) {
             Twig.warn(error) { "Failed to read metadata" }
         }
         return read
     }
+
+    /**
+     * A SHA-256 over every entry of this key, length-prefixed and in order, so a cache can tell key
+     * lists apart without holding raw key bytes.
+     */
+    @OptIn(ExperimentalStdlibApi::class)
+    private fun MetadataKey.fingerprint(): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        val access = InsecureSecretKeyAccess.get()
+        bytes.forEach { entry ->
+            val raw = entry.toByteArray(access)
+            digest.update(ByteBuffer.allocate(Int.SIZE_BYTES).putInt(raw.size).array())
+            digest.update(raw)
+        }
+        return digest.digest().toHexString()
+    }
+
+    private fun classifyReadFailure(error: Throwable, isLastAttempt: Boolean): FileRead? =
+        when (error) {
+            is NoSuchFileException -> FileRead.Absent
+            is SecurityException -> FileRead.Unreadable
+            is IOException -> if (isLastAttempt) FileRead.Unreadable else null
+            else -> FileRead.Undecodable
+        }
 
     /**
      * Returns whether the write landed. A failed write leaves the previous file content intact.
@@ -516,28 +587,31 @@ class MetadataDataSourceImpl(
     private suspend fun updateMetadata(
         key: MetadataKey,
         transform: (AccountMetadataV3) -> AccountMetadataV3
-    ) = withContext(ioDispatcher) {
-        val read = readMetadata(key)
-        if (!read.isWritable) {
-            Twig.error { "Skipping the metadata update, the metadata storage is unavailable" }
-            return@withContext
+    ): Boolean =
+        withContext(ioDispatcher) {
+            val read = readMetadata(key)
+            if (!read.isWritable) {
+                Twig.error { "Skipping the metadata update, the metadata storage is unavailable" }
+                return@withContext false
+            }
+            val metadata = read.metadata
+
+            val accountMetadata = metadata.accountMetadata
+
+            val updatedMetadata =
+                metadata.copy(
+                    lastUpdated = Instant.now(),
+                    accountMetadata = transform(accountMetadata)
+                )
+
+            val isWritten = writeToLocalStorage(updatedMetadata, key)
+            if (isWritten) {
+                metadataUpdatePipeline.emit(key to updatedMetadata)
+            } else {
+                Twig.error { "Skipping the metadata update, the write failed" }
+            }
+            isWritten
         }
-        val metadata = read.metadata
-
-        val accountMetadata = metadata.accountMetadata
-
-        val updatedMetadata =
-            metadata.copy(
-                lastUpdated = Instant.now(),
-                accountMetadata = transform(accountMetadata)
-            )
-
-        if (writeToLocalStorage(updatedMetadata, key)) {
-            metadataUpdatePipeline.emit(key to updatedMetadata)
-        } else {
-            Twig.error { "Skipping the metadata update, the write failed" }
-        }
-    }
 
     private fun List<MetadataV3>.mergeOrDefault(): MetadataV3 =
         if (isEmpty()) defaultMetadata() else reduce { merged, next -> merged.merge(next) }
@@ -555,6 +629,17 @@ class MetadataDataSourceImpl(
                 simpleSwapAssetProvider.get(data[0], data[1])
             }.toSet()
 }
+
+/**
+ * A file that failed to decode, as [MetadataDataSourceImpl] remembers it: its path, size and
+ * modification time, and a fingerprint of the key it was tried with, never the key itself.
+ */
+private data class UndecodableFile(
+    val path: String,
+    val size: Long,
+    val lastModified: Long,
+    val keyFingerprint: String
+)
 
 /**
  * The metadata a read produced and whether it may be written back, which it may not when the

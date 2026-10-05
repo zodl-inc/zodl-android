@@ -7,8 +7,12 @@ class CreateOrUpdateTransactionNoteUseCase(
     private val metadataRepository: MetadataRepository,
     private val navigationRouter: NavigationRouter
 ) {
-    operator fun invoke(txId: String, note: String) {
-        metadataRepository.createOrUpdateTxNote(txId, note.trim())
+    /**
+     * Saves the note, leaves the note sheet and returns whether the note was saved.
+     */
+    suspend operator fun invoke(txId: String, note: String): Boolean {
+        val isSaved = metadataRepository.createOrUpdateTxNote(txId, note.trim())
         navigationRouter.back()
+        return isSaved
     }
 }

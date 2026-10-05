@@ -41,6 +41,8 @@ import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /**
  * A hardware-wallet account can have more than one metadata file on disk (MOB-2039): these
@@ -59,6 +61,7 @@ class MetadataDataSourceTest {
         mockk<MetadataStorageProvider> {
             every { getOrCreateStorageFile(key) } returns canonicalFile
             every { sizeOf(any()) } returns 1L
+            every { lastModifiedOf(any()) } returns 1L
         }
     private val metadataProvider = mockk<MetadataProvider>(relaxed = true)
 
@@ -600,7 +603,7 @@ class MetadataDataSourceTest {
         }
 
     @Test
-    fun aFailedDirectoryFlushDeletesNothing() =
+    fun aFailedDirectoryFlushDeletesNothingWhenTheCanonicalFileReadsBackStale() =
         runTest {
             every { metadataProvider.syncDirectoryOf(any()) } throws IOException()
 
@@ -611,6 +614,158 @@ class MetadataDataSourceTest {
                 metadataProvider.syncDirectoryOf(canonicalFile)
             }
             verify(exactly = 0) { legacyFile.delete() }
+        }
+
+    @Test
+    fun aFailedDirectoryFlushDeletesNothingWhenTheCanonicalFileNoLongerDecodes() =
+        runTest {
+            every { metadataProvider.syncDirectoryOf(any()) } throws IOException()
+            every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile, legacyFile)
+            every { metadataProvider.readMetadataFromFile(canonicalFile, key) } returns
+                metadata(lastUpdated = 1) andThenThrows DecryptionException()
+            every { metadataProvider.readMetadataFromFile(legacyFile, key) } returns
+                metadata(lastUpdated = 2, read = listOf("r1"))
+
+            observe()
+
+            verify(exactly = 2) { metadataProvider.readMetadataFromFile(canonicalFile, key) }
+            verify(exactly = 0) { legacyFile.delete() }
+        }
+
+    @Test
+    fun aFailedDirectoryFlushStillDeletesTheMergedFilesOnceTheCanonicalFileReadsBackMerged() =
+        runTest {
+            val written = slot<MetadataV3>()
+            every { metadataProvider.syncDirectoryOf(any()) } throws IOException()
+            every { metadataProvider.writeMetadataToFile(canonicalFile, capture(written), key) } just Runs
+            every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile, legacyFile)
+            every { metadataProvider.readMetadataFromFile(canonicalFile, key) } answers {
+                if (written.isCaptured) written.captured else metadata(lastUpdated = 1)
+            }
+            every { metadataProvider.readMetadataFromFile(legacyFile, key) } returns
+                metadata(lastUpdated = 2, read = listOf("r1"))
+
+            val result = observe()
+
+            assertEquals(written.captured, result)
+            verify(exactly = 1) { legacyFile.delete() }
+        }
+
+    @Test
+    fun updatesReportWhetherTheChangeWasSaved() =
+        runTest {
+            every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile)
+            every { metadataProvider.readMetadataFromFile(canonicalFile, key) } returns metadata(lastUpdated = 1)
+            val dataSource = dataSource()
+
+            assertTrue(dataSource.flipTxAsBookmarked("tx1", key))
+            assertTrue(dataSource.createOrUpdateTxNote("tx1", "note", key))
+            assertTrue(dataSource.deleteTxNote("tx1", key))
+            assertTrue(dataSource.markTxMemoAsRead("tx1", key))
+
+            every { metadataProvider.writeMetadataToFile(any(), any(), any()) } throws IOException("disk full")
+
+            assertFalse(dataSource.flipTxAsBookmarked("tx1", key))
+            assertFalse(dataSource.createOrUpdateTxNote("tx1", "note", key))
+            assertFalse(dataSource.deleteTxNote("tx1", key))
+            assertFalse(dataSource.markTxMemoAsRead("tx1", key))
+            assertFalse(
+                dataSource.updateSwap(
+                    depositAddress = "s1",
+                    amountOutFormatted = BigDecimal.ONE,
+                    status = SwapStatus.SUCCESS,
+                    mode = SwapMode.EXACT_INPUT,
+                    origin = swapAsset(),
+                    destination = swapAsset(),
+                    key = key
+                )
+            )
+        }
+
+    @Test
+    fun aReadOnlyUpdateReportsThatNothingWasSaved() =
+        runTest {
+            every { metadataStorageProvider.getStorageFiles(key) } throws IOException()
+            every { metadataProvider.readMetadataFromFile(canonicalFile, key) } returns metadata(lastUpdated = 1)
+
+            assertFalse(dataSource().createOrUpdateTxNote("tx1", "note", key))
+        }
+
+    @Test
+    fun anUndecodableLegacyFileIsNotDecryptedAgainWhileNothingChanged() =
+        runTest {
+            every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile, legacyFile)
+            every { metadataProvider.readMetadataFromFile(canonicalFile, key) } returns metadata(lastUpdated = 1)
+            every { metadataProvider.readMetadataFromFile(legacyFile, key) } throws DecryptionException()
+            val dataSource = dataSource()
+
+            dataSource.observe(key).first { it != null }
+            dataSource.observe(key).first { it != null }
+            dataSource.markTxMemoAsRead("tx1", key)
+
+            verify(exactly = 1) { metadataProvider.readMetadataFromFile(legacyFile, key) }
+            verify(exactly = 0) { legacyFile.delete() }
+        }
+
+    @Test
+    fun anUndecodableLegacyFileIsTriedAgainOnceItChanges() =
+        runTest {
+            every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile, legacyFile)
+            every { metadataProvider.readMetadataFromFile(canonicalFile, key) } returns metadata(lastUpdated = 1)
+            every { metadataProvider.readMetadataFromFile(legacyFile, key) } throws DecryptionException()
+            val dataSource = dataSource()
+
+            dataSource.observe(key).first { it != null }
+            every { metadataStorageProvider.lastModifiedOf(legacyFile) } returns 2L
+            dataSource.observe(key).first { it != null }
+            every { metadataStorageProvider.sizeOf(legacyFile) } returns 2L
+            dataSource.observe(key).first { it != null }
+
+            verify(exactly = 3) { metadataProvider.readMetadataFromFile(legacyFile, key) }
+        }
+
+    @Test
+    fun anUndecodableLegacyFileIsTriedAgainWithADifferentKeyList() =
+        runTest {
+            val longerKey = metadataKey(0, 1, 2)
+            every { metadataStorageProvider.getOrCreateStorageFile(longerKey) } returns canonicalFile
+            every { metadataStorageProvider.getStorageFiles(any()) } returns listOf(canonicalFile, legacyFile)
+            every { metadataProvider.readMetadataFromFile(canonicalFile, any()) } returns metadata(lastUpdated = 1)
+            every { metadataProvider.readMetadataFromFile(legacyFile, any()) } throws DecryptionException()
+            val dataSource = dataSource()
+
+            dataSource.observe(key).first { it != null }
+            dataSource.observe(longerKey).first { it != null }
+
+            verify(exactly = 1) { metadataProvider.readMetadataFromFile(legacyFile, key) }
+            verify(exactly = 1) { metadataProvider.readMetadataFromFile(legacyFile, longerKey) }
+        }
+
+    @Test
+    fun anUndecodableLegacyFileIsTriedAgainInANewProcess() =
+        runTest {
+            every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile, legacyFile)
+            every { metadataProvider.readMetadataFromFile(canonicalFile, key) } returns metadata(lastUpdated = 1)
+            every { metadataProvider.readMetadataFromFile(legacyFile, key) } throws DecryptionException()
+
+            dataSource().observe(key).first { it != null }
+            dataSource().observe(key).first { it != null }
+
+            verify(exactly = 2) { metadataProvider.readMetadataFromFile(legacyFile, key) }
+        }
+
+    @Test
+    fun anUndecodableCanonicalFileIsNeverSkipped() =
+        runTest {
+            every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile)
+            every { metadataStorageProvider.setAsideUndecodable(canonicalFile) } returns false
+            every { metadataProvider.readMetadataFromFile(canonicalFile, key) } throws DecryptionException()
+            val dataSource = dataSource()
+
+            dataSource.observe(key).first { it != null }
+            dataSource.observe(key).first { it != null }
+
+            verify(exactly = 2) { metadataProvider.readMetadataFromFile(canonicalFile, key) }
         }
 
     @Test

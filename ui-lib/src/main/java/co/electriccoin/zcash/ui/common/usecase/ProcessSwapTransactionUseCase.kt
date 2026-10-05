@@ -31,7 +31,7 @@ class ProcessSwapTransactionUseCase(
     //     }
     // }
 
-    private fun saveSwapToMetadata(transactionProposal: SwapTransactionProposal) {
+    private suspend fun saveSwapToMetadata(transactionProposal: SwapTransactionProposal) {
         metadataRepository.markTxAsSwap(
             depositAddress = transactionProposal.destination.address,
             provider = transactionProposal.quote.provider,
