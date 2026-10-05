@@ -390,10 +390,6 @@ internal fun List<TransactionSubmitResult>.toSubmitResult(): SubmitResult {
             )
         }
 
-        firstNonGrpcFailure != null -> {
-            SubmitResult.Partial(txIds = txIds, statuses = map { it.statusDescription() })
-        }
-
         hasNotAttempted -> {
             // The SDK can only retry a transaction after submit() registered an endpoint for it.
             // Keeping an untouched leg pending would promise a retry that cannot happen.
@@ -401,6 +397,9 @@ internal fun List<TransactionSubmitResult>.toSubmitResult(): SubmitResult {
         }
 
         else -> {
+            // Every non-accepted transaction was attempted, so its SDK retry plan remains active.
+            // This includes server rejections: reporting a terminal partial failure would invite a
+            // manual retry while background resubmission can still broadcast the same transaction.
             SubmitResult.GrpcFailure(
                 txIds = txIds,
                 description = grpcFailureDescription,

@@ -603,11 +603,7 @@ class MultiEndpointTransactionSubmitterTest {
     }
 
     @Test
-    fun partialWithNonGrpcFailureRedactsServerDescription() {
-        // A multi-transaction proposal where one transaction broadcast and another was rejected for a
-        // real (non-gRPC) reason is Partial. The rejected transaction's status carries only the code:
-        // the server-provided description must not leak into the partial-failure support email.
-        // Matches the iOS Broadcaster integration, which redacts to "rejected code: <code>".
+    fun acceptedThenNonGrpcFailureMapsToPendingWhileRetryPlanRemainsActive() {
         val firstTransaction = transaction(27)
         val secondTransaction = transaction(28)
 
@@ -618,9 +614,35 @@ class MultiEndpointTransactionSubmitterTest {
             ).toSubmitResult()
 
         assertEquals(
+            SubmitResult.GrpcFailure(
+                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString())
+            ),
+            result
+        )
+    }
+
+    @Test
+    fun acceptedThenRejectedThenNotAttemptedRemainsPartial() {
+        val firstTransaction = transaction(29)
+        val secondTransaction = transaction(30)
+        val thirdTransaction = transaction(31)
+
+        val result =
+            listOf(
+                TransactionSubmitResult.Success(firstTransaction.txId),
+                failure(secondTransaction, code = 18, grpcError = false),
+                TransactionSubmitResult.NotAttempted(thirdTransaction.txId)
+            ).toSubmitResult()
+
+        assertEquals(
             SubmitResult.Partial(
-                txIds = listOf(firstTransaction.txIdString(), secondTransaction.txIdString()),
-                statuses = listOf("success", "rejected code: 18")
+                txIds =
+                    listOf(
+                        firstTransaction.txIdString(),
+                        secondTransaction.txIdString(),
+                        thirdTransaction.txIdString()
+                    ),
+                statuses = listOf("success", "rejected code: 18", "notAttempted")
             ),
             result
         )
