@@ -16,8 +16,8 @@ import co.electriccoin.zcash.ui.common.model.metadata.SwapsMetadataV3
 import co.electriccoin.zcash.ui.common.provider.MetadataProvider
 import co.electriccoin.zcash.ui.common.provider.MetadataStorageProvider
 import co.electriccoin.zcash.ui.common.provider.SimpleSwapAssetProvider
+import co.electriccoin.zcash.ui.common.provider.runCatchingRecoverable
 import co.electriccoin.zcash.ui.common.serialization.metadata.MetadataKey
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -305,16 +305,17 @@ class MetadataDataSourceImpl(
      *
      * The result is read-only, and nothing is written or deleted, when the files cannot be listed,
      * the canonical file cannot be created, the canonical file does not decode and cannot be set
-     * aside, or the canonical file stays unreadable after every retry.
+     * aside, or the canonical file is unreadable: a [SecurityException] on the first attempt, or
+     * another [IOException] after every retry.
      */
     private suspend fun readMetadata(key: MetadataKey): MetadataRead =
         withContext(ioDispatcher) {
             val existingFiles =
-                runCatching { metadataStorageProvider.getStorageFiles(key) }
+                runCatchingRecoverable { metadataStorageProvider.getStorageFiles(key) }
                     .onFailure { e -> Twig.warn(e) { "Failed to list metadata files" } }
                     .getOrNull()
             val canonicalFile =
-                runCatching { metadataStorageProvider.getOrCreateStorageFile(key) }
+                runCatchingRecoverable { metadataStorageProvider.getOrCreateStorageFile(key) }
                     .onFailure { e -> Twig.warn(e) { "Failed to create metadata file" } }
                     .getOrNull()
 
@@ -329,7 +330,7 @@ class MetadataDataSourceImpl(
                     .map { file -> file to readWithRetry(file, key) }
             val decodedOthers = otherReads.mapNotNull { (file, read) -> read.decoded()?.let { file to it } }
 
-            if (!isUsableAsCanonical(canonicalRead, canonicalFile)) {
+            if (!setAsideIfUndecodable(canonicalRead, canonicalFile)) {
                 return@withContext MetadataRead(
                     metadata = decodedOthers.map { it.second }.mergeOrDefault(),
                     isWritable = false
@@ -360,10 +361,11 @@ class MetadataDataSourceImpl(
         )
 
     /**
-     * Whether [canonicalFile] may be written over after [read]; an undecodable file first has to
-     * be set aside.
+     * Sets [canonicalFile] aside when [read] found it undecodable, and returns whether the canonical
+     * name may now be written: true for a decoded, absent or empty file and for one set aside,
+     * false for an unreadable file or a failed set-aside.
      */
-    private fun isUsableAsCanonical(read: FileRead, canonicalFile: File): Boolean =
+    private fun setAsideIfUndecodable(read: FileRead, canonicalFile: File): Boolean =
         when (read) {
             is FileRead.Decoded, FileRead.Absent, FileRead.Empty -> true
             FileRead.Undecodable -> setAsideUndecodable(canonicalFile)
@@ -371,12 +373,12 @@ class MetadataDataSourceImpl(
         }
 
     private fun setAsideUndecodable(file: File): Boolean =
-        runCatching { check(metadataStorageProvider.setAsideUndecodable(file)) { "Rename failed" } }
+        runCatchingRecoverable { check(metadataStorageProvider.setAsideUndecodable(file)) { "Rename failed" } }
             .onFailure { e -> Twig.warn(e) { "Failed to set the undecodable metadata file aside" } }
             .isSuccess
 
     private fun syncDirectoryOf(file: File): Boolean =
-        runCatching { metadataProvider.syncDirectoryOf(file) }
+        runCatchingRecoverable { metadataProvider.syncDirectoryOf(file) }
             .onFailure { e -> Twig.warn(e) { "Failed to flush the metadata directory" } }
             .isSuccess
 
@@ -387,7 +389,8 @@ class MetadataDataSourceImpl(
     }
 
     /**
-     * Reads [file], retrying only an [IOException], up to [READ_ATTEMPTS] attempts in total.
+     * Reads [file] up to [READ_ATTEMPTS] attempts in total, retrying only an [IOException] other
+     * than [NoSuchFileException]; see [readOnce] for how each failure is classified.
      */
     private suspend fun readWithRetry(file: File, key: MetadataKey): FileRead {
         var attempt = 1
@@ -401,14 +404,15 @@ class MetadataDataSourceImpl(
     }
 
     /**
-     * One read of [file], sized first so an empty file is never decoded. Returns null when an
-     * [IOException] asks for another attempt. A missing file is [FileRead.Absent], an [IOException]
-     * on the last attempt or a [SecurityException] is [FileRead.Unreadable], and any other
-     * exception is [FileRead.Undecodable]. An [Error] is rethrown.
+     * One read of [file], sized first so an empty file is never decoded. A [NoSuchFileException]
+     * is [FileRead.Absent] at once, a [SecurityException] is [FileRead.Unreadable] at once, any
+     * other [IOException] returns null to ask for another attempt and is [FileRead.Unreadable] on
+     * the last one, and any other exception is [FileRead.Undecodable]. An [Error] or a
+     * [kotlinx.coroutines.CancellationException] is rethrown.
      */
     private fun readOnce(file: File, key: MetadataKey, isLastAttempt: Boolean): FileRead? {
         val result =
-            runCatching {
+            runCatchingRecoverable {
                 if (metadataStorageProvider.sizeOf(file) == 0L) {
                     FileRead.Empty
                 } else {
@@ -418,7 +422,6 @@ class MetadataDataSourceImpl(
         val error = result.exceptionOrNull() ?: return result.getOrThrow()
         val read =
             when (error) {
-                is Error, is CancellationException -> throw error
                 is NoSuchFileException -> FileRead.Absent
                 is SecurityException -> FileRead.Unreadable
                 is IOException -> if (isLastAttempt) FileRead.Unreadable else null
@@ -435,7 +438,7 @@ class MetadataDataSourceImpl(
      */
     private suspend fun writeToLocalStorage(metadata: MetadataV3, key: MetadataKey): Boolean =
         withContext(ioDispatcher) {
-            runCatching {
+            runCatchingRecoverable {
                 val file = metadataStorageProvider.getOrCreateStorageFile(key)
                 metadataProvider.writeMetadataToFile(file, metadata, key)
             }.onFailure { e -> Twig.warn(e) { "Failed to write metadata" } }
@@ -579,7 +582,10 @@ private sealed interface FileRead {
     /** The file was read but does not decrypt or parse. */
     data object Undecodable : FileRead
 
-    /** The file's size or content could not be read, after every retry. */
+    /**
+     * The file's size or content could not be read: a [SecurityException] on the first attempt,
+     * or another [IOException] after every retry.
+     */
     data object Unreadable : FileRead
 }
 

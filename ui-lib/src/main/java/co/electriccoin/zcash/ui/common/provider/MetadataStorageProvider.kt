@@ -3,6 +3,7 @@ package co.electriccoin.zcash.ui.common.provider
 import android.content.Context
 import co.electriccoin.zcash.spackle.Twig
 import co.electriccoin.zcash.ui.common.serialization.metadata.MetadataKey
+import kotlinx.coroutines.CancellationException
 import java.io.File
 import java.io.IOException
 import java.nio.file.FileAlreadyExistsException
@@ -86,7 +87,7 @@ class MetadataStorageProviderImpl(
         }
 
     override fun deleteStorageFiles(key: MetadataKey) {
-        runCatching {
+        runCatchingRecoverable {
             val dir = getOrCreateMetadataDir()
             val dirFiles = dir.listFiles()
             if (dirFiles == null) Twig.error { "Failed to list metadata files for deletion" }
@@ -116,3 +117,10 @@ private const val UNDECODABLE_INFIX = ".undecodable-"
  * The suffix of the temporary file a metadata write lands in before it replaces the target.
  */
 internal const val METADATA_TEMP_FILE_SUFFIX = ".tmp"
+
+/**
+ * [runCatching] for metadata file work that rethrows an [Error] or a [CancellationException]
+ * instead of turning it into a failed [Result].
+ */
+internal inline fun <T> runCatchingRecoverable(block: () -> T): Result<T> =
+    runCatching(block).onFailure { e -> if (e is Error || e is CancellationException) throw e }

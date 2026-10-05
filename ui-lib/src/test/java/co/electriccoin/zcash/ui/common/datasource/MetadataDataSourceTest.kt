@@ -697,6 +697,17 @@ class MetadataDataSourceTest {
         }
 
     @Test
+    fun anErrorWhileWritingIsRethrown() =
+        runTest {
+            every { metadataProvider.writeMetadataToFile(any(), any(), any()) } throws OutOfMemoryError()
+
+            assertFailsWith<OutOfMemoryError> {
+                merge(canonical = metadata(lastUpdated = 1), legacy = metadata(lastUpdated = 2))
+            }
+            verify(exactly = 0) { legacyFile.delete() }
+        }
+
+    @Test
     fun aSecurityExceptionMakesTheReadReadOnlyWithoutSettingTheFileAside() =
         runTest {
             every { metadataStorageProvider.getStorageFiles(key) } returns listOf(canonicalFile, legacyFile)
@@ -750,7 +761,6 @@ class MetadataDataSourceTest {
             ioDispatcher = StandardTestDispatcher(testScheduler)
         )
 
-    @Suppress("LongParameterList")
     private fun metadata(
         lastUpdated: Long,
         bookmarked: List<BookmarkMetadataV3> = emptyList(),

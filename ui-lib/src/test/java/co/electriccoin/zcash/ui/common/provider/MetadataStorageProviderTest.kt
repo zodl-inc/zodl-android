@@ -198,11 +198,14 @@ class MetadataStorageProviderTest {
                 metadataFile("$canonicalName.tmp", contents = "partial"),
                 metadataFile(legacyName, contents = "legacy"),
             )
-        assumeTrue(metadataDir.setReadable(false) && metadataDir.listFiles() == null)
+        try {
+            assumeTrue(metadataDir.setReadable(false) && metadataDir.listFiles() == null)
 
-        provider.deleteStorageFiles(key)
+            provider.deleteStorageFiles(key)
+        } finally {
+            metadataDir.setReadable(true)
+        }
 
-        metadataDir.setReadable(true)
         assertEquals(emptyList(), namedFiles.filter { it.exists() })
     }
 
