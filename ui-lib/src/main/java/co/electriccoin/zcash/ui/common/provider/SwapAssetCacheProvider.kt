@@ -39,7 +39,6 @@ class SwapAssetCacheProviderImpl(
                     assetId = it.assetId,
                     tokenTicker = it.tokenTicker,
                     chainTicker = it.chainTicker,
-                    contractAddress = it.contractAddress,
                     decimals = it.decimals,
                 )
             }
@@ -53,7 +52,6 @@ class SwapAssetCacheProviderImpl(
             tokenIcon = tokenIconProvider.getIcon(tokenTicker),
             usdPrice = null,
             assetId = assetId,
-            contractAddress = contractAddress,
             decimals = decimals,
             blockchain = blockchainProvider.getBlockchain(chainTicker),
         )
@@ -63,6 +61,7 @@ class SwapAssetCacheProviderImpl(
         val assetId: String,
         val tokenTicker: String,
         val chainTicker: String,
+        // Kept only so caches written before SwapAsset dropped this field still decode.
         val contractAddress: String? = null,
         val decimals: Int,
     )
