@@ -114,6 +114,7 @@ fun ScanView(
     validationResult: ScanValidationState,
     onPaste: (() -> Unit)? = null,
     invalidQrText: String? = null,
+    infoText: String? = null,
 ) = ZcashTheme(appearanceMode = AppearanceMode.DARK) {
     // forces dark theme for this screen
     val permissionState =
@@ -162,6 +163,7 @@ fun ScanView(
                 onScanStateChange = onScanStateChange,
                 onPaste = onPaste,
                 invalidQrText = invalidQrText,
+                infoText = infoText,
                 permissionState = permissionState,
                 scanState = scanState,
                 setScanState = setScanState,
@@ -195,6 +197,7 @@ fun ScanBottomItems(
     modifier: Modifier = Modifier,
     onPaste: (() -> Unit)? = null,
     invalidQrText: String? = null,
+    infoText: String? = null,
 ) {
     Column(modifier) {
         var failureText: String? = null
@@ -226,22 +229,24 @@ fun ScanBottomItems(
                 }
             }
 
-        if (failureText != null) {
+        // A failure takes the place of the info text while it is shown.
+        val messageText = failureText ?: infoText
+        if (messageText != null) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Image(painter = painterResource(R.drawable.ic_scan_info), contentDescription = failureText)
+                Image(painter = painterResource(R.drawable.ic_scan_info), contentDescription = messageText)
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
-                    text = failureText,
+                    text = messageText,
                     style = ZashiTypography.textXs,
                     color = ZashiColors.Text.textPrimary,
                     fontWeight = FontWeight.Medium,
                     modifier =
                         Modifier
                             .weight(1f)
-                            .testTag(ScanTag.FAILED_TEXT_STATE)
+                            .testTag(if (failureText != null) ScanTag.FAILED_TEXT_STATE else ScanTag.INFO_TEXT)
                 )
             }
         }
@@ -321,6 +326,7 @@ private fun ScanMainContent(
     onScanStateChange: (ScanScreenState) -> Unit,
     onPaste: (() -> Unit)?,
     invalidQrText: String?,
+    infoText: String?,
     permissionState: PermissionState,
     scanState: ScanScreenState,
     setScanState: (ScanScreenState) -> Unit,
@@ -552,6 +558,7 @@ private fun ScanMainContent(
                 scanState = scanState,
                 onPaste = onPaste,
                 invalidQrText = invalidQrText,
+                infoText = infoText,
                 modifier =
                     Modifier
                         .fillMaxWidth()

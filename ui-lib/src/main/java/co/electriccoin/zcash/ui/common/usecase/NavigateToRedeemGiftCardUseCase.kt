@@ -4,10 +4,11 @@ import co.electriccoin.zcash.ui.NavigationRouter
 import co.electriccoin.zcash.ui.common.repository.GiftCardLinkStore
 import co.electriccoin.zcash.ui.common.repository.GiftCardRepository
 import co.electriccoin.zcash.ui.screen.redeemgift.RedeemGiftArgs
+import co.electriccoin.zcash.ui.screen.redeemgift.ScanGiftCardArgs
 
 /**
- * Routes gift card links into the redeem flow. The link itself is stashed in [GiftCardLinkStore] and only its id
- * travels in the navigation route.
+ * Routes gift card links scanned, picked from an image or pasted inside the app into the redeem flow. The link itself
+ * is stashed in [GiftCardLinkStore] and only its id travels in the navigation route.
  */
 class NavigateToRedeemGiftCardUseCase(
     private val giftCardRepository: GiftCardRepository,
@@ -22,10 +23,12 @@ class NavigateToRedeemGiftCardUseCase(
     fun replaceWithRedeem(link: String) = navigationRouter.replace(RedeemGiftArgs(giftCardLinkStore.stash(link)))
 
     /**
-     * Opens the redeem screen for the link that arrived through an app link, if one is waiting.
+     * Opens the gift card scanner, asking the user to scan the card in the app, if a gift card link arrived from
+     * outside the app. That link itself is never redeemed, see [HandleExternalLinkUseCase].
      */
-    fun openPendingAppLink() {
-        val id = giftCardLinkStore.consumePendingAppLinkId() ?: return
-        navigationRouter.forward(RedeemGiftArgs(id))
+    fun openRequestedInAppScan() {
+        if (giftCardLinkStore.consumeInAppScanRequest()) {
+            navigationRouter.forward(ScanGiftCardArgs(isFromExternalLink = true))
+        }
     }
 }

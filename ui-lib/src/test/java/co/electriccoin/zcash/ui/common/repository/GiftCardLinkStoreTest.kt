@@ -26,26 +26,18 @@ class GiftCardLinkStoreTest {
     }
 
     @Test
-    fun pendingAppLinkIsConsumedOnce() {
+    fun inAppScanRequestIsConsumedOnce() {
         val store = GiftCardLinkStoreImpl()
-        store.setPendingAppLink(LINK)
+        assertFalse(store.isInAppScanRequested.value)
+        assertFalse(store.consumeInAppScanRequest())
 
-        val id = requireNotNull(store.consumePendingAppLinkId())
-        assertNull(store.consumePendingAppLinkId())
-        assertNull(store.pendingAppLinkId.value)
-        assertEquals(LINK, store.take(id))
-    }
+        store.requestInAppScan()
+        store.requestInAppScan()
 
-    @Test
-    fun newerPendingAppLinkReplacesAndForgetsTheOlderOne() {
-        val store = GiftCardLinkStoreImpl()
-        store.setPendingAppLink(LINK)
-        val olderId = requireNotNull(store.pendingAppLinkId.value)
-
-        store.setPendingAppLink(OTHER_LINK)
-
-        assertNull(store.take(olderId))
-        assertEquals(OTHER_LINK, store.take(requireNotNull(store.consumePendingAppLinkId())))
+        assertTrue(store.isInAppScanRequested.value)
+        assertTrue(store.consumeInAppScanRequest())
+        assertFalse(store.consumeInAppScanRequest())
+        assertFalse(store.isInAppScanRequested.value)
     }
 
     @Test
@@ -62,6 +54,5 @@ class GiftCardLinkStoreTest {
 
     private companion object {
         const val LINK = "https://gift.zodl.com/#v=1&key=zgift1test&height=3100000"
-        const val OTHER_LINK = "https://gift.zodl.com/#v=1&key=zgift1other&height=3100000"
     }
 }

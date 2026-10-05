@@ -17,7 +17,7 @@ import kotlinx.serialization.Serializable
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
-fun ScanGiftCardScreen() {
+fun ScanGiftCardScreen(args: ScanGiftCardArgs) {
     val vm = koinViewModel<ScanGiftCardVM>()
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -44,8 +44,15 @@ fun ScanGiftCardScreen() {
         validationResult = state,
         onPaste = { vm.onPaste() },
         invalidQrText = stringResource(R.string.redeemGift_scan_invalid),
+        infoText = if (args.isFromExternalLink) stringResource(R.string.redeemGift_scan_externalLink) else null,
     )
 }
 
+/**
+ * @param isFromExternalLink whether the scanner was opened because a gift card link arrived from outside the app. That
+ * link is never redeemed: the scanner asks the user to scan the card with the app instead.
+ */
 @Serializable
-data object ScanGiftCardArgs
+data class ScanGiftCardArgs(
+    val isFromExternalLink: Boolean = false
+)

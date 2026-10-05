@@ -325,7 +325,7 @@ fun NavGraphBuilder.walletNavGraph(
         dialogComposable<BalanceBreakdownArgs> { BalanceBreakdownScreen() }
         composable<CrashReportOptIn> { AndroidCrashReportOptIn() }
         composable<ThirdPartyScan> { AndroidThirdPartyScan() }
-        composable<ScanGiftCardArgs> { ScanGiftCardScreen() }
+        composable<ScanGiftCardArgs> { ScanGiftCardScreen(it.toRoute()) }
         composable<RedeemGiftArgs> { RedeemGiftScreen(it.toRoute()) }
         dialogComposable<SwapAssetPickerArgs> { SwapAssetPickerScreen(it.toRoute()) }
         dialogComposable<SwapBlockchainPickerArgs> { SwapBlockchainPickerScreen(it.toRoute()) }

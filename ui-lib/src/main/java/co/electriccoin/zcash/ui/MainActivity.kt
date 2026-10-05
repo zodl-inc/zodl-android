@@ -31,7 +31,7 @@ import co.electriccoin.zcash.ui.common.compose.BindCompLocalProvider
 import co.electriccoin.zcash.ui.common.compose.DisableScreenTimeout
 import co.electriccoin.zcash.ui.common.extension.setContentCompat
 import co.electriccoin.zcash.ui.common.migration.MigrationAppHooks
-import co.electriccoin.zcash.ui.common.repository.GiftCardLinkStore
+import co.electriccoin.zcash.ui.common.usecase.HandleExternalLinkUseCase
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationUIState
 import co.electriccoin.zcash.ui.common.viewmodel.AuthenticationViewModel
 import co.electriccoin.zcash.ui.common.viewmodel.OldHomeViewModel
@@ -47,7 +47,6 @@ import co.electriccoin.zcash.ui.screen.authentication.RETRY_TRIGGER_DELAY
 import co.electriccoin.zcash.ui.screen.authentication.WrapAuthentication
 import co.electriccoin.zcash.ui.screen.authentication.view.AnimationConstants
 import co.electriccoin.zcash.ui.screen.authentication.view.WelcomeAnimationAutostart
-import co.electriccoin.zcash.ui.screen.scan.thirdparty.ThirdPartyScan
 import co.electriccoin.zcash.ui.screen.theme.ThemeVM
 import co.electriccoin.zcash.ui.screen.warning.viewmodel.StorageCheckViewModel
 import co.electriccoin.zcash.work.WorkIds
@@ -80,9 +79,8 @@ class MainActivity : FragmentActivity() {
 
     val configurationOverrideFlow = MutableStateFlow<ConfigurationOverride?>(null)
 
-    private val navigationRouter: NavigationRouter by inject()
     private val migrationAppHooks: MigrationAppHooks by inject()
-    private val giftCardLinkStore: GiftCardLinkStore by inject()
+    private val handleExternalLink: HandleExternalLinkUseCase by inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -108,24 +106,20 @@ class MainActivity : FragmentActivity() {
     }
 
     /**
-     * Gift card app links go to the redeem flow, everything else (e.g. `zcash:` URIs) to the third party scan
-     * screen as before. A gift card link is only parked here; RootNavGraph opens it once the wallet is ready.
+     * Links from outside the app are never used as they are: `zcash:` URIs go to the third party scan screen and gift
+     * card app links to the gift card scanner, both asking the user to scan the code with the app instead.
      */
     private fun handleViewIntent(
         intent: Intent,
         isRecreated: Boolean
     ) {
         val data = intent.data ?: return
-        if (data.host.equals(GIFT_CARD_HOST, ignoreCase = true)) {
-            val isFromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
-            // A recreated activity or a relaunch from recents redelivers the link that was already handled.
-            if (!isRecreated && !isFromHistory && data.scheme.equals("https", ignoreCase = true)) {
-                giftCardLinkStore.setPendingAppLink(data.toString())
-            }
-            // Don't keep the link (it carries a spending secret) around in the activity's intent.
+        val isFromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
+        val isGiftCardLink = handleExternalLink(host = data.host, isRedelivery = isRecreated || isFromHistory)
+        if (isGiftCardLink) {
+            // Discard the link: it is not trusted, and it carries a spending secret that must not stay around in
+            // the activity's intent.
             intent.data = null
-        } else {
-            navigationRouter.forward(ThirdPartyScan)
         }
     }
 
@@ -341,8 +335,5 @@ class MainActivity : FragmentActivity() {
     companion object {
         @VisibleForTesting
         internal val SPLASH_SCREEN_DELAY = 0.seconds
-
-        /** Must match the app link intent filter in the app module's manifest. */
-        private const val GIFT_CARD_HOST = "gift.zodl.com"
     }
 }

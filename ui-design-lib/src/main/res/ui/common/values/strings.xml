@@ -559,6 +559,7 @@
     <!-- ===== redeem_gift ===== -->
     <string name="redeemGift_title">Redeem Gift Card</string>
     <string name="redeemGift_scan_invalid">This isn\'t a valid gift card. Scan the gift card\'s QR code or copy its link and try again.</string>
+    <string name="redeemGift_scan_externalLink">Looks like you opened a gift card from another app. For better safety and security, scan the gift card\'s QR code with Zodl.</string>
     <string name="redeemGift_checking_title">Looking for your gift…</string>
     <string name="redeemGift_checking_subtitle">Checking the gift card on the Zcash network. This can take a moment.</string>
     <string name="redeemGift_checking_progress"><xliff:g id="percent" example="42">%1$d</xliff:g>%% checked</string>

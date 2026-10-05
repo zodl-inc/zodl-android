@@ -525,6 +525,7 @@
     <!-- ===== redeem_gift ===== -->
     <string name="redeemGift_title">Canjear tarjeta de regalo</string>
     <string name="redeemGift_scan_invalid">Esta no es una tarjeta de regalo válida. Escanea el código QR de la tarjeta o copia su enlace e inténtalo de nuevo.</string>
+    <string name="redeemGift_scan_externalLink">Parece que abriste una tarjeta de regalo desde otra aplicación. Para mayor seguridad y protección, escanea el código QR de la tarjeta de regalo con Zodl.</string>
     <string name="redeemGift_checking_title">Buscando tu regalo…</string>
     <string name="redeemGift_checking_subtitle">Verificando la tarjeta de regalo en la red de Zcash. Esto puede tardar un momento.</string>
     <string name="redeemGift_checking_progress"><xliff:g id="percent" example="42">%1$d</xliff:g>%% verificado</string>

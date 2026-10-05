@@ -62,6 +62,7 @@ import co.electriccoin.zcash.ui.common.usecase.GetWalletAccountsUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetWalletRestoringStateUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetWalletSeedBytesUseCase
 import co.electriccoin.zcash.ui.common.usecase.GetZashiAccountUseCase
+import co.electriccoin.zcash.ui.common.usecase.HandleExternalLinkUseCase
 import co.electriccoin.zcash.ui.common.usecase.IsABContactHintVisibleUseCase
 import co.electriccoin.zcash.ui.common.usecase.IsEphemeralAddressLockedUseCase
 import co.electriccoin.zcash.ui.common.usecase.IsRestoreSuccessDialogVisibleUseCase
@@ -315,5 +316,6 @@ val useCaseModule =
         factoryOf(::IsServerAutomaticUseCase)
         factoryOf(::GetGiftCardDestinationAddressUseCase)
         factoryOf(::NavigateToRedeemGiftCardUseCase)
+        factoryOf(::HandleExternalLinkUseCase)
         factoryOf(::ReadClipboardTextUseCase)
     }

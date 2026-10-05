@@ -23,7 +23,7 @@ import co.electriccoin.zcash.ui.design.animation.ScreenAnimation.popExitTransiti
 import co.electriccoin.zcash.ui.design.util.LocalNavController
 import co.electriccoin.zcash.ui.screen.flexa.FlexaViewModel
 import co.electriccoin.zcash.ui.screen.warning.viewmodel.StorageCheckViewModel
-import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 import org.koin.androidx.compose.koinViewModel
@@ -126,15 +126,16 @@ fun RootNavGraph(
         }
     }
 
-    // Gift card app links can arrive before there is a wallet, or before the wallet graph is shown (cold start,
-    // onboarding). MainActivity parks them in GiftCardLinkStore; open them once the wallet graph is up.
+    // Gift card links from outside the app can arrive before there is a wallet, or before the wallet graph is shown
+    // (cold start, onboarding). MainActivity only records that one arrived (the link itself is discarded); open the
+    // gift card scanner once the wallet graph is up, so the user scans the card with the app.
     LaunchedEffect(secretState, navController) {
         if (secretState != SecretState.READY) return@LaunchedEffect
         navController.currentBackStackEntryFlow.first {
             it.destination.parent?.route == MainAppGraph::class.qualifiedName
         }
-        giftCardLinkStore.pendingAppLinkId.filterNotNull().collect {
-            navigateToRedeemGiftCard.openPendingAppLink()
+        giftCardLinkStore.isInAppScanRequested.filter { it }.collect {
+            navigateToRedeemGiftCard.openRequestedInAppScan()
         }
     }
 }

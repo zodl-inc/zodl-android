@@ -122,5 +122,5 @@ class IntegrationsVM(
 
     private fun onMoreClick() = navigationRouter.forward(MoreArgs)
 
-    private fun onRedeemGiftClick() = navigationRouter.replace(ScanGiftCardArgs)
+    private fun onRedeemGiftClick() = navigationRouter.replace(ScanGiftCardArgs())
 }

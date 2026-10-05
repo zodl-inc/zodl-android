@@ -7,18 +7,23 @@ import kotlinx.coroutines.flow.getAndUpdate
 import java.util.UUID
 
 /**
- * Holds scanned, pasted or app-linked gift card links in memory between the place they enter the app and the redeem
- * screen. Navigation routes only ever carry the random id returned by [stash]: routes are serialized into the
+ * Holds gift card links scanned, picked from an image or pasted inside the app in memory between the scanner and the
+ * redeem screen. Navigation routes only ever carry the random id returned by [stash]: routes are serialized into the
  * saved instance state, and a gift card link carries a spending secret that must not end up there or in logs.
+ *
+ * A link that comes from outside the app (an app link, any other VIEW intent) is never kept here: another app could
+ * have altered it on its way in. Only the fact that one arrived is kept, see [isInAppScanRequested], so the user can
+ * be asked to scan the card with the app itself.
  *
  * Nothing here is persisted. After process death the ids no longer resolve, and the redeem screen asks the user to
  * open the link again.
  */
 interface GiftCardLinkStore {
     /**
-     * A link that arrived through an app link and waits for the wallet to be ready, as the id from [stash].
+     * Whether a gift card link arrived from outside the app and the gift card scanner should be opened, once the
+     * wallet is ready, to ask the user to scan the card in the app.
      */
-    val pendingAppLinkId: StateFlow<String?>
+    val isInAppScanRequested: StateFlow<Boolean>
 
     /**
      * Keeps [link] and returns the id to retrieve it with.
@@ -31,23 +36,22 @@ interface GiftCardLinkStore {
     fun take(id: String): String?
 
     /**
-     * Stashes [link] and marks it as the pending app link, replacing (and forgetting) any earlier pending one.
+     * Records that a gift card link arrived from outside the app. The link itself is deliberately not an argument.
      */
-    fun setPendingAppLink(link: String)
+    fun requestInAppScan()
 
     /**
-     * Returns the pending app link's id, if any, and clears the pending mark. The link itself stays stashed until
-     * [take].
+     * Returns whether an in-app scan was requested and clears the request.
      */
-    fun consumePendingAppLinkId(): String?
+    fun consumeInAppScanRequest(): Boolean
 }
 
 class GiftCardLinkStoreImpl : GiftCardLinkStore {
     private val links = mutableMapOf<String, String>()
 
-    private val pendingId = MutableStateFlow<String?>(null)
+    private val scanRequested = MutableStateFlow(false)
 
-    override val pendingAppLinkId: StateFlow<String?> = pendingId.asStateFlow()
+    override val isInAppScanRequested: StateFlow<Boolean> = scanRequested.asStateFlow()
 
     override fun stash(link: String): String {
         val id = UUID.randomUUID().toString()
@@ -57,10 +61,9 @@ class GiftCardLinkStoreImpl : GiftCardLinkStore {
 
     override fun take(id: String): String? = synchronized(links) { links.remove(id) }
 
-    override fun setPendingAppLink(link: String) {
-        val id = stash(link)
-        pendingId.getAndUpdate { id }?.let { take(it) }
+    override fun requestInAppScan() {
+        scanRequested.value = true
     }
 
-    override fun consumePendingAppLinkId(): String? = pendingId.getAndUpdate { null }
+    override fun consumeInAppScanRequest(): Boolean = scanRequested.getAndUpdate { false }
 }
