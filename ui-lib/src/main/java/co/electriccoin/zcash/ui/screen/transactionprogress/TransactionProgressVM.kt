@@ -462,15 +462,14 @@ internal fun SubmitResult.GrpcFailure.pendingDescription(): StyledStringResource
         }
     }
 
-// MOB-385: TransactionNotCreatedException is the typed SDK wrapper for Rust creation failures.
-// The anchor string comes from Rust (zcash_client_sqlite) — no typed sub-code exists yet.
-// If the SDK ever adds one, replace the string check with it and drop the comment.
+// MOB-385 / MOB-1616: TransactionEncoderException.AnchorNotFoundException is the SDK's typed
+// signal for this failure (zodl-inc/zodl-android-wallet-sdk#26) — thrown directly from
+// createProposedTransactions, and nested as the cause of PcztException.CreatePcztFromProposalException
+// from createPcztFromProposal, hence the cause-chain walk.
 private fun SubmitResult.NonResubmittableError.isAnchorError(): Boolean {
     var throwable: Throwable? = (this as? SubmitResult.Error)?.cause
     while (throwable != null) {
-        if (throwable is TransactionEncoderException.TransactionNotCreatedException &&
-            throwable.rootCause.message?.contains("Unable to compute anchor", ignoreCase = true) == true
-        ) {
+        if (throwable is TransactionEncoderException.AnchorNotFoundException) {
             return true
         }
         throwable = throwable.cause

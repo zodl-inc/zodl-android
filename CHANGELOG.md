@@ -7,14 +7,19 @@ and this application adheres to [Semantic Versioning](https://semver.org/spec/v2
 
 ## [Unreleased]
 
-### Added:
-
-- Bitcoin, Litecoin, EIP-681 and Solana payment URIs are parsed through the SDK and routed into asset selection,
-  Pay and Swap; unsupported schemes, Solana transaction requests and unknown assets are rejected (MOB-1751).
-
 ### Changed:
 
 - Swap and Pay now restore asset and network choices immediately while current prices load in the background (MOB-1923).
+
+## [3.14.0 (2738)] - 2026-09-16
+
+### Added:
+
+- We added support for coinholder polls with up to 50 questions.
+
+### Changed:
+
+- We made submitting your votes in coinholder polls faster.
 - Coinholder Polling accepts rounds with up to 50 questions and proposal ids up to 50, matching the
   vote chain's circuit update for the 37-question Retroactive Grants round (zcash_voting 4.0.0-rc.2).
 - Coinholder Polling now votes with at most two note bundles instead of one per five notes, so a

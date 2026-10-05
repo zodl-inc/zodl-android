@@ -14,6 +14,16 @@ directly impact users rather than highlighting other key architectural updates.*
 
 ## [Unreleased]
 
+## [3.14.0 (2738)] - 2026-09-16
+
+### Added:
+
+- We added support for coinholder polls with up to 50 questions.
+
+### Changed:
+
+- We made submitting your votes in coinholder polls faster.
+
 ## [3.13.0 (2705)] - 2026-09-15
 
 ### Added:
